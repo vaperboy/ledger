@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Simulation
 
-// Accounting > Settings: who has access to THIS company's accounting. Named users only (owner decision): nobody has access unless the owner adds them,
+// Accounting > Settings: who has access to THIS company's accounting. Named users only: nobody has access unless the owner adds them,
 // the accountant included, and access to one company never opens another. The owner sees and changes it; everyone else sees a locked screen.
 // The engine enforces every level (`accountingLevel`, `canAccess`), and the owner can preview what a named user sees. There are no integrations or
 // accounting-method settings because the game does not model them.

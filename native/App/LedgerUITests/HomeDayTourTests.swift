@@ -1,6 +1,6 @@
 import XCTest
 
-/// Stage 7 and 8 tour (pictures 120 and up): the Home command centre, Next day with its progress state and day chip, the shortcut
+/// Tour (pictures 120 and up): the Home command centre, Next day with its progress state and day chip, the shortcut
 /// editor, the Inbox detail, a swipe back and a swipe between segments. Everything is optional: a control that is not on screen is
 /// noted and skipped, never failed. One short test so it fits the per-test time limit.
 final class HomeDayTourTests: TourCase {

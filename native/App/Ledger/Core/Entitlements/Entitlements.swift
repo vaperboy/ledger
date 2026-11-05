@@ -4,20 +4,20 @@ import StoreKit
 import UIKit
 import Simulation
 
-/// A paywall asked for by a locked item (brief 11.4). `title` is the item that triggered it ("Open a bakery in Lithuania").
+/// A paywall asked for by a locked item. `title` is the item that triggered it ("Open a bakery in Lithuania").
 struct PaywallRequest: Identifiable, Equatable {
     let id = UUID()
     var title: String
     var feature: LockedFeature?
-    /// The one-off sheet after the first profitable month (brief 11.4): shows the line above the paywall.
+    /// The one-off sheet after the first profitable month: shows the line above the paywall.
     var lead: String = ""
 }
 
-/// What the player owns (brief 11.4). Every gate in 11.1 reads only this object. The rules live in the engine (`EntitlementSnapshot`,
+/// What the player owns. Every gate reads only this object. The rules live in the engine (`EntitlementSnapshot`,
 /// `Monetisation.swift`); this class feeds them from StoreKit 2 and keeps the one-day ad pass.
 @MainActor @Observable
 final class Entitlements {
-    /// Debug builds only: force the plan for testing (brief 11.6). Ignored in release builds.
+    /// Debug builds only: force the plan for testing. Ignored in release builds.
     enum DebugMode: String, CaseIterable { case off, free, pro, plus }
 
     private(set) var snapshot: EntitlementSnapshot = .free
@@ -121,7 +121,7 @@ final class Entitlements {
         }
     }
 
-    /// `StoreKit.StoreKit.Transaction.currentEntitlements`: on launch and on foreground (brief 11.4).
+    /// `StoreKit.StoreKit.Transaction.currentEntitlements`: on launch and on foreground.
     func refresh() async {
         var owned: Set<LedgerProduct> = []
         var plusEnd: Date?
@@ -167,7 +167,7 @@ final class Entitlements {
         try? await AppStore.showManageSubscriptions(in: scene)
     }
 
-    /// The 24-hour Pro pass from a rewarded ad (brief 11.5.3). The ad rules (once per 7 days) are checked by `AdCoordinator`.
+    /// The 24-hour Pro pass from a rewarded ad. The ad rules (once per 7 days) are checked by `AdCoordinator`.
     func grantPass(until end: Date) {
         snapshot.passExpires = end
         UserDefaults.standard.set(end.timeIntervalSince1970, forKey: Keys.pass)

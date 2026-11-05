@@ -8,7 +8,7 @@ import Countries
 /// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
 struct InboxView: View {
     private var P: OutsidePalette { .game }
-    /// Needs you: open decisions; All: everything (brief 2.3).
+    /// Needs you: open decisions; All: everything.
     enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", all = "All" }
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -56,7 +56,7 @@ struct InboxView: View {
 
     // MARK: Blocks
 
-    /// One chronological list, newest first, no sub-folders (brief 2.3).
+    /// One chronological list, newest first, no sub-folders.
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
         let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in a.week != b.week ? a.week > b.week : a.id > b.id }
         return sorted.isEmpty ? [] : [Block(id: "all", title: "", messages: sorted)]
@@ -115,7 +115,7 @@ struct InboxView: View {
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // Brief 2.3: an Inbox decision returns to Home with a one-line toast.
+            // An Inbox decision returns to Home with a one-line toast.
             store.selectTab(.company)
             store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
         } else {

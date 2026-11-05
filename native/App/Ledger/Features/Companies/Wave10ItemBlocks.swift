@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// The page block of a transport or logistics service (wave 10: ride, parcel, lane, voyage, route, warehouse service): sold against capacity (load factor), empty share,
-/// lead time, what one unit costs by cause and the price that breaks even. The lead hooks it into `WaveItemBlocks` with `Wave10ItemBlock(companyID: companyID, itemID: itemID)`;
+/// The page block of a transport or logistics service (ride, parcel, lane, voyage, route, warehouse service): sold against capacity (load factor), empty share,
+/// lead time, what one unit costs by cause and the price that breaks even. Shown from `WaveItemBlocks`;
 /// it draws nothing for any other item.
 struct Wave10ItemBlock: View {
     @EnvironmentObject var store: GameStore

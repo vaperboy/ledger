@@ -1,6 +1,6 @@
 import XCTest
 
-/// Tours of Stage 4 (startups, investment, product expansion, business creation). Short tests, pictures numbered from 110. Every step is
+/// Tours of startups, investment, product expansion and business creation. Short tests, pictures numbered from 110. Every step is
 /// optional: a screen that is not reachable on this device is noted, never failed. Nothing is paid or started.
 final class Stage4TourTests: CompanyBatchTourCase {
     /// New company: the start-up statement with mandatory costs, optional extras (stock, equipment, team), remaining cash and the reserve.

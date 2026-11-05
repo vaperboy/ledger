@@ -2,7 +2,7 @@ import SwiftUI
 import Simulation
 import SaveSystem
 
-/// Settings > Saves > Save slots (Ledger Pro, brief 11.1): the game being played plus named copies. Built on the store's save
+/// Settings > Saves > Save slots (Ledger Pro): the game being played plus named copies. Built on the store's save
 /// functions; `current` is always the game being played and is never renamed or deleted here. Cloud backup (Ledger Plus) sits below.
 struct SaveSlotsView: View {
     @EnvironmentObject var store: GameStore

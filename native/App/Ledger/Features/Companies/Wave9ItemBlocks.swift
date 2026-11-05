@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// The page block of a venue item (wave 9: entry tickets, tables, passes, memberships, lessons, bar, food, merchandise): what it sells against its capacity, what one sale
-/// costs and where the price breaks even. The lead hooks it into `ItemPageView` after `overview` with `Wave9ItemBlock(companyID: companyID, itemID: itemID)`;
+/// The page block of a venue item (entry tickets, tables, passes, memberships, lessons, bar, food, merchandise): what it sells against its capacity, what one sale
+/// costs and where the price breaks even. Shown from `WaveItemBlocks`;
 /// it draws nothing for any other item.
 struct Wave9ItemBlock: View {
     @EnvironmentObject var store: GameStore

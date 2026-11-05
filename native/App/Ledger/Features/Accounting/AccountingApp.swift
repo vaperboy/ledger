@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Simulation
 
-/// The Accounting & Compliance app (Master spec Stage 2B, mockup accounting_app.png). Accounting records and manages; the Bank holds the money and
+/// The Accounting & Compliance app. Accounting records and manages; the Bank holds the money and
 /// executes payments. Every screen reads the engine's Accounting reads (`companyTransactions`, `invoices`, `payrollRunReview`, `supplierRecords`,
 /// `companyDocuments`, `accountingRoster` ...), which answer nil when the viewer has no access to the section: that is the locked state.
 

@@ -2,7 +2,7 @@ import SwiftUI
 import GameCore
 import Simulation
 
-// Navigation (stage 1). GameStore owns every navigation stack (`routePaths`, `phonePath`) and every pending request; the tab roots only
+// Navigation. GameStore owns every navigation stack (`routePaths`, `phonePath`) and every pending request; the tab roots only
 // bind their NavigationStack to it. One rule for every deep link:
 //  - A company or record is PUSHED onto the stack of the tab the player is on (`GameStore.openCompany`), so Back returns to that
 //    screen. A record already on the stack is gone back to, never stacked twice.
@@ -26,7 +26,7 @@ extension View {
     func returnBar(for tab: AppTab) -> some View { modifier(ReturnBar(tab: tab)) }
 }
 
-// MARK: Ladder goal links (brief 9.2 rule 3)
+// MARK: Ladder goal links
 
 extension GameStore {
     /// The screen a ladder goal's button names (`PlayerGoals.LadderGoal.link`): sales, hire, inbox, marketing, money, company, management,

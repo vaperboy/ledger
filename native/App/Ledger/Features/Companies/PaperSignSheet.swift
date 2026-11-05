@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 import Simulation
 
-/// A paper application the player fills in and signs before it is sent (owner decision, 2 Nov): who it goes to, what it says, the fee and the wait,
+/// A paper application the player fills in and signs before it is sent: who it goes to, what it says, the fee and the wait,
 /// a box to confirm the terms and a signature drawn with a finger. Used for chain and franchise applications; `DocumentSignSheet` does the same
 /// for the documents and licences a company holds.
 struct PaperSignSheet: View {

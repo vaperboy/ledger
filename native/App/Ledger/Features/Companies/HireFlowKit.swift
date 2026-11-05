@@ -5,7 +5,7 @@ import Employees
 import Businesses
 import Simulation
 
-// The ONE hiring flow of the game (Stage 3, spec 5.3C): every hire (workers, managers, assistants, team heads, executives, office staff, the analyst)
+// The ONE hiring flow of the game: every hire (workers, managers, assistants, team heads, executives, office staff, the analyst)
 // goes through `HireOnePage`: page 1 (the going rate, one button) and page 2 (pay and terms). This file holds what both pages
 // share: the request, the draft of the terms, the model that keeps the draft when the player goes back from page 2 to page 1, and a few formatters.
 // No game rule lives here: the engine (`hireDraftOptions`, `hireTermsProblem`, `hireSalaryTalk`, `hearTheirAsk`, `hireOffer`) decides and prices.

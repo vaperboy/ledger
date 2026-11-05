@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Simulation
 
-/// The loan application in two stages (Master spec 2F, mockup banking_app.png): 1 Apply and the bank's assessment (Apply, Offer), then 2 the final
+/// The loan application in two stages: 1 Apply and the bank's assessment (Apply, Offer), then 2 the final
 /// agreement (Choose, Agreement, Confirm). The assessment shows the MAXIMUM the bank approves with its rate, period and instalment; the player then
 /// chooses any amount up to it (never forced to take the maximum), reads and accepts the agreement, and confirms where the money is paid.
 /// Every figure comes from `loanAssessment`, `loanApplicationQuote` and `loanAgreement`; `applyForLoan` re-checks everything and may refuse with a reason.

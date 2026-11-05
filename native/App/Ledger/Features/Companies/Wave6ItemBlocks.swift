@@ -4,9 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// Wave 6 item page blocks (appointment and crew model: barber, driving school, physio, dental, car cleaning, cleaning company).
-/// Hook for `ItemPageView.body`, after `supplyBlock(pg, cur)`: `Wave6ItemBlocks(engine: e, companyID: companyID, itemID: itemID, currency: cur)`.
-/// It draws nothing for an item that is not a real service of the wave.
+/// Item page blocks for the appointment and crew model (barber, driving school, physio, dental, car cleaning, cleaning company).
+/// It draws nothing for an item that is not a real service of these trades.
 struct Wave6ItemBlocks: View {
     var engine: GameEngine
     var companyID: Int

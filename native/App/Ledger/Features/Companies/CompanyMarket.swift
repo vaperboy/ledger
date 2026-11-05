@@ -21,7 +21,7 @@ struct CompanyMarket: View {
     /// Each rival's share when the page opened, so the ranked list can show who is moving.
     @State private var baseline: [Int: Double] = [:]
     @State private var rival: Int?
-    /// Animation stage: a rival whose share moved or who came up for sale gets a brief coloured edge (green gain, red loss, gold opportunity).
+    /// A rival whose share moved or who came up for sale gets a brief coloured edge (green gain, red loss, gold opportunity).
     @State private var rivalFlash: [Int: Color] = [:]
 
     private struct RivalSig: Equatable { var share: Double; var sale: Bool }

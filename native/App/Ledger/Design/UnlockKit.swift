@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 import Simulation
 
-// Progressive unlocks in the app (engine: Businesses/Unlocks.swift, rules: native/docs/UNLOCKS.md): the announcement popup, the queue the store
+// Progressive unlocks in the app (engine: Businesses/Unlocks.swift): the announcement popup, the queue the store
 // holds, and the locked block a screen shows in place of a feature that is not open yet (dimmed, a lock, one line saying what opens it).
 
 /// One announcement waiting to be shown (the engine's items are not Identifiable, so this wraps one).

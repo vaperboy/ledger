@@ -4,10 +4,9 @@ import Countries
 import Businesses
 import Simulation
 
-/// Wave 5 item block: the professional-service page of an item (cons, tutor, photo, law, acctfirm, mktg). Shows the hourly rate against fair value with a
+/// Item block: the professional-service page of an item (cons, tutor, photo, law, acctfirm, mktg). Shows the hourly rate against fair value with a
 /// live profit or loss slider, the job price, who does the hours, utilisation, write-offs, client type and retainers, booking lead time.
-/// Hook (one line in `ItemPageView.body`, after `priceBlock(pg, co, cur, price)`): `Wave5ServiceBlock(companyID: companyID, itemID: itemID)`.
-/// It draws nothing for an item that is not a service type of a wave 5 trade.
+/// It draws nothing for an item that is not a service type of these trades.
 struct Wave5ServiceBlock: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int

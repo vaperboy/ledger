@@ -124,7 +124,7 @@ struct LuxuryHeader: View {
     }
 }
 
-/// A luxury item's picture: the owner's catalogue asset or the sheet cell, cropped to fill the given height; the icon until art exists.
+/// A luxury item's picture: the catalogue asset or the sheet cell, cropped to fill the given height; the icon until art exists.
 struct LuxuryPhoto: View {
     var itemID: String
     var height: CGFloat

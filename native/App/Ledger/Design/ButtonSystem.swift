@@ -1,11 +1,11 @@
 import SwiftUI
 
-// The game's button and alert system (owner mock-up "Private banking UI design system", dark ledger look). Phone sizes: compact
+// The game's button and alert system (dark ledger look). Phone sizes: compact
 // buttons that hug their label, never wide-format; the Cancel | Apply footer is the only place two actions share a row.
 //   Basic / secondary : `PlainTextButtonStyle` (Cancel, Decline) and the existing `GreyOutlineButtonStyle` (Back, View documents).
 //   Important         : `ImportantButtonStyle`, a gold-filled button (Verify, Authorize, Execute).
 //   Expensive         : `FoilButtonStyle`, a gold-foil outline with the amount in the label ("Acquire asset - 12,500,000").
-//   Popup footer      : `PopupFooter` (Cancel | Apply). Alerts: `AlertBanner`.
+//   Popup footer      : `PopupFooter` (Cancel | Apply).
 
 private let goldInk = Color(red: 0.09, green: 0.075, blue: 0.055)
 

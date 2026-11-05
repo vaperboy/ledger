@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// Wave 4 item page blocks (made goods with a bill of materials, projects and bids, titles with a sales curve, subscriptions, fish cycle: salmon,
-/// furniture, factory, start-up, game studio, web agency). Draws nothing for an item that is not a real item of the wave.
+/// Item page blocks for made goods with a bill of materials, projects and bids, titles with a sales curve, subscriptions and the fish cycle (salmon,
+/// furniture, factory, start-up, game studio, web agency). Draws nothing for an item that is not one of these.
 struct Wave4ItemBlocks: View {
     var engine: GameEngine
     var companyID: Int

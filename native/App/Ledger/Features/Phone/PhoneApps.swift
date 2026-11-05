@@ -40,7 +40,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         }
     }
 
-    /// The icon from the approved Phone mockup.
+    /// The app icon drawn on the Phone grid.
     var glyph: String {
         switch self {
         case .bank: return Glyph.bank
@@ -163,7 +163,7 @@ extension GateVisibility {
 }
 
 extension PhoneApp {
-    /// The gate that holds the app back (brief 5.1 and 6.3). Inbox, Reports and Settings are always open. The apps the table names have their
+    /// The gate that holds the app back. Inbox, Reports and Settings are always open. The apps the table names have their
     /// own gate; the rest (Stats, News, World, Achievements, Market and the like) wait for the bank gate, the end of the first-session ladder.
     var gate: Gate? {
         switch self {

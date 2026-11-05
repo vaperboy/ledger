@@ -4,7 +4,7 @@ import UIKit
 #endif
 
 /// The four families of things that can carry a picture. The raw value is the middle part of the asset name:
-/// `thumb-<kind>-<key>` (see native/docs/THUMBS_README.md for the keys the game has).
+/// `thumb-<kind>-<key>`.
 enum ThumbKind: String, CaseIterable {
     case premises
     case person
@@ -121,7 +121,7 @@ struct ThumbnailView: View {
     }
 
     #if canImport(UIKit)
-    /// The owner's catalogue asset wins; otherwise the sliced sheet cell for the kind.
+    /// The catalogue asset wins; otherwise the sliced sheet cell for the kind.
     private var picture: UIImage? {
         switch kind {
         case .premises, .person, .trade:

@@ -1,9 +1,8 @@
 import SwiftUI
 
-// The three page containers every screen uses (see native/docs/SCREEN_TYPES.md):
+// The page containers every screen uses:
 //   FixedScreen      A  fixed, never scrolls; compacts to fit (scales down to `minScale`), clipped
 //   ScrollScreen     B  vertical scroll only when the content is taller than the screen, never sideways, no blank space
-//   ContainedScroll  D  a bounded scroll area inside a fixed screen or a popup
 // Class C (intentional horizontal chip rows, e.g. TechPro) is a horizontal ScrollView inside one of these.
 
 private struct FixedHeightKey: PreferenceKey {

@@ -26,7 +26,7 @@ struct PhoneHome: View {
 
     @EnvironmentObject var store: GameStore
     @Environment(\.tabBarClearance) private var clearance
-    /// Brief 9.3 Unlock: the apps that were dimmed the last time the grid looked, and the toast lines for the ones that opened since.
+    /// The apps that were dimmed the last time the grid looked, and the toast lines for the ones that opened since.
     @State private var lockedBefore: Set<String>?
     @State private var notes: [OrgNote] = []
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.

@@ -6,7 +6,7 @@ import Simulation
 
 /// Everything the game tells the player in words is a popup on the main screen, never a banner: the notice queue (a refusal, a warning,
 /// the outcome of an answer), a top-priority decision, the short daily report, the week, month and year reports and the rewards.
-/// This view only REGISTERS them with the app's popup host (see `PopupHost`, `PopupPriority`, native/docs/POPUPS.md): the host draws
+/// This view only REGISTERS them with the app's popup host (see `PopupHost`, `PopupPriority`): the host draws
 /// them, one at a time, in the order confirm, decision, alert, notice, report and daily, reward, panel.
 struct PopupLayer: View {
     @EnvironmentObject var store: GameStore

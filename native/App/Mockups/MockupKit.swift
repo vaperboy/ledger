@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Shared static pieces of the Home mockups (Part 10). Only `Theme` is referenced from the app; all data is hard-coded.
+// Shared static pieces of the Home mockups. Only `Theme` is referenced from the app; all data is hard-coded.
 // This folder is excluded from the Ledger target in project.yml. No animation anywhere.
 
 enum MK {
@@ -157,7 +157,7 @@ struct MKDayBar: View {
     }
 }
 
-/// Part 3.0: the day close overlay, 40% of an iPhone 15 screen (852 pt), amber because a decision arrived.
+/// The day close overlay, 40% of an iPhone 15 screen (852 pt), amber because a decision arrived.
 struct MKDayClose: View {
     var body: some View {
         VStack(spacing: 6) {
@@ -174,7 +174,6 @@ struct MKDayClose: View {
     }
 }
 
-/// Part 3.1 pieces.
 struct MKNumber: View {
     var size: CGFloat = 48
     var body: some View {

@@ -13,7 +13,7 @@ enum Haptics {
     private static let notify = UINotificationFeedbackGenerator()
     private static let select = UISelectionFeedbackGenerator()
 
-    // Brief 7.4: exactly six haptics. The older helpers below keep their names so call sites compile, but they are silent.
+    // Exactly six haptics. The older helpers below keep their names so call sites compile, but they are silent.
     /// Next day pressed.
     static func nextDay() { guard enabled else { return }; light.impactOccurred() }
     /// The week report number finished counting.

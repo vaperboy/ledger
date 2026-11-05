@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Variant A: today's Phone Home (clock, 4-column grid, tab bar) with only the Part 2.1 additions: today strip under the header,
-/// guide card first above the grid, `Needs you` under it. Static sample data (Part 10.2).
+/// Variant A: today's Phone Home (clock, 4-column grid, tab bar) with only these additions: today strip under the header,
+/// guide card first above the grid, `Needs you` under it. Static sample data.
 struct MockupAHome: View {
     var body: some View {
         VStack(spacing: 12) {

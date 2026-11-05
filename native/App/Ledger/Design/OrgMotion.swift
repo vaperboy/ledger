@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Organisation motion (animation stage: Team, Group, Projects, Market). Every helper reacts to a real state change the view detects
+/// Organisation motion (Team, Group, Projects, Market). Every helper reacts to a real state change the view detects
 /// itself with `.onChange(of:)` on derived values; first appearance never animates. Gold = milestone or opportunity, green = gain,
 /// red = loss. Nothing here blocks touches or loops. Reduce Motion: the root view already drops animation transactions, and the
 /// helpers also pass `nil` animations, so only a static colour highlight can remain.

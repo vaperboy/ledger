@@ -1,6 +1,6 @@
 import XCTest
 
-/// Navigation (spec stage 1): a company opened from Home, Projects or Inbox returns to that screen on Back; choosing the open tab again
+/// Navigation: a company opened from Home, Projects or Inbox returns to that screen on Back; choosing the open tab again
 /// returns it to its root; a link that crosses tabs returns to its origin and leaves nothing behind; a link to a company screen that is
 /// already open never stacks a copy (that one is a unit test: LedgerTests/NavigationStackTests). Run by CI with the screenshot tests. An entry point that the prepared game does not have (the
 /// showcase game has no project company) is reported as skipped, never as a pass.
@@ -110,7 +110,7 @@ final class NavigationBackTests: TourCase {
         XCTAssertFalse(app.staticTexts["Net worth"].firstMatch.exists)
     }
 
-    // MARK: Stage 1 navigation
+    // MARK: Navigation
 
     /// Choosing the tab that is already open returns it to its root: here a company open on its Manage section on Home.
     func testReselectingHomeReturnsToItsRoot() throws {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// The shared pieces of the new look (approved 27 Oct 2026, native/design/new-look-2026-10). Every screen is built from these, so a
+// The shared pieces of the new look. Every screen is built from these, so a
 // colour, radius or icon changes in one place. Values are the mockups' own; tokens live in Theme.swift.
 //
 //   Icons ......... LedgerIcon / Glyph      the mockups' 24x24 SVG paths, drawn as strokes (never SF Symbols for the house icons)
@@ -10,7 +10,7 @@ import SwiftUI
 //   Badges ........ RedBubble, IconCircle, AppIconTile
 //   Navigation .... PillTabBar (floating tab bar with highlighted pill and bubbles)
 //
-// House rules these encode (docs/DESIGN_RULES.md): cards and icons are the style; the back button is round; title and "Hello, name"
+// House rules these encode: cards and icons are the style; the back button is round; title and "Hello, name"
 // only on Home; every other screen has its own AppHeader; only Next Day is a filled button.
 
 // MARK: Icons
@@ -49,7 +49,7 @@ struct GlyphView: View {
     }
 }
 
-/// The house icon set: the SVG path data copied from the approved mockups. Add new icons here, in the same 24 x 24 style.
+/// The house icon set: SVG path data. Add new icons here, in the same 24 x 24 style.
 enum Glyph {
     // Tabs
     static let home = "M4 11 L12 4 L20 11 V20 H4 Z M10 20 V14 H14 V20"
@@ -339,7 +339,7 @@ extension AppHeader where Trailing == EmptyView {
 struct HomeHeader: View {
     var name: String
     var dateText: String
-    /// Brief 7.3: consecutive days played; the flame and number show only from 3 up (the store passes 0 below that).
+    /// Consecutive days played; the flame and number show only from 3 up (the store passes 0 below that).
     var streak: Int = 0
     var onNewCompany: () -> Void
 

@@ -115,7 +115,7 @@ struct CelebrationPopup: View {
     /// Set once the reward has been claimed right here: what the player got. The card then shows a small celebration of its own.
     @State private var claimedText: String?
     @State private var burst = false
-    /// Goal complete (brief 9.3): the card turns green, the check draws itself, the reward fades in.
+    /// Goal complete: the card turns green, the check draws itself, the reward fades in.
     @State private var goalShown = false
     @State private var checkDrawn: CGFloat = 0
     /// Goal complete: after `celebrate` (1.5 s) the card slides up and out with `move`.
@@ -181,7 +181,7 @@ struct CelebrationPopup: View {
         (store.engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed })
     }
 
-    /// The goal after a finished ladder goal, when it names a screen: its button opens that screen (brief 9.2 rule 3).
+    /// The goal after a finished ladder goal, when it names a screen: its button opens that screen.
     private var nextGoal: PlayerGoals.LadderGoal? {
         guard item.kind == "goal", let e = store.engine, let g = PlayerGoals.currentLadderGoal(e.state), !g.link.isEmpty, !g.button.isEmpty else { return nil }
         return g

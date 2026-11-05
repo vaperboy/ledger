@@ -4,9 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// Wave 3 item page blocks (made goods with recipes): the recipe with the cost of each input, food cost percent, spoilage, production and the allergen sheet.
-/// Hook in `ItemPageView.body`, after `supplyBlock(pg, cur)`:
-///   `if let c = Wave3Recipes.card(e.state, companyID: companyID, itemID: itemID, price: price, data: e.data) { Wave3RecipeBlock(card: c, cur: cur) }`
+/// Item page blocks for made goods with recipes: the recipe with the cost of each input, food cost percent, spoilage, production and the allergen sheet.
 struct Wave3RecipeBlock: View {
     var card: Wave3Recipes.Card
     var cur: Currency

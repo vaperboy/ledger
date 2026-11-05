@@ -51,7 +51,7 @@ struct GoalsView: View {
 
     // MARK: Ladder
 
-    /// The one open ladder goal; its button goes straight to the screen it names (brief 9.2 rule 3).
+    /// The one open ladder goal; its button goes straight to the screen it names.
     @ViewBuilder private func ladderCard(_ e: GameEngine) -> some View {
         if let g = PlayerGoals.currentLadderGoal(e.state) {
             let link: String = g.link

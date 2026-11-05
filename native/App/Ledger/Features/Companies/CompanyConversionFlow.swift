@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Turning a sole trader into a limited company (Master spec 2D), as a review and then ONE confirmed transaction. The preview is the engine's dry run
+/// Turning a sole trader into a limited company, as a review and then ONE confirmed transaction. The preview is the engine's dry run
 /// (`conversionPlan`): requirements, costs, who pays the fee (personal or company account, with balances and any shortfall), what changes in the
 /// ownership and the books, and that the loan guarantees stay. The owner always pays the share capital personally. Cancelling changes nothing.
 struct ConversionSheet: View {

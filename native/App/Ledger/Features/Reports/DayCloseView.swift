@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Brief 3.0: the day's close inside the daily report. The profit is the big figure (34 pt bold, counting from 0 in 0.4 s, green or red
+/// The day's close inside the daily report. The profit is the big figure (34 pt bold, counting from 0 in 0.4 s, green or red
 /// with sign) and a thin 7-segment bar shows the days of the week, filled up to today, the seventh outlined. Both are shown by
-/// `DailyReportPopup`; the report itself is unchanged (owner decision).
+/// `DailyReportPopup`.
 struct DayCloseView: View {
     var profit: Double?
     /// Days played in the week so far (1 to 6 on an ordinary day).
     var daysDone: Int
     var instant: Bool
     var format: (Double) -> String
-    /// Brief 3.0 line 3, in priority: a new Inbox item, the week's best day, the briefing's first sentence, else "A quiet day."
+    /// The third line, in priority: a new Inbox item, the week's best day, the briefing's first sentence, else "A quiet day."
     var newInboxTitle: String? = nil
     var bestDay: Bool = false
     var briefing: String? = nil

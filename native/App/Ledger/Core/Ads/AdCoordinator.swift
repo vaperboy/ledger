@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import Simulation
 
-/// Applies the ad rules of the engine (`AdPolicy`) to the provider (brief 11.5). Views and the store call only this class.
+/// Applies the ad rules of the engine (`AdPolicy`) to the provider. Views and the store call only this class.
 /// Three placements, no others: interstitial after a week report, rewarded double on the report, rewarded Pro pass in the paywall.
 @MainActor @Observable
 final class AdCoordinator {

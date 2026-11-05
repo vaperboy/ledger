@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Simulation
 
-/// The new-player setup (brief 1.2): three steps, one screen each. Country (largest first), trade (twelve starters, or all of them), company name.
+/// The new-player setup: three steps, one screen each. Country (largest first), trade (twelve starters, or all of them), company name.
 /// Nothing is created until `begin` is called from the last step; the start screen decides whether replacing a saved game needs asking first.
 struct NewPlayerSetup: View {
     enum Step { case country, trade, name }

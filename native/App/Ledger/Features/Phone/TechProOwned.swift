@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// TechPro "My items": what a company owns (units, condition, warranty, software and plans, the fleet), in the store's own look. It replaces
-/// the old Equipment screen in the Phone (owner decision, 2 Nov). Selling, servicing, cancelling a plan and ending a lease happen here.
+/// TechPro "My items": what a company owns (units, condition, warranty, software and plans, the fleet), in the store's own look.
+/// Selling, servicing, cancelling a plan and ending a lease happen here.
 struct TechProOwnedView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

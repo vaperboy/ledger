@@ -1,7 +1,7 @@
 import XCTest
 @testable import Ledger
 
-/// The navigation rules of stage 1, on the store that owns every tab's stack (no engine needed): a link to a record already on a stack
+/// The navigation rules, on the store that owns every tab's stack (no engine needed): a link to a record already on a stack
 /// never stacks a copy, Back from a cross-tab link returns to its origin and leaves nothing behind, choosing the open tab pops to root.
 @MainActor
 final class NavigationStackTests: XCTestCase {

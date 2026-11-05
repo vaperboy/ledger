@@ -1,7 +1,7 @@
 import SwiftUI
 
-// The shared overview layout (NEXT_JOBS G, mockup native/design/table-layout-2026-10): figure cards, one bordered table whose rows each
-// open their own page or popup, a row of count tiles, a latest-activity list and a warning note with an action. Each screen still brings
+// The shared overview layout: figure cards, one bordered table whose rows each
+// open their own page or popup. Each screen still brings
 // its own content and icons; these pieces only draw. Money in every string must already come through the store or currency formatter.
 
 extension Glyph {

@@ -520,7 +520,7 @@ enum ConfirmThreshold {
         var size: Double? = nil
         if let currency = p.currency {
             size = limit(step: step, currency: currency)
-            // With a manager in charge the limit grows with net worth: a 10k spend is not asked of someone worth 10M (owner decision, 2 Nov).
+            // With a manager in charge the limit grows with net worth: a 10k spend is not asked of someone worth 10M.
             if let d = delegated?(), d.limit > 0, abs(d.rate - currency.rate) < 1e-9 { size = max(size ?? 0, d.limit) }
         }
         return !ConfirmRule.asks(irreversible: p.destructive || p.alwaysAsk, amount: p.amount, limit: size)

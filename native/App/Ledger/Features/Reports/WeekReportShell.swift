@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Simulation
 
-/// The reveal shown when a week, month or year closes (brief Part 3.1 and 3.4, mockup A): title and period, one big profit number that
+/// The reveal shown when a week, month or year closes: title and period, one big profit number that
 /// counts up, one story sentence, three bars on one scale, one thing to do, a record line, then "Full report" and "Continue".
 /// Month and year add a movers list and one extreme line (the year also a 12-bar strip, tax and net worth) and keep their existing
 /// detail below a "More" divider. Real figures only; Reduce Motion shows everything at once. Continue works from the first frame.

@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// The page block of a rentable unit (wave 8: building, car, room type, gaming seat): units, occupancy, what one rented night, day, hour or week costs and where the
-/// rate breaks even. The lead hooks it into `ItemPageView` after `overview` with `Wave8UnitBlock(companyID: companyID, itemID: itemID)`; it draws nothing for any other item.
+/// The page block of a rentable unit (building, car, room type, gaming seat): units, occupancy, what one rented night, day, hour or week costs and where the
+/// rate breaks even. Shown from `WaveItemBlocks`; it draws nothing for any other item.
 struct Wave8UnitBlock: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
