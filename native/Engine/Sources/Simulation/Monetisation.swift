@@ -1,7 +1,7 @@
 import Foundation
 import Countries
 
-// Brief Part 11: the rules of what a purchase unlocks and when an ad may show. Pure values, no StoreKit and no ad SDK, so the rules are
+// The rules of what a purchase unlocks and when an ad may show. Pure values, no StoreKit and no ad SDK, so the rules are
 // testable on Linux. The app (Core/Entitlements, Core/Ads) feeds these with the store's answers and reads only their results.
 // No purchase changes a sim number: these types gate content and comfort only.
 

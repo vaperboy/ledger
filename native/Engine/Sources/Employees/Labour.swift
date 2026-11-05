@@ -13,7 +13,7 @@ import Countries
 ///         "leaveDays": 28, "probationWeeks": 104, "probationNoticeWeeks": 1, "atWill": false }
 /// ```
 /// `minMonthly` is in the country's own currency for a standard week (`stdHours`); `statutory` false means it is a floor set by
-/// collective agreements and custom rather than by law. A max of 0 means no cap. See docs/TAX_SOURCES.md for sources.
+/// collective agreements and custom rather than by law. A max of 0 means no cap.
 public struct LabourRules: Equatable, Sendable {
     /// A step in a table: from this many years (or this age) the value applies.
     public struct Band: Equatable, Sendable { public var from: Double; public var value: Double }

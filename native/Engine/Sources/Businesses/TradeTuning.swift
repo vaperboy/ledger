@@ -2,8 +2,7 @@ import Foundation
 import GameCore
 
 /// Balance corrections kept apart from the big data files (`Resources/trade_tuning.json`), so that a pass over the
-/// economics of the trades is one small, reviewable file. Each entry says what it changes and why (real-world basis in
-/// docs/BALANCE_REPORT.md).
+/// economics of the trades is one small, reviewable file. Each entry says what it changes and why.
 ///
 /// ```
 /// { "trades": { "airline": { "ticket": 250000, "eq": { "plane": { "cost": 150000000 } }, "tw": { "fuel": 0.25 } } },

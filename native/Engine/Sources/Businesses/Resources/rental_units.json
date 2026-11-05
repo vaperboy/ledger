@@ -1,0 +1,54 @@
+{
+  "about": "RENT trades: the rentable units behind the items. Shares and ratios are relative (the engine normalises); costs are shares of the going rate per rented period, never money. Wages, rent, fixed costs, depreciation, loans and upkeep come from the company's own books.",
+  "trades": {
+    "resrent": {
+      "kind": "property", "per": "week", "periods": 1, "tenure": 52, "relet": 0.9, "dmg": 0.006,
+      "unitName": "flats", "ancillary": []
+    },
+    "comrent": {
+      "kind": "property", "per": "week", "periods": 1, "tenure": 208, "relet": 4.0, "dmg": 0.002,
+      "unitName": "m2", "ancillary": []
+    },
+    "parking": {
+      "kind": "property", "per": "week", "periods": 1, "tenure": 26, "relet": 0.5, "dmg": 0.004,
+      "unitName": "spaces", "ancillary": []
+    },
+    "carrental": {
+      "kind": "vehicle", "per": "day", "periods": 7, "turn": 0.05, "dmg": 0.03, "chan": 0.0, "adv": 0.4,
+      "unitName": "cars",
+      "extras": [
+        { "n": "Insurance excess waiver", "ratio": 0.18, "share": 3.0, "cost": 0.30, "note": "Sold on commission: the underwriter keeps 30% for claims." },
+        { "n": "Child seat and sat-nav", "ratio": 0.06, "share": 1.5, "cost": 0.12, "note": "Cleaning and wear of the seat." },
+        { "n": "Airport delivery", "ratio": 0.35, "share": 0.4, "cost": 0.55, "note": "A driver and fuel." }
+      ]
+    },
+    "hotel": {
+      "kind": "roomtype", "pools": "rooms", "per": "night", "periods": 7, "turn": 0.04, "dmg": 0.006, "chan": 0.05, "adv": 0.55,
+      "unitName": "rooms",
+      "types": [
+        { "id": "std", "n": "Standard double", "ratio": 0.80, "share": 5.0, "fleet": 0.50 },
+        { "id": "sup", "n": "Superior double", "ratio": 1.10, "share": 2.8, "fleet": 0.28 },
+        { "id": "fam", "n": "Family room", "ratio": 1.35, "share": 1.4, "fleet": 0.14 },
+        { "id": "ste", "n": "Suite", "ratio": 2.30, "share": 0.8, "fleet": 0.08 }
+      ],
+      "extras": [
+        { "n": "Breakfast add-on", "ratio": 0.12, "share": 3.0, "cost": 0.40, "note": "Food cost and kitchen consumables." },
+        { "n": "Conference package", "ratio": 3.00, "share": 0.15, "cost": 0.35, "note": "Room hire, catering and equipment." }
+      ]
+    },
+    "pcbang": {
+      "kind": "roomtype", "pools": "pcs,seats", "per": "hour", "periods": 100, "turn": 0.01, "dmg": 0.008, "chan": 0.0, "adv": 0.15,
+      "unitName": "seats",
+      "types": [
+        { "id": "std", "n": "Standard gaming PC", "ratio": 0.85, "share": 6.0, "fleet": 0.60 },
+        { "id": "pro", "n": "High-end gaming PC", "ratio": 1.20, "share": 3.0, "fleet": 0.30 },
+        { "id": "vip", "n": "VIP booth", "ratio": 1.70, "share": 1.0, "fleet": 0.10 }
+      ],
+      "extras": [
+        { "n": "Snacks and drinks", "ratio": 0.35, "share": 4.0, "cost": 0.55, "note": "Bought in from the cash-and-carry." },
+        { "n": "Tournament entry", "ratio": 2.50, "share": 0.15, "cost": 0.50, "note": "Prizes and the host." },
+        { "n": "Night pass", "ratio": 4.50, "share": 0.20, "cost": 0.05, "note": "Eight hours at a fixed price." }
+      ]
+    }
+  }
+}

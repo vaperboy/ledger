@@ -320,7 +320,7 @@ public enum PlayerGoals {
         case "M6": return "The town gives new businesses a small grant: \(cash(25000, "Start-up grant from the town"))."
         case "M7":
             s.credit = min(100, s.credit + 5)
-            var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l   // the ambition prompt may appear now (Part 1.4)
+            var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l   // the ambition prompt may appear now
             return "A profitable month: the bank offers you better terms."
         case "M8":
             var l = s.rest["ldr"] ?? .object([:]); l["classic"] = 1; s.rest["ldr"] = l   // the app turns this into `ledger.classicStartUnlocked`

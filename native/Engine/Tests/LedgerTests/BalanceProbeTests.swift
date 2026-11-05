@@ -195,7 +195,7 @@ final class BalanceGuardTests: XCTestCase {
         }
     }
 
-    /// Capital-heavy trades earn a realistic, modest return on the money put in (docs/BALANCE_REPORT.md, "Capital-heavy trades"):
+    /// Capital-heavy trades earn a realistic, modest return on the money put in:
     /// a competently run shop, workshop, hotel or plant makes a few percent to the low teens a year after the first year. Not a
     /// get-rich path (nothing above ~50%), not a certain loss (the median is positive and the best-run set stays in a 2-20% band).
     func testCapitalHeavyTradesEarnModestReturns() throws {

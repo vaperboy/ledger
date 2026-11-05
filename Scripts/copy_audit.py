@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy audit (brief Part 6.1). Scans the string literals of the app (and the engine's player-facing text) for the hard copy rules:
+"""Copy audit. Scans the string literals of the app (and the engine's player-facing text) for the hard copy rules:
   - no exclamation mark in a string (7)
   - no string starting with `Note that`, `Please`, `Remember` or `You can` (5)
   - no button titled `OK`, `Yes` or `Confirm` on its own (3)

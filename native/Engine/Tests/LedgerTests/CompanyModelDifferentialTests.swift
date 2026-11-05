@@ -13,14 +13,14 @@ final class CompanyModelDifferentialTests: XCTestCase {
         // "rivals" part of demand (Rivals.strengthFactor, 0.88...1.1). The original has no such factor, so compare without the rivals list.
         if var mk = s.rest["mk"] { for k in mk.object.keys { mk[k]["riv"] = .array([]) }; s.rest["mk"] = mk }
         s.useOriginalInflation()   // see GameState.useOriginalInflation
-        // The original game's city data (no tourist draw per city, no city overlay): docs/CITY_DATA.md
+        // The original game's city data (no tourist draw per city, no city overlay)
         return World(state: s, countries: try CountryBook.bundled(realCityMarket: false), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
     }
 
     func testDemandPartsMatchOriginal() throws {
         let w = try world()
         let g = try Golden.load("oracle_demand_cap")
-        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades (docs/BALANCE_REPORT.md)
+        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades
         var report: [String] = []
         for (idStr, e) in g.object {
             guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co), !tuned.contains(bd.id) else { continue }
@@ -43,7 +43,7 @@ final class CompanyModelDifferentialTests: XCTestCase {
     func testTicketPriceMatchesOriginal() throws {
         let w = try world()
         let g = try Golden.load("oracle_demand_cap")
-        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades (docs/BALANCE_REPORT.md)
+        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades
         var report: [String] = []
         for (idStr, e) in g.object {
             guard let co = w.state.company(Int(idStr)!), let bd = w.trade(co), !tuned.contains(bd.id) else { continue }
@@ -61,7 +61,7 @@ extension CompanyModelDifferentialTests {
     func testCapacityMatchesOriginal() throws {
         let w = try world()
         let g = try Golden.load("oracle_demand_cap")
-        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades (docs/BALANCE_REPORT.md)
+        let tuned = TradeTuning.tunedTradeIDs  // deliberately re-balanced trades
         var report: [String] = []
         var matched = 0
         for (idStr, e) in g.object {
@@ -69,7 +69,7 @@ extension CompanyModelDifferentialTests {
             let c = CapacityModel.compute(co, bd, w)
             let ok = abs(c.capacity - e["cap"].double) <= 1e-6 * max(1, e["cap"].double)
             if ok { matched += 1; continue }
-            // Deliberate fix (docs/BALANCE_PARITY.md): with an empty support role the original's capacity collapsed to zero even
+            // Deliberate fix: with an empty support role the original's capacity collapsed to zero even
             // though its own step meant the team to cover it. Same parts, the original 0, ours the covered capacity: accepted.
             let sameParts = zip(c.parts, e["cparts"].array).allSatisfy { abs($0.capacity - $1["cap"].double) <= 1e-6 * max(1, $1["cap"].double) }
             if e["cap"].double == 0 && c.capacity > 0 && sameParts { matched += 1; continue }

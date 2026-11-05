@@ -6,7 +6,7 @@ import Businesses
 import Simulation
 
 /// Property and finance companies played for three years on three seeds: do they open, keep the books balanced, and earn
-/// what such a business realistically earns? The printed table (LEDGER_RF=1) feeds docs/BALANCE_PARITY.md.
+/// what such a business realistically earns? The printed table is shown with LEDGER_RF=1.
 final class RentalFinanceProbeTests: XCTestCase {
     struct Year { var revenue = 0.0, profit = 0.0, value = 0.0, cash = 0.0 }
     struct Run {

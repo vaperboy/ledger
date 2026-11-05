@@ -47,7 +47,7 @@ public struct Knob: Equatable, Sendable {
 }
 
 /// A type of business: the data that makes a café different from a gym. Loaded from `trades.json`.
-/// Original: `BD[id]`. To add or tune a business, edit the JSON; see docs/ADDING_CONTENT.md.
+/// Original: `BD[id]`. To add or tune a business, edit the JSON.
 public struct Trade: TradeFacts, Equatable, Identifiable {
     public var id: String
     public var name: String
@@ -170,7 +170,7 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
         traitText = j["tw"].object.compactMapValues { if case .string(let s) = $0 { return s } else { return nil } }
         documentQuantities = j["dq"].object
         // Derived numbers are stored with the data: they were fixed when the original game last calibrated the trade
-        // (some predate later wage-table changes), and the game's balance depends on them. See docs/AUDIT.md.
+        // (some predate later wage-table changes), and the game's balance depends on them.
         weeklyFixedCosts = j["F"].double
         variableCostShare = j["vc"].double
         normalDemand = j["Dc"].double

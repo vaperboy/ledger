@@ -6,7 +6,7 @@ import Finance
 import Simulation
 import Employees
 
-/// Week-by-week averages over 12 seeds, the native twin of tools/ref/snippets/trace_weeks.js (see docs/BALANCE_PARITY.md).
+/// Week-by-week averages over 12 seeds, the native twin of tools/ref/snippets/trace_weeks.js.
 /// Prints JSON in the same shape as the original script. Not a pass/fail test: it only runs with LEDGER_STATS=1.
 final class BalanceTraceTests: XCTestCase {
     /// LEDGER_FAITHFUL=1: set-up and staffing as the original's test script does (one offer per job, nobody replaced when they leave).

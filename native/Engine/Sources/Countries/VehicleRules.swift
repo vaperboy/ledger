@@ -3,7 +3,7 @@ import GameCore
 
 /// What a country's data says about running vehicles. Every field is optional: a country that has no sourced figure leaves it out and
 /// the mechanism stays inactive (neutral) there. Amounts are written in the country's own currency in `countries.json` (block
-/// `vehicles`) and converted to accounting units here. Gaps are listed in docs/KNOWN_GAPS.md and docs/TAX_SOURCES.md.
+/// `vehicles`) and converted to accounting units here.
 public struct VehicleRules: Equatable, Sendable {
     /// Price of a litre of fuel (or the energy equivalent), accounting units.
     public var fuelPerLitre: Double?

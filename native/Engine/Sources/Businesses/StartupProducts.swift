@@ -27,7 +27,7 @@ public enum StartupProducts {
         public static func == (a: Sector, b: Sector) -> Bool { a.id == b.id }
     }
 
-    /// The sector tables were written in pounds; the game's accounting unit is about one krone (docs/MONEY_SCALING.md) and wages are in that unit.
+    /// The sector tables were written in pounds; the game's accounting unit is about one krone and wages are in that unit.
     /// Seed money and revenue per customer are therefore multiplied by the pound-to-unit factor, so a seed buys the same number of builder-months
     /// as it did in the original and a customer pays in the same unit as the wages. Nothing else is changed.
     public static let unit = 13.0

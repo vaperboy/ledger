@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Money limits must make sense in every country's own currency (docs/MONEY_SCALING.md). A fixed number of accounting units
+/// Money limits must make sense in every country's own currency. A fixed number of accounting units
 /// is a handful of coins in one country and a month's rent in another, so every limit that a player meets is derived from
 /// the country's median wage (`medianMonthlyWage`) or price level (`Currency.scaledPrice`).
 final class MoneyScalingTests: XCTestCase {
@@ -165,7 +165,7 @@ final class MoneyLiteralLintTests: XCTestCase {
         "LifeStories.swift": ["1000": "rounding step of the starting cash (up to the next thousand), not an amount"],
         "UsedCarWeek.swift": ["15000": "kilometres a year used to turn odometer km into a car age: not money"],
         "DealerAddons.swift": ["10000": "ratio: the file's benchmark per 10 000 of the trade's ticket, scaled with the ticket (accounting units) and scaledPrice"],
-        "Wave11Bases.swift": ["1000": "unit conversion: thousand barrels / thousand policies to units, not money"],
+        "FinanceItemBases.swift": ["1000": "unit conversion: thousand barrels / thousand policies to units, not money"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
     ]
     /// Files with technical number tables only (calendar arithmetic, hashing, encoding)

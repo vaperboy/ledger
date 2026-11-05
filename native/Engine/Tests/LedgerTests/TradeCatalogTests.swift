@@ -5,7 +5,7 @@ import Businesses
 final class TradeCatalogTests: XCTestCase {
     func testCatalogHasAllTradesOfTheOriginal() throws {
         let cat = try TradeCatalog.bundled()
-        XCTAssertGreaterThanOrEqual(cat.trades.count, 72)  // 69 + travel, insbroker, finbroker (brokers wave)
+        XCTAssertGreaterThanOrEqual(cat.trades.count, 72)  // 69 + travel, insbroker, finbroker (brokers)
         XCTAssertGreaterThanOrEqual(cat.order.count, 69)  // the menu lists 69; the holding company and football club are created elsewhere
         XCTAssertNotNil(cat["cafe"]); XCTAssertNotNil(cat["hold"]); XCTAssertNotNil(cat["club"])
         XCTAssertEqual(Set(cat.all.map { $0.family }), ["svc", "venue", "retail", "project", "prod", "logi", "rent", "fin", "energy"])
@@ -28,7 +28,7 @@ final class TradeCatalogTests: XCTestCase {
         let g = try Golden.load("trades_calibrated")
         for (id, t) in cat.trades {
             let e = g[id]
-            if e["Dc"].isNull || TradeTuning.tunedTradeIDs.contains(id) { continue }  // tuned on purpose: docs/BALANCE_REPORT.md
+            if e["Dc"].isNull || TradeTuning.tunedTradeIDs.contains(id) { continue }  // tuned on purpose
             assertClose(t.normalDemand, e["Dc"].double, tol: 1e-9, "\(id) Dc")
             assertClose(t.normalCapacity, e["capD"].double, tol: 1e-9, "\(id) capD")
             if !e["F"].isNull { assertClose(t.weeklyFixedCosts, e["F"].double, tol: 1e-9, "\(id) F") }

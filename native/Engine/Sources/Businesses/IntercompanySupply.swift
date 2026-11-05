@@ -175,7 +175,7 @@ public enum IntercompanySupply {
     /// its trade (nothing below its registration threshold, nothing where the country has a sales tax instead, which does not tax a sale for resale)
     /// and owes it; the buyer pays it and reclaims it, unless it is itself below the threshold, in which case it is a cost. Returns the VAT.
     /// The transfer price cap (never above the outside price) is `priceFactor`; cross-border supply is not offered (same country only), and
-    /// transfer-pricing rules beyond that cap are not modelled (KNOWN_GAPS.md).
+    /// transfer-pricing rules beyond that cap are not modelled.
     @discardableResult
     static func transferVat(_ s: inout GameState, supplier sp: Company, buyerIndex bi: Int, net: Double, data: GameData, _ w: World, cashNow: Bool) -> Double {
         guard net > 0, let sbd = data.catalog[sp.type], !w.country(sp).usesSalesTax else { return 0 }

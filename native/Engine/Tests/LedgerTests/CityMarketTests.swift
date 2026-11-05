@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Businesses
 
-/// Real-life population and demand by place (docs/CITY_DATA.md): city data spread, income bands, luxury demand and rivals by city.
+/// Real-life population and demand by place: city data spread, income bands, luxury demand and rivals by city.
 final class CityMarketTests: XCTestCase {
     func data() throws -> GameData { try GameData.bundled() }
 

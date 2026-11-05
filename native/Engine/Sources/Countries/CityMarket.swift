@@ -68,8 +68,7 @@ extension Country {
 }
 
 /// Real-life place data kept apart from `countries.json` (`Resources/city_market.json`), merged into each country's data when the
-/// book is loaded: extra fields of existing cities, extra (larger and smaller) cities, the country's Gini. Sources and dates are in
-/// docs/CITY_DATA.md.
+/// book is loaded: extra fields of existing cities, extra (larger and smaller) cities, the country's Gini.
 ///
 /// ```
 /// { "countries": { "NO": { "gini": 0.27,
@@ -104,7 +103,7 @@ public enum CityMarketData {
 }
 
 extension Country.City {
-    /// Fill the place data of a city from its data entry; what the data does not say is derived (docs/CITY_DATA.md).
+    /// Fill the place data of a city from its data entry; what the data does not say is derived.
     static func withPlaceData(_ city: Country.City, entry x: JSONValue, countryGini: Double, wageLevel: Double) -> Country.City {
         var c = city
         let pop = max(1, c.population)

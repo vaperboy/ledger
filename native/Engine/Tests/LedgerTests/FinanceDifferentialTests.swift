@@ -70,7 +70,7 @@ final class PersonalFinanceDifferentialTests: XCTestCase {
         let pre = try JSONDecoder().decode(GameState.self, from: Data(g["pre"].string.utf8))
         var s = pre
         let cat = try TradeCatalog.bundled()
-        // The replay uses the original's UK dividend rate (33.75%). The shipped rate is the 2026/27 upper rate, 35.75% (docs/TAX_SOURCES.md);
+        // The replay uses the original's UK dividend rate (33.75%). The shipped rate is the 2026/27 upper rate, 35.75%;
         // it is pinned by FoundationTests.testCorrectedTaxFiguresArePinned.
         let book = try CountryBook.bundled()
         let ctx = FinanceContext(countries: CountryBook(countries: book.countries.map { var c = $0; if c.code == "UK" { c.dividendTax = 0.3375; c.capitalGainsTax = 0.3375; c.savingsInterestTax = 0.3375 }; return c }), trades: cat)

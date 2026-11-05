@@ -8,7 +8,7 @@ import Businesses
 @testable import Simulation
 
 /// Capital gains and savings interest rates, the corporate tax deadline, loss carry-forward limits, monotonic income brackets,
-/// statutory sick pay and the scaled broker minimums (docs/TAX_SOURCES.md, "Second tax pass").
+/// statutory sick pay and the scaled broker minimums.
 final class TaxRulesAuditTests: XCTestCase {
     private func book() throws -> CountryBook { try CountryBook.bundled() }
 

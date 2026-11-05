@@ -7,11 +7,11 @@ import Finance
 /// with a price. This adds the real thing behind it, per item, in a second record `itemsv2` = { itemID: record } on the company:
 /// model (STK stocked resale, MADE recipe, SVC service, BRK unique unit, RENT, PROJ, SUB), unit cost, extra cost per unit (repairs, prep), holding cost per
 /// week, stock, on order, lead time, capacity, supplier link, status, reservations, plans and a weekly sales and profit history.
-/// Nothing is written until something sets it, and no trade is switched on: `optedInTrades` is empty until a wave adds its trades.
+/// Nothing is written until something sets it, and no trade is switched on: `optedInTrades` is empty until an item trade group adds its trades.
 /// `SalesItems` itself, demand and every old save are untouched; an item without a record is read through `fallbackCost` (the trade's cost-of-sales share).
 public enum ItemModels {
     /// Trades whose old titles-only items are migrated to records. Tests pass their own set.
-    public static var optedInTrades: Set<String> { ItemWaves.all }
+    public static var optedInTrades: Set<String> { ItemTradeGroups.all }
     static let key = "itemsv2"
     public static let historyWeeks = 52
     /// Weekly rate at which interested customers buy one unit at the fair price (a unique unit sits a few weeks on average).

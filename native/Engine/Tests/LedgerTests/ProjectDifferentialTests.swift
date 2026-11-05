@@ -8,7 +8,7 @@ import Finance
 /// Golden/save_projects.json and Golden/oracle_projects.json come from tools/ref/snippets/projects_oracle.js (the original game,
 /// five job trades and a developer, opened and played 40 days).
 ///
-/// Two numbers carry a deliberate native calibration (docs/BALANCE_PARITY.md, "Project businesses"): the hour value is multiplied by
+/// Two numbers carry a deliberate native calibration: the hour value is multiplied by
 /// the trade's `priceFactor` and the requests by its `demandFactor`; the test divides them out.
 final class ProjectDifferentialTests: XCTestCase {
     func world() throws -> World {

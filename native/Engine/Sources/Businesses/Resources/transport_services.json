@@ -1,0 +1,85 @@
+{
+  "about": "Transport and logistics: the services and routes behind the items. Shares and ratios are relative (the engine normalises); var is the cost that exists only when a ride, parcel, load, voyage, flight or order is sold, as a share of that item's going price (fuel where the trade's cost of sales carries it, tolls, port dues, handling, packaging, catering); empty is the share of running or seats that goes empty at a normal load. Vehicles, depreciation, leases, loans, servicing, wages, premises and fixed costs come from the company's own books, never from here.",
+  "trades": {
+    "taxi": {
+      "per": "ride", "pools": "car,mdt,wrap", "chan": 0.0, "adv": 0.25, "unitName": "cars",
+      "types": [
+        { "id": "std", "n": "Standard fare", "ratio": 1.0, "share": 6.0, "fleet": 0.50, "var": 0.095, "empty": 0.38, "lead": 0, "note": "Street hail, rank and app rides at the meter." },
+        { "id": "air", "n": "Airport run", "ratio": 2.6, "share": 1.2, "fleet": 0.14, "var": 0.075, "empty": 0.45, "lead": 1, "note": "Fixed fare, pre-booked; airport fees and a long empty return." },
+        { "id": "night", "n": "Night fare", "ratio": 1.5, "share": 1.6, "fleet": 0.18, "var": 0.10, "empty": 0.30, "lead": 0, "note": "Night tariff; higher risk, fewer cars." },
+        { "id": "corp", "n": "Corporate account", "ratio": 0.85, "share": 2.2, "fleet": 0.18, "var": 0.085, "empty": 0.25, "lead": 1, "note": "Invoiced monthly at a contract discount; booked in advance." }
+      ],
+      "extras": [
+        { "n": "Tourist tour", "ratio": 4.0, "share": 0.15, "cost": 0.30, "note": "Driver-guide by the hour." },
+        { "n": "School run contract", "ratio": 0.70, "share": 0.6, "cost": 0.35, "note": "Fixed daily runs for a council." }
+      ]
+    },
+    "courier": {
+      "per": "parcel", "pools": "van,bike,sort,sw", "chan": 0.0, "adv": 0.3, "unitName": "vans",
+      "types": [
+        { "id": "same", "n": "Same-day parcel", "ratio": 2.4, "share": 1.6, "fleet": 0.30, "cw": 1.3, "var": 0.060, "empty": 0.30, "lead": 0, "note": "Collected and delivered the same day; dedicated stops." },
+        { "id": "next", "n": "Next-day parcel", "ratio": 1.0, "share": 6.0, "fleet": 0.45, "var": 0.065, "empty": 0.15, "lead": 1, "note": "Through the sorting line, routed in rounds." },
+        { "id": "bulk", "n": "Bulk contract", "ratio": 0.62, "share": 4.0, "fleet": 0.25, "var": 0.050, "empty": 0.10, "lead": 3, "note": "A shipper's daily volume at a contract rate." }
+      ],
+      "extras": [
+        { "n": "Returns collection", "ratio": 0.9, "share": 1.0, "cost": 0.45, "note": "Pick-up and carriage back." },
+        { "n": "Signature and tracking premium", "ratio": 0.12, "share": 2.0, "cost": 0.08, "note": "Scan, proof of delivery." },
+        { "n": "Medical courier", "ratio": 3.5, "share": 0.15, "cost": 0.40, "note": "Chilled samples, a dedicated driver." }
+      ]
+    },
+    "trucking": {
+      "per": "trip", "pools": "truck,trail,tms,wash", "chan": 0.0, "adv": 0.5, "unitName": "trucks",
+      "types": [
+        { "id": "ftl", "n": "Full load lane (per km)", "ratio": 1.0, "share": 5.0, "fleet": 0.45, "var": 0.195, "empty": 0.22, "lead": 2, "note": "A full trailer on a named lane; the backhaul decides the margin." },
+        { "id": "ltl", "n": "Groupage (part loads)", "ratio": 0.62, "share": 3.0, "fleet": 0.20, "var": 0.185, "empty": 0.12, "lead": 3, "note": "Several shippers on one trailer; handling at the depot." },
+        { "id": "adr", "n": "Hazardous goods (ADR)", "ratio": 1.55, "share": 0.7, "fleet": 0.10, "var": 0.18, "empty": 0.30, "lead": 4, "note": "Certified driver and tank; dearer, fewer competitors." },
+        { "id": "ded", "n": "Dedicated contract lane", "ratio": 0.88, "share": 3.5, "fleet": 0.25, "var": 0.165, "empty": 0.15, "lead": 7, "note": "Regular runs for one retailer." }
+      ],
+      "extras": [
+        { "n": "Subcontracted load (forwarding)", "ratio": 0.9, "share": 0.6, "cost": 0.86, "note": "Another haulier drives; you keep the forwarding margin." },
+        { "n": "Fuel card service", "ratio": 0.04, "share": 3.0, "cost": 0.30, "note": "Card fees and a slice of the fuel discount." }
+      ]
+    },
+    "shipping": {
+      "per": "voyage", "pools": "ship,nav,dock", "chan": 0.025, "adv": 0.7, "unitName": "ships",
+      "types": [
+        { "id": "box", "n": "Container lane (per TEU)", "ratio": 1.0, "share": 5.0, "fleet": 0.45, "var": 0.215, "empty": 0.18, "lead": 14, "note": "Scheduled feeder voyages; slots sold per TEU." },
+        { "id": "bulk", "n": "Bulk charter (spot)", "ratio": 1.3, "share": 1.2, "fleet": 0.20, "var": 0.17, "empty": 0.30, "lead": 7, "note": "Spot cargo; the ballast leg back runs empty." },
+        { "id": "time", "n": "Time charter", "ratio": 0.85, "share": 2.2, "fleet": 0.25, "var": 0.09, "empty": 0.0, "lead": 30, "note": "A hire rate per day; the charterer buys fuel and port dues." },
+        { "id": "reef", "n": "Reefer lane", "ratio": 1.45, "share": 1.0, "fleet": 0.10, "var": 0.26, "empty": 0.20, "lead": 10, "note": "Plugs, power and cold-chain handling." }
+      ],
+      "extras": [
+        { "n": "Port handling and stevedoring", "ratio": 0.15, "share": 2.0, "cost": 0.60, "note": "Quay crews and cranes bought in." },
+        { "n": "Cargo insurance bundle", "ratio": 0.04, "share": 3.0, "cost": 0.50, "note": "The underwriter keeps half for claims." }
+      ]
+    },
+    "airline": {
+      "per": "flight", "pools": "plane,hangar,ops,sim", "chan": 0.05, "adv": 0.8, "unitName": "aircraft",
+      "types": [
+        { "id": "eco", "n": "Trunk route, economy", "ratio": 1.0, "share": 5.0, "fleet": 0.40, "var": 0.31, "empty": 0.22, "lead": 21, "note": "Commercial route; load factor and fare decide it." },
+        { "id": "biz", "n": "Business cabin seats", "ratio": 2.6, "share": 1.1, "fleet": 0.10, "var": 0.26, "empty": 0.45, "lead": 14, "note": "Fewer seats, lounge and catering, high fare." },
+        { "id": "pso", "n": "Regional route (public service)", "ratio": 0.82, "share": 3.2, "fleet": 0.30, "var": 0.29, "empty": 0.30, "lead": 28, "note": "Subsidised lifeline route, thin loads." },
+        { "id": "chart", "n": "Charter flight", "ratio": 1.5, "share": 0.5, "fleet": 0.12, "var": 0.27, "empty": 0.08, "lead": 30, "note": "A group buys the whole aircraft." },
+        { "id": "cargo", "n": "Cargo in the hold", "ratio": 0.35, "share": 1.0, "fleet": 0.08, "var": 0.20, "empty": 0.35, "lead": 2, "note": "Freight on passenger flights." }
+      ],
+      "extras": [
+        { "n": "Ancillaries (bags, seat choice, boarding)", "ratio": 0.09, "share": 5.0, "cost": 0.10, "note": "Almost pure margin per seat sold." },
+        { "n": "In-flight sales", "ratio": 0.05, "share": 3.0, "cost": 0.55, "note": "Food and duty free at cost of goods." }
+      ]
+    },
+    "wh3pl": {
+      "per": "order", "pools": "rack,fork,pack,wms,scan,robot", "chan": 0.0, "adv": 0.5, "unitName": "racking bays",
+      "types": [
+        { "id": "pal", "n": "Pallet storage (per week)", "ratio": 0.25, "share": 8.0, "fleet": 0.35, "var": 0.02, "empty": 0.15, "lead": 7, "note": "A pallet position a week; client goods, not yours." },
+        { "id": "pick", "n": "Pick and pack", "ratio": 1.0, "share": 6.0, "fleet": 0.30, "cw": 1.2, "var": 0.12, "empty": 0.10, "lead": 1, "note": "Cartons, tape and labels per order." },
+        { "id": "xdock", "n": "Cross-dock", "ratio": 0.7, "share": 1.5, "fleet": 0.10, "var": 0.04, "empty": 0.10, "lead": 1, "note": "In and out within a day; forklift time only." },
+        { "id": "ret", "n": "Returns handling", "ratio": 1.1, "share": 1.5, "fleet": 0.12, "var": 0.07, "empty": 0.20, "lead": 3, "note": "Inspect, grade, restock or scrap." },
+        { "id": "kit", "n": "Kitting and labelling", "ratio": 1.4, "share": 0.7, "fleet": 0.13, "var": 0.10, "empty": 0.15, "lead": 5, "note": "Bundles built to a client's bill of materials." }
+      ],
+      "extras": [
+        { "n": "Same-day dispatch premium", "ratio": 0.30, "share": 0.8, "cost": 0.50, "note": "Overtime and a late carrier." },
+        { "n": "Inventory reporting", "ratio": 0.05, "share": 3.0, "cost": 0.10, "note": "Stock counts and data feeds." }
+      ]
+    }
+  }
+}

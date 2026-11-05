@@ -10,7 +10,7 @@ private extension GameEngine {
 }
 
 final class ItemModelsTests: XCTestCase {
-    /// A trade no item wave opts in (open at once, sells goods), so these tests cover the foundation whichever waves are on. Pick another if a wave adopts it.
+    /// A trade no item trade group opts in (open at once, sells goods), so these tests cover the foundation whichever groups are on. Pick another if a group adopts it.
     static let trade = "cardealer"
     func engine(_ trade: String = ItemModelsTests.trade, weeks: Int = 8) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
@@ -21,8 +21,8 @@ final class ItemModelsTests: XCTestCase {
         return (e, id)
     }
 
-    func testRegistryIsTheWaveRegistriesAndAnEmptySetMigratesNothing() throws {
-        XCTAssertEqual(ItemModels.optedInTrades, ItemWaves.all)
+    func testRegistryIsTheTradeGroupsAndAnEmptySetMigratesNothing() throws {
+        XCTAssertEqual(ItemModels.optedInTrades, ItemTradeGroups.all)
         var (e, id) = try engine()
         let before = e.state
         e.update { s, d, _ in XCTAssertEqual(ItemModels.migrateOptedIn(&s, data: d, trades: []), 0) }

@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Brief Part 5.1 and 5.2: every row of the gate table is hidden before its gate and open after it; the `firstYear` keys are read where each
+/// Every row of the gate table is hidden before its gate and open after it; the `firstYear` keys are read where each
 /// behaviour lives.
 final class UnlockGatesTests: XCTestCase {
     static func fresh() throws -> GameEngine { try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 5) }

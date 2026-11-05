@@ -6,7 +6,7 @@ import Businesses
 /// The last original actions that had no engine function: buying an input from a business customer (`ch39set`, `ch39off`), what a bought rival
 /// becomes (`rivhow`), a new site beside a rival (`branchgo`), a purchase paid with a loan from your own bank (`rivfin27`), the answer to a rival's
 /// price cut (`rm27`), a reference check on a main-office candidate (`hqref`) and a manager review of one company (`reviewnow`).
-/// The ids of the original that only open a sheet or switch a tab are presentation; see docs/MISSING_ACTIONS.md for every id.
+/// The ids of the original that only open a sheet or switch a tab are presentation.
 public extension GameEngine {
     // MARK: Inputs from business customers
 
