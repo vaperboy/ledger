@@ -454,6 +454,6 @@ struct MessageCard: View {
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? P.accent : P.line, lineWidth: 1))
             .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim).padding(.trailing, 12) }
             .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle())
+        }.buttonStyle(PressableStyle()).accessibilityIdentifier("inbox-option")
     }
 }

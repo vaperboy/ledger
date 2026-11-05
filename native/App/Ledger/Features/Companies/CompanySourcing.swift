@@ -131,7 +131,7 @@ struct CompanySourcing: View {
             .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(o.isCurrent ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: 1))
             .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle())
+        }.buttonStyle(PressableStyle()).accessibilityIdentifier("supplier-option")
     }
 
     private func starText(_ s: String) -> String {

@@ -5,8 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: 'Manual job: popup (screenshots) or launch (simulator launch check)'
+        description: 'Manual job: popup (screenshots), launch (simulator launch check) or tours (feature tours, log-only report)'
         default: 'popup'
+      only:
+        description: 'tours only: one test method to run, e.g. testT12_ManageAndSuppliers (empty runs every tour)'
+        default: ''
   push:
     branches: [ native-swiftui ]
     paths: [ 'native/**', '!native/design/**' ]
@@ -203,6 +206,88 @@ jobs:
         with:
           name: popup-shots
           path: shots/
+          if-no-files-found: warn
+
+  # Manual only (which=tours): the feature tours (LedgerUITests/FeatureTours*.swift) on the prepared game. They never fail on a broken screen:
+  # every step records PASS, FAIL or SKIP and the result is printed between "=== TOUR RESULT ===" and "=== END TOUR RESULT ===". The job fails only
+  # when the tours could not run at all (build error, no result written). Independent of app-build and release.
+  ui-tours:
+    if: github.event_name == 'workflow_dispatch' && inputs.which == 'tours'
+    concurrency:
+      group: ui-tours-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use the newest installed Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: native/App
+        run: xcodegen generate
+      - name: Run the feature tours on iPhone 16 Pro
+        working-directory: native/App
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          xcrun simctl list devices available | grep -E "iPhone" || true
+          DEV="iPhone 16 Pro"
+          if ! xcrun simctl list devices available | grep -qF "    $DEV ("; then
+            DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9]+ Pro" | sort -V | tail -n 1)
+            [ -n "$DEV" ] || DEV=$(xcrun simctl list devices available | grep -oE "iPhone [0-9A-Za-z ]+" | head -n 1 | sed -E 's/ +$//')
+            echo "iPhone 16 Pro not available, using $DEV"
+          fi
+          echo "== $DEV"
+          mkdir -p "$RUNNER_TEMP/tour"
+          T="LedgerUITests/FeatureToursTests"
+          if [ -n "$ONLY" ]; then T="$T/$ONLY"; fi
+          # TEST_RUNNER_ variables reach the UI test process (prefix removed): the tours write their result file there.
+          TEST_RUNNER_TOUR_OUT="$RUNNER_TEMP/tour/result.txt" xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
+            -only-testing:"$T" \
+            -destination "platform=iOS Simulator,name=$DEV" \
+            -resultBundlePath "$RUNNER_TEMP/tours.xcresult" \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/tours.log" 2>&1 || { echo "xcodebuild test exited non-zero (expected when a tour step raised an XCTest issue)"; grep -E "error:" "$RUNNER_TEMP/tours.log" | sort -u | head -20; }
+          # The result block: the file the tours wrote, else the log, else the attachment inside the result bundle.
+          OUT="$RUNNER_TEMP/tour/result.txt"
+          if ! grep -q "=== END TOUR RESULT ===" "$OUT" 2>/dev/null; then
+            grep -q "=== END TOUR RESULT ===" "$RUNNER_TEMP/tours.log" && sed -n '/=== TOUR RESULT ===/,/=== END TOUR RESULT ===/p' "$RUNNER_TEMP/tours.log" > "$RUNNER_TEMP/tour/from-log.txt" && OUT="$RUNNER_TEMP/tour/from-log.txt"
+          fi
+          if ! grep -q "=== END TOUR RESULT ===" "$OUT" 2>/dev/null; then
+            mkdir -p "$RUNNER_TEMP/tour/att"
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/tours.xcresult" --output-path "$RUNNER_TEMP/tour/att" || true
+            F=$(grep -l "=== END TOUR RESULT ===" "$RUNNER_TEMP"/tour/att/* 2>/dev/null | head -n 1)
+            [ -n "$F" ] && OUT="$F"
+          fi
+          echo "TOUR_OUT=$OUT" >> "$GITHUB_ENV"
+          if grep -q "=== END TOUR RESULT ===" "$OUT" 2>/dev/null; then
+            sed -n '/=== TOUR RESULT ===/,/=== END TOUR RESULT ===/p' "$OUT"
+          else
+            echo "NO TOUR RESULT BLOCK (the summary test did not run). Steps recorded so far:"
+            grep -E "^\[(PASS|FAIL|SKIP|NOTE)\]" "$RUNNER_TEMP/tour/result.txt" 2>/dev/null | grep -E "^\[(FAIL|NOTE)\]" | head -n 80 || true
+            echo "steps recorded: $(grep -cE '^\[(PASS|FAIL|SKIP)\]' "$RUNNER_TEMP/tour/result.txt" 2>/dev/null || echo 0)"
+          fi
+          # Fail only when the tours could not run at all: no step was recorded anywhere.
+          N=$( { grep -hcE '^\[(PASS|FAIL|SKIP)\]' "$RUNNER_TEMP/tour/result.txt" 2>/dev/null; grep -hE '^steps: [0-9]+' "$OUT" 2>/dev/null | sed -E 's/steps: ([0-9]+).*/\1/'; } | sort -n | tail -n 1)
+          echo "steps counted: ${N:-0}"
+          if [ -z "$N" ] || [ "$N" = "0" ]; then
+            echo "THE TOURS COULD NOT RUN"
+            grep -E "error:|Testing failed|BUILD FAILED|\*\* TEST FAILED" "$RUNNER_TEMP/tours.log" | sort -u | head -40
+            tail -n 30 "$RUNNER_TEMP/tours.log"
+            exit 1
+          fi
+      - name: Upload the result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tour-result
+          path: |
+            ${{ runner.temp }}/tour/result.txt
+            ${{ runner.temp }}/tours.log
           if-no-files-found: warn
 
   release:
