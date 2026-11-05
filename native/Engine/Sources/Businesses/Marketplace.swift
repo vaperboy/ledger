@@ -281,7 +281,7 @@ public enum Marketplace {
 
     public enum BuyResult: Equatable, Sendable { case ok, refused(String) }
 
-    public static func buy(_ s: inout GameState, listingID: String, companyID: Int, price: Double, data: GameData, by: String = "me") -> BuyResult {
+    public static func buy(_ s: inout GameState, listingID: String, companyID: Int, price: Double, data: GameData, by: String = "me", quiet: Bool = false) -> BuyResult {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .refused("That company no longer exists.") }
         guard let e = entry(s, listingID: listingID, companyID: companyID, data: data) else { return .refused("That listing is gone.") }
         let neg = read(s, negKey(companyID, listingID))
@@ -314,7 +314,8 @@ public enum Marketplace {
         rev[negKey(companyID, listingID)] = .string(text)
         m["rev"] = rev
         s.rest["mkt"] = m
-        s.addMessage(kind: "info", from: h.seller, title: "About the \(e.l.title) you bought", body: text, companyID: companyID, tone: h.kind == 2 ? "bad" : "n")
+        // A purchase a buyer or manager made on his own is reported once a week by the caller (`quiet`), never as a message per car.
+        if !quiet { s.addMessage(kind: "info", from: h.seller, title: "About the \(e.l.title) you bought", body: text, companyID: companyID, tone: h.kind == 2 ? "bad" : "n") }
         return .ok
     }
 

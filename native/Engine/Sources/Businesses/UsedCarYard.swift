@@ -255,6 +255,14 @@ extension UsedCarDealer {
         s.companies[i].raw.removeValue(forKey: "ucbb")
         var rnd = HashedRandom("ucbuy:\(s.seed):\(s.week):\(co0.id)")
         var bought = 0
+        var lines: [String] = []
+        // One quiet note a week for what the buyer or manager bought on his own (a message per car was noise, and the owner had bought nothing himself).
+        defer {
+            if !lines.isEmpty {
+                let who: String = me.who == "mgr" ? (co0.managerID.flatMap { s.people[$0]?.name } ?? "Your manager") : (Int(me.who).flatMap { s.people[$0]?.name } ?? "Your buyer")
+                s.addMessage(kind: "info", from: who, title: "\(who) bought \(lines.count) \(lines.count == 1 ? "car" : "cars") for the yard", body: lines.joined(separator: "\n"), companyID: co0.id, tone: "n")
+            }
+        }
         let pushes = 1 + Int(me.skill / 30)
         var skipped: Set<String> = []
         while bought < me.perWeek {
@@ -273,8 +281,9 @@ extension UsedCarDealer {
                 }
             }
             guard price / pick.h.fair <= 0.98, s.companies[i].cash > price * 1.4 else { continue }
-            if case .ok = Marketplace.buy(&s, listingID: pick.l.id, companyID: co.id, price: price, data: data, by: me.who) {
+            if case .ok = Marketplace.buy(&s, listingID: pick.l.id, companyID: co.id, price: price, data: data, by: me.who, quiet: true) {
                 bought += 1
+                lines.append("\(pick.l.title): paid \(World(state: s, data: data).currency(s.companies[i]).display(price)), about \(Int(((1 - price / pick.h.fair) * 100).rounded())) percent under what it is worth. Check it in the yard.")
                 if me.who != "mgr" { s.companies[i].set("ucbb", s.companies[i].num("ucbb") + max(0, pick.h.fair - price)) }
             }
         }
