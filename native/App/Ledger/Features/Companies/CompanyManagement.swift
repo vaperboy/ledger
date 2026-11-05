@@ -266,6 +266,15 @@ struct ManagerSheet: View {
         let bd = e.tradeInfo(companyID: co.id)
         CardSection("Performance") {
             VStack(alignment: .leading, spacing: 10) {
+                if let vc = e.managerVoiceCard(companyID: co.id) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(vc.traits).font(.caption).foregroundStyle(.secondary)
+                        ForEach(vc.rows.indices, id: \.self) { i in
+                            HStack { Text(vc.rows[i].label); Spacer(); Text(vc.rows[i].word.capitalized).foregroundStyle(.secondary) }.font(.subheadline)
+                        }
+                        Text("\u{201C}\(vc.verdict)\u{201D}").font(.subheadline.italic()).padding(.top, 4)
+                    }
+                }
                 RateBar(label: "Overall results", fraction: e.managerQuality(companyID: co.id))
                 if let card = e.managerScorecard(companyID: co.id) {
                     FigureCard(items: [

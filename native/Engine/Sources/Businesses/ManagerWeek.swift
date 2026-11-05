@@ -31,11 +31,14 @@ extension ManagerModel {
         let cur = World(state: s, data: data).currency(co)
         // A year in the role: a raise is asked for
         if (s.week - started) % 52 == 51 && s.random.chance(0.7) {
-            let ask = cur.roundedStep(co.managerMonthlyWage * 0.06, about: 100)
-            var request = ContractTalk.Talk(opener: .employee, proposal: ContractTalk.Proposal(.payRise, amount: 0.06), week: s.week)
-            request.ask = 0.06; request.reason = "A year in the role."
+            // Salary follows results: a strong year asks for more, a poor one for less.
+            let pct = q > 0.7 ? 0.08 : q < 0.4 ? 0.04 : 0.06
+            let ask = cur.roundedStep(co.managerMonthlyWage * pct, about: 100)
+            var request = ContractTalk.Talk(opener: .employee, proposal: ContractTalk.Proposal(.payRise, amount: pct), week: s.week)
+            request.ask = pct; request.reason = "A year in the role."
+            let raiseSay = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .raise, vars: ["up": cur.display(ask), "pct": "\(Int(pct * 100))%"])
             ContractTalk.store(request, &s, personID: mid)
-            s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a raise at \(co.name)", body: "A year in the role, they want +\(cur.display(ask)) per month (6%).",
+            s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a raise at \(co.name)", body: raiseSay,
                          companyID: co.id, tone: "n", status: "open",
                          options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Delay \(ContractTalk.delayWeeks) weeks", "If you do not answer, they feel turned down."), .option("Decline", "They may leave")],
                          action: "mgrraise", data: .object(["ask": .number(ask), "npc": .number(Double(mid))]), expiresWeek: s.week + 3)
@@ -49,6 +52,7 @@ extension ManagerModel {
         keepTeam(&s, ci, bd, data: data, quality: q)
         seasonalWeek(&s, ci, n, data: data, capacity: cap)   // seasonal help ahead of a busy season (ManagerSeasonal.swift)
         PremisesProposals.managerWeek(&s, ci, n, data: data)   // demand-limited by the premises: propose a bigger place (PremisesProposals.swift)
+        ManagerVoice.digestWeek(&s, companyIndex: ci, manager: n, bd: bd, utilisation: util)
         guard s.week % 3 == 0, s.companies[ci].value("flags")["mgrCool"].double <= 0 else { return }
         if let dp = decideProposal(s, ci, bd, data: data, quality: q, utilisation: util, demand: D, capacity: cap) { propose(&s, ci, dp, n, q, data: data) }
         if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
@@ -170,10 +174,10 @@ extension ManagerModel {
         guard Double(s.week) - (fl["priceAt"].isNull ? -99 : fl["priceAt"].double) >= 10 else { return }
         if util > 0.97 && co.priceLevel < 2 && s.random.chance(0.25 * q) {
             fl["priceAt"] = .number(Double(s.week)); s.companies[ci].set("flags", fl); PriceMoves.managerStep(&s, ci, up: true, balance: balance)
-            s.note("\(n.name) raised prices at \(co.name).", tone: "n", companyID: co.id)
+            ManagerVoice.record(&s, companyIndex: ci, "raised prices one step: load is at \(Int(util * 100))%")
         } else if util < 0.55 && util > 0 && co.priceLevel > -1 && s.random.chance(0.2 * q) {
             fl["priceAt"] = .number(Double(s.week)); s.companies[ci].set("flags", fl); PriceMoves.managerStep(&s, ci, up: false, balance: balance)
-            s.note("\(n.name) lowered prices at \(co.name) to fill capacity.", tone: "n", companyID: co.id)
+            ManagerVoice.record(&s, companyIndex: ci, "lowered prices one step to fill capacity (load \(Int(util * 100))%)")
         }
     }
 
@@ -221,15 +225,17 @@ extension ManagerModel {
         last[key] = .number(Double(s.week)); fl["propLast"] = last; fl["mgrCool"] = 3; s.companies[ci].set("flags", fl)
         let cur = World(state: s, data: data).currency(co)
         let roleName = data.catalog.tables.roles[dp.role]?.name ?? dp.role
+        let bd = data.catalog[co.type]
+        let utilText = "\(Int(max(0, min(1.5, co.value("lastW")["util"].double)) * 100))"
         let short = dp.kind == "hire" ? hireShort(s, co, cost: dp.cost, data: data) : 0
         var auth = co.value("auth")
         // A manager promoted with only some duties leaves the other decisions to you.
         if !dutyAllows(n, dp.kind) { auth["lvl"] = 0 }
         // Within the budget the owner gave, a manager buys what the business is short of without waiting for an answer.
         let affordable = dp.kind == "hire" ? short <= 0 : co.cash > dp.cost * 0.5 + weekCost(s, co, data: data) * 6
-        if ["hire", "eq", "veh"].contains(dp.kind), auth["lvl"].double >= 1, affordable, (dp.kind == "hire" ? dp.cost / 12 : dp.cost) <= auth["buy"].double {
+        if ["hire", "eq", "veh"].contains(dp.kind), auth["lvl"].double >= 1, affordable, (dp.kind == "hire" ? dp.cost / 12 : dp.cost) <= auth["buy"].double * ManagerVoice.budgetUse(n) {
             exec(&s, ci, dp, n, q, data: data)
-            if dp.kind != "hire" { s.note("\(n.name) \(dp.kind == "veh" ? "added a vehicle" : "bought equipment") at \(co.name) within the budget you set: customers were being turned away.", tone: "n", companyID: co.id) }
+            if dp.kind != "hire" { ManagerVoice.record(&s, companyIndex: ci, "\(dp.kind == "veh" ? "added a vehicle" : "bought equipment") within your budget: customers were being turned away") }
             return
         }
         // Someone above the manager judges it first and only passes on what is above their budget or a close call.
@@ -239,22 +245,22 @@ extension ManagerModel {
         switch dp.kind {
         case "hire":
             title = "Hire a \(roleName.lowercased()) at \(co.name)"
-            body = "Customers want more than we can do, and we are short of a \(roleName.lowercased()). Another one would let us take on more work." + (short > 0 ? " We cannot afford it from the cash we have." : "")
+            body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .hire, vars: ["role": roleName.lowercased(), "util": utilText, "cost": cur.display(dp.cost)]) + (short > 0 ? " We cannot cover it from the cash we have." : "")
             opts = [.option("Approve", short > 0 ? "Puts in about \(cur.display(short)) from your account" : "The company can cover it"), .option("Decline")]
         case "eq", "veh", "space":
             let eqName = data.catalog[co.type]?.equipment.first { $0.id == dp.id }?.name ?? "equipment"
             title = dp.kind == "eq" ? "Buy \(eqName) for \(co.name)" : dp.kind == "veh" ? "Add a vehicle at \(co.name)" : "Expand the premises of \(co.name)"
-            body = "We are turning customers away. The bottleneck is " + (dp.kind == "space" ? "space" : eqName.lowercased()) + "." + (view.isEmpty ? "" : " " + view)
+            body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .equip, vars: ["role": dp.kind == "space" ? "space" : eqName.lowercased(), "util": utilText, "cost": cur.display(dp.cost)]) + (view.isEmpty ? "" : " " + view)
             opts = [.option("Approve", "About \(cur.display(dp.cost))"), .option("Decline")]
         case "cut":
-            title = "Reduce staffing at \(co.name)"; body = "We use less than half our capacity."
+            title = "Reduce staffing at \(co.name)"; body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .cut, vars: ["util": utilText])
             opts = [.option("Approve: let someone go", "Cut payroll; severance applies."), .option("Keep staff")]
         case "ad":
-            title = "Start advertising at \(co.name)"; body = "Awareness is very low, few people know about us."
+            title = "Start advertising at \(co.name)"; body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .ad, vars: ["cost": cur.display(dp.cost)])
             opts = [.option("Approve", "About \(cur.display(dp.cost))"), .option("Decline")]
         default:
             title = "Cash is running low at \(co.name)"
-            body = "About \(Int(max(0, jsRound(co.cash / max(1, weekCost(s, co, data: data)))))) weeks of costs left."
+            body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .cash, vars: ["cash": "\(Int(max(0, jsRound(co.cash / max(1, weekCost(s, co, data: data))))))"])
             opts = [.option("Inject \(cur.display(cur.scaledPrice(100000)))", "From your personal account."), .option("Inject \(cur.display(cur.scaledPrice(30000)))"), .option("Not now", "Cash may run out.")]
         }
         s.addMessage(kind: "ask", from: n.name, title: title, body: body, companyID: co.id, tone: "n", status: "open", options: opts, action: "prop",
@@ -271,13 +277,13 @@ extension ManagerModel {
             let cands = Hiring.search(role: dp.role, company: co, mode: .ads, faces: false, state: &s, data: data)
             guard !cands.isEmpty else { return }
             if let c = AutoHire.hireWorker(role: dp.role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: n), state: &s, data: data) {
-                s.note("\(n.name) hired \(c.name) (\(data.catalog.tables.roles[dp.role]?.name ?? dp.role)) at \(co.name).", tone: "good", companyID: co.id)
+                ManagerVoice.record(&s, companyIndex: ci, "hired \(c.name) as \((data.catalog.tables.roles[dp.role]?.name ?? dp.role).lowercased())")
             }
         case "eq", "veh", "space": buyForProposal(&s, ci, dp, n, data: data)
         case "seas": execSeasonal(&s, ci, dp, n, data: data)
         case "cut":
             let weakest = co.staff.min { (s.people[$0.id]?.skill ?? 0) + $0.skillGain < (s.people[$1.id]?.skill ?? 0) + $1.skillGain }
-            if let w = weakest { Dismissal.dismiss(&s, companyID: co.id, staffID: w.id, reason: .redundancy, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id) }
+            if let w = weakest { Dismissal.dismiss(&s, companyID: co.id, staffID: w.id, reason: .redundancy, data: data); s.note("\(n.name) reduced staffing at \(co.name).", tone: "n", companyID: co.id); ManagerVoice.record(&s, companyIndex: ci, "released one person: load was under half") }
         case "ad":
             let ch = (data.catalog[co.type]?.audience ?? 0) > 0.5 ? "google" : "meta"
             var mkt = co.value("mkt")
