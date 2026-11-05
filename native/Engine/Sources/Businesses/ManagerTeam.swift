@@ -347,6 +347,12 @@ extension ManagerModel {
         let fee = searchFee(currency: cur)
         guard Payments.liquid(s) >= fee else { return nil }
         Payments.playerPays(&s, fee, label: "Executive search: \(level.title)")
+        return generateExecutives(&s, level: level, data: data)
+    }
+
+    /// Three candidates for a chain or group executive post, with no agency fee (the shortlist a boss finds through the network).
+    static func generateExecutives(_ s: inout GameState, level: ExecLevel, data: GameData) -> [Person] {
+        let cur = playerCurrency(s, data)
         return (0..<3).map { _ in
             var n = generateCandidate(company: nil, type: "gen", state: &s, data: data)
             var st = n.value("stats")

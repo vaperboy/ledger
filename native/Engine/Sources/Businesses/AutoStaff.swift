@@ -12,7 +12,7 @@ public enum AutoStaff {
         let context = FinanceContext(countries: data.countries, trades: data.catalog)
         for i in s.companies.indices {
             let co = s.companies[i]
-            guard co.status == .open, Delegation.autoRehire(s, co), let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent" else { continue }
+            guard co.status == .open, Delegation.autoRehire(s, co) || (s.policy.autoRehire && HierarchyHiring.staffBoss(s, co, data: data) != nil), let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent" else { continue }
             // Replaces people who left; a company with nobody yet is staffed by the player, never automatically (owner decision, 2 Nov).
             guard !co.staff.isEmpty else { continue }
             let weekly = context.weeklyCost(co, s)
@@ -24,7 +24,8 @@ public enum AutoStaff {
                 guard ManagerHiring.verdict(s, companyID: co.id, role: st.role, target: target, data: data).allowed else { continue }
                 if let r = ManagerHiring.fill(&s, companyID: co.id, role: st.role, target: target, data: data) {
                     let roleName = data.catalog.tables.roles[st.role]?.name ?? st.role
-                    s.note("\(co.name): \(r.person.name) hired as \(roleName.lowercased()) by the manager\(ManagerHiring.earlyNote(r.verdict)).", tone: "n", companyID: co.id)
+                    let by = co.managerID == nil ? (HierarchyHiring.staffBoss(s, co, data: data).map { "\($0.name), the \($0.title.lowercased())" } ?? "the boss above") : "the manager"
+                    s.note("\(co.name): \(r.person.name) hired as \(roleName.lowercased()) by \(by)\(ManagerHiring.earlyNote(r.verdict)).", tone: "n", companyID: co.id)
                 }
                 break
             }
