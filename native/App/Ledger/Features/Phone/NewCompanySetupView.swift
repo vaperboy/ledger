@@ -19,7 +19,7 @@ struct NewCompanyDraft: Equatable {
         guard let t = e.data.catalog[tradeID] else { return nil }
         let country = e.homeCountry
         let city: Country.City = country.cities.first { $0.id == cityID } ?? country.cities[0]
-        return CompanySetup.recommendedSize(t, city: city)
+        return e.affordableStartSize(tradeID: tradeID, cityID: cityID) ?? CompanySetup.recommendedSize(t, city: city)
     }
     func plan(_ e: GameEngine) -> NewCompanyPlan? {
         guard let s = size(e) else { return nil }

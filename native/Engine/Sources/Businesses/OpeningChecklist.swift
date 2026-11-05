@@ -10,6 +10,26 @@ public enum OpeningChecklist {
         public var title: String
         public var isDone: Bool
         public var detail: String
+        /// What it still costs to finish this item with today's cheapest choice (0 when done or free).
+        public var cost: Double = 0
+    }
+
+    /// What it takes to finish an equipment item at the cheapest choice: one unit, or only the down payment (a fifth) where the piece can be financed.
+    static func equipmentCost(_ e: EquipmentSpec, _ co: Company, _ bd: Trade, _ w: World) -> (price: Double, financed: Bool) {
+        if let model = e.vehicleModels?.first { return ((w.catalog.tables.vehicles[model]?.price ?? 300000) * w.inflationIndex * 0.2, true) }
+        let unit = CompanySetup.equipmentPrice(e, company: co, w)
+        return EquipmentMarket.canFinance(e, tradeID: bd.id, total: unit, company: co, w, tables: w.catalog.tables) ? (unit * 0.2, true) : (unit, false)
+    }
+
+    /// The cheapest rented place up front (three months' deposit plus fit-out), nil when the trade has none to choose.
+    static func cheapestPremisesCost(_ co: Company, _ bd: Trade, _ w: World) -> Double? {
+        let costs = CompanySetup.listings(for: co, bd, w).compactMap { l in CompanySetup.premisesTerms(co, l, catalog: w.catalog, world: w).map { $0.deposit + $0.fitOut } }
+        return costs.min()
+    }
+
+    /// Money the company still needs to finish every open item (fees, the cheapest place, required equipment, opening stock), less its cash.
+    public static func missingCash(_ co: Company, _ bd: Trade, _ w: World) -> Double {
+        max(0, items(co, bd, w).filter { !$0.isDone }.reduce(0) { $0 + $1.cost } - max(0, co.cash))
     }
 
     /// Cash needed for the first stock. Original: `initialStockCost`.
@@ -42,15 +62,19 @@ public enum OpeningChecklist {
             let ok = st["st"].string == "ok"
             let fee = Documents.cost(d, company: co, bd, w)
             out.append(Item(id: "doc:\(d)", title: dd.name, isDone: ok,
-                            detail: st["st"].string == "applied" ? "In progress" : (fee > 0 ? "Fee \(w.currency(co).display(fee))" : "Free")))
+                            detail: st["st"].string == "applied" ? "In progress" : (fee > 0 ? "Fee \(w.currency(co).display(fee))" : "Free"), cost: st["st"].string == "ok" || st["st"].string == "applied" ? 0 : fee))
         }
         if !["rent", "fin", "energy"].contains(bd.family) {
             if let kind = bd.premisesKind, kind != "none", kind != "home" {
                 let m2 = co.value("prem")["m2"].double
-                out.append(Item(id: "prem", title: "Premises", isDone: m2 > 0, detail: m2 > 0 ? "\(Int(m2)) m²" : "Not chosen"))
+                let cheapest = m2 > 0 ? nil : cheapestPremisesCost(co, bd, w)
+                out.append(Item(id: "prem", title: "Premises", isDone: m2 > 0, detail: m2 > 0 ? "\(Int(m2)) m²" : (cheapest.map { "From \(w.currency(co).display($0)) up front" } ?? "Not chosen"), cost: cheapest ?? 0))
             }
             for e in bd.equipment where e.isRequired {
-                out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: CapacityModel.equipmentAvailable(co, e) >= 1, detail: ""))
+                let done = CapacityModel.equipmentAvailable(co, e) >= 1
+                let (price, financed) = done ? (0.0, false) : equipmentCost(e, co, bd, w)
+                let how = financed ? "Down payment \(w.currency(co).display(price)), the rest financed" : "From \(w.currency(co).display(price))"
+                out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: done, detail: done ? "" : how, cost: price))
             }
         }
         out += RentalFinance.checklist(co, bd, w)
@@ -59,7 +83,7 @@ public enum OpeningChecklist {
         if stock > 0 {
             let ok = co.cash >= stock
             out.append(Item(id: "stockcash", title: "Cash for opening stock", isDone: ok,
-                            detail: ok ? "Ready" : "Needs \(w.currency(co).display(stock)) in the company"))
+                            detail: ok ? "Ready" : "Needs \(w.currency(co).display(stock)) in the company", cost: ok ? 0 : stock))
         }
         return out
     }
