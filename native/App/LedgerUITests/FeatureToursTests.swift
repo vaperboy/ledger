@@ -49,7 +49,7 @@ final class FeatureToursTests: FeatureTourCase {
             guard openPhoneApp(title) else { return .fail("no tile phone-app-\(title) on the Phone grid") }
             if popupUp() { closePopup() }
             let sig: TourSig = signature()
-            let gridStillThere: Bool = title != "Bank" ? button("phone-app-Bank").isHittable : button("phone-app-Inbox").isHittable
+            let gridStillThere: Bool = title != "Bank" ? visible(button("phone-app-Bank")) : visible(button("phone-app-Inbox"))
             if gridStillThere { return .fail("the app grid is still on screen after tapping the tile") }
             opened = true
             return .pass(sig.text)

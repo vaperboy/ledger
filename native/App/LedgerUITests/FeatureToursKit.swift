@@ -112,7 +112,7 @@ class FeatureTourCase: XCTestCase {
         var home = false
         while Date() < end && !home {
             let later: XCUIElement = app.buttons["ambition-later"].firstMatch
-            if later.exists { later.tap(); pause(1) }
+            if later.exists { ctap(later); pause(1) }
             home = homeVisible(2)
         }
         if !home { log.record(.fail, "launch: Home summary visible", "no 'Net worth' text 30 s after launch") }
@@ -146,18 +146,35 @@ class FeatureTourCase: XCTestCase {
     func buttonContaining(_ text: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch }
     func buttonPrefix(_ idPrefix: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", idPrefix)).firstMatch }
 
-    /// Scrolls (up, then down) until the element can be tapped.
+    /// On screen: exists with a non-empty frame inside the window (isHittable is avoided: overlay/tab-bar elements trigger AX scroll failures).
+    func visible(_ e: XCUIElement) -> Bool {
+        guard e.exists else { return false }
+        let f: CGRect = e.frame
+        let w: CGRect = app.windows.firstMatch.frame
+        if f.isEmpty || f.width < 1 || f.height < 1 || f.isNull || f.isInfinite { return false }
+        return w.isEmpty ? true : w.intersects(f)
+    }
+
+    /// Taps by coordinate (never e.tap(): its AX scroll-to-visible fails on floating tab bar buttons). Never throws or aborts the flow.
+    @discardableResult
+    func ctap(_ e: XCUIElement) -> Bool {
+        guard visible(e) else { return false }
+        e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        return true
+    }
+
+    /// Scrolls (up, then down) until the element is on screen.
     func reveal(_ e: XCUIElement) -> Bool {
-        if e.exists && e.isHittable { return true }
-        for _ in 0..<4 { app.swipeUp(); if e.exists && e.isHittable { return true } }
-        for _ in 0..<8 { app.swipeDown(); if e.exists && e.isHittable { return true } }
+        if visible(e) { return true }
+        for _ in 0..<4 { app.swipeUp(); if visible(e) { return true } }
+        for _ in 0..<8 { app.swipeDown(); if visible(e) { return true } }
         return false
     }
 
     @discardableResult
     func tap(_ e: XCUIElement, wait: TimeInterval = 3) -> Bool {
         guard e.waitForExistence(timeout: wait), reveal(e) else { return false }
-        e.tap()
+        guard ctap(e) else { return false }
         pause(0.7)
         return true
     }
@@ -195,7 +212,7 @@ class FeatureTourCase: XCTestCase {
     func closePopup(prefer: [String] = []) {
         for id in prefer + Self.closeIDs {
             let b: XCUIElement = button(id)
-            if b.exists && b.isHittable { b.tap(); pause(0.6); return }
+            if ctap(b) { pause(0.6); return }
         }
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
         pause(0.6)
@@ -205,11 +222,11 @@ class FeatureTourCase: XCTestCase {
 
     func tapBack() -> Bool {
         let round: XCUIElement = button("back-button")
-        if round.exists && round.isHittable { round.tap(); pause(0.8); return true }
+        if ctap(round) { pause(0.8); return true }
         let bars: XCUIElementQuery = app.navigationBars
         for i in 0..<bars.count {
             let b: XCUIElement = bars.element(boundBy: i).buttons.element(boundBy: 0)
-            if b.exists && b.isHittable { b.tap(); pause(0.8); return true }
+            if ctap(b) { pause(0.8); return true }
         }
         return false
     }
@@ -229,7 +246,7 @@ class FeatureTourCase: XCTestCase {
         toRoot()
         let p: XCUIElement = button("tab-\(title)")
         guard p.waitForExistence(timeout: 4) else { return false }
-        p.tap()
+        guard ctap(p) else { return false }
         pause(0.9)
         return true
     }
@@ -351,7 +368,7 @@ class FeatureTourCase: XCTestCase {
         guard win.height > 0 else { return nil }
         var barTop: CGFloat = win.maxY
         let bar: XCUIElement = button("tab-Home")
-        if bar.exists && bar.isHittable { barTop = bar.frame.minY }
+        if visible(bar) { barTop = bar.frame.minY }
         var last = ""
         var swipes = 0
         var verdict: String? = nil
@@ -440,7 +457,7 @@ class FeatureTourCase: XCTestCase {
         for s in steps {
             if popupUp() { return true }
             let e: XCUIElement = s.hasPrefix("prefix:") ? buttonPrefix(String(s.dropFirst(7))) : button(s)
-            if e.waitForExistence(timeout: 2), reveal(e) { lastBefore = signature(); e.tap(); pause(0.8) }
+            if e.waitForExistence(timeout: 2), reveal(e) { lastBefore = signature(); ctap(e); pause(0.8) }
         }
         return popupUp(2)
     }
