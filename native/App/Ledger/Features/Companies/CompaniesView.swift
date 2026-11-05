@@ -99,7 +99,7 @@ struct CompaniesView: View {
             let extra: CGFloat = regular ? 44 : 0
             let boxFrame: CGFloat = head + Self.boxPadding * 2 + 10 + Self.moreHeight
             let minCompanies: CGFloat = cos.isEmpty ? 120 : boxFrame + CGFloat(min(2, cos.count)) * pitch - 5 + extra
-            let fixedParts: CGFloat = 290 + 36 + 32 + 8 + 8
+            let fixedParts: CGFloat = 290 + 68 + 36 + 32 + 8 + 8
             let spare: CGFloat = total - fixedParts - minCompanies
             let rowsFit: Int = Int((spare / 38).rounded(.down))
             let priorities: Int = max(1, min(3, rowsFit))

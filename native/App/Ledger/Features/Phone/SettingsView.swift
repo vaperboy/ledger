@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var policy = ManagementPolicy()
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
+    @State private var showWardrobe = false
 
     var body: some View {
         ScrollView {
@@ -44,6 +45,7 @@ struct SettingsView: View {
             store.saved(policyChange(from: old, to: v))
         }
         .confirmAction($pending)
+        .sheet(isPresented: $showWardrobe) { WardrobeView() }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
         .centerSheet(isPresented: $showPaste) {
             VStack(spacing: Theme.Space.m) {
@@ -144,6 +146,11 @@ struct SettingsView: View {
                 Button { Task { await ent.manageSubscription() } } label: { plainRow(Glyph.chevron, "Manage subscription", chevron: true) }
                     .buttonStyle(PressableStyle())
             }
+            rule
+            Button { Haptics.tap(); showWardrobe = true } label: {
+                plainRow(Glyph.lock, "Wardrobe", detail: "Badges and colours", value: ent.isPro ? "" : "Preview", chevron: true)
+            }.buttonStyle(PressableStyle())
+            .accessibilityIdentifier("settings-wardrobe")
             rule
             Button { Task { await ent.restore() } } label: { plainRow(Glyph.download, "Restore purchases", detail: ent.message ?? "", chevron: true) }
                 .buttonStyle(PressableStyle())
