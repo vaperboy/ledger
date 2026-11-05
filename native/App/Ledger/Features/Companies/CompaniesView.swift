@@ -76,6 +76,7 @@ struct CompaniesView: View {
     /// The companies box shows this many rows at most, so the next row peeks out and says the list scrolls.
     static let peekRows: CGFloat = 3.5
     private static let boxPadding: CGFloat = 6
+    private static let moreHeight: CGFloat = 30
 
     /// Height of the scrolling part of the companies box: all rows when they are few, otherwise `peekRows` rows, and never more than the
     /// room that is left on the page (but always at least two rows).
@@ -95,7 +96,7 @@ struct CompaniesView: View {
             let head: CGFloat = 27
             let pitch: CGFloat = regular ? 52 : Self.rowHeight + 5
             let extra: CGFloat = regular ? 44 : 0
-            let boxFrame: CGFloat = head + Self.boxPadding * 2 + 5
+            let boxFrame: CGFloat = head + Self.boxPadding * 2 + 10 + Self.moreHeight
             let minCompanies: CGFloat = cos.isEmpty ? 120 : boxFrame + CGFloat(min(2, cos.count)) * pitch - 5 + extra
             let fixedParts: CGFloat = 290 + 36 + 32 + 8 + 8
             let spare: CGFloat = total - fixedParts - minCompanies
@@ -137,6 +138,14 @@ struct CompaniesView: View {
                     .frame(height: scrollHeight)
                     .accessibilityIdentifier("home-companies-box")
                 }
+                Button { Haptics.tap(); store.selectTab(.group) } label: {
+                    HStack {
+                        Spacer()
+                        Text("All \(rows.count) companies in Group ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
+                    }
+                    .frame(height: Self.moreHeight).contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-group")
             }
         }
     }

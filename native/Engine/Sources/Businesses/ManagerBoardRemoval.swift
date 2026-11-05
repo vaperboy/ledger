@@ -10,6 +10,8 @@ public struct SeatRemovalTerms: Equatable, Sendable {
     /// Why it cannot be done (empty when allowed).
     public var reason: String
     public var keepsJob: Bool
+    /// You hold half or less of the shares: the shareholders vote, and the seat holder may stay.
+    public var needsVote: Bool = false
     public var noticeMonths: Int
     /// Notice pay, paid by the board's companies.
     public var cost: Double
@@ -35,12 +37,13 @@ extension ManagerModel {
                                     summary: "\(name) keeps their job and loses only the seat and its fee. No notice is owed.")
         }
         let share = controlShare(s, key: key)
-        guard share > 50 else {
-            return no("Removing an outside seat holder needs a shareholder vote of more than half the shares. You hold \(Int(jsRound(share)))%.")
-        }
         let months = removalNoticeMonths(role: seat.role)
         let cost = seat.monthlyFee * Double(months)
         let unit = months == 1 ? "month" : "months"
+        if share <= 50 {
+            return SeatRemovalTerms(allowed: true, reason: "", keepsJob: false, needsVote: true, noticeMonths: months, cost: cost,
+                                    summary: "You hold \(Int(jsRound(share)))%, so the shareholders vote on removing \(name). Only if more than half of the shares agree are they let go, and then \(months) \(unit) notice is paid. If the vote fails they stay.")
+        }
         return SeatRemovalTerms(allowed: true, reason: "", keepsJob: false, noticeMonths: months, cost: cost,
                                 summary: "\(name) is on a contract with \(months) \(unit) notice. The shareholders (you hold \(Int(jsRound(share)))%) vote them out and the companies pay the notice.")
     }
@@ -52,6 +55,17 @@ extension ManagerModel {
             return t.reason.isEmpty ? "They do not hold a seat on this board." : t.reason
         }
         let cos = boardCompanies(s, key: key)
+        if t.needsVote {
+            // The co-owners vote their shares: a weak seat holder is easier to vote out. More than half of all shares must agree.
+            let q = leadership(n)
+            var yes = controlShare(s, key: key)
+            for x in holders(s, key: key) where HashedRandom.first("rm15:\(x.h["name"].string):\(personID):\(s.week)") < 0.7 - q * 0.5 { yes += x.h["pct"].double }
+            if yes <= 50 {
+                let said = "The shareholders voted against removing \(n.name): only \(Int(jsRound(yes)))% of the shares were for it."
+                s.note(said, tone: "n")
+                return said
+            }
+        }
         if t.cost > 0 && !cos.isEmpty {
             for c in cos { _ = Payments.companyPays(&s, companyID: c.id, amount: t.cost / Double(cos.count), category: "oth", label: "Notice pay: \(n.name)") }
         }

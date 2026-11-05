@@ -38,7 +38,7 @@ extension ManagerModel {
             s.addMessage(kind: "ask", from: n.name, title: "\(n.name) asks for a raise at \(co.name)", body: "A year in the role, they want +\(cur.display(ask)) per month (6%).",
                          companyID: co.id, tone: "n", status: "open",
                          options: [.option("Grant the raise", "+\(cur.display(ask))/month"), .option("Delay \(ContractTalk.delayWeeks) weeks", "If you do not answer, they feel turned down."), .option("Decline", "They may leave")],
-                         action: "mgrraise", data: .object(["ask": .number(ask)]), expiresWeek: s.week + 3)
+                         action: "mgrraise", data: .object(["ask": .number(ask), "npc": .number(Double(mid))]), expiresWeek: s.week + 3)
         }
         // Unhappy managers and rival offers
         if s.companies[ci].value("mgrNotice").isNull && mood(s.companies[ci]) < 25 && s.random.chance(0.02) {

@@ -347,7 +347,7 @@ extension ManagerModel {
         s.addMessage(kind: "ask", from: n.name, title: "A rival wants to hire \(n.name) away from \(co.name)",
                      body: "\(n.name) has an offer from a rival group and has come to you first.", companyID: co.id, tone: "bad", status: "open",
                      options: [.option("Match it", "+\(cur.display(up))/month. Most stay."), .option("Let them go", "They work their notice.")],
-                     action: "mgrpoach", data: .object(["up": .number(up)]), expiresWeek: s.week + 2)
+                     action: "mgrpoach", data: .object(["up": .number(up), "npc": .number(Double(n.id))]), expiresWeek: s.week + 2)
     }
 
     // MARK: Assistant managers
