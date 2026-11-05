@@ -164,8 +164,8 @@ public enum Banking {
 
     /// Take out a loan. Money lands in the company's account (or the player's). Original: `takeLoan`.
     public static func take(kind: String, amount: Double, termMonths: Int, company co: Company?, guaranteed: Bool = false,
-                            state s: inout GameState, netWorth: Double, collateral: Double = 0, context: FinanceContext) -> LoanResult {
-        let off = offer(kind: kind, amount: amount, company: co, state: s, netWorth: netWorth, collateral: collateral, context: context)
+                            state s: inout GameState, netWorth: Double, collateral: Double = 0, companyValue: Double? = nil, context: FinanceContext) -> LoanResult {
+        let off = offer(kind: kind, amount: amount, company: co, state: s, netWorth: netWorth, collateral: collateral, companyValue: companyValue, context: context)
         if amount > off.maximum { return .declined }
         let currency = context.currency(co?.countryCode ?? s.homeCountryCode, s)
         if amount < currency.scaledPrice(5000) { return .tooSmall }

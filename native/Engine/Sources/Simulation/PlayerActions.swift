@@ -226,7 +226,10 @@ public extension GameEngine {
         update { s, data, ctx in
             let nw = Valuation.netWorth(s, trades: data.catalog).total
             let co = companyID.flatMap { s.company($0) }
-            switch Banking.take(kind: kind, amount: amount, termMonths: termMonths, company: co, guaranteed: co?.form == .soleTrader, state: &s, netWorth: nw, collateral: Luxury.collateral(s), context: ctx) {
+            let value = co.map { Valuation.companyValue($0, state: s, trades: data.catalog) }
+            let collateral = Luxury.collateral(s)
+            switch Banking.take(kind: kind, amount: amount, termMonths: termMonths, company: co, guaranteed: co?.form == .soleTrader, state: &s, netWorth: nw, collateral: collateral,
+                                companyValue: value, context: ctx) {
             case .ok: out = .ok
             case .declined: out = .declined
             case .tooSmall: out = .tooSmall

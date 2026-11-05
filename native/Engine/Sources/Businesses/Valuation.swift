@@ -81,11 +81,12 @@ public enum Valuation {
         companies += GroupStakes.stakesValue(s)
         // A company held through a holding is counted inside the holding's value (its `fm.assets`), so only the holding is added here.
         for co in s.companies where co.status.isLive && co.holdingID == 0 {
-            companies += companyValue(co, state: s, trades: trades) * co.ownership / 100
+            // Money of the week that is still on its way into the company is the company's: net worth does not dip while it is held.
+            companies += (companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)) * co.ownership / 100
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
         let debt = s.loans.filter { $0.companyID == 0 }.reduce(0) { $0 + $1.balance }
-        return NetWorth(personal: s.cash + s.savings, stocks: stocks, crypto: crypto, funds: funds, companies: companies,
+        return NetWorth(personal: s.cash + s.savings + HeldMoney.playerRemaining(s), stocks: stocks, crypto: crypto, funds: funds, companies: companies,
                         luxury: lux, debt: debt, pendingTax: s.tax.pending)
     }
 }

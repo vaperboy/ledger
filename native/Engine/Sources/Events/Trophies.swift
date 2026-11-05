@@ -15,6 +15,8 @@ public enum Trophies {
         public let name: String
         public let group: String
         let test: (Facts) -> String?
+        /// The ladder this trophy is a rung of ("" for a single trophy).
+        var ladder: String = ""
     }
     public struct Entry: Identifiable, Equatable {
         public var id: String
@@ -54,7 +56,7 @@ public enum Trophies {
     }
 
     static func ladder(_ pre: String, _ group: String, _ rungs: [(String, String, Double)], test: @escaping (Facts, Double) -> Bool, text: @escaping (Facts, Double) -> String) -> [Trophy] {
-        rungs.map { r in Trophy(id: pre + r.0, name: r.1, group: group, test: { f in test(f, r.2) ? text(f, r.2) : nil }) }
+        rungs.map { r in Trophy(id: pre + r.0, name: r.1, group: group, test: { f in test(f, r.2) ? text(f, r.2) : nil }, ladder: pre) }
     }
 
     public static let all: [Trophy] = {
@@ -123,6 +125,9 @@ public enum Trophies {
         return L
     }()
 
+    /// Net worth trophies, lowest rung first.
+    static let netWorthChain: [[String]] = [["million", "nw5m", "tenm", "nw50m", "hm", "nw500m", "bn", "nw5b", "nw10b", "nw50b"]]
+
     static func record(_ s: GameState) -> JSONValue { s.rest["ach28"] ?? .object([:]) }
 
     /// Every trophy with whether and when you got it.
@@ -152,7 +157,15 @@ public enum Trophies {
         if got.isEmpty { return [] }
         s.rest["ach28"] = rec
         if !first {
-            for id in got {
+            // Trophies on one ladder reached in the same week (a company sale takes net worth past several rungs at once) are one piece of news: the highest rung tells it.
+            var told = got
+            for chain in netWorthChain.map({ c in c.filter { got.contains($0) } }) where chain.count > 1 { told.removeAll { chain.dropLast().contains($0) } }
+            for t in all where !t.ladder.isEmpty && t.ladder != "nw" {
+                let rungs = got.filter { id in all.first { $0.id == id }?.ladder == t.ladder }
+                if rungs.last == t.id { continue }
+                if rungs.contains(t.id) { told.removeAll { $0 == t.id } }
+            }
+            for id in told {
                 if let t = all.first(where: { $0.id == id }) {
                     s.addMessage(from: "Trophy wall", title: t.name, body: rec[id]["t"].string, tone: "good")
                     s.note("Trophy: \(t.name)", tone: "good")
