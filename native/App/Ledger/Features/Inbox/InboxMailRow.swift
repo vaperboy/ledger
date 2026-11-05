@@ -81,7 +81,7 @@ struct InboxMailRow: View {
 
     private var content: some View {
         HStack(alignment: .top, spacing: 12) {
-            InboxAvatar(initial: "", glyph: message.inboxCategoryGlyph, tint: unread ? message.inboxTint(P) : P.inkFaint, size: 40)
+            InboxAvatar(initial: "", glyph: message.inboxCategoryGlyph, tint: unread ? message.inboxTint(P) : P.inkFaint, size: 40, face: message.inboxFace(store.engine))
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
                     .foregroundStyle(unread ? P.ink : P.inkFaint).lineLimit(1)
@@ -114,17 +114,38 @@ struct InboxAvatar: View {
     var glyph: String
     var tint: Color
     var size: CGFloat = 44
+    /// The portrait key of the person the message is about or from (`Person.faceKey`); the circle below stays the fallback.
+    var face: String? = nil
 
     var body: some View {
-        ZStack {
-            Circle().fill(tint.opacity(0.22))
-            if initial.isEmpty {
-                GlyphView(glyph: glyph, size: size * 0.45, weight: 1.6, tint: tint)
-            } else {
-                Text(initial).font(.system(size: size * 0.42, weight: .semibold, design: .rounded)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
+        if FaceSheet.image(face) != nil {
+            ThumbnailView(kind: .person, key: "inbox", size: size, face: face)
+        } else {
+            ZStack {
+                Circle().fill(tint.opacity(0.22))
+                if initial.isEmpty {
+                    GlyphView(glyph: glyph, size: size * 0.45, weight: 1.6, tint: tint)
+                } else {
+                    Text(initial).font(.system(size: size * 0.42, weight: .semibold, design: .rounded)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.6)
+                }
             }
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
         }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+    }
+}
+
+extension Message {
+    /// The portrait of the person a message is about or from: the person id the message carries (`sid`, `npc`, `pid`), otherwise the manager
+    /// of its company when the sender is named like them ("Mia, manager"). Nil when it is about nobody in particular.
+    func inboxFace(_ engine: GameEngine?) -> String? {
+        guard let engine else { return nil }
+        let d: JSONValue = value("data")
+        for k in ["sid", "npc", "pid"] where !d[k].isNull {
+            if let f = engine.state.people[d[k].int]?.faceKey { return f }
+        }
+        let name: String = from.split(separator: ",").first.map { String($0).trimmingCharacters(in: .whitespaces) } ?? ""
+        guard !name.isEmpty, let co = engine.state.company(companyID), let mid = co.managerID, let m = engine.state.people[mid], m.name == name else { return nil }
+        return m.faceKey
     }
 }

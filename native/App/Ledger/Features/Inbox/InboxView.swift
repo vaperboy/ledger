@@ -364,7 +364,7 @@ struct MessageCard: View {
         let open = message.status == "open"
         if !full && !open && message.tone != "bad" && message.isRead {
             HStack(alignment: .center, spacing: 10) {
-                InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 30)
+                InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 30, face: message.inboxFace(store.engine))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(text(message.title)).font(.subheadline).foregroundStyle(P.inkSoft).lineLimit(2)
                     if let o = store.engine?.answeredOutcome(message) { Text(o).font(.caption2).foregroundStyle(P.inkFaint).lineLimit(1) }
@@ -379,7 +379,7 @@ struct MessageCard: View {
         } else {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .bottom, spacing: 8) {
-                    InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 36)
+                    InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 36, face: message.inboxFace(store.engine))
                     bubble(open: open)
                     Spacer(minLength: 24)
                 }

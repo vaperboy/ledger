@@ -88,10 +88,10 @@ struct CompanyManagement: View {
             }
         } else if let target = node.sheet {
             Button { Haptics.tap(); sheet = target } label: {
-                ThinPersonRow(name: r.name, title: r.role, note: open ? "" : (tinted ? r.line : ""), noteTint: r.lineTint, wage: r.wage, cue: open ? "Appoint" : nil, chevron: !open, roleKey: r.role)
+                ThinPersonRow(name: r.name, title: r.role, note: open ? "" : (tinted ? r.line : ""), noteTint: r.lineTint, wage: r.wage, cue: open ? "Appoint" : nil, chevron: !open, roleKey: r.role, face: r.face)
             }.buttonStyle(PressableStyle())
         } else {
-            ThinPersonRow(name: r.name, title: r.role, chevron: false, roleKey: r.role)
+            ThinPersonRow(name: r.name, title: r.role, chevron: false, roleKey: r.role, face: r.face)
         }
     }
 
@@ -152,7 +152,8 @@ struct CompanyManagement: View {
         for b in chainAbove.reversed() {
             let title: String = GameEngine.bossTitle(b.kind, trade: nil)
             let said: String = GameEngine.authorityText(level: b.level)
-            let row = ManagementRow(name: b.name, role: title, scope: Self.scope(b.kind), line: String(said.prefix(1)).uppercased() + String(said.dropFirst()) + ".", wage: nil)
+            let row = ManagementRow(name: b.name, role: title, scope: Self.scope(b.kind), line: String(said.prefix(1)).uppercased() + String(said.dropFirst()) + ".", wage: nil,
+                                    face: engine.state.people[b.personID]?.faceKey)
             out.append(OrgNode(id: "b:" + b.kind + ":\(b.personID)", glyph: Glyph.group, row: row, level: b.level, sheet: nil))
         }
         let mgrLevel: Int? = company.managerID != nil ? Int(company.value("auth")["lvl"].double) : nil
@@ -175,13 +176,13 @@ struct CompanyManagement: View {
         let notice = company.value("mgrNotice")
         if !notice.isNull {
             return ManagementRow(name: m.name, role: title, scope: "store", line: "Leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Find a successor.",
-                                 lineTint: Theme.loss, wage: cur.tidyShort(company.managerMonthlyWage))
+                                 lineTint: Theme.loss, wage: cur.tidyShort(company.managerMonthlyWage), face: m.faceKey)
         }
         var line = ""
         if let card = engine.managerScorecard(companyID: company.id) { line += "scorecard: \(Self.scoreWord(card.score))" }
         if company.managerProfitBonus > 0 { line += (line.isEmpty ? "" : " · ") + "\(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
         let weak = (engine.managerScorecard(companyID: company.id)?.score ?? 100) < 35
-        return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage))
+        return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage), face: m.faceKey)
     }
 
     private func assistantRow(_ cur: Currency) -> ManagementRow {
@@ -193,7 +194,7 @@ struct CompanyManagement: View {
         let jobs = a["duties"].array.compactMap { d in ManagerModel.assistantDuties.first { $0.key == d.string }?.title.lowercased() }
         return ManagementRow(name: n.name, role: "Assistant manager", scope: "store",
                              line: jobs.isEmpty ? "No jobs picked yet: pick up to two." : "Looks after " + jobs.joined(separator: " and "),
-                             lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(a["wage"].double))
+                             lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(a["wage"].double), face: n.faceKey)
     }
 }
 

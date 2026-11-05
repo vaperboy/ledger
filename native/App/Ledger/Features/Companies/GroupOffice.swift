@@ -163,7 +163,7 @@ struct HeadOfficeSection: View {
         EntityCard {
           VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
-                IconCircle(glyph: Glyph.person, size: 36)
+                ThumbnailView(kind: .person, key: x["role"].string, size: 36, initials: x["name"].string, face: engine.state.people[id]?.faceKey)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(x["name"].string).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text((engine.officeRoles.first { $0.id == x["role"].string }?.title ?? x["role"].string) + " · group · employed by \(engine.groupOfficeEmployer)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
@@ -280,6 +280,9 @@ struct HeadOfficeSection: View {
         let line: String = last.isNull ? "Not reviewed yet" : "\(verdict(sc)) · week \(last["w"].int)"
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
+                if let mid = co.managerID, let m = engine.state.people[mid] {
+                    ThumbnailView(kind: .person, key: "manager", size: 34, initials: m.name, face: m.faceKey)
+                }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(co.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
                     Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)

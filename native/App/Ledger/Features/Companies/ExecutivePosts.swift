@@ -88,7 +88,11 @@ struct ExecutivePosts: View {
         let person = p.rec.isNull ? nil : engine.state.people[p.rec["npc"].int]
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 10) {
-                IconCircle(glyph: person == nil ? Glyph.hire : Glyph.person, size: 34)
+                if let person {
+                    ThumbnailView(kind: .person, key: "executive", size: 34, initials: person.name, face: person.faceKey)
+                } else {
+                    IconCircle(glyph: Glyph.hire, size: 34)
+                }
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text(person?.name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
