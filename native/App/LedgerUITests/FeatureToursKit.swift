@@ -78,7 +78,12 @@ struct TourSig {
     var heads: [String]
     var back: Bool
     var tabs: [String]
-    var text: String { "[" + heads.joined(separator: " | ") + "]" + (back ? " back" : " root") + (tabs.isEmpty ? "" : " sel=" + tabs.joined(separator: ",")) }
+    var text: String {
+        let headText: String = heads.joined(separator: " | ")
+        let backText: String = back ? " back" : " root"
+        let tabText: String = tabs.isEmpty ? "" : " sel=" + tabs.joined(separator: ",")
+        return "[" + headText + "]" + backText + tabText
+    }
     func same(_ o: TourSig, strictText: Bool = true) -> Bool { back == o.back && tabs == o.tabs && (!strictText || heads == o.heads) }
 }
 
