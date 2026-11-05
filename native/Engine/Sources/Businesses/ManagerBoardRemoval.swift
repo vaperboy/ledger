@@ -67,7 +67,7 @@ extension ManagerModel {
             }
         }
         if t.cost > 0 && !cos.isEmpty {
-            for c in cos { _ = Payments.companyPays(&s, companyID: c.id, amount: t.cost / Double(cos.count), category: "oth", label: "Notice pay: \(n.name)") }
+            for c in cos { _ = Payments.companyPays(&s, companyID: c.id, amount: t.cost / Double(cos.count), category: "oth", label: "Board seat payout: \(n.name)") }
         }
         if seat.kind == "adv" && n.employerID == -4 { n.employerID = 0; s.people[personID] = n }
         var b = board(s, key: key)
