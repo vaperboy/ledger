@@ -102,7 +102,8 @@ struct CarBrandTermsView: View {
             }
         }
         .ledgerBackground()
-        .navigationTitle(CarBrands.brand(brandID)?.name ?? "Brand").navigationBarTitleDisplayMode(.inline)
+        .scrollIndicators(.hidden)
+        .appScreen(title: CarBrands.brand(brandID)?.name ?? "Brand", subtitle: "Brand contract", tab: .company)
         .confirmAction($pending)
     }
 

@@ -13,6 +13,8 @@ struct CompanySales: View {
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
+    /// The last opened page, kept while the page slides away so it does not flash the settings list.
+    @State private var heldPart: OpsPart = .setup
     @State private var showMarketing = false
     @State private var openItem: SalesItemPick?
     @State private var addingService: Bool?
@@ -49,8 +51,9 @@ struct CompanySales: View {
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: $showAddons) { DealerAddonsPage(companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
-            OpsPageDestination(part: part, companyID: company.id)
+            OpsPageDestination(part: part == .setup ? heldPart : part, companyID: company.id)
         }
+        .onChange(of: part) { (_: OpsPart, new: OpsPart) in if new != .setup { heldPart = new } }
     }
 
     /// The used car yard and the new car showroom have their own pages (real cars, one price each); every other trade lists its items.

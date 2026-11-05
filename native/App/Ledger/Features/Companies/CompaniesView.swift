@@ -42,6 +42,7 @@ struct CompaniesView: View {
     enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sort: Sort = .attention
     /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
     @State private var query = ""
@@ -172,8 +173,10 @@ struct CompaniesView: View {
                     NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
                         .frame(height: Self.rowHeight)
+                        .transition(.opacity)
                 }
             }
+            .animation(Motion.quick(reduceMotion), value: rows.map { (r: (co: Company, h: CompanyHealth)) -> Int in r.co.id })
         }
     }
 

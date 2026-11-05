@@ -44,6 +44,8 @@ struct CompanyOperations: View {
     var company: Company
     @Binding var part: OpsPart
     @State private var sheet: OpsSheet?
+    /// The last opened page, kept while the page slides away.
+    @State private var heldPart: OpsPart = .setup
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -54,8 +56,9 @@ struct CompanyOperations: View {
         }
         .centerSheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
-            OpsPageDestination(part: part, companyID: company.id)
+            OpsPageDestination(part: part == .setup ? heldPart : part, companyID: company.id)
         }
+        .onChange(of: part) { (_: OpsPart, new: OpsPart) in if new != .setup { heldPart = new } }
     }
 
     // MARK: Table of settings

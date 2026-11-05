@@ -35,13 +35,12 @@ struct GroupEntityManagement: View {
     // MARK: Picker
 
     private func picker(_ members: [Company], selected: Int) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(members) { (c: Company) in
-                    pickChip(c, on: c.id == selected)
-                }
+        WrapRow(spacing: 6) {
+            ForEach(members) { (c: Company) in
+                pickChip(c, on: c.id == selected)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func pickChip(_ c: Company, on: Bool) -> some View {

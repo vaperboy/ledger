@@ -158,9 +158,8 @@ struct ApplicantsView: View {
     }
 
     private func chipRow<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) { content() }
-        }
+        WrapRow(spacing: 6) { content() }
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {

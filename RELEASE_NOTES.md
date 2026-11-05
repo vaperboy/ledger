@@ -1,4 +1,5 @@
 # What's new
+- Screen polish: filter chips wrap instead of scrolling sideways, pages keep their place while closing, softer list and progress animations
 - Code clean-up: no behaviour change (comments, notes and unused screens removed, files renamed by what they do)
 - Board removal, portraits, Home companies box, chain/regional manager hiring, Market notice fix
 

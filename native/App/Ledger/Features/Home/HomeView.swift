@@ -227,6 +227,7 @@ extension GameStore {
 /// not a priority.
 struct TopPriorities: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
     var limit: Int = 3
 
@@ -243,8 +244,11 @@ struct TopPriorities: View {
                         .padding(.bottom, 3)
                 }
                 ForEach(shown) { item in
-                    Rectangle().fill(Theme.divider).frame(height: 1)
-                    row(item)
+                    VStack(spacing: 0) {
+                        Rectangle().fill(Theme.divider).frame(height: 1)
+                        row(item)
+                    }
+                    .transition(.opacity)
                 }
                 if waiting > 0 {
                     if !shown.isEmpty { Rectangle().fill(Theme.divider).frame(height: 1) }
@@ -260,6 +264,7 @@ struct TopPriorities: View {
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
+            .animation(Motion.quick(reduceMotion), value: shown.map { (s: Suggestion) -> String in s.id })
         }
         }
     }
@@ -307,6 +312,7 @@ struct AdvanceBar: View {
                         Capsule().fill(d <= engine.state.day ? Theme.gold : Theme.hairline).frame(width: 22, height: 3)
                     }
                 }
+                .animation(Motion.quick(reduceMotion), value: engine.state.day)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 4) {

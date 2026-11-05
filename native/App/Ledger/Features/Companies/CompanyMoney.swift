@@ -22,12 +22,15 @@ struct CompanyMoney: View {
     var engine: GameEngine
     var company: Company
     @Binding var part: CompanyMoneyPart
+    /// The last opened page, kept while the page slides away.
+    @State private var heldPart: CompanyMoneyPart = .summary
 
     var body: some View {
         CompanyMoneySummary(engine: engine, company: company, part: $part)
             .navigationDestination(isPresented: Binding(get: { part != .summary }, set: { if !$0 { part = .summary } })) {
-                MoneyPageDestination(part: part, companyID: company.id)
+                MoneyPageDestination(part: part == .summary ? heldPart : part, companyID: company.id)
             }
+            .onChange(of: part) { (_: CompanyMoneyPart, new: CompanyMoneyPart) in if new != .summary { heldPart = new } }
     }
 }
 
