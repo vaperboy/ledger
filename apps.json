@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.61",
+          "buildVersion": "61",
+          "date": "2026-11-05T21:15:34Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v61/Ledger-unsigned.ipa",
+          "size": 28855474,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Remove people from a board (vote if you hold 50% or less; notice paid to outside directors)\n- Portraits for managers, executives, board members; Inbox shows faces\n- Home companies list is its own scrollable box\n- Chain manager appoints regional managers; regional managers hire each store's manager; owner can approve or decline\n- Open posts: search and hire from the Management tab, shows who hires and with what authority\n- Market no longer sends \"you bought\" notices for cars a hired buyer bought\n\n# Missing / coming next\n- Own-delivery fee, typed prices per trade, chain/franchise steps, more photos\n- Not yet tested on device: expect rough edges"
+        },
+        {
           "version": "1.0.60",
           "buildVersion": "60",
           "date": "2026-11-05T09:17:01Z",
@@ -187,22 +196,13 @@
           "size": 27519517,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait"
-        },
-        {
-          "version": "1.0.41",
-          "buildVersion": "41",
-          "date": "2026-11-03T23:55:17Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v41/Ledger-unsigned.ipa",
-          "size": 27514911,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.60",
-      "versionDate": "2026-11-05T09:17:01Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v60/Ledger-unsigned.ipa",
-      "size": 28791442
+      "version": "1.0.61",
+      "versionDate": "2026-11-05T21:15:34Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v61/Ledger-unsigned.ipa",
+      "size": 28855474
     }
   ]
 }
