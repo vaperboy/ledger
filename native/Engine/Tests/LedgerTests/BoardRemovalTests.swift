@@ -56,15 +56,40 @@ final class BoardRemovalTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    func testOutsideSeatNeedsMajority() throws {
+    func testMinorityOwnerVoteFailsWithoutOtherShareholders() throws {
         var (e, a, key, _) = try setup(seed: 33)
         let found = try XCTUnwrap(e.searchForSeat(key: key, role: "cfo"))
         XCTAssertEqual(e.fillSeat(key: key, personID: found[0].id, monthlyFee: found[0].num("fee13") * 1.1), .ok)
-        e.update { s, _, _ in if let i = s.companyIndex(a) { s.companies[i].ownership = 40 } }
+        e.update { s, _, _ in if let i = s.companyIndex(a) { s.companies[i].ownership = 40; s.companies[i].set("holders", .array([])) } }
         let terms = e.seatRemovalTerms(key: key, personID: found[0].id)
-        XCTAssertFalse(terms.allowed)
+        XCTAssertTrue(terms.allowed)
+        XCTAssertTrue(terms.needsVote)
+        let cash = e.state.company(a)!.cash
         XCTAssertTrue(e.removeSeatHolder(key: key, personID: found[0].id).isRefused)
         XCTAssertNotNil(e.boardSeats(key: key).first { $0.id == found[0].id })
+        XCTAssertEqual(e.state.company(a)!.cash, cash, "no notice when the vote fails")
+    }
+
+    func testMinorityOwnerVotePassesWithSupportAndPaysNotice() throws {
+        var passed = false
+        for n in 0..<20 where !passed {
+            var (e, a, key, _) = try setup(seed: 34)
+            let found = try XCTUnwrap(e.searchForSeat(key: key, role: "cfo"))
+            XCTAssertEqual(e.fillSeat(key: key, personID: found[0].id, monthlyFee: found[0].num("fee13") * 1.1), .ok)
+            e.update { s, _, _ in
+                if let i = s.companyIndex(a) { s.companies[i].ownership = 40; s.companies[i].set("holders", .array([.object(["name": .string("Investor \(n)"), "pct": 60])])) }
+            }
+            let cash = e.state.company(a)!.cash
+            if e.removeSeatHolder(key: key, personID: found[0].id) == .applied {
+                passed = true
+                XCTAssertNil(e.boardSeats(key: key).first { $0.id == found[0].id })
+                XCTAssertLessThan(e.state.company(a)!.cash, cash)
+            } else {
+                XCTAssertNotNil(e.boardSeats(key: key).first { $0.id == found[0].id })
+                XCTAssertEqual(e.state.company(a)!.cash, cash)
+            }
+        }
+        XCTAssertTrue(passed, "a supporting co-owner can carry the vote")
     }
 
     /// Managers, executives and board advisers who have no portrait (an old save) get one from the sweep, the same one every time.
