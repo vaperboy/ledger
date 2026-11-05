@@ -16,10 +16,10 @@ extension ManagerModel {
         ("fin", "Numbers and cost control"), ("risk", "Compliance and risk"), ("ethic", "Integrity")]
     /// Job titles by manager type. Original: `MGR_TYPES`.
     public static let typeTitles: [String: String] = [
-        "gen": "General manager", "ops": "Operations manager", "host": "Hospitality manager", "site": "Site / construction manager",
+        "gen": "General manager", "ops": "Operations manager", "host": "Restaurant and kitchen manager", "site": "Site foreman",
         "sales": "Sales-driven manager", "tech": "Technical manager", "fin": "Financial / compliance manager", "ind": "Industrial plant manager",
-        "fleet": "Fleet and logistics manager", "prop": "Property manager", "fund": "Investment manager", "energy": "Energy / asset manager",
-        "pro": "Professional-services partner", "retail": "Retail manager", "game": "Gaming and licence manager", "clin": "Clinical lead"]
+        "fleet": "Fleet manager", "prop": "Property manager", "fund": "Investment manager", "energy": "Energy / asset manager",
+        "pro": "Professional-services partner", "retail": "Store manager", "game": "Gaming and licence manager", "clin": "Clinic manager"]
     public static func title(_ bd: Trade) -> String { typeTitles[bd.managerType] ?? "General manager" }
 
     static let resumes = ["Previously ran a business unit.", "Former operations lead at a regional chain.", "Started as staff and rose to manager.",
@@ -315,9 +315,9 @@ extension ManagerModel {
         let wk = 13 + Int(HashedRandom.first("notice:\(n.id):\(s.week)") * 14)
         s.companies[ci].set("mgrNotice", .object(["w": .number(Double(s.week + wk)), "npc": .number(Double(mid)), "why": .string(why), "to": .string(rival)]))
         s.companies[ci].set("mood", max(0, mood(co) - 5))
-        let reason = why.isEmpty ? "" : why.prefix(1).uppercased() + why.dropFirst() + ". "
+        let said = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: nil, situation: .resign, vars: ["why": why.isEmpty ? "" : why.prefix(1).uppercased() + why.dropFirst() + "."])
         s.addMessage(kind: "info", from: n.name, title: "\(n.name) has resigned from \(co.name)",
-                     body: "\(reason)I will work my notice and leave on \(GameCalendar.dateString(week: s.week + wk, dayOffset: 0))\(rival.isEmpty ? "" : ", when I start at \(rival)"). That gives you about \(Int(jsRound(Double(wk) / 4.33))) months to find someone. Hire my successor before then and I will hand over and go.",
+                     body: "\(said) I will work my notice and leave on \(GameCalendar.dateString(week: s.week + wk, dayOffset: 0))\(rival.isEmpty ? "" : ", when I start at \(rival)"). That gives you about \(Int(jsRound(Double(wk) / 4.33))) months to find someone. Hire my successor before then and I will hand over and go.",
                      companyID: co.id, tone: "bad", status: "open",
                      options: [.option("Find a successor", "Pays for an executive search now."), .option("I will handle it", "")],
                      action: ManagerTargets.successorAction, data: .object(["co": .number(Double(co.id))]), expiresWeek: s.week + wk)
@@ -341,11 +341,13 @@ extension ManagerModel {
         let co = s.companies[ci]
         guard let mid = co.managerID, let n = s.people[mid], co.value("mgrNotice").isNull, s.week - co.int("mgrW0") > 26 else { return }
         let open = s.inbox.contains { $0.companyID == co.id && $0.status == "open" && $0.actionID == "mgrpoach" }
-        guard !open, s.random.chance(0.0015 + (mood(co) < 45 ? 0.003 : 0) + (overall(n) > 70 ? 0.0015 : 0)) else { return }
+        let underpaid = co.managerMonthlyWage < managerGoingRate(company: co, state: s, data: data) * 0.9   // poached more easily when underpaid
+        guard !open, s.random.chance(0.0015 + (mood(co) < 45 ? 0.003 : 0) + (overall(n) > 70 ? 0.0015 : 0) + (underpaid ? 0.004 : 0)) else { return }
         let cur = World(state: s, data: data).currency(co)
         let up = cur.roundedStep(co.managerMonthlyWage * 0.15, about: 100)
+        let pitch = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: data.catalog[co.type], situation: .poach, vars: ["up": cur.display(up)]) + (co.managerMonthlyWage < managerGoingRate(company: co, state: s, data: data) * 0.9 ? " I am paid under the going rate." : "")
         s.addMessage(kind: "ask", from: n.name, title: "A rival wants to hire \(n.name) away from \(co.name)",
-                     body: "\(n.name) has an offer from a rival group and has come to you first.", companyID: co.id, tone: "bad", status: "open",
+                     body: pitch, companyID: co.id, tone: "bad", status: "open",
                      options: [.option("Match it", "+\(cur.display(up))/month. Most stay."), .option("Let them go", "They work their notice.")],
                      action: "mgrpoach", data: .object(["up": .number(up), "npc": .number(Double(n.id))]), expiresWeek: s.week + 2)
     }

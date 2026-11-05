@@ -105,4 +105,7 @@ public extension GameEngine {
     func managerWarning(companyID: Int) -> String? {
         ManagerModel.managerWarning(state, companyID: companyID, data: data)
     }
+
+    /// The manager's scorecard in words and in their own voice (ManagerVoice).
+    func managerVoiceCard(companyID: Int) -> ManagerVoice.Scorecard? { ManagerVoice.scorecard(state, companyID: companyID, data: data) }
 }
