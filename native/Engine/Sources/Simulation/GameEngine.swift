@@ -154,6 +154,7 @@ public struct GameEngine {
             if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
             if m.actionID == PromiseReminders.action { PromiseReminders.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == Appointments.kind { Appointments.answer(&s, message: m, option: idx); return true }
+            if m.actionID == HierarchyHiring.action { HierarchyHiring.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }

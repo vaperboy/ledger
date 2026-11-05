@@ -284,14 +284,9 @@ extension ManagerModel {
                               action: ["a": "store", "ch": .number(Double(id)), "city": .string(c.id)], data: data, context: fc)
                 }
             }
-            if cm != nil, person(s, cm!) != nil {
-                for c in Chains.stores(s, Chains.chain(s, id: id)!) where c.managerID == nil && (c.status == .open || c.status == .setup) {
-                    fillManager(&s, companyID: c.id, by: "\(person(s, cm!)?.name ?? "The chain manager") (chain manager)", why: "the store had no manager", boss: person(s, cm!), data: data)
-                }
-            }
         }
     }
-    static func cityName(_ s: GameState, _ id: String, _ data: GameData) -> String { data.countries[s.homeCountryCode]?.city(id)?.name ?? id }
+    public static func cityName(_ s: GameState, _ id: String, _ data: GameData) -> String { data.countries[s.homeCountryCode]?.city(id)?.name ?? id }
 
     // MARK: A new store waits three weeks
 
@@ -323,6 +318,7 @@ extension ManagerModel {
         groupLoansRepay(&s, data: data)
         priceRequestsWeekly(&s, data: data)
         organisationWeekly(&s, data: data, context: fc)
+        HierarchyHiring.weekly(&s, data: data)
         openingWait(&s, data: data)
         boardsWeekly(&s, data: data)
         executivesWeekly(&s, data: data)

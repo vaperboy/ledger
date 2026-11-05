@@ -51,6 +51,15 @@ public struct TeamOverview: Sendable {
         public var needed: Bool
         /// Who would employ the person: the company, the chain, the holding, or the group office.
         public var employer: String = ""
+        /// What kind of post: mgr (store or company manager), team (a company's management team), chainmgr, ceo56, region, md or hq.
+        public var post: String = ""
+        /// The team slot key ("ceo", "reg", "sales" ...), the main-office role, or the city of a regional manager.
+        public var key: String = ""
+        /// The boss above who hires into this post (a regional manager, chain manager or CEO), nil when the owner hires.
+        public var hirerName: String? = nil
+        public var hirerTitle: String? = nil
+        /// That boss's authority: 0 asks you first, 1 within your limits, 2 full control. -1 when the owner hires.
+        public var hirerAuthority: Int = -1
     }
 
     /// Someone in a management post above or beside the store managers, with the entity that employs them.
@@ -211,12 +220,17 @@ public extension GameEngine {
             if co.type != "hold" && co.status == .open && trade?.family != "club" {
                 let title = trade.map { ManagerModel.title($0) } ?? "Manager"
                 if co.managerID == nil && !ownerWorksThere && !co.staff.isEmpty {
-                    vacancies.append(.init(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
-                                           detail: bosses.isEmpty ? "No one runs it day to day." : "\(runner) oversees it from above, with no one on site.",
-                                           companyID: co.id, chainID: chainID, needed: bosses.isEmpty, employer: co.name))
+                    var v = TeamOverview.Vacancy(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
+                                                 detail: bosses.isEmpty ? "No one runs it day to day." : "\(runner) oversees it from above, with no one on site.",
+                                                 companyID: co.id, chainID: chainID, needed: bosses.isEmpty, employer: co.name)
+                    v.post = "mgr"
+                    if let a = HierarchyHiring.appointer(s, post: .storeManager(companyID: co.id), data: data) { v.hirerName = a.name; v.hirerTitle = a.title; v.hirerAuthority = a.level }
+                    vacancies.append(v)
                 } else if co.managerID != nil && !co.value("mgrNotice").isNull {
-                    vacancies.append(.init(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
-                                           detail: "The manager is working their notice; a successor hired now can hand over.", companyID: co.id, chainID: chainID, needed: true, employer: co.name))
+                    var v = TeamOverview.Vacancy(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
+                                                 detail: "The manager is working their notice; a successor hired now can hand over.", companyID: co.id, chainID: chainID, needed: true, employer: co.name)
+                    v.post = "mgr"
+                    vacancies.append(v)
                 }
             }
             // Department heads and the managing director appear once the company's headcount justifies them (`ManagerModel.headsOK`, `mdOK`);
@@ -227,8 +241,10 @@ public extension GameEngine {
                     members.append(.init(id: "slot-\(co.id)-\(slot.id)", name: p.name, role: slot.title, scope: scope, employer: co.name,
                                          monthlyWage: slot.monthlyWage, companyID: co.id, chainID: chainID, personID: pid))
                 } else {
-                    vacancies.append(.init(id: "slot-\(co.id)-\(slot.id)", title: slot.title, scope: scope, place: co.name, detail: slot.detail,
-                                           companyID: co.id, chainID: chainID, needed: false, employer: co.name))
+                    var v = TeamOverview.Vacancy(id: "slot-\(co.id)-\(slot.id)", title: slot.title, scope: scope, place: co.name, detail: slot.detail,
+                                                 companyID: co.id, chainID: chainID, needed: false, employer: co.name)
+                    v.post = "team"; v.key = slot.key
+                    vacancies.append(v)
                 }
             }
         }
@@ -260,13 +276,28 @@ public extension GameEngine {
                                      employer: name, monthlyWage: r["wage"].double, companyID: stores.first?.id, chainID: id, personID: p.id))
             }
             if !hasChainManager && stores.count >= 2 {
-                vacancies.append(.init(id: "chainmgr-\(id)", title: "Chain manager", scope: "chain", place: name,
-                                       detail: "Oversees the \(stores.count) stores so the store managers do not all report to you.",
-                                       companyID: stores.first?.id, chainID: id, needed: short, employer: name))
+                var v = TeamOverview.Vacancy(id: "chainmgr-\(id)", title: "Chain manager", scope: "chain", place: name,
+                                             detail: "Oversees the \(stores.count) stores so the store managers do not all report to you.",
+                                             companyID: stores.first?.id, chainID: id, needed: short, employer: name)
+                v.post = "chainmgr"
+                if let a = HierarchyHiring.appointer(s, post: .chainManager(chainID: id), data: data) { v.hirerName = a.name; v.hirerTitle = a.title; v.hirerAuthority = a.level }
+                vacancies.append(v)
             }
             if !hasCEO && stores.count >= 5 {
-                vacancies.append(.init(id: "ceo56-\(id)", title: "Chain CEO", scope: "chain", place: name, detail: "Runs the whole chain above the chain and store managers.",
-                                       companyID: stores.first?.id, chainID: id, needed: false, employer: name))
+                var v = TeamOverview.Vacancy(id: "ceo56-\(id)", title: "Chain CEO", scope: "chain", place: name, detail: "Runs the whole chain above the chain and store managers.",
+                                             companyID: stores.first?.id, chainID: id, needed: false, employer: name)
+                v.post = "ceo56"
+                vacancies.append(v)
+            }
+            // A city with four or more stores of the chain gets its own regional manager, appointed by the chain manager (or the CEO).
+            let byCity = Dictionary(grouping: stores.filter { $0.status == .open }, by: { $0.cityID })
+            for city in byCity.keys.sorted() where (byCity[city]?.count ?? 0) >= HierarchyHiring.regionalMinStores && !regs.contains(where: { $0["scope"].string == "chain:\(id):\(city)" }) {
+                let place = ManagerModel.cityName(s, city, data)
+                var v = TeamOverview.Vacancy(id: "region-\(id)-\(city)", title: "Regional manager", scope: "region", place: "\(name), \(place)",
+                                             detail: "Runs the \(byCity[city]?.count ?? 0) stores in \(place) and hires their managers.", companyID: byCity[city]?.first?.id, chainID: id, needed: false, employer: name)
+                v.post = "region"; v.key = city
+                if let a = HierarchyHiring.appointer(s, post: .regional(chainID: id, cityID: city), data: data) { v.hirerName = a.name; v.hirerTitle = a.title; v.hirerAuthority = a.level }
+                vacancies.append(v)
             }
         }
 
@@ -279,8 +310,10 @@ public extension GameEngine {
         if !md.isNull, let p = s.people[md["npc"].int] {
             members.append(.init(id: "md", name: p.name, role: "Group managing director", scope: "group", employer: groupEmployer, monthlyWage: md["wage"].double, companyID: nil, chainID: nil, personID: p.id))
         } else if established && s.companies.filter({ $0.status.isLive }).count >= 2 {
-            vacancies.append(.init(id: "md", title: "Group managing director", scope: "group", place: "Your group office",
-                                   detail: "Runs the group under you; deals above the limit you set still come to you.", companyID: nil, chainID: nil, needed: false, employer: groupEmployer))
+            var v = TeamOverview.Vacancy(id: "md", title: "Group managing director", scope: "group", place: "Your group office",
+                                         detail: "Runs the group under you; deals above the limit you set still come to you.", companyID: nil, chainID: nil, needed: false, employer: groupEmployer)
+            v.post = "md"
+            vacancies.append(v)
         }
         if let c = s.rest["group"]?["ceo"], !c.isNull, let p = s.people[c["npc"].int] {
             members.append(.init(id: "gceo", name: p.name, role: "Group CEO", scope: "group", employer: groupEmployer, monthlyWage: c["wage"].double, companyID: nil, chainID: nil, personID: p.id))
@@ -296,7 +329,9 @@ public extension GameEngine {
                                      employer: groupEmployer, monthlyWage: x["wage"].double, companyID: nil, chainID: nil, personID: x["id"].int))
             }
             for r in roles where Headquarters.room(s, role: r.id, data: data) == .ok {
-                vacancies.append(.init(id: "hq-\(r.id)", title: r.title, scope: "group", place: "Your group office", detail: r.text, companyID: nil, chainID: nil, needed: false, employer: groupEmployer))
+                var v = TeamOverview.Vacancy(id: "hq-\(r.id)", title: r.title, scope: "group", place: "Your group office", detail: r.text, companyID: nil, chainID: nil, needed: false, employer: groupEmployer)
+                v.post = "hq"; v.key = r.id
+                vacancies.append(v)
             }
         }
 

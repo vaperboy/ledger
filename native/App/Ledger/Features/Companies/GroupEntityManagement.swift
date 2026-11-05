@@ -97,7 +97,7 @@ struct GroupEntityManagement: View {
                 Card(padding: 4, radius: Theme.Radius.hero) {
                     VStack(spacing: 0) {
                         ForEach(Array(mine.enumerated()), id: \.element.id) { (n: Int, v: TeamOverview.Vacancy) in
-                            vacancyRow(v, first: n == 0)
+                            OpenPostRow(engine: engine, vacancy: v, first: n == 0)
                         }
                     }
                 }

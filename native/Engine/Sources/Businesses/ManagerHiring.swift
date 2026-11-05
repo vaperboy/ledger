@@ -45,7 +45,7 @@ public enum ManagerHiring {
     /// May the manager hire one more `role` now, with `target` the number of them the team calls for?
     public static func verdict(_ s: GameState, companyID: Int, role: String, target: Int, data: GameData) -> Verdict {
         guard let co = s.company(companyID), co.status == .open else { return .no("The company is not open.") }
-        guard Delegation.hasManager(co) else { return .no("Without a manager nobody hires: the owner decides.") }
+        guard Delegation.hasManager(co) || HierarchyHiring.staffBoss(s, co, data: data) != nil else { return .no("Without a manager nobody hires: the owner decides.") }
         if Appointments.classify(role) == .assistant { return .no(Appointments.authority(s, companyID: companyID, role: role, data: data).reason + " Use a proposal (Appointments.propose).") }
         if let why = Workplaces.hireBlock(co, data: data) { return .no(why) }
         let heads = co.staff.filter { $0.role == role && !$0.flag("seas") }
@@ -64,7 +64,7 @@ public enum ManagerHiring {
         guard v.allowed, let ci = s.companyIndex(companyID) else { return nil }
         let cands = given ?? Hiring.search(role: role, company: s.companies[ci], mode: .network, faces: false, state: &s, data: data)
         guard !cands.isEmpty else { return nil }
-        let mgr = s.companies[ci].managerID.flatMap { s.people[$0] }
+        let mgr = s.companies[ci].managerID.flatMap { s.people[$0] } ?? HierarchyHiring.staffBoss(s, s.companies[ci], data: data).flatMap { s.people[$0.personID] }
         guard let p = AutoHire.hireWorker(role: role, companyID: companyID, candidates: cands, hirer: AutoHire.hirer(person: mgr), state: &s, data: data) else { return nil }
         return (p, v)
     }
