@@ -17,6 +17,8 @@ enum Motion {
     static let revealAnimation: Animation = .easeOut(duration: 0.6)
     /// `pulse`: 1.2 s cycle (0.6 s each way), opacity 1.0 to 0.6, for the unpressed primary action and a new `Needs you` item.
     static let pulseAnimation: Animation = .easeInOut(duration: 0.6).repeatForever(autoreverses: true)
+    /// `size`: a popup changing size or class as its content changes, a slightly bouncier spring than `move`.
+    static let sizeAnimation: Animation = .spring(response: 0.38, dampingFraction: 0.82)
     /// `celebrate`: goal complete, record line, 1.5 s in total.
     static let celebrateSeconds: Double = 1.5
     static let revealSeconds: Double = 0.6
@@ -38,6 +40,8 @@ enum Motion {
     static func quick(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : quickAnimation }
     /// `move`; nil when Reduce Motion is on.
     static func move(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : moveAnimation }
+    /// `size`; nil when Reduce Motion is on.
+    static func size(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : sizeAnimation }
     /// `reveal`; nil when Reduce Motion is on.
     static func reveal(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : revealAnimation }
     /// Runs `body` with the quick animation, or at once when Reduce Motion is on.

@@ -86,7 +86,7 @@ struct UnlockPopup: View {
 
     var body: some View {
         VStack(spacing: PopupSpace.block) {
-            ring
+            ring.confettiBurst()
             Text("\(prompt.title) unlocked")
                 .popupText(.figure, variant: .reward).multilineTextAlignment(.center)
                 .opacity(shown || reduceMotion ? 1 : 0)
@@ -110,7 +110,6 @@ struct UnlockPopup: View {
         .centerSheetTitle(prompt.title)
         .centerSheetLocked()
         .onAppear {
-            Haptics.tap()
             Motion.animate(Motion.moveAnimation) { shown = true }
         }
     }

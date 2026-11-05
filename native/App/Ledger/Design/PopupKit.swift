@@ -66,9 +66,13 @@ private struct FitScrollHeightKey: PreferenceKey {
 /// nothing (it fills space by itself) gets `maxHeight`; nothing stays hidden: after a short moment it is shown whatever the measurement.
 struct FitScroll<Content: View>: View {
     var maxHeight: CGFloat
+    /// Called with the measured content height whenever it changes (a popup frame picks its size class from it).
+    var onMeasure: ((CGFloat) -> Void)? = nil
     @ViewBuilder var content: () -> Content
     @State private var natural: CGFloat = -1
     @State private var forceShow = false
+    @State private var armed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let reported: Bool = natural >= 0
@@ -85,8 +89,15 @@ struct FitScroll<Content: View>: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .frame(height: height)
+        .animation(armed ? Motion.size(reduceMotion) : nil, value: height)
         .opacity(reported || forceShow ? 1 : 0)
-        .onPreferenceChange(FitScrollHeightKey.self) { (h: CGFloat) in natural = h }
+        .onPreferenceChange(FitScrollHeightKey.self) { (h: CGFloat) in
+            natural = h
+            if h > 0.5 {
+                onMeasure?(h)
+                if !armed { DispatchQueue.main.async { armed = true } }
+            }
+        }
         .task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             forceShow = true
@@ -149,7 +160,7 @@ struct PopupOptionButton: View {
     }
 
     var body: some View {
-        let go: () -> Void = { Haptics.tap(); action() }
+        let go: () -> Void = { Haptics.play(.tap); action() }
         if highlighted {
             Button(action: go) { Text(title) }.buttonStyle(PopupPrimaryButtonStyle()).accessibilityIdentifier(identifier)
         } else {

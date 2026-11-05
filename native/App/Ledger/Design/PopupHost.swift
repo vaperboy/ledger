@@ -118,6 +118,7 @@ struct PopupHostLayer: View {
                 let on: Bool = e.key == top
                 entryView(e)
                     .opacity(on ? 1 : 0)
+                    .scaleEffect(on || reduceMotion ? 1 : 0.94)
                     .allowsHitTesting(on)
                     .accessibilityHidden(!on)
                     .zIndex(on ? 1 : 0)

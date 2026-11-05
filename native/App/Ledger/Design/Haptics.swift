@@ -1,5 +1,8 @@
 import UIKit
 
+/// The three cues a popup plays on appearing or confirming.
+enum PopupCue { case tap, success, warning }
+
 /// Restrained haptics. One place, so they can be switched off in Settings and tuned together.
 @MainActor
 enum Haptics {
@@ -24,6 +27,16 @@ enum Haptics {
     static func option() { guard enabled else { return }; select.selectionChanged() }
     /// The cash-below-zero banner appeared.
     static func cashWarning() { guard enabled else { return }; notify.notificationOccurred(.warning) }
+
+    /// A popup appeared or a popup action was confirmed: a soft tap, a success, or a warning. Silent when haptics are off.
+    static func play(_ cue: PopupCue) {
+        guard enabled else { return }
+        switch cue {
+        case .tap: soft.impactOccurred(intensity: 0.6)
+        case .success: notify.notificationOccurred(.success)
+        case .warning: notify.notificationOccurred(.warning)
+        }
+    }
 
     static func tap() {}
     static func advanceDay() {}

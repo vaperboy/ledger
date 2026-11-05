@@ -12,7 +12,9 @@ private struct CenterSheetTitleKey: PreferenceKey {
     static func reduce(value: inout String, nextValue: () -> String) { if value.isEmpty { value = nextValue() } }
 }
 
-/// How high a centred popup is. `.fit` (default): exactly as high as its content, at most 80% of the screen, scrolling only when taller.
+/// How a centred popup is sized. The five size classes (toast, compact, standard, tall, full) are defined in `PopupSizing.swift`; the frame
+/// picks one from the content for `.fit` and `.fitBleed`, and `.tall` is always the full class.
+/// `.fit` (default): exactly as high as its content, at most 80% of the screen, scrolling only when taller.
 /// `.fitBleed`: like `.fit` without the 16pt content padding (full-bleed photos). `.tall`: a fixed 80% of the screen, only for multi-step flows with their own pages: wrap them in `PopupStack` (Design/PopupStack.swift), where `popupClose` steps back one page and closes only at the root.
 enum CenterSheetSize { case fit, fitBleed, tall }
 
@@ -57,71 +59,136 @@ struct PopupHeaderRow: View {
     }
 }
 
-/// The centred popup card: dimmed backdrop, rounded themed card (max 560 wide, max 80% of the screen high) with a fixed 44pt header row the
-/// frame draws (optional title left, x right). Content never draws its own close button.
-/// Arrives with a fade and a 0.95 to 1 scale; no slide.
+/// The centred popup card: dimmed backdrop, rounded themed card with a fixed 44pt header row the frame draws (optional title left, x right).
+/// Content never draws its own close button. The card picks one of five size classes (`PopupSizeClass`, rules in `PopupSizing`) from the
+/// height of its content: width, backdrop and entrance follow the class, and the card springs to its new size when the content changes.
+/// Arrives with a fade, a scale from the class's start scale and a short rise; a tall or full card swipes down to close.
 struct CenterSheetFrame<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onClose: () -> Void
     var title: String = ""
     var size: CenterSheetSize = .fit
+    var showsClose: Bool = true
+    /// False: a tap outside never closes this card (the daily report), whatever the content says.
+    var backdropCloses: Bool = true
+    var variant: PopupVariant = .standard
     @ViewBuilder var content: () -> Content
     @State private var shown = false
     @State private var locked = false
     @State private var contentTitle = ""
+    @State private var measuredClass: PopupSizeClass = .standard
+    @State private var drag: CGFloat = 0
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Color.black.opacity(0.55).ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture { if !locked { onClose() } }
-                    .accessibilityIdentifier("popup-backdrop")
-                card(room: geo.size.height * PopupMetrics.roomFraction)
-                    .frame(maxWidth: PopupMetrics.maxWidth)
-                    .padding(.horizontal, PopupMetrics.margin)
-                    .scaleEffect(shown || reduceMotion ? 1 : 0.95)
-                    .opacity(shown ? 1 : 0)
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
+        GeometryReader { (geo: GeometryProxy) in
+            layout(screen: geo.size)
         }
         .toggleStyle(LedgerToggleStyle())
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetTitleKey.self) { contentTitle = $0 }
-        .onAppear { withAnimation(Motion.arrive(reduceMotion)) { shown = true } }
+        .onAppear {
+            Haptics.play(variant.appearCue)
+            Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }
 
-    private func card(room: CGFloat) -> some View {
+    private func layout(screen: CGSize) -> some View {
+        let cls: PopupSizeClass = size == .tall ? .full : measuredClass
+        let dim: Double = PopupSizing.dim(of: cls) * PopupSizing.dragDimFactor(offset: drag)
+        let rise: CGFloat = PopupSizing.entryRise(of: cls, reduceMotion: reduceMotion)
+        let startScale: CGFloat = PopupSizing.entryScale(of: cls, reduceMotion: reduceMotion)
+        return ZStack {
+            Color.black.opacity(shown ? dim : 0).ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { if !locked && backdropCloses { onClose() } }
+                .accessibilityIdentifier("popup-backdrop")
+            card(screen: screen, cls: cls)
+                .frame(maxWidth: PopupSizing.maxWidth(of: cls))
+                .padding(.horizontal, PopupMetrics.margin)
+                .scaleEffect(shown ? 1 : startScale)
+                .offset(y: (shown ? 0 : rise) + drag)
+                .opacity(shown ? 1 : 0)
+        }
+        .frame(width: screen.width, height: screen.height)
+        .animation(Motion.size(reduceMotion), value: cls)
+    }
+
+    private func card(screen: CGSize, cls: PopupSizeClass) -> some View {
+        let room: CGFloat = PopupSizing.room(screenHeight: screen.height)
         let head: CGFloat = shownTitle.isEmpty ? PopupMetrics.header : PopupMetrics.header + 1
+        let swipe: Bool = cls.isSwipeable && !locked && backdropCloses
+        let fixedHeight: CGFloat? = size == .tall ? PopupSizing.fullHeight(screenHeight: screen.height) : nil
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
+        let mask: GestureMask = swipe ? GestureMask.all : GestureMask.subviews
         return VStack(spacing: 0) {
             headerRow
-            inner(room: room - head)
+                .contentShape(Rectangle())
+                .gesture(dismissDrag, including: mask)
+            inner(room: room - head, head: head, screenHeight: screen.height)
         }
         .foregroundStyle(P.ink)
         .environment(\.colorScheme, P.isLight ? .light : .dark)
-        .frame(height: size == .tall ? max(260, room) : nil)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+        .frame(height: fixedHeight)
+        .background(shape.fill(P.card))
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(P.lineStrong, lineWidth: 1))
+        .overlay(alignment: .top) { grabber(swipe) }
+        .overlay { celebration }
     }
 
     /// The title shown in the header: the `title:` argument, else the one the content set with `.centerSheetTitle`.
     private var shownTitle: String { title.isEmpty ? contentTitle : title }
 
     private var headerRow: some View {
-        PopupHeaderRow(title: shownTitle, showsClose: true, onClose: onClose)
+        PopupHeaderRow(title: shownTitle, showsClose: showsClose, onClose: onClose)
     }
 
-    @ViewBuilder private func inner(room: CGFloat) -> some View {
+    @ViewBuilder private func grabber(_ visible: Bool) -> some View {
+        if visible {
+            Capsule().fill(P.lineStrong).frame(width: 36, height: 4).padding(.top, 5).allowsHitTesting(false)
+        }
+    }
+
+    /// A reward card throws a confetti burst when it arrives (never under Reduce Motion).
+    @ViewBuilder private var celebration: some View {
+        if variant == .reward && !reduceMotion { ConfettiBurst() }
+    }
+
+    @ViewBuilder private func inner(room: CGFloat, head: CGFloat, screenHeight: CGFloat) -> some View {
         if size == .tall {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            FitScroll(maxHeight: room) { content().padding(size == .fitBleed ? 0 : 16) }
+            FitScroll(maxHeight: room, onMeasure: { (h: CGFloat) in measure(h + head, screenHeight: screenHeight) }) {
+                content().padding(size == .fitBleed ? 0 : 16)
+            }
         }
+    }
+
+    /// Picks the size class for the measured card height; the spring on `layout` animates the change.
+    private func measure(_ cardHeight: CGFloat, screenHeight: CGFloat) {
+        let next: PopupSizeClass = PopupSizing.sizeClass(requested: size, cardHeight: cardHeight, screenHeight: screenHeight, previous: measuredClass)
+        if next != measuredClass { measuredClass = next }
+    }
+
+    /// Swipe down on the header closes a tall or full card; a short pull springs back.
+    private var dismissDrag: some Gesture {
+        DragGesture(minimumDistance: 10)
+            .onChanged { (v: DragGesture.Value) in
+                drag = PopupSizing.dragOffset(translation: v.translation.height)
+            }
+            .onEnded { (v: DragGesture.Value) in
+                let away: Bool = PopupSizing.shouldDismiss(translation: v.translation.height, predictedEnd: v.predictedEndTranslation.height)
+                if away { onClose() }
+                // A card that stays (a step back inside a popup stack) springs back; one that closes has faded out by then.
+                let delay: Double = away ? 0.4 : 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    Motion.animate(Motion.size(reduceMotion)) { drag = 0 }
+                }
+            }
     }
 }
 

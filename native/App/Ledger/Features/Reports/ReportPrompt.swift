@@ -115,6 +115,8 @@ struct CelebrationPopup: View {
     /// Set once the reward has been claimed right here: what the player got. The card then shows a small celebration of its own.
     @State private var claimedText: String?
     @State private var burst = false
+    /// The numeric part of a reward claimed here (the daily goal), counted up in the gold reward figure.
+    @State private var claimedAmount: Double?
     /// Goal complete: the card turns green, the check draws itself, the reward fades in.
     @State private var goalShown = false
     @State private var checkDrawn: CGFloat = 0
@@ -122,12 +124,11 @@ struct CelebrationPopup: View {
     @State private var leaving = false
 
     var body: some View {
-        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, onClose: { }) {
+        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, onClose: { }) {
             card
         }
         .offset(y: leaving ? -900 : 0)
         .onAppear {
-            Haptics.tap()
             if item.kind == "goal" {
                 Motion.animate(Motion.quick(reduceMotion)) { goalShown = true }
                 Motion.animate(Motion.reveal(reduceMotion)) { checkDrawn = 1 }
@@ -162,12 +163,19 @@ struct CelebrationPopup: View {
                     .buttonStyle(PressableStyle()).popupText(.effect)
                     .padding(.top, 2).accessibilityIdentifier("celebration-next-goal")
             }
-            if !canClaim {
-                Button(dismissTitle) { dismiss() }
-                    .buttonStyle(ImportantButtonStyle()).padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
-            }
+            if !canClaim { dismissButton }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// The way out once nothing is left to claim here: the pulsing Claim for a trophy or milestone (already paid), else Nice, Next or Done.
+    @ViewBuilder private var dismissButton: some View {
+        if dismissTitle == "Claim" {
+            ClaimButton(title: "Claim", identifier: "celebration-dismiss") { dismiss() }.padding(.top, 4)
+        } else {
+            Button(dismissTitle) { dismiss() }
+                .buttonStyle(ImportantButtonStyle()).padding(.top, 4).accessibilityIdentifier("celebration-dismiss")
+        }
     }
 
     // MARK: Claiming in place
@@ -223,13 +231,15 @@ struct CelebrationPopup: View {
                 Image(systemName: "checkmark.circle.fill").popupText(.effect)
                     .scaleEffect(burst || reduceMotion ? 1 : 0.4)
                     .symbolEffect(.bounce, value: burst)
+                if let amount = claimedAmount, let cur = store.engine?.homeCurrency {
+                    RewardFigure(amount: amount, format: { (v: Double) -> String in cur.tidyShort(v) })
+                }
                 Text(done).popupText(.rowValue).multilineTextAlignment(.center)
             }
             .transition(.scale.combined(with: .opacity))
             .accessibilityElement(children: .combine)
         } else if canClaim {
-            Button("Claim") { claim() }
-                .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("celebration-claim")
+            ClaimButton(title: "Claim", identifier: "celebration-claim") { claim() }
         }
     }
 
@@ -237,15 +247,18 @@ struct CelebrationPopup: View {
         var text: String?
         if item.kind == "mission" {
             let cur: Currency? = store.engine?.homeCurrency
-            if let r = store.act({ $0.claimDailyGoal() }) ?? nil { text = "Daily goal reward: " + (cur?.tidyShort(r) ?? "") + " is yours." }
+            if let r = store.act({ $0.claimDailyGoal() }) ?? nil {
+                text = "Daily goal reward: " + (cur?.tidyShort(r) ?? "") + " is yours."
+                claimedAmount = r
+            }
         } else if let step = claimableStep {
             text = store.act({ $0.claimFirstStep(id: step.id) }) ?? nil
         }
         if let text {
-            Haptics.success()
+            Haptics.play(.success)
             Motion.animate(Motion.arrive(reduceMotion)) { claimedText = text.tidyText; burst = true }
         } else {
-            Haptics.warning()
+            Haptics.play(.warning)
             Motion.animate(Motion.standard(reduceMotion)) { claimedText = "Already claimed." }
         }
     }
