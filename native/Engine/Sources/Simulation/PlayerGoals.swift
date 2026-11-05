@@ -220,7 +220,7 @@ public enum PlayerGoals {
         s.rest["fs58"] = st
     }
 
-    // MARK: Ladder M1 to M10 (brief Part 5)
+    // MARK: Ladder M1 to M10
 
     /// One goal of the linear ladder: the spine of the first 90 days. Exactly one is open at a time.
     public struct LadderGoal: Equatable, Sendable {
@@ -299,7 +299,7 @@ public enum PlayerGoals {
             s.rest["ldr"] = l
             let paid: String = ladderReward(&s, g.id, cur)
             s.note(paid, tone: "good")
-            Celebrations.add(&s, kind: "goal", title: g.title, detail: g.past, reward: g.reward, art: "goal." + g.id, tier: 1)   // Brief 7.4: a goal completion celebrates
+            Celebrations.add(&s, kind: "goal", title: g.title, detail: g.past, reward: g.reward, art: "goal." + g.id, tier: 1)   // a goal completion celebrates
             finished.append(g.id)
         }
         return finished

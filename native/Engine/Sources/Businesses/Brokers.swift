@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// The middle-man trades that earn commission on what others make (owner brief, 4 Nov 2026): the travel agency (`travel`), the insurance broker
+/// The middle-man trades that earn commission on what others make: the travel agency (`travel`), the insurance broker
 /// (`insbroker`) and the finance and mortgage broker (`finbroker`). They hold no stock. A sale is a deal placed with a supplier (an operator, an airline,
 /// a hotel, an insurer, a lender), and the money comes from that supplier, later, as commission. All figures are in `Resources/brokers.json`.
 ///

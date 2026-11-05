@@ -33,7 +33,7 @@ final class StaffPayYearTests: XCTestCase {
 
     private func estateYear(seed: Int, plans: Bool) throws -> Year {
         var (e, id) = try open("estate", seed: seed)
-        // A hired manager replaces people who leave (owner decision, 2 Nov), as the standing policy did when this test was written.
+        // A hired manager replaces people who leave, as the standing policy did when this test was written.
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].managerID = 0 } }
         let a = hire(&e, id, role: "estate", terms: plans ? Hiring.Terms(payPlan: "mix", commissionRate: 0.05) : Hiring.Terms())
         _ = hire(&e, id, role: "estate", terms: plans ? Hiring.Terms(payPlan: "com") : Hiring.Terms())

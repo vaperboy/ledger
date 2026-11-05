@@ -3,7 +3,7 @@ import GameCore
 import Finance
 import Businesses
 
-/// The Group's dividend desk (owner decision, 2 Nov): dividends are never automatic. A company with retained profit can pay a share of what it may pay;
+/// The Group's dividend desk: dividends are never automatic. A company with retained profit can pay a share of what it may pay;
 /// a holding collects from the companies under it in one go. The owner chooses whether, when and how much.
 public struct DividendRow: Identifiable, Equatable, Sendable {
     public var id: Int

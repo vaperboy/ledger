@@ -3,14 +3,14 @@ import GameCore
 import Countries
 import Finance
 
-/// Item record v2 (W0 foundation, products audit `native/docs/audit/products_by_trade.md`). A company item (`SalesItems.Item`, key `items27`) is a title
+/// Item record v2. A company item (`SalesItems.Item`, key `items27`) is a title
 /// with a price. This adds the real thing behind it, per item, in a second record `itemsv2` = { itemID: record } on the company:
 /// model (STK stocked resale, MADE recipe, SVC service, BRK unique unit, RENT, PROJ, SUB), unit cost, extra cost per unit (repairs, prep), holding cost per
 /// week, stock, on order, lead time, capacity, supplier link, status, reservations, plans and a weekly sales and profit history.
 /// Nothing is written until something sets it, and no trade is switched on: `optedInTrades` is empty until a wave adds its trades.
 /// `SalesItems` itself, demand and every old save are untouched; an item without a record is read through `fallbackCost` (the trade's cost-of-sales share).
 public enum ItemModels {
-    /// Trades whose old titles-only items are migrated to records. Empty in W0: a wave adds its trades here (tests pass their own set).
+    /// Trades whose old titles-only items are migrated to records. Tests pass their own set.
     public static var optedInTrades: Set<String> { ItemWaves.all }
     static let key = "itemsv2"
     public static let historyWeeks = 52

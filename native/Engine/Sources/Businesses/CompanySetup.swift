@@ -464,7 +464,7 @@ public enum CompanySetup {
         public var equipmentInPlace = false
         public var teamInPlace = false
         /// Apply for the documents, rent a standard place and buy the first property by itself. The player's own start sets all three to false:
-        /// they fill in and sign the documents and choose the place themselves (owner decision, 2 Nov).
+        /// they fill in and sign the documents and choose the place themselves.
         public var applyDocuments = true
         public var autoPremises = true
         public var buyProperty = true
@@ -574,7 +574,7 @@ public enum CompanySetup {
     }
 
     /// Whether the company's cash carries the people already on the payroll, one more at `extra` a month and the rent for `months`.
-    /// On top of the wages and rent for `months`, one more month of rent and of the company's loan instalments is always held back (owner decision).
+    /// On top of the wages and rent for `months`, one more month of rent and of the company's loan instalments is always held back.
     private static func carries(_ co: Company, extraMonthly extra: Double, months: Double, loans: [Loan]) -> Bool {
         let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage * $1.partTimeShare }
         let rent = co.value("prem")["rent"].double

@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// The rules added on 2 Nov 2026 (owner decisions in docs/DECISIONS.md): per-trade price ranges, every store item for every company,
+/// Rules: per-trade price ranges, every store item for every company,
 /// the dividend desk, document refusal and reapplying, delegation lines.
 final class StageSixToNineTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ trade: String, form: LegalForm = .limited) throws -> Int {

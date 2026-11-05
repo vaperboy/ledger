@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 2 item 3, 6, 7: the Accounting read models and records, net worth breakdown and Company overview figures.
+/// The Accounting read models and records, net worth breakdown and Company overview figures.
 final class AccountingReadsTests: XCTestCase {
     private func firm(trade: String = "cafe", days: Int = 90, form: LegalForm = .limited, seed: Int = 31) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)

@@ -45,7 +45,7 @@ final class FoundationTests: XCTestCase {
     /// kept in Golden/countries_derived.json; for these (country, field) pairs the test checks the corrected values instead
     /// (`testCorrectedTaxFiguresArePinned`).
     static let correctedBrackets: Set<String> = ["SE", "LT", "DE", "FR", "NL", "US", "CA", "BR", "DK", "FI", "MX"]
-    // MX: IMSS table + 3% state payroll tax; BR: employer FGTS 8% as payroll (owner-supplied 2026 rules, docs/TAX_SOURCES.md)
+    // MX: IMSS table + 3% state payroll tax; BR: employer FGTS 8% as payroll (2026 rules, docs/TAX_SOURCES.md)
     static let correctedEmployerCost: Set<String> = ["DE", "MX", "BR"]
 
     func testCountryDerivedValuesMatchOriginal() throws {

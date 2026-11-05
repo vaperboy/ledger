@@ -9,7 +9,7 @@ private extension GameEngine {
     mutating func w4week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Wave 4: salmon, furniture, factory, start-up, game studio, software and web agency (MADE industrial/digital and SUB).
+/// Salmon, furniture, factory, start-up, game studio, software and web agency (MADE industrial/digital and SUB).
 final class Wave4Tests: XCTestCase {
     let trades = ["salmon", "furniture", "factory", "startup", "gamestudio", "webdev"]
 

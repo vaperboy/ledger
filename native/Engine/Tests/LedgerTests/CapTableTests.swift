@@ -6,7 +6,7 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Stage 4B: one cap table with real share counts. Repeated rounds, all four operations, migration of old percentages and a save round trip.
+/// One cap table with real share counts. Repeated rounds, all four operations, migration of old percentages and a save round trip.
 final class CapTableTests: XCTestCase {
     private func company() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)

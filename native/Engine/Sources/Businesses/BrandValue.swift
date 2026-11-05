@@ -8,7 +8,7 @@ import GameCore
 ///   awards      up to 20  (business awards count double, trophies and milestones once; full at 30 points)
 /// A company's brand uses its own reputation, awareness, age and chain; the group's uses the size-weighted averages, the oldest company, every
 /// outlet and the same awards. Used by the price of a company or licence sale, franchise fees and requirements, and the awareness of a new
-/// store. All are modest: see `salePremium`, `feeFactor`, `requirementEase`, `openingAwareness`. DECISIONS.md "Brand value".
+/// store. All are modest: see `salePremium`, `feeFactor`, `requirementEase`, `openingAwareness`..
 public struct BrandValue: Equatable, Sendable {
     public var score: Double
     public var reputation: Double

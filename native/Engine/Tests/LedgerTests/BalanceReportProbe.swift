@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Multi-year balance driver (Nov 2026 report). Skipped unless LEDGER_REPORT=1.
+/// Multi-year balance driver. Skipped unless LEDGER_REPORT=1.
 /// LEDGER_TRADES=a,b  LEDGER_SEEDS=11,12,13  LEDGER_YEARS=5  LEDGER_OUT=/path/file.csv (one line per run is appended).
 final class BalanceReportProbe: XCTestCase {
     static let mw: Set<MarketEvent.Kind> = [.supplierPriceChange, .competitorLaunch, .priceResponse, .newCountry, .acquisitionOpportunity, .competitorLostShare]

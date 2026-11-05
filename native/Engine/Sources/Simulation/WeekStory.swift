@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// The facts the week report's one story sentence is chosen from (brief Part 3.2). Pure data: `WeekStory.sentence(_:)` picks the first
+/// The facts the week report's one story sentence is chosen from. Pure data: `WeekStory.sentence(_:)` picks the first
 /// rule that applies. Built from the stored reports by `GameEngine.weekStoryInput(for:)`.
 public struct WeekStoryInput: Equatable, Sendable {
     /// "week", "month" or "year": the word the sentences use.

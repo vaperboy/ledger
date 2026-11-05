@@ -9,7 +9,7 @@ import Simulation
 /// Audit part 4a: the 16 countries the first calculations audit did not probe (all 23 minus UK, US, MX, PL, DE, JP, NO).
 /// Per country: a limited-company cafe played 26 weeks day by day (ledger gaps empty, equity = capital put in + profit), the minimum wage on
 /// the cheapest job, notice and severance quoted equal to what is booked, the employer on-cost shared by payroll and the quotes, VAT data and the
-/// personal-tax quote. Findings: native/docs/audit/part4a-countries.md.
+/// personal-tax quote.
 final class CountryAuditProbeTests: XCTestCase {
     static let codes = ["SE", "LT", "FR", "ES", "NL", "CA", "AU", "KR", "BR", "CH", "AE", "IT", "DK", "FI", "IE", "SG"]
 

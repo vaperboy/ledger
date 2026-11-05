@@ -7,7 +7,7 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Events rebalance (brief Part 4): the first-year ramp, the one-bad-event-a-week cap, blocking decisions, options on every
+/// Events rebalance: the first-year ramp, the one-bad-event-a-week cap, blocking decisions, options on every
 /// non-information event, and that the new state survives a save.
 final class EventRebalanceTests: XCTestCase {
     /// Events that stay read-only Inbox rows: no options, `auto` (or the two untagged special ids).

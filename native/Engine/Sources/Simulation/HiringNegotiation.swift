@@ -5,9 +5,7 @@ import Employees
 import Finance
 import Businesses
 
-// The two-page hiring negotiation (Stage 3, spec 5.3C, owner decision Nov 2026: it replaces the one-page flow for ALL hires - workers, managers,
-// assistants, department heads, executives, head-office staff and the analyst).
-//
+// The two-page hiring negotiation.
 //  PAGE 1, contract terms: `hireDraftOptions` says what can be chosen for this post (contract type, working percentage, seasonal or temporary duration,
 //  benefits, vehicle, promises, career and responsibility expectations); the draft itself is `Hiring.Terms`. `hireTermsProblem` says in words why a draft
 //  cannot be agreed.

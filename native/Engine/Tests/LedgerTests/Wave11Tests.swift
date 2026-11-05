@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Wave 11 (financial, energy and group trades): product lines as items, their economics from the existing books, the sliders, old saves, a two-year probe per trade.
+/// Financial, energy and group trades: product lines as items, their economics from the existing books, the sliders, old saves, a two-year probe per trade.
 final class Wave11Tests: XCTestCase {
     static let all = ["insco", "bank", "fund", "power", "oilgas", "hold"]
 

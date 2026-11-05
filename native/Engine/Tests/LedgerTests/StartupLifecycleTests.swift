@@ -5,7 +5,7 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Stage 4A: a founded startup is a real company. Builders are hired and paid like staff, the product finishes and waits for a launch decision,
+/// A founded startup is a real company. Builders are hired and paid like staff, the product finishes and waits for a launch decision,
 /// price and marketing drive customers, the company can be sold, rounds use the cap table. Multi-seed runs report survival and revenue.
 final class StartupLifecycleTests: XCTestCase {
     private func game(seed: Int, funds: Double = 5_000_000_000) throws -> GameEngine {

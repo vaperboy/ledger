@@ -6,7 +6,7 @@ import Finance
 @testable import Simulation
 import Events
 
-/// Stage 7: Inbox confirmation rules, report boundaries and the report sheet, ambition at setup, celebrations, optional missions,
+/// Inbox confirmation rules, report boundaries and the report sheet, ambition at setup, celebrations, optional missions,
 /// and the payroll / legal liability state.
 final class Stage7InboxReportsGoalsTests: XCTestCase {
     // MARK: Helpers

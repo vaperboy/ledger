@@ -13,7 +13,7 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
         for (k, v) in tradesJSON["trades"].object { map[k] = Trade(json: v) }
         for k in map.keys where !(map[k]!.hasStoredCalibration) { TradeCatalog.calibrate(&map[k]!, tables: tables) }
         let menu: [String] = tradesJSON["order"].array.map { $0.string }
-        // The TechPro Store sells every item of every trade to any company (owner decision, 2 Nov). Each trade's list gets the items of the other
+        // The TechPro Store sells every item of every trade to any company. Each trade's list gets the items of the other
         // trades, inert for the business itself (no capacity, quality or opening requirement: flags and standard count stripped). Done once, after
         // calibration, in the catalogue itself, so every place that looks an item up by id (selling, servicing, wear, My items) finds it.
         var seen = Set<String>(), foreign: [EquipmentSpec] = []

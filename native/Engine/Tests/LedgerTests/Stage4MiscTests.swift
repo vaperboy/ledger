@@ -5,7 +5,7 @@ import Businesses
 @testable import Events
 @testable import Simulation
 
-/// Stage 4: old startup blobs become companies, the club purchase plan shows the money, the explicit quick set-up stays inside the cash.
+/// Old startup blobs become companies, the club purchase plan shows the money, the explicit quick set-up stays inside the cash.
 final class Stage4MiscTests: XCTestCase {
     func testLegacyStartupBlobBecomesARealCompanyWithoutLosingMoneyOrShare() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)

@@ -1,7 +1,7 @@
 import Foundation
 import GameCore
 
-/// Customer invoices as records (Stage 2). Every invoice the simulation raises on a business customer (key accounts one by one, other trade customers
+/// Customer invoices as records. Every invoice the simulation raises on a business customer (key accounts one by one, other trade customers
 /// as one invoice for the week) is written here when it is raised and closed when the customer pays (Paid) or never does (Written off).
 /// Status is derived at read time: Sent until the due week, Overdue after it, Paid, Written off. There is no Draft: the simulation has no step before sending.
 /// Payment is recorded when the customer's money arrives in the company account (the ledger row "Customer invoices paid"); the player cannot mark an

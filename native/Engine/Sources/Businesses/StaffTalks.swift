@@ -7,7 +7,7 @@ import Employees
 /// salary. Originals: `raiseFelt`, `raiseStaff`, `setFixedPay`, `wantsFix`, `ACTS.staffx` and the 'payask' / 'fixask' parts of
 /// `handleStaffEvent` (engine/people/people.js, staff_extras.js).
 public enum StaffTalks {
-    /// The raise that feels like a raise: in better-paid jobs a larger one is needed to be noticed. Age plays no part (owner decision, Nov 2026); the argument
+    /// The raise that feels like a raise: in better-paid jobs a larger one is needed to be noticed. Age plays no part; the argument
     /// `age` is kept so existing callers compile.
     public static func raiseNeeded(role: String, age: Int, tables: TradeTables) -> Double {
         let base = tables.roles[role]?.baseMonthlyWage ?? 50000

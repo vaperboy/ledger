@@ -265,7 +265,7 @@ public enum FranchiseBrands {
         return Status(ok: true, why: "")
     }
 
-    /// What a franchisee really needs (owner decision, 3 Nov): the brand reviews the application, you sign the franchise agreement, and the entry
+    /// What a franchisee really needs: the brand reviews the application, you sign the franchise agreement, and the entry
     /// fee is paid (financing: your own cash or a loan). Shown as items with a status, like the franchisor's.
     public static func requirements(_ b: Brand, _ s: GameState, _ w: World, country cc: String) -> [Franchising.Requirement] {
         let st = application(s, b.id)["st"].string

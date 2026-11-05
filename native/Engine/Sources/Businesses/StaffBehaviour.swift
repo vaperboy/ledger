@@ -3,11 +3,10 @@ import GameCore
 import Countries
 import Employees
 
-/// How employees behave when things go wrong (Stage 3, spec 5.3F): they say so, they disengage, they sometimes go quiet, they give notice and
+/// How employees behave when things go wrong: they say so, they disengage, they sometimes go quiet, they give notice and
 /// sometimes leave with little warning, and they take a refusal differently. All of it is grounded in what happened to them (pay behind the market,
 /// a refused request, a broken promise, long tired weeks) and in their temperament; none of it depends on age. The quit and mood mechanics themselves
 /// (`StaffWeek.quitOdds`, `StaffProfile.mood`) are unchanged: this layer adds the visible behaviour around them.
-///
 /// Keys on the staff record (all written only when set): `uw` weeks of running discontent (counts up while the reasons stand, down while they do not),
 /// `dis` the week disengagement began, `voiced` the week they last told you, `silentW` the week they went quiet.
 public enum StaffBehaviour {

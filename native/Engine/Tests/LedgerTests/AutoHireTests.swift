@@ -104,7 +104,7 @@ final class AutoHireTests: XCTestCase {
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open
-                s.companies[i].managerID = 0   // only a manager replaces people who leave (owner decision, 2 Nov)
+                s.companies[i].managerID = 0   // only a manager replaces people who leave
                 if let m = s.companies[i].staff.last {
                     s.companies[i].staff.removeLast()
                     if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p }

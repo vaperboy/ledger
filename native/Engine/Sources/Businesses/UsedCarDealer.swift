@@ -45,13 +45,11 @@ public struct UsedCarStockItem: Sendable, Identifiable, Equatable {
 
 /// The used car dealer (trade `usedcar`). Nothing arrives on its own: the player (or a manager) buys cars on the Marketplace (`Marketplace.buy`
 /// puts them here), the mechanic inspects each one and repairs what is worn, and customers buy from the yard.
-///
 /// Stock sits on the balance sheet as inventory at cost (purchase price plus repairs); a sale books the price as revenue and that cost as cost
 /// of sales. Weekly shoppers come from the ordinary demand model (reputation, marketing, season, rivals, economy); each looks at up to three
 /// cars and buys the best value with a probability that falls as the asking price rises above the car's fair market value. The asking price
 /// is the car's own price (`setUsedCarPrice`), or cost plus the dealer's markup percentage (`setUsedCarMarkup`) for a car without one.
-///
-/// Rework (4 Nov 2026), see `UsedCarYard.swift` (lot spaces, repair orders, reservations, stuck cars, forced sales, buyers, price quotes) and DECISIONS.md.
+/// See `UsedCarYard.swift` (lot spaces, repair orders, reservations, stuck cars, forced sales, buyers, price quotes).
 /// The dealer's stock is `stk` on the company; the markup is `ucm` (percent). Per car (keys only when set): `ask` own price, `rq` repair quote, `job`
 /// {due, sup, sn, price} repair order, `res` reserved price, `fx` repaired (or nothing to repair), `skip` sold as it is, `hold` holding cost to date.
 public enum UsedCarDealer {

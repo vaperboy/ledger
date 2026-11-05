@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Staff growth (owner decision, 3 Nov): people gain experience, train, move up, and one of them can be named to take over when the manager leaves.
+/// Staff growth: people gain experience, train, move up, and one of them can be named to take over when the manager leaves.
 /// The ladder has three rungs above a worker's own role: a better role in the trade (`ManagerModel.promotionPosts`), then assistant manager, then manager.
 /// Readiness is the weighted share of what the rung asks (years with the company 35%, skill 35%, courses taken 20%, no grievance 10%); a person is ready when
 /// nothing is missing. Training is the existing `StaffProfile.takeCourse`, a grievance is an unkept promise (`StaffPromises`) or an unhappy mood, and a promotion

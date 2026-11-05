@@ -5,7 +5,7 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Owner decision, 3 Nov: only a hired manager hires; a manager never overfills and hires early only for a leaver when the demand is there; a demand-limited
+/// Only a hired manager hires; a manager never overfills and hires early only for a leaver when the demand is there; a demand-limited
 /// company can be proposed bigger premises; staff grow, are promoted, and a named successor takes over. Rules: Businesses/ManagerHiring.swift,
 /// PremisesProposals.swift, GrowthPaths.swift.
 final class ManagerHiringTests: XCTestCase {

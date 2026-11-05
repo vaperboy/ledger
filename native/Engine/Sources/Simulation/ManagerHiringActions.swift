@@ -5,7 +5,7 @@ import Finance
 import Businesses
 
 // Manager hiring, premises proposals and staff growth paths: the public reads and actions for the screens (no screen yet; the owner decides about screens later).
-// Rules: Businesses/ManagerHiring.swift, PremisesProposals.swift, GrowthPaths.swift; numbers: docs/DECISIONS.md ("Manager hiring").
+// Rules: Businesses/ManagerHiring.swift, PremisesProposals.swift, GrowthPaths.swift.
 
 public extension GameEngine {
     // MARK: Who hires

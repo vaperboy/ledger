@@ -6,7 +6,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 2 item 5: one employer-cost function; the hiring preview equals what payroll books (part-time, seasonal, full-time) in six countries.
+/// One employer-cost function; the hiring preview equals what payroll books (part-time, seasonal, full-time) in six countries.
 final class EmployerCostTests: XCTestCase {
     func testPreviewEqualsWhatPayrollBooksInSixCountries() throws {
         for code in ["UK", "US", "DE", "PL", "MX", "JP"] {

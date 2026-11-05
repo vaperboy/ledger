@@ -4,7 +4,7 @@ import Countries
 import Employees
 import Businesses
 
-// Stage 3 read models and actions for the Team screens: the employment contract (type, working percentage, real dates, notice, history), the work-log
+// Read models and actions for the Team screens: the employment contract (type, working percentage, real dates, notice, history), the work-log
 // feedback, and Company > Team > Promises. Changes to a contract go through the ONE door, `contractPropose` (ContractTalkActions.swift):
 // working percentage = Proposal(.hours, amount: 80, choice: "percent"); hourly wage / pay rise = .payRise; fixed salary = .payBasis "salary";
 // contract type and seasonal duration = .term ("perm", "fixed:<weeks>", "seasons:<n>") and .hours "season:<id>"; benefits = .benefits; responsibilities and

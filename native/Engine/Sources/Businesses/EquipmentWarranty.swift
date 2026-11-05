@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// A breakdown of an item that is still under warranty needs no decision: the supplier repairs it at no cost (owner decision, 3 Nov), the unit is
+/// A breakdown of an item that is still under warranty needs no decision: the supplier repairs it at no cost, the unit is
 /// out of use for one or two days, and an informational message says so. Out of warranty the breakdown events keep asking the owner.
 /// The warranty data is the `warr` week of each unit (`EquipmentUnits.newUnit`) and of each vehicle (`CompanySetup`); a used unit has none.
 public enum EquipmentWarranty {

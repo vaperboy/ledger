@@ -14,7 +14,7 @@ public struct BoardCandidate: Identifiable, Equatable, Sendable {
 }
 
 extension ManagerModel {
-    /// An employee on the board of their own company sits for this share of the normal fee (DECISIONS.md, board seats for your own people).
+    /// An employee on the board of their own company sits for this share of the normal fee.
     static let ownCompanySeatFeeShare = 0.5
     static let ownStaffMinScore = 55.0
 

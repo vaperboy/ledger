@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Businesses
 
-/// The used car dealer's yard (rework of 4 Nov 2026): one price, quote and repair order per car, the lot, the buyers and the sales.
+/// The used car dealer's yard: one price, quote and repair order per car, the lot, the buyers and the sales.
 public extension GameEngine {
     /// Set the asking price of one car, in company currency units.
     @discardableResult

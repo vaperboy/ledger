@@ -3,12 +3,11 @@ import GameCore
 import Countries
 import Employees
 
-/// A real work log for every employee (Stage 3, spec 5.3G). Each week the weekly staff simulation (`StaffRoutine`, `StaffWeek`, `StaffProfile.trackWeek`)
+/// A real work log for every employee. Each week the weekly staff simulation (`StaffRoutine`, `StaffWeek`, `StaffProfile.trackWeek`)
 /// records what happened to this person's work: hours worked against hours contracted, assigned and completed tasks, mistakes, late arrivals, days lost
 /// to sickness, initiative taken, times they needed guidance, and whether they told you what you needed to know or went quiet. The log keeps the last
 /// 26 weeks as one compact row per week (`wlog` on the staff record). Performance feedback is composed from those rows only, never from a rating:
 /// "Completed most assigned work, but needed regular guidance." is said because the log has many tasks done and many calls for guidance.
-///
 /// How the events arise: from the same factors that already drive the simulated business (skill, learning curve, tiredness, personality, pay and
 /// treatment); the draws use a hash of the person and the week, not the game's random stream, so a week replays the same and nothing else moves.
 public enum WorkLog {

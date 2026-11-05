@@ -227,7 +227,7 @@ public extension GameEngine {
         let working = lines.filter { $0.kind == .workingCapital }.reduce(0) { $0 + $1.amount }
         let fees = lines.filter { $0.kind == .fee }.reduce(0) { $0 + $1.amount }
         // What the company itself needs: everything except registration and abroad fees, which leave your own account.
-        // Owner decision (2 Nov): the game buys and hires nothing at start, so only what the paperwork and the place need is charged; the full
+        // the game buys and hires nothing at start, so only what the paperwork and the place need is charged; the full
         // figure (equipment, a team, a buffer) is the RECOMMENDED investment, shown but never taken unless the player puts it in.
         let recommendedIDs: Set<String> = ["reqEq", "reqVeh", "optEq", "payroll", "buffer"]
         let needed = lines.filter { $0.kind != .fee && !recommendedIDs.contains($0.id) }.reduce(0) { $0 + $1.amount }

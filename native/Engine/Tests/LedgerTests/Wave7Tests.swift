@@ -9,7 +9,7 @@ private extension GameEngine {
     mutating func w7week() { for _ in 0..<7 { _ = nextDay() } }
 }
 
-/// Wave 7: construction, electrician, plumber, handyman, engineering office, security (PROJ and job-contract model).
+/// Construction, electrician, plumber, handyman, engineering office, security (PROJ and job-contract model).
 final class Wave7Tests: XCTestCase {
     let trades = ["construction", "electrician", "plumber", "handy", "engcons", "security"]
 

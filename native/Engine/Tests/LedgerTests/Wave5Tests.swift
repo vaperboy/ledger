@@ -5,7 +5,7 @@ import Finance
 @testable import Businesses
 import Simulation
 
-/// Wave 5: professional services (cons, tutor, photo, law, acctfirm, mktg). Notes `native/docs/waves/wave5.md`.
+/// Professional services (cons, tutor, photo, law, acctfirm, mktg).
 final class Wave5Tests: XCTestCase {
     static let trades = ["cons", "tutor", "photo", "law", "acctfirm", "mktg"]
 

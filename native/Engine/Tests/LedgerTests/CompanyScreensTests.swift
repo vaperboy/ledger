@@ -50,7 +50,7 @@ final class CompanyScreensTests: XCTestCase {
         guard case .success(let bought) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, form: .limited, size: 1, name: nil, pick: .init(listingIndex: 1, buy: true), fundWith: 200_000_000) else { return XCTFail("not started") }
         XCTAssertEqual(bought.premises, .ok)
         XCTAssertTrue(e.state.company(bought.companyID)!.value("prem")["owned"].bool)
-        // No pick: nothing is rented by itself (owner decision, 2 Nov); the player chooses the place in AirStay.
+        // No pick: nothing is rented by itself; the player chooses the place in AirStay.
         guard case .success(let std) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, form: .limited, size: 1, name: nil, pick: nil, fundWith: 100_000_000) else { return XCTFail("not started") }
         XCTAssertNil(std.premises)
         XCTAssertTrue(e.state.company(std.companyID)!.value("prem").isNull)
@@ -64,7 +64,7 @@ final class CompanyScreensTests: XCTestCase {
         XCTAssertNil(o.insurer)
         XCTAssertEqual(o.policies.count, 6)
         XCTAssertNotNil(o.accountant)
-        // Atlas Insurance takes every policy: no insurer has to be chosen first (owner decision, 2 Nov).
+        // Atlas Insurance takes every policy: no insurer has to be chosen first.
         XCTAssertEqual(e.toggleInsurancePolicy(companyID: id, product: "prop"), .done)
         XCTAssertEqual(e.coverageOverview(companyID: id)?.insurer?.name, "Atlas Insurance")
         let insurers = e.adviserChoices(companyID: id, kind: .insurer)

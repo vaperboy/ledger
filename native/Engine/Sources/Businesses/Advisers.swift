@@ -107,7 +107,7 @@ public enum Advisers {
     public static func togglePolicy(_ s: inout GameState, companyID: Int, product: String) -> Result {
         guard let i = s.companyIndex(companyID) else { return .unknown }
         var ins = s.companies[i].value("ins")
-        // Atlas Insurance takes every policy (owner decision, 2 Nov): no insurer has to be chosen first.
+        // Atlas Insurance takes every policy: no insurer has to be chosen first.
         if !ins[product].bool && s.companies[i].value("insr").isNull {
             s.companies[i].set("insr", .object(["id": .string("atlas"), "name": .string("Atlas Insurance"), "premM": .number(1.0), "payM": .number(0.95), "rating": .number(4.3)]))
         }

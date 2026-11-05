@@ -5,7 +5,7 @@ import Finance
 import Businesses
 
 // Hiring rebuild, the public API for the screens: workplaces, promises per worker, job ads, the agency, the role catalog, duties, the one-page terms
-// summary and the worker profile. Rules: Businesses/HiringRebuild.swift and HiringAds.swift; numbers: docs/DECISIONS.md ("Hiring rebuild").
+// summary and the worker profile. Rules: Businesses/HiringRebuild.swift and HiringAds.swift.
 
 public struct TermsCounterOption: Equatable, Sendable, Identifiable {
     public var id: String

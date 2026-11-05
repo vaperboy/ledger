@@ -251,7 +251,7 @@ public enum StaffProfile {
         let cur = World(state: s, data: data).currency(co)
         let mk = cur.roundedStep(marketPay(s, co, co.staff[k], data: data) * (0.7 + n.skill / 160), about: 100)
         // The base pay of "fix" and the fixed part of "mix" never go under the country's minimum wage for the contracted hours.
-        // Commission only has NO base at all (owner rule): pay is the commission and nothing else, whatever the minimum wage.
+        // Commission only has NO base at all: pay is the commission and nothing else, whatever the minimum wage.
         let floor = World(state: s, data: data).minimumWage(co, hours: co.staff[k].weeklyHours ?? StaffModel.fullWeekHours).rounded(.up)
         var st = co.staff
         st[k].monthlyWage = mode == "com" ? 0 : max(floor, mode == "fix" ? max(st[k].monthlyWage, cur.roundedStep(mk * 0.95, about: 100)) : cur.roundedStep(mk * (PayPlans.mode("mix")?.baseShare ?? 0.6), about: 100))

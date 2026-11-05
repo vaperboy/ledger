@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-// Accounting access (owner decision, Oct 2026): NAMED USERS ONLY. The owner has full access. Nobody else has any unless the owner adds them for that
+// Accounting access: NAMED USERS ONLY. The owner has full access. Nobody else has any unless the owner adds them for that
 // company, the accountant and managers included. Access to one company never gives access to another. Every Accounting read takes `user`
 // (nil = the owner) and answers nil when that user may not see the section; every write checks the level.
 

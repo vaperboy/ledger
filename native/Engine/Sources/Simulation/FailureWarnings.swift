@@ -3,7 +3,7 @@ import GameCore
 import Finance
 import Businesses
 
-/// A company about to be sold by its creditors says so first (owner decision, 2 Nov): a red alert, once every four weeks, while there is still
+/// A company about to be sold by its creditors says so first: a red alert, once every four weeks, while there is still
 /// time to put money in, cut costs or talk to the bank. The sale itself is `Failure.bankrupt`.
 public extension Failure {
     static func warn(_ s: inout GameState, context: FinanceContext) {

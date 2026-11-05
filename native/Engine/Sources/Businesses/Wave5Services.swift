@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 5: professional services sold by the hour or the job (cons, tutor, photo, law, acctfirm, mktg). Notes: `native/docs/waves/wave5.md`.
+/// Professional services sold by the hour or the job (cons, tutor, photo, law, acctfirm, mktg).
 /// A service TYPE is the item. The engine unit stays one block of billable hours (`hpu` hours; one hour for most trades, a six-hour shoot for photo),
 /// so demand, capacity and every old price keep working: an item sells `unitShare` of the blocks at `ratio` times the going ticket, and its hourly
 /// rate is its price divided by the hours in a block. What this adds, per item, from `Resources/wave5_services.json`:

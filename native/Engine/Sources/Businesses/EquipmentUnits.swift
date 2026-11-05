@@ -15,7 +15,7 @@ public enum EquipmentUnits {
         return own.isEmpty ? (foreign.kind(equipmentID, tables) ?? "mach") : own
     }
 
-    /// Every item of every trade, for the TechPro Store (owner decision, 2 Nov): any company can buy any item. Items of other trades
+    /// Every item of every trade, for the TechPro Store: any company can buy any item. Items of other trades
     /// are bought and owned but do nothing for the business (no capacity, quality or requirement), so their flags and standard count are stripped.
     static let foreign = ForeignItems()
 

@@ -1,9 +1,8 @@
 import Foundation
 import GameCore
 
-/// The company transaction ledger (Stage 2): every movement of a company's cash, recorded where cash really moves (`Ledger.moveRaw`), so Bank and
+/// The company transaction ledger: every movement of a company's cash, recorded where cash really moves (`Ledger.moveRaw`), so Bank and
 /// Accounting read the same rows. It extends the old capped `tx` list; it is not a second money system (it never moves money).
-///
 /// A company keeps `led`: weeks (`"w<week>"`) of rows `[amount, count, category, label, ref, lastDay]`. Rows of the same direction, category, label and
 /// reference in the same week are merged (many sales in a week make one "Sales" row with a count), so a long game stays small; the last
 /// `keepWeeks` weeks are kept. `ledFrom` is the week the ledger began for the company: older movements are only in the legacy `tx` list.

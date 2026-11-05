@@ -3,12 +3,12 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 8, the RENT trades (resrent, comrent, parking, carrental, hotel, pcbang). Every rentable unit is an item of the company: a building of flats, shops or
+/// RENT trades (resrent, comrent, parking, carrental, hotel, pcbang). Every rentable unit is an item of the company: a building of flats, shops or
 /// parking spaces (a `Property`), each rental car or van (a `veh` record), a room type of the hotel, a class of gaming seat. The item's rate is the live
 /// slider, its cost is built from the company's own books (loan interest, upkeep, depreciation, wages, fixed costs, rent) divided by the periods
 /// it was actually rented, so the profit or loss on the rate is true to the unit. Nothing here moves cash: the attributions come from what the
 /// weekly model already books. The only effect on the model is `rateMultiplier`, the rate a landlord charges for a building.
-/// Save keys: `items27` (the units become items), `itemsv2` (their records), `w8u` (set once the units were set up). See `native/docs/waves/wave8.md`.
+/// Save keys: `items27` (the units become items), `itemsv2` (their records), `w8u` (set once the units were set up).
 public enum Wave8 {
     public static var trades: Set<String> { ItemWaves.w8 }
     static let allTrades: Set<String> = ["resrent", "comrent", "parking", "carrental", "hotel", "pcbang"]

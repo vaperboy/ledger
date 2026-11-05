@@ -94,7 +94,7 @@ public enum Banking {
             maxLoan = max(0, consumerBaseMonths * context.homeCountry(s).medianMonthlyWage + max(0, netWorth) * 0.15) * f
         case "biz":
             // A bank also lends against what the business is worth (customers, contracts, assets), not only against profit: a company that
-            // runs at a loss for years can still borrow while it is worth something, as in real life (owner decision, 2 Nov).
+            // runs at a loss for years can still borrow while it is worth something, as in real life.
             let fromBooks: Double = co.map { max(0, CompanyFigures.yearlyProfitEstimate($0, currentWeek: s.week)) * 3 + CompanyFigures.fixedAssets($0) * 0.5 } ?? 0
             let base: Double = fromBooks + max(0, companyValue ?? 0) * 0.35
             maxLoan = (base + max(0, netWorth) * 0.25) * bandBiz

@@ -3,9 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// The personal guarantee on a company loan, and the bank discussion that can release it (owner decision, Oct 2026: the guarantee stays
-/// after a conversion to a limited company, and the player can renegotiate it with the bank).
-///
+/// The personal guarantee on a company loan, and the bank discussion that can release it.
 /// The bank wants a higher margin in return for releasing the guarantee. The answer comes from the shared `Negotiation` module: the bank's
 /// hidden reservation is a premium that grows with a weaker credit score and a company without a clean record; the player offers a premium
 /// (a yearly rate added to the loan's margin). A talk that walks away locks the subject for 26 weeks. The talk is kept on the loan (`neg`).

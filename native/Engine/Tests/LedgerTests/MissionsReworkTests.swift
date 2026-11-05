@@ -9,7 +9,7 @@ import Finance
 
 /// Awards reflect results, not setup: opening a company, hiring and signing papers earn nothing; results over time do.
 final class MissionsReworkTests: XCTestCase {
-    /// `ladder: false` plays the older-save mode (no linear ladder): the ladder celebrates every goal by design (brief 7.4), the checklist keeps setup steps silent.
+    /// `ladder: false` plays the older-save mode (no linear ladder): the ladder celebrates every goal by design, the checklist keeps setup steps silent.
     private func setupGame(seed: Int = 4242, ladder: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         var id = 0

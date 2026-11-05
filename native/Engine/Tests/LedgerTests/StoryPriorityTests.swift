@@ -1,7 +1,7 @@
 import XCTest
 import Simulation
 
-/// The week report's story sentence: one test per rule, the priority order and the 110 character cap (brief Part 3.2).
+/// The week report's story sentence: one test per rule, the priority order and the 110 character cap.
 final class StoryPriorityTests: XCTestCase {
     func testRule1CashBelowZero() {
         let i = WeekStoryInput(cashBelowZeroCompany: "Nordvik Cafe", badEventHeadline: "A pipe burst.", badEventCostShare: 0.5, profit: 100, lastWeekProfit: -5)

@@ -3,14 +3,14 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 11, the financial, energy and group trades (insco, bank, fund, power, oilgas, hold). Each real product line of the company is an item:
+/// Financial, energy and group trades (insco, bank, fund, power, oilgas, hold). Each real product line of the company is an item:
 /// an insurer's covers (premium, expected claims, reserves), a bank's loan types and deposit accounts (rate against funding cost and credit loss),
 /// a fund's fee classes (AUM, fee, market exposure), a power producer's tariffs (price per MWh against the cost of generating it), an oil company's
 /// fields (price per barrel against lifting cost, depletion and the oil price exposure) and a holding's group services (cost-plus fee per unit).
 /// The money stays where it was: `FinanceModel`, `EnergyModel` and `HoldingModel` book premiums, interest, fees, claims, losses and barrels exactly as before,
 /// and the items split that money by product. Nothing here moves cash. The overhead (wages, premises, interest, depreciation not booked to a product)
 /// is the company's smoothed weekly expense less what the product lines carry directly, shared by value, so the item profits tie to the company's result.
-/// Save keys: `items27` (the products become items), `itemsv2` (their records), `w11` (set once set up). See `native/docs/waves/wave11.md`.
+/// Save keys: `items27` (the products become items), `itemsv2` (their records), `w11` (set once set up).
 public enum Wave11 {
     public static var trades: Set<String> { ItemWaves.w11 }
     static let allTrades: Set<String> = ["insco", "bank", "fund", "power", "oilgas", "hold"]

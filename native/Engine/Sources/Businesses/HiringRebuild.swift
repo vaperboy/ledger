@@ -4,8 +4,7 @@ import Countries
 import Employees
 import Finance
 
-// Hiring rebuild (engine side, Nov 2026): workplaces, per-worker promises with patience, the role catalog with real effects, the worker profile.
-// Rules and numbers are recorded in native/docs/DECISIONS.md ("Hiring rebuild").
+// Hiring rebuild (engine side): workplaces, per-worker promises with patience, the role catalog with real effects, the worker profile.
 
 // MARK: Workplaces
 

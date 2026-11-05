@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Investments
 
-// The Bank app's loan flow (Oct 2026): a quote with fee, disbursal and schedule, and an application with a documents form the bank checks.
+// The Bank app's loan flow: a quote with fee, disbursal and schedule, and an application with a documents form the bank checks.
 // The loan itself is the existing `Banking.take`; this file adds the arrangement fee, the paperwork check and the figures a screen shows.
 
 /// What the applicant hands in. The bank checks it against the game's own records.

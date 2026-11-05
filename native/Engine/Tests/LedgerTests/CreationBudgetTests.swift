@@ -5,7 +5,7 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Stage 4D: founding a business is financially transparent. The plan lists mandatory costs, optional extras and working capital, keeps a
+/// Founding a business is financially transparent. The plan lists mandatory costs, optional extras and working capital, keeps a
 /// personal reserve, and quick set-up never hires or buys what the company's cash cannot carry. The matrix probe re-runs the audit's 23 countries
 /// x every trade setup (default start cash, 42 days, payroll approved as it comes) for the old automatic start and the budgeted one.
 final class CreationBudgetTests: XCTestCase {

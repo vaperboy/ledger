@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// THE rule for hiring on the owner's behalf (owner decision, 3 Nov): ONLY a hired manager hires for the company. Without a manager nobody is
+/// THE rule for hiring on the owner's behalf: ONLY a hired manager hires for the company. Without a manager nobody is
 /// hired automatically (the owner gets the usual messages). A manager never overfills: a hire needs a free place (`Workplaces`) and a headcount
 /// the company's team calls for. A manager may hire EARLY, before the leaver actually goes, only when someone is on their way out (notice,
 /// retirement, a fixed term ending, burnout or a low mood) AND the company has the demand for the role (`demandLimited`).

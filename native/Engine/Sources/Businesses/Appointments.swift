@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Countries
 
-/// Who may appoint whom (owner decision, 3 Nov, real-life basis in DECISIONS.md "Appointment authority").
+/// Who may appoint whom.
 /// The owner appoints the general manager, unless a CEO or managing director exists: then the CEO appoints. A general manager hires ordinary staff
 /// alone, but may NOT hire an assistant (deputy) manager without the confirmation of the level above: the CEO, or the owner when there is none.
 /// The manager's hire is therefore a proposal message ("asst", a decision for that level); the assistant exists only after it is confirmed.

@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Businesses
 
-/// Progressive unlocks (Businesses/Unlocks.swift, native/docs/UNLOCKS.md).
+/// Progressive unlocks (see Businesses/Unlocks.swift).
 public extension GameEngine {
     /// Every registry item for one company: unlocked or not, with the reason text.
     func unlockState(companyID: Int) -> [UnlockItem] { Unlocks.state(state, companyID: companyID, context: context) }

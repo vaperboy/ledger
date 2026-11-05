@@ -162,7 +162,7 @@ public enum Payday {
 
     static let inHouseFamilies: Set<String> = ["fin", "club", "hold", "energy"]
 
-    /// Who is responsible for the payroll (owner decision, Oct 2026): a qualified accountant (an employed accountant, or the accountant the
+    /// Who is responsible for the payroll: a qualified accountant (an employed accountant, or the accountant the
     /// company has appointed), else a suitable manager (one who decides at level 1 or 2 on their card) without any extra fee, else the player.
     /// Nothing is chosen by the player and nobody is hired automatically; the old stored choice (`pr29.mode`) is kept in the save but no longer used.
     public enum Responsible: String, Sendable { case accountant, manager, owner }
@@ -487,7 +487,7 @@ public enum Payday {
 
     // MARK: The day
 
-    /// New-player start (brief 1.3): in the first weeks a payment the account cannot cover is not made today and not made late either; it waits for
+    /// New-player start: in the first weeks a payment the account cannot cover is not made today and not made late either; it waits for
     /// tomorrow, with no fee and no message beyond the Home banner (`rest["tight"]`). Returns true when today's payment should wait.
     static func waitsForCash(_ s: inout GameState, _ i: Int, due: Double, today t: Int, data: GameData) -> Bool {
         guard due > 0, data.balance.firstYear.noOverdraftActive(s), due > s.companies[i].cash else { return false }

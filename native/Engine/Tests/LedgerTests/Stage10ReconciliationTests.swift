@@ -6,7 +6,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 10 regression: the books balance after each money event, valuation is not double counted, employment pay lines, management routing, and a save mid-game.
+/// The books balance after each money event, valuation is not double counted, employment pay lines, management routing, and a save mid-game.
 final class Stage10ReconciliationTests: XCTestCase {
     private func firm(_ code: String = "UK", trade: String = "cafe", form: LegalForm = .limited, seed: Int = 31, days: Int = 14) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)

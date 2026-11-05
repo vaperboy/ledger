@@ -6,7 +6,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 2 probes: manager-path payroll responsibility; conversion of setup / closed / sold / chain / franchise companies; deductions; hours worked;
+/// Manager-path payroll responsibility; conversion of setup / closed / sold / chain / franchise companies; deductions; hours worked;
 /// draft and paid invoices; the financing-fee category; the commission/bonus on-cost.
 final class Stage2ProbeTests: XCTestCase {
     private func start(_ form: LegalForm, trade: String = "cafe", seed: Int = 17) throws -> (GameEngine, Int) {

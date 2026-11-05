@@ -45,7 +45,7 @@ public enum Chains {
     // MARK: Documents the chain and franchise features add
 
     /// Original: `DOCS.chain`, `DOCS.fran`, `DOCS.fran_op`; the trademark and the operations manual are the real-life papers a chain and a franchisor need
-    /// (owner decision, 3 Nov, DECISIONS.md "Chain and franchise requirements"). Fields: name, issuer, base fee, weeks of review or writing, renewal, note.
+    /// . Fields: name, issuer, base fee, weeks of review or writing, renewal, note.
     static let extraDocuments: [String: JSONValue] = [
         "trademark": .array(["Trademark registration", "Intellectual property office", 4200, 6, 0, "Registers the brand name so nobody else can use it. The office reviews it for 4 to 8 weeks."]),
         "ops_manual": .array(["Operations manual", "Written by your own team", 900, 3, 0, "How every store is run, written by you or your manager over a few weeks. No authority reviews it."]),

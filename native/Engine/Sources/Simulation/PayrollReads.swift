@@ -146,7 +146,7 @@ public extension GameEngine {
                                     reason: o.lateReason.isEmpty ? "Payroll is late." : o.lateReason, isLate: true)
             }
             guard o.needsApproval else { return nil }
-            // Owner decision: an unapproved payroll is an alert only once the pay date has come (before it, the Inbox asks for approval).
+            // An unapproved payroll is an alert only once the pay date has come (before it, the Inbox asks for approval).
             guard o.nextPayDay <= Payday.dayNumber(week: state.week, day: state.day) else { return nil }
             let covered = o.autoApproves && o.companyCash >= o.estimate
             guard !covered else { return nil }

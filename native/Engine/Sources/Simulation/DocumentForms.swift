@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// What the player sees when filling in and signing a document or licence application (owner decision, 2 Nov): the form's facts, then the
+/// What the player sees when filling in and signing a document or licence application: the form's facts, then the
 /// application goes in and the authority answers after its review time, possibly with a refusal.
 public struct DocumentForm: Equatable, Sendable {
     public var id: String

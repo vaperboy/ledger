@@ -4,9 +4,9 @@ import Countries
 import Employees
 import Finance
 
-// Job ads and the agency (hiring rebuild, Nov 2026). An ad costs a fee and brings applicants over the next four weeks, a few a week, more for a bigger
+// Job ads and the agency. An ad costs a fee and brings applicants over the next four weeks, a few a week, more for a bigger
 // company; an agency costs much more, brings suggestions at once and better ones later, and takes a share of the hired person's pay for 24 months.
-// The 'network' search mode is deprecated (kept so old saves and the automatic hirers work; not offered to the player). Numbers: DECISIONS.md.
+// The 'network' search mode is deprecated (kept so old saves and the automatic hirers work; not offered to the player).
 
 public enum JobAds {
     public enum PostResult: Equatable, Sendable {

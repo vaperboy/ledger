@@ -42,7 +42,7 @@ public enum Franchising {
 
     public typealias Requirement = Chains.Requirement
 
-    /// What a franchisor really needs (owner decision, 3 Nov, DECISIONS.md "Chain and franchise requirements"): a proven concept (a year of trading and
+    /// What a franchisor really needs: a proven concept (a year of trading and
     /// four profitable quarters), a registered trademark, an operations manual, a franchise disclosure document prepared with a lawyer, and someone
     /// to support franchisees. No cash balance, reputation or store count is demanded.
     public static func requirements(_ s: GameState, _ co: Company) -> [Requirement] {

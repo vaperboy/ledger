@@ -4,7 +4,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 2 item 4: the player does not choose who runs payroll; it is derived (qualified accountant, else suitable manager, else the player).
+/// The player does not choose who runs payroll; it is derived (qualified accountant, else suitable manager, else the player).
 final class PayrollResponsibilityTests: XCTestCase {
     func testDerivedRuleAndLegacyChoiceKept() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 3)

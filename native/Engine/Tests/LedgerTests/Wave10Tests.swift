@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Wave 10 (transport and logistics): services and routes as items, their economics from the books, the price slider, old saves, and a two-year probe per trade.
+/// Transport and logistics: services and routes as items, their economics from the books, the price slider, old saves, and a two-year probe per trade.
 final class Wave10Tests: XCTestCase {
     static let all = ["taxi", "courier", "trucking", "shipping", "airline", "wh3pl"]
 

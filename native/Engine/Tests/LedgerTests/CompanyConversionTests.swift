@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 2, financial.md C1-C10: conversion to a limited company is one real transaction.
+/// Conversion to a limited company is one real transaction.
 final class CompanyConversionTests: XCTestCase {
     private func ctx(_ e: GameEngine) -> FinanceContext { FinanceContext(countries: e.data.countries, trades: e.data.catalog) }
 

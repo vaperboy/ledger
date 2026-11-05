@@ -66,7 +66,7 @@ public struct UsedCarSale: Sendable, Equatable {
     public var profit: Double { price - buyPrice - repairs - holding }
 }
 
-/// The used car dealer's yard (rework of 4 Nov 2026): lot spaces from the premises, repair orders to your own mechanic company or a garage,
+/// The used car dealer's yard: lot spaces from the premises, repair orders to your own mechanic company or a garage,
 /// reservations on cars being fixed, stuck cars and forced sales, buyers (hired, manager or you) and the live price quote.
 extension UsedCarDealer {
     public static let offerAction = "ucoffer"

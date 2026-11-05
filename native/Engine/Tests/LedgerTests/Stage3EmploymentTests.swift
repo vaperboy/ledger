@@ -6,7 +6,7 @@ import Finance
 @testable import Businesses
 @testable import Simulation
 
-/// Stage 3 engine: working percentages, the two-page hiring negotiation, promises, after-hiring changes, the work log and hidden values. Probes run in six
+/// Working percentages, the two-page hiring negotiation, promises, after-hiring changes, the work log and hidden values. Probes run in six
 /// countries (UK US DE PL MX JP).
 final class Stage3EmploymentTests: XCTestCase {
     static let countries = ["UK", "US", "DE", "PL", "MX", "JP"]

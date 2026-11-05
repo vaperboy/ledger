@@ -13,7 +13,7 @@ import Finance
 /// a list of { id, n, svc, q (unit share), r (price ratio, sum of q*r = 1), pm (price / market), dp (discount percent), dw (weeks left), lg (listed) }.
 /// Until the player changes something nothing is stored: the default list is derived from the trade and company name.
 public enum SalesItems {
-    /// Price elasticity of one item's demand, and the clamps on price ratio and on the demand multiplier (DECISIONS.md).
+    /// Price elasticity of one item's demand, and the clamps on price ratio and on the demand multiplier.
     public static let elasticity = -1.5
     public static let ratioRange = 0.3...3.0
     static let demandRange = 0.4...2.5

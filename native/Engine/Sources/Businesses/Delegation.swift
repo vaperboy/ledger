@@ -3,7 +3,7 @@ import GameCore
 import Finance
 
 /// (The old policy switches stay in the save as a hidden master off-switch for tests; the player no longer sees them.)
-/// What the player's people do without asking (owner decision, 2 Nov: there is no "How much I decide" setting any more). It follows who is hired:
+/// What the player's people do without asking. It follows who is hired:
 /// an accountant or a manager approves routine payroll, a manager replaces people who leave, staff answer routine complaints, and the amount a
 /// manager may spend without asking grows with the owner's net worth. Without a manager everything comes to the owner.
 public enum Delegation {
@@ -49,8 +49,7 @@ public enum Delegation {
         return level <= top.rawValue ? Rank(rawValue: max(level, 1)) ?? .owner : .owner
     }
 
-    /// How serious a message is, 1 (routine) to 5 (only the owner can take it), by its kind and its size against the owner's net worth
-    /// (owner decision, 2 Nov): payroll is routine; people matters are a manager's; bad news is a director's or more; selling or buying out a
+    /// How serious a message is, 1 (routine) to 5 (only the owner can take it), by its kind and its size against the owner's net worth: payroll is routine; people matters are a manager's; bad news is a director's or more; selling or buying out a
     /// shareholder, and dividend proposals, are the CEO's or the owner's. A size of more than a hundredth of net worth raises the level, a small one
     /// lowers it (a 10k matter is a manager's at 10M, a 1k one routine). Read-only news is routine unless it is bad.
     public static func level(of m: Message, netWorth nw: Double = 0) -> Int {

@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Wave 2 actions for the screens: real catalogue items to add, and repair orders from one company of yours to a garage of yours.
+/// Actions for the screens: real catalogue items to add, and repair orders from one company of yours to a garage of yours.
 public extension GameEngine {
     /// Items from the trade's real catalogue that this company does not sell yet.
     func wave2AddableItems(companyID: Int) -> [Wave2.Def] { Wave2.addable(state, companyID: companyID, data: data) }

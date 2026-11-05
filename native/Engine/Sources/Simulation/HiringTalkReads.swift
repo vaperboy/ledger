@@ -4,7 +4,7 @@ import Countries
 import Employees
 import Businesses
 
-// The Negotiation screen's two reads (new look, Oct 2026): what a hire at a wage costs a year with the employer's charges, and where a pay talk
+// The Negotiation screen's two reads: what a hire at a wage costs a year with the employer's charges, and where a pay talk
 // with a candidate stands. Reads only; the hidden figures of the candidate (what they would settle for, how much patience is left) are not in them.
 
 /// What hiring someone at a monthly wage costs a year: the wages and the employer's charges (social contributions, pension, injury insurance).

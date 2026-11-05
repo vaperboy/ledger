@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 3: made goods with recipes (bakery, cafe, restaurant, foodtruck, brewery, vineyard, farm). Docs: `native/docs/waves/wave3.md`.
+/// Made goods with recipes (bakery, cafe, restaurant, foodtruck, brewery, vineyard, farm).
 /// An item of these trades is a product with a recipe (`Resources/wave3_recipes.json`): inputs bought from the company's suppliers, spoilage, labour minutes,
 /// batch size, capacity per shift, shelf life, lead time (brewing, ageing, growing) and allergens. The record (`ItemModels`, model MADE, or STK for bought-in
 /// drinks and beans) carries `cost` = the rolled-up inputs and `prep` = the spoilage cost of one unit sold.
@@ -261,7 +261,7 @@ public enum Wave3Recipes {
         s.companies[i].set("itemsv2", .object(o))
     }
 
-    /// Weekly: every open company of an opted-in trade is brought up to date. Costs follow the market price, stock follows sales. Hook: call after `ItemModels.weeklyTick`.
+    /// Weekly: every open company of an opted-in trade is brought up to date. Costs follow the market price, stock follows sales.
     public static func weeklyTick(_ s: inout GameState, data: GameData, trades set: Set<String> = ItemWaves.w3) {
         guard !set.isEmpty else { return }
         let ids: [Int] = s.companies.filter { $0.status == .open && set.contains($0.type) }.map { $0.id }

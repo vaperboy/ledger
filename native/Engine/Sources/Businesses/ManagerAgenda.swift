@@ -4,8 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// Board agendas, decisions and what they do (Stage 6).
-///
+/// Board agendas, decisions and what they do.
 /// A meeting is held only when there is something to decide. Its agenda is built from what is true in the companies the board looks
 /// after: losses, thin margins, low awareness, missing paperwork, a company without a manager, sold-out days, a bottleneck, owners
 /// waiting for a dividend, and the signs of trouble among the people. Approving an item changes the game through the systems that already
@@ -13,7 +12,6 @@ import Finance
 /// premises purchases, the manager search, dividend policy, the meeting with a manager). An item the board cannot carry out right now is
 /// refused with the reason and stays on the agenda. The answer to every item is kept as an outcome; a declined item is not raised again
 /// for a while; a meeting closes when its last item is decided or after `lapseWeeks`.
-///
 /// Saved on the board `brd`: `mts[]` (meetings; items carry `key`, `eff`, `risk`, `cost?`, `by?`, `st`, `out`, `dw`), `memo` {key: week until
 /// which the same point is not raised again} and `fu[]` (follow-up actions). All keys are written only when set.
 extension ManagerModel {

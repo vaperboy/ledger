@@ -3,13 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 9, venues with capacity tickets and passes (nightclub, casino, fun, skires, indoorski, gym, club). The venue sells entry tickets by peak and off-peak, tables,
+/// Venues with capacity tickets and passes (nightclub, casino, fun, skires, indoorski, gym, club). The venue sells entry tickets by peak and off-peak, tables,
 /// lift passes, memberships, season passes, lessons, parties, bar, food and merchandise; each is an item with its own real cost: the direct cost of one sale
 /// (bottle, pour, meal, duty, comps) plus its share of what the venue costs a week (wages, rent, depreciation, loans, the lifts, the cooling plant) divided by
 /// what it really sold. The profit or loss slider on the price is true to that cost. Cost of sales moves with the volume sold, not with the price
 /// the owner charges (`cogsFactor`, exactly 1 at default prices). The football club keeps its own model (`FootballModel`): its items are attributed from the
 /// club's own week and the match and season ticket price moves the existing ticket level (`clubTixShift`, exactly 0 at default prices).
-/// Save keys: `items27` (the items), `itemsv2` (their records), `w9u` (set once the items were set up). See `native/docs/waves/wave9.md`.
+/// Save keys: `items27` (the items), `itemsv2` (their records), `w9u` (set once the items were set up).
 public enum Wave9 {
     public static var trades: Set<String> { ItemWaves.w9 }
     static let allTrades: Set<String> = ["nightclub", "casino", "fun", "skires", "indoorski", "gym", "club"]

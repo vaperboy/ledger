@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// What the start screen reads before any game exists (brief Part 1.2): the countries by size, the starter trades, a suggested company name
+/// What the start screen reads before any game exists: the countries by size, the starter trades, a suggested company name
 /// and the money a player starts with. Pure reads over bundled data; nothing here changes a game.
 public struct StarterTrade: Identifiable, Equatable, Sendable {
     public var id: String
@@ -16,7 +16,7 @@ public struct StarterTrade: Identifiable, Equatable, Sendable {
 }
 
 public extension GameEngine {
-    /// The twelve trades shown first (brief 1.2).
+    /// The twelve trades shown first.
     static let starterTradeIDs: [String] = ["cafe", "barber", "foodtruck", "cleaning", "handy", "webdev", "photo", "kiosk", "bakery", "gym", "boutique", "carclean"]
 
     /// The countries, largest first (by population).

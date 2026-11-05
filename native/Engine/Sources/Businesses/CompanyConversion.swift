@@ -3,8 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Turning a sole trader into a limited company, as ONE transaction (Stage 2, financial.md C1-C10).
-///
+/// Turning a sole trader into a limited company, as ONE transaction.
 /// What the old flag-flip missed and this does:
 ///  - the owner pays the share capital personally; the player chooses who pays the FEE (personal or company account),
 ///    and the chosen account is checked (personal means current account plus savings, as every personal payment);

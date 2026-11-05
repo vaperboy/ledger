@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Progressive unlocks (owner spec, 3 Nov 2026, see native/docs/UNLOCKS.md): a small registry of features that open when they make sense in real
+/// Progressive unlocks: a small registry of features that open when they make sense in real
 /// life. Locked items stay visible with a one-line reason, except those marked `hiddenUntilUnlocked` (meaningless before). Nothing ever locks
 /// something the company already uses. The weekly sweep records a newly satisfied unlock once per company in `rest["unlk"]`
 /// { "<companyID>": { "<id>": { w: week it opened, shown: 0 or 1 } } }; a save without `unlk` is seeded silently (all satisfied unlocks shown).

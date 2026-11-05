@@ -5,7 +5,7 @@ import Countries
 // testable on Linux. The app (Core/Entitlements, Core/Ads) feeds these with the store's answers and reads only their results.
 // No purchase changes a sim number: these types gate content and comfort only.
 
-/// The five store products (brief 11.2, 11.3). Ids are fixed; prices are never stored here (always StoreKit `displayPrice`).
+/// The five store products. Ids are fixed; prices are never stored here (always StoreKit `displayPrice`).
 public enum LedgerProduct: String, CaseIterable, Sendable {
     case pro = "com.ledger.pro"
     case founder = "com.ledger.founder"
@@ -16,11 +16,11 @@ public enum LedgerProduct: String, CaseIterable, Sendable {
     public var isPlus: Bool { self == .plusMonthly || self == .plusYearly }
 }
 
-/// What a free player sees locked, with a key glyph and the words `Ledger Pro` (brief 11.1).
+/// What a free player sees locked, with a key glyph and the words `Ledger Pro`.
 public enum LockedFeature: String, CaseIterable, Sendable {
     case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup, playToEndOfWeek
 
-    /// Needs a Plus subscription itself, not just Pro (brief 11.3). Nothing in the 11.1 locked list is Plus-only.
+    /// Needs a Plus subscription itself, not just Pro. Nothing in the 11.1 locked list is Plus-only.
     public var plusOnly: Bool { false }
 
     /// The line the paywall shows on top, when no specific item is named.
@@ -38,7 +38,7 @@ public enum LockedFeature: String, CaseIterable, Sendable {
     }
 }
 
-/// What the player owns right now. `isPro` is true for Pro, Founder, an active Plus, or a running one-day ad pass (brief 11.5.3).
+/// What the player owns right now. `isPro` is true for Pro, Founder, an active Plus, or a running one-day ad pass.
 public struct EntitlementSnapshot: Equatable, Sendable {
     public var owned: Set<LedgerProduct>
     /// When the Plus period the store reported ends (nil: no Plus).
@@ -63,14 +63,14 @@ public struct EntitlementSnapshot: Equatable, Sendable {
 
     public func isUnlocked(_ f: LockedFeature, now: Date) -> Bool { f.plusOnly ? isPlus(now: now) : isPro(now: now) }
 
-    /// Free save slots: one; Pro and above three (brief 11.1).
+    /// Free save slots: one; Pro and above three.
     public func saveSlots(now: Date) -> Int { isPro(now: now) ? 3 : 1 }
 
-    /// `Play to end of week` is free for the first 12 weeks, Pro after (brief 11.1). `week` is the game week now.
+    /// `Play to end of week` is free for the first 12 weeks, Pro after. `week` is the game week now.
     public func canPlayToEndOfWeek(week: Int, now: Date) -> Bool { week <= 12 || isPro(now: now) }
 }
 
-/// Which trades a free player may start (brief 11.1).
+/// Which trades a free player may start.
 public enum TradeAccess {
     /// The twelve starter trades, or any trade whose start-up cost is below 2 x the country's median wage.
     public static func isFree(tradeID: String, startUpCost: Double?, medianWage: Double) -> Bool {
@@ -83,7 +83,7 @@ public enum TradeAccess {
     }
 }
 
-/// Where the ad rules stand (brief 11.5). One value per save plus the real-time marks; the app stores it beside the save.
+/// Where the ad rules stand. One value per save plus the real-time marks; the app stores it beside the save.
 public struct AdLedger: Equatable, Sendable, Codable {
     public var lastInterstitialWeek: Int?
     public var lastInterstitialAt: Date?
@@ -157,7 +157,7 @@ public enum AdPolicy {
         return out
     }
 
-    /// Consent (brief 11.5): refused or not asked means non-personalised ads. ATT is asked once, after the first week report.
+    /// Consent: refused or not asked means non-personalised ads. ATT is asked once, after the first week report.
     public static func requestNonPersonalised(consentGranted: Bool) -> Bool { !consentGranted }
     public static func shouldAskTracking(reportWeek: Int, alreadyAsked: Bool) -> Bool { !alreadyAsked && reportWeek >= 1 }
 }

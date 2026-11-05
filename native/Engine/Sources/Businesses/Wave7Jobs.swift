@@ -3,12 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 7 (PROJ and job-contract model): construction, electrician, plumber, handyman, engineering office and security firm sell real jobs.
+/// PROJ and job-contract model: construction, electrician, plumber, handyman, engineering office and security firm sell real jobs.
 /// A job type is an item with a quoted price per job or per hour, materials at cost plus a markup, labour hours and the crew and vehicle it needs, a
 /// lead time before the crew can start, call-outs (arrive within a day, jump the queue) against scheduled jobs (wait in the backlog), a warranty
 /// callback rate, phases with subcontractors (construction), and contracts (guard hours per site per month, consultancy retainers, monitoring,
 /// maintenance and inspection plans). Data: `Resources/wave7_jobs.json`. Only `items27` and `itemsv2` (both existing) are written.
-///
 /// Money: the books keep the trade's cost of sales (`mat` + `sub` traits for the job trades, `cogs` for handyman and security). Item materials costs are
 /// scaled on install so the weighted menu equals that share and the revenue weights add up to 1, so a company that never touches a price plays as
 /// before. The labour of the crew and the expected warranty callbacks are the item's `prep`: they make the live profit and loss real, but they are

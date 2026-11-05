@@ -137,7 +137,7 @@ public enum Startups {
         let cur = fc.homeCurrency(s)
         let seed = cur.scaledPrice(d.seed) * seedMultiple
         let c = data.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)
-        // Like any limited company it is registered (fee) and has an accountant (owner decision).
+        // Like any limited company it is registered (fee) and has an accountant.
         let fee = c.registrationFee
         if Payments.liquid(s) < seed + fee { return .notEnoughMoney(seed + fee) }
         let rec = Funding.record(s)

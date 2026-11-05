@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Investments
 
-// Loans, Stage 2 (financial.md L1-L5): the two-stage flow (assessment, then the final agreement), early repayment that charges nothing twice,
+// Loans: the two-stage flow (assessment, then the final agreement), early repayment that charges nothing twice,
 // a schedule from the live loan, and loan records that Accounting can use as a source.
 // Lending maths is unchanged (`Banking.offer`, `Banking.take`); this file is the flow and the read models around them.
 
@@ -30,7 +30,7 @@ public struct LoanExample: Equatable, Sendable, Identifiable {
     public var totalInterest: Double
 }
 
-/// Stage 1 of a loan: what the bank would lend this borrower and on what terms. The player then chooses an amount up to `maximum`.
+/// What the bank would lend this borrower and on what terms. The player then chooses an amount up to `maximum`.
 public struct LoanAssessment: Equatable, Sendable {
     public var kind: String
     public var companyID: Int?
@@ -81,7 +81,7 @@ public struct LoanRecord: Equatable, Sendable, Identifiable {
 }
 
 public extension GameEngine {
-    // MARK: Stage 1: assessment
+    // MARK: Assessment
 
     func loanAssessment(kind: String, companyID: Int?) -> LoanAssessment {
         let cur = companyID.flatMap { state.company($0) }.map { currency(for: $0) } ?? context.currency(state.homeCountryCode, state)

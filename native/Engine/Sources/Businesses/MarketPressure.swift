@@ -5,7 +5,6 @@ import GameCore
 /// and pressure from rivals (a launch, a price reaction, a rival group entering the country; decaying linearly to nothing).
 /// Both are read by `Pricing.demandEffect` through `demandMultiplier`, which is exactly 1 for a company with nothing stored, so a game that
 /// never adds an item and meets no pressure plays as before. Stored on the company: `lift27` = [{ w0, f }], `pr27` = [{ k, w0, n, a, r }].
-/// See DECISIONS.md "Market pressure and item lift".
 public enum MarketPressure {
     /// Weeks a new item's lift takes to enter demand in full.
     public static let rampWeeks = 4

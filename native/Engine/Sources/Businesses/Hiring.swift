@@ -9,12 +9,12 @@ import Finance
 /// A candidate has a *true* skill and a *claimed* skill: some exaggerate. Checking references or a trial week
 /// reveals more. People ask for pay by their skill, age and the local market.
 public enum Hiring {
-    /// `network` is DEPRECATED for the player (Nov 2026): the Hiring screen offers `ads` (job ad: `JobAds`) and `agency` (`Agency`). It stays for old saves and
+    /// `network` is DEPRECATED for the player: the Hiring screen offers `ads` (job ad: `JobAds`) and `agency` (`Agency`). It stays for old saves and
     /// the automatic hirers (managers, auto-staffing, start-ups) that search without a fee.
     public enum SearchMode: Sendable { case ads, network, agency }
 
     /// Age groups only decide who turns up (age, skill range, experience, how often a CV is padded). They do NOT move pay: asks follow experience and skill
-    /// (`askSpread`), never age (owner decision, Nov 2026).
+    /// (`askSpread`), never age.
     static let tiers: [String: (age: (Int, Int), skill: (Double, Double), exp: (Double, Double), lie: Double)] = [
         "young": ((18, 24), (12, 48), (0, 1.5), 0.3),
         "mid": ((25, 40), (35, 78), (2, 12), 0.22),

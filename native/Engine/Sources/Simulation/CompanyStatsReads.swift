@@ -5,7 +5,7 @@ import Employees
 import Finance
 import Businesses
 
-/// Stage 2 item 6 and 7: net worth with the estimate kept apart from the money, and the Company Overview / Stats figures (cash first).
+/// Net worth with the estimate kept apart from the money, and the Company Overview / Stats figures (cash first).
 
 public struct CompanyStake: Equatable, Sendable, Identifiable {
     public var id: Int { companyID }
@@ -49,7 +49,7 @@ public struct ExpenseLine: Equatable, Sendable, Identifiable {
 }
 
 public struct CompanyReserves: Equatable, Sendable {
-    /// Display only, computed from what is owed (owner decision, Oct 2026): no real sub-accounts.
+    /// Display only, computed from what is owed: no real sub-accounts.
     public var payroll: Double
     public var tax: Double
     /// What is left of the company's cash after the reserves (can be negative).

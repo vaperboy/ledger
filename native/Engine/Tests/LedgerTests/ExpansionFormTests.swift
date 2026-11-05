@@ -4,7 +4,7 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// Stage 4C: the product-expansion form reads cost, weeks, odds and cash left without paying anything; cancelling a running project refunds the unspent part.
+/// The product-expansion form reads cost, weeks, odds and cash left without paying anything; cancelling a running project refunds the unspent part.
 final class ExpansionFormTests: XCTestCase {
     private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 21)

@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 2, financial.md L1-L5: two-stage loan flow, early repayment that charges nothing twice, payoff with accrued interest, schedule, loan records.
+/// Two-stage loan flow, early repayment that charges nothing twice, payoff with accrued interest, schedule, loan records.
 final class LoanFlowTests: XCTestCase {
     private func world(seed: Int = 21, loanAmount: Double = 3_000_000) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)

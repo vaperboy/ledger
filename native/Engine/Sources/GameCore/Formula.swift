@@ -1,7 +1,7 @@
 import Foundation
 
 /// A tiny calculator for numbers written in data files, such as an event's cost: `-max(15000, wk * 0.15)`.
-/// Supports + - * / ( ), numbers, names (looked up in `variables`), and max(a, b) / min(a, b).
+/// Supports + - * /, numbers, names (looked up in `variables`), and max(a, b) / min(a, b).
 /// Keeping these formulas as text lets event costs be edited without touching code.
 public struct Formula: Sendable {
     public let text: String

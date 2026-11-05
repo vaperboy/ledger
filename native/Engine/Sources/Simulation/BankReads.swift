@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Investments
 
-// The Bank app's read model (new look, Oct 2026): pick an account, then manage it. Only reshapes what the engine already keeps:
+// The Bank app's read model: pick an account, then manage it. Only reshapes what the engine already keeps:
 // `financeOverview` (what is coming), `companyMovements` and the player's statement (what went through), `Banking` (rates), the loans in the
 // state, `reports` (statements) and `payrollAlerts`. Nothing here changes the game. Loans are never an account of their own: a loan belongs
 // to the account it was taken for (the player's, or a company's) and is listed inside that account.

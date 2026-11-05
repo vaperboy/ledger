@@ -6,7 +6,7 @@ import Finance
 @testable import Simulation
 import Events
 
-/// Stage 7 D and E: expansion gates are real requirements (no waiting-time gates), trophies only when earned, the lawsuit settlement path
+/// Expansion gates are real requirements (no waiting-time gates), trophies only when earned, the lawsuit settlement path
 /// keeps wages first, and a paid judgment leaves neither a liability nor a payroll alert.
 final class Stage7DETests: XCTestCase {
     func cafeGame() throws -> (GameEngine, Int) {
@@ -35,7 +35,7 @@ final class Stage7DETests: XCTestCase {
 
     func testChainRequirementsAreRealLifePapers() throws {
         let (e, id) = try cafeGame()
-        // Real basis (DECISIONS.md): a registered trademark and an operations manual; no cash, reputation or record gates.
+        // Real basis: a registered trademark and an operations manual; no cash, reputation or record gates.
         let r = Chains.requirements(e.state, e.state.company(id)!)
         XCTAssertEqual(r.map { $0.key }, ["trademark", "ops_manual"])
         XCTAssertFalse(r.contains { $0.title.lowercased().contains("cash") || $0.title.lowercased().contains("customers like") })

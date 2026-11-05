@@ -4,7 +4,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Stage 6: board meetings have real agendas, close, record minutes and outcomes, and their decisions change the game.
+/// Board meetings have real agendas, close, record minutes and outcomes, and their decisions change the game.
 final class BoardAgendaTests: XCTestCase {
     /// `count` limited cafes, each with a co-owner (so a board exists), the board set to meet regularly and a CFO at the table.
     private func makeBoards(seed: Int, count: Int) throws -> (engine: GameEngine, ids: [Int], keys: [String]) {

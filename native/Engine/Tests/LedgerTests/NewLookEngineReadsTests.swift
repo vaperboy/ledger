@@ -5,7 +5,7 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// The reads the Oct 2026 new look needs: payroll alerts, the Bank app, the trade picker and its costs, and the Hiring screen.
+/// The reads the new look needs: payroll alerts, the Bank app, the trade picker and its costs, and the Hiring screen.
 final class NewLookEngineReadsTests: XCTestCase {
     private func game(seed: Int = 7) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -41,8 +41,7 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw.removeValue(forKey: "acc") } }
         XCTAssertNotNil(e.payrollAlerts().first { $0.companyID == id })
-        // The owner answers through the existing payroll action. The alert exists only from pay day (Stage 7: wages late or unapproved
-        // on the pay date), when the unapproved payroll is late, so the answer runs it now.
+        // The owner answers through the existing payroll action. The alert exists only from pay day, when the unapproved payroll is late, so the answer runs it now.
         XCTAssertTrue(a.isLate)
         if case .paidLate = e.resolvePayrollAlert(companyID: id) {} else { XCTFail("late payroll is run now") }
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
@@ -128,7 +127,7 @@ final class NewLookEngineReadsTests: XCTestCase {
         var e = try game()
         let id = try cafe(&e)
         let options = e.hiringSearchOptions()
-        XCTAssertEqual(options.map(\.mode), [.ads, .agency])   // the network option is gone for the player (hiring rebuild, Nov 2026)
+        XCTAssertEqual(options.map(\.mode), [.ads, .agency])   // the network option is gone for the player
         XCTAssertTrue(options.allSatisfy { $0.fee == 0 }, "searching costs nothing in the game today")
         let cashBefore = e.state.company(id)!.cash
         let found = e.searchWorkers(companyID: id, role: "barista", mode: .ads)

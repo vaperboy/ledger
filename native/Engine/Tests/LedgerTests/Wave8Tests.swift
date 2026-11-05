@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Wave 8 (RENT trades): units as items, their economics from the books, the rate slider, old saves, and a two-year probe of a competent owner per trade.
+/// RENT trades: units as items, their economics from the books, the rate slider, old saves, and a two-year probe of a competent owner per trade.
 final class Wave8Tests: XCTestCase {
     static let all = ["resrent", "comrent", "parking", "carrental", "hotel", "pcbang"]
 

@@ -62,7 +62,7 @@ public enum SessionHooks {
         return out
     }
 
-    /// Brief 7.2: is an open decision due within 2 weeks? (After Continue, Home scrolls to Needs you and the expiry pill pulses once.)
+    /// Is an open decision due within 2 weeks? (After Continue, Home scrolls to Needs you and the expiry pill pulses once.)
     public static func cliffhanger(_ s: GameState) -> Bool {
         guard let hit = expiring(s) else { return false }
         return hit.weeksLeft <= 2

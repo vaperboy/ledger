@@ -5,7 +5,7 @@ import Businesses
 import Employees
 import Simulation
 
-/// Stage 2 defects from the audit of cars, perks and commission: mileage booked twice. Owner rule: commission only means NOTHING in base pay,
+/// Mileage booked twice. Commission only means NOTHING in base pay,
 /// whatever the minimum wage; "mix" keeps a real base and "fix" keeps its wage, both never under the minimum.
 final class MileageAndCommissionFloorTests: XCTestCase {
     private func estate(_ code: String, seed: Int = 11) throws -> (GameEngine, Int) {

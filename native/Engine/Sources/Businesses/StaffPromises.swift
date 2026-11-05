@@ -4,7 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// Promises to employees (Stage 3, spec 5.3D): a promise made in a hire talk or a contract talk, with a date it falls due, and a REAL check that it was kept.
+/// Promises to employees: a promise made in a hire talk or a contract talk, with a date it falls due, and a REAL check that it was kept.
 /// Seven kinds, each tied to a system that already exists:
 ///  - salary review: a raise is given (their pay for a full week rises);
 ///  - promotion: they are promoted (`ManagerModel.applyPromotion` writes the post);
@@ -18,7 +18,6 @@ import Finance
 /// in notice), the mood card, and the company's reputation for keeping its word, which candidates weigh in their ask (`Hiring.askReading`) and the person
 /// weighs when you later ask them to accept a cut in hours or a change of role. Renegotiating moves the date (once per promise) and costs some goodwill;
 /// the person may refuse, by temperament.
-///
 /// Stored on the Person (`prm`, the last 12 promises) so it works for workers, managers and executives alike; the company's record of keeping its word is
 /// `ptr` {k: [weeks], b: [weeks]} (the last 8 of each), written only when a promise is resolved.
 public enum StaffPromises {

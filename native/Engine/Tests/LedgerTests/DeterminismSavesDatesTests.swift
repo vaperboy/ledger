@@ -266,7 +266,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             for id in ids {
                 guard let i = s.companyIndex(id) else { continue }
                 var docs = s.companies[i].value("docs"); docs["vat"] = .object(["st": "ok", "done": 0, "ok": 0]); s.companies[i].set("docs", docs)
-                s.companies[i].managerID = 0   // a hired manager replaces people who leave (owner decision, 2 Nov), so the three shops keep trading for three years
+                s.companies[i].managerID = 0   // a hired manager replaces people who leave, so the three shops keep trading for three years
             }
         }
         // A 36 month loan for the café, a fixed deposit, a fixed-term worker.

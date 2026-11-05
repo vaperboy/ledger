@@ -13,7 +13,7 @@ public enum AutoStaff {
         for i in s.companies.indices {
             let co = s.companies[i]
             guard co.status == .open, Delegation.autoRehire(s, co) || (s.policy.autoRehire && HierarchyHiring.staffBoss(s, co, data: data) != nil), let bd = data.catalog[co.type], !bd.hasTrait("noStaff"), bd.family != "rent" else { continue }
-            // Replaces people who left; a company with nobody yet is staffed by the player, never automatically (owner decision, 2 Nov).
+            // Replaces people who left; a company with nobody yet is staffed by the player, never automatically.
             guard !co.staff.isEmpty else { continue }
             let weekly = context.weeklyCost(co, s)
             guard co.cash > weekly * 4 else { continue }

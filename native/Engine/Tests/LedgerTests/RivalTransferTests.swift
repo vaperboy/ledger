@@ -4,7 +4,7 @@ import Finance
 import Simulation
 @testable import Businesses
 
-/// Stage 4D: buying a rival transfers its staff and equipment, keeps the customers (with a dip in loyalty) and charges integration costs;
+/// Buying a rival transfers its staff and equipment, keeps the customers (with a dip in loyalty) and charges integration costs;
 /// it does not buy a duplicate set of equipment or hire a second team.
 final class RivalTransferTests: XCTestCase {
     func testBuyingARivalBringsStaffEquipmentAndCustomersWithIntegrationCosts() throws {

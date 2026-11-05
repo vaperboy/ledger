@@ -6,7 +6,7 @@ import Businesses
 @testable import Simulation
 @testable import Businesses
 
-/// The used car dealer rework (4 Nov 2026): stock only from the Marketplace, per-car price and repair, repairs by an own mechanic company, lot spaces,
+/// The used car dealer rework: stock only from the Marketplace, per-car price and repair, repairs by an own mechanic company, lot spaces,
 /// reservations, stuck cars and forced sales, buyers, the live quote, and the real profit of a sale.
 final class UsedCarDealerTests: XCTestCase {
     private func game(seed: Int = 7, trade: String = "usedcar", cash: Double = 400_000_000, open: Bool = true) throws -> (GameEngine, Int) {

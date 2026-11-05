@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-// The new-company screens (new look, Oct 2026): the trade picker table (Trade, Start-up, Demand, Staff; no margin) and the set-up form's costs.
+// The new-company screens: the trade picker table (Trade, Start-up, Demand, Staff; no margin) and the set-up form's costs.
 // Everything is reshaped from the existing new-company code: `TradeAffordability` (the exact start-up cost), `CompanySetup.estimate`,
 // `NewCompanyPlan` (the premises the player picks), `CityMarket` (demand) and `CompanyCosts` (the monthly fixed costs). Nothing here changes the game.
 

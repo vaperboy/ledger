@@ -150,7 +150,7 @@ public extension GameEngine {
         }, probe: { .object(["n": .number(Double($0.company(startupID)?.staff.count ?? 0))]) }) { s, d, _ in Startups.setBuilders(&s, startupID: startupID, delta: delta, data: d) }
     }
 
-    // MARK: Launch and the cap table (Stage 4)
+    // MARK: Launch and the cap table
 
     /// Put the whole company (a startup included) on the market. The exit is the ordinary company sale: buyers' offers, the talk, the proceeds.
     @discardableResult

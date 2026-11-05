@@ -4,7 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// Delegated appointments inside a chain or regional hierarchy (owner decision, 5 Nov): the higher rank hires one level down, the owner appoints
+/// Delegated appointments inside a chain or regional hierarchy: the higher rank hires one level down, the owner appoints
 /// the top. The CEO appoints the chain manager, the chain manager appoints the regional manager of a city where the chain has four or more stores,
 /// and the regional manager (else the chain manager, else the CEO) appoints the manager of every store that has none. Real basis: a franchise or
 /// chain head office delegates the hiring of a unit manager to the area manager who will work with that person.

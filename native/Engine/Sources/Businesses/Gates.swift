@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Gate table (brief Part 5.1; registry of per-company unlocks stays in Unlocks.swift). A surface of the app that stays hidden (not greyed)
+/// Gate table. A surface of the app that stays hidden (not greyed)
 /// until its gate. Views ask `Gates.visibility`; no screen decides this itself.
 /// Systems that only serve another system share its gate: reviews follow marketing, the weather app follows insurance, AirStay follows
 /// property, TechPro follows management, the marketplace follows suppliers and the ventures feed follows ventures.

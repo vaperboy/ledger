@@ -136,9 +136,9 @@ public struct DailyDigest: Equatable, Sendable {
     public var profit: Double? = nil
     /// Decisions a hired rank took for the owner today ("Mia, manager: Replace the oven?").
     public var handled: [String] = []
-    /// Title of the first of today's messages that needs a decision (a new Inbox item), nil when none arrived (brief 3.0 line 1).
+    /// Title of the first of today's messages that needs a decision (a new Inbox item), nil when none arrived.
     public var newInboxTitle: String? = nil
-    /// Today's takings beat every earlier day of this week (at least one earlier day played; brief 3.0 line 2).
+    /// Today's takings beat every earlier day of this week.
     public var bestDayOfWeek: Bool = false
     public var isEmpty: Bool { sales == 0 && wentWell.isEmpty && staffMessages.isEmpty }
 }

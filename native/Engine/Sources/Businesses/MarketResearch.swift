@@ -25,7 +25,7 @@ public struct ResearchReport: Identifiable, Equatable, Sendable {
 /// when it is ordered; the report arrives after its weeks and is kept (newest 12) in `co.res27`; an inbox message tells you. A market advisor
 /// (`NewItemOptions.hasAdvisor`) halves the cost and the weeks (rounded up, at least 1). The findings use real data only and draw no random numbers.
 /// Cost = scaledPrice(base) x max(1, sqrt(size)): forecast 2400, competitor scan 1600, price benchmark 1000, next product 3200.
-/// Weeks: 3, 2, 1, 4. See DECISIONS.md "Market research".
+/// Weeks: 3, 2, 1, 4..
 public enum MarketResearch {
     static let key = "res27"
     static let keep = 12

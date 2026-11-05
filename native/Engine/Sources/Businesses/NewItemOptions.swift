@@ -26,7 +26,7 @@ public struct NewItemOptionList: Equatable, Sendable {
 
 /// New products and services. A variant of what the trade already sells is added at once; a new category is developed first
 /// (the Development machinery, project "newitem"; the item appears when it is done). Profit and market numbers need a market advisor
-/// (role "advisor", hired or as a duty). See DECISIONS.md "New product and service options".
+/// (role "advisor", hired or as a duty).
 public enum NewItemOptions {
     public static let projectID = "newitem"
     public static let advisorRole = "advisor"

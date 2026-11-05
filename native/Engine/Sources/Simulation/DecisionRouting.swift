@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Businesses
 
-/// Decisions go to the lowest rank that can take them (owner decision, 2 Nov). A new decision about a company gets a level (1 to 5, by its kind
+/// Decisions go to the lowest rank that can take them. A new decision about a company gets a level (1 to 5, by its kind
 /// and size against net worth); if the company has someone of that rank or above (a manager, a director, a CEO) they answer it, picking the
 /// option that is best on its stated effects, and the Inbox lists it under Handled with their name. What stays with the owner: level 5, anything
 /// with outside shareholders (sales, buy-outs), dividends, payroll (it has its own rule) and a manager's own pay and poaching.

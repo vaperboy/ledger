@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 2 (STK resale and parts): kiosk, boutique, grocery, hardware, webshop, pets, carrepair sell real things. The catalogue is
+/// STK resale and parts: kiosk, boutique, grocery, hardware, webshop, pets, carrepair sell real things. The catalogue is
 /// `Resources/wave2_items.json`: per trade the items it really sells, with the margin each has in real life. At install a company gets
 /// its items (`items27`, names as in the add-item popup) and one record per item (`itemsv2`, `ItemModels`): unit cost, extra cost, lead time,
 /// capacity, supplier. The buy cost of every item is its real-life margin, scaled once per company (`w2.k`) so that the revenue-weighted cost of

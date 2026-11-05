@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Businesses
 
-// The Hiring screen (new look, Oct 2026, option A): the three ways to look for people with what each costs, the pay the market gives for the
+// The Hiring screen: the three ways to look for people with what each costs, the pay the market gives for the
 // role, and for each applicant only what the player can see before an interview. Reads `Hiring` (market wage, search sizes) and the Person
 // record; nothing here changes the game, and nothing reveals what a candidate keeps back (true skill, lies, character, bad habits).
 
@@ -60,7 +60,7 @@ public extension GameEngine {
             let n = Hiring.applicantsFound(m)
             return HiringSearchOption(mode: m, title: title, fee: Hiring.searchFee(m), applicantsMin: n.lowerBound, applicantsMax: n.upperBound, note: note)
         }
-        // The network option is gone for the player (deprecated, Nov 2026): a job ad (`postJobAd`) or an agency (`engageAgency`).
+        // The network option is gone for the player (deprecated): a job ad (`postJobAd`) or an agency (`engageAgency`).
         return [option(.ads, "Job ad", "Ads reach many people over a few weeks, but skills vary."),
                 option(.agency, "Agency", "Costs much more and keeps a share of the pay for two years: suggestions now, better fits later.")]
     }

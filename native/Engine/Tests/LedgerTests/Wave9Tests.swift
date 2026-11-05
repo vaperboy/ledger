@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Wave 9 (venues with capacity tickets and passes): real items with their own costs, the profit and loss slider, the house edge, the club's ticket level, old
+/// Venues with capacity tickets and passes: real items with their own costs, the profit and loss slider, the house edge, the club's ticket level, old
 /// saves, and a two-year probe of a competent owner per trade.
 final class Wave9Tests: XCTestCase {
     static let all = ["nightclub", "casino", "fun", "skires", "indoorski", "gym", "club"]

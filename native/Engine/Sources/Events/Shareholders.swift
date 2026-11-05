@@ -121,7 +121,7 @@ public enum Shareholders {
         let pol = policy(co), pr = quarterProfit(co)
         var paid = 0.0
         if (payout[pol] ?? 0) > 0 && pr > 0 {
-            // Dividends are never automatic (owner decision, 2 Nov): the policy only proposes this quarter's dividend, and the owner (or whoever
+            // Dividends are never automatic: the policy only proposes this quarter's dividend, and the owner (or whoever
             // holds the authority) answers. No answer in four weeks means no dividend.
             let amt = (pr * payout[pol]! / 1000).rounded() * 1000
             if amt > 0 {

@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 4 (MADE industrial and digital, plus SUB): salmon farm, furniture workshop, factory, start-up, game studio and software and web agency sell real items.
+/// MADE industrial and digital, plus SUB: salmon farm, furniture workshop, factory, start-up, game studio and software and web agency sell real items.
 /// - furniture and factory: products with a bill of materials, labour minutes, scrap, batch and lead time, made to order (a quote and a lead time) or made for stock
 ///   (batches arrive after the lead time), minimum order and B2B payment terms for the factory;
 /// - salmon: product lines from the harvest (whole fish, fillets, smoked, roe ...) with the yield of fish and the farm's real cycle (cohorts, weeks to harvest,
@@ -13,7 +13,7 @@ import Finance
 /// - start-up: plans with subscribers, monthly recurring revenue, churn and cost to serve (the real product's subscribers come from `StartupModel`).
 /// Data: `Resources/wave4_items.json`. Money: the books keep the trade's cost-of-sales share; item costs are scaled on install so the weighted cost of the
 /// menu equals it (not for the salmon farm, whose books carry the cohort cost), and revenue weights add up to 1, so a company that never touches a price
-/// plays as before. Nothing here moves cash. Records: `itemsv2` and `items27` only (no new save key). See `native/docs/waves/wave4.md`.
+/// plays as before. Nothing here moves cash. Records: `itemsv2` and `items27` only (no new save key).
 public enum Wave4 {
     public struct Input: Equatable, Sendable { public var name: String; public var share: Double }
 

@@ -3,12 +3,11 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 6 (SVC appointment and crew model): barber, driving school, physio, dental, car cleaning and cleaning company sell real services.
+/// SVC appointment and crew model: barber, driving school, physio, dental, car cleaning and cleaning company sell real services.
 /// A service is an item with a price per job (appointment, lesson, car, cleaning hour), a duration, the skill and the room, chair, car or crew it
 /// needs, consumables or lab cost per job, a no-show and rebooking rate, recurring customers (membership, recall plan, fleet and office contracts)
 /// and, for retail products, stock with a reorder cycle. The data is `Resources/wave6_services.json`; nothing is stored beyond the item records
 /// (`itemsv2`) and the item list (`items27`) that already exist, so the save format does not change.
-///
 /// Money: the books keep the trade's cost-of-sales share (`trades.json`). The per-item costs are scaled on install so the whole menu weighs
 /// exactly that share (a crown costs more than a check-up, the average is the trade's own), and the revenue weights add up to 1 as before, so a
 /// company that never touches a price plays as it did. Nothing here moves cash: retail stock is a shelf and a reorder cycle whose cost is already in

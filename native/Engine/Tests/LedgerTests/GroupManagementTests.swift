@@ -5,7 +5,7 @@ import Employees
 import Businesses
 import Simulation
 
-/// Stage 6: the Group screen's "who manages whom" read model.
+/// The Group screen's "who manages whom" read model.
 final class GroupManagementTests: XCTestCase {
     func testOwnerRunsEverythingUntilSomeoneIsAppointed() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 61)

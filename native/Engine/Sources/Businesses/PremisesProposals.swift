@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// A manager whose company turns customers away because the premises are full proposes renting bigger ones (owner decision, 3 Nov).
+/// A manager whose company turns customers away because the premises are full proposes renting bigger ones.
 /// "Demand-limited" is read from what the company measured itself (`lastW`: demand D against what it can serve cap) together with what limits it:
 /// the space (the bottleneck of `CapacityModel`) or the places in an office or at home (`Workplaces`, no free place). The proposal carries
 /// the extra capacity, the rent change and a profit uplift computed from the demand that is being turned away, and nothing else: accepting

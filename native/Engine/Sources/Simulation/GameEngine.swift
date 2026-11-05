@@ -98,7 +98,7 @@ public struct GameEngine {
         state.economy.set("rate0", state.economy.policyRate)
         state.rest["gameID"] = .string("g\(seed)")   // deterministic: the same seed gives the same state; the app clears remembered details at every new game
         PlayerGoals.startFirstSteps(&state)
-        PlayerGoals.startLadder(&state)   // the M1 to M10 ladder and its gates (brief Part 5)
+        PlayerGoals.startLadder(&state)   // the M1 to M10 ladder and its gates
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
         if story == .loan {

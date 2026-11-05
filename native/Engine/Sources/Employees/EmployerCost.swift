@@ -2,9 +2,8 @@ import Foundation
 import GameCore
 import Countries
 
-/// THE employer cost of one job (owner decision, Oct 2026: paid-leave cover is part of the number shown). Hiring previews, employee profiles, Team
+/// THE employer cost of one job. Hiring previews, employee profiles, Team
 /// metrics, payroll accrual, forecasts and Accounting all read this one function, so what a preview shows is what payroll books.
-///
 /// monthly cost = gross wage + employer contributions (social + pension) + insurance (injury) + paid-leave cover (on-cost included) + benefits + other.
 /// Rates come from the country's data (`Country.employerOnCost`); where the data has no separate insurance rate the line is 0.
 public enum EmployerCost {

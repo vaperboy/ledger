@@ -9,7 +9,7 @@ import Countries
 ///   in trouble (fortune below 0): ignores you; score >= 0.75: cuts its price to just above yours and fights (a price war of 5 to 8 weeks);
 ///   score >= 0.5: a marketing push (6 weeks); lower: ignores you.
 /// A fight takes demand from your companies there (fading to nothing) and raises their cost of sales 2 percent while it lasts. A rival answers at most
-/// once in 8 weeks. A company within 8 percent of the market never starts the count, so nothing changes for it. See DECISIONS.md.
+/// once in 8 weeks. A company within 8 percent of the market never starts the count, so nothing changes for it.
 extension Rivals {
     static let undercutGap = 0.08
     static let undercutWeeks = 2

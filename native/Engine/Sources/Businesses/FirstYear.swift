@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// First-year economics (brief Part 5.2, `firstYear` in balance.json). Kinder numbers while the player learns; the behaviours themselves
+/// First-year economics. Kinder numbers while the player learns; the behaviours themselves
 /// (demand, supplier cut-off, competition authority, bankruptcy) are unchanged and only ask this table whether they apply yet.
 public struct FirstYear: Sendable, Equatable {
     /// Demand multiplier by quarter of the first game year (weeks 0 to 51), applied to all companies.
@@ -18,7 +18,7 @@ public struct FirstYear: Sendable, Equatable {
     public var bankruptcyEnabled = false
     public var bankruptcyWeek = 27
     public var frozenAfterWeeks = 4
-    /// New-player start (brief 1.3): until this week no account goes into overdraft; a bill the cash cannot cover waits for the next day.
+    /// New-player start: until this week no account goes into overdraft; a bill the cash cannot cover waits for the next day.
     public var noOverdraftWeeks = 12
     /// New-player start: weeks of fixed costs and payroll added to the start-up cost to make the starting cash.
     public var startRunwayWeeks = 8

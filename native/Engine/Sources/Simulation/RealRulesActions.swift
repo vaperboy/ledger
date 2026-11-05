@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 import Businesses
 
-/// Reads and actions for the real-life rules (owner decision, 3 Nov): who appoints whom, inbox documents, the chain and franchise paperwork.
+/// Reads and actions for the real-life rules: who appoints whom, inbox documents, the chain and franchise paperwork.
 public extension GameEngine {
     /// Who decides an appointment to `role` ("general manager", "assistant manager", "deputy", a staff role) and who must confirm it.
     func appointmentAuthority(companyID: Int, role: String) -> AppointmentAuthority {

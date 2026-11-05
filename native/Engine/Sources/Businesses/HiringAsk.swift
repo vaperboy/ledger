@@ -4,7 +4,7 @@ import Countries
 import Employees
 import Finance
 
-/// What a candidate asks and why (Stage 3, owner decisions Nov 2026): asks are CENTRED on the market pay of the job with a spread by skill and experience
+/// What a candidate asks and why: asks are CENTRED on the market pay of the job with a spread by skill and experience
 /// (no age-group multipliers); on top of that the candidate looks at the company that offers (its finances, size and stage) and at the whole package
 /// (a better package lowers the ask a little). Nothing here is shown as a number to the player: `reasons` are plain words for the salary page.
 public extension Hiring {

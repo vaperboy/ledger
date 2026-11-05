@@ -5,7 +5,7 @@ import Employees
 import Finance
 import Businesses
 
-// Accounting read models and records (Stage 2). Accounting records and manages; the Bank holds the money and executes payments. Everything here reads
+// Accounting read models and records. Accounting records and manages; the Bank holds the money and executes payments. Everything here reads
 // the existing engine (Payments/Ledger rows, receivables and invoices, payroll, staff contracts, suppliers, documents); nothing is invented.
 // Every read takes `user` (nil = the owner) and answers nil when that user has no access to the section (see AccountingAccess).
 

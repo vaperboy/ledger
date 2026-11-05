@@ -8,7 +8,7 @@ import Simulation
 
 /// LEDGER_WAGEPROBE=1: why do wages come out above the control in a one-year managed cafe with bonus plans, perks and expenses?
 /// Splits the difference into hire noise (a control that differs only by one extra random draw), the plan's own cost (bonus accrued, perk cost) and
-/// headcount/turnover. Prints; asserts nothing. See native/docs/KNOWN_GAPS.md ("Wage share check").
+/// headcount/turnover. Prints; asserts nothing.
 final class WageShareProbeTests: XCTestCase {
     private func open(seed: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)

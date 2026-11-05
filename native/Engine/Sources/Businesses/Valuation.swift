@@ -51,7 +51,7 @@ public enum Valuation {
         let trust = min(1, Double(co.monthlyHistory.count) / 24)
         let goodwill = (co.status == .open && (s.week - co.foundedWeek > 12))
             ? prof * mult * (0.6 + co.reputation / 200) * (co.managerID != nil ? 0.85 : 1) * trust : 0
-        // Value-neutral across a change of legal form (owner decision, Oct 2026): the old sole-trader goodwill discount of 0.85 is gone.
+        // Value-neutral across a change of legal form: the old sole-trader goodwill discount of 0.85 is gone.
         var v = jsRound(net + goodwill)
         // Owners of a limited company cannot lose more than the company is worth; only a sole trader is personally liable for a negative value.
         if co.form == .limited { v = max(0, v) }

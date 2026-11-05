@@ -38,7 +38,7 @@ public enum Documents {
         }
         if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
         if co.form == .limited && !need.contains("accountant_agreement") { need.append("accountant_agreement") }
-        // VAT registration is always on the opening list (owner decision, 2 Nov): you do it once and forget it. Not for an exempt business.
+        // VAT registration is always on the opening list: you do it once and forget it. Not for an exempt business.
         if !need.contains("vat") && !Vat.isExempt(co, w) { need.append("vat") }
         return need.filter { !isSkipped($0, country: country) }
     }

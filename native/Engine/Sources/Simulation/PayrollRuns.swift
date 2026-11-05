@@ -5,7 +5,7 @@ import Employees
 import Finance
 import Businesses
 
-/// Payroll runs as records (Stage 2). Written by `Payday.runPayroll` (the existing payment engine: the cash leaves through it, nothing here moves money).
+/// Payroll runs as records. Written by `Payday.runPayroll` (the existing payment engine: the cash leaves through it, nothing here moves money).
 /// A run keeps its period, the payslip lines of everyone paid, what was paid and what was short. One run per period: a late completion of the same
 /// period updates that run, it never makes a second one (duplicate-period prevention).
 /// Lines are built from the contracts with the one employer-cost rule (`EmployerCost`). The cash paid is what payroll had accrued for the period

@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Role effects against their cost (owner decision, 3 Nov): each extra role of `RoleEffects` should pay for itself modestly for a typical company of the trades
+/// Role effects against their cost: each extra role of `RoleEffects` should pay for itself modestly for a typical company of the trades
 /// where it is recommended (benefit about 105 to 130 percent of the wage a year), and about nothing for a company too small to need it.
 /// The helper runs the same company for a year twice from the same state: once as it is, once with the role given as a DUTY to a person already on the
 /// payroll (so the wage is the same in both and the cash difference is the effect alone), and averages over seeds. The wage it is compared with is what a
@@ -55,7 +55,7 @@ final class RoleTuningTests: XCTestCase {
         return n == 0 ? nil : Measure(value: v / n, wage: w / n, revenue: r / n)
     }
 
-    /// The tuning run: prints the table the numbers in DECISIONS.md come from. Set ROLE_TUNING=full for every trade and seed.
+    /// The tuning run: prints the table the numbers in come from. Set ROLE_TUNING=full for every trade and seed.
     func testRolesPayForThemselvesModestly() throws {
         let full = ProcessInfo.processInfo.environment["ROLE_TUNING"] == "full"
         let seeds = full ? [1, 2, 3, 4, 5, 6] : [1, 2]

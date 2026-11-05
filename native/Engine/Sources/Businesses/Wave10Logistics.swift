@@ -3,13 +3,13 @@ import GameCore
 import Countries
 import Finance
 
-/// Wave 10, transport and logistics (taxi, courier, trucking, shipping, airline, wh3pl). Every service or route the company sells is an item: a ride type, a parcel
+/// Transport and logistics (taxi, courier, trucking, shipping, airline, wh3pl). Every service or route the company sells is an item: a ride type, a parcel
 /// service, a lane, a voyage type, a route with its cabin, a warehouse service. The item's price is the live slider. Its cost is built from the company's own books:
 /// the fleet's depreciation or lease, loan interest, servicing and (where the company pays it) fuel from the vehicle records, then wages, premises and fixed costs,
 /// shared by the capacity the item uses and divided by what it really sold; plus the cost that only exists when one is sold (fuel carried in cost of sales, tolls,
 /// port dues, handling, packaging, agent commission). Load factor (sold against capacity) and the empty share are shown with each item.
 /// Nothing here moves cash: the attributions come from what the weekly model books, so a trade earns what it earned before at default prices.
-/// Save keys: `items27` (the services become items), `itemsv2` (their records), `w10u` (set once the items were set up). See `native/docs/waves/wave10.md`.
+/// Save keys: `items27` (the services become items), `itemsv2` (their records), `w10u` (set once the items were set up).
 public enum Wave10 {
     public static var trades: Set<String> { ItemWaves.w10 }
     static let allTrades: Set<String> = ["taxi", "courier", "trucking", "shipping", "airline", "wh3pl"]

@@ -10,7 +10,7 @@ import Businesses
 /// so a game started the default way is unchanged and an older save without the key is a start-up loan game.
 public enum LifeStory: String, CaseIterable, Sendable {
     case loan, heir
-    /// The new-player start (brief Part 1): one chosen trade, fully set up and open on day 1, cash for the first weeks, no loan.
+    /// The new-player start: one chosen trade, fully set up and open on day 1, cash for the first weeks, no loan.
     case fresh
 
     public var title: String { self == .loan ? "Start-up loan" : self == .heir ? "Heir" : "New business" }
@@ -54,7 +54,7 @@ public extension GameEngine {
 }
 
 enum LifeStories {
-    /// The new-player start (brief 1.2, 1.3): the chosen trade is created, set up to the cheapest option that opens it, and opened on day 1.
+    /// The new-player start: the chosen trade is created, set up to the cheapest option that opens it, and opened on day 1.
     /// The starting cash is the cost of all that plus `startRunwayWeeks` weeks of fixed costs and payroll, rounded up to the next 1,000. It is
     /// measured on a copy of the game (set up with plenty of money) and then paid for real, so it follows every trade and country by itself.
     static func applyFresh(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, name: String) -> Bool {
