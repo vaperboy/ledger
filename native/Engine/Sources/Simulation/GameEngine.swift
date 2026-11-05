@@ -233,6 +233,7 @@ public struct GameEngine {
         }
         recordDay()
         sweepLadder()
+        sweepCareer()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
         let fresh = state.inbox.filter { !before.contains($0.id) }
