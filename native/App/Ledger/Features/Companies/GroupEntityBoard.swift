@@ -55,6 +55,15 @@ struct GroupEntityBoard: View {
             .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
     }
 
+    /// The person's portrait from the shared avatar (staff and managers alike); initials for a co-owner who is not a person record.
+    @ViewBuilder private func personLead(_ id: Int?, _ name: String) -> some View {
+        if let id, let p = engine.state.people[id] {
+            ThumbnailView(kind: .person, key: p.role, size: 32, initials: name, face: p.faceKey)
+        } else {
+            avatar(initials(name))
+        }
+    }
+
     private func plusRing() -> some View {
         Image(systemName: "plus").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ivoryFaint)
             .frame(width: 32, height: 32)
@@ -95,7 +104,7 @@ struct GroupEntityBoard: View {
         let voters: [ManagerModel.Voter] = engine.boardVoters(key: key)
         let seats: [ManagerModel.Seat] = engine.boardSeats(key: key)
         ForEach(voters) { (v: ManagerModel.Voter) in
-            line(first: false, lead: { avatar(initials(v.name)) }, title: v.name, sub: v.title + (v.votes ? " \u{00B7} votes" : " \u{00B7} advises"), trail: {
+            line(first: false, lead: { personLead(v.personID, v.name) }, title: v.name, sub: v.title + (v.votes ? " \u{00B7} votes" : " \u{00B7} advises"), trail: {
                 trailFor(v, seats: seats, key: key)
             })
         }
@@ -118,15 +127,28 @@ struct GroupEntityBoard: View {
     }
 
     @ViewBuilder private func trailFor(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat], key: String) -> some View {
-        if let pid = v.personID, seats.contains(where: { (s: ManagerModel.Seat) -> Bool in s.id == pid && s.isAdviser }) {
-            Button("Remove") {
-                pending = PendingAction(title: "Remove \(v.name) from the board?", message: "Their monthly fee stops and their advice leaves with them.", button: "Remove", destructive: true) {
-                    store.act { $0.removeFromBoard(key: key, personID: pid) }
-                    message = "\(v.name) left the board."
-                }
-            }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+        if let pid = v.personID, seats.contains(where: { (s: ManagerModel.Seat) -> Bool in s.id == pid }) {
+            Button("Remove from board") { askToRemove(v, pid: pid, key: key) }
+                .buttonStyle(TinyButtonStyle(tint: Theme.loss))
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .accessibilityIdentifier("board-remove-seat")
         } else {
             EmptyView()
+        }
+    }
+
+    /// The question says what it means first: own staff keep their job; an outside holder is paid their notice; without a majority it is refused.
+    private func askToRemove(_ v: ManagerModel.Voter, pid: Int, key: String) {
+        let terms: SeatRemovalTerms = engine.seatRemovalTerms(key: key, personID: pid)
+        if !terms.allowed {
+            store.show(terms.reason, tone: "warn")
+            return
+        }
+        let cost: String = terms.cost > 0 ? " Notice pay: \(store.short(terms.cost))." : ""
+        let name: String = v.name
+        pending = PendingAction(title: "Remove \(name) from the board?", message: terms.summary + cost, button: "Remove from board", destructive: true, alwaysAsk: true) {
+            let result: SettingResult? = store.act { $0.removeSeatHolder(key: key, personID: pid) }
+            _ = store.settle(result, "\(name) is off the board.")
         }
     }
 

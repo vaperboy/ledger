@@ -79,6 +79,8 @@ extension ManagerModel {
         public var mood: Double
         public var isAdviser: Bool
         public var isOwner: Bool
+        /// "adv" (outside adviser or director), "own" (your own staff, they keep their job) or "exec".
+        public var kind: String = "adv"
     }
     /// Seats that still have a person in them. Original: `seatsOf`.
     public static func seats(_ s: GameState, key: String) -> [Seat] {
@@ -87,7 +89,7 @@ extension ManagerModel {
             let ok = x["kind"].string == "adv" ? n.employerID == -4 : [-1, -2, -3].contains(n.employerID) || n.employerID > 0
             guard ok else { return nil }
             return Seat(id: n.id, role: r, title: x["t"].string.isEmpty ? (seatRoles.first { $0.id == r }?.title ?? r) : x["t"].string, monthlyFee: x["fee"].double,
-                        adviceTaken: x["ok"].int, adviceRefused: x["no"].int, mood: x["mood"].isNull ? 60 : x["mood"].double, isAdviser: x["kind"].string == "adv", isOwner: x["owner"].bool)
+                        adviceTaken: x["ok"].int, adviceRefused: x["no"].int, mood: x["mood"].isNull ? 60 : x["mood"].double, isAdviser: x["kind"].string == "adv", isOwner: x["owner"].bool, kind: x["kind"].string.isEmpty ? "adv" : x["kind"].string)
         }
     }
     public static func boardHas(_ s: GameState, _ co: Company, role: String) -> Bool { seats(s, key: boardKey(s, co)).contains { $0.role == role } }

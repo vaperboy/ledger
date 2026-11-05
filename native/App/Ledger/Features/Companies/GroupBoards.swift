@@ -264,21 +264,33 @@ struct BoardView: View {
 
     private func voterCard(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat]) -> some View {
         HStack(spacing: 12) {
-            IconCircle(glyph: v.votes ? Glyph.person : Glyph.people, size: 34, tint: v.votes ? Theme.gold : Theme.ivoryMuted)
+            voterPortrait(v)
                 .orgEdge(freshSeats.contains(v.id) ? Theme.gold : nil, radius: 17)
             VStack(alignment: .leading, spacing: 1) {
                 Text(v.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
                 Text("\(v.title) · \(v.votes ? "votes" : "advises")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
             }
             Spacer(minLength: 8)
-            if let pid = v.personID, seats.contains(where: { $0.id == pid && $0.isAdviser }) {
-                Button("Let go") {
-                    pending = PendingAction(title: "Let \(v.name) go from the board?", message: "Their monthly fee stops and their advice leaves with them.", button: "Let go", destructive: true) {
-                        store.act { $0.removeFromBoard(key: key, personID: pid) }
-                        message = "\(v.name) left the board."
+            if let pid = v.personID, seats.contains(where: { $0.id == pid }) {
+                Button("Remove from board") {
+                    let terms: SeatRemovalTerms? = store.engine?.seatRemovalTerms(key: key, personID: pid)
+                    if let terms, !terms.allowed { store.show(terms.reason, tone: "warn"); return }
+                    let cost: String = (terms?.cost ?? 0) > 0 ? " Notice pay: \(store.short(terms?.cost ?? 0))." : ""
+                    let name: String = v.name
+                    pending = PendingAction(title: "Remove \(name) from the board?", message: (terms?.summary ?? "") + cost, button: "Remove from board", destructive: true, alwaysAsk: true) {
+                        let result: SettingResult? = store.act { $0.removeSeatHolder(key: key, personID: pid) }
+                        _ = store.settle(result, "\(name) is off the board.")
                     }
-                }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+                }.buttonStyle(TinyButtonStyle(tint: Theme.loss)).lineLimit(1).minimumScaleFactor(0.8)
             }
+        }
+    }
+
+    @ViewBuilder private func voterPortrait(_ v: ManagerModel.Voter) -> some View {
+        if let pid = v.personID, let p = store.engine?.state.people[pid] {
+            ThumbnailView(kind: .person, key: p.role, size: 34, initials: v.name, face: p.faceKey)
+        } else {
+            IconCircle(glyph: v.votes ? Glyph.person : Glyph.people, size: 34, tint: v.votes ? Theme.gold : Theme.ivoryMuted)
         }
     }
 

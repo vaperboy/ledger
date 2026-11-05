@@ -73,37 +73,40 @@ struct CompaniesView: View {
     // MARK: The locked Home screen
 
     private static let rowHeight: CGFloat = 46
-    private static let moreHeight: CGFloat = 34
+    /// The companies box shows this many rows at most, so the next row peeks out and says the list scrolls.
+    static let peekRows: CGFloat = 3.5
+    private static let boxPadding: CGFloat = 6
 
-    /// How many company rows fit in `avail` points under the "Companies" title (at least 2 when more exist), and whether the
-    /// final "All N companies in Group" row is needed; `used` is the height the block takes.
-    static func companyFit(avail: CGFloat, count: Int, head: CGFloat, pitch: CGFloat) -> (shown: Int, more: Bool, used: CGFloat) {
-        let room: CGFloat = avail - head + 5
-        let all: Int = Int((room / pitch).rounded(.down))
-        if count <= max(2, all) { return (count, false, head + CGFloat(count) * pitch - 5) }
-        let shown: Int = min(count, max(2, Int(((room - moreHeight - 5) / pitch).rounded(.down))))
-        return (shown, true, head + CGFloat(shown) * pitch - 5 + 5 + moreHeight)
+    /// Height of the scrolling part of the companies box: all rows when they are few, otherwise `peekRows` rows, and never more than the
+    /// room that is left on the page (but always at least two rows).
+    static func boxScrollHeight(count: Int, pitch: CGFloat, extra: CGFloat, room: CGFloat) -> CGFloat {
+        let natural: CGFloat = CGFloat(count) * pitch - 5 + extra
+        let cap: CGFloat = peekRows * pitch + extra
+        let minimum: CGFloat = 2 * pitch - 5 + extra
+        return min(natural, cap, max(minimum, room))
     }
 
-    /// One locked screen: nothing scrolls. The top block has its natural height; the companies take what they can use of the rest
-    /// (most important first, then the Group link), and "Recent" sits at the bottom with only the space that is left.
+    /// One locked screen. The top block has its natural height; the companies sit in a box of their own that scrolls inside itself
+    /// (about three and a half rows), so the page never scrolls for them.
     @ViewBuilder private func homeScreen(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)]) -> some View {
         let regular: Bool = sizeClass == .regular
         GeometryReader { (geo: GeometryProxy) in
             let total: CGFloat = geo.size.height - 12
-            let head: CGFloat = regular ? 66 : 27
+            let head: CGFloat = 27
             let pitch: CGFloat = regular ? 52 : Self.rowHeight + 5
-            let minCompanies: CGFloat = cos.isEmpty ? 120 : head + CGFloat(min(2, cos.count)) * pitch - 5
+            let extra: CGFloat = regular ? 44 : 0
+            let boxFrame: CGFloat = head + Self.boxPadding * 2 + 5
+            let minCompanies: CGFloat = cos.isEmpty ? 120 : boxFrame + CGFloat(min(2, cos.count)) * pitch - 5 + extra
             let fixedParts: CGFloat = 290 + 36 + 32 + 8 + 8
             let spare: CGFloat = total - fixedParts - minCompanies
             let rowsFit: Int = Int((spare / 38).rounded(.down))
             let priorities: Int = max(1, min(3, rowsFit))
             let mid: CGFloat = max(0, total - topHeight - 8)
-            let fit = Self.companyFit(avail: mid, count: rows.count, head: head, pitch: pitch)
+            let scrollH: CGFloat = Self.boxScrollHeight(count: rows.count, pitch: pitch, extra: extra, room: mid - boxFrame)
             VStack(alignment: .leading, spacing: 8) {
                 HomeSummary(engine: e, onNewCompany: { store.push(.newCompany, on: .company) }, maxPriorities: priorities)
                     .background(GeometryReader { (g: GeometryProxy) in Color.clear.preference(key: HomeTopHeightKey.self, value: g.size.height) })
-                companiesBlock(e, cos: cos, rows: rows, shown: fit.shown, more: fit.more)
+                companiesBlock(e, cos: cos, rows: rows, scrollHeight: scrollH)
                 Spacer(minLength: 0)
             }
             .onPreferenceChange(HomeTopHeightKey.self) { topHeight = $0 }
@@ -114,7 +117,7 @@ struct CompaniesView: View {
         }
     }
 
-    @ViewBuilder private func companiesBlock(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)], shown: Int, more: Bool) -> some View {
+    @ViewBuilder private func companiesBlock(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)], scrollHeight: CGFloat) -> some View {
         if cos.isEmpty {
             Card(padding: 12, radius: Theme.Radius.card) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -124,36 +127,42 @@ struct CompaniesView: View {
                 }
             }
         } else {
-            let list: [(co: Company, h: CompanyHealth)] = Array(rows.prefix(shown))
             VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Companies").font(.system(size: 10.5, weight: .semibold)).tracking(1.4).textCase(.uppercase).foregroundStyle(Theme.gold)
-                    Spacer()
-                    Menu {
-                        Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                    } label: {
-                        Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                companiesHeader(count: rows.count)
+                Card(padding: Self.boxPadding, rule: false, radius: Theme.Radius.card) {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        companyRows(e, rows: rows)
                     }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(height: scrollHeight)
+                    .accessibilityIdentifier("home-companies-box")
                 }
-                .frame(height: 22)
-                if sizeClass == .regular {
-                    CompanyTable(engine: e, rows: list) { store.push(.company($0), on: .company) }
-                } else {
-                    ForEach(list, id: \.co.id) { r in
-                        NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
-                            .buttonStyle(PressableStyle())
-                            .frame(height: Self.rowHeight)
-                    }
-                }
-                if more {
-                    Button { Haptics.tap(); store.selectTab(.group) } label: {
-                        HStack {
-                            Spacer()
-                            Text("All \(rows.count) companies in Group ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
-                        }
-                        .frame(height: Self.moreHeight).contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-group")
+            }
+        }
+    }
+
+    private func companiesHeader(count: Int) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Companies · \(count)").font(.system(size: 10.5, weight: .semibold)).tracking(1.4).textCase(.uppercase).foregroundStyle(Theme.gold)
+            Spacer()
+            Menu {
+                Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+            } label: {
+                Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            }
+        }
+        .frame(height: 22)
+    }
+
+    @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
+        if sizeClass == .regular {
+            CompanyTable(engine: e, rows: rows) { store.push(.company($0), on: .company) }
+        } else {
+            LazyVStack(alignment: .leading, spacing: 5) {
+                ForEach(rows, id: \.co.id) { r in
+                    NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
+                        .buttonStyle(PressableStyle())
+                        .frame(height: Self.rowHeight)
                 }
             }
         }
