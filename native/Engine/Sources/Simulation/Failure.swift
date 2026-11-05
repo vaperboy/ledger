@@ -142,7 +142,9 @@ public enum Failure {
         if s.cash < -s.overdraftLimit * 3 && live.isEmpty {
             s.gameOver = .object(["reason": "insolvent", "week": .number(Double(s.week)), "nw": .number(nw)]); return
         }
-        if live.isEmpty && nw < context.homeCurrency(s).scaledPrice(10000) && s.week > 2 {
+        // Broke means no company and no money to start another: someone still holding cash for a first company (a trade the country bans, a name not yet chosen) is not out of the game.
+        let floor = context.homeCurrency(s).scaledPrice(10000)
+        if live.isEmpty && nw < floor && Payments.liquid(s) < floor && s.week > 2 {
             s.gameOver = .object(["reason": "broke", "week": .number(Double(s.week)), "nw": .number(nw)])
         }
     }

@@ -34,6 +34,7 @@ public enum PersonalEquipment {
 
     /// Original: `ruleOf`. Laptops and workstations go with every person.
     public static func rule(_ bd: Trade, _ e: EquipmentSpec, tables: TradeTables) -> Rule? {
+        if bd.foreignItems.contains(where: { $0.id == e.id }) { return nil }
         if let r = table[bd.id + ":" + e.id] ?? e.personalRule { return r }
         if e.vehicleModels == nil, EquipmentMarket.kind(e, tradeID: bd.id, tables: tables) == "it" {
             let n = e.name.lowercased()

@@ -150,7 +150,8 @@ struct CompanyEquipmentScreen: View {
 
     // MARK: Needed
 
-    @ViewBuilder private func needed(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
+    @ViewBuilder private func needed(_ e: GameEngine, _ co: Company, _ all: [EquipmentMarket.Need]) -> some View {
+        let needs = all.filter { $0.ofTrade || $0.have + $0.leased > 0 }
         let cur = e.currency(for: co)
         let missing = needs.filter { $0.required && $0.have + $0.leased < 1 }
         let short = needs.filter { $0.need > 0 && $0.have + $0.leased < $0.need && !($0.required && $0.have + $0.leased < 1) }

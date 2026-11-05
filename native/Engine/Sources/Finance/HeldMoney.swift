@@ -19,6 +19,12 @@ public enum HeldMoney {
         return 0
     }
 
+    /// The player's own money of the staged week that has not landed yet (negative = payments still to leave).
+    public static func playerRemaining(_ s: GameState) -> Double {
+        guard let P = s.rest["pend"], !P.isNull else { return 0 }
+        return P["rows"].array.filter { $0["d"].double > Double(s.day) }.reduce(0) { $0 + $1["a"].double }
+    }
+
     /// Release what is still held for this company into its cash and forget the entry. Returns the amount released.
     @discardableResult
     public static func settle(_ s: inout GameState, companyID: Int) -> Double {

@@ -712,6 +712,8 @@ public enum EquipmentMarket {
         public var listPrice: Double = 0
         public var dealPercent: Int = 0
         public var dealLabel: String = ""
+        /// False for an item the store sells to every company but this trade does not use; it is never needed and is listed only while the company owns some.
+        public var ofTrade: Bool = true
     }
 
     public static func needs(_ s: GameState, companyID: Int, data: GameData) -> [Need] {
@@ -752,7 +754,8 @@ public enum EquipmentMarket {
                         need: PersonalEquipment.rule(c.bd, e, tables: c.tables) != nil ? PersonalEquipment.needed(co, c.bd, e, tables: c.tables) : (std[e.id] ?? (e.isRequired ? 1 : 0)), required: e.isRequired, isVehicle: e.vehicleModels != nil, isSoftware: soft, subscription: sub,
                         fromPrice: lowest, canUsed: canBuyUsed(e, tradeID: c.bd.id, tables: c.tables),
                         canLease: canLease(e, tradeID: c.bd.id, unitPrice: lowest, company: co, c.w, tables: c.tables), lifeYears: e.lifeYears, warrantyYears: years,
-                        listPrice: plain, dealPercent: best.isOn ? best.percentOff : 0, dealLabel: best.isOn ? best.label : "")
+                        listPrice: plain, dealPercent: best.isOn ? best.percentOff : 0, dealLabel: best.isOn ? best.label : "",
+                        ofTrade: !c.bd.foreignItems.contains(where: { $0.id == e.id }))
         }
     }
 

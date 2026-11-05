@@ -367,16 +367,16 @@ public enum VolumeContracts {
                 c["warn"] = .number(c["warn"].double + 1)
                 let warn = c["warn"].double
                 if warn == 2 {
-                    s.addMessage(from: who, title: "Warning: \(name)", body: "\(co.name) is not delivering what the contract says. Another month like this brings a fine.", companyID: co.id, tone: "bad")
+                    s.addMessage(from: who, title: "Warning: \(name) (\(who))", body: "\(co.name) is not delivering what the contract says. Another month like this brings a fine.", companyID: co.id, tone: "bad")
                 } else if warn == 6 {
                     let fine = jsRound(c["u"].double * tk * 4 * 0.1)
                     s.companies[i] = co
                     Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Contract penalty: \(name)")
                     co = s.companies[i]
-                    s.addMessage(from: who, title: "Penalty: \(name)", body: "A penalty for missed deliveries. If it goes on, the contract is cancelled.", companyID: co.id, tone: "bad")
+                    s.addMessage(from: who, title: "Penalty: \(name) (\(who))", body: "A penalty for missed deliveries. If it goes on, the contract is cancelled.", companyID: co.id, tone: "bad")
                 } else if warn >= 12 {
                     co.reputation = max(0, co.reputation - 4)
-                    s.addMessage(from: who, title: "Contract cancelled: \(name)", body: "The customer has cancelled the contract with \(co.name) for poor delivery.", companyID: co.id, tone: "bad")
+                    s.addMessage(from: who, title: "Contract cancelled: \(name) (\(who))", body: "The customer has cancelled the contract with \(co.name) for poor delivery.", companyID: co.id, tone: "bad")
                     if !c["tnd"].isNull { badTender = true }
                     addLog(&sw, week: s.week, "\(who) cancelled \(name.lowercased()) for poor delivery.")
                     gone = true
