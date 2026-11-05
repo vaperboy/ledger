@@ -29,13 +29,6 @@ struct CompanySourcing: View {
     @State private var lastAsk: [String: Double] = [:]
     private let classNames = Suppliers.goodsClassNames
 
-    /// One provider on the price dot plot.
-    private struct Dot: Identifiable {
-        var id: String
-        var pct: Double
-        var current: Bool
-    }
-
     var body: some View {
         let inputs = engine.supplierInputs(companyID: company.id)
         let sells = engine.supplyLinks().filter { $0.supplierID == company.id }
@@ -83,7 +76,6 @@ struct CompanySourcing: View {
             }
         }
     }
-
 
     private func inputGlyph(_ input: SupplierInput) -> String {
         switch input.id {

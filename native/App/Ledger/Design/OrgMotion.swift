@@ -252,27 +252,6 @@ struct OrgProgressBar: View {
     }
 }
 
-/// A short horizontal link (manager to department). Draws from nothing to full when `drawn` turns true; otherwise it is simply there.
-struct OrgLink: View {
-    var drawn: Bool
-    var width: CGFloat = 18
-    @State private var progress: CGFloat = 1
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        Capsule().fill(Theme.gold.opacity(0.7)).frame(width: width, height: 1.5)
-            .scaleEffect(x: progress, y: 1, anchor: .leading)
-            .onAppear { if drawn { draw() } }
-            .onChange(of: drawn) { _, on in if on { draw() } }
-    }
-
-    private func draw() {
-        guard !reduceMotion else { return }
-        progress = 0
-        Motion.animate(Motion.revealAnimation) { progress = 1 }
-    }
-}
-
 /// One line of notice that comes and goes by itself (a resignation reason, a recognition chip).
 struct OrgNote: Identifiable, Equatable {
     var id = UUID()

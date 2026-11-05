@@ -19,24 +19,6 @@ private struct OverviewCaps: View {
     }
 }
 
-/// A caps label with a quiet link at the right ("View all ›").
-private struct OverviewCapsLine: View {
-    var text: String
-    var link: String = ""
-    var action: (() -> Void)? = nil
-    var body: some View {
-        HStack {
-            OverviewCaps(text: text)
-            Spacer(minLength: 8)
-            if let action, !link.isEmpty {
-                Button { Haptics.tap(); action() } label: {
-                    Text(link).font(.system(size: 12)).foregroundStyle(Theme.gold).frame(minHeight: 28)
-                }.buttonStyle(PressableStyle())
-            }
-        }
-    }
-}
-
 // MARK: Figure card
 
 /// One hero figure: a small label, a big serif value and a grey or coloured line under it (the change against before).
@@ -198,123 +180,7 @@ extension OverviewTable where Trailing == EmptyView {
 
 // MARK: Count tiles
 
-struct CountTileData: Identifiable {
-    var id: String { label }
-    var glyph: String
-    var count: Int
-    var label: String
-    var tint: Color = Theme.ivory
-    var action: () -> Void
-}
-
-/// A row of three or four tiles with a number each; every tile opens its area. The caps line can carry a "View all" link.
-struct CountTiles: View {
-    var title: String
-    var link: String = ""
-    var linkAction: (() -> Void)? = nil
-    var tiles: [CountTileData]
-
-    var body: some View {
-        Card(padding: 12, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 6) {
-                OverviewCapsLine(text: title, link: link, action: linkAction)
-                HStack(spacing: 8) {
-                    ForEach(tiles) { t in tile(t) }
-                }
-            }
-        }
-    }
-
-    private func tile(_ t: CountTileData) -> some View {
-        Button { Haptics.tap(); t.action() } label: {
-            VStack(spacing: 4) {
-                GlyphView(glyph: t.glyph, size: 20, weight: 1.5)
-                Text("\(t.count)").font(.serifTitle(24)).foregroundStyle(t.tint)
-                Text(t.label).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            .frame(maxWidth: .infinity).padding(.vertical, 10)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(t.label): \(t.count)")
-    }
-}
-
 // MARK: Activity
-
-struct ActivityItem: Identifiable {
-    var id: String
-    var glyph: String
-    var title: String
-    var subtitle: String
-    var action: () -> Void
-}
-
-/// The latest-activity list: icon, title, grey line, chevron; each row opens what it is about.
-struct ActivityList: View {
-    var title: String = "Latest activity"
-    var items: [ActivityItem]
-    var emptyText: String = "Nothing yet."
-
-    var body: some View {
-        Card(padding: 0, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 0) {
-                OverviewCaps(text: title).padding(.top, 12).padding(.bottom, 4)
-                if items.isEmpty {
-                    Text(emptyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8)
-                }
-                ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
-                    if i > 0 { CardLine() }
-                    Button { Haptics.tap(); item.action() } label: { row(item) }.buttonStyle(PressableStyle())
-                }
-                Spacer().frame(height: 6)
-            }
-            .padding(.horizontal, 14)
-        }
-    }
-
-    private func row(_ item: ActivityItem) -> some View {
-        HStack(spacing: 10) {
-            IconCircle(glyph: item.glyph, size: 34)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.title.tidyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                Text(item.subtitle.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2).multilineTextAlignment(.leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-        }
-        .padding(.vertical, 9)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-}
 
 // MARK: Note
 
-/// An amber note with one action at the right (the payroll warning with "Appoint").
-struct OverviewNote: View {
-    var text: String
-    var actionTitle: String
-    var accessibilityLabel: String = ""
-    var action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 10) {
-            GlyphView(glyph: Glyph.warning, size: 16, weight: 1.9, tint: Theme.caution)
-            Text(text.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button { Haptics.tap(); action() } label: {
-                Text("\(actionTitle) ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel(accessibilityLabel.isEmpty ? actionTitle : accessibilityLabel)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.caution.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Color(hex: 0x6A5630), lineWidth: 1))
-    }
-}

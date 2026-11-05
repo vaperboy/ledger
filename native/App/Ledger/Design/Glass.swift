@@ -71,13 +71,3 @@ extension View {
     }
 }
 
-/// The main box of a screen. It used to be glass; content boxes now share the calm card surface so that glass is kept for
-/// controls that float above the content (the Next day bar, toasts, tab pills). Kept as a type so the hero boxes stay marked.
-struct GlassCard<Content: View>: View {
-    var padding: CGFloat = Theme.Space.l
-    var tint: Color? = nil
-    @ViewBuilder var content: () -> Content
-    var body: some View {
-        Card(padding: padding, content: content)
-    }
-}

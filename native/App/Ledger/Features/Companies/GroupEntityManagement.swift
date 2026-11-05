@@ -104,17 +104,4 @@ struct GroupEntityManagement: View {
             }
         }
     }
-
-    private func vacancyRow(_ v: TeamOverview.Vacancy, first: Bool) -> some View {
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(v.title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(v.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 6)
-            Text(v.needed ? "Needed now" : "Open").font(.system(size: 12, weight: .medium)).foregroundStyle(v.needed ? Theme.loss : Theme.gold)
-        }
-        .padding(.horizontal, 10).padding(.vertical, 9)
-        .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
-    }
 }

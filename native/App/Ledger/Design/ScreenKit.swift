@@ -92,22 +92,6 @@ struct FixedScreen<Content: View>: View {
     }
 }
 
-/// A bounded scroll area inside a fixed screen or a popup (a list in a popup). Vertical only; it stays still when the rows fit.
-struct ContainedScroll<Content: View>: View {
-    var maxHeight: CGFloat? = nil
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        ScrollView(.vertical) {
-            content().frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .scrollIndicators(.hidden)
-        .scrollBounceBehavior(.basedOnSize)
-        .noSidewaysDrag()
-        .frame(maxHeight: maxHeight)
-    }
-}
-
 extension GameStore {
     /// True while a store-level popup (report, daily, decision, notice, red alert, error) is on screen: the page under it must not
     /// scroll or take taps. Popups opened with `.centerSheet` are drawn by the popup host as an overlay whose backdrop blocks the page by itself.

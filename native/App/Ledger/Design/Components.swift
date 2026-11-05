@@ -128,35 +128,6 @@ struct QuietButtonStyle: ButtonStyle {
     }
 }
 
-/// The heading of a section ("Upcoming payments"): small caps in champagne.
-struct SectionLabel: View {
-    var text: String
-    init(_ text: String) { self.text = text }
-    var body: some View { Text(text).capsLabel() }
-}
-
-/// A green/red change line: arrow, amount and (when meaningful) percent. Never shows a misleading percentage.
-struct DeltaPill: View {
-    var title: String
-    var amount: Double
-    var share: Double?
-    var format: (Double) -> String
-
-    var body: some View {
-        let c = Theme.change(amount)
-        HStack(spacing: 5) {
-            Image(systemName: amount > 0 ? "arrow.up.right" : amount < 0 ? "arrow.down.right" : "minus").font(.caption2.weight(.bold))
-            Text(title).font(.label).foregroundStyle(Theme.ivoryMuted)
-            Text(amount == 0 ? format(0) : (amount > 0 ? "+" : "−") + format(abs(amount))).font(.system(.caption, design: .default).weight(.semibold).monospacedDigit())
-            if let share, abs(share) >= 0.001, abs(share) < 10 {
-                Text(String(format: "%+.1f%%", share * 100)).font(.caption2.monospacedDigit()).opacity(0.85)
-            }
-        }
-        .foregroundStyle(c)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// A line chart without axes, for real history. Draws nothing misleading for fewer than two points.
 struct Sparkline: View {
     var values: [Double]
@@ -494,18 +465,6 @@ struct RateBar: View {
     }
 }
 
-/// Compact champagne button for the main answer on a decision.
-struct SmallGoldButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
-            .frame(maxWidth: .infinity, minHeight: 34)
-            .background(Capsule().fill(Theme.gold))
-            .opacity(configuration.isPressed ? 0.85 : 1)
-    }
-}
-
 /// Compact hairline button for the other answers.
 struct SmallOutlineButtonStyle: ButtonStyle {
     @Environment(\.outsidePalette) private var P
@@ -515,25 +474,6 @@ struct SmallOutlineButtonStyle: ButtonStyle {
             .foregroundStyle(P.ink)
             .frame(maxWidth: .infinity, minHeight: 34)
             .overlay(Capsule().strokeBorder(P.ink.opacity(configuration.isPressed ? 0.4 : 0.22), lineWidth: 0.75))
-    }
-}
-
-/// One symbol per kind of business, used wherever a company or trade is listed.
-enum TradeSymbol {
-    static func of(family: String) -> String {
-        switch family {
-        case "svc": return "briefcase.fill"
-        case "venue": return "fork.knife"
-        case "retail": return "bag.fill"
-        case "prod": return "gearshape.2.fill"
-        case "logi": return "truck.box.fill"
-        case "project": return "hammer.fill"
-        case "rent": return "house.fill"
-        case "fin": return "banknote.fill"
-        case "energy": return "bolt.fill"
-        case "club": return "sportscourt.fill"
-        default: return "building.2.fill"
-        }
     }
 }
 

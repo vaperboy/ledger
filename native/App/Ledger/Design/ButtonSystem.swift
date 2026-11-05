@@ -99,35 +99,3 @@ struct InlineMessage: View {
     }
 }
 
-/// An alert banner: an error (red edge, a title, a message, up to two small actions) or a quiet system alert.
-struct AlertBanner: View {
-    @Environment(\.outsidePalette) private var P
-    var title: String
-    var message: String
-    var isError = true
-    var actionTitle: String? = nil
-    var onAction: () -> Void = {}
-    var onClose: () -> Void
-
-    var body: some View {
-        let edge: Color = isError ? P.loss : P.lineStrong
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                if isError { GlyphView(glyph: Glyph.warning, size: 16, weight: 1.6, tint: P.loss).padding(.top, 1) }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title.uppercased()).font(.system(size: 11.5, weight: .semibold)).tracking(0.6).foregroundStyle(isError ? P.loss : P.inkSoft)
-                    Text(message).font(.system(size: 13)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 8) {
-                if let actionTitle { Button(actionTitle) { onAction() }.buttonStyle(QuietButtonStyle()) }
-                Button("Close") { onClose() }.buttonStyle(GreyOutlineButtonStyle())
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(isError ? P.loss.opacity(0.08) : P.cardDeep))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(edge.opacity(isError ? 0.7 : 1), lineWidth: 1))
-    }
-}

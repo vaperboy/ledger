@@ -11,13 +11,6 @@ import Simulation
 //    tab. At a tab root, where there is no round back button, a "Back to <tab>" line is the one way back (`returnBar(for:)`).
 //  - Choosing the tab that is already open returns it to its root (`GameStore.selectTab`).
 
-/// What a tab root's `path.append(route)` calls become: a push through the store, so the same record is never stacked twice.
-@MainActor struct TabPath {
-    var store: GameStore
-    var tab: AppTab
-    func append(_ route: CompanyRoute) { store.push(route, on: tab) }
-}
-
 /// "Back to <tab>" at the root of a tab that a link from another tab landed on (no screen is pushed there, so no round back button).
 struct ReturnBar: ViewModifier {
     @EnvironmentObject var store: GameStore
