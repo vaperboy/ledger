@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The (i) for text that is too long to sit beside a button or switch (brief 6.1 rule 2): the sentence moves here, unchanged, and
+/// The (i) for text that is too long to sit beside a button or switch: the sentence moves here, unchanged, and
 /// opens in a centred popup that is exactly as high as its text.
 struct InfoSheetButton: View {
     @Environment(\.outsidePalette) private var P

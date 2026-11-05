@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// One loan (mockup "Loan details"): what is left, the terms, the schedule from the live balance, this month's instalment paid now (taken once), an early
+/// One loan: what is left, the terms, the schedule from the live balance, this month's instalment paid now (taken once), an early
 /// payoff with its quote (balance plus the interest accrued since the last month end), part repayment, and, for a company loan you guaranteed, the
 /// bank discussion about releasing the guarantee (it stays after a conversion to a limited company). Every action is the engine's and reports its result.
 struct LoanDetailSheet: View {

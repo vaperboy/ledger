@@ -1,6 +1,6 @@
 import SwiftUI
 
-// The rule set of every popup (see native/docs/POPUPS.md). Content never picks its own font, size or colour: it names a ROLE.
+// The rule set of every popup. Content never picks its own font, size or colour: it names a ROLE.
 // A popup that does something more important (an expensive or irreversible confirmation, a report, a reward) names a VARIANT, and only
 // the exceptions declared here apply. One card (`CenterSheetFrame` / `GamePopup`), one header (title left, x right), one footer
 // (Cancel | Apply, `PopupFooter`).

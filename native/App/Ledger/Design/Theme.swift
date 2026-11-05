@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The visual language: Ivory Ledger, new look approved 27 Oct 2026 (native/design/new-look-2026-10). Editorial private banking on
+/// The visual language: Ivory Ledger. Editorial private banking on
 /// a charcoal page: bordered cards and outlined icon circles, serif titles and figures, champagne small caps for labels, and the
 /// one filled button (Next Day). Colours and radii below are the mockups' exact values. Change a token here and it changes
-/// everywhere. See native/design/STYLE_IVORY_LEDGER.md and Design/NewLook.swift for the shared pieces.
+/// everywhere. See Design/NewLook.swift for the shared pieces.
 enum Theme {
     // Surfaces: the Ivory Ledger page is one flat charcoal; structure comes from hairlines, not boxes.
     static let page = Color(hex: 0x0F1011)                                    // #0F1011

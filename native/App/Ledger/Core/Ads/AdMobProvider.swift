@@ -4,7 +4,7 @@ import UIKit
 import GoogleMobileAds
 import UserMessagingPlatform
 
-// Compiled only when the owner adds the two Swift packages (see the commented block in project.yml): Google Mobile Ads 11.x and the
+// Compiled only when the two Swift packages are added (see the commented block in project.yml): Google Mobile Ads 11.x and the
 // User Messaging Platform 2.x. Until then `PlaceholderAdProvider` is used and the app has no ad dependency.
 // Not compiled by the author (no Mac): check the symbols against the pinned SDK versions on the first CI build with the packages.
 

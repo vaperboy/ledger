@@ -1,6 +1,6 @@
 import XCTest
 
-/// Tours of the employment screens (Master spec Stage 3): the hiring flow (terms, then Next: pay with the offer and Back to terms),
+/// Tours of the employment screens: the hiring flow (terms, then Next: pay with the offer and Back to terms),
 /// the contract discussion with its consequences and a promise, and the staff profile. Pictures are numbered from 100.
 /// Every part is its own short test (each stays well under 100 s) and every step is optional: a screen that is not reachable on this device is
 /// noted, never failed. Nothing is hired, so the game is left as it was.

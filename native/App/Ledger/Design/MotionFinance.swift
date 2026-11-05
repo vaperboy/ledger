@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Animation stage helpers (money, charts, goals, luxury). Each one is driven by a real value change and respects Reduce Motion.
+// Animation helpers (money, charts, goals, luxury). Each one is driven by a real value change and respects Reduce Motion.
 
 // MARK: Profit glow
 

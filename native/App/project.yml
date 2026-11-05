@@ -14,7 +14,7 @@ settings:
 packages:
   LedgerEngine:
     path: ../Engine
-  # Part 11.5 ads. Left out so the app builds without the SDK (Core/Ads falls back to PlaceholderAdProvider). To switch on real ads, uncomment
+  # Ads. Left out so the app builds without the SDK (Core/Ads falls back to PlaceholderAdProvider). To switch on real ads, uncomment
   # these two packages and the two `package:` dependency lines of the Ledger target, add INFOPLIST_KEY GADApplicationIdentifier (a custom key:
   # use an `info:` block or a plist) and SKAdNetworkItems, then fill AdConfig.release* in Core/Ads/AdProvider.swift. See Core/Ads/AdMobProvider.swift.
   # GoogleMobileAds:
@@ -31,9 +31,9 @@ targets:
       - path: Ledger
         excludes:
           - "Resources/art/cells/**"
-          # Part 10 Home mockups (native/App/Mockups) are review files: out of the release build.
+          # Home mockups (native/App/Mockups) are review files: out of the release build.
           - "../Mockups/**"
-          # The five art sheets were sliced into cells and are not read at runtime: they stay in the repo but out of the release build (Stage 9).
+          # The five art sheets were sliced into cells and are not read at runtime: they stay in the repo but out of the release build.
           - "Resources/art/cars-sheet.jpg"
           - "Resources/art/logos-sheet.jpg"
           - "Resources/art/luxury-sheet.jpg"
@@ -96,7 +96,7 @@ schemes:
         Ledger: all
     run:
       config: Debug
-      storeKitConfiguration: Ledger.storekit     # Part 11: local purchase testing in the simulator
+      storeKitConfiguration: Ledger.storekit     # local purchase testing in the simulator
     test:
       config: Debug
       targets:

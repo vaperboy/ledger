@@ -2,7 +2,7 @@ import SwiftUI
 import GameCore
 import Simulation
 
-// Shared pieces of the Accounting app and the ivory panels of the Bank (Master spec Stage 2A/2B, mockups banking_app.png and accounting_app.png):
+// Shared pieces of the Accounting app and the ivory panels of the Bank:
 // a forest-green header band over warm ivory pages, compact rows with hairline separators, champagne accents, tabular figures. Everything
 // reads the palette from the environment (`OutsidePalette.accounting` inside Accounting), so none of it is hard-coded to the dark game look.
 

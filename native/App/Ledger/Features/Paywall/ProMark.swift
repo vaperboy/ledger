@@ -1,7 +1,7 @@
 import SwiftUI
 import Simulation
 
-/// The small marker on a locked item: a key glyph and the words `Ledger Pro` (brief 11.1). Shown only while the item is locked.
+/// The small marker on a locked item: a key glyph and the words `Ledger Pro`. Shown only while the item is locked.
 struct ProMark: View {
     var feature: LockedFeature
     @Environment(Entitlements.self) private var ent

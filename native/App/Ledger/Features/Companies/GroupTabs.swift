@@ -17,7 +17,7 @@ enum GroupSection: String, CaseIterable, Hashable {
 struct GroupSectionBar: View {
     @Binding var tab: GroupSection
     var badges: [GroupSection: Int] = [:]
-    /// The tabs shown (the Board tab is left out until somebody could sit on it: native/docs/UNLOCKS.md).
+    /// The tabs shown (the Board tab is left out until somebody could sit on it).
     var sections: [GroupSection] = GroupSection.allCases
 
     var body: some View {

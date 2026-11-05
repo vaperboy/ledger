@@ -72,7 +72,7 @@ enum PhoneAlerts {
     }
 }
 
-/// Brief Part 7.1: the only three local notifications (planned by the engine's `SessionHooks`). Scheduled when the app goes to the
+/// The only three local notifications (planned by the engine's `SessionHooks`). Scheduled when the app goes to the
 /// background, cancelled when it comes back, never repeating. The Settings toggle `Reminders` (default on) controls all three.
 @MainActor
 enum Reminders {

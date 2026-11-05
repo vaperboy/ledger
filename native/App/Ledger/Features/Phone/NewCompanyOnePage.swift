@@ -36,7 +36,7 @@ import Simulation
     }
 }
 
-/// New company on one page (brief 6.2): the trade (already chosen), a name, the whole start-up cost as one number and `Start`. Premises,
+/// New company on one page: the trade (already chosen), a name, the whole start-up cost as one number and `Start`. Premises,
 /// tools and papers are bought by the engine's own default plan (`pick: nil`, default `SetupChoices`). The detailed set-up stays behind
 /// `Choose each item yourself`.
 struct NewCompanySetupView: View {

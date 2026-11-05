@@ -105,7 +105,7 @@ struct SettingsView: View {
         }
     }
 
-    /// Milestone M8 (brief 1.2): the two older ways to begin, selectable once the new-player ladder has reached them.
+    /// The two older ways to begin, selectable once the new-player ladder has reached them.
     @ViewBuilder private var classicStarts: some View {
         rule
         Button { askNewGame(.loan) } label: {
@@ -124,7 +124,7 @@ struct SettingsView: View {
                                 button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story); ads.resetForNewSave() }
     }
 
-    /// Brief 11.6: current plan, renewal date, manage, restore. Prices are never written here.
+    /// Current plan, renewal date, manage, restore. Prices are never written here.
     private var proGroup: some View {
         group("Ledger Pro") {
             plainRow(Glyph.lock, "Plan", value: planName)
@@ -164,7 +164,7 @@ struct SettingsView: View {
     }
 
     #if DEBUG
-    /// Brief 11.6: force free, Pro or Plus for testing (debug builds only).
+    /// Force free, Pro or Plus for testing (debug builds only).
     private func cycleDebugPlan() {
         let all = Entitlements.DebugMode.allCases
         let next: Int = ((all.firstIndex(of: ent.debugMode) ?? 0) + 1) % all.count

@@ -4,9 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// Wave 7 item page blocks (PROJ and job-contract model: construction, electrician, plumber, handyman, engineering office, security).
-/// Hook for `WaveItemBlocks`: `Wave7ItemBlocks(engine: e, companyID: companyID, itemID: itemID, currency: cur)`.
-/// It draws nothing for an item that is not a real job of the wave.
+/// Item page blocks for the project and job-contract model (construction, electrician, plumber, handyman, engineering office, security).
+/// It draws nothing for an item that is not a real job of these trades.
 struct Wave7ItemBlocks: View {
     var engine: GameEngine
     var companyID: Int

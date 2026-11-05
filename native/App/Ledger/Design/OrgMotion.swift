@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Organisation motion (animation stage: Team, Group, Projects, Market). Every helper reacts to a real state change the view detects
+/// Organisation motion (Team, Group, Projects, Market). Every helper reacts to a real state change the view detects
 /// itself with `.onChange(of:)` on derived values; first appearance never animates. Gold = milestone or opportunity, green = gain,
 /// red = loss. Nothing here blocks touches or loops. Reduce Motion: the root view already drops animation transactions, and the
 /// helpers also pass `nil` animations, so only a static colour highlight can remain.
@@ -249,27 +249,6 @@ struct OrgProgressBar: View {
             Motion.animate(Motion.quickAnimation) { glow = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { Motion.animate(Motion.quickAnimation) { glow = false } }
         }
-    }
-}
-
-/// A short horizontal link (manager to department). Draws from nothing to full when `drawn` turns true; otherwise it is simply there.
-struct OrgLink: View {
-    var drawn: Bool
-    var width: CGFloat = 18
-    @State private var progress: CGFloat = 1
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        Capsule().fill(Theme.gold.opacity(0.7)).frame(width: width, height: 1.5)
-            .scaleEffect(x: progress, y: 1, anchor: .leading)
-            .onAppear { if drawn { draw() } }
-            .onChange(of: drawn) { _, on in if on { draw() } }
-    }
-
-    private func draw() {
-        guard !reduceMotion else { return }
-        progress = 0
-        Motion.animate(Motion.revealAnimation) { progress = 1 }
     }
 }
 

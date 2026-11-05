@@ -1,7 +1,7 @@
 import SwiftUI
 import Simulation
 
-/// Brief 11.4: the one paywall. The item that triggered it on top, three option cards (yearly Plus preselected, monthly Plus, Pro once),
+/// The one paywall. The item that triggered it on top, three option cards (yearly Plus preselected, monthly Plus, Pro once),
 /// Founder's as a text link, then Restore and the legal links. No timers, no fake discounts. Shown in a `.centerSheet` by `PaywallHost`.
 struct PaywallView: View {
     let request: PaywallRequest
@@ -100,7 +100,7 @@ struct PaywallView: View {
         return choice == .pro ? "Buy Ledger Pro" : "Subscribe"
     }
 
-    /// Rewarded ad: Pro for 24 real hours, at most once per 7 days (brief 11.5.3). Hidden when no ad can run.
+    /// Rewarded ad: Pro for 24 real hours, at most once per 7 days. Hidden when no ad can run.
     @ViewBuilder private var passLink: some View {
         if ads.canOfferPass {
             Button { Task { if await ads.watchForPass() { ent.paywall = nil } } } label: {
@@ -134,7 +134,7 @@ struct PaywallView: View {
     }
 }
 
-/// Legal links the App Store requires next to a subscription. Owner: replace `privacy` with your own policy URL before submission.
+/// Legal links the App Store requires next to a subscription. Replace `privacy` with your own policy URL before submission.
 enum LedgerLinks {
     static let terms: URL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") ?? URL(fileURLWithPath: "/")
     static let privacy: URL = URL(string: "https://example.com/ledger/privacy") ?? URL(fileURLWithPath: "/")
@@ -152,7 +152,7 @@ struct PaywallHost: ViewModifier {
     }
 }
 
-/// Brief 11.4: once, when the first profitable month (M7) is done, the paywall rises with a line above it. Waits for the popups on screen
+/// Once, when the first profitable month is done, the paywall rises with a line above it. Waits for the popups on screen
 /// (report, celebration, unlocks) to finish, never shows to a paying player, and never twice (the mark is kept on the device).
 struct PostM7Paywall: ViewModifier {
     @EnvironmentObject var store: GameStore
@@ -167,7 +167,7 @@ struct PostM7Paywall: ViewModifier {
 
     private var shownBefore: Bool { UserDefaults.standard.bool(forKey: Self.shownKey) }
 
-    /// The moment to show it: armed by M7 being reached, nothing else on screen.
+    /// The moment to show it: armed by the first profitable month being reached, nothing else on screen.
     private var ready: Bool { armed && !store.holdsHomeFigures && !store.popupOpen && ent.paywall == nil }
 
     func body(content: Content) -> some View {

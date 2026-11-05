@@ -6,7 +6,6 @@ import UIKit
 /// The supplied art sheets, sliced into single pictures by `native/tools/slice_sheets.py` and bundled as the folder reference `cells/`
 /// (`cells/<sheet>/<cell>.jpg` plus `cells/<sheet>/manifest.json`). This type only reads the manifests and maps game ids to cells; it holds
 /// no game rules. Everything answers nil when a picture is missing so `ThumbnailView` can show its icon fallback.
-/// The mapping tables are documented in `native/docs/ART_SHEETS.md`.
 enum ArtLibrary {
     /// The sheets that have been sliced (face sheets are handled elsewhere).
     enum Sheet: String, CaseIterable {

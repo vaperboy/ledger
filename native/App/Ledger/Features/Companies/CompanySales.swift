@@ -5,7 +5,7 @@ import Businesses
 import Simulation
 
 /// Sales of one company: "Your products" (or "Your services") as a list, one row per item with its name, how demand is, its price and how far
-/// that is from the market. Tapping an item opens its price popup (`SalesItemSheet`). Marketing is a popup (`MarketingSheet`); a trade that
+/// that is from the market. Tapping an item opens its item page. Marketing is a popup (`MarketingSheet`); a trade that
 /// can develop new things also has that row (a timed project, not a new item). Customers are in Stats, the Market is a Phone app, and Projects
 /// are a part of this section only for project businesses (`CompanyDetailView`). There is no Pricing screen any more: prices are set per item.
 struct CompanySales: View {
@@ -14,7 +14,6 @@ struct CompanySales: View {
     var company: Company
     @Binding var part: OpsPart
     @State private var showMarketing = false
-    @State private var picked: SalesItemPick?
     @State private var openItem: SalesItemPick?
     @State private var addingService: Bool?
     @State private var showHire = false
@@ -38,7 +37,6 @@ struct CompanySales: View {
             }
         }
         .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
-        .centerSheet(item: $picked) { (p: SalesItemPick) in SalesItemSheet(companyID: company.id, itemID: p.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id })) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
                          onHireAdvisor: { addingService = nil; presentAfterSheet { showHire = true } },
@@ -79,49 +77,6 @@ struct CompanySales: View {
     @ViewBuilder private var trendCard: some View {
         let trend: MarketTrend = engine.marketTrend(companyID: company.id)
         if trend.points.count >= 2 { MarketTrendCard(trend: trend) }
-    }
-
-    // MARK: Your products / services
-
-    private func itemsCard(_ items: [SalesItem], service: Bool) -> some View {
-        let cur: Currency = engine.currency(for: company)
-        let noun: String = service ? "service" : "product"
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text((service ? "Your services" : "Your products").uppercased()).capsLabel()
-                    Spacer()
-                    if company.status == .open {
-                        Button { addingService = service } label: {
-                            Text("Add \(noun)").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.gold)
-                        }
-                        .buttonStyle(PressableStyle())
-                        .accessibilityIdentifier("sales-add-item")
-                    }
-                }
-                if items.isEmpty {
-                    Text("Nothing is on sale yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                }
-                VStack(spacing: 0) {
-                    ForEach(items) { (it: SalesItem) -> SettingsTableRow in row(it, cur) }
-                }
-            }
-        }
-    }
-
-    private func row(_ it: SalesItem, _ cur: Currency) -> SettingsTableRow {
-        let share: Double = it.marketPrice > 0 ? it.price / it.marketPrice - 1 : 0
-        let change: String = abs(share) < 0.005 ? "At market" : String(format: "%+.0f%%", share * 100) + " vs market"
-        let tint: Color = abs(share) < 0.005 ? Theme.ivoryMuted : (share > 0 ? Theme.gain : Theme.loss)
-        return SettingsTableRow(title: it.name, note: status(it), value: cur.tidyDisplay(it.price),
-                                glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox, change: change, changeTint: tint) { picked = SalesItemPick(id: it.id) }
-    }
-
-    /// One line from the item's demand against the market price, and a running discount.
-    private func status(_ it: SalesItem) -> String {
-        let d: Double = it.demandChange
-        let word: String = d >= 0.15 ? "High demand" : d >= 0.03 ? "Good demand" : d > -0.03 ? "Steady demand" : d > -0.15 ? "Soft demand" : "Low demand"
-        return it.discountPercent > 0 ? word + ", \(Int(it.discountPercent))% off for \(it.discountWeeksLeft.weeksText)" : word
     }
 
     // MARK: Marketing (a popup)

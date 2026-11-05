@@ -4,7 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// A company that is still being set up has one fixed screen (owner decision, 2 Nov): what is still missing and the two apps that fix it,
+/// A company that is still being set up has one fixed screen: what is still missing and the two apps that fix it,
 /// TechPro Store (equipment, software, vehicles) and AirStay (a place), each in its own colour. No stats and no scrolling until it opens;
 /// it opens by itself once every item is done and the paperwork is approved.
 struct CompanySetupScreen: View {

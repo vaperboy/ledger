@@ -6,7 +6,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// The company's own figures on Stats > Finances (Master spec 2H): where the money goes first (the total in the box, no title), the margins
+/// The company's own figures on Stats > Finances: where the money goes first (the total in the box, no title), the margins
 /// box right under it (no title), and later the legal and ownership facts. Cash is not repeated here (it is on the Overview). All from
 /// `companyOverviewStats`, so Overview and Stats read the same numbers.
 struct CompanyStatsFigures: View {

@@ -127,9 +127,9 @@ final class GameStore: ObservableObject {
     @Published private(set) var reportSheet: ReportDigest?
     /// Rewards earned and not yet shown, oldest first. The Home screen shows the first, one at a time.
     @Published private(set) var celebrationQueue: [Celebration] = []
-    /// Brief 7.2: rises by one when a closed week report is continued while a decision expires within 2 weeks. Home watches it (scroll to Needs you, pulse the pill once).
+    /// Rises by one when a closed week report is continued while a decision expires within 2 weeks. Home watches it (scroll to Needs you, pulse the pill once).
     @Published var homeCliffhanger: Int = 0
-    /// Brief 7.3: consecutive calendar days played; Home shows it from 3 up, else 0 is returned.
+    /// Consecutive calendar days played; Home shows it from 3 up, else 0 is returned.
     var playStreakShown: Int {
         guard let e = engine else { return 0 }
         let n: Int = PlayStreak.current(e.state, today: GameStore.calendarDay())
@@ -300,7 +300,7 @@ final class GameStore: ObservableObject {
         catch { errorText = "That save could not be imported. " + Self.describe(error) }
     }
 
-    /// Set at Milestone M8: the classic loan start and the family café become selectable under Settings > Saves > New game.
+    /// Set once the new-player ladder reaches its last goal: the classic loan start and the family café become selectable under Settings > Saves > New game.
     static let classicStartKey = "ledger.classicStartUnlocked"
     var classicStartUnlocked: Bool { UserDefaults.standard.bool(forKey: Self.classicStartKey) }
 
@@ -326,7 +326,7 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// The open Inbox item that blocks Play (brief 2.2 and 4.4), if any. 
+    /// The open Inbox item that blocks Play, if any.
     var blockingMessageID: Int? { engine?.blockingMessage?.id }
 
     /// "Play to end of week" is offered from week 2 (the engine's week counter is 0-based).
@@ -366,14 +366,14 @@ final class GameStore: ObservableObject {
         let tightBefore: Bool = e.cashIsTight
         let out = e.nextDay()
         let today: Int = GameStore.calendarDay()
-        e.update { s, _, _ in PlayStreak.record(&s, today: today) }   // Brief 7.3
-        // Brief 7.4: only a finished ladder goal celebrates; trophies, milestones and daily missions are taken and dropped.
+        e.update { s, _, _ in PlayStreak.record(&s, today: today) }
+        // Only a finished ladder goal celebrates; trophies, milestones and daily missions are taken and dropped.
         let celebrations: [Celebration] = e.takeCelebrations().filter { $0.kind == "goal" }
         if !celebrations.isEmpty { Haptics.goalDone() }
         if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning() }
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
-        if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }   // Milestone M8 (brief 1.2)
+        if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
@@ -448,8 +448,8 @@ final class GameStore: ObservableObject {
             return true
         }
         reportSheet = nil
-        if d.kind == .week { Reminders.askOnce() }   // Brief 7: the system prompt, once, after the first week report
-        if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Brief 7.2: Home scrolls to Needs you and the expiry pill pulses once
+        if d.kind == .week { Reminders.askOnce() }   // The system prompt, once, after the first week report
+        if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Home scrolls to Needs you and the expiry pill pulses once
         if openReports { openReport(ReportRef(kind: d.kind, id: d.reportID)) }
     }
 

@@ -38,7 +38,7 @@ struct GroupEntityPage: View {
         }
     }
 
-    /// Every tab, minus Board while nobody could sit on it (an unlock hidden until it opens, native/docs/UNLOCKS.md). A board that exists always shows.
+    /// Every tab, minus Board while nobody could sit on it. A board that exists always shows.
     private func visibleSections(_ e: GameEngine) -> [GroupSection] {
         let open: Bool = store.isUnlocked("board", companyID: entity.companyID)
         return GroupSection.allCases.filter { (s: GroupSection) -> Bool in s != .board || open }

@@ -1,9 +1,8 @@
 import SwiftUI
 
-// The three page containers every screen uses (see native/docs/SCREEN_TYPES.md):
+// The page containers every screen uses:
 //   FixedScreen      A  fixed, never scrolls; compacts to fit (scales down to `minScale`), clipped
 //   ScrollScreen     B  vertical scroll only when the content is taller than the screen, never sideways, no blank space
-//   ContainedScroll  D  a bounded scroll area inside a fixed screen or a popup
 // Class C (intentional horizontal chip rows, e.g. TechPro) is a horizontal ScrollView inside one of these.
 
 private struct FixedHeightKey: PreferenceKey {
@@ -89,22 +88,6 @@ struct FixedScreen<Content: View>: View {
         if scrolling { scrolling = false }
         let q: CGFloat = (min(1, ideal) * 100).rounded(.down) / 100
         if abs(q - scale) > 0.009 { scale = q }
-    }
-}
-
-/// A bounded scroll area inside a fixed screen or a popup (a list in a popup). Vertical only; it stays still when the rows fit.
-struct ContainedScroll<Content: View>: View {
-    var maxHeight: CGFloat? = nil
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        ScrollView(.vertical) {
-            content().frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .scrollIndicators(.hidden)
-        .scrollBounceBehavior(.basedOnSize)
-        .noSidewaysDrag()
-        .frame(maxHeight: maxHeight)
     }
 }
 

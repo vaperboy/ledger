@@ -35,7 +35,7 @@ struct ApplicantsView: View {
     @State private var roleSel: String
     @State private var sort: ApplicantSort = .best
     @State private var talk: ApplicantTalk?
-    /// No list shows more than 40 rows at once (brief 9.2); `Show more` adds 40.
+    /// No list shows more than 40 rows at once; `Show more` adds 40.
     @State private var limit = 40
     @State private var showHire = false
 

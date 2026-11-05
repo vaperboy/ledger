@@ -1,6 +1,6 @@
 import XCTest
 
-/// Tours of the financial screens (Master spec Stage 2): the Accounting app, the Bank's two-stage loan flow up to its confirmation (nothing is borrowed),
+/// Tours of the financial screens: the Accounting app, the Bank's two-stage loan flow up to its confirmation (nothing is borrowed),
 /// the account list with the wealth overview, the company conversion preview (cancelled, nothing changes) and the Team metrics.
 /// Pictures are numbered from 70. Every part is its own short test (CI gives each test 150 s; each of these stays well under 100 s), and every step is
 /// optional: a screen that is not reachable on this device is noted, never failed.

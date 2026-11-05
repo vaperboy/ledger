@@ -4,9 +4,9 @@ import Countries
 import Businesses
 import Simulation
 
-/// The page block of a product line of wave 11 (insurance cover, loan or deposit account, fund fee class, power tariff, oil field, group service): what one unit
+/// The page block of a product line (insurance cover, loan or deposit account, fund fee class, power tariff, oil field, group service): what one unit
 /// earns, what it costs by cause, the risk it carries and the capital behind it, with the profit or loss at the price on the slider.
-/// The lead hooks it into `WaveItemBlocks` with `Wave11ItemBlock(companyID: companyID, itemID: itemID, price: price, cur: cur)`; it draws nothing for any other item.
+/// It is shown from `WaveItemBlocks`; it draws nothing for any other item.
 struct Wave11ItemBlock: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int

@@ -22,7 +22,7 @@ extension Message {
 }
 
 extension Message {
-    /// Brief 2.3 row icon: money, people, customers, rivals, property or other, from what the message is about.
+    /// Row icon: money, people, customers, rivals, property or other, from what the message is about.
     var inboxCategoryGlyph: String {
         let words: String = (title + " " + body).lowercased()
         if actionID.hasPrefix("pay29") || ["loan", "tax", "invoice", "bank", "fine", "payment", "overdraft"].contains(where: { words.contains($0) }) { return Glyph.bank }
@@ -57,7 +57,7 @@ struct InboxMailRow: View {
     private var unread: Bool { open || !message.isRead }
     private func text(_ s: String) -> String { (store.engine?.displayText(s, companyID: message.companyID) ?? s).tidyMoney }
 
-    /// With more than one company the company name leads the title (brief 2.3).
+    /// With more than one company the company name leads the title.
     private var title: String {
         let t: String = text(message.title)
         guard let e = store.engine, message.companyID != 0, e.state.companies.filter({ $0.status.isLive }).count > 1,

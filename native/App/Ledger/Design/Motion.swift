@@ -1,11 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// Motion rules (Stage 8). Animations are restrained and used only where something meaningful changes (a figure moved, a sheet or
+/// Motion rules. Animations are restrained and used only where something meaningful changes (a figure moved, a sheet or
 /// a reward appeared, a segment changed). Every site passes the environment's Reduce Motion flag through here, so the setting is
 /// respected everywhere from one place. Pure functions: no screen state, nothing to keep in step.
 enum Motion {
-    // Brief 9.1: every duration and curve of the app lives here and nowhere else. Under Reduce Motion the root view drops the animation of
+    // Every duration and curve of the app lives here and nowhere else. Under Reduce Motion the root view drops the animation of
     // every transaction (`RootView`, `.transaction`), so the plain constants need no wrapper of their own at the call site.
     /// `tap`: button press, 0.12 s ease-out.
     static let tapAnimation: Animation = .easeOut(duration: 0.12)
@@ -212,7 +212,7 @@ struct LiveFigure: View {
 extension View {
     /// Rolls the figure and flashes it green (up) or red (down) when `value` changes.
     func moneyFlash(_ value: Double) -> some View { modifier(MoneyFlash(value: value)) }
-    /// Pulses once (brief 9.3, `pulse`) when `trigger` rises: a new `Needs you` item. Reduce Motion: a 2 pt accent border for a moment.
+    /// Pulses once when `trigger` rises: a new `Needs you` item. Reduce Motion: a 2 pt accent border for a moment.
     func pulseOnce(when trigger: Int) -> some View { modifier(PulseOnce(trigger: trigger)) }
 }
 

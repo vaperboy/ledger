@@ -53,7 +53,7 @@ final class MainScreensTests: TourCase {
     func scrollDown() { app.swipeUp(); sleep(1) }
     func scrollUp() { app.swipeDown(); app.swipeDown(); app.swipeDown(); sleep(1) }
 
-    /// Part 1: Home, the company hub and every section of one company.
+    /// Home, the company hub and every section of one company.
     func testMainScreensCompany() {
         if !waitForHome() { note("Home summary not found; continuing anyway") }
         shot("20-home")
@@ -89,7 +89,7 @@ final class MainScreensTests: TourCase {
         ensureTabBar()
     }
 
-    /// Part 2: the Team tab and the Group tab: the picker, an entity page with its tabs, and the Suppliers directory.
+    /// The Team tab and the Group tab: the picker, an entity page with its tabs, and the Suppliers directory.
     func testMainScreensTeamAndGroup() {
         if !waitForHome() { note("Home summary not found; continuing anyway") }
         open("Group"); sleep(1); shot("40-group-first")
@@ -120,7 +120,7 @@ final class MainScreensTests: TourCase {
         if suppliers.waitForExistence(timeout: 2), suppliers.isHittable { suppliers.tap(); sleep(1); shot("49-group-suppliers"); ensureTabBar() }
     }
 
-    /// Part 3: Projects, the Phone grid and the Inbox.
+    /// Projects, the Phone grid and the Inbox.
     func testMainScreensProjectsAndInbox() {
         if !waitForHome() { note("Home summary not found; continuing anyway") }
         open("Ventures"); sleep(1); shot("50-projects")

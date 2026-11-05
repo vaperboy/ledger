@@ -3,7 +3,7 @@ import Simulation
 import Finance
 import Businesses
 
-/// The top of the Home tab (route name `.company`), the compact command centre of "Home variation 1" (native/design/MOCKUP_DECISIONS.md):
+/// The top of the Home tab (route name `.company`), the compact command centre:
 /// date and name, the net worth hero with its four figures, the player's shortcut boxes, the top priorities (at most three, the rest
 /// in the Inbox), then the companies list below (CompaniesView) and the Next day bar. Report sheets and reward popups appear on top of it.
 struct HomeSummary: View {
@@ -41,7 +41,7 @@ struct HomeSummary: View {
         return n.isEmpty ? "there" : n
     }
 
-    /// New-player start (brief 1.3): a bill the account cannot cover yet waits one day; nothing else happens.
+    /// New-player start: a bill the account cannot cover yet waits one day; nothing else happens.
     private var cashTightBanner: some View {
         Text("Cash is tight. A bill waits until tomorrow.")
             .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
@@ -338,7 +338,7 @@ struct AdvanceBar: View {
     /// Week 1, day 1 of a game with the ladder: nothing has been played yet.
     private var firstDay: Bool { engine.state.week == 0 && engine.state.day == 0 && Gates.ladderOn(engine.state) }
 
-    /// "Play to end of week": a text button under Next day from week 2; off while a blocking Inbox item is open (brief 2.2).
+    /// "Play to end of week": a text button under Next day from week 2; off while a blocking Inbox item is open.
     @ViewBuilder private var weekButton: some View {
         if store.canPlayWeek {
             Button { if ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { store.playToEndOfWeek() } else { ent.run(.playToEndOfWeek, "Play to end of week") {} } } label: {
@@ -373,7 +373,7 @@ struct AdvanceBar: View {
         }
         .buttonStyle(PressableStyle())
         .onAppear {
-            // Brief 1.5: until the first day has been played the button breathes (opacity 1.0 to 0.6, 1.2 s a cycle).
+            // Until the first day has been played the button breathes (opacity 1.0 to 0.6, 1.2 s a cycle).
             guard firstDay, !reduceMotion else { return }
             Motion.animate(Motion.pulseAnimation) { pulseDim = true }
         }

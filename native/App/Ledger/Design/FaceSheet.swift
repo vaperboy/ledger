@@ -3,7 +3,7 @@ import CoreGraphics
 import ImageIO
 import Employees
 
-/// The owner's four sheets of face portraits (`Resources/faces-sheet.jpg`, 15 x 9 casual; `Resources/faces-suits.jpg`, 13 x 13 business dress;
+/// The four sheets of face portraits (`Resources/faces-sheet.jpg`, 15 x 9 casual; `Resources/faces-suits.jpg`, 13 x 13 business dress;
 /// `Resources/art/workers-sheet.jpg`, 90 casual faces in an uneven grid; `Resources/art/managers-sheet.jpg`, 110 faces in business wear),
 /// sliced at runtime into square portraits. The engine decides who gets which portrait (`FaceBook`, saved with the game); this only cuts the
 /// picture for a `FaceKey` out of its sheet: a centred square of the cell, cached, safe to call from any thread. Faces are for employees only.

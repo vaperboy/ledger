@@ -1,9 +1,9 @@
 import Foundation
 
-/// Cloud backup of the save (Ledger Plus/Pro, brief 11.3). iCloud needs the iCloud capability and a container in the app's
-/// entitlements, which only the owner can supply. Until then `iCloudReady` stays false and the screen shows a disabled state.
+/// Cloud backup of the save (Ledger Plus/Pro). iCloud needs the iCloud capability and a container in the app's
+/// entitlements, which have to be added to the project. Until then `iCloudReady` stays false and the screen shows a disabled state.
 enum CloudConfig {
-    /// Owner: set to true once the iCloud capability (key-value storage and iCloud Documents) is in the entitlements and provisioning profile.
+    /// Set to true once the iCloud capability (key-value storage and iCloud Documents) is in the entitlements and provisioning profile.
     static let iCloudReady: Bool = false
 }
 

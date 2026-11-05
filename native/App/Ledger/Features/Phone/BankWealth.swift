@@ -31,7 +31,7 @@ struct BankTotalPanel: View {
     }
 }
 
-/// Your wealth (Master spec 2E): the money you can spend, investments, the ESTIMATED value of your companies (kept apart, never spendable) and what you
+/// Your wealth: the money you can spend, investments, the ESTIMATED value of your companies (kept apart, never spendable) and what you
 /// owe. From `netWorthBreakdown`, so a company's value is counted once and never shown as cash.
 struct BankWealthCard: View {
     @Environment(\.outsidePalette) private var P
@@ -87,7 +87,7 @@ struct BankWealthCard: View {
     }
 }
 
-/// A company account's reserves, display only (owner decision, Oct 2026): what payroll and tax will need, and what is free. The money stays in the one
+/// A company account's reserves, display only: what payroll and tax will need, and what is free. The money stays in the one
 /// account; there are no sub-accounts to move between.
 struct BankReservesCard: View {
     @Environment(\.outsidePalette) private var P

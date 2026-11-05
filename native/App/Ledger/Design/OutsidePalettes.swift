@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The colours of one OUTSIDE phone app. Outside apps are "fake apps by other creators" (owner rule, 27 Oct 2026): each has its own
+/// The colours of one OUTSIDE phone app. Outside apps are "fake apps by other creators": each has its own
 /// muted palette, used inside the app and on its launch splash. The icon on the Phone home keeps its muted tint (`PhoneApp.tint`).
 /// A palette is defined once, here, and reaches the shared pieces (Card, CardSection, CardLine, GlyphView, IconCircle, FlatRow, NoteCard,
 /// the round back button, `ledgerBackground`) through the `\.outsidePalette` environment, which `outsideScreen(_:)` sets. Everywhere
@@ -96,7 +96,7 @@ struct OutsidePalette: Equatable {
         accent: Color(hex: 0x1F4A3A), accent2: Color(hex: 0xA9812F), onAccent: Color(hex: 0xF7F2E4),
         gain: Color(hex: 0x2B7A4B), loss: Color(hex: 0xAE3F2B), caution: Color(hex: 0x8F6410), isLight: true)
 
-    /// The Bank app (Master spec 2A, owner decision 1 Nov 2026): the same warm ivory pages as Accounting under a forest-green header. The player's own
+    /// The Bank app: the same warm ivory pages as Accounting under a forest-green header. The player's own
     /// bank, when it is the main bank, uses the game's own colours instead.
     static let bank = accounting
 

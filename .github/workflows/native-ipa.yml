@@ -2,7 +2,7 @@ name: Native iOS unsigned IPA (GitHub Release + AltStore source)
 
 # Builds the app without signing, publishes Ledger-unsigned.ipa as a GitHub Release tagged v<run number>, and updates
 # apps.json (an AltStore source) on native-swiftui with the link to that IPA. AltStore signs the IPA on your device
-# with your own Apple ID; see native/docs/SIDELOAD.md.
+# with your own Apple ID.
 # Runs when the ipa-build branch is pushed (a workflow can only be started by name from the default branch).
 on:
   push:
