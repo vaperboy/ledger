@@ -85,7 +85,7 @@ struct NoticePopup: View {
 
     /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
     private var luxury: some View {
-        GamePopup(title: "Acquired", showsClose: false, onClose: { store.dismissNotice() }) {
+        GamePopup(title: "Acquired", showsClose: false, variant: .reward, onClose: { store.dismissNotice() }) {
             PopupBody {
                 GoldReveal {
                     VStack(spacing: 6) {

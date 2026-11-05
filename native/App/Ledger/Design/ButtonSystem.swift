@@ -6,6 +6,8 @@ import SwiftUI
 //   Important         : `ImportantButtonStyle`, a gold-filled button (Verify, Authorize, Execute).
 //   Expensive         : `FoilButtonStyle`, a gold-foil outline with the amount in the label ("Acquire asset - 12,500,000").
 //   Popup footer      : `PopupFooter` (Cancel | Apply).
+//   Sole action       : `PopupPrimaryButtonStyle` / `PopupOptionButton(highlighted: true)`; on a celebration card `ClaimButton` (Celebration.swift), the same button with a pulse.
+//   Haptics           : every popup button plays a soft tap, a destructive footer a warning, a claim a success (`Haptics.play`).
 
 private let goldInk = Color(red: 0.09, green: 0.075, blue: 0.055)
 
@@ -73,10 +75,10 @@ struct PopupFooter: View {
             PopupOptionButton(title: cancel, identifier: "confirm-cancel", action: onCancel)
             switch tone {
             case .expensive:
-                Button(action: { Haptics.tap(); onAction() }) { Text(action) }
+                Button(action: { Haptics.play(.tap); onAction() }) { Text(action) }
                     .buttonStyle(FoilButtonStyle()).accessibilityIdentifier("confirm-go")
             case .destructive:
-                Button(action: { Haptics.tap(); onAction() }) { Text(action) }
+                Button(action: { Haptics.play(.warning); onAction() }) { Text(action) }
                     .buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier("confirm-go")
             case .normal:
                 PopupOptionButton(title: action, identifier: "confirm-go", action: onAction)
