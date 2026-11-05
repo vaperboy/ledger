@@ -1,7 +1,7 @@
 import Foundation
 import GameCore
 
-/// Brief Part 7.3: the number of consecutive calendar days with at least one game day played. Stored as `rest["playStreak"]`
+/// The number of consecutive calendar days with at least one game day played. Stored as `rest["playStreak"]`
 /// = { d: calendar day number of the last day played, n: count }. No reward, no penalty; the app shows it from 3 up.
 public enum PlayStreak {
     /// Records one game day played on calendar day `today` (any whole-number day count, for example days since 1970 in the local calendar).
@@ -24,7 +24,7 @@ public enum PlayStreak {
     public static let showFrom: Int = 3
 }
 
-/// Brief Part 7.1 and 7.2: what the app may remind the player of, as pure data. The app turns each plan into one local notification.
+/// What the app may remind the player of, as pure data. The app turns each plan into one local notification.
 public enum SessionHooks {
     public struct Reminder: Equatable, Sendable {
         public var id: String, title: String, body: String

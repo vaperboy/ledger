@@ -5,8 +5,8 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Brief Part 8.1: headless playtest. Three bots play the automatic cafe start of Part 1.2 day by day on every country.
-/// If a bot fails, tune only `firstYear.demandMult` in balance.json (Part 5.2); never a trade or country value.
+/// Headless playtest. Three bots play the automatic cafe start day by day on every country.
+/// If a bot fails, tune only `firstYear.demandMult` in balance.json; never a trade or country value.
 final class PlaytestTests: XCTestCase {
     typealias Run = (code: String, bankruptWeek: Int?, cashPositive: Bool, m7Week: Int?, m10Week: Int?)
 

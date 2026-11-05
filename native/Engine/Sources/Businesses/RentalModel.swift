@@ -315,7 +315,7 @@ public enum RentalModel {
         var rent = 0.0, units = 0.0, occU = 0.0, upkeep = 0.0, ptax = 0.0
         for n in props.indices {
             var p = props[n]
-            let m = Wave8.rateMultiplier(co, bd, propertyID: p.id)
+            let m = RentalUnits.rateMultiplier(co, bd, propertyID: p.id)
             let target = clamp(0.03 + 0.28 * (pr - 1) * bd.elasticity + 0.28 * (m - 1) * bd.elasticity + (1 - p.condition) * 0.16 + (1 - w.economy.demand) * 0.6
                                - (co.awareness / 100) * 0.03 - (co.reputation - 50) / 100 * 0.05 + (1 - dm) * 0.8 + (1 - dKnob) * 0.18
                                + (cover < 1 ? (1 - cover) * 0.06 : 0) + seasonal + rivals, 0.01, 0.8)

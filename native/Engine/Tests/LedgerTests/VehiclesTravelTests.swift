@@ -9,7 +9,7 @@ import Employees
 /// Vehicles for the trades whose people really travel, the running costs of every vehicle, the company-car perk with a real car behind it,
 /// own car with mileage beyond estate agents, and the country data blocks for motor insurance, road tax and benefit in kind.
 final class VehiclesTravelTests: XCTestCase {
-    /// The rule recorded in docs/KNOWN_GAPS.md: sales reps get a car each, visiting professionals a car per three, goods that leave by road a vehicle.
+    /// The rule: sales reps get a car each, visiting professionals a car per three, goods that leave by road a vehicle.
     static let salesRepTrades = ["mktg", "staffing", "factory", "vineyard", "brewery", "furniture", "hardware", "event"]
     static let visitingTrades = ["cons", "photo", "law", "acctfirm", "engcons"]
     static let deliveryTrades = ["farm", "factory", "vineyard"]

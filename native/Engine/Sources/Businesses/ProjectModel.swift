@@ -37,7 +37,7 @@ public enum ProjectModel {
         public let isEvent: Bool
         /// Native calibration (not in the original): what the work is priced at relative to the original's hour value, and how many
         /// requests a firm of this trade gets relative to the original's formula. They keep margins in the range real firms of the
-        /// trade have (see docs/BALANCE_PARITY.md, "Project businesses").
+        /// trade have.
         public let priceFactor: Double
         public let demandFactor: Double
     }

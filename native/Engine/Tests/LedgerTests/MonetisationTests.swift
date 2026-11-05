@@ -1,7 +1,7 @@
 import XCTest
 import Simulation
 
-/// Brief Part 11.7: EntitlementGatesTests and AdPolicyTests (pure rules; StoreKit and the ad SDK live in the app).
+/// EntitlementGatesTests and AdPolicyTests (pure rules; StoreKit and the ad SDK live in the app).
 final class EntitlementGatesTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 

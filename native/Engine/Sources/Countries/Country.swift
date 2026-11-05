@@ -7,7 +7,7 @@ import GameCore
 /// country's currency). A country's own currency is worth `fx` accounting units per 1 local unit. To show a player a local amount, divide by the country's
 /// current exchange rate (see `ExchangeRates`).
 ///
-/// To change a country's economy, edit `countries.json`; no code needs to change (see docs/ADDING_CONTENT.md).
+/// To change a country's economy, edit `countries.json`; no code needs to change.
 /// One employer contribution component: a share of pay up to `capUnits` times the contribution unit (0 = no cap).
 public struct EmployerContribution: Equatable, Sendable {
     public var name: String

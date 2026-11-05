@@ -19,7 +19,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testNamesAreCompanySpecificAndStable() throws {
-        let (e, id) = try engine(weeks: 0)   // bakery is a recipe trade: after a week the wave installs its real items
+        let (e, id) = try engine(weeks: 0)   // bakery is a recipe trade: after a week its item model installs its real items
         let items = e.salesItems(companyID: id)
         XCTAssertGreaterThanOrEqual(items.count, 3)
         let first = e.state.company(id)!.name.split(separator: " ").first.map(String.init)!
@@ -33,7 +33,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testDefaultsAreRevenueNeutral() throws {
-        let (e, id) = try engine("estate", weeks: 12)   // a trade no wave installs real items in (bakery now gets them in its first week)
+        let (e, id) = try engine("estate", weeks: 12)   // a trade no item model installs real items in (bakery now gets them in its first week)
         let co = e.state.company(id)!, bd = e.data.catalog[co.type]!
         XCTAssertEqual(SalesItems.demandFactor(co), 1)
         XCTAssertEqual(SalesItems.ticketFactor(co), 1)

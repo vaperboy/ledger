@@ -5,7 +5,7 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Brief Part 1.3: the new-player start. Starting cash, no overdraft in the first weeks, deferred payments, the ambition held back.
+/// The new-player start. Starting cash, no overdraft in the first weeks, deferred payments, the ambition held back.
 final class NewPlayerStartTests: XCTestCase {
     private func fresh(_ country: String = "NO", trade: String = "cafe", seed: Int = 1) throws -> GameEngine {
         try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed, story: .fresh, tradeID: trade, companyName: "Test Café")

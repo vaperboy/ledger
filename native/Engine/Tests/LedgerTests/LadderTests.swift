@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Brief Part 5: the ladder M1 to M10, its past-tense lines and rewards, and a scripted game that reaches M7 within 20 weeks on every country.
+/// The ladder M1 to M10, its past-tense lines and rewards, and a scripted game that reaches M7 within 20 weeks on every country.
 final class LadderTests: XCTestCase {
     func testTenGoalsInOrderWithExactTitlesAndPastTense() throws {
         let e = try GameEngine.newGame(countryCode: "NO", playerName: "T", seed: 1)

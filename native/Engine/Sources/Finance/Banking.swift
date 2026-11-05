@@ -119,7 +119,7 @@ public enum Banking {
         }
         // The least income a bank assumes: a fixed number of months of the country's median wage. (The original wrote
         // `380000 * CC().wage0`, but no country defines `wage0`, so every country got the same floor, the level of one particular
-        // country. Corrected on purpose; docs/MONEY_SCALING.md.)
+        // country. Corrected on purpose.)
         let income = max(ownerSalaries + profitShare, assumedIncomeMonths * context.homeCountry(s).medianMonthlyWage)
         let rate = s.economy.policyRate + countryRateShift(companyID: co?.id ?? 0, state: s, context: context) + margin
         func room(_ inc: Double, _ pay: Double) -> Double {

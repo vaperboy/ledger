@@ -26,7 +26,7 @@ public struct GameEvent: Sendable {
     public var condition: Formula?
     public var options: [Option]
     public var lawyerHelps: Bool
-    /// A decision that must be answered before the player can play on (Part 4.4 of the rebuild brief). Default false.
+    /// A decision that must be answered before the player can play on. Default false.
     public var blocking: Bool
 
     init(id: String, json e: JSONValue) {

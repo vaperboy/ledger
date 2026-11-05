@@ -47,7 +47,7 @@ public struct WeekStoryInput: Equatable, Sendable {
 public enum WeekStory {
     public static let maxLength = 110
 
-    /// The one sentence, by the priority order of Part 3.2; never longer than 110 characters.
+    /// The one sentence, by priority order; never longer than 110 characters.
     public static func sentence(_ i: WeekStoryInput) -> String {
         cap(pick(i))
     }
@@ -114,7 +114,7 @@ public struct WeekNextStep: Equatable, Sendable {
     public var detail: String
     public var buttonTitle: String
     public var action: Suggestion.Action
-    /// An Inbox item with an expiry: the cliffhanger of Part 3.3 (the later notification step keys off this).
+    /// An Inbox item with an expiry: the cliffhanger (the notification step keys off this).
     public var expiresInWeeks: Int?
 }
 

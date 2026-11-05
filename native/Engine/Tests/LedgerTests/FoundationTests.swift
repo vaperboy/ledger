@@ -41,15 +41,15 @@ final class FoundationTests: XCTestCase {
         }
     }
 
-    /// Tax figures deliberately corrected to the 2025/26 law (docs/TAX_SOURCES.md lists every change). The original's numbers are
+    /// Tax figures deliberately corrected to the 2025/26 law. The original's numbers are
     /// kept in Golden/countries_derived.json; for these (country, field) pairs the test checks the corrected values instead
     /// (`testCorrectedTaxFiguresArePinned`).
     static let correctedBrackets: Set<String> = ["SE", "LT", "DE", "FR", "NL", "US", "CA", "BR", "DK", "FI", "MX"]
-    // MX: IMSS table + 3% state payroll tax; BR: employer FGTS 8% as payroll (2026 rules, docs/TAX_SOURCES.md)
+    // MX: IMSS table + 3% state payroll tax; BR: employer FGTS 8% as payroll (2026 rules)
     static let correctedEmployerCost: Set<String> = ["DE", "MX", "BR"]
 
     func testCountryDerivedValuesMatchOriginal() throws {
-        // The original game's city data: the real-life city overlay (docs/CITY_DATA.md) adds cities and fields on top of it.
+        // The original game's city data: the real-life city overlay adds cities and fields on top of it.
         let book = try CountryBook.bundled(realCityMarket: false)
         XCTAssertEqual(book.countries.count, 23)
         let g = try Golden.load("countries_derived")
@@ -158,7 +158,7 @@ final class FoundationTests: XCTestCase {
     func testTaxesMatchOriginal() throws {
         let book = try CountryBook.bundled()
         let g = try Golden.load("currency_tax_rng")
-        // Deliberately corrected to the 2025/26 law (docs/TAX_SOURCES.md): income tax, dividend tax and wealth tax of these countries
+        // Deliberately corrected to the 2025/26 law: income tax, dividend tax and wealth tax of these countries
         // no longer equal the original's numbers; `testCorrectedTaxFiguresArePinned` pins the new values.
         let incomeCorrected = Self.correctedBrackets.union(["NO"])
         let dividendCorrected: Set<String> = ["UK", "FR"]

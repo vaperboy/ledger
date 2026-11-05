@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Event audit for the events rebalance (brief Part 4). Prints, per prefix group: count, tone %, events with zero options
+"""Event audit for the events rebalance. Prints, per prefix group: count, tone %, events with zero options
 (information-only events are listed apart), blocking events. Exits 1 if any quota is not met.
 
   python3 Scripts/event_audit.py
@@ -9,7 +9,7 @@ import json, os, sys, collections
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 RES = os.path.join(ROOT, "native/Engine/Sources/Events/Resources")
 
-# Read-only Inbox rows: stay auto, no options (brief 4.2). Any good auto event is information-only too.
+# Read-only Inbox rows: stay auto, no options. Any good auto event is information-only too.
 INFO = {"g_review", "g_award", "v_critic", "v_bigwin", "c_market", "d_market", "pr_subsidy", "rival_call", "probe", "g_heat"}
 # The other auto events of the original file: each must now have exactly two options.
 CONVERTED = ["g_theft", "g_it", "g_audit", "g_inspect", "v_health", "r_stockout", "r_adCost", "r_carrier", "p_matprice",

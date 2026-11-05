@@ -77,7 +77,7 @@ final class SimulationSmokeTests: XCTestCase {
 
 extension SimulationSmokeTests {
     /// Not a pass/fail test: prints average results over several seeds so they can be compared with the original game
-    /// (tools/ref/snippets/stats_run.js). The numbers feed docs/BALANCE_PARITY.md.
+    /// (tools/ref/snippets/stats_run.js).
     func testPrintStatisticsForComparison() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         let base = Int(ProcessInfo.processInfo.environment["LEDGER_SEED0"] ?? "1000")!, step = Int(ProcessInfo.processInfo.environment["LEDGER_STEP"] ?? "37")!

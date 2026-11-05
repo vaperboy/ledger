@@ -165,7 +165,7 @@ final class LabourRulesTests: XCTestCase {
         XCTAssertEqual(b.first { $0.label == "Probation" }?.value, "At will")
     }
 
-    // MARK: 2026 rules (docs/TAX_SOURCES.md)
+    // MARK: 2026 rules
 
     private func term(_ code: String, years: Double, reason: LabourRules.TerminationReason = .redundancy) -> LabourRules.Termination {
         LabourRules(code: code).termination(tenureWeeks: years * 52, reason: reason)

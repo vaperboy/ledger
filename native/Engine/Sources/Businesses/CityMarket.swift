@@ -29,7 +29,7 @@ public struct CityMarketTables: Sendable {
         trades = j["trades"].object.mapValues { TradeClass(need: $0["need"].double, lean: $0["lean"].double) }
     }
 
-    /// Trades with a class: their demand differs on purpose from the original game's, so the parity tests skip them (docs/CITY_DATA.md).
+    /// Trades with a class: their demand differs on purpose from the original game's, so the parity tests skip them.
     public static var bundledTradeIDs: Set<String> {
         guard let url = Bundle.module.url(forResource: "market_classes", withExtension: "json", subdirectory: "Resources"),
               let data = try? Data(contentsOf: url), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return [] }
@@ -56,7 +56,7 @@ public enum CityMarket {
     }
 
     /// The weekly demand step: potential customers follow the share of local households that can afford what the company sells.
-    /// Everyday trades: 1. Original game: no such step (new, docs/CITY_DATA.md).
+    /// Everyday trades: 1. Original game: no such step (new).
     public static func demandFactor(_ co: Company, _ bd: Trade, _ w: World) -> Double {
         let tables = w.balance.cityMarket
         guard let t = tables.trades[bd.id], let city = w.city(co) else { return 1 }
