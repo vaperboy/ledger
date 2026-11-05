@@ -13,8 +13,9 @@ struct GoalsView: View {
     var body: some View {
         if let e = store.engine {
             FixedScreen(spacing: 14, top: 4, overflowScrolls: true) {
-                summaryCard(e)
+                rankCard(e)
                 ladderCard(e)
+                nextUpCard(e)
                 todayCard(e)
                 stepsCard(e)
                 if e.ambitionVisible { ambitionCard(e) }
@@ -45,6 +46,39 @@ struct GoalsView: View {
                     Text(line).font(.serifTitle(20)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
+            }
+        }
+    }
+
+    // MARK: Rank and next goals
+
+    /// Your rank title, with the bar to the next one; it moves after every day.
+    private func rankCard(_ e: GameEngine) -> some View {
+        let st: Career.RankStatus = e.careerStatus
+        let line: String = st.next.map { "Next: \($0.title). \(st.missing)" } ?? "You are at the top of the ladder."
+        return Card(padding: 16, radius: Theme.Radius.hero) {
+            HStack(spacing: 16) {
+                GoalRing(progress: st.progress, done: st.next == nil, size: 64, label: "\(Int((st.progress * 100).rounded()))%")
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Your rank").capsLabel()
+                    Text(st.rank.title).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
+                    Text(line).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    /// The next short, medium and long goal, always: there is something to chase today, this season and this decade.
+    @ViewBuilder private func nextUpCard(_ e: GameEngine) -> some View {
+        let goals: [Career.Goal] = e.careerNextGoals
+        if !goals.isEmpty {
+            CardSection("Next up") {
+                ForEach(Array(goals.enumerated()), id: \.element.id) { i, g in
+                    if i > 0 { CardLine() }
+                    GoalRow(ring: GoalRing(progress: g.progress, done: false, label: "\(Int((g.progress * 100).rounded()))"),
+                            title: g.title, detail: g.horizon.label + " goal. " + g.body, reward: "Reward: " + g.reward, action: nil) {}
+                }
             }
         }
     }
