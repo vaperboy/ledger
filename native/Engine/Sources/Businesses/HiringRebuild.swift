@@ -27,6 +27,17 @@ public enum Workplaces {
     /// Working from home: the kitchen table seats this many (a team of four has outgrown it, see `PremisesExtras.hasOutgrownHome`).
     public static let homePlaces = 3
 
+    /// Where a role does its work. On-site roles sit at a desk or bench in the premises; mobile roles work at customers' sites, in vehicles or on the road;
+    /// remote roles work from their own home. Only on-site roles take a place.
+    public enum WorkMode: String, Sendable { case onSite, mobile, remote }
+
+    static let mobileRoles: Set<String> = ["cleaner", "plumb", "elec", "labour", "carp", "foreman", "handy", "estate", "instr", "tutor", "event", "av", "engineer",
+                                           "guard", "insadv", "mortadv", "sales", "photog", "carwash", "tcons", "consult", "farmh", "courier", "driver", "truckd"]
+    static let remoteRoles: Set<String> = ["dev", "designer", "marketer", "acct", "lawyer", "paralegal", "projc", "hr", "architect", "analyst", "ittech"]
+
+    public static func mode(role: String) -> WorkMode { mobileRoles.contains(role) ? .mobile : remoteRoles.contains(role) ? .remote : .onSite }
+    public static func needsPlace(role: String) -> Bool { mode(role: role) == .onSite }
+
     /// The places a premises of this kind and size holds: offices by area, home by the table, everything else unlimited (nil).
     public static func places(kind: String, squareMetres m2: Double) -> Int? {
         switch kind {
@@ -54,7 +65,7 @@ public enum Workplaces {
     public static func info(_ co: Company, data: GameData) -> WorkplaceInfo {
         let bd = data.catalog[co.type]
         let k = kind(co, bd)
-        let used = PremisesExtras.heads(co)
+        let used = PremisesExtras.onSiteHeads(co)
         guard let cap = places(kind: k, squareMetres: area(co, bd)) else {
             return WorkplaceInfo(capacity: nil, used: used, free: nil, placeKind: k, note: "No limit on how many people work here.")
         }
@@ -63,10 +74,25 @@ public enum Workplaces {
     }
 
     /// Why one more person cannot be hired here (nil when there is room).
-    public static func hireBlock(_ co: Company, data: GameData) -> String? {
+    /// A role that works at customers' sites or remotely is never blocked by a full office.
+    public static func hireBlock(_ co: Company, role: String? = nil, data: GameData) -> String? {
+        if let role, !needsPlace(role: role) { return nil }
         let i = info(co, data: data)
         guard let free = i.free, free <= 0 else { return nil }
-        return "There is no free place for another person: the \(i.placeKind == "home" ? "home" : "office") has \(i.capacity ?? 0) places and all are taken. Rent a bigger place or let someone go first."
+        let at = i.placeKind == "home" ? "the home" : "the office"
+        return "No free desk: \(at) seats \(i.capacity ?? 0) and all are taken. Move to bigger premises, or hire for a role that works at customers' sites or remotely."
+    }
+
+    /// The cheapest listing that seats everyone on site plus one more; nil when the company owns its place or no listing is big enough.
+    public static func roomListing(_ s: GameState, companyID: Int, data: GameData) -> CompanySetup.Listing? {
+        guard let co = s.company(companyID), let bd = data.catalog[co.type], !co.value("prem")["owned"].bool else { return nil }
+        let after = PremisesExtras.isHomeTrade(bd) ? PremisesExtras.placeKind(bd) : kind(co, bd)
+        let need = PremisesExtras.onSiteHeads(co) + 1
+        let fits = CompanySetup.listings(for: co, bd, World(state: s, data: data)).filter { l in
+            guard let n = places(kind: after, squareMetres: l.squareMetres) else { return true }
+            return n >= need && l.squareMetres > co.value("prem")["m2"].double
+        }
+        return fits.min { $0.squareMetres * $0.rentFactor < $1.squareMetres * $1.rentFactor }
     }
 }
 

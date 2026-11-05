@@ -55,15 +55,20 @@ final class HiringRebuildTests: XCTestCase {
         var w = e.workplaces(companyID: id)!
         XCTAssertEqual(w.capacity, used + 1)
         XCTAssertEqual(w.free, 1)
-        _ = try hireOne(&e, id, role: "acct")
+        _ = try hireOne(&e, id, role: "recept")
         w = e.workplaces(companyID: id)!
         XCTAssertEqual(w.free, 0)
-        let p = candidate(&e, id, role: "acct")
+        let p = candidate(&e, id, role: "recept")
         let before = e.state.company(id)!.staff.count
         XCTAssertEqual(e.hire(personID: p.id, companyID: id, monthlyWage: p.askingMonthlyWage * 2), .refused)
         XCTAssertEqual(e.state.company(id)!.staff.count, before)
         XCTAssertNotNil(e.hireBlock(companyID: id))
-        XCTAssertTrue(e.hireBlock(companyID: id)!.contains("no free place"))
+        XCTAssertTrue(e.hireBlock(companyID: id)!.contains("No free desk"))
+        XCTAssertTrue(e.hireBlock(companyID: id)!.contains("Move to bigger premises"))
+        // people who work at customers' sites or remotely need no desk
+        XCTAssertNil(e.hireBlock(companyID: id, role: "cleaner"))
+        XCTAssertNil(e.hireBlock(companyID: id, role: "dev"))
+        XCTAssertNotNil(e.hireBlock(companyID: id, role: "recept"))
         // a listing reads its places for the screen
         let listing = CompanySetup.Listing(index: 0, name: "x", squareMetres: 45, rentFactor: 1, location: 1, landlord: "y")
         XCTAssertEqual(e.officeCapacity(forListing: listing, companyID: id), 5)

@@ -52,7 +52,7 @@ struct HireWorkersView: View {
         if let c = chosen { title = "Hire the " + c.name.lowercased() }
         return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                placesNote(e)
+                placesNote(e, role: chosen?.id)
                 roleSection(roles)
                 if let chosen { searchSection(e, co, cur, chosen) }
                 runningSection(e, co)
@@ -68,9 +68,12 @@ struct HireWorkersView: View {
         .appScreen(title: title, subtitle: co.name, tab: store.tab)
     }
 
-    @ViewBuilder private func placesNote(_ e: GameEngine) -> some View {
-        if let why = e.hireBlock(companyID: companyID) {
+    @ViewBuilder private func placesNote(_ e: GameEngine, role: String?) -> some View {
+        if let why = e.hireBlock(companyID: companyID, role: role) {
             Text(why).font(.system(size: 12.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+            if e.roomListing(companyID: companyID) != nil {
+                Button("Move to bigger premises") { _ = store.act { $0.moveForRoom(companyID: companyID) } }.buttonStyle(GreyOutlineButtonStyle())
+            }
         } else if let w = e.workplaces(companyID: companyID), let free = w.free {
             Text(free == 1 ? "1 free place" : "\(free) free places").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
         }

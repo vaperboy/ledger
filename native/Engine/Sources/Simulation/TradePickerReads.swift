@@ -71,7 +71,7 @@ public extension GameEngine {
         let tables = data.balance.cityMarket
         return TradeAffordability.rows(state: state, data: data, cityID: city.id, countryCode: country.code).compactMap { a in
             guard let bd = data.catalog[a.tradeID] else { return nil }
-            let low = Self.employees(bd, size: bd.minSize), high = Self.employees(bd, size: CompanySetup.recommendedSize(bd, city: city))
+            let low = Self.employees(bd, size: bd.minSize), high = Self.employees(bd, size: a.size)
             return TradePickerRow(tradeID: bd.id, name: bd.name, sector: bd.category, startUpCost: a.cost, minimumCost: a.minimum,
                                   demand: CityMarket.demandLevel(trade: bd.id, country: country, city: city, tables: tables),
                                   staffMin: min(low, high), staffMax: max(low, high), blocked: a.blocked, isFunded: a.isFunded)
@@ -129,8 +129,14 @@ public extension GameEngine {
 
     // MARK: Helpers
 
-    /// The size the picker prices a trade at: the one the city carries (`CompanySetup.recommendedSize`), as `TradeAffordability` does.
+    /// The size the picker prices a trade at: the one the city carries (`CompanySetup.recommendedSize`) or, when the money does not carry it, the largest the money does (`TradeAffordability.size`).
+    /// The size a new company of this trade starts at for the money the player has now.
+    func affordableStartSize(tradeID: String, cityID: String) -> Double? {
+        tradeAffordability(cityID: cityID).first { $0.tradeID == tradeID }?.size
+    }
+
     private func startSize(_ bd: Trade, cityID: String, countryCode: String?) -> Double {
+        if countryCode == nil, let r = tradeAffordability(cityID: cityID).first(where: { $0.tradeID == bd.id }) { return r.size }
         let country = data.countries.resolve(countryCode ?? state.homeCountryCode, orHome: state.homeCountryCode)
         return CompanySetup.recommendedSize(bd, city: country.city(cityID) ?? country.cities[0])
     }

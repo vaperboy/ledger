@@ -65,7 +65,7 @@ struct TradeDetailView: View {
             }
             .appScreen(title: t.name, subtitle: t.category, tab: .company)
             .confirmAction($pending)
-            .onAppear { if !sizeSet { size = CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); sizeSet = true } }
+            .onAppear { if !sizeSet { size = e.affordableStartSize(tradeID: t.id, cityID: city) ?? CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); choices = e.suggestedChoices(tradeID: t.id, cityID: city, form: form, size: size); sizeSet = true } }
         }
     }
 
