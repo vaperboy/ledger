@@ -9,9 +9,9 @@ on:
         default: 'popup'
   push:
     branches: [ native-swiftui ]
-    paths: [ 'native/**', '!native/docs/**', '!native/design/**' ]
+    paths: [ 'native/**', '!native/design/**' ]
   pull_request:
-    paths: [ 'native/**', '!native/docs/**', '!native/design/**', '.github/workflows/native-ios.yml' ]
+    paths: [ 'native/**', '!native/design/**', '.github/workflows/native-ios.yml' ]
 
 permissions:
   contents: write
