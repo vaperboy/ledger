@@ -88,7 +88,7 @@ struct CompaniesView: View {
         if rows.isEmpty {
             LedgerSection("Companies") {
                 EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Pick a trade, see the full start-up cost, then decide.",
-                           actionTitle: "Choose a trade") { store.push(.newCompany, on: .company) }
+                           actionTitle: "Choose a trade", action: { store.push(.newCompany, on: .company) })
             }
         } else {
             let regular: Bool = sizeClass == .regular

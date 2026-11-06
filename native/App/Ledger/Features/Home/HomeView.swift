@@ -121,12 +121,26 @@ struct NetWorthCard: View {
                 // Four across when they fit, else two by two (larger text, small phones).
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 0) {
-                        cashBox(wealth.liquid); divider; investedBox(otherAssets); divider; companiesBox(wealth.estimatedCompanyEquity); divider; debtBox(owed)
+                        cashBox(wealth.liquid)
+                        divider
+                        investedBox(otherAssets)
+                        divider
+                        companiesBox(wealth.estimatedCompanyEquity)
+                        divider
+                        debtBox(owed)
                     }
                     VStack(spacing: Theme.Space.s) {
-                        HStack(spacing: 0) { cashBox(wealth.liquid); divider; investedBox(otherAssets) }
+                        HStack(spacing: 0) {
+                            cashBox(wealth.liquid)
+                            divider
+                            investedBox(otherAssets)
+                        }
                         Hairline()
-                        HStack(spacing: 0) { companiesBox(wealth.estimatedCompanyEquity); divider; debtBox(owed) }
+                        HStack(spacing: 0) {
+                            companiesBox(wealth.estimatedCompanyEquity)
+                            divider
+                            debtBox(owed)
+                        }
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
