@@ -5,7 +5,7 @@ name: Native iOS feature tours
 # (git push origin native-swiftui:ui-tours --force) or by hand; never part of normal builds or releases.
 on:
   push:
-    branches: [ ui-tours ]
+    branches: [ ui-tours, 'ui-tours-*' ]
   workflow_dispatch:
     inputs:
       only:
@@ -58,6 +58,8 @@ jobs:
           TESTS: ${{ matrix.tests }}
           SHARD: ${{ matrix.shard }}
         run: |
+          # A branch can name its own tests in native/App/LedgerUITests/tour-only.txt (space-separated test names, any test class: Class/test).
+          if [ -z "$ONLY" ] && [ -f LedgerUITests/tour-only.txt ]; then ONLY=$(tr '\n' ' ' < LedgerUITests/tour-only.txt | sed -E 's/ +$//'); fi
           if [ -n "$ONLY" ] && [ "$SHARD" != "a" ]; then echo "only $ONLY: shard $SHARD has nothing to run"; exit 0; fi
           xcrun simctl list devices available | grep -E "iPhone" || true
           DEV="iPhone 16 Pro"
@@ -70,7 +72,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/tour"
           if [ -n "$ONLY" ]; then TESTS="$ONLY"; fi
           ONLYARGS=""
-          for t in $TESTS; do ONLYARGS="$ONLYARGS -only-testing:LedgerUITests/FeatureToursTests/$t"; done
+          for t in $TESTS; do case "$t" in */*) ONLYARGS="$ONLYARGS -only-testing:LedgerUITests/$t";; *) ONLYARGS="$ONLYARGS -only-testing:LedgerUITests/FeatureToursTests/$t";; esac; done
           echo "== shard $SHARD: $TESTS"
           # TEST_RUNNER_ variables reach the UI test process (prefix removed): the tours write their result file there.
           TEST_RUNNER_TOUR_OUT="$RUNNER_TEMP/tour/result.txt" xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
