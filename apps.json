@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.68",
+          "buildVersion": "68",
+          "date": "2026-11-06T01:16:16Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v68/Ledger-unsigned.ipa",
+          "size": 29183801,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Home: your rank with a progress ring, next goal, streak and daily mission; Pro Insights charts, Wardrobe (badges and colours) and a fast-forward hint\n- Screen polish: filter chips wrap instead of scrolling sideways, pages keep their place while closing, softer list and progress animations\n- Code clean-up: no behaviour change (comments, notes and unused screens removed, files renamed by what they do)\n- Board removal, portraits, Home companies box, chain/regional manager hiring, Market notice fix\n\n# Missing / coming next\n- Play-test findings are being fixed batch by batch"
+        },
+        {
           "version": "1.0.67",
           "buildVersion": "67",
           "date": "2026-11-05T23:52:50Z",
@@ -187,22 +196,13 @@
           "size": 27625062,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait\n- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days\n- Own staff"
-        },
-        {
-          "version": "1.0.48",
-          "buildVersion": "48",
-          "date": "2026-11-04T09:14:36Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v48/Ledger-unsigned.ipa",
-          "size": 27631828,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait\n- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days\n- Own staff"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.67",
-      "versionDate": "2026-11-05T23:52:50Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v67/Ledger-unsigned.ipa",
-      "size": 29095753
+      "version": "1.0.68",
+      "versionDate": "2026-11-06T01:16:16Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v68/Ledger-unsigned.ipa",
+      "size": 29183801
     }
   ]
 }
