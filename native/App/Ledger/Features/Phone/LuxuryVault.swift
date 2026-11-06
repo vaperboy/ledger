@@ -15,11 +15,21 @@ struct LuxuryVaultTab: View {
         if let e = store.engine {
             let pieces: [Luxury.Piece] = e.luxuryPieces
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     summary(e, pieces)
-                    if pieces.isEmpty { empty } else { ForEach(pieces, id: \.id) { (p: Luxury.Piece) in row(e, p) } }
+                    if pieces.isEmpty {
+                        EmptyState(glyph: Glyph.bank, title: "Your vault is empty", message: "What you buy in the Showroom is kept here, with its value and upkeep.",
+                                   actionTitle: "Open the Showroom", action: onShowroom)
+                    } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(pieces.enumerated()), id: \.element.id) { (n: Int, p: Luxury.Piece) in
+                                if n > 0 { Hairline() }
+                                row(e, p)
+                            }
+                        }
+                    }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 24)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -41,62 +51,38 @@ struct LuxuryVaultTab: View {
 
     private func summary(_ e: GameEngine, _ pieces: [Luxury.Piece]) -> some View {
         let worth: Double = pieces.reduce(0) { $0 + $1.value }
-        return VStack(alignment: .leading, spacing: 14) {
-            Text("ASSET PORTFOLIO").font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1.6).foregroundStyle(P.accent)
-            Text("My vault").font(.serifTitle(28)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
-            HStack(alignment: .top, spacing: 0) {
-                stat("ASSETS HELD", "\(pieces.count)", P.ink)
-                stat("PORTFOLIO VALUE", store.short(worth), P.ink)
-                stat("UPKEEP / MONTH", store.short(Luxury.upkeepPerMonth(e.state)), P.loss)
-            }
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("My vault").textStyle(.title).accessibilityAddTraits(.isHeader)
+            FigureRow(items: [
+                KeyFigures.Item(label: "Assets held", value: "\(pieces.count)"),
+                KeyFigures.Item(label: "Portfolio value", value: store.short(worth)),
+                KeyFigures.Item(label: "Upkeep a month", value: store.short(Luxury.upkeepPerMonth(e.state)), tint: P.loss)
+            ], columns: 3, combineCells: true)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
-    }
-
-    private func stat(_ label: String, _ value: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label).font(.system(size: 9, weight: .semibold, design: .monospaced)).tracking(1.1).foregroundStyle(P.inkFaint).lineLimit(1).minimumScaleFactor(0.7)
-            Text(value).font(.system(size: 16, weight: .semibold, design: .monospaced)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var empty: some View {
-        VStack(spacing: 12) {
-            GlyphView(glyph: Glyph.bank, size: 34, weight: 1.3, tint: P.inkDim)
-            Text("Your vault is empty").font(.serifTitle(20)).foregroundStyle(P.ink)
-            Text("What you buy in the Showroom is kept here, with its value and upkeep.").font(.system(size: 13)).foregroundStyle(P.inkFaint).multilineTextAlignment(.center)
-            Button("Open the Showroom", action: onShowroom).buttonStyle(QuietButtonStyle())
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 40)
     }
 
     private func row(_ e: GameEngine, _ p: Luxury.Piece) -> some View {
         let get: Double? = e.luxurySellQuote(pieceID: p.id)
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                LuxuryPhoto(itemID: p.item.id, height: 80).frame(width: 106).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(LuxuryFacts.categoryName(p.item).uppercased()).font(.system(size: 9.5, weight: .semibold, design: .monospaced)).tracking(1.2).foregroundStyle(P.accent)
-                    Text(p.item.name).font(.serifTitle(18)).foregroundStyle(P.ink).lineLimit(2).multilineTextAlignment(.leading)
-                    Text("Value " + store.short(p.value)).font(.system(size: 13, weight: .medium, design: .monospaced)).foregroundStyle(P.ink)
-                    Text(store.short(p.item.monthlyUpkeep * (p.paid / max(1, p.item.price))) + " / month upkeep").font(.system(size: 11, design: .monospaced)).foregroundStyle(P.loss)
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                LuxuryPhoto(itemID: p.item.id, height: 80).frame(width: 106).clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(LuxuryFacts.categoryName(p.item)).textStyle(.label)
+                    Text(p.item.name).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                    Text("Value " + store.short(p.value)).textStyle(.body, numeric: true)
+                    Text(store.short(p.item.monthlyUpkeep * (p.paid / max(1, p.item.price))) + " / month upkeep").textStyle(.caption, tint: P.loss, numeric: true)
                 }
                 Spacer(minLength: 0)
             }
-            HStack(spacing: 10) {
-                Button("Inspect") { onInspect(p.id) }.buttonStyle(QuietButtonStyle())
+            WrapRow(spacing: Theme.Space.s) {
+                Button("Inspect") { onInspect(p.id) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("luxury-inspect-\(p.id)")
                 Button(get.map { "Sell for " + store.short($0) } ?? "Not for sale now") { askToSell(e, p) }
-                    .buttonStyle(QuietButtonStyle(tint: P.inkSoft)).disabled(get == nil)
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, passive: true)).disabled(get == nil)
                     .accessibilityIdentifier("luxury-sell")
             }
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+        .padding(.vertical, Theme.Space.m)
     }
 }
 
@@ -113,12 +99,12 @@ struct LuxuryInspectSheet: View {
     var body: some View {
         if let e = store.engine, let p = e.luxuryPieces.first(where: { $0.id == pieceID }) {
             Group {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     LuxuryItemHead(item: p.item)
-                    Text(useLine(e, p)).popupText(.subtitle).padding(.horizontal, 18)
-                    manage(e, p).padding(.horizontal, 18)
+                    Text(useLine(e, p)).popupText(.subtitle).padding(.horizontal, Theme.Space.page)
+                    manage(e, p).padding(.horizontal, Theme.Space.page)
                 }
-                .padding(.bottom, 30)
+                .padding(.bottom, Theme.Space.xl)
             }
             .background(P.ground.ignoresSafeArea())
             .environment(\.outsidePalette, P)
@@ -171,7 +157,7 @@ struct LuxuryInspectSheet: View {
                                 if store.act({ $0.setCastleOpen(pieceID: p.id, open: v) }) != nil { store.saved(v ? "the castle is open for events." : "the castle is private.") } }))
             }
             LendPieceSection(engine: e, piece: p)
-            HStack(spacing: Theme.Space.m) {
+            WrapRow(spacing: Theme.Space.s) {
                 if p.item.category == "yachts", p.companyID == 0, let q = e.yachtDinnerQuote() {
                     Button(q.waitWeeks > 0 ? "Dinner in \(q.waitWeeks) wk" : "Host a dinner") {
                         pending = PendingAction(title: "Host a dinner on board?",
@@ -184,7 +170,7 @@ struct LuxuryInspectSheet: View {
                             default: store.show("Not possible.", tone: "warn")
                             }
                         }
-                    }.buttonStyle(GreyOutlineButtonStyle()).disabled(q.waitWeeks > 0)
+                    }.buttonStyle(SecondaryButtonStyle(size: .compact)).disabled(q.waitWeeks > 0)
                 }
                 if p.item.id == "e2" {
                     Button("Host a retreat") {
@@ -197,18 +183,18 @@ struct LuxuryInspectSheet: View {
                         default: store.show("Not possible right now.", tone: "warn")
                         }
                         }
-                    }.buttonStyle(GreyOutlineButtonStyle())
+                    }.buttonStyle(SecondaryButtonStyle(size: .compact))
                     Button("A week off") {
                         switch store.act({ $0.takeWeekOffOnIsland() }) {
                         case .ok?: store.show("You are away next week.", tone: "good")
                         default: store.show("You are already taking next week off.", tone: "warn")
                         }
-                    }.buttonStyle(GreyOutlineButtonStyle())
+                    }.buttonStyle(SecondaryButtonStyle(size: .compact))
                 }
                 if p.use == "museum" && p.until > e.state.week {
                     Text("At the museum until " + GameCalendar.monthString(week: p.until)).popupText(.caption)
                 }
-            }.padding(.vertical, 10)
+            }.padding(.vertical, Theme.Space.s)
         }
     }
 }

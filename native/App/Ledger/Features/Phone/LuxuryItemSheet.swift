@@ -24,13 +24,13 @@ struct LuxuryItemSheet: View {
             if let e = store.engine, let it = Luxury.item(itemID) {
                 VStack(spacing: 0) {
                     Group {
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: Theme.Space.l) {
                             LuxuryItemHead(item: it)
                             LuxuryItemSpecs(item: it)
                             LuxuryBreakdown(item: it)
                             settlementChoice(e, it)
                         }
-                        .padding(.bottom, 16)
+                        .padding(.bottom, Theme.Space.l)
                     }
                     footer(e, it)
                 }
@@ -45,29 +45,29 @@ struct LuxuryItemSheet: View {
     // MARK: Settlement
 
     private func settlementChoice(_ e: GameEngine, _ it: Luxury.Item) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("SETTLEMENT").font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1.6).foregroundStyle(P.accent)
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Settlement").textStyle(.label)
+            HStack(spacing: Theme.Space.s) {
                 option(.cash, "Cash", "Paid in full from your cash")
                 option(.financed, "Financed", "20% down, the bank lends the rest")
             }
             if settlement == .financed { financeLines(e, it) }
             if let p = problem { Text(p).popupText(.risk) }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, Theme.Space.page)
     }
 
     private func option(_ s: Settlement, _ title: String, _ sub: String) -> some View {
         let on: Bool = settlement == s
-        return Button { settlement = s; problem = nil } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(on ? P.accent : P.ink)
-                Text(sub).popupText(.caption).multilineTextAlignment(.leading)
+        return Button { Haptics.choose(); settlement = s; problem = nil } label: {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.headline, tint: on ? P.accent : P.ink)
+                Text(sub).textStyle(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, minHeight: 62, alignment: .topLeading)
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? P.accentSelected : P.card))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? P.accent : P.line, lineWidth: 1))
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+            .padding(Theme.Space.m)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(on ? P.accentWash : P.surface))
+            .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("luxury-settle-" + (s == .cash ? "cash" : "financed"))
@@ -83,9 +83,6 @@ struct LuxuryItemSheet: View {
                 LuxuryLine(label: "Interest a year", value: String(format: "%.2f%%", q.yearlyRate * 100))
                 LuxuryLine(label: "Repayment a month, \(q.termMonths) months", value: store.short(q.monthlyPayment), last: true)
             }
-            .padding(.horizontal, 12)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(P.card))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(P.line, lineWidth: 1))
             if let r = q.refusal { Text(r).popupText(.risk) }
         }
     }
@@ -100,25 +97,19 @@ struct LuxuryItemSheet: View {
         let owned: Bool = e.luxuryPieces.contains { $0.item.id == it.id }
         let amount: Double = due(e, it)
         let short: Bool = e.state.cash < amount
-        return VStack(spacing: 10) {
+        return VStack(spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Due at closing").popupText(.subtitle)
                 Spacer()
-                Text(store.money(amount)).font(.system(size: 20, weight: .semibold, design: .monospaced)).foregroundStyle(P.ink)
+                Text(store.money(amount)).textStyle(.figure)
             }
-            Button { confirm(it) } label: {
-                Text(short ? "Your cash is \(store.short(max(0, e.state.cash)))" : owned ? "Buy another" : "Confirm purchase")
-                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(short ? P.inkFaint : P.onAccent)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(short ? P.card : P.accent))
-            }
-            .buttonStyle(PressableStyle())
-            .disabled(short)
-            .accessibilityIdentifier("luxury-confirm")
+            PrimaryAction(title: owned ? "Buy another" : "Confirm purchase",
+                          blockedReason: short ? "Your cash is \(store.short(max(0, e.state.cash)))." : nil,
+                          identifier: "luxury-confirm") { confirm(it) }
         }
-        .padding(.horizontal, 18).padding(.top, 12).padding(.bottom, 14)
-        .background(P.ground.ignoresSafeArea(edges: .bottom))
-        .overlay(alignment: .top) { Rectangle().fill(P.line).frame(height: 1) }
+        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.m)
+        .background(P.page.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Hairline() }
     }
 
     private func confirm(_ it: Luxury.Item) {
@@ -150,15 +141,14 @@ struct LuxuryItemHead: View {
     var item: Luxury.Item
     private var P: OutsidePalette { .luxury }
     var body: some View {
-        LuxuryPhoto(itemID: item.id, height: 240)
-            .overlay(alignment: .bottom) { LinearGradient(colors: [.clear, P.ground], startPoint: .top, endPoint: .bottom).frame(height: 110) }
-            .overlay(alignment: .bottomLeading) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(LuxuryFacts.categoryName(item).uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1.6).foregroundStyle(P.accent)
-                    Text(item.name).font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
-                }
-                .padding(.horizontal, 18).padding(.bottom, 8)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            LuxuryPhoto(itemID: item.id, height: 240)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(LuxuryFacts.categoryName(item)).textStyle(.label)
+                Text(item.name).textStyle(.title).accessibilityAddTraits(.isHeader)
             }
+            .padding(.horizontal, Theme.Space.page)
+        }
     }
 }
 
@@ -174,19 +164,17 @@ struct LuxuryItemSpecs: View {
     }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.l, alignment: .topLeading), GridItem(.flexible(), spacing: Theme.Space.l, alignment: .topLeading)],
+                  alignment: .leading, spacing: Theme.Space.m) {
             ForEach(Array(specs.enumerated()), id: \.offset) { _, s in
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(s.0.uppercased()).font(.system(size: 9.5, weight: .semibold, design: .monospaced)).tracking(1.2).foregroundStyle(P.inkFaint)
-                    Text(s.1).font(.system(size: 13)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(s.0).textStyle(.caption, tint: P.inkFaint)
+                    Text(s.1).textStyle(.body).fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .topLeading)
-                .padding(10)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(P.card))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, Theme.Space.page)
     }
 }
 
@@ -200,14 +188,12 @@ struct LuxuryBreakdown: View {
             LuxuryLine(label: "Monthly upkeep", value: store.money(item.monthlyUpkeep), tint: P.loss)
             LuxuryLine(label: "Value change a year", value: LuxuryFacts.percent(item.growth), tint: item.growth >= 0 ? P.gain : P.loss, last: true)
         }
-        .padding(.horizontal, 14)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-        .padding(.horizontal, 18)
+        .overlay(alignment: .top) { Hairline() }
+        .padding(.horizontal, Theme.Space.page)
     }
 }
 
-/// One label and a monospaced figure, with a hairline under it unless it is the last.
+/// One label and a tabular figure, with a hairline under it unless it is the last.
 struct LuxuryLine: View {
     var label: String
     var value: String
@@ -216,11 +202,11 @@ struct LuxuryLine: View {
     private var P: OutsidePalette { .luxury }
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 13)).foregroundStyle(P.inkSoft)
-            Spacer(minLength: 10)
-            Text(value).font(.system(size: 14, weight: .medium, design: .monospaced)).foregroundStyle(tint ?? P.ink).multilineTextAlignment(.trailing)
+            Text(label).textStyle(.body, tint: P.inkSoft)
+            Spacer(minLength: Theme.Space.m)
+            Text(value).textStyle(.body, tint: tint ?? P.ink, numeric: true, weight: .medium).multilineTextAlignment(.trailing)
         }
-        .padding(.vertical, 11)
-        .overlay(alignment: .bottom) { if !last { Rectangle().fill(P.divider).frame(height: 1) } }
+        .padding(.vertical, Theme.Space.m)
+        .overlay(alignment: .bottom) { if !last { Hairline() } }
     }
 }
