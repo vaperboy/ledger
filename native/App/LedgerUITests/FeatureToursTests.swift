@@ -17,7 +17,7 @@ final class FeatureToursTests: FeatureTourCase {
             let title: String = String(id.dropFirst(4))
             step("tab \(title): opens and is selected") {
                 guard goTab(title) else { return .fail("the tab button is not there") }
-                return button(id).isSelected ? .pass() : .fail("tapped but the tab is not marked selected")
+                return button(id).isSelected ? .pass() : .fail("tapped but the tab is not marked selected: " + tabState())
             }
             step("tab \(title): health") { health("tab \(title)", title: false) }
         }

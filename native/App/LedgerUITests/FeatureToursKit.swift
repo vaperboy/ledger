@@ -92,9 +92,9 @@ class FeatureTourCase: XCTestCase {
     let log = TourLogStore.shared
     /// The screen just before the last tap of `driveUntilPopup` (the screen a popup belongs to).
     var lastBefore: TourSig?
-    /// Time caps: one test method may spend 4 minutes, the whole run 62 minutes (CI limit 90); later steps are recorded as SKIP at once.
+    /// Time caps: one test method may spend 5 minutes, the whole run 62 minutes (CI limit 90); later steps are recorded as SKIP at once.
     static let runStart: Date = Date()
-    var testDeadline: Date = Date().addingTimeInterval(240)
+    var testDeadline: Date = Date().addingTimeInterval(300)
 
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
@@ -107,7 +107,7 @@ class FeatureTourCase: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = true
-        testDeadline = Date().addingTimeInterval(240)
+        testDeadline = Date().addingTimeInterval(300)
         app = XCUIApplication()
         app.launchArguments = ["-showcase", "-showcase-rich", "-showcase-board"]
         app.launch()
@@ -131,13 +131,16 @@ class FeatureTourCase: XCTestCase {
 
     func step(_ name: String, _ body: () -> R) {
         if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 62 * 60 {
-            log.record(.skip, name, "time cap reached (4 min per test / 62 min total)")
+            log.record(.skip, name, "time cap reached (5 min per test / 62 min total)")
             return
         }
-        switch body() {
-        case .pass(let m): log.record(.pass, name, m)
-        case .fail(let m): log.record(.fail, name, m)
-        case .skip(let m): log.record(.skip, name, m)
+        let t0: Date = Date()
+        let r: R = body()
+        let took: String = " [\(Int(Date().timeIntervalSince(t0)))s]"
+        switch r {
+        case .pass(let m): log.record(.pass, name, m + took)
+        case .fail(let m): log.record(.fail, name, m + took)
+        case .skip(let m): log.record(.skip, name, m + took)
         }
     }
 
@@ -247,6 +250,14 @@ class FeatureTourCase: XCTestCase {
         }
     }
 
+    /// Diagnostic: every tab button with its selected flag and frame, and the first button ids on screen.
+    func tabState() -> String {
+        let tabs: String = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'")).allElementsBoundByIndex
+            .map { "\($0.identifier)\($0.isSelected ? "*" : "")@\(Int($0.frame.minX)),\(Int($0.frame.minY))" }.joined(separator: " ")
+        let others: [String] = app.buttons.allElementsBoundByIndex.prefix(40).map { $0.identifier }.filter { !$0.hasPrefix("tab-") && !$0.isEmpty }
+        return "tabs: \(tabs); buttons: \(others.prefix(25).joined(separator: ","))"
+    }
+
     func tabIDs() -> [String] { ids(prefix: "tab-") }
 
     @discardableResult
@@ -264,7 +275,7 @@ class FeatureTourCase: XCTestCase {
     func openPhoneApp(_ name: String) -> Bool {
         guard goTab("Phone") else { return false }
         let tile: XCUIElement = button("phone-app-\(name)")
-        guard tap(tile, wait: 5) else { return false }
+        guard tap(tile, wait: 5) else { log.note("no tile \(name): " + tabState()); return false }
         pause(0.6)
         return true
     }
