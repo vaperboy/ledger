@@ -342,11 +342,11 @@ public enum ManagerTargets {
             if !talks.isEmpty { body += " " + talks.joined(separator: ". ") + "." }
             if bon > 0 { body += " Bonuses paid: \(cur.display(bon))." }
             s.addMessage(kind: "info", from: "Your management", title: "Targets in \(monthName(mi(s))): \(all) of \(res.count) \(res.count > 1 ? "companies" : "company") hit all three", body: body,
-                         tone: all == res.count ? "good" : all > 0 ? "n" : "bad", status: "done")
+                         tone: all == res.count ? "good" : all > 0 ? "n" : "bad", status: "done", sev: 1)
         }
         if let first = years.first {
             let body = years.map { "\($0.name): sales \(cur.display($0.rev)) of \(cur.display($0.budget.0)), profit \(cur.display($0.profit)) of \(cur.display($0.budget.1))" + ($0.bonus > 0 ? ", year-end bonus \(cur.display($0.bonus))" : "") }.joined(separator: " · ") + "."
-            s.addMessage(kind: "info", from: "Your accountant", title: "The year \(first.yr) against the budgets", body: body, tone: years.allSatisfy { $0.okR && $0.okP } ? "good" : "n", status: "done")
+            s.addMessage(kind: "info", from: "Your accountant", title: "The year \(first.yr) against the budgets", body: body, tone: years.allSatisfy { $0.okR && $0.okP } ? "good" : "n", status: "done", sev: 1, aud: "finance")
         }
         if !asks.isEmpty {
             let body = asks.compactMap { id in s.company(id).map { "\($0.name): sales \(cur.display(record($0)["y"]["rev"].double)), profit \(cur.display(record($0)["y"]["profit"].double))" } }.joined(separator: " · ") + ". Their drafts, from last year and what they think they can do."

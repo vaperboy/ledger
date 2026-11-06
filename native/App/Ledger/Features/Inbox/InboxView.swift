@@ -9,7 +9,7 @@ import Countries
 struct InboxView: View {
     private var P: OutsidePalette { .game }
     /// Needs you: open decisions; All: everything.
-    /// Handled: decisions a hired manager or rank answered for you.
+    /// Handled: what a hired rank, accountant or desk took care of for you (the Inbox shows who).
     enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", handled = "Handled", all = "All" }
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -40,7 +40,7 @@ struct InboxView: View {
     private func matches(_ m: Message, _ t: Tab) -> Bool {
         switch t {
         case .all: return true
-        case .decisions: return m.status == "open"
+        case .decisions: return m.status == "open" && m.isOwnerAddressed
         case .handled: return !m.handledBy.isEmpty
         }
     }

@@ -145,7 +145,7 @@ public enum MonthEnd {
             s.addMessage(from: co.value("acc")["name"].isNull ? co.name : co.value("acc")["name"].string,
                          title: "VAT registration needed at \(co.name)",
                          body: "Your sales have passed the VAT threshold. You now have to register and charge VAT. Apply under Documents.",
-                         companyID: co.id, tone: "bad")
+                         companyID: co.id, tone: "bad", sev: 3)
         }
         s.companies[i] = co
         let unpaidTax = settleTax(&s, companyIndex: i, context: context)
@@ -176,9 +176,8 @@ public enum MonthEnd {
                     Payments.book(&s, companyID: co.id, category: "fine", amount: penalty)
                     rest += penalty
                     s.companies[i].set("vatOver", rest)
-                    s.addMessage(from: co.name, title: "VAT return not paid at \(co.name)",
-                                 body: "\(w.currency(co).display(v - pay)) of VAT could not be paid on time. A penalty of \(w.currency(co).display(penalty)) was added and interest runs until it is paid.",
-                                 companyID: co.id, tone: "bad")
+                    s.addDeskNotice("finance", company: co, data: data, title: "VAT return not paid at \(co.name)",
+                                    body: "\(w.currency(co).display(v - pay)) of VAT could not be paid on time. A penalty of \(w.currency(co).display(penalty)) was added and interest runs until it is paid.")
                     vatUnpaid = rest
                 } else { rest = 0; s.companies[i].set("vatOver", 0) }
                 s.companies[i].vatBalance = rest
@@ -204,7 +203,7 @@ public enum MonthEnd {
             }
             if over < 1 {
                 s.companies[i].set("vatOver", 0)
-                s.addMessage(from: co.name, title: "VAT paid up at \(co.name)", body: "The overdue VAT is paid. Interest stops.", companyID: co.id, tone: "good")
+                s.addDeskNotice("finance", company: co, data: data, title: "VAT paid up at \(co.name)", body: "The overdue VAT is paid. Interest stops.", tone: "good", sev: 1)
             } else { s.companies[i].set("vatOver", over); vatUnpaid = over }
         }
         co = s.companies[i]
@@ -213,8 +212,8 @@ public enum MonthEnd {
             co.unpaidMonths += 1
             s.companies[i] = co
             if co.unpaidMonths == 1 {
-                s.addMessage(from: co.name, title: "Could not pay all bills at \(co.name)",
-                             body: "Missing \(w.currency(co).display(unpaidTax + vatUnpaid)) this month. Put money in or cut costs.", companyID: co.id, tone: "bad")
+                s.addDeskNotice("finance", company: co, data: data, title: "Could not pay all bills at \(co.name)",
+                                body: "Missing \(w.currency(co).display(unpaidTax + vatUnpaid)) this month. Put money in or cut costs.")
             }
         } else { co.unpaidMonths = 0; s.companies[i] = co }
         co = s.companies[i]

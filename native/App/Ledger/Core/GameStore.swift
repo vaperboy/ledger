@@ -476,7 +476,7 @@ final class GameStore: ObservableObject {
 
     /// A buzz when something needs the player; the words are in the daily popup (and the Inbox), not in a banner.
     private func report(_ fresh: [Message]) {
-        if fresh.contains(where: { $0.status == "open" || $0.tone == "bad" }) { Haptics.warning() }
+        if fresh.contains(where: { $0.isOwnerAddressed && ($0.status == "open" || $0.severity >= 3) }) { Haptics.warning() }
         let alerts: [Message] = fresh.filter { (m: Message) -> Bool in m.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == m.id }) }
         if !alerts.isEmpty { Haptics.failure(); redAlerts.append(contentsOf: alerts) }
     }
@@ -871,7 +871,7 @@ final class GameStore: ObservableObject {
 
     var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
     /// Decisions waiting for an answer: the number behind the Inbox app bubble and the Decisions tab badge.
-    var openDecisionCount: Int { engine?.state.inbox.filter { $0.status == "open" }.count ?? 0 }
+    var openDecisionCount: Int { engine?.ownerDecisions.count ?? 0 }
 
     // MARK: Phone alerts and bubbles
 

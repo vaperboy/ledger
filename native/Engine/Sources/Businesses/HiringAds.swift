@@ -129,7 +129,7 @@ public enum JobAds {
         let roleName = data.catalog.tables.roles[role]?.name ?? role
         let mid = s.companies[ci].managerID
         let id = s.addMessage(kind: "info", from: p.name, title: "\(p.name) applied for \(roleName)", body: "\(p.name) answered your \(agency ? "agency search" : "ad") for \(roleName) at \(s.companies[ci].name). See the applicants.",
-                              companyID: co.id, tone: "n", status: "done", data: .object(["pid": .number(Double(p.id)), "kind": "applicant"]))
+                              companyID: co.id, tone: "n", status: "done", data: .object(["pid": .number(Double(p.id)), "kind": "applicant"]), sev: 1, aud: "hr")
         if let mid, let mgr = s.people[mid], let k = s.inbox.firstIndex(where: { $0.id == id }) { s.inbox[k].handledBy = "\(mgr.name), manager" }
     }
 }

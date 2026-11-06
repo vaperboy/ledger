@@ -59,6 +59,9 @@ enum UpdateFeed {
         return Array(all.prefix(idx))
     }
 
+    /// A notice the owner should hear about: addressed to the owner, or to a desk with nobody handling it.
+    static func ownerRelevant(_ m: Message) -> Bool { m.isOwnerAddressed || m.handledBy.isEmpty }
+
     static func freshMessages(_ e: GameEngine, _ app: PhoneApp, marks: UpdateMarks) -> [Message] {
         guard let seen = marks.ints["m." + app.rawValue] else { return [] }
         return e.state.inbox.filter { (m: Message) -> Bool in m.id > seen && Self.app(of: m) == app }
@@ -73,7 +76,9 @@ enum UpdateFeed {
     @MainActor static func count(_ e: GameEngine, _ app: PhoneApp, marks: UpdateMarks) -> Int {
         switch app {
         case .inbox:
-            return e.state.inbox.filter { (m: Message) -> Bool in !m.isRead || m.status == "open" }.count
+            return e.state.inbox.filter { (m: Message) -> Bool in
+                (m.status == "open" && m.isOwnerAddressed) || (!m.isRead && m.severity >= 2 && ownerRelevant(m))
+            }.count
         case .market:
             return freshMarket(e, marks: marks).count + freshMessages(e, app, marks: marks).count
         case .news:
@@ -227,7 +232,10 @@ extension GameStore {
         var found: [UpdateCandidate] = []
         for app in UpdateFeed.messageApps {
             let all: [Message] = UpdateFeed.freshMessages(e, app, marks: announcedMarks)
-            let msgs: [Message] = all.filter { (m: Message) -> Bool in !(m.status == "open" && !m.options.isEmpty) }
+            // Routine (severity 1) notices and ones a desk already handled stay quiet: they are in the Inbox, not banners.
+            let msgs: [Message] = all.filter { (m: Message) -> Bool in
+                !(m.status == "open" && !m.options.isEmpty) && e.severityLevel(of: m) >= 2 && UpdateFeed.ownerRelevant(m)
+            }
             var events: [BannerItem] = []
             if app == .market { events = marketBannerItems(e, after: announcedMarks.ints["market"] ?? Int.max) }
             let news: [NewsItem] = app == .news ? UpdateFeed.freshNews(e, marks: announcedMarks) : []
@@ -237,7 +245,7 @@ extension GameStore {
             var alert = false
             for m in msgs {
                 sev = max(sev, e.severityLevel(of: m))
-                if m.isAlert || m.tone == "bad" { alert = true }
+                if e.severityLevel(of: m) >= 4 { alert = true }
             }
             for b in events { sev = max(sev, b.severity) }
             var c = UpdateCandidate(app: app, severity: sev, count: n, title: "\(n) updates in \(app.title)", body: "", isAlert: alert && sev >= 4)

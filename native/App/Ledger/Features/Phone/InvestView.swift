@@ -10,7 +10,7 @@ import Simulation
 /// and stakes in groups live in the Projects tab; a summary row here opens them.
 struct InvestContent: View {
     @EnvironmentObject var store: GameStore
-    @State private var kind: Brokerage.Kind = .stock
+    @State private var kind: Brokerage.Kind = .crypto
     @State private var selected: Quote?
 
     var body: some View {
@@ -21,10 +21,10 @@ struct InvestContent: View {
             let rest: [Quote] = list.filter { $0.value <= 0 }
             VStack(alignment: .leading, spacing: 14) {
                 PortfolioRingCard(slices: Self.slices(e), cur: cur)
-                SegmentedPill(items: [Brokerage.Kind.stock, .crypto, .fund], title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
+                SegmentedPill(items: kinds(e), title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
                 if kind == .crypto { Text("Very volatile: you can lose most of it.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
                 assets(title: "You hold", rows: mine, cur: cur, empty: "You hold nothing here yet. Open a name below to look at it and buy.")
-                assets(title: mine.isEmpty ? "Market" : "Other names", rows: rest, cur: cur, empty: "Nothing else is listed.")
+                if kind != .stock { assets(title: mine.isEmpty ? "Market" : "Other names", rows: rest, cur: cur, empty: "Nothing else is listed.") }
                 FundManagerCard(engine: e)
                 VenturesLinkRow(engine: e)
             }
@@ -34,9 +34,15 @@ struct InvestContent: View {
         }
     }
 
+    /// Crypto and funds; shares only while some are still held (they can be sold, not bought).
+    private func kinds(_ e: GameEngine) -> [Brokerage.Kind] {
+        e.quotes(.stock).contains { $0.value > 0 } ? [.stock, .crypto, .fund] : [.crypto, .fund]
+    }
+
     /// What is held by kind, from the engine's own values.
     static func slices(_ e: GameEngine) -> [PortfolioRingCard.Slice] {
-        let kinds: [(Brokerage.Kind, String, Color)] = [(.stock, "Shares", Theme.gold), (.crypto, "Crypto", Theme.roseGold), (.fund, "Funds", Theme.slateBlue)]
+        var kinds: [(Brokerage.Kind, String, Color)] = [(.crypto, "Crypto", Theme.roseGold), (.fund, "Funds", Theme.slateBlue)]
+        if e.quotes(.stock).contains(where: { $0.value > 0 }) { kinds.insert((.stock, "Shares", Theme.gold), at: 0) }
         return kinds.map { k in
             PortfolioRingCard.Slice(id: k.1, name: k.1, value: e.quotes(k.0).reduce(0) { $0 + $1.value }, tint: k.2)
         }

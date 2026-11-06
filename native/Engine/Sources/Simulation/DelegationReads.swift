@@ -36,6 +36,9 @@ public extension GameEngine {
 }
 
 public extension GameEngine {
-    /// The level (1 to 5) of a message, by its kind and its size against the owner's net worth (see `Delegation.level`).
-    func severityLevel(of m: Message) -> Int { Delegation.level(of: m, netWorth: dayHistory.netWorth.last ?? 0) }
+    /// The severity (1 routine to 4 critical) of a message: its own, else by its kind and its size against the owner's net worth (see `Delegation.severity`).
+    func severityLevel(of m: Message) -> Int { Delegation.severity(of: m, netWorth: dayHistory.netWorth.last ?? 0) }
+
+    /// Open messages only the owner can answer (the desks' are written as handled, never open).
+    var ownerDecisions: [Message] { state.inbox.filter { $0.status == "open" && $0.isOwnerAddressed } }
 }

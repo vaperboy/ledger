@@ -294,7 +294,7 @@ extension ManagerModel {
                 s.note("\(n.name) started ads for \(co.name).", tone: "n", companyID: co.id)
             }
         default:
-            s.addMessage(kind: "info", from: n.name, title: "Cash is low at \(co.name)", body: "Your manager \(n.name) recommends putting in money or taking a loan.", companyID: co.id, tone: "bad", status: "done")
+            s.addMessage(kind: "info", from: n.name, title: "Cash is low at \(co.name)", body: "Your manager \(n.name) recommends putting in money or taking a loan.", companyID: co.id, tone: "bad", status: "done", sev: 3, aud: "owner")
         }
     }
 

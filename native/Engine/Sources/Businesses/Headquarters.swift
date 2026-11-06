@@ -341,7 +341,7 @@ public enum Headquarters {
         }
         if has(s, "perf") {
             s.addMessage(kind: "info", from: staff(s).first { $0["role"].string == "perf" }?["name"].string ?? "Performance analyst", title: "Manager scorecards",
-                         body: "Best: \(f(best))" + (L.count > 1 ? ". Weakest: \(f(worst))" : "") + ".", tone: worst.score < 40 ? "bad" : "good", status: "done")
+                         body: "Best: \(f(best))" + (L.count > 1 ? ". Weakest: \(f(worst))" : "") + ".", tone: worst.score < 40 ? "bad" : "good", status: "done", sev: 1)
         }
         return L
     }
@@ -366,7 +366,7 @@ public enum Headquarters {
             if !l.isEmpty { out.append("\(co.name): " + l.prefix(3).joined(separator: " ")) }
         }
         s.addMessage(kind: "info", from: staff(s).first { $0["role"].string == "strat" }?["name"].string ?? "Strategy analyst", title: "Quarterly strategy memo",
-                     body: out.isEmpty ? "No concerns this quarter. All companies look healthy." : out.joined(separator: "\n"), tone: "n", status: "done")
+                     body: out.isEmpty ? "No concerns this quarter. All companies look healthy." : out.joined(separator: "\n"), tone: "n", status: "done", sev: 1)
     }
 
     // MARK: Your right hand

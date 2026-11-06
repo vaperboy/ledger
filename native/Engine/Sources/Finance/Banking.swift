@@ -419,18 +419,18 @@ public enum Banking {
         if miss == 1 {
             s.addMessage(from: "Bank", title: "Missed loan payment at \(name)",
                          body: "\(name) could not pay its instalment on \(s.loans[li].name). \(cur.display(added)) of unpaid and penalty interest was added to the loan. Pay in time next month or the bank restricts credit.",
-                         companyID: id, tone: "bad")
+                         companyID: id, tone: "bad", sev: 3)
         } else if miss == 2 {
             s.companies[ci].set("loanFrozen", true)
             s.addMessage(from: "Bank", title: "Loan covenant breached at \(name)",
                          body: "Two instalments missed on \(s.loans[li].name). The bank restricts \(name)'s credit: no new loans until it is back on track. A third miss and the bank calls the loan.",
-                         companyID: id, tone: "bad")
+                         companyID: id, tone: "bad", sev: 3)
         } else if miss == 3 {
             s.companies[ci].set("loanFrozen", true)
             s.companies[ci].set("loanCall", s.week + callGraceWeeks)
             s.addMessage(from: "Bank", title: "Bank calls the loan at \(name)",
                          body: "Three missed instalments. The bank demands \(cur.display(s.loans[li].balance)) on \(s.loans[li].name). Put money in and pay the next instalment within \(callGraceWeeks) weeks, or \(name) is wound up.",
-                         companyID: id, tone: "bad")
+                         companyID: id, tone: "bad", sev: 4)
         }
     }
 
@@ -448,6 +448,6 @@ public enum Banking {
         s.companies[ci].set("loanFrozen", false)
         s.companies[ci].set("loanCall", 0)
         s.addMessage(from: "Bank", title: "Loan back on track at \(s.companies[ci].name)",
-                     body: "The instalments are paid. The bank lifts the credit restriction on \(s.companies[ci].name).", companyID: companyID, tone: "good")
+                     body: "The instalments are paid. The bank lifts the credit restriction on \(s.companies[ci].name).", companyID: companyID, tone: "good", sev: 1)
     }
 }

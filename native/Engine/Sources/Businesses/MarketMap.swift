@@ -230,7 +230,7 @@ public enum MarketMap {
         for m in markets(s, data: data) {
             let k = knowledge(s, m)
             guard k.level == .marketAnalyst, let first = m.companyIDs.first else { continue }
-            s.addMessage(from: k.name, title: "Market report: \(label(m, data: data, withCity: true))", body: report(s, m, k, data: data).joined(separator: " "), companyID: first)
+            s.addMessage(from: k.name, title: "Market report: \(label(m, data: data, withCity: true))", body: report(s, m, k, data: data).joined(separator: " "), companyID: first, sev: 1)
         }
     }
 
@@ -358,7 +358,7 @@ public enum MarketMap {
               let i = s.companyIndex(cid) else { return "Only a market analyst writes these." }
         if s.week - (s.companies[i].value("mq26").isNull ? -99 : s.companies[i].int("mq26")) < 2 { return "Your analyst sent one last week. Give it a little time." }
         s.companies[i].set("mq26", s.week)
-        s.addMessage(from: k.name, title: "Market report: \(label(m, data: data, withCity: true))", body: report(s, m, k, data: data).joined(separator: " "), companyID: cid)
+        s.addMessage(from: k.name, title: "Market report: \(label(m, data: data, withCity: true))", body: report(s, m, k, data: data).joined(separator: " "), companyID: cid, sev: 1)
         return nil
     }
 
@@ -385,7 +385,7 @@ public enum MarketMap {
             body.append("\(co.name): " + ln.joined(separator: " "))
         }
         let who = knowledge(s, Market(id: "", kind: .local, type: "", cityID: "", countryCode: "", companyIDs: [])).name
-        s.addMessage(from: who.isEmpty ? "Data analyst" : who, title: companyID == nil ? "Report: all companies" : "Report: \(cos[0].name)", body: body.joined(separator: "\n"))
+        s.addMessage(from: who.isEmpty ? "Data analyst" : who, title: companyID == nil ? "Report: all companies" : "Report: \(cos[0].name)", body: body.joined(separator: "\n"), sev: 1)
         return nil
     }
 

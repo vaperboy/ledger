@@ -51,7 +51,7 @@ final class TradeQuoteTests: XCTestCase {
     func testQuotesMatchTheTrades() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000, why: "Test funds") }
-        for kind in [Brokerage.Kind.stock, .crypto] {
+        for kind in [Brokerage.Kind.crypto, .fund] {
             let sym = try XCTUnwrap(e.quotes(kind).first { !$0.isDelisted }).symbol
             let q = e.buyQuote(kind, symbol: sym, amount: 100_000)
             XCTAssertNil(q.refusal)
@@ -66,5 +66,9 @@ final class TradeQuoteTests: XCTestCase {
             XCTAssertEqual(e.state.cash - cash1, sq.cashChange, accuracy: 1)
         }
         XCTAssertNotNil(e.buyQuote(.stock, symbol: "X", amount: 1).refusal)
+        let sym = try XCTUnwrap(e.quotes(.stock).first { !$0.isDelisted }).symbol
+        XCTAssertNotNil(e.buyQuote(.stock, symbol: sym, amount: 100_000).refusal, "buying shares is not offered")
+        XCTAssertEqual(e.buyInvestment(.stock, symbol: sym, amount: 100_000), .delisted)
+        XCTAssertEqual(e.quotes(.stock).first { $0.symbol == sym }?.quantity ?? 0, 0)
     }
 }

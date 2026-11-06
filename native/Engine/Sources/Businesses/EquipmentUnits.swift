@@ -256,7 +256,8 @@ public enum EquipmentUnits {
             let co = s.companies[i]
             let mgrName = co.managerID.flatMap { s.people[$0]?.name }
             s.addMessage(kind: "info", from: mgrName ?? "Workshop", title: reports.count > 1 ? "\(reports.count) breakdowns at \(co.name)" : "Breakdown at \(co.name)",
-                         body: reports.joined(separator: " "), companyID: co.id, tone: "bad", status: "done")
+                         body: reports.joined(separator: " "), companyID: co.id, tone: "bad", status: "done", sev: 1, aud: "ops",
+                         handledBy: mgrName.map { "\($0), manager" })
         }
     }
 

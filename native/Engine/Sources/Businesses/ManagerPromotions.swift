@@ -364,7 +364,7 @@ extension ManagerModel {
             if rep == "week" || (rep == "month" && me) || (rep == "need" && me && !bad.isEmpty) {
                 let lines = L.prefix(8).map { c -> String in let h = c.monthlyHistory.last; let cu = World(state: s, data: data).currency(c)
                     return "\(c.name): revenue \(cu.short(h?.revenue ?? 0)), profit \(cu.short(h?.profit ?? 0))" + (c.managerID == nil ? " (no manager)" : "") }
-                s.addMessage(kind: "info", from: n.name, title: "\(rep == "week" ? "Weekly update" : "Monthly report") from your \(n.value("k11")["t"].string.isEmpty ? "manager" : n.value("k11")["t"].string.lowercased())", body: lines.isEmpty ? "Nothing to report." : lines.joined(separator: "\n"), tone: bad.isEmpty ? "n" : "bad", status: "done")
+                s.addMessage(kind: "info", from: n.name, title: "\(rep == "week" ? "Weekly update" : "Monthly report") from your \(n.value("k11")["t"].string.isEmpty ? "manager" : n.value("k11")["t"].string.lowercased())", body: lines.isEmpty ? "Nothing to report." : lines.joined(separator: "\n"), tone: bad.isEmpty ? "n" : "bad", status: "done", sev: 1)
             }
             if GameCalendar.isYearEnd(week: s.week) && n.value("k11")["bonus"].double > 0 {
                 let pr = L.reduce(0.0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit } }

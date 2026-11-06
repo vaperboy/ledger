@@ -57,10 +57,10 @@ struct BankAssetScreen: View {
                         priceCard(live, cur)
                         if live.quantity > 0 { heldCard(live, cur) }
                         HStack(spacing: 0) {
-                            BankRoundButton(glyph: BankGlyph.deposit, title: "Buy") { side = .buy }
+                            if live.kind != .stock { BankRoundButton(glyph: BankGlyph.deposit, title: "Buy") { side = .buy } }
                             if live.quantity > 0 { BankRoundButton(glyph: BankGlyph.withdraw, title: "Sell", tint: Theme.roseGold) { side = .sell } }
                         }
-                        .frame(maxWidth: live.quantity > 0 ? .infinity : 140, alignment: .leading)
+                        .frame(maxWidth: live.quantity > 0 && live.kind != .stock ? .infinity : 140, alignment: .leading)
                     }
                     .padding(.horizontal, 18).padding(.bottom, 20)
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)

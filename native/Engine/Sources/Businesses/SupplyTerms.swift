@@ -311,12 +311,12 @@ public enum SupplyTerms {
                 s.addMessage(from: co.name, title: level == 1 ? "Suppliers want cash at \(co.name)" : "Suppliers stop delivering to \(co.name)",
                              body: level == 1 ? "After repeated late payments suppliers only deliver stock against cash in the account. Pay what is overdue and keep to the terms to get credit back."
                                               : "Suppliers refuse new stock after repeated late payments. Sales will suffer until you pay on time.",
-                             companyID: co.id, tone: "bad")
+                             companyID: co.id, tone: "bad", sev: level == 1 ? 2 : 3, aud: level == 1 ? "finance" : "owner")
             }
         }
         refreshCut(&s, bi)
         s.addMessage(from: co.name, title: "Late payment: \(inv.providerName)", body: "An invoice to \(inv.providerName) was not paid when due because the account of \(co.name) could not cover it. It now carries late interest." + detail,
-                     companyID: co.id, tone: "bad")
+                     companyID: co.id, tone: "bad", sev: 2, aud: "finance")
     }
 
     // MARK: Weekly
@@ -356,7 +356,7 @@ public enum SupplyTerms {
                         // No cut-off between your own companies, but the group is told: the supplier has been waiting for its money.
                         s.addMessage(from: co.name, title: "\(co.name) is short-paying \(sp.name)",
                                      body: "\(co.name) has owed \(sp.name), another company of yours, for \(tables.ownFlagAfter) weeks. \(sp.name) now keeps back part of its capacity for the group until it is paid. Move cash between the companies or settle weekly.",
-                                     companyID: co.id, tone: "bad")
+                                     companyID: co.id, tone: "bad", sev: 2, aud: "finance")
                     }
                     if interest > 0 {
                         j["a"] = .number(amount + interest)
@@ -379,7 +379,7 @@ public enum SupplyTerms {
             let before = s.companies[i].int("supCut")
             refreshCut(&s, i)
             if before > 0, s.companies[i].int("supCut") == 0 {
-                s.addMessage(from: s.companies[i].name, title: "Suppliers deliver normally again", body: "\(s.companies[i].name) has kept to its payment terms. Suppliers are back on normal terms.", companyID: s.companies[i].id, tone: "good")
+                s.addDeskNotice("finance", company: s.companies[i], data: data, title: "Suppliers deliver normally again", body: "\(s.companies[i].name) has kept to its payment terms. Suppliers are back on normal terms.", tone: "good", sev: 1)
             }
         }
     }
@@ -443,9 +443,8 @@ public enum SupplyTerms {
             let v = Suppliers.repairVendor(s, company: co, data: data)
             if v == nil || v!.relationship < t.minRelationship {
                 _ = setRepairTerm(&s, companyID: co.id, term: nil, data: data)
-                s.addMessage(from: co.name, title: "\(v?.name ?? "Your repair supplier") ends your \(t.name.lowercased()) terms",
-                             body: "\(co.name) no longer has the standing for \(t.name.lowercased()) with \(v?.name ?? "its repair supplier"). Repairs go back to being paid as the bill comes. Better relations bring the terms back.",
-                             companyID: co.id, tone: "bad")
+                s.addDeskNotice("ops", company: co, data: data, title: "\(v?.name ?? "Your repair supplier") ends your \(t.name.lowercased()) terms",
+                                body: "\(co.name) no longer has the standing for \(t.name.lowercased()) with \(v?.name ?? "its repair supplier"). Repairs go back to being paid as the bill comes. Better relations bring the terms back.")
             }
         }
         for i in s.companies.indices where s.companies[i].status.isLive && !s.companies[i].value("pterm").isNull {
@@ -454,9 +453,8 @@ public enum SupplyTerms {
             let v = Suppliers.goodsVendor(s, company: co, data: data)
             if v == nil || v!.relationship < t.minRelationship {
                 _ = setGoodsTerm(&s, companyID: co.id, term: nil, data: data)
-                s.addMessage(from: co.name, title: "\(v?.name ?? "Your supplier") ends your \(t.name.lowercased()) terms",
-                             body: "\(co.name) no longer has the standing for \(t.name.lowercased()) with \(v?.name ?? "its supplier"). Goods go back to the usual monthly bill. Better relations bring the terms back.",
-                             companyID: co.id, tone: "bad")
+                s.addDeskNotice("ops", company: co, data: data, title: "\(v?.name ?? "Your supplier") ends your \(t.name.lowercased()) terms",
+                                body: "\(co.name) no longer has the standing for \(t.name.lowercased()) with \(v?.name ?? "its supplier"). Goods go back to the usual monthly bill. Better relations bring the terms back.")
             }
         }
     }

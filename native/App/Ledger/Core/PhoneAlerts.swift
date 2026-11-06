@@ -59,7 +59,8 @@ enum PhoneAlerts {
             let names: String = w.companyIDs.compactMap { engine.state.company($0)?.name }.joined(separator: ", ")
             out.append(PhoneAlert(id: "weather-\(w.countryCode)", app: .weather, source: "Weather", title: w.title, detail: "Can hit: " + names, companyID: w.companyIDs.first ?? 0))
         }
-        let open: [Message] = engine.state.inbox.filter { $0.status == "open" }
+        // Standing alerts are decisions of severity 3 or more; smaller open ones wait in the Inbox, and the desks' matters show under Handled.
+        let open: [Message] = engine.ownerDecisions.filter { engine.severityLevel(of: $0) >= 3 }
         let bad: [Message] = open.filter { $0.tone == "bad" }
         let rest: [Message] = open.filter { $0.tone != "bad" }
         let ordered: [Message] = bad + rest

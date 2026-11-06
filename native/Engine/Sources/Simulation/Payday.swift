@@ -278,12 +278,12 @@ public enum Payday {
         co.wageShortfall = short
         let cur = context.currency(co.countryCode, s)
         if short > 1 {
+            // Late since an earlier month, not just a re-run of this month's payroll.
+            let repeated = cfg.lateSince != nil && mi > payMonth
             cfg.lateSince = cfg.lateSince ?? t
             cfg.lateWhy = "cash"; cfg.lateMonth = payMonth; cfg.lateOwed = short
             s.companies[i] = co
-            s.addMessage(kind: "ask", from: co.name, title: "Payroll short at \(co.name)",
-                         body: "Only \(cur.display(p)) of \(cur.display(due)) could be paid. \(cur.display(short)) is still owed to staff. Put money in and they are paid back automatically.",
-                         companyID: co.id, tone: "bad", status: "open", options: [.option("Understood")], action: "pay29", data: .object(["k": "late"]))
+            reportShort(&s, co, due: due, short: short, serious: repeated || p < due * 0.25, data: data, context: context)
         } else {
             cfg.lateSince = nil; cfg.lateWhy = ""
             if let pend = co.value("ownPend") as JSONValue?, !pend.isNull {
@@ -297,6 +297,33 @@ public enum Payday {
         s.companies[i] = co
         PayrollRuns.record(&s, companyIndex: i, payMonth: payMonth, paid: jsRound(p), short: jsRound(short), how: how.rawValue, today: t, data: data, serviceFee: jsRound(fee))
         return PayrollResult(paid: jsRound(p), short: jsRound(short), slips: payslips(co), fee: jsRound(fee))
+    }
+
+    /// The "payroll short" notice: one message per week for all companies. The finance desk (accountant, manager, CEO) takes it and the Inbox lists it
+    /// as handled by them; it reaches the owner only when nobody answers for the desk or it is serious (late for a second month, or hardly anything could be paid).
+    static func reportShort(_ s: inout GameState, _ co: Company, due: Double, short: Double, serious: Bool, data: GameData, context: FinanceContext) {
+        let cur = context.currency(co.countryCode, s)
+        let desk = Delegation.desk("finance", in: co, state: s, data: data)
+        let toOwner = serious || desk == nil
+        let line = "\(co.name): \(cur.display(short)) of \(cur.display(due)) is still owed to staff."
+        let who = toOwner ? "" : (desk?.label ?? "")
+        let intro = "Not every wage could be paid. Money put in is paid to staff automatically."
+        if let k = s.inbox.firstIndex(where: { $0.actionID == "pay29s" && $0.week == s.week && ($0.status == "open") == toOwner }) {
+            var ids = s.inbox[k].value("data")["ids"].array, lines = s.inbox[k].value("data")["l"].array
+            if let at = ids.firstIndex(where: { $0.int == co.id }) { lines[at] = .string(line) } else { ids.append(.number(Double(co.id))); lines.append(.string(line)) }
+            var m = s.inbox[k]
+            m.set("data", .object(["k": "short", "ids": .array(ids), "l": .array(lines)]))
+            m.title = ids.count == 1 ? "Payroll short at \(co.name)" : "Payroll short at \(ids.count) companies"
+            m.body = intro + "\n" + lines.map { $0.string }.joined(separator: "\n")
+            if !toOwner && m.handledBy != who { m.handledBy = "the finance desks" }
+            m.isRead = false
+            s.inbox[k] = m
+            return
+        }
+        s.addMessage(kind: toOwner ? "ask" : "info", from: co.name, title: "Payroll short at \(co.name)", body: intro + "\n" + line,
+                     companyID: co.id, tone: "bad", status: toOwner ? "open" : "done", options: toOwner ? [.option("Understood")] : [], action: "pay29s",
+                     data: .object(["k": "short", "ids": .array([.number(Double(co.id))]), "l": .array([.string(line)])]),
+                     sev: toOwner ? 3 : 2, aud: toOwner ? "owner" : "finance", handledBy: who)
     }
 
     static func payOwner(_ s: inout GameState, companyIndex i: Int, salary: Double, tax: Double) {
@@ -354,9 +381,8 @@ public enum Payday {
             co.addPayable("other", lateFee)
             var b = co.books; b.add("int", lateFee); co.books = b
             s.companies[i] = co
-            s.addMessage(from: co.name, title: "Late fees at \(co.name)",
-                         body: "Rent and supplier bills left unpaid last month now carry late interest of \(context.currency(co.countryCode, s).display(lateFee)).",
-                         companyID: co.id, tone: "bad")
+            s.addDeskNotice("finance", company: co, data: data, title: "Late fees at \(co.name)",
+                            body: "Rent and supplier bills left unpaid last month now carry late interest of \(context.currency(co.countryCode, s).display(lateFee)).")
         }
         for k in ["rent", "other"] {
             let due = co.payables[k] ?? 0
@@ -389,8 +415,8 @@ public enum Payday {
             cfg.billShortMonths += 1
             if cfg.billShortMonths == 1 {
                 let cur = context.currency(co.countryCode, s)
-                s.addMessage(from: co.name, title: "Could not pay all bills at \(co.name)",
-                             body: "Missing \(cur.display(short)) for rent and suppliers this month. Put money in or cut costs, or suppliers will stop delivering.", companyID: co.id, tone: "bad")
+                s.addDeskNotice("finance", company: co, data: data, title: "Could not pay all bills at \(co.name)",
+                                body: "Missing \(cur.display(short)) for rent and suppliers this month. Put money in or cut costs, or suppliers will stop delivering.")
             }
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
@@ -402,12 +428,13 @@ public enum Payday {
         let level2 = max(level, SupplyTerms.invoiceCutLevel(s.companies[i], week: s.week))
         s.companies[i].set("supCut", level2)
         if level2 > wasCut {
-            s.addMessage(from: co.name, title: level2 == 1 ? "Suppliers want cash at \(co.name)" : "Suppliers stop delivering to \(co.name)",
-                         body: level2 == 1 ? "After repeated missed bills suppliers only deliver stock against cash in the account. Pay what is overdue to get credit terms back."
-                                          : "Suppliers refuse new stock until the overdue bills are paid. Sales will suffer.",
-                         companyID: co.id, tone: "bad")
+            // Tighter terms are the finance desk's to fix; a full stop on deliveries is the owner's to know.
+            let body = level2 == 1 ? "After repeated missed bills suppliers only deliver stock against cash in the account. Pay what is overdue to get credit terms back."
+                                   : "Suppliers refuse new stock until the overdue bills are paid. Sales will suffer."
+            if level2 == 1 { s.addDeskNotice("finance", company: co, data: data, title: "Suppliers want cash at \(co.name)", body: body) }
+            else { s.addMessage(from: co.name, title: "Suppliers stop delivering to \(co.name)", body: body, companyID: co.id, tone: "bad", sev: 3) }
         } else if level2 == 0 && wasCut > 0 {
-            s.addMessage(from: co.name, title: "Suppliers deliver normally again", body: "The overdue bills at \(co.name) are paid. Suppliers are back on normal terms.", companyID: co.id, tone: "good")
+            s.addDeskNotice("finance", company: co, data: data, title: "Suppliers deliver normally again", body: "The overdue bills at \(co.name) are paid. Suppliers are back on normal terms.", tone: "good", sev: 1)
         }
         s.companies[i].set("pr29", cfg.json)
         return (jsRound(paid), jsRound(short))
@@ -481,7 +508,7 @@ public enum Payday {
             let f = cur.scaledPrice(5000) + cfg.lateOwed * 0.02
             Payments.companyPays(&s, companyID: co.id, amount: f, category: "fine", label: "Wage claim and late interest")
             s.addMessage(from: "Lawyer for the staff", title: "Wage claim against \(co.name)",
-                         body: "Staff took the unpaid wages to a lawyer. Legal costs and late interest: \(cur.display(f)). The wages are still owed.", companyID: co.id, tone: "bad")
+                         body: "Staff took the unpaid wages to a lawyer. Legal costs and late interest: \(cur.display(f)). The wages are still owed.", companyID: co.id, tone: "bad", sev: 3)
         }
     }
 
@@ -540,7 +567,7 @@ public enum Payday {
                         s.addMessage(kind: "ask", from: "Payroll", title: "Payday at \(s.companies[i].name): wages not approved",
                                      body: "Today is payday and the payroll was not approved. Staff are waiting. Run it now to pay everyone.",
                                      companyID: s.companies[i].id, tone: "bad", status: "open",
-                                     options: [.option("Run payroll now", "Pay everyone today")], action: "pay29", data: .object(["k": "late"]))
+                                     options: [.option("Run payroll now", "Pay everyone today")], action: "pay29", data: .object(["k": "late"]), sev: 3, aud: "owner")
                     }
                 } else if md == .manager, s.random.chance(managerSlipChance(s.companies[i], people: s.people)) {
                     let d = s.random.chance(0.5) ? 1 : 2
@@ -548,7 +575,7 @@ public enum Payday {
                     s.companies[i].set("pr29", cfg.json)
                     s.addMessage(from: s.people[s.companies[i].managerID ?? 0]?.name ?? "Manager", title: "Payroll late at \(s.companies[i].name)",
                                  body: "Sorry, I missed a step in the payroll software. Wages go out \(d == 1 ? "tomorrow" : "in two days"). The staff are not happy.",
-                                 companyID: s.companies[i].id, tone: "bad")
+                                 companyID: s.companies[i].id, tone: "bad", sev: 1, aud: "finance")
                 } else {
                     let r = runPayroll(&s, i, how: md == .inHouse ? .inHouse : md, today: t, data: data, context: context)
                     paidToday.append((s.companies[i].name, r.paid))

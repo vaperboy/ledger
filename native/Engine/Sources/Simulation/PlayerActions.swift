@@ -291,7 +291,9 @@ public extension GameEngine {
 
     // MARK: Investing
 
+    /// Buying shares in listed companies is not offered; shares already held can still be sold. Crypto and funds trade as before.
     mutating func buyInvestment(_ kind: Brokerage.Kind, symbol: String, amount: Double) -> Brokerage.BuyResult {
+        if kind == .stock { return .delisted }
         var r = Brokerage.BuyResult.notEnoughCash
         update { s, _, ctx in r = Brokerage.buy(&s, kind, symbol, amount: amount, currency: ctx.homeCurrency(s)) }
         return r

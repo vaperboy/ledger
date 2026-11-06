@@ -27,7 +27,8 @@ extension GameState {
     @discardableResult
     public mutating func addMessage(kind: String = "info", from: String, title: String, body: String, companyID: Int = 0,
                                     tone: String = "n", status: String = "done", options: [JSONValue] = [], action: String? = nil,
-                                    data: JSONValue = .null, expiresWeek: Int? = nil, app: String? = nil) -> Int {
+                                    data: JSONValue = .null, expiresWeek: Int? = nil, app: String? = nil,
+                                    sev: Int? = nil, aud: String? = nil, handledBy: String? = nil) -> Int {
         var m = Message(raw: [:])
         m.id = makeID()
         m.kind = kind
@@ -43,6 +44,9 @@ extension GameState {
         if let a = action { m.actionID = a }
         if !data.isNull { m.set("data", data) }
         m.expiresWeek = expiresWeek
+        if let sev, sev > 0 { m.sev = min(4, sev) }
+        if let aud, !aud.isEmpty, aud != "owner" { m.audience = aud }
+        if let handledBy, !handledBy.isEmpty { m.handledBy = handledBy }
         // A message about no company opens the app of its sender (insurer, bank, tax office ...) unless the caller names one.
         let link: String = app ?? (companyID == 0 ? Self.senderApp(from) : "")
         if !link.isEmpty { m.appLink = link }

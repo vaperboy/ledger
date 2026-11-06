@@ -183,13 +183,12 @@ struct NotificationBannerLayer: View {
             item.fromAlert = true
             if a.messageID != 0, let m = e.state.inbox.first(where: { $0.id == a.messageID }) {
                 item.severity = e.severityLevel(of: m)
-                item.isAlert = m.isAlert || m.tone == "bad"
+                item.isAlert = m.isAlert
                 if m.status == "open" && !m.options.isEmpty { item.target = .message(m.id) }
                 else { let id = m.id; item.target = .place("the Inbox", { s.openMessage(id) }) }
             } else if a.app == .accounting && a.companyID != 0 {
-                // Payroll that needs the owner: the most urgent kind, stays until acted on.
-                item.severity = 5
-                item.isAlert = true
+                // Payroll only the owner can approve: a toast and a standing alert, not a sticky banner.
+                item.severity = 3
                 let cid: Int = a.companyID
                 if let m = e.state.inbox.first(where: { $0.status == "open" && $0.companyID == cid && $0.actionID.hasPrefix("pay29") && !$0.options.isEmpty }) {
                     item.target = .message(m.id)

@@ -295,7 +295,7 @@ public enum RivalGroups {
             logMove(&g, week: week, "Cut prices \(pct)% in \(city) (\(r["name"].string))"); save()
             s.addMessage(from: "Market", title: "\(r["name"].string) cut prices \(pct)%",
                          body: "\(r["name"].string), part of \(name), cut its prices about \(pct)% in \(city), right where \(co.name) competes. Some of your customers will try them. You can hold, answer with a discount, or start a price war.",
-                         companyID: co.id, tone: "bad")
+                         companyID: co.id, tone: "bad", sev: 1)
             return true
         case "beside":
             let ts = targets(s, g, data: data).filter { s.companies[$0].value("lastW")["util"].double > 0.7 || Reviews.rating(s.companies[$0]) >= 3.8 }
@@ -316,7 +316,7 @@ public enum RivalGroups {
             g["br"] = .number(g["br"].double + 1)
             logMove(&g, week: week, "Opened \(r["name"].string) next to \(co.name)"); save()
             s.addMessage(from: "Market", title: "\(name) opens next to \(co.name)",
-                         body: "\(name) opened \(r["name"].string) a few doors from \(co.name). They saw your customers queuing. Expect fewer walk-ins for a while.", companyID: co.id, tone: "bad")
+                         body: "\(name) opened \(r["name"].string) a few doors from \(co.name). They saw your customers queuing. Expect fewer walk-ins for a while.", companyID: co.id, tone: "bad", sev: 1)
             return true
         case "buyrival":
             var opts: [(Int, String, JSONValue)] = []
@@ -419,7 +419,7 @@ public enum RivalGroups {
             }
             s.addMessage(from: "Market", title: "\(name) bought your supplier \(v.name)",
                          body: "\(v.name), which supplies \(hit.joined(separator: ", ")), now belongs to \(name), a competitor. Prices to you go up about 6% and deliveries come second to their own shops.",
-                         companyID: co.id, tone: "bad")
+                         companyID: co.id, tone: "bad", sev: 1)
             return true
         case "bid":
             guard !troubled else { return false }
@@ -553,6 +553,6 @@ public enum RivalGroups {
         }
         let name = s.rest["g27"]?["g"][id]["name"].string ?? "A group"
         s.news("\(name) goes bankrupt.", tone: "bad")
-        if let f = ms.first { s.addMessage(from: "Market", title: "\(name) has gone bankrupt", body: "Its sites close. Some of their customers will come to you.", companyID: s.companies[f.companyIndex].id, tone: "good") }
+        if let f = ms.first { s.addMessage(from: "Market", title: "\(name) has gone bankrupt", body: "Its sites close. Some of their customers will come to you.", companyID: s.companies[f.companyIndex].id, tone: "good", sev: 1) }
     }
 }

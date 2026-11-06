@@ -135,6 +135,18 @@ public struct Message: JSONRecord, Identifiable {
     /// The Phone app (`PhoneApp` raw value) a message with no company opens: atlas, bank, accounting, weather. Empty when it has none. Absent in older saves.
     public var appLink: String { get { str("ap") } set { set("ap", newValue) } }
     public var isAlert: Bool { get { flag("alert") } set { set("alert", newValue) } }
+    /// Severity a producer gave (1 routine, 2 attention, 3 decision, 4 critical); 0 when absent (older saves, producers that leave it to the classifier).
+    public var sev: Int { get { int("sev") } set { set("sev", newValue) } }
+    /// The desk a notice is addressed to: "finance", "hr", "ops", "sales" or "owner". Empty means the owner. Absent in older saves.
+    public var audience: String { get { str("aud") } set { set("aud", newValue) } }
+    public var isOwnerAddressed: Bool { audience.isEmpty || audience == "owner" }
+    /// How serious the message is: a red alert is critical, a producer's own value wins, else an open decision is a 3, bad news a 2 and the rest routine.
+    public var severity: Int {
+        if isAlert { return 4 }
+        if sev > 0 { return sev }
+        if (kind == "ask" || kind == "decision") && status == "open" { return 3 }
+        return tone == "bad" ? 2 : 1
+    }
     public var options: [JSONValue] { value("opts").array }
     /// A structured document (a report, a disclosure result) carried by the message, kind "doc". Absent in older saves. The plain `body` stays as the fallback summary.
     public var doc: InboxDocument? {

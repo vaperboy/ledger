@@ -370,7 +370,7 @@ public enum Rivals {
             MarketEvents.log(&s, .competitorLaunch, title: "\(bn) opens a new store", detail: "Next to \(tgt.name) in \(cityName).", companyID: tgt.id, tone: "bad", consequence: "Demand 8% lower at \(tgt.name) for 26 weeks.")
             s.addMessage(from: "Market", title: "\(bn) opens next to \(tgt.name)",
                          body: "\(bn) has opened a new site a few doors from \(tgt.name) in \(cityName). Expect fewer walk-ins for a while. You can answer with prices, marketing or a discount under Price moves.",
-                         companyID: tgt.id, tone: "bad")
+                         companyID: tgt.id, tone: "bad", sev: 1)
         }
         // Rivals answering a player who stays well under the market price (`PriceReaction.swift`).
         priceReaction(&s, idx: idx, riv: &riv, market: m, bd: bd, cityName: cityName, world: w)
@@ -679,7 +679,7 @@ public enum Rivals {
             let city = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? "town"
             s.addMessage(from: "Market", title: "\(r.name) has run out of money",
                          body: "\(r.name), a \(kind) competitor in \(city), has closed. Its customers are looking for somewhere new, and nobody is likely to take its place for a while.",
-                         companyID: co.id, tone: "good")
+                         companyID: co.id, tone: "good", sev: 1)
         }
         if !ours.isEmpty { s.news("\(r.name) closes after running out of money.") }
     }
@@ -718,7 +718,7 @@ public enum Rivals {
             let cn = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? "town"
             s.addMessage(from: "Market", title: "\(from["name"].string) expands into \(cn)",
                          body: "\(from["name"].string) from \(hc.city.name) has opened a site in \(cn). Expect more competition for customers and for staff there.",
-                         companyID: co.id, tone: "bad")
+                         companyID: co.id, tone: "bad", sev: 1)
         }
     }
 

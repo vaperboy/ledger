@@ -33,6 +33,7 @@ public extension GameEngine {
         var refusal: String?
         if amt < minimum { refusal = "The smallest order is \(cur.display(minimum))." }
         else if liquid < amt + fee { refusal = "That needs \(cur.display(amt + fee)) with the fee; the current account and savings hold \(cur.display(max(0, liquid)))." }
+        else if kind == .stock { refusal = "Buying shares in listed companies is not offered. Shares you already hold can be sold." }
         else if kind == .crypto, state.rest["crypto"]?[symbol]["dead"].bool == true { refusal = "Trading in \(symbol) has stopped." }
         return TradeQuote(amount: amt, fee: fee, units: px > 0 ? amt / px : 0, cashChange: amt + fee, minimumPurchase: minimum, available: liquid,
                           cashAfter: state.cash + state.savings - (amt + fee), refusal: refusal)
