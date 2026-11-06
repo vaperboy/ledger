@@ -37,7 +37,7 @@ struct CompanyCustomers: View {
             starsBlock(r)
         } else {
             Card(padding: 12, radius: Theme.Radius.row) {
-                Text("Reviews arrive once customers come.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("Reviews arrive once customers come.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -56,7 +56,7 @@ struct CompanyCustomers: View {
                         Text("No rating yet").font(.serifTitle(22)).foregroundStyle(Theme.ivoryMuted)
                     }
                     Spacer()
-                    if r.enough { Text(r.word).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold) }
+                    if r.enough { Text(r.word).textStyle(.caption, tint: Theme.accent, weight: .medium) }
                 }
                 FigureStrip(items: items, columns: 2)
             }
@@ -71,7 +71,7 @@ struct CompanyCustomers: View {
         let neutral: Double = Double(h.count > 2 ? h[2] : 0) / total
         let unhappy: Double = Double((h.count > 1 ? h[0] + h[1] : 0)) / total
         return MoreBlock(title: "Happy and unhappy", trailing: {
-            Text("of reviews written").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Text("of reviews written").textStyle(.caption, tint: Theme.inkFaint)
         }) {
             VStack(alignment: .leading, spacing: 10) {
                 GeometryReader { g in
@@ -97,10 +97,10 @@ struct CompanyCustomers: View {
                 BarMark(x: .value("Stars", "\(b.id)★"), y: .value("Reviews", b.count))
                     .foregroundStyle(b.id >= 4 ? Theme.gain : (b.id == 3 ? Theme.gold : Theme.loss))
                     .cornerRadius(3)
-                    .annotation(position: .top) { Text("\(b.count)").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
+                    .annotation(position: .top) { Text("\(b.count)").textStyle(.caption, numeric: true) }
             }
             .chartYAxis(.hidden)
-            .chartXAxis { AxisMarks { (_: AxisValue) in AxisValueLabel().font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted) } }
+            .chartXAxis { AxisMarks { (_: AxisValue) in AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
             .frame(height: 110)
         }
     }
@@ -139,13 +139,13 @@ struct CompanyCustomers: View {
         let info = engine.keyAccountInfo(company)
         if info.allowed || !info.accounts.isEmpty {
             MoreBlock(title: "Key accounts", card: false, trailing: {
-                Text("\(info.accounts.count) of \(info.limit)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("\(info.accounts.count) of \(info.limit)").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 VStack(alignment: .leading, spacing: 10) {
                     if info.accounts.isEmpty {
                         Card(padding: 12, radius: Theme.Radius.row) {
                             Text("Larger buyers ask to place regular orders once you are known and well regarded. A manager signs them; otherwise the offer waits in the inbox.")
-                                .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                                .textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
                     ForEach(info.accounts, id: \.id) { (a: KeyAccounts.Account) in
@@ -166,9 +166,9 @@ struct CompanyCustomers: View {
                     store.show(v ? "Buyers' credit is checked before you sell on account." : "Credit checks switched off.", tone: "n")
                 })) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Check buyers before selling on account").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("Check buyers before selling on account").textStyle(.body)
                         Text("Costs about 0.4% of what you invoice to businesses. Benefit: unpaid invoices become about 70% less likely. Risk of leaving it off: a bad debt is written off in full.")
-                            .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                            .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }.tint(Theme.gold)
             }
@@ -188,9 +188,9 @@ private struct AccountRow: View {
             HStack(alignment: .top, spacing: 10) {
                 IconCircle(glyph: Glyph.person, size: 34)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(account.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(account.name).textStyle(.headline)
                     Text("\(Rivals.relationshipWord(account.relationship)) · since week \(account.sinceWeek) · paid you \(cur.tidyShort(account.totalPaid))")
-                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        .textStyle(.caption, tint: Theme.inkFaint)
                     if account.owed > 0 || account.lateRun > 0 {
                         Text((account.owed > 0 ? "Still owes you \(cur.tidyShort(account.owed)) on invoices" : "Nothing owed now")
                              + (account.lateRun > 0 ? " · paid late \(account.lateRun) time\(account.lateRun == 1 ? "" : "s") in a row. Late payment earns interest where the country allows it." : ""))
@@ -198,10 +198,10 @@ private struct AccountRow: View {
                     }
                     let profile = engine.keyAccountProfile(account)
                     Text("Runs a \(profile.tradeName.lowercased())" + (profile.inputName.map { profile.canBuy ? ". You can buy \($0.lowercased()) from them." : ". Get to know them to buy \($0.lowercased()) from them." } ?? ""))
-                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        .textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
-                Text(account.discount == 0 ? "Full price" : "\(account.discount)% off").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text(account.discount == 0 ? "Full price" : "\(account.discount)% off").textStyle(.caption)
             }
             Text("Discount for this buyer").capsLabel(Theme.ivoryFaint)
             WrapRow {

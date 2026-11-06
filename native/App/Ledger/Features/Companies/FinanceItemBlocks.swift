@@ -31,8 +31,8 @@ struct FinanceItemBlock: View {
     private func count(_ v: Double) -> String { String(format: "%.0f", v) }
 
     private func book(_ u: FinanceItems.Econ) -> some View {
-        TeamGroup(u.kindLabel) {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        LedgerSection(u.kindLabel) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: u.unitWord.capitalized + "s", value: count(u.units), rule: false)
                     FlatRow(label: u.sizeLabel, value: itemAmount(u.size, cur))
@@ -46,8 +46,8 @@ struct FinanceItemBlock: View {
         let atPrice = FinanceItems.atPrice(u, price: real)
         let word: String = atPrice.profitPerUnit >= 0 ? "profit " : "loss "
         let line: String = word + itemAmount(abs(atPrice.profitPerUnit), cur) + " per " + u.unitWord + " (" + String(format: "%.0f%%", atPrice.margin * 100) + ")"
-        return TeamGroup("What it costs") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection("What it costs") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: "Price", value: itemAmount(real, cur), sub: "per " + u.unitWord + " " + u.priceUnit, rule: false)
                     ForEach(u.parts, id: \.label) { (p: FinanceItems.Part) in
@@ -64,8 +64,8 @@ struct FinanceItemBlock: View {
     }
 
     private func risk(_ u: FinanceItems.Econ) -> some View {
-        TeamGroup("Risk") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        LedgerSection("Risk") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     if u.risk > 0 { FlatRow(label: u.riskLabel, value: itemAmount(u.risk, cur), sub: "per " + u.unitWord, rule: false) }
                     if u.stress > u.risk { FlatRow(label: "In a bad year", value: itemAmount(u.stress, cur), sub: "per " + u.unitWord) }

@@ -11,9 +11,8 @@ import Simulation
 /// would save or cost. Choosing is one engine action (`switchSupplier`) after a confirmation with the whole deal. Better deals come from
 /// the relationship with the supplier (lunch, buying over time); that is the engine's own discount, shown here, not a rule of this screen.
 ///
-/// Layout: a sourcing summary, then two sub-tabs. Inputs: one card per input; opening it shows a price dot plot against the market
-/// price, a sharp table comparing the providers (price, saving a year), and a detail card for the provider picked in the table
-/// (quality, lead time, reliability, terms, risks, negotiation, switch). Supplying: the table of companies you sell to.
+/// Layout: a short note, then one section per input with its providers as `SupplierRow`s (the current one first) and its payment terms;
+/// a row opens the provider's popup (facts, negotiation, switch). Companies you sell to are a page of their own when there are inputs too.
 struct CompanySourcing: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -60,7 +59,7 @@ struct CompanySourcing: View {
         let agreement: String? = engine.boardAgreement(scope: "goods").map { a in
             "Board agreement: goods for every company through \(engine.knownSuppliers.first { $0.id == a }?.name ?? "one supplier"), unless a company names its own."
         }
-        if let agreement { Text(agreement).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2) }
+        if let agreement { Text(agreement).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2) }
         if engine.isSuppliedFromInside(companyID: company.id) { Chip(text: "Own supplier", tint: Theme.gain) }
     }
 
@@ -96,7 +95,7 @@ struct CompanySourcing: View {
             }.padding(.horizontal, 2)
             if input.id == "goods" {
                 SegmentedPill(items: [0, 1, 2], title: { classNames[$0] }, selection: goodsClassBinding)
-                Text("Quality class: sets the cost and quality of all goods.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
+                Text("Quality class: sets the cost and quality of all goods.").textStyle(.caption, tint: Theme.inkFaint).padding(.horizontal, 2)
             }
             if let why = input.governedBy { notice(why, tint: Theme.caution) }
             if let none = input.noOwnProvider { notice(none, tint: Theme.ivoryMuted) }
@@ -105,33 +104,15 @@ struct CompanySourcing: View {
         }
     }
 
-    /// One provider on one compact row: name, relationship badge, reliability stars, price or discount; a tap opens its details.
+    /// One provider on one compact row (the shared `SupplierRow`): name, relationship and stars, price or discount; a tap opens its details.
     private func optionRow(_ input: SupplierInput, _ o: SupplierOption) -> some View {
         let stars: String = starText(o.reliability)
         let line: String = rowLine(o)
-        return Button {
+        return SupplierRow(name: o.name, detail: [stars, line].filter { !$0.isEmpty }.joined(separator: "  "), badge: chipText(o),
+                           badgeTone: chipTint(o) == Theme.gain ? .good : .neutral, current: o.isCurrent, warning: o.blocked != nil,
+                           identifier: "supplier-option") {
             popup = SupplierPick(inputID: input.id, optionID: o.id)
-            Haptics.tap()
-        } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(o.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(o.isCurrent ? Theme.gold : Theme.ivory).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
-                    HStack(spacing: 6) {
-                        Chip(text: chipText(o), tint: chipTint(o))
-                        if o.isCurrent { Chip(text: "In use", tint: Theme.gold) }
-                        if !stars.isEmpty { Text(stars).font(.system(size: 11)).foregroundStyle(Theme.gold) }
-                    }
-                    Text(line).font(.system(size: 11.5)).foregroundStyle(o.blocked != nil ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 6)
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(o.isCurrent ? Theme.gold.opacity(0.6) : Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle()).accessibilityIdentifier("supplier-option")
+        }
     }
 
     private func starText(_ s: String) -> String {
@@ -153,7 +134,7 @@ struct CompanySourcing: View {
     private func notice(_ text: String, tint: Color) -> some View {
         HStack(alignment: .top, spacing: 8) {
             GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: tint)
-            Text(text).font(.system(size: 11.5)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+            Text(text).textStyle(.caption, tint: tint).fixedSize(horizontal: false, vertical: true)
         }.padding(.horizontal, 2)
     }
 
@@ -334,7 +315,7 @@ struct CompanySourcing: View {
             }
             Text(explain).font(.system(size: 11.5)).foregroundStyle(lockedNow ? Theme.caution : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
             HStack(alignment: .center, spacing: 6) {
-                Text("Credit is a debt that falls due on its date.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text("Credit is a debt that falls due on its date.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Button { showDebtInfo = true } label: {
                     GlyphView(glyph: Glyph.info, size: 16, weight: 1.5, tint: Theme.ivoryMuted).frame(width: 32, height: 32).contentShape(Rectangle())
                 }.buttonStyle(PressableStyle()).accessibilityLabel("About buying on credit")
@@ -360,9 +341,9 @@ struct CompanySourcing: View {
         } label: {
             Text(t.name).font(.system(size: 11.5, weight: t.isCurrent ? .semibold : .regular)).foregroundStyle(tint)
                 .lineLimit(2).minimumScaleFactor(0.8).multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, minHeight: 38)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(focused ? Theme.surface : Color.clear))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(t.isCurrent ? Theme.gold : Theme.border, lineWidth: 1))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(focused ? Theme.surface : Theme.inset))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(t.isCurrent ? Theme.accent : Color.clear, lineWidth: 1))
                 .opacity(locked ? 0.4 : 1)
                 .contentShape(Rectangle())
         }.buttonStyle(PressableStyle())
@@ -453,5 +434,26 @@ struct CompanySourcing: View {
             default: Haptics.warning(); store.show("They cannot be reached.", tone: "warn")
             }
         }
+    }
+}
+
+/// The one supplier row of the company screens (company inputs, an item's suppliers): the provider, a detail line, a badge or "In use"
+/// for the current one, and a chevron when tapping opens or chooses it.
+struct SupplierRow: View {
+    var name: String
+    var detail: String
+    var badge: String? = nil
+    var badgeTone: AcctPill.Tone = .neutral
+    var current: Bool = false
+    var warning: Bool = false
+    var identifier: String = ""
+    var action: (() -> Void)? = nil
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        LedgerRow(leading: .glyph(current ? Glyph.check : Glyph.suppliers), leadingTint: current ? P.accent : P.inkFaint,
+                  title: name, subtitle: detail, pill: current ? "In use" : badge, pillTone: current ? .good : badgeTone,
+                  lineLimit: 3, identifier: identifier, action: action)
+            .overlay(alignment: .bottomLeading) { if warning { Rectangle().fill(P.warn).frame(width: 2).padding(.vertical, Theme.Space.s) } }
     }
 }

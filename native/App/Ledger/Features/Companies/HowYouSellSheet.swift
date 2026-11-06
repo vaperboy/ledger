@@ -207,7 +207,7 @@ private struct SellChoiceRow: View {
             .padding(.horizontal, 14).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(shape.fill(current ? Theme.goldSelected : Theme.surface))
-            .overlay(shape.strokeBorder(current ? Theme.gold : Theme.border, lineWidth: 1))
+            .overlay(shape.strokeBorder(current ? Theme.accent : Color.clear, lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -236,6 +236,6 @@ private struct SellToggleRow: View {
         .padding(.horizontal, 14).padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(shape.fill(Theme.surface))
-        .overlay(shape.strokeBorder(isOn ? Theme.gold : Theme.border, lineWidth: 1))
+        .overlay(shape.strokeBorder(isOn ? Theme.accent : Color.clear, lineWidth: 1))
     }
 }

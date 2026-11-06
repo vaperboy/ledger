@@ -24,7 +24,7 @@ struct CompanyStatsFigures: View {
         var kind: ReportPeriodKind { self == .month ? .month : .year }
     }
 
-    private static let palette: [Color] = [Theme.slateBlue, Theme.caution, Theme.gain, Theme.gold, Theme.loss, Color(red: 0.36, green: 0.70, blue: 0.74), Color(red: 0.62, green: 0.50, blue: 0.80), Theme.goldDeep, Theme.ivoryFaint, Theme.ivoryMuted]
+    private static let palette: [Color] = (0..<10).map { (i: Int) -> Color in ChartPalette.color(i).opacity(i < ChartPalette.series.count ? 1 : 0.5) }
 
     var body: some View {
         let cur: Currency = engine.currency(for: company)
@@ -44,24 +44,22 @@ struct CompanyStatsFigures: View {
     // MARK: Margins (no title)
 
     private func resultCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ivory
+        let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ink
         let marginText: String = s.margin.map { Currency.percent($0, decimals: 0) } ?? "\u{2013}"
-        let marginTint: Color = (s.margin ?? 0) < 0 ? Theme.loss : Theme.ivory
-        let cells: [StatStrip.Cell] = [
+        let marginTint: Color = (s.margin ?? 0) < 0 ? Theme.loss : Theme.ink
+        let cells: [KeyFigures.Item] = [
             .init(label: "Revenue", value: cur.tidyShort(s.revenue)),
-            .init(label: "Costs", value: cur.tidyShort(s.operatingExpenses)),
             .init(label: "Profit", value: cur.tidyShort(s.profit), tint: profitTint),
             .init(label: "Margin", value: marginText, tint: marginTint),
         ]
-        return Card(padding: 14, radius: Theme.Radius.card) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                StatStrip(cells: cells, ruled: false)
-                if s.taxBooked > 0.5 {
-                    FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "shown apart: it is not in the profit above")
-                }
-                if s.loansOwed > 0.5 {
-                    FlatRow(label: "Loans owed", value: cur.tidyShort(s.loansOwed), sub: s.guaranteedLoans > 0.5 ? cur.tidyShort(s.guaranteedLoans) + " guaranteed by you" : "")
-                }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            FigureRow(items: cells, combineCells: true)
+            if s.taxBooked > 0.5 {
+                FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "shown apart: it is not in the profit above")
+            }
+            // Loans owed are under Owed on this page; only the part you guarantee personally is added here.
+            if s.guaranteedLoans > 0.5 {
+                FlatRow(label: "Loans you guarantee", value: cur.tidyShort(s.guaranteedLoans), sub: "you pay these if the company cannot")
             }
         }
     }
@@ -69,22 +67,16 @@ struct CompanyStatsFigures: View {
     // MARK: Where the money goes (no title): the total, the period, the split from the books
 
     private func expensesCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                HStack(alignment: .center) {
-                    Text(cur.tidyDisplay(s.operatingExpenses)).font(.hero(28)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
-                    Spacer(minLength: 8)
-                    SegmentedPill(items: StatsPeriod.allCases, title: { $0.rawValue }, selection: $period, identifier: { "stats-period-" + $0.kindName })
-                        .frame(width: 210)
-                }
-                spendingSplit(s, cur)
-            }
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            SegmentedPill(items: StatsPeriod.allCases, title: { $0.rawValue }, selection: $period, identifier: { "stats-period-" + $0.kindName })
+            Figure(label: "Costs", value: cur.tidyDisplay(s.operatingExpenses), size: .display)
+            spendingSplit(s, cur)
         }
     }
 
     @ViewBuilder private func spendingSplit(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
         if s.expenses.isEmpty {
-            Text("No costs booked in this period yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            EmptyState(glyph: Glyph.cost, title: "No costs booked in this period yet", centered: false)
         } else {
             VStack(spacing: Theme.Space.m) {
                 HStack(spacing: Theme.Space.l) {
@@ -97,13 +89,13 @@ struct CompanyStatsFigures: View {
                     .chartForegroundStyleScale(range: Self.palette)
                     .frame(width: 112, height: 112)
                     .accessibilityHidden(true)
-                    VStack(spacing: 7) {
+                    VStack(spacing: Theme.Space.s) {
                         ForEach(Array(s.expenses.prefix(5).enumerated()), id: \.offset) { i, l in
-                            HStack(spacing: 6) {
+                            HStack(spacing: Theme.Space.xs) {
                                 Circle().fill(Self.palette[i % Self.palette.count]).frame(width: 7, height: 7)
-                                Text(l.label).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                                Spacer(minLength: 4)
-                                Text("\(Int((l.share * 100).rounded()))%").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                                Text(l.label).textStyle(.caption).lineLimit(1)
+                                Spacer(minLength: Theme.Space.xs)
+                                Text("\(Int((l.share * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                             }
                         }
                     }
@@ -121,11 +113,11 @@ struct CompanyStatsFigures: View {
 
     private func legalCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
         let holders: String = s.otherShareholders.isEmpty ? "None" : s.otherShareholders.joined(separator: ", ")
-        return CardSection("Legal and ownership") {
+        // Legal form and your share are the values of the Legal form and Ownership rows above: not repeated here.
+        return LedgerSection("Legal and ownership") {
             VStack(spacing: 0) {
-                FlatRow(label: "Legal form", value: s.legalForm, rule: false)
+                FlatRow(label: "Other shareholders", value: holders, rule: false)
                 if let since = s.incorporatedSince { FlatRow(label: "Registered since", value: since) }
-                FlatRow(label: "You own", value: Currency.percent(s.ownershipPercent / 100, decimals: 0), sub: s.otherShareholders.isEmpty ? "" : "Others: " + holders)
                 if s.shareCapital > 0.5 { FlatRow(label: "Share capital", value: cur.tidyShort(s.shareCapital), sub: s.shareCount.map { String(Int($0)) + " shares" } ?? "") }
                 if let acc = s.accountant { FlatRow(label: "Accountant", value: acc) }
                 FlatRow(label: "Equity (assets less debts)", value: cur.tidyShort(s.equity), tint: s.equity < 0 ? Theme.loss : nil)

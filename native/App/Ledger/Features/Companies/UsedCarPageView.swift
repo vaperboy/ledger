@@ -50,7 +50,7 @@ struct UsedCarPageView: View {
                     if car.reserved { TeamBadge(text: "Reserved") }
                     if car.stuck { TeamBadge(text: "Stuck", tint: Theme.loss) }
                 }
-                Text("\(car.weeksInStock) \(car.weeksInStock == 1 ? "week" : "weeks") in the yard").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("\(car.weeksInStock) \(car.weeksInStock == 1 ? "week" : "weeks") in the yard").textStyle(.caption)
             }
             Spacer(minLength: 0)
         }
@@ -82,7 +82,7 @@ struct UsedCarPageView: View {
         let step: Double = max(1, (fair / 400).rounded())
         let binding: Binding<Double> = Binding<Double>(get: { draft ?? car.askingPrice }, set: { (v: Double) in draft = v })
         return MoreBlock(title: "Asking price", trailing: {
-            Text(cur.tidyShort(price)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+            Text(cur.tidyShort(price)).textStyle(.caption, tint: Theme.inkFaint, numeric: true)
         }) {
             VStack(alignment: .leading, spacing: 8) {
                 LedgerSlider(value: binding, in: lo...hi, step: step, valueText: cur.tidyShort(price)) { (editing: Bool) in
@@ -108,15 +108,15 @@ struct UsedCarPageView: View {
         FlatRow(label: "Expected wait", value: waitText(q.expectedWeeks))
         if !q.repairsKnown {
             Text("The faults come out when the yard has looked at the car, so repairs are not in this figure yet.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
         if car.stuck {
             Text("This car has sat for a long time. It loses value faster and sells slower, and a wholesaler may offer for it.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
         if car.reserved {
             Text("A customer reserved it at " + usedCarMoney(car.reservedPrice, cur) + ". It sells to them at that price when the repair is done.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -159,7 +159,7 @@ struct UsedCarPageView: View {
         } else if car.status == "new" {
             MoreBlock("Inspection") {
                 Text("The yard cleans and looks at the car next week. Hidden faults come out then, with a repair quote.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

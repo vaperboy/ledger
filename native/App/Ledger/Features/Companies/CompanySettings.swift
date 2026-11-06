@@ -37,11 +37,11 @@ struct CompanySettings: View {
     // MARK: Legal form
 
     @ViewBuilder private func legalForm(_ cur: Currency) -> some View {
-        CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+        CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").textStyle(.caption) }) {
             if let cost = engine.convertToLimitedCost(companyID: company.id) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
                     FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
                     Button("Review the conversion\u{2026}") { converting = true }.buttonStyle(QuietButtonStyle())
@@ -49,7 +49,7 @@ struct CompanySettings: View {
                 }
             } else {
                 Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -59,12 +59,12 @@ struct CompanySettings: View {
     @ViewBuilder private func rename(_ cur: Currency) -> some View {
         let cost = engine.renameCost(companyID: company.id)
         let inChain = engine.chainOf(companyID: company.id) != nil
-        CardSection(title: "Name", trailing: { Text(company.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1) }) {
+        CardSection(title: "Name", trailing: { Text(company.name).textStyle(.caption).lineLimit(1) }) {
             if inChain {
-                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    TextField("New name", text: $newName).font(.system(size: 14)).foregroundStyle(Theme.ivory).autocorrectionDisabled()
+                    TextField("New name", text: $newName).textStyle(.body).autocorrectionDisabled()
                         .padding(.horizontal, 10).padding(.vertical, 8).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
                     Text("New signs and paperwork cost \(cur.tidyDisplay(cost)) from company cash. About a third of the people who knew the old name lose track of you.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -95,11 +95,11 @@ struct CompanySettings: View {
         if company.status == .closed {
             CardSection(title: "Closed", trailing: {
                 let left = company.int("closeW")
-                Text(left > 0 && left < 999 ? "reopens in \(left) week\(left == 1 ? "" : "s")" : "until you reopen").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+                Text(left > 0 && left < 999 ? "reopens in \(left) week\(left == 1 ? "" : "s")" : "until you reopen").textStyle(.caption, tint: Theme.warn)
             }) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("No sales while closed. Rent, the accountant and part of the running costs continue; wages are paid in full for two weeks, then 40%.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     Button("Reopen now") {
                         switch store.act({ $0.reopenCompany(companyID: company.id) }) {
                         case .ok?: Haptics.success(); store.show("\(company.name) is open again.", tone: "good")
@@ -114,22 +114,22 @@ struct CompanySettings: View {
             CardSection("Close for a while") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("For a refit, a quiet season or to stop losses. It reopens by itself after the weeks you choose. Rent and the accountant continue; wages are paid in full for two weeks, then 40%.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     SegmentedChoice(items: [2, 4, 8, 13, 26], title: { "\($0) weeks" }, selection: $closeWeeks)
                     if let notice {
                         Toggle(isOn: $giveUpRent) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text("Give up the rented place").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text("Give up the rented place").textStyle(.body)
                                 Text("Three months' rent as notice (\(cur.tidyShort(notice.notice)))" + (notice.depositBack > 0 ? ", deposit of \(cur.tidyShort(notice.depositBack)) back" : "") + ". You will need new premises to reopen.")
-                                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                             }
                         }.tint(Theme.gold)
                     }
                     if company.value("eq").object.values.contains(where: { !$0["sub"].isNull }) {
                         Toggle(isOn: $pauseSubscriptions) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text("Pause software plans").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text("No charge while it is closed; the plans start again when it reopens. Your data is kept.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                                Text("Pause software plans").textStyle(.body)
+                                Text("No charge while it is closed; the plans start again when it reopens. Your data is kept.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                             }
                         }.tint(Theme.gold)
                     }
@@ -160,7 +160,7 @@ struct CompanySettings: View {
             CardSection("Close down for good") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Everything is sold at about 55% of its book value, loans and unpaid bills are paid first, and everyone who works here is let go." + (company.form == .soleTrader ? " As a sole trader you cover any shortfall yourself." : " Loans you guaranteed become yours."))
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
                     FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
                     if CompanySale.canSell(engine.state, companyID: company.id) {
@@ -191,7 +191,7 @@ struct CompanySettings: View {
     @ViewBuilder private func documents(_ cur: Currency) -> some View {
         let lic = engine.financeOverview(companyID: company.id).licences
         if !lic.isEmpty {
-            CardSection(title: "Documents and permits", trailing: { Label("held", systemImage: "checkmark").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Documents and permits", trailing: { Label("held", systemImage: "checkmark").textStyle(.caption, tint: Theme.inkFaint) }) {
                 VStack(spacing: 0) {
                     ForEach(Array(lic.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: l.amount > 0 ? cur.tidyShort(l.amount) : "free", sub: l.detail, rule: n > 0) }
                 }

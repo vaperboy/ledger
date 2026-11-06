@@ -27,8 +27,8 @@ struct VenueItemBlock: View {
 
     private func usage(_ u: VenueItems.Economics) -> some View {
         let seasonText: String = String(format: "%+.0f%% against an average month", (u.seasonIndex - 1) * 100)
-        return TeamGroup(u.kindLabel) {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection(u.kindLabel) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: "Sold last week", value: String(format: "%.0f", u.sold), sub: "per " + u.per, rule: false)
                     if u.capacity > 0 {
@@ -50,8 +50,8 @@ struct VenueItemBlock: View {
 
     private func costs(_ u: VenueItems.Economics, _ cur: Currency) -> some View {
         let profitText: String = (u.weeklyProfit >= 0 ? "profit " : "loss ") + itemAmount(u.weeklyProfit, cur) + " a week"
-        return TeamGroup("What it costs") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection("What it costs") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: "Cost of one sale", value: itemAmount(u.costPerSale, cur), sub: "at the last quarter's sales", rule: false)
                     FlatRow(label: "Price that breaks even", value: itemAmount(u.breakEvenPrice, cur), sub: "per " + u.per)

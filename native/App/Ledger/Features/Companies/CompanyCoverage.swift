@@ -35,7 +35,7 @@ struct CompanyCoverageScreen: View {
             .confirmAction($pending)
             .task { store.act { $0.prepareAdvisers(companyID: companyID) } }
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
@@ -55,8 +55,8 @@ struct CompanyCoverageScreen: View {
                         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
                             GlyphView(glyph: p.isOn ? Glyph.check : Glyph.ring, size: 16, weight: 1.6, tint: p.isOn ? Theme.gain : Theme.ivoryFaint)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                                Text(p.blurb.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
+                                Text(p.name).textStyle(.body)
+                                Text(p.blurb.tidyMoney).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.leading)
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 1) {
@@ -99,7 +99,7 @@ struct CompanyCoverageScreen: View {
         CardSection(title) {
             VStack(alignment: .leading, spacing: 0) {
                 if let current {
-                    Text("Now: \(current.name)").font(.system(size: 13)).foregroundStyle(Theme.ivory).padding(.bottom, 4)
+                    Text("Now: \(current.name)").textStyle(.body).padding(.bottom, 4)
                 } else {
                     Text(empty).font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, 4)
                 }
@@ -110,8 +110,8 @@ struct CompanyCoverageScreen: View {
                     if n > 0 { CardLine() }
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(a.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
-                            Text(detail(a, cur)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
+                            Text(a.name).textStyle(.body)
+                            Text(detail(a, cur)).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.leading)
                         }
                         Spacer(minLength: 8)
                         if a.isCurrent { Chip(text: "Yours", tint: Theme.gain) }

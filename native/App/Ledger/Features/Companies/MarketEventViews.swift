@@ -67,12 +67,12 @@ struct MarketEventRows: View {
         return HStack(alignment: .top, spacing: 10) {
             Circle().fill(tint).frame(width: 7, height: 7).padding(.top, 5)
             VStack(alignment: .leading, spacing: 1) {
-                Text(m.title.tidyText).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
+                Text(m.title.tidyText).textStyle(.body, weight: .medium).lineLimit(2)
                 if !m.detail.isEmpty {
-                    Text(m.detail.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                    Text(m.detail.tidyText).textStyle(.caption).lineLimit(2)
                 }
                 if !m.consequence.isEmpty {
-                    Text(m.consequence.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                    Text(m.consequence.tidyText).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
                 }
                 if m.kind == .recognition && !m.acknowledged {
                     TeamAction(title: "Thank them") { thank(m) }
@@ -105,7 +105,7 @@ struct MarketTrendCard: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("MARKET TREND").capsLabel()
-                    Text(text).font(.system(size: 13.5, weight: .medium)).foregroundStyle(tint).lineLimit(2)
+                    Text(text).textStyle(.headline, tint: tint).lineLimit(2)
                 }
                 Spacer(minLength: 6)
                 Sparkline(values: trend.points, tint: tint, filled: false)

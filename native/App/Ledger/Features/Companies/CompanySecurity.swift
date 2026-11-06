@@ -26,7 +26,7 @@ struct CompanySecurityCard: View {
                 if company.managerID != nil {
                     CardLine()
                     HStack {
-                        Text(c.status.managerPicks ? "Your manager picks the level, keeps the backups and books the training." : "Your choice stands.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text(c.status.managerPicks ? "Your manager picks the level, keeps the backups and books the training." : "Your choice stands.").textStyle(.caption)
                         Spacer()
                         if !c.status.managerPicks { Button("Leave it to the manager") { store.act { $0.leaveCyberToManager(companyID: company.id) }; store.saved("your manager now picks the IT protection") }.buttonStyle(TinyButtonStyle(tint: Theme.gold)) }
                     }
@@ -46,7 +46,7 @@ struct CompanySecurityCard: View {
                     }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
                 }
                 if let last = c.status.log.first {
-                    Text("Last: \(last.text)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Last: \(last.text)").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }
@@ -63,10 +63,10 @@ struct CompanySecurityCard: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Cyber.levels[i].name).font(.system(size: 13.5, weight: on ? .semibold : .regular)).foregroundStyle(on ? Theme.gold : Theme.ivory)
-                    Text(Cyber.levels[i].text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(Cyber.levels[i].text).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                Text(costText).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Text(costText).textStyle(.caption, numeric: true)
                 GlyphView(glyph: on ? Glyph.check : Glyph.ring, size: 14, weight: 1.6, tint: on ? Theme.gold : Theme.ivoryFaint)
             }.contentShape(Rectangle())
         }.buttonStyle(PressableStyle())

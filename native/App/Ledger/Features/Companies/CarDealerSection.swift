@@ -39,25 +39,24 @@ struct CarStockCard: View {
         HStack(alignment: .center, spacing: 12) {
             UsedCarPhoto(family: row.body, title: row.title)
             VStack(alignment: .leading, spacing: 4) {
-                Text(row.title).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(row.title).textStyle(.headline).lineLimit(1)
                 HStack(spacing: 5) {
                     TeamBadge(text: statusText, tint: row.status == .inStock ? Theme.gold : Theme.ivoryMuted)
                     TeamBadge(text: row.body.isEmpty ? "car" : row.body)
                 }
-                Text(note.tidyText).font(.system(size: 12)).foregroundStyle(noteTint)
+                Text(note.tidyText).textStyle(.caption, tint: noteTint)
                     .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(currency.tidyShort(row.askingPrice)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text(row.status == .inStock ? "asking" : "list price").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(currency.tidyShort(row.askingPrice)).textStyle(.headline, numeric: true)
+                Text(row.status == .inStock ? "asking" : "list price").textStyle(.caption, tint: Theme.inkFaint)
             }
             if row.status == .inStock { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
         }
         .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .opacity(row.status == .inStock ? 1 : 0.6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -83,11 +82,11 @@ struct CarDealerSection: View {
         VStack(alignment: .leading, spacing: 18) {
             supplierBlock(cur)
             TeamGroup(title: "Showroom and orders", trailing: {
-                Text("\(sp.used) of \(sp.total) spaces").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("\(sp.used) of \(sp.total) spaces").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 if rows.isEmpty {
                     Text("The showroom is empty. Cars only arrive when you order them from your supplier.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 } else {
                     ForEach(rows) { (r: CarDealerRow) in
                         if r.status == .inStock {
@@ -218,7 +217,6 @@ struct CarOrderSheet: View {
         .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.cardDeep))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.line, lineWidth: 1))
         .contentShape(Rectangle())
     }
 

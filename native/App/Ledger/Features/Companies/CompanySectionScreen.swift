@@ -28,7 +28,7 @@ struct CompanySectionScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .appScreen(title: section.rawValue, subtitle: co.name)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
@@ -91,7 +91,7 @@ struct CompanyProjectsPage: View {
             if engine.projectBoard(companyID: company.id) != nil {
                 if running.isEmpty {
                     Card(padding: 12, radius: Theme.Radius.row) {
-                        Text("Nothing running at the moment.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                        Text("Nothing running at the moment.").textStyle(.caption, tint: Theme.inkFaint)
                     }
                 }
                 ForEach(running) { (l: ProjectTimeline) in row(l) }
@@ -106,8 +106,8 @@ struct CompanyProjectsPage: View {
         let sub: String = [l.subtitle, stage, due].filter { !$0.isEmpty }.joined(separator: " · ")
         return Card(padding: 12, radius: Theme.Radius.row) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(l.title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
-                if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2) }
+                Text(l.title.tidyText).textStyle(.headline).lineLimit(2)
+                if !sub.isEmpty { Text(sub.tidyText).textStyle(.caption).lineLimit(2) }
                 if let p = l.progress { RateBar(label: "Progress", fraction: p) }
             }
         }

@@ -99,7 +99,7 @@ struct CompanyClub: View {
     }
 
     private func season(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
-        MoreBlock(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+        MoreBlock(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").textStyle(.caption, tint: Theme.inkFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
                 FigureStrip(items: seasonItems(c, cur))
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
@@ -123,13 +123,13 @@ struct CompanyClub: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.gym, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Stadium").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(fillText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Stadium").textStyle(.headline)
+                    Text(fillText).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(gate).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text("last home gate").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(gate).textStyle(.headline, numeric: true)
+                    Text("last home gate").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }
@@ -188,8 +188,8 @@ struct CompanyClub: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.person, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(cd.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(cd.name).textStyle(.headline)
+                    Text(line).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
                 Button("Hire…") { askHire(cd, cur) }.buttonStyle(TinyButtonStyle())
@@ -215,8 +215,8 @@ struct CompanyClub: View {
                 HStack(spacing: 10) {
                     IconCircle(glyph: Glyph.person, size: 34)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(detail).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        Text(title).textStyle(.headline)
+                        Text(detail).textStyle(.caption, tint: Theme.inkFaint)
                     }
                     Spacer()
                 }
@@ -266,8 +266,8 @@ struct CompanyClub: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.hire, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(t.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(t.name).textStyle(.headline)
+                    Text(line).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
                 Button("Sign…") { askSign(i, t.name, fee, cur) }.buttonStyle(TinyButtonStyle()).disabled(!windowOpen)
@@ -303,11 +303,11 @@ struct CompanyClub: View {
                         HStack(spacing: 10) {
                             IconCircle(glyph: Glyph.richList, size: 34)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(s.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                                Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                Text(s.name).textStyle(.headline)
+                                Text(line).textStyle(.caption, tint: Theme.inkFaint)
                             }
                             Spacer()
-                            Text(cur.tidyShort(s.weekly) + " / wk").font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                            Text(cur.tidyShort(s.weekly) + " / wk").textStyle(.headline, numeric: true)
                         }
                     }
                 } else if let offers = c.offers[key], !offers.isEmpty {
@@ -328,8 +328,8 @@ struct CompanyClub: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.richList, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(o.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(o.name).textStyle(.headline)
+                    Text(line).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
                 Button("Sign…") {
@@ -422,8 +422,8 @@ struct ClubMarketView: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.achievements, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(c.name).textStyle(.headline)
+                    Text(line).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
                 if c.owner == "you" { Chip(text: "Yours", tint: Theme.gold) }

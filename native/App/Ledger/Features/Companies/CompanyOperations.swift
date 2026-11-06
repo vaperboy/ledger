@@ -36,8 +36,8 @@ enum OpsSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// Operations of one company on ONE page: key figures above, a table of settings (each row one setting with its current value; a
-/// small change opens a sheet, a bigger decision a full page), and warnings and open items below.
+/// Operations of one company on ONE page: what needs fixing first, capacity, then a table of settings (each row one setting with its
+/// current value; a small change opens a sheet, a bigger decision a full page), and open complaints.
 struct CompanyOperations: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -49,9 +49,9 @@ struct CompanyOperations: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
+            notes
             CompanyPerformance(engine: engine, company: company)
             settingsTable
-            notes
             CompanyOtherSections(engine: engine, company: company)
         }
         .centerSheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
@@ -82,6 +82,7 @@ struct CompanyOperations: View {
             SettingsTableRow(title: "Licences", note: "Add new things to sell; apply and wait for the answer", value: "\(held) of \(licences.count) held", glyph: Glyph.reports) { part = .licences }
         }
         premisesRow
+        equipmentRow
         if CompanySourcing.isAvailable(engine: engine, company: company) {
             SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
         }
@@ -92,7 +93,17 @@ struct CompanyOperations: View {
             let count: Int = engine.propertyPortfolio(companyID: company.id)?.rows.count ?? 0
             SettingsTableRow(title: "Properties", note: "What you own and let", value: "\(count) \(count == 1 ? "property" : "properties")", glyph: Glyph.opsPin) { part = .premises }
         }
-        // Premises are in AirStay, equipment and fleet in TechPro Store, insurance and advisers in Atlas: no tabs for them here.
+        // Premises are in AirStay and insurance and advisers in Atlas: no rows for them here. Equipment is bought in TechPro Store.
+    }
+
+    /// What the company owns and what is missing; the page sells, services and links to TechPro Store to buy.
+    private var equipmentRow: some View {
+        let needs: [EquipmentMarket.Need] = engine.equipmentNeeds(companyID: company.id)
+        let missing: Int = needs.filter { !$0.isVehicle && !$0.isSoftware && $0.need > 0 && $0.have + $0.leased < $0.need }.count
+        let owned: Int = engine.ownedEquipment(companyID: company.id).filter { $0.kind != "veh" }.count
+        return SettingsTableRow(title: "Equipment", note: "What you own, what is missing, selling and leases",
+                                value: missing > 0 ? "\(missing) missing" : "\(owned) owned", valueTint: missing > 0 ? Theme.warn : Theme.ink,
+                                glyph: Glyph.settings) { part = .equipment }
     }
 
     // MARK: Below: paperwork and what needs you
@@ -106,30 +117,22 @@ struct CompanyOperations: View {
         let uninsured: Bool = (o?.activeCount ?? 1) == 0
         let outgrown: Bool = engine.isHomeTrade(companyID: company.id) && engine.hasOutgrownHome(companyID: company.id)
         let paper: [TeamOverview.Issue] = paperworkIssues
-        if let first = paper.first {
-            note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
+        if paper.first != nil || uninsured || outgrown {
+            LedgerSection("Needs you", rule: false) {
+                VStack(spacing: 0) {
+                    if let first = paper.first {
+                        note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
+                    }
+                    if uninsured { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
+                    if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
+                }
+            }
         }
-        if uninsured { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
-        if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
     }
 
+    /// A warning row, the same as the Overview's: warn glyph, what is wrong, and where it is handled; the whole row opens it.
     private func note(_ text: String, action: String, tap: @escaping () -> Void) -> some View {
-        HStack(spacing: 10) {
-            GlyphView(glyph: Glyph.warning, size: 16, weight: 1.5, tint: Theme.caution)
-            Text(text).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-                Haptics.tap()
-                tap()
-            } label: {
-                Text(action + " ›").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
-            }
-            .buttonStyle(PressableStyle())
-        }
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.caution.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Color(hex: 0x6A5630), lineWidth: 1))
+        LedgerRow(leading: .glyph(Glyph.warning), leadingTint: Theme.warn, title: text, valueNote: action, valueNoteTint: Theme.accent, lineLimit: 3, action: tap)
     }
 }
 
@@ -141,17 +144,16 @@ struct DemandCapacityChart: View {
         Chart {
             ForEach(weeks) { w in
                 BarMark(x: .value("Week", "W\(w.week)"), y: .value("Demand", w.demand))
-                    .foregroundStyle(w.demand > w.capacity ? Theme.gold : Theme.borderStrong)
+                    .foregroundStyle(w.demand > w.capacity ? Theme.accent : Theme.lineStrong)
                 RuleMark(x: .value("Week", "W\(w.week)"), yStart: .value("Capacity", w.capacity), yEnd: .value("Capacity", w.capacity))
                     .lineStyle(StrokeStyle(lineWidth: 2, dash: [3, 2]))
-                    .foregroundStyle(Theme.ivoryFaint)
+                    .foregroundStyle(Theme.inkFaint)
             }
         }
         .chartYAxis(.hidden)
         .chartXAxis {
-            AxisMarks { _ in AxisValueLabel().font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint) }
+            AxisMarks { _ in AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) }
         }
-        .frame(height: 96)
         .accessibilityLabel("Demand against capacity over the last \(weeks.count) weeks")
     }
 }

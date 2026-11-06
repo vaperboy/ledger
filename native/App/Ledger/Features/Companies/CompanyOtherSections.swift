@@ -38,7 +38,7 @@ struct CompanyOtherSections: View {
             TeamGroup(title: "Complaints", trailing: {
                 HStack(spacing: 6) {
                     RedBubble(count: open.count, size: .small)
-                    Text("answer within two weeks").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("answer within two weeks").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }) {
                 ForEach(open) { c in complaintCard(c) }
@@ -51,7 +51,7 @@ struct CompanyOtherSections: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
                     TeamInitials(name: c.who, size: 34)
-                    Text(c.who).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(c.who).textStyle(.headline)
                     Spacer(minLength: 0)
                 }
                 Text("\u{201C}\(c.text)\u{201D}").font(.serifTitle(15)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
@@ -70,14 +70,14 @@ struct CompanyOtherSections: View {
             Haptics.tap()
             answer(c.raw, a)
         } label: {
-            VStack(spacing: 5) {
-                GlyphView(glyph: glyph, size: 18, weight: 1.6, tint: tint)
-                Text(title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                Text(note).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: Theme.Space.xs) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: tint)
+                Text(title).textStyle(.caption, tint: Theme.ink, weight: .medium)
+                Text(note).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10).padding(.horizontal, 4)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(tint.opacity(0.6), lineWidth: 1))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.vertical, Theme.Space.s).padding(.horizontal, Theme.Space.xs)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -117,7 +117,7 @@ struct ChainStaffShortages: View {
         let list: [Gap] = gaps
         if !list.isEmpty {
             TeamGroup(title: "Short of staff", trailing: {
-                Text(list.count == 1 ? "1 place" : "\(list.count) places").font(.system(size: 11)).foregroundStyle(Theme.caution)
+                Text(list.count == 1 ? "1 place" : "\(list.count) places").textStyle(.caption, tint: Theme.warn)
             }) {
                 ForEach(list) { g in gapCard(g) }
             }
@@ -132,23 +132,23 @@ struct ChainStaffShortages: View {
                 HStack(spacing: 10) {
                     IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.caution)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(storeName(g.storeID)).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text("Needs a \(g.role)").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+                        Text(storeName(g.storeID)).textStyle(.headline)
+                        Text("Needs a \(g.role)").textStyle(.caption, tint: Theme.warn)
                     }
                     Spacer(minLength: 0)
                 }
                 if let from = g.spareAt {
                     CardLine()
                     HStack(spacing: 8) {
-                        Text(storeName(from)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                        Text(storeName(from)).textStyle(.caption).lineLimit(1)
                         GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.ivoryDim)
-                        Text(storeName(g.storeID)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                        Text(storeName(g.storeID)).textStyle(.caption).lineLimit(1)
                         Spacer(minLength: 8)
                         QuietButton(title: "Move one") { move(from: from, to: g.storeID, role: g.role) }
                     }
-                    Text("Has one spare; the worker changes store.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Has one spare; the worker changes store.").textStyle(.caption, tint: Theme.inkFaint)
                 } else {
-                    Text("No sister store has one to spare. Hire for it.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("No sister store has one to spare. Hire for it.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }

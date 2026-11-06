@@ -62,7 +62,7 @@ struct CarBrandList: View {
         HStack(alignment: .center, spacing: 12) {
             IconCircle(glyph: Glyph.group, size: 42, tint: t.allMet ? Theme.gold : Theme.ivoryMuted)
             VStack(alignment: .leading, spacing: 4) {
-                Text(t.brand.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(t.brand.name).textStyle(.headline).lineLimit(1)
                 HStack(spacing: 5) {
                     TeamBadge(text: t.brand.segment, tint: Theme.gold)
                     TeamBadge(text: "\(t.years) years")
@@ -72,15 +72,14 @@ struct CarBrandList: View {
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(Currency.percent(t.margin + t.bonus, decimals: 1)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text("dealer margin").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(Currency.percent(t.margin + t.bonus, decimals: 1)).textStyle(.headline, numeric: true)
+                Text("dealer margin").textStyle(.caption, tint: Theme.inkFaint)
             }
             GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .contentShape(Rectangle())
     }
 }
@@ -109,7 +108,7 @@ struct CarBrandTermsView: View {
 
     @ViewBuilder private func content(_ t: CarBrandContract.Terms, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(t.brand.blurb).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text(t.brand.blurb).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             MoreBlock("Terms") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "Term", value: "\(t.years) years", rule: false)
@@ -127,7 +126,7 @@ struct CarBrandTermsView: View {
                 }
             }
             MoreBlock("Range", card: false) {
-                Text(t.brand.models.map { $0.name }.joined(separator: ", ")).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                Text(t.brand.models.map { $0.name }.joined(separator: ", ")).textStyle(.body, tint: Theme.inkSoft)
             }
             Button { ask(t) } label: { Text(t.allMet ? "Sign the contract" : "Standards not met").frame(maxWidth: .infinity) }
                 .buttonStyle(GoldButtonStyle()).disabled(!t.allMet)
@@ -194,7 +193,7 @@ struct CarContractView: View {
     private func renewal(_ o: CarBrandContract.Offer) -> some View {
         MoreBlock("Renewal offer") {
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(active.brand.name) is happy with your results and offers a new term.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                Text("\(active.brand.name) is happy with your results and offers a new term.").textStyle(.body, tint: Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
                 FlatRow(label: "New term", value: "\(o.years) years", rule: false)
                 FlatRow(label: "Dealer margin", value: Currency.percent(o.margin, decimals: 1))

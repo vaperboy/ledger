@@ -83,24 +83,23 @@ struct UsedCarRowView: View {
         return HStack(alignment: .center, spacing: 12) {
             UsedCarPhoto(family: car.family, title: car.title)
             VStack(alignment: .leading, spacing: 4) {
-                Text(car.title).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(car.title).textStyle(.headline).lineLimit(1)
                 HStack(spacing: 6) {
-                    Text(usedCarStatusText(car)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                    Text(usedCarStatusText(car)).textStyle(.caption).lineLimit(1)
                     if car.reserved { TeamBadge(text: "Reserved", tint: Theme.gold) }
                     if car.stuck { TeamBadge(text: "Stuck", tint: Theme.loss) }
                 }
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(cur.tidyShort(car.askingPrice)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text(reading.text).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(reading.tint)
+                Text(cur.tidyShort(car.askingPrice)).textStyle(.headline, numeric: true)
+                Text(reading.text).textStyle(.caption, tint: reading.tint, numeric: true)
             }
             GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .opacity(atGarage ? 0.5 : 1)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -146,11 +145,11 @@ struct UsedCarYardSection: View {
         let noun: String = cars.count == 1 ? "car" : "cars"
         let count: String = "\(cars.count) \(noun), \(cur.tidyShort(value)) in stock"
         return TeamGroup(title: "Cars", trailing: {
-            Text(count).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text(count).textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if cars.isEmpty {
                 Text("The yard is empty. Cars only come from the Marketplace app on your Phone, bought by you or by a buyer.")
-                    .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             ForEach(cars) { (c: UsedCarStockItem) -> AnyView in AnyView(carRow(c, cur)) }
         }
@@ -188,13 +187,13 @@ struct UsedCarYardSection: View {
             VStack(alignment: .leading, spacing: 0) {
                 if recs.isEmpty {
                     Text("Nobody buys cars for you. You buy by hand on the Marketplace. A hired buyer or a manager buys for you when the lot has room.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.bottom, 8)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.bottom, 8)
                 }
                 ForEach(Array(recs.enumerated()), id: \.offset) { (i: Int, r: UsedCarBuyerRecord) in
                     FlatRow(label: r.name + " (" + roleWord(r.role) + ")", value: "Skill \(Int(r.rating.rounded()))", sub: track(r), rule: i > 0)
                 }
                 Text("Skill comes from the deals he got against fair value. A better record means better cars at lower prices.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
                 if company.status == .open {
                     Button { Haptics.tap(); showHire = true } label: { Text("Hire a buyer").frame(maxWidth: .infinity) }
                         .buttonStyle(GreyOutlineButtonStyle()).padding(.top, 4)
@@ -228,9 +227,9 @@ struct UsedCarYardSection: View {
         })
         return MoreBlock("Repairs") {
             VStack(alignment: .leading, spacing: 6) {
-                Toggle("Send every repair to the garage at once", isOn: binding).tint(Theme.gold).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                Toggle("Send every repair to the garage at once", isOn: binding).tint(Theme.gold).textStyle(.headline)
                 Text("Off: each quoted car waits for you to send it to repair or sell it as it is. Your own mechanic company is used first, at the group price.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
