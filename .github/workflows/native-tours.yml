@@ -1,7 +1,7 @@
 name: Native iOS feature tours
 
-# Runs the UI feature tours (native/App/LedgerUITests/FeatureTours*.swift) and prints the result block between
-# "=== TOUR RESULT ===" and "=== END TOUR RESULT ===". Started by pushing the branch `ui-tours`
+# Runs the UI feature tours (native/App/LedgerUITests/FeatureTours*.swift) in parallel shards, then the `summary` job prints one
+# combined block between "=== TOUR RESULT ===" and "=== END TOUR RESULT ===". Started by pushing the branch `ui-tours`
 # (git push origin native-swiftui:ui-tours --force) or by hand; never part of normal builds or releases.
 on:
   push:
@@ -18,10 +18,24 @@ permissions:
 jobs:
   ui-tours:
     concurrency:
-      group: ui-tours-${{ github.ref }}
+      group: ui-tours-${{ github.ref }}-${{ matrix.shard }}
       cancel-in-progress: true
     runs-on: macos-15
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: a
+            tests: testT01_TabsAndHome testT02_PhoneAppsA testT03_PhoneAppsB testT06_Ventures
+          - shard: b
+            tests: testT04_Group testT05_SwipeBack testT14_CompanyPopups testT26_NewCompany
+          - shard: c
+            tests: testT10_CompanySections testT11_TeamHiring testT12_ManageAndSuppliers
+          - shard: d
+            tests: testT13_SalesItemAndMarketing testT20_DayAndReports testT21_Inbox
+          - shard: e
+            tests: testT22_ShopsAndInsurance testT23_Bank testT24_OtherPopups testT25_AccountingPayroll
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest installed Xcode
@@ -39,7 +53,10 @@ jobs:
         working-directory: native/App
         env:
           ONLY: ${{ inputs.only }}
+          TESTS: ${{ matrix.tests }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          if [ -n "$ONLY" ] && [ "$SHARD" != "a" ]; then echo "only $ONLY: shard $SHARD has nothing to run"; exit 0; fi
           xcrun simctl list devices available | grep -E "iPhone" || true
           DEV="iPhone 16 Pro"
           if ! xcrun simctl list devices available | grep -qF "    $DEV ("; then
@@ -49,11 +66,13 @@ jobs:
           fi
           echo "== $DEV"
           mkdir -p "$RUNNER_TEMP/tour"
-          T="LedgerUITests/FeatureToursTests"
-          if [ -n "$ONLY" ]; then T="$T/$ONLY"; fi
+          if [ -n "$ONLY" ]; then TESTS="$ONLY"; fi
+          ONLYARGS=""
+          for t in $TESTS; do ONLYARGS="$ONLYARGS -only-testing:LedgerUITests/FeatureToursTests/$t"; done
+          echo "== shard $SHARD: $TESTS"
           # TEST_RUNNER_ variables reach the UI test process (prefix removed): the tours write their result file there.
           TEST_RUNNER_TOUR_OUT="$RUNNER_TEMP/tour/result.txt" xcodebuild test -project Ledger.xcodeproj -scheme Ledger \
-            -only-testing:"$T" \
+            $ONLYARGS \
             -destination "platform=iOS Simulator,name=$DEV" \
             -resultBundlePath "$RUNNER_TEMP/tours.xcresult" \
             CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/tours.log" 2>&1 || { echo "xcodebuild test exited non-zero (expected when a tour step raised an XCTest issue)"; grep -E "error:" "$RUNNER_TEMP/tours.log" | sort -u | head -20; }
@@ -95,9 +114,30 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tour-result
+          name: tour-result-${{ matrix.shard }}
           path: |
             ${{ runner.temp }}/tour/result.txt
             ${{ runner.temp }}/tours.log
           if-no-files-found: warn
+
+  summary:
+    needs: ui-tours
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tour-result-*
+          path: results
+      - name: Print the combined result block
+        run: |
+          F=$(ls results/*/tour/result.txt results/*/result.txt 2>/dev/null | sort -u)
+          cat $F 2>/dev/null | grep -E '^\[(PASS|FAIL|SKIP|NOTE)\]' > all.txt || true
+          P=$(grep -c '^\[PASS\]' all.txt || true); X=$(grep -c '^\[FAIL\]' all.txt || true); S=$(grep -c '^\[SKIP\]' all.txt || true)
+          echo "=== TOUR RESULT ==="
+          echo "steps: $((P + X + S))  pass: $P  fail: $X  skip: $S"
+          grep '^\[FAIL\]' all.txt | sed -E 's/^\[FAIL\] /FAIL /' | cut -c1-400
+          grep '^\[SKIP\]' all.txt | sed -E 's/^\[SKIP\] /SKIP /' | cut -c1-160
+          grep '^\[NOTE\]' all.txt | sed -E 's/^\[NOTE\] /NOTE /' | sort -u | head -60 | cut -c1-300
+          echo "=== END TOUR RESULT ==="
 

@@ -87,14 +87,35 @@ struct TourSig {
     func same(_ o: TourSig, strictText: Bool = true) -> Bool { back == o.back && tabs == o.tabs && (!strictText || heads == o.heads) }
 }
 
+/// One element of the current screen from a single accessibility snapshot. Only elements whose frame overlaps the window are kept: the
+/// tab pager keeps the other tabs alive one screen width to the side, and they must never be found or tapped.
+struct Hit {
+    var id: String
+    var label: String
+    var value: String
+    var frame: CGRect
+    var type: XCUIElement.ElementType
+    var selected: Bool
+    var enabled: Bool
+    /// Inside a sideways-scrolling row (chips, tab strips): reaching past the screen edge is normal there.
+    var hScroll: Bool
+    var name: String { id.isEmpty ? "'\(label.prefix(30))'" : id }
+    var tappable: Bool { [.button, .cell, .link, .switch, .textField, .slider, .image, .staticText, .other].contains(type) }
+}
+
 class FeatureTourCase: XCTestCase {
     var app: XCUIApplication!
     let log = TourLogStore.shared
     /// The screen just before the last tap of `driveUntilPopup` (the screen a popup belongs to).
     var lastBefore: TourSig?
-    /// Time caps: one test method may spend 5 minutes, the whole run 62 minutes (CI limit 90); later steps are recorded as SKIP at once.
+    /// Time caps: one test method may spend 8 minutes, the whole run (one CI shard) 60 minutes; later steps are recorded as SKIP at once.
     static let runStart: Date = Date()
-    var testDeadline: Date = Date().addingTimeInterval(300)
+    var testDeadline: Date = Date().addingTimeInterval(480)
+    /// The window frame, read once per test.
+    var winCache: CGRect = .zero
+    /// Buttons this test tapped that are smaller than 44 x 44 pt (name -> size), checked once at the end of the test.
+    var smallTargets: [String: String] = [:]
+    var tappedTargets: Set<String> = []
 
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
@@ -107,7 +128,10 @@ class FeatureTourCase: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = true
-        testDeadline = Date().addingTimeInterval(300)
+        testDeadline = Date().addingTimeInterval(480)
+        winCache = .zero
+        smallTargets = [:]
+        tappedTargets = []
         app = XCUIApplication()
         app.launchArguments = ["-showcase", "-showcase-rich", "-showcase-board"]
         app.launch()
@@ -128,6 +152,17 @@ class FeatureTourCase: XCTestCase {
         }
     }
 
+    /// One step per tour: every button it tapped is at least 44 x 44 pt (Apple's minimum touch target).
+    override func tearDown() {
+        let tour: String = String(name.split(separator: " ").last?.dropLast() ?? "tour")
+        if !tappedTargets.isEmpty {
+            let small: [String] = smallTargets.keys.sorted().map { "\($0) \(smallTargets[$0] ?? "")" }
+            if small.isEmpty { log.record(.pass, "tap targets \(tour): all \(tappedTargets.count) tapped buttons are 44 pt or more", "") }
+            else { log.record(.fail, "tap targets \(tour): \(small.count) of \(tappedTargets.count) tapped buttons under 44 pt", small.prefix(12).joined(separator: "; ")) }
+        }
+        super.tearDown()
+    }
+
     override class func tearDown() {
         TourLogStore.shared.finish()
         super.tearDown()
@@ -136,8 +171,8 @@ class FeatureTourCase: XCTestCase {
     // MARK: Steps
 
     func step(_ name: String, _ body: () -> R) {
-        if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 62 * 60 {
-            log.record(.skip, name, "time cap reached (5 min per test / 62 min total)")
+        if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 60 * 60 {
+            log.record(.skip, name, "time cap reached (8 min per test / 60 min per shard)")
             return
         }
         let t0: Date = Date()
@@ -155,7 +190,7 @@ class FeatureTourCase: XCTestCase {
     // MARK: Finding and tapping
 
     func homeVisible(_ t: TimeInterval = 8) -> Bool {
-        app.staticTexts["Net worth"].firstMatch.waitForExistence(timeout: t) || app.staticTexts["NET WORTH"].firstMatch.waitForExistence(timeout: 1)
+        find(wait: t) { $0.id == "home-companies-box" || $0.label == "Net worth" || $0.label == "NET WORTH" || $0.id == "next-day" } != nil
     }
 
     func elem(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
@@ -163,13 +198,18 @@ class FeatureTourCase: XCTestCase {
     func buttonContaining(_ text: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch }
     func buttonPrefix(_ idPrefix: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", idPrefix)).firstMatch }
 
-    /// On screen: exists with a non-empty frame inside the window (isHittable is avoided: overlay/tab-bar elements trigger AX scroll failures).
+    func win() -> CGRect {
+        if winCache.width < 1 { winCache = app.windows.firstMatch.frame }
+        return winCache.width < 1 ? CGRect(x: 0, y: 0, width: 402, height: 874) : winCache
+    }
+
+    /// On screen: exists with a frame that overlaps the window (a tab kept alive to the side does not count).
     func visible(_ e: XCUIElement) -> Bool {
         guard e.exists else { return false }
         let f: CGRect = e.frame
-        let w: CGRect = app.windows.firstMatch.frame
         if f.isEmpty || f.width < 1 || f.height < 1 || f.isNull || f.isInfinite { return false }
-        return w.isEmpty ? true : w.intersects(f)
+        let r: CGRect = f.intersection(win())
+        return !r.isNull && r.width >= 1 && r.height >= 1
     }
 
     /// Taps by coordinate (never e.tap(): its AX scroll-to-visible fails on floating tab bar buttons). Never throws or aborts the flow.
@@ -180,32 +220,157 @@ class FeatureTourCase: XCTestCase {
         return true
     }
 
-    /// Scrolls (up, then down) until the element is on screen.
-    func reveal(_ e: XCUIElement) -> Bool {
-        if visible(e) { return true }
-        for _ in 0..<4 { app.swipeUp(); if visible(e) { return true } }
-        for _ in 0..<8 { app.swipeDown(); if visible(e) { return true } }
-        return false
+    // MARK: Snapshot finding (one accessibility snapshot per look, only what is on the screen)
+
+    /// Every element whose frame overlaps the window, in tree order.
+    func hits() -> [Hit] {
+        guard let snap = try? app.snapshot() else { return [] }
+        let w: CGRect = win()
+        var out: [Hit] = []
+        func visit(_ n: XCUIElementSnapshot, _ inH: Bool) {
+            let f: CGRect = n.frame
+            var h: Bool = inH
+            if n.elementType == .scrollView || n.elementType == .collectionView || n.elementType == .table {
+                if n.children.contains(where: { (c: XCUIElementSnapshot) -> Bool in c.frame.maxX > f.maxX + 2 || c.frame.minX < f.minX - 2 }) { h = true }
+            }
+            if !f.isNull, !f.isInfinite, f.width >= 1, f.height >= 1, f.maxX > w.minX + 1, f.minX < w.maxX - 1, f.maxY > w.minY, f.minY < w.maxY {
+                out.append(Hit(id: n.identifier, label: n.label, value: (n.value as? String) ?? "", frame: f, type: n.elementType,
+                               selected: n.isSelected, enabled: n.isEnabled, hScroll: h))
+            }
+            for c in n.children { visit(c, h) }
+        }
+        visit(snap, false)
+        return out
     }
 
+    /// The band where a tap lands on the page: under the status bar, above the floating tab bar (or the home indicator).
+    func band(_ hs: [Hit]) -> (top: CGFloat, bottom: CGFloat) {
+        let w: CGRect = win()
+        let bar: CGFloat = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { $0.frame.minY }.min() ?? (w.maxY - 24)
+        return (w.minY + 52, min(bar, w.maxY - 24) - 2)
+    }
+
+    /// The first on-screen element matching `pred` (buttons first, then the one inside the tap band), polling up to `wait` seconds.
+    func find(wait: TimeInterval = 0, _ pred: (Hit) -> Bool) -> Hit? {
+        let end: Date = Date().addingTimeInterval(wait)
+        repeat {
+            let hs: [Hit] = hits()
+            let all: [Hit] = hs.filter(pred)
+            if !all.isEmpty {
+                let b = band(hs)
+                let ranked: [Hit] = all.sorted { (a: Hit, c: Hit) -> Bool in
+                    let ai: Bool = a.frame.midY >= b.top && a.frame.midY <= b.bottom, ci: Bool = c.frame.midY >= b.top && c.frame.midY <= b.bottom
+                    if ai != ci { return ai }
+                    let ab: Bool = a.type == .button, cb: Bool = c.type == .button
+                    if ab != cb { return ab }
+                    return false
+                }
+                return ranked[0]
+            }
+            if Date() >= end { break }
+            pause(0.4)
+        } while true
+        return nil
+    }
+
+    func has(_ id: String, wait: TimeInterval = 0) -> Bool { find(wait: wait) { $0.id == id } != nil }
+    func hit(_ id: String, wait: TimeInterval = 0) -> Hit? { find(wait: wait) { $0.id == id } }
+    func isSelected(_ id: String) -> Bool { find { $0.id == id && $0.type == .button }?.selected ?? false }
+    func onScreenText(_ s: String) -> Bool { find { $0.label.localizedCaseInsensitiveContains(s) || $0.value.localizedCaseInsensitiveContains(s) } != nil }
+
+    /// Drags the page (no fling) by `dy` points: negative moves the content up (shows what is below).
+    func dragPage(_ dy: CGFloat, x: CGFloat? = nil) {
+        let w: CGRect = win()
+        let from: CGFloat = dy < 0 ? w.minY + w.height * 0.68 : w.minY + w.height * 0.32
+        let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
+        let start: XCUICoordinate = o.withOffset(CGVector(dx: x ?? w.midX, dy: from))
+        let stop: XCUICoordinate = o.withOffset(CGVector(dx: x ?? w.midX, dy: from + dy))
+        start.press(forDuration: 0.05, thenDragTo: stop, withVelocity: .slow, thenHoldForDuration: 0.15)
+        pause(0.4)
+    }
+
+    /// Brings the first match into the tap band by dragging the page (down first, then up), and returns it as it is now.
+    func bringIn(_ pred: (Hit) -> Bool, wait: TimeInterval = 3) -> Hit? {
+        guard var h = find(wait: wait, pred) else { return nil }
+        var tries = 0
+        while tries < 8 {
+            let b = band(hits())
+            if h.frame.midY >= b.top && h.frame.midY <= b.bottom { return h }
+            let dy: CGFloat = h.frame.midY > b.bottom ? -min(300, h.frame.midY - b.bottom + 80) : min(300, b.top - h.frame.midY + 80)
+            dragPage(dy, x: max(win().minX + 30, min(win().maxX - 30, h.frame.midX)))
+            guard let again = find(wait: 1, pred) else { return nil }
+            h = again
+            tries += 1
+        }
+        return nil
+    }
+
+    /// A toast lying over the target is swiped away first (it would take the tap).
+    func clearBanner(over f: CGRect) {
+        for _ in 0..<2 {
+            guard let b = find({ $0.id == "notification-banner" }), b.frame.intersects(f.insetBy(dx: -4, dy: -4)) else { return }
+            let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
+            o.withOffset(CGVector(dx: b.frame.midX, dy: b.frame.midY)).press(forDuration: 0.05, thenDragTo: o.withOffset(CGVector(dx: b.frame.midX, dy: b.frame.minY - 160)))
+            pause(0.8)
+        }
+    }
+
+    /// Taps the middle of the visible part of `h`; buttons are measured for the 44 pt check.
     @discardableResult
-    func tap(_ e: XCUIElement, wait: TimeInterval = 3) -> Bool {
-        guard e.waitForExistence(timeout: wait), reveal(e) else { return false }
-        guard ctap(e) else { return false }
+    func touch(_ h: Hit) -> Bool {
+        let r: CGRect = h.frame.intersection(win())
+        guard !r.isNull, r.width >= 1, r.height >= 1 else { return false }
+        if h.type == .button || h.type == .cell {
+            let key: String = h.name
+            tappedTargets.insert(key)
+            if h.frame.width < 43.5 || h.frame.height < 43.5 { smallTargets[key] = "\(Int(h.frame.width))x\(Int(h.frame.height))" }
+        }
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: r.midX, dy: r.midY)).tap()
         pause(0.7)
         return true
     }
 
-    @discardableResult func tapID(_ id: String, wait: TimeInterval = 3) -> Bool { tap(button(id), wait: wait) }
-    @discardableResult func tapText(_ text: String, wait: TimeInterval = 3) -> Bool { tap(buttonContaining(text), wait: wait) }
-    @discardableResult func tapPrefix(_ p: String, wait: TimeInterval = 3) -> Bool { tap(buttonPrefix(p), wait: wait) }
+    /// Finds, scrolls into the tap band, clears a toast over it, then taps. False when it is not on this screen.
+    @discardableResult
+    func tapWhere(wait: TimeInterval = 3, _ pred: (Hit) -> Bool) -> Bool {
+        guard let h = bringIn(pred, wait: wait) else { return false }
+        clearBanner(over: h.frame)
+        guard let now = find(pred) else { return false }
+        return touch(now)
+    }
 
-    func ids(prefix: String) -> [String] {
-        let q: XCUIElementQuery = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix))
-        guard q.firstMatch.waitForExistence(timeout: 3) else { return [] }
+    @discardableResult
+    func tap(_ e: XCUIElement, wait: TimeInterval = 3) -> Bool {
+        guard e.waitForExistence(timeout: wait) else { return false }
+        let id: String = e.identifier, label: String = e.label
+        if !id.isEmpty { return tapWhere(wait: 1) { $0.id == id } }
+        return tapWhere(wait: 1) { $0.label == label && ($0.type == .button || $0.type == .cell) }
+    }
+
+    @discardableResult func tapID(_ id: String, wait: TimeInterval = 3) -> Bool { tapWhere(wait: wait) { $0.id == id } }
+    @discardableResult func tapText(_ text: String, wait: TimeInterval = 3) -> Bool {
+        tapWhere(wait: wait) { ($0.type == .button || $0.type == .cell) && $0.label.localizedCaseInsensitiveContains(text) }
+    }
+    @discardableResult func tapLabel(_ prefix: String, wait: TimeInterval = 3) -> Bool {
+        tapWhere(wait: wait) { ($0.type == .button || $0.type == .cell) && $0.label.hasPrefix(prefix) }
+    }
+    /// Taps a button only when it is enabled (a blocked primary action is reported, not tapped).
+    @discardableResult func tapEnabled(_ id: String, wait: TimeInterval = 3) -> Bool { tapWhere(wait: wait) { $0.id == id && $0.type == .button && $0.enabled } }
+    @discardableResult func tapPrefix(_ p: String, wait: TimeInterval = 3) -> Bool { tapWhere(wait: wait) { $0.id.hasPrefix(p) && $0.type == .button } }
+
+    func ids(prefix: String, wait: TimeInterval = 3) -> [String] {
+        _ = find(wait: wait) { $0.id.hasPrefix(prefix) }
         var out: [String] = []
-        for e in q.allElementsBoundByIndex where !out.contains(e.identifier) { out.append(e.identifier) }
+        for h in hits() where h.id.hasPrefix(prefix) && h.type == .button && !out.contains(h.id) { out.append(h.id) }
         return out
+    }
+
+    /// The primary action is on screen without scrolling: inside the tap band and fully inside the window.
+    func primaryInView(_ id: String, wait: TimeInterval = 3) -> R {
+        guard let h = find(wait: wait, { $0.id == id || $0.id == id + "-blocked" }) else { return .fail("no \(id) on the screen") }
+        let b = band(hits())
+        if h.frame.minY < b.top - 8 || h.frame.maxY > b.bottom + 2 { return .fail("\(id) is off the visible area without scrolling (y \(Int(h.frame.minY))-\(Int(h.frame.maxY)), band \(Int(b.top))-\(Int(b.bottom)))") }
+        return .pass(h.id.hasSuffix("-blocked") ? "shown, blocked with its reason" : "")
     }
 
     // MARK: Popups
@@ -275,11 +440,14 @@ class FeatureTourCase: XCTestCase {
 
     // MARK: Navigation
 
+    /// Taps the screen's Back: the round back button, the Group entity page's back, else a system navigation bar back button.
     func tapBack() -> Bool {
-        let round: XCUIElement = button("back-button")
-        if ctap(round) { pause(0.8); return true }
+        if let h = find({ ($0.id == "back-button" || $0.id == "group-back" || $0.id == "BackButton") && $0.type == .button }) {
+            clearBanner(over: h.frame)
+            if let now = find({ $0.id == h.id && $0.type == .button }) { touch(now); pause(0.3); return true }
+        }
         let bars: XCUIElementQuery = app.navigationBars
-        for i in 0..<bars.count {
+        for i in 0..<min(bars.count, 3) {
             let b: XCUIElement = bars.element(boundBy: i).buttons.element(boundBy: 0)
             if ctap(b) { pause(0.8); return true }
         }
@@ -296,97 +464,78 @@ class FeatureTourCase: XCTestCase {
 
     /// Diagnostic: every tab button with its selected flag and frame, and the first button ids on screen.
     func tabState() -> String {
-        let tabs: String = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'")).allElementsBoundByIndex
-            .map { "\($0.identifier)\($0.isSelected ? "*" : "")@\(Int($0.frame.minX)),\(Int($0.frame.minY))" }.joined(separator: " ")
-        let others: [String] = app.buttons.allElementsBoundByIndex.prefix(40).map { $0.identifier }.filter { !$0.hasPrefix("tab-") && !$0.isEmpty }
-        return "tabs: \(tabs); buttons: \(others.prefix(25).joined(separator: ","))"
+        let hs: [Hit] = hits()
+        let tabs: String = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { "\($0.id)\($0.selected ? "*" : "")" }.joined(separator: " ")
+        let others: [String] = hs.filter { $0.type == .button && !$0.id.hasPrefix("tab-") }.prefix(30).map { $0.name }
+        return "tabs: \(tabs); buttons: \(others.joined(separator: ","))"
     }
 
     func tabIDs() -> [String] { ids(prefix: "tab-") }
 
+    /// Opens a tab at its root (re-selecting a tab pops it to its root).
     @discardableResult
     func goTab(_ title: String) -> Bool {
-        toRoot()
-        let p: XCUIElement = button("tab-\(title)")
-        guard p.waitForExistence(timeout: 4) else { return false }
-        guard ctap(p) else { return false }
-        pause(0.9)
+        var n = 0
+        while popupUp() && n < 4 { closePopup(); n += 1 }
+        guard let t = find(wait: 4, { $0.id == "tab-\(title)" && $0.type == .button }) else { return false }
+        touch(t)
+        pause(0.5)
+        if !(find({ $0.id == "tab-\(title)" && $0.type == .button })?.selected ?? false), let again = find({ $0.id == "tab-\(title)" && $0.type == .button }) { touch(again); pause(0.5) }
         return true
     }
 
-    /// True while the Phone app grid is on screen (any launcher tile; apps behind the unlock ladder are not on it).
-    func gridUp(_ t: TimeInterval = 0) -> Bool {
-        let q: XCUIElement = buttonPrefix("phone-app-")
-        return t > 0 ? q.waitForExistence(timeout: t) : q.exists
-    }
+    /// True while the Phone app grid is on screen (any launcher tile).
+    func gridUp(_ t: TimeInterval = 0) -> Bool { find(wait: t) { $0.id.hasPrefix("phone-app-") && $0.type == .button } != nil }
 
     /// Why the last openPhoneApp failed: "hidden" = the grid is up but has no such tile (the unlock ladder keeps it off the Phone).
     var lastOpenWhy: String = ""
-    static var hiddenApps: Set<String> = []
 
-    /// Opens an app of the Phone tab; true when its tile was found and tapped. A tile missing from a loaded grid fails at once.
+    /// Opens an app of the Phone tab; true when its tile was found and tapped.
     @discardableResult
     func openPhoneApp(_ name: String) -> Bool {
         lastOpenWhy = ""
-        if Self.hiddenApps.contains(name) { lastOpenWhy = "hidden"; return false }
         guard goTab("Phone") else { lastOpenWhy = "no Phone tab"; return false }
-        let tile: XCUIElement = button("phone-app-\(name)")
-        guard gridUp(8) else { lastOpenWhy = "grid not shown"; log.note("phone grid not shown: " + tabState()); return false }
-        pause(0.4)
-        if tile.waitForExistence(timeout: 1.5) || (reveal(tile) && tile.exists) {
-            if ctap(tile) { pause(1.3); return true }
-            lastOpenWhy = "not tappable"
+        guard gridUp(6) else { lastOpenWhy = "grid not shown"; log.note("phone grid not shown: " + tabState()); return false }
+        let pred: (Hit) -> Bool = { $0.id == "phone-app-\(name)" && $0.type == .button }
+        guard let tile = bringIn(pred, wait: 1.5) else {
+            lastOpenWhy = "hidden"
+            log.note("no tile \(name) on the grid: tiles=" + ids(prefix: "phone-app-", wait: 0).map { String($0.dropFirst(10)) }.joined(separator: ","))
             return false
         }
-        Self.hiddenApps.insert(name)
-        lastOpenWhy = "hidden"
-        log.note("no tile \(name) on a loaded grid (locked by the unlock ladder?): " + button("phone-home").identifier + " tiles=" + ids(prefix: "phone-app-").map { String($0.dropFirst(10)) }.joined(separator: ","))
-        return false
+        if !tile.enabled { lastOpenWhy = "hidden"; return false }
+        touch(tile)
+        pause(0.8)
+        return true
     }
 
     static var companyMisses = 0
 
+    /// Opens a company from the Home list by its trade word (rows read "Name, Trade · City ...").
     @discardableResult
     func openCompany(_ part: String) -> Bool {
-        if Self.companyMisses >= 2 { return false }
+        if Self.companyMisses >= 3 { return false }
         guard goTab("Home") else { return false }
-        // The row exposes its name as a combined element (label "Name, Trade, ..."): match label or identifier, ignoring case and accents,
-        // by the trade words, then by the rows inside the Home companies box.
-        let words: [String] = [part] + (part.hasPrefix("Caf") ? ["Cafe", "Coffee"] : []) + (part.hasPrefix("Gym") ? ["Fitness"] : [])
-        _ = elem("home-companies-box").waitForExistence(timeout: 4)
-        func opened() -> Bool {
-            pause(0.8)
-            if button("company-tab-overview").waitForExistence(timeout: 4) { return true }
-            _ = tapBack()
-            return false
-        }
+        let words: [String] = [part] + (part.hasPrefix("Caf") ? ["Café", "Cafe", "Coffee"] : []) + (part.hasPrefix("Gym") ? ["Fitness"] : [])
+        _ = find(wait: 4) { $0.id == "home-companies-box" }
         for w in words {
-            let pred: NSPredicate = NSPredicate(format: "label CONTAINS[cd] %@ OR identifier CONTAINS[cd] %@", w, w)
-            for q in [app.buttons.matching(pred), app.descendants(matching: .any).matching(pred)] {
-                let t: XCUIElement = q.firstMatch
-                if t.waitForExistence(timeout: 1.5), visible(t) || reveal(t), ctap(t), opened() { return true }
-            }
-        }
-        let box: XCUIElement = elem("home-companies-box")
-        for i in 0..<3 {
-            let b: XCUIElement = box.buttons.element(boundBy: i)
-            if b.exists, ctap(b), opened() {
-                let hit: Bool = allTexts().contains { $0.text.range(of: part, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
-                if hit { return true }
+            let pred: (Hit) -> Bool = { ($0.type == .button || $0.type == .cell) && $0.label.range(of: w, options: [.caseInsensitive, .diacriticInsensitive]) != nil && !$0.id.hasPrefix("home-") && !$0.id.hasPrefix("tab-") }
+            if tapWhere(wait: 1.5, pred) {
+                if find(wait: 4, { $0.id == "company-tab-overview" }) != nil { return true }
                 _ = tapBack()
             }
         }
         Self.companyMisses += 1
-        let rows: [String] = allTexts().map { $0.text }.filter { $0.contains("\u{00B7}") }.prefix(6).map { String($0.prefix(60)) }
-        let boxInfo: String = box.exists ? "box@\(Int(box.frame.minX)),\(Int(box.frame.minY)),\(Int(box.frame.width))x\(Int(box.frame.height)) buttons=\(box.buttons.count)" : "no home-companies-box"
-        log.note("no company row \(part): \(boxInfo); texts with a dot: \(rows)")
+        let rows: [String] = hits().filter { $0.type == .button && $0.label.contains("\u{00B7}") }.prefix(6).map { String($0.label.prefix(60)) }
+        log.note("no company row \(part): buttons with a dot: \(rows)")
         return false
     }
 
     func swipeBackFromEdge() {
-        let start: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
-        let end: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
-        start.press(forDuration: 0.1, thenDragTo: end)
+        let w: CGRect = win()
+        let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
+        let start: XCUICoordinate = o.withOffset(CGVector(dx: w.minX + 3, dy: w.midY))
+        let end: XCUICoordinate = o.withOffset(CGVector(dx: w.minX + w.width * 0.85, dy: w.midY))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0)
         pause(1)
     }
 
@@ -397,32 +546,34 @@ class FeatureTourCase: XCTestCase {
         for c in s.children { walk(c, f) }
     }
 
+    static let clockText: NSRegularExpression? = try? NSRegularExpression(pattern: "^[0-9]{1,2}[:.][0-9]{2}( ?[AaPp]\\.?[Mm]\\.?)?$")
+
     func signature() -> TourSig {
-        guard let snap = try? app.snapshot() else { return TourSig(heads: ["?"], back: false, tabs: []) }
+        let hs: [Hit] = hits()
+        let w: CGRect = win()
         var heads: Set<String> = []
         var back = false
         var tabs: [String] = []
-        walk(snap) { (s: XCUIElementSnapshot) -> Bool in
-            if s.identifier == "back-button" || s.identifier == "BackButton" { back = true }
-            if (s.identifier.hasPrefix("tab-") || s.identifier.hasPrefix("company-tab-")) && s.isSelected { tabs.append(s.identifier) }
-            if s.identifier.hasPrefix("tab-") { return false }
-            if (s.elementType == .staticText || s.elementType == .other), !s.label.isEmpty, s.frame.minY >= 0, s.frame.maxY < 175, s.frame.height < 90 {
-                heads.insert(s.label.components(separatedBy: ", ")[0])
+        for s in hs {
+            if (s.id == "back-button" || s.id == "group-back" || s.id == "BackButton") && s.type == .button { back = true }
+            if (s.id.hasPrefix("tab-") || s.id.hasPrefix("company-tab-") || s.id.hasPrefix("group-tab-")) && s.type == .button && s.selected { tabs.append(s.id) }
+            if s.id.hasPrefix("tab-") || s.id == "notification-banner" { continue }
+            if (s.type == .staticText || s.type == .other), !s.label.isEmpty, s.frame.minY >= w.minY + 50, s.frame.maxY < w.minY + 190, s.frame.height < 90 {
+                let t: String = s.label.components(separatedBy: ", ")[0]
+                let ns: NSString = t as NSString
+                if let c = Self.clockText, c.firstMatch(in: t, options: [], range: NSRange(location: 0, length: ns.length)) != nil { continue }
+                heads.insert(t)
             }
-            return true
         }
-        return TourSig(heads: heads.sorted(), back: back, tabs: tabs.sorted())
+        return TourSig(heads: heads.sorted(), back: back, tabs: Array(Set(tabs)).sorted())
     }
 
-    /// All the text on screen (labels, string values, titles).
+    /// All the text on screen (labels, string values), on this page only.
     func allTexts() -> [(text: String, id: String)] {
-        guard let snap = try? app.snapshot() else { return [] }
         var out: [(text: String, id: String)] = []
-        walk(snap) { (s: XCUIElementSnapshot) -> Bool in
-            if !s.label.isEmpty { out.append((s.label, s.identifier)) }
-            if let v = s.value as? String, !v.isEmpty, v != s.label { out.append((v, s.identifier)) }
-            if !s.title.isEmpty, s.title != s.label { out.append((s.title, s.identifier)) }
-            return true
+        for h in hits() {
+            if !h.label.isEmpty { out.append((h.label, h.id)) }
+            if !h.value.isEmpty, h.value != h.label { out.append((h.value, h.id)) }
         }
         return out
     }
@@ -476,46 +627,55 @@ class FeatureTourCase: XCTestCase {
         return s.heads.contains { (h: String) -> Bool in !h.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
+    /// Text or a button cut by the left or right screen edge (rows that scroll sideways are left out: reaching past the edge is how they work).
+    func sideClips(_ hs: [Hit]) -> [String] {
+        let w: CGRect = win()
+        var out: [String] = []
+        for h in hs where !h.hScroll && !h.label.isEmpty && (h.type == .staticText || h.type == .button) && h.frame.width < w.width + 2 {
+            if h.frame.minX < w.minX - 1 || h.frame.maxX > w.maxX + 1 {
+                let item: String = "'\(h.label.prefix(24))' x \(Int(h.frame.minX))-\(Int(h.frame.maxX))"
+                if !out.contains(item) { out.append(item) }
+            }
+        }
+        return out
+    }
+
     /// Scrolls to the end of the screen (until the lowest element stops changing) and reports content that ends under the tab bar or
-    /// off the screen. nil when fine or when the screen is a long list that could not be scrolled to its end.
+    /// off the screen, and text cut by the side edges. nil when fine or when the end could not be reached.
     func clipProblem() -> String? {
-        let win: CGRect = app.windows.firstMatch.frame
-        guard win.height > 0 else { return nil }
-        var barTop: CGFloat = win.maxY
-        let bar: XCUIElement = button("tab-Home")
-        if visible(bar) { barTop = bar.frame.minY }
+        let w: CGRect = win()
         var last = ""
         var swipes = 0
         var verdict: String? = nil
-        var reachedEnd = false
-        while swipes < 8 {
-            guard let snap = try? app.snapshot() else { return nil }
+        var sides: [String] = []
+        while swipes < 7 {
+            let hs: [Hit] = hits()
+            if popupUp() { break }
+            for c in sideClips(hs) where !sides.contains(c) { sides.append(c) }
+            let barTop: CGFloat = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { $0.frame.minY }.min() ?? w.maxY
             var lowestMax: CGFloat = 0
             var lowestLabel = ""
             var hidden: [String] = []
-            walk(snap) { (s: XCUIElementSnapshot) -> Bool in
-                if s.identifier.hasPrefix("tab-") || s.identifier == "back-button" { return false }
-                let t: XCUIElement.ElementType = s.elementType
-                guard t == .staticText || t == .button || t == .textField || t == .switch || t == .slider else { return true }
-                let r: CGRect = s.frame
-                guard !s.label.isEmpty, r.width > 1, r.height > 1, r.minY >= 0, r.minY < win.maxY - 1, r.minX < win.maxX else { return true }
-                if r.minY >= barTop - 1 { hidden.append(String(s.label.prefix(30))); return true }
-                if r.maxY > lowestMax { lowestMax = r.maxY; lowestLabel = s.label }
-                return true
+            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && h.id != "notification-banner" {
+                guard h.type == .staticText || h.type == .button || h.type == .textField || h.type == .switch || h.type == .slider else { continue }
+                let r: CGRect = h.frame
+                guard !h.label.isEmpty, r.minY >= w.minY, r.minY < w.maxY - 1 else { continue }
+                if r.minY >= barTop - 1 { hidden.append(String(h.label.prefix(30))); continue }
+                if r.maxY > lowestMax { lowestMax = r.maxY; lowestLabel = h.label }
             }
             let key: String = "\(lowestLabel)@\(Int(lowestMax))#\(hidden.count)"
             if key == last {
-                reachedEnd = true
                 if !hidden.isEmpty { verdict = "\(hidden.count) element(s) end under the tab bar, e.g. '\(hidden[0])'" }
                 else if lowestMax > barTop + 2 { verdict = "'\(String(lowestLabel.prefix(30)))' is cut by \(Int(lowestMax - barTop)) pt at the bottom" }
                 break
             }
             last = key
-            app.swipeUp(velocity: .slow)
+            dragPage(-420)
             swipes += 1
         }
-        for _ in 0..<(swipes + 1) { app.swipeDown(velocity: .fast) }
-        return reachedEnd ? verdict : nil
+        for _ in 0..<min(4, swipes) { app.swipeDown(velocity: .fast) }
+        if !sides.isEmpty { verdict = (verdict.map { $0 + "; " } ?? "") + "cut at the side: " + sides.prefix(3).joined(separator: ", ") }
+        return verdict
     }
 
     /// Screen-level health: raw text, empty title (when expected) and a clipped bottom.
@@ -571,8 +731,10 @@ class FeatureTourCase: XCTestCase {
     func driveUntilPopup(_ steps: [String]) -> Bool {
         for s in steps {
             if popupUp() { return true }
-            let e: XCUIElement = s.hasPrefix("prefix:") ? buttonPrefix(String(s.dropFirst(7))) : button(s)
-            if e.waitForExistence(timeout: 2), reveal(e) { lastBefore = signature(); ctap(e); pause(0.8) }
+            let pre: Bool = s.hasPrefix("prefix:")
+            let key: String = pre ? String(s.dropFirst(7)) : s
+            let pred: (Hit) -> Bool = { pre ? ($0.id.hasPrefix(key) && $0.type == .button) : $0.id == key }
+            if let h = bringIn(pred, wait: 2) { lastBefore = signature(); clearBanner(over: h.frame); if let now = find(pred) { touch(now) }; pause(0.3) }
         }
         return popupUp(2)
     }
