@@ -238,7 +238,8 @@ public enum StrategicDecisions {
                      make: { s, i, _, fc in
                          let co = s.companies[i]
                          let y = co.books.year["cogs"] ?? 0, m = co.books.month["cogs"] ?? 0
-                         let weeksIn = Double(max(1, s.week % 52))
+                         // The year book runs from 1 January (the game starts in October), and a company that opened later has fewer weeks in it.
+                         let weeksIn = Double(max(1, min(GameCalendar.weeksIntoYear(week: s.week), Unlocks.weeksTraded(s, co))))
                          return .object(["c": num(r1000(max(fc.currency(co.countryCode, s).scaledPrice(20000), (y > 0 ? y : m * 4) / weeksIn * 8)))]) },
                      title: { co, _, _ in "A volume discount for \(co.name)" },
                      body: { _, d, cur in "Your supplier offers 6% off if you order about \(cur.display(d["c"].double)) up front (two months' worth). The stock has to sit somewhere, and the cash is gone until it sells." },

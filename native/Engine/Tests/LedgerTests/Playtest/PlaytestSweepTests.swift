@@ -66,6 +66,15 @@ final class PlaytestSweepTests: XCTestCase {
         runJobs(js)
     }
 
+    /// The reworked systems in a full game: manager, owner meetings, CEO replacement and one sale route per seed (five seeds cover every route).
+    func testSweepRework() throws {
+        try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
+        let trades = PT.list("LEDGER_PT_TRADES", ["cafe", "bakery", "hardware", "cleaning", "tutor", "barber"])
+        let countries = PT.list("LEDGER_PT_COUNTRIES", ["UK", "US", "NO", "DE", "JP"])
+        let policies = PT.list("LEDGER_PT_POLICIES", ["competent"]).compactMap { Policy(rawValue: $0) }
+        runJobs(jobs([.rework], trades: trades, countries: countries, policies: policies, seeds: PT.ints("LEDGER_PT_SEEDS", [1, 2, 3, 4, 5])))
+    }
+
     /// Passive and reckless policies over every trade in two countries.
     func testSweepPolicies() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")

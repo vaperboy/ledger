@@ -182,8 +182,10 @@ public enum StaffRoutine {
                 co.set("flags", flags); s.companies[i] = co
             }
         case .payAsk(let id):
+            guard StaffTalks.askedThisWeek(s, companyID: co.id) < StaffTalks.maxAsksPerWeek else { return }   // the rest ask next week
             StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: false, data: data)
         case .fixedSalaryAsk(let id):
+            guard StaffTalks.askedThisWeek(s, companyID: co.id) < StaffTalks.maxAsksPerWeek else { return }
             StaffTalks.ask(&s, companyIndex: i, staffID: id, fixed: true, data: data)
         case .promotionAsk(let id):
             ContractTalk.employeeAsks(&s, companyIndex: i, staffID: id, topic: .promotion, data: data)

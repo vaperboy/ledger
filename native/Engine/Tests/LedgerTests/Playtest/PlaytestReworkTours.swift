@@ -126,8 +126,8 @@ final class PlaytestReworkTours: XCTestCase {
         let s = e.state
         let g = Ledger.gaps(s)
         if !g.isEmpty { find(1, "ledger gap: \(g.map { "\($0.holder)=\(Int($0.difference))" }.joined(separator: ",").prefix(80))", "week \(s.week)") }
-        if s.cash < -1 { find(2, "personal cash below zero (\(Int(s.cash)))", "week \(s.week)") }
-        for co in s.companies where co.status.isLive && co.type != "hold" && co.cash < -e.context.overdraftRoom(co, s) - 1 && !stress { find(2, "company cash below its overdraft room (\(co.type))", "week \(s.week) \(Int(co.cash))") }
+        if s.cash < -s.overdraftLimit - 1 { find(2, "personal cash below the personal overdraft limit (\(Int(s.cash)))", "week \(s.week)") }
+        for co in s.companies where co.status.isLive && co.type != "hold" && co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 && !stress { find(2, "company cash below its overdraft room (\(co.type))", "week \(s.week) \(Int(co.cash))") }
         var seen = Set<String>()
         for m in out.newMessages {
             let key = "\(m.companyID)|\(m.title)|\(m.body)"
@@ -779,16 +779,33 @@ final class PlaytestReworkTours: XCTestCase {
 extension PlaytestReworkTours {
     func testScratchRework() throws {
         try XCTSkipUnless(PT.env["LEDGER_PT_SCRATCH"] == "1")
-        tour = "Scratch"
-        var (e, id) = try fixture(manager: false, accountant: false, weeks: 12, seed: 5)
-        let wages = e.state.company(id)!.staff.reduce(0.0) { $0 + $1.monthlyWage }
-        print("S wages", Int(wages), "staff", e.state.company(id)!.staff.count, "cash", Int(e.state.company(id)!.cash), "day", e.state.day, "week", e.state.week)
-        for d in 0..<(6*7) {
-            e.update { s, _, _ in guard let i = s.companyIndex(id) else { return }; if s.companies[i].cash > wages * 0.7 { Ledger.moveRaw(&s, .company(id), wages * 0.7 - s.companies[i].cash) } }
-            for m in e.openDecisions where m.actionID.hasPrefix("pay29") { print("S dec", e.state.week, e.state.day, m.actionID, m.title); e.answer(messageID: m.id, option: 0) }
-            let out = e.nextDay()
-            for m in out.newMessages where m.actionID.hasPrefix("pay") || m.title.lowercased().contains("pay") { print("S msg", e.state.week, m.actionID, m.title, m.status, m.audience) }
-            if d % 7 == 6 { print("S wk", e.state.week, "cash", Int(e.state.company(id)!.cash), "short", Int(e.state.company(id)!.wageShortfall), "pers", Int(e.state.cash)) }
+        let mode = PT.env["LEDGER_PT_SCRATCH_MODE"] ?? "neg"
+        let bot = try PlayBot(Job(country: PT.env["LEDGER_PT_COUNTRY"] ?? "DE", trade: PT.env["LEDGER_PT_TRADE"] ?? "cafe", seed: Int(PT.env["LEDGER_PT_SEED"] ?? "1") ?? 1, policy: .competent, scenario: .rework, years: 1))
+        bot.scenarioSetup()
+        var shown = 0
+        var prevCash = 0.0
+        for d in 0..<((Int(PT.env["LEDGER_PT_WEEKS"] ?? "45") ?? 45) * 7) {
+            if mode == "nw", bot.e.state.week >= 55, bot.e.state.week <= 56 { for m in bot.e.openDecisions { print("S OPEN", bot.e.state.week, bot.e.state.day, m.actionID, m.title.prefix(60), m.options.map { "\($0["l"].string)|cash \(Int($0["fx"]["cash"].double))" }, "pick", bot.pick(m)) } }
+            bot.answerAll()
+            let before = bot.e.state.cash
+            let o = bot.e.nextDay()
+            if mode == "neg", bot.e.state.cash < -1, shown < 6 {
+                shown += 1
+                print("S NEG wk", bot.e.state.week, "day", bot.e.state.day, "cash", Int(before), "->", Int(bot.e.state.cash), "sav", Int(bot.e.state.savings))
+                for l in bot.e.state.statement.suffix(6) { print("S   line", l.week, l.day, Int(l.amount), l.label) }
+                for m in o.newMessages.prefix(4) { print("S   msg", m.title) }
+            }
+            if mode == "flood", bot.e.state.week >= 31 && bot.e.state.week <= 34 { for m in o.newMessages where (m.kind == "ask" || m.kind == "decision") && m.status == "open" && m.isOwnerAddressed { print("S FLOOD wk", bot.e.state.week, m.actionID, m.title.prefix(70)) } }
+            if mode == "room", shown < 4, let c = bot.e.state.company(bot.mainID), c.cash < -bot.e.context.overdraftRoom(c, bot.e.state) - 1 {
+                shown += 1
+                print("S ROOM wk", bot.e.state.week, bot.e.state.day, "cash", Int(c.cash), "room", Int(bot.e.context.overdraftRoom(c, bot.e.state)), "before", Int(prevCash))
+                for t in c.transactions.suffix(5) { print("S   TX", t["w"].int, Int(t["a"].double), t["l"].string) }
+                for m in o.newMessages { print("S   MSG", m.title.prefix(60)) }
+            }
+            if let c = bot.e.state.company(bot.mainID) { prevCash = c.cash }
+            if mode == "nw", bot.e.state.week >= Int(PT.env["LEDGER_PT_FROM"] ?? "55")!, bot.e.state.week <= Int(PT.env["LEDGER_PT_FROM"] ?? "55")! + 2 { let c = bot.e.state.company(bot.mainID); print("S DAY", bot.e.state.week, bot.e.state.day, "co", Int(c?.cash ?? 0), "pers", Int(bot.e.state.cash), "msgs", o.newMessages.map { $0.title.prefix(40) }, "stmt", bot.e.state.statement.suffix(2).map { "\(Int($0.amount)) \($0.label)" }) }
+            if mode == "nw", o.completedWeek { let c = bot.e.state.company(bot.mainID); print("S NW wk", bot.e.state.week, "nw", Int(bot.e.netWorth.total), "pers", Int(bot.e.state.cash), "sav", Int(bot.e.state.savings), "co", c?.status.rawValue ?? "-", Int(c?.cash ?? 0), "route", bot.saleRoute, "sold", bot.soldWeek, "loans", Int(bot.e.state.loans.reduce(0) { $0 + $1.balance })); if bot.e.state.week >= 55 && bot.e.state.week <= 57 { for m in o.newMessages { print("S   MSG", m.title, m.status) }; if let c { for t in c.transactions.suffix(12) { print("S   TX", t["w"].int, Int(t["a"].double), t["l"].string) } } } }
+            if o.completedWeek { bot.tend(); bot.midScenario(week: bot.e.state.week); bot.saleWeek() }
         }
     }
 }

@@ -22,6 +22,27 @@ final class DecisionsTests: XCTestCase {
         return (e, id)
     }
 
+    /// The volume-discount order is sized by the weeks of the calendar year that have run, not by week % 52 (the game starts in October).
+    func testVolumeDiscountIsNotSizedByWeekModuloFiftyTwo() throws {
+        let (base, id) = try engineWithCompany(weeks: 12)
+        var e = base
+        var sizes: [Double] = []
+        for week in [55, 62] {
+            e.update { s, data, ctx in
+                guard let i = s.companyIndex(id) else { return }
+                s.week = week
+                s.companies[i].openedWeek = 0
+                var b = s.companies[i].books
+                b.year["cogs"] = 100_000 * Double(GameCalendar.weeksIntoYear(week: week))   // 100 000 a week since 1 January
+                b.month["cogs"] = 400_000
+                s.companies[i].books = b
+                if let c = StrategicDecisions.byID["g_volume"]?.make?(&s, i, data, ctx) { sizes.append(c["c"].double) }
+            }
+        }
+        XCTAssertEqual(sizes.count, 2)
+        for c in sizes { XCTAssertEqual(c, 800_000, accuracy: 2_000, "eight weeks of goods at 100 000 a week") }
+    }
+
     func testEveryDecisionCanBeFiredAndAnsweredWithBalancedBooks() throws {
         let (base, id) = try engineWithCompany(weeks: 8)
         XCTAssertGreaterThan(StrategicDecisions.definitions.count, 60)

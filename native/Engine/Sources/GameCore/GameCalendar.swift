@@ -39,6 +39,13 @@ public enum GameCalendar {
     /// Original: `isYearEnd`.
     public static func isYearEnd(week: Int) -> Bool { year(week: week + 1) != year(week: week) }
 
+    /// Weeks of the calendar year that have run by game week `week` (at least 1). The game starts on 5 October, so this is not `week % 52`.
+    public static func weeksIntoYear(week: Int) -> Int {
+        let day = startDay + week * 7
+        let jan1 = daysFromCivil(year: year(week: week), month: 1, day: 1)
+        return max(1, (day - jan1) / 7 + 1)
+    }
+
     /// "5 Oct 2026". Original: `dateStr`.
     public static func dateString(week: Int, dayOffset: Int = 0) -> String {
         let d = date(week: week, dayOffset: dayOffset)

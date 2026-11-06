@@ -631,4 +631,25 @@ final class ContractTalkTests: XCTestCase {
         _ = e.answer(messageID: m.id, option: 0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    /// Pay requests from one company reach the owner at most twice a week; the rest wait for the next week.
+    func testPayRequestsAreCappedPerCompanyAndWeek() throws {
+        var (e, id) = try shop()
+        var ids: [Int] = []
+        for _ in 0..<5 { ids.append(hire(&e, id)) }
+        e.update { s, d, _ in
+            let i = s.companyIndex(id)!
+            s.companies[i].managerID = nil
+            for sid in ids { StaffRoutine.handle(&s, companyIndex: i, .payAsk(staffID: sid), data: d) }
+        }
+        let wk = e.state.week
+        let asks = e.state.inbox.filter { $0.companyID == id && $0.actionID == "staffx" && $0.week == wk }
+        XCTAssertEqual(asks.count, StaffTalks.maxAsksPerWeek)
+        e.update { s, d, _ in
+            s.week += 1
+            let i = s.companyIndex(id)!
+            for sid in ids { StaffRoutine.handle(&s, companyIndex: i, .payAsk(staffID: sid), data: d) }
+        }
+        XCTAssertEqual(e.state.inbox.filter { $0.companyID == id && $0.actionID == "staffx" && $0.week == wk + 1 }.count, StaffTalks.maxAsksPerWeek, "the next two ask the following week")
+    }
 }

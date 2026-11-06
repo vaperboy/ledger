@@ -41,4 +41,26 @@ final class FranchiseStepsTests: XCTestCase {
         XCTAssertEqual(fee.state, .current)
         XCTAssertTrue(fee.detail.contains("short"))
     }
+
+    /// The leave-early price reads the yearly royalty from the year book, whose weeks run from 1 January and not from week % 52.
+    func testBuyoutDoesNotBlowUpEarlyInGameWeekModuloFiftyTwo() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3)
+        e.update { s, _, _ in Ledger.move(&s, .me, 50_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { throw XCTSkip("no company") }
+        func price(week: Int) -> Double {
+            var out = 0.0
+            e.update { s, _, _ in
+                guard let i = s.companyIndex(id) else { return }
+                s.week = week
+                s.companies[i].openedWeek = 0
+                s.companies[i].set("franchise", .object(["end": .number(Double(week + 156)), "roy": 0.06, "mkt": 0.02, "fee": 100_000, "owed": 0]))
+                var b = s.companies[i].books
+                b.year["rev"] = 10_000 * Double(GameCalendar.weeksIntoYear(week: week))
+                s.companies[i].books = b
+                out = Franchising.buyout(s.companies[i], week: week)
+            }
+            return out
+        }
+        XCTAssertEqual(price(week: 55), price(week: 80), accuracy: 2_000, "the same weekly revenue gives the same price whatever week of the game it is")
+    }
 }

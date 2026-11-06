@@ -625,7 +625,7 @@ public enum Franchising {
         let f = co.value("franchise")
         guard !f.isNull, !f["end"].isNull else { return 0 }
         let yrs = max(0, (f["end"].double - Double(week)) / 52)
-        let weeks = Double(max(1, week % 52 == 0 ? 52 : week % 52))
+        let weeks = Double(max(1, min(GameCalendar.weeksIntoYear(week: week), week - (co.openedWeek ?? 0))))   // the year book starts on 1 January, not at week % 52
         let yRoy = ((co.books.year["rev"] ?? 0) / weeks * 52) * (f["roy"].double + f["mkt"].double)
         let base = max(f["fee"].double * 0.25 * min(1, yrs / 3), min(f["fee"].double * 1.5, yRoy * yrs * 0.5))
         return (base / 1000).rounded() * 1000 + f["owed"].double.rounded()

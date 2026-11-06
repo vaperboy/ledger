@@ -12,6 +12,7 @@ inert unless `LEDGER_PLAYTEST=1`, so the normal suite is unaffected. No game sou
 | `PlaytestBot.swift` | `PlayBot`: policies (competent, reckless, passive), scenarios, daily/weekly invariant checks |
 | `PlaytestSweepTests.swift` | the sweeps: every trade x country x policy x seed, scenarios, determinism, single-job repro |
 | `PlaytestToursTests.swift` | 16 scripted feature tours (hire/fire/talk, manager, loans, equipment, suppliers, pricing, campaigns, insurance, marketplace, dealer, board, chain, ventures, luxury, goals, reports, investments, holding/close/football, every country starts) |
+| `PlaytestReworkTours.swift` | 17 tours of the rework: owner meetings per position, advisory round, CEO replacement (solo, majority, minority with failed vote and 8-week block), every sale route (handshake, broker, auction, buyout, merger, stake tiers, group, master franchise, IPO refusal), payroll-short routing, gift codes, unlocks following the player, flood count. Run: `LEDGER_PLAYTEST=1 swift test --skip-build --filter PlaytestReworkTours` |
 | `run_shards.sh` | runs one sweep in N processes, finds and skips jobs that crash the process (Swift trap) and writes them up as findings |
 | `run_all.sh`, `aggregate.py` | everything in turn, then one ranked list |
 
@@ -33,7 +34,7 @@ LEDGER_PLAYTEST=1 LEDGER_PT_COUNTRY=UK LEDGER_PT_TRADE=cafe LEDGER_PT_SEED=1 LED
 Tests/LedgerTests/Playtest/run_all.sh 4
 ```
 
-`swift test --filter Playtest` with `LEDGER_PLAYTEST=1` also works but runs one process and a trapped runtime error ends it; prefer `run_shards.sh`.
+`run_shards.sh` takes the module-qualified filter, e.g. `run_shards.sh LedgerTests.PlaytestSweepTests/testSweepRework 4 rw` (the `rework` scenario plays a manager, owner meetings, a CEO change and one sale route per seed). `swift test --filter Playtest` with `LEDGER_PLAYTEST=1` also works but runs one process and a trapped runtime error ends it; prefer `run_shards.sh`.
 
 Narrow a sweep with `LEDGER_PT_COUNTRIES=UK,NO`, `LEDGER_PT_TRADES=cafe,tutor`, `LEDGER_PT_SEEDS=1,2`, `LEDGER_PT_POLICIES=competent,reckless,passive`,
 `LEDGER_PT_SCENARIOS=multi,chain,holding,startup,football`, `LEDGER_PT_YEARS=3`. Output goes to `LEDGER_PT_OUT` (default `/tmp/claude-0/s/playtest`):

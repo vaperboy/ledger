@@ -43,6 +43,13 @@ public enum StaffTalks {
         return ContractTalk.requestTrigger(m, n, company: co, week: week, salesRoles: salesRoles, tenure: ten)
     }
 
+    /// Pay requests that reach the owner in one week from one company are capped, so a team that all falls due together (or the week a manager leaves)
+    /// does not fill the Needs-you list; the others ask the following week.
+    static let maxAsksPerWeek = 2
+    static func askedThisWeek(_ s: GameState, companyID: Int) -> Int {
+        s.inbox.filter { $0.companyID == companyID && $0.actionID == "staffx" && $0.week == s.week }.count
+    }
+
     /// A request about pay or a fixed salary reaches the owner: one engine path, `ContractTalk.employeeAsks`.
     static func ask(_ s: inout GameState, companyIndex i: Int, staffID: Int, fixed: Bool, data: GameData) {
         ContractTalk.employeeAsks(&s, companyIndex: i, staffID: staffID, topic: fixed ? .payBasis : .payRise, data: data)

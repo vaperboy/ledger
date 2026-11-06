@@ -6,10 +6,11 @@ import Employees
 import Finance
 import Businesses
 import Simulation
+import Events
 import SaveSystem
 
 enum Policy: String, CaseIterable { case competent, reckless, passive }
-enum Scenario: String, CaseIterable { case single, multi, chain, holding, startup, football }
+enum Scenario: String, CaseIterable { case single, multi, chain, holding, startup, football, rework }
 
 struct Job {
     var country: String, trade: String, seed: Int
@@ -56,6 +57,8 @@ final class PlayBot {
     var statusSeen: [Int: CompanyStatus] = [:]
     var everStock: Set<Int> = []
     var openedEver = false
+    var weekOwnerNew = 0
+    var saleRoute = "", saleStartWeek = 0, soldWeek = 0, meetings = 0
 
     init(_ job: Job) throws {
         self.job = job
@@ -131,6 +134,8 @@ final class PlayBot {
                 let label = o["l"].string.lowercased()
                 if i == 0 { score += 1 }
                 if decline.contains(where: { label.hasPrefix($0) }) && opts.count > 1 { score -= 0.5 }
+                // The rework scenario starts its own sale; the bot must not list the company by accident.
+                if job.scenario == .rework, ["sale", "sell", "close", "dismiss", "replace"].contains(where: { label.contains($0) }) { score -= 100 }
                 if score > bestScore { bestScore = score; best = i }
             }
             return best
@@ -144,12 +149,14 @@ final class PlayBot {
                 continue
             }
             if job.policy == .passive { continue }
+            // An earlier answer of this loop may have closed this one (the list was read once): not a rejected answer.
+            guard e.state.inbox.first(where: { $0.id == m.id })?.status == "open" else { continue }
             let opt = pick(m)
             let ok = e.answer(messageID: m.id, option: opt)
             answered += 1
             F.countTitle("ANSWERED " + (m.actionID.isEmpty ? m.str("ev") : m.actionID))
             if !ok {
-                find(1, "answer-rejected:\(m.actionID.isEmpty ? m.str("ev") : m.actionID)", "Answering decision returned false (nothing happened): \"\(normTitle(m.title, names: names))\" option \(opt)", "GameEngine.swift:answer / EventEngine.answer", "id=\(m.id) act=\(m.actionID)")
+                find(1, "answer-rejected:\(m.actionID.isEmpty ? m.str("ev") : m.actionID)", "Answering decision returned false (nothing happened): \"\(normTitle(m.title, names: names))\" option \(opt)", "GameEngine.swift:answer / EventEngine.answer", "id=\(m.id) act=\(m.actionID) ev=\(m.str("ev")) cat=\(m.str("cat")) status=\(m.status) exp=\(m.expiresWeek ?? -1) week=\(e.state.week) co=\(m.companyID) opts=\(m.options.count)")
             } else if e.state.inbox.first(where: { $0.id == m.id })?.status == "open" {
                 find(1, "answer-still-open:\(m.actionID)", "Answered decision is still open: \"\(normTitle(m.title, names: names))\"", "EventEngine.answer", "id=\(m.id)")
             } else { bought() }
@@ -341,10 +348,24 @@ final class PlayBot {
         if !g.isEmpty { find(1, "ledger-gap", "Ledger.gaps not empty: \(g.map { "\($0.holder)=\(Int($0.difference))" }.joined(separator: ", ").prefix(120))", "Finance/Ledger.swift / the action that moved cash without booking", "") }
         if !s.cash.isFinite || !s.savings.isFinite { find(1, "nan-personal", "Personal cash/savings not finite", "Finance/Payments.swift", "") }
         for m in out.newMessages { checkMessage(m) }
+        checkRouting(out)
         // blocking/open pile
         let open = e.openDecisions.count
         if open >= 8 { find(2, "decision-pile", "\(open) decisions open at once", "Events/EventEngine.swift (offer volume)", "") }
         if s.day == 0 { statusTransitions() }
+    }
+
+    /// Notices and decisions of the role-aware inbox: no duplicates, a desk notice names who handled it, and the owner's new decisions are counted per week.
+    func checkRouting(_ out: GameEngine.DayOutcome) {
+        var seen = Set<String>()
+        for m in out.newMessages {
+            let nt = normTitle(m.title, names: names)
+            if !seen.insert("\(m.companyID)|\(m.title)|\(m.body)").inserted { find(2, "dup-today:\(nt.prefix(40))", "Identical message (same company, title and text) twice in one day: \"\(nt)\"", "message source of that title", "") }
+            let isDecision = (m.kind == "ask" || m.kind == "decision") && m.status == "open"
+            if isDecision && m.isOwnerAddressed { weekOwnerNew += 1 }
+            if isDecision && !m.isOwnerAddressed { find(3, "desk-decision:\(nt.prefix(40))", "Open decision addressed to a desk, so the owner never sees it as theirs: \"\(nt)\"", "DeskNotices / message source", "") }
+            if !m.isOwnerAddressed && m.status == "done" && m.handledBy.isEmpty { find(3, "desk-unhandled:\(nt.prefix(40))", "Desk notice that shows nobody as handling it: \"\(nt)\"", "use addDeskNotice at the source", "") }
+        }
     }
 
     func checkMessage(_ m: Message) {
@@ -388,11 +409,15 @@ final class PlayBot {
         if weekMsgs >= 30 { find(2, "spam-total", "\(weekMsgs) new messages in a single week", "Events / Simulation weekly message sources (see titles file)", "") }
         if weekBad >= 8 { find(2, "spam-bad", "\(weekBad) warn/bad-tone messages in a single week (notice/popup load)", "see titles file for the sources", "") }
         for (t, n) in weekTitles where n >= 3 { find(2, "dup:\(t)", "Same message \"\(t)\" \(n)x in one week", "message source of that title", "") }
+        if weekOwnerNew >= 6 { find(2, "owner-flood", "\(weekOwnerNew) new owner-addressed decisions in one week", "see titles file", "") }
+        weekOwnerNew = 0
         weekMsgs = 0; weekBad = 0; weekTitles = [:]
         // NaN scan every 4 weeks; negative-impossible every week
         for co in s.companies where co.status.isLive {
             if w % 4 == 0, let p = badNumber(.object(co.raw)) { find(1, "nan-company:\(p.split(separator: ".").first ?? "")", "Non-finite number in company record at \(p)", "Businesses/* writer of that field", "co=\(co.id) \(co.type)") }
             if !co.cash.isFinite { find(1, "nan-cash", "Company cash not finite", "CompanyWeek", "co=\(co.id) \(co.type)") }
+            if co.type != "hold", co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 { find(3, "cash-below-room:\(co.type)", "Company cash \(Int(co.cash)) is below its overdraft room (money spent that the account could not cover)", "Payments.companyPays / payBills", "co=\(co.id)") }
+            if s.cash < -s.overdraftLimit - 1 { find(2, "personal-negative", "Personal cash below the personal overdraft limit (\(Int(s.cash)) vs \(Int(-s.overdraftLimit)))", "Payments / personal spending", "") }
             if co.inventory < -0.01 { find(1, "neg-inventory:\(co.type)", "Negative inventory (\(Int(co.inventory)))", "Businesses/CompanyWeek (stock handling)", "co=\(co.id)") }
             for st in co.staff where st.monthlyWage < 0 { find(1, "neg-wage", "Negative wage on staff \(st.role)", "Employees/Payroll", "co=\(co.id)") }
             for (k, v) in [("reputation", co.reputation), ("quality", co.quality), ("awareness", co.awareness)] where v < -1 || v > 101 {
@@ -480,6 +505,9 @@ final class PlayBot {
         case .startup:
             e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(2_000_000), why: "Test capital") }
             mainID = openCompany(trade: job.trade)
+        case .rework:
+            e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(3_000_000), why: "Test capital") }
+            mainID = openCompany(trade: job.trade)
         case .football:
             e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(80_000_000), why: "Test capital") }
             let code = e.leagueCountries().first?.code ?? job.country
@@ -519,11 +547,78 @@ final class PlayBot {
                     }
                 }
             }
+        case .rework where mainID != 0: reworkWeek(week)
         case .startup where week == 6:
             let r = e.foundStartup(name: nil, sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1)
             if case .ok = r { structural() } else { find(3, "startup-found", "foundStartup(\(r)) did not succeed", "Startups / VentureActions", "") }
         default: break
         }
+    }
+
+    /// The reworked systems inside an ordinary game: a manager, owner meetings with everyone at the table, a CEO replacement, then a sale by the route the seed picks.
+    func reworkWeek(_ w: Int) {
+        guard let co = e.state.company(mainID), co.status == .open else { return }
+        let routes = ["private", "broker", "auction", "mbo", "stake"]
+        if w == 12, co.managerID == nil, let c = e.searchManagers(companyID: mainID), let p = c.first {
+            if e.hireManager(personID: p.id, companyID: mainID, monthlyWage: p.askingMonthlyWage * 1.3) == .ok { managerHired[mainID] = w; structural() }
+        }
+        if w >= 16 && w % 4 == 0 && w < 40 {
+            for c in e.ownerCounterparts(companyID: mainID) {
+                let topics = e.ownerTopics(companyID: mainID, personID: c.id).filter { $0.waitWeeks == 0 }
+                guard let t = topics.first, let sc = e.ownerScene(companyID: mainID, personID: c.id, topic: t.id), !sc.choices.isEmpty else { continue }
+                let ch = sc.choices[(w / 4 + job.seed) % sc.choices.count]
+                if e.ownerChoose(companyID: mainID, personID: c.id, topic: t.id, choice: ch.id) == nil { find(1, "owner-meeting-nil:\(c.position)/\(t.id)", "ownerChoose returned nil for a scene the screen just showed", "OwnerMeetings.choose", "") } else { meetings += 1; structural() }
+            }
+        }
+        if w == 32, job.seed % 2 == 0, co.managerID != nil {
+            let r = e.proposeCEOChange(companyID: mainID)
+            if r != .dismissed { find(2, "ceo-change-solo", "A sole owner's CEO replacement was not carried out: \(r)", "ManagerBoards.proposeCEOChange", "") }
+            structural()
+        }
+        if w == 40 {
+            saleRoute = routes[job.seed % routes.count]; saleStartWeek = w
+            let v = CompanySale.estimatedValue(e.state, companyID: mainID, data: e.data)
+            let ok: Bool
+            switch saleRoute {
+            case "auction": ok = e.startAuction(companyID: mainID, reserve: max(1, v * 0.3))
+            case "stake": ok = e.startSale(companyID: mainID, route: "private", percent: 25)
+            case "mbo": ok = co.managerID == nil ? true : e.startSale(companyID: mainID, route: "mbo")
+            default: ok = e.startSale(companyID: mainID, route: saleRoute)
+            }
+            if !ok { find(2, "sale-start:\(saleRoute)", "Sale route \(saleRoute) refused for an open trading company: \(e.saleRoutes(companyID: mainID).first { $0.id == (saleRoute == "stake" ? "stake" : saleRoute) }?.why ?? "")", "SaleListings.routeProblem", "") }
+            structural()
+        }
+    }
+
+    /// Weekly while a sale is listed: take what the route offers and check the books afterwards.
+    func saleWeek() {
+        guard job.scenario == .rework, saleStartWeek > 0, soldWeek == 0, let l = e.saleListing(companyID: mainID) else {
+            if job.scenario == .rework, soldWeek > 0, e.state.week == soldWeek + 4 { checkAfterSale() }
+            return
+        }
+        let w = e.state.week
+        if saleRoute == "auction", l.round < 3, w - saleStartWeek < 6 { return }
+        guard let best = l.offers.max(by: { $0.price < $1.price }) else {
+            if w - saleStartWeek > 70 { find(3, "sale-no-offer:\(saleRoute)", "No offer in 70 weeks on route \(saleRoute)", "CompanySale.weekly", ""); soldWeek = -1 }
+            return
+        }
+        let nw0 = e.netWorth.total
+        let stakeSale = saleRoute == "stake"
+        let got = saleRoute == "auction" ? e.hammerSale(companyID: mainID) : e.acceptBuyerOffer(companyID: mainID, offerID: best.id)
+        structural(); bought()
+        guard let got, got > 0 else { find(1, "sale-accept-failed:\(saleRoute)", "Accepting the best offer on route \(saleRoute) returned nothing", "CompanySale.accept", ""); return }
+        soldWeek = w
+        let st = e.state.company(mainID)?.status
+        if stakeSale { if st != .open { find(1, "stake-sold-whole", "A stake sale changed the company's status to \(String(describing: st))", "CompanySale.sellPart", "") } }
+        else if st != .sold { find(1, "sale-not-sold:\(saleRoute)", "Company status after the sale is \(String(describing: st))", "CompanySale.complete", "") }
+        if e.saleListing(companyID: mainID) != nil { find(1, "listing-stays", "Listing stays after a completed sale on route \(saleRoute)", "CompanySale.accept/withdraw", "") }
+        let nw1 = e.netWorth.total
+        if abs(nw1 - nw0) > max(cur.scaledPrice(500_000), 0.6 * abs(nw0)) { find(3, "sale-nw:\(saleRoute)", "Net worth moved \(Int(nw0)) -> \(Int(nw1)) by a sale of \(Int(got))", "Valuation vs CompanySale price", "") }
+    }
+
+    func checkAfterSale() {
+        let open = e.openDecisions.filter { $0.companyID == mainID }
+        if !open.isEmpty, e.state.company(mainID)?.status == .sold { find(2, "sold-open-decisions", "Decisions about a sold company stay open: \"\(open[0].title.prefix(50))\"", "CompanySale.complete (closes open messages) / later producers", "") }
     }
 
     func run() -> RunResult {
@@ -538,6 +633,7 @@ final class PlayBot {
             if out.completedWeek {
                 let w = e.state.week
                 checkWeek()
+                saleWeek()
                 tend()
                 midScenario(week: w)
                 if w == 26 || w == 90 { roundTrip() }
