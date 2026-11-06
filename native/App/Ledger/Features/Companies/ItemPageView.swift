@@ -277,27 +277,30 @@ struct ItemPageView: View {
     @ViewBuilder private func supplyBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
         if let r = p.record {
             LedgerSection("Supply") {
+                // The current supplier shows as the "In use" row below when it is one of the offers; otherwise here.
+                let listed: Bool = p.offers.prefix(4).contains { $0.vendorID == r.supplierID }
                 VStack(spacing: 0) {
-                    if let s = p.supply {
-                        FlatRow(label: "Comes from", value: s.vendorName, sub: s.relationshipWord, rule: false)
-                        FlatRow(label: "You pay", value: itemAmount(s.buyPrice, cur), sub: s.discount > 0 ? "\(Int((s.discount * 100).rounded()))% off for the relationship" : "")
-                    } else {
-                        FlatRow(label: "Comes from", value: "No supplier chosen", rule: false)
+                    if !listed {
+                        if let s = p.supply {
+                            FlatRow(label: "Comes from", value: s.vendorName, sub: s.relationshipWord, rule: false)
+                            FlatRow(label: "You pay", value: itemAmount(s.buyPrice, cur), sub: s.discount > 0 ? "\(Int((s.discount * 100).rounded()))% off for the relationship" : "")
+                        } else {
+                            FlatRow(label: "Comes from", value: "No supplier chosen", rule: false)
+                        }
                     }
-                    if r.leadDays > 0 { FlatRow(label: "Lead time", value: "\(r.leadDays) days") }
+                    if r.leadDays > 0 { FlatRow(label: "Lead time", value: "\(r.leadDays) days", rule: !listed) }
                     if r.model.holdsStock {
                         FlatRow(label: "In stock", value: "\(r.stock)", sub: r.onOrder > 0 ? "\(r.onOrder) on order" : "")
                     }
                     if r.capacity > 0 { FlatRow(label: "Capacity", value: String(format: "%.0f a week", r.capacity)) }
                 }
                 if !p.offers.isEmpty {
-                    Text("Switch supplier").textStyle(.label)
-                    WrapRow {
-                        ForEach(p.offers.prefix(4), id: \.vendorID) { (o: ItemModels.SupplyLine) in
+                    VStack(spacing: 0) {
+                        ForEach(Array(p.offers.prefix(4).enumerated()), id: \.element.vendorID) { (n: Int, o: ItemModels.SupplyLine) in
                             let current: Bool = o.vendorID == r.supplierID
-                            Button(o.vendorName) { Haptics.tap(); choose(o.vendorID, o.vendorName) }
-                                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: current ? P.gain : P.accent))
-                                .disabled(current)
+                            if n > 0 { Hairline() }
+                            SupplierRow(name: o.vendorName, detail: "You pay \(itemAmount(o.buyPrice, cur))" + (o.leadDays > 0 ? " \u{00B7} \(o.leadDays) days" : ""),
+                                        badge: o.relationshipWord, current: current, action: current ? nil : { choose(o.vendorID, o.vendorName) })
                         }
                     }
                 }
@@ -359,7 +362,6 @@ struct ItemPageView: View {
                 VStack(spacing: 0) {
                     FlatRow(label: "Kind", value: r.model.label, rule: false)
                     FlatRow(label: "Cost basis", value: itemAmount(r.cost, cur), sub: r.prep > 0 ? "plus \(itemAmount(r.prep, cur)) preparation" : "")
-                    if let s = p.supply { FlatRow(label: "Supplier terms", value: s.vendorName, sub: s.leadDays > 0 ? "delivers in \(s.leadDays) days" : "") }
                 }
             }
         }
