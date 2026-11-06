@@ -23,12 +23,13 @@ final class MasteryProbe: XCTestCase {
         let bd = e.data.catalog[trade]!
         let env = ProcessInfo.processInfo.environment
         let competentLevel = Int(env["LEDGER_ADLEVEL"] ?? "1") ?? 1
-        let maxStores = policy == "expert" ? 4 : policy == "competent" ? 2 : 1
+        let maxStores = policy == "expert" ? 6 : policy == "competent" ? 2 : 1
         var out: [String] = []
         var broke = false
         var lastStoreDay = -999
         var ids = [id]
-        let cities = e.homeCountry.cities.sorted { $0.population > $1.population }.map { $0.id }
+        let homePop = e.homeCountry.city(e.state.player.cityID)?.population ?? 300
+        let cities = e.homeCountry.cities.filter { $0.id != e.state.player.cityID }.sorted { abs(log($0.population / homePop)) < abs(log($1.population / homePop)) }.map { $0.id }
         var hires = 0
 
         /// Best campaign by the planner's payback figure: channel, budget, net per week.
@@ -70,45 +71,67 @@ final class MasteryProbe: XCTestCase {
             let lw = co.value("lastW")
             let util = lw["util"].double
             var p = co.priceLevel
-            if util > 0.92 && p < 2 { p += step } else if util < 0.55 && p > -1.5 { p -= step } else { return }
+            let h = co.monthlyHistory.suffix(3).map { $0.profit }
+            let falling = h.count == 3 && h[2] < h[1] && h[1] < h[0]
+            if falling && p > 0 { p -= step } else if util > 0.95 && p < 1.25 && !falling { p += step } else if util < 0.7 && p > -1 { p -= step } else { return }
             _ = e.setPriceLevel(companyID: cid, level: p)
         }
         func tendStaff(_ cid: Int) {
-            guard let co = e.state.company(cid), co.status == .open, hires < 8, let role = bd.standardStaff.first?.role, e.data.catalog.tables.roles[role] != nil else { return }
+            guard let co = e.state.company(cid), co.status == .open, hires < 30, let role = bd.standardStaff.first?.role, e.data.catalog.tables.roles[role] != nil else { return }
             let lw = co.value("lastW")
-            guard lw["D"].double > lw["cap"].double * 1.05, co.cash > cur.scaledPrice(40_000) else { return }
+            let empty = co.staff.isEmpty && (bd.standardStaff.first?.count ?? 0) >= 1
+            guard empty || (env["LEDGER_HIRE"] != nil && lw["D"].double > lw["cap"].double * 1.05), co.cash > cur.scaledPrice(5_000) else { return }
             let found = e.searchWorkers(companyID: cid, role: role, mode: .network)
             if let c = found.max(by: { $0.skill / max(1, $0.askingMonthlyWage) < $1.skill / max(1, $1.askingMonthlyWage) }) {
                 if e.hire(personID: c.id, companyID: cid, monthlyWage: c.askingMonthlyWage) == .ok { hires += 1 }
             }
         }
 
-        if policy != "idle" { setAds(id) }
+        let off = (env["LEDGER_OFF"] ?? "").split(separator: ",").map(String.init)
+        if policy != "idle", !off.contains("ads") { setAds(id) }
         for d in 1...(364 * years) {
             e.nextDay()
             for m in e.openDecisions where !m.options.isEmpty {
                 // a sensible owner never accepts an offer to buy the company, nor a forced sale
-                let opt = m.actionID.lowercased().contains("sale") || m.title.lowercased().contains("offer for") || m.title.lowercased().contains("wants to buy") ? m.options.count - 1 : policy != "idle" && m.title.contains("campaign is working") ? 1 : 0
+                let opt = m.actionID.lowercased().contains("sale") || m.title.lowercased().contains("offer for") || m.title.lowercased().contains("wants to buy") ? m.options.count - 1 : policy != "idle" && m.title.contains("campaign is working") ? 1 : policy != "idle" && ((m.actionID == "emg37" && !m.title.contains("Cash is running")) || m.actionID == "prop") ? m.options.count - 1 : 0
                 if env["LEDGER_DEBUG"] != nil { print("DECISION \(policy) d\(d)", m.title, m.actionID, m.options.map { $0["l"].string }.joined(separator: " / ")) }
                 _ = e.answer(messageID: m.id, option: opt)
             }
             if e.state.isGameOver { broke = true; break }
+            if policy != "idle", d % 3 == 0 {
+                let fc = FinanceContext(countries: e.data.countries, trades: e.data.catalog)
+                for c in ids.compactMap({ e.state.company($0) }) where c.status == .open {
+                    // a careful owner keeps a cash buffer sized to the month, not just the week: stock and tax bills come in lumps
+                    let buffer = max(fc.weeklyCost(c, e.state) * 6, (c.monthlyHistory.last?.revenue ?? 0) * 0.5)
+                    guard c.cash < buffer else { continue }
+                    let top = buffer * 2 - c.cash
+                    let give = min(top, Payments.liquid(e.state) - cur.scaledPrice(2_000)); if give > 0 { _ = e.putMoneyInto(companyID: c.id, amount: give) }
+                }
+            }
             if policy != "idle" {
                 let live = ids.filter { e.state.company($0)?.status == .open }
-                if d % 28 == 0 && d > 60 { for c in live { tendPrice(c, step: policy == "expert" ? 0.25 : 0.5) } }
+                if d % 28 == 0 && d > 60 && !off.contains("price") { for c in live { tendPrice(c, step: policy == "expert" ? 0.25 : 0.5) } }
                 if policy == "competent" && d % 91 != 0 { /* quarterly only */ }
-                if d % 91 == 0 && d > 60 { for c in live { setAds(c) } }
-                if env["LEDGER_HIRE"] != nil && policy == "expert" && d % 14 == 0 && d > 60 { for c in live { tendStaff(c) } }
-                if d % 28 == 0, ids.count < maxStores, d - lastStoreDay > 180 {
+                if d % 91 == 0 && d > 60 && !off.contains("ads") { for c in live { setAds(c) } }
+                if env["LEDGER_HIRE"] != nil, d % 14 == 0 && d > 20 { for c in live { tendStaff(c) } }
+                if d % 28 == 0, !off.contains("exp"), ids.count < maxStores, d - lastStoreDay > (policy == "expert" ? 112 : 180) {
                     let cos = live.compactMap { e.state.company($0) }
                     let ok = !cos.isEmpty && cos.allSatisfy { $0.monthlyHistory.count >= 6 && $0.monthlyHistory.suffix(6).reduce(0) { $0 + $1.profit } > 0 }
-                    if ok, let rd = Expansion.readiness(e.state, data: e.data, companyID: id, cityID: cities[min(ids.count, cities.count - 1)]) {
+                    let yearRev = (cos.first?.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } ?? 0) / idx
+                    if ok, yearRev > 2_500_000, let rd = Expansion.readiness(e.state, data: e.data, companyID: id, cityID: cities[min(ids.count - 1, cities.count - 1)]) {
                         // pay out spare company cash so the owner holds the cover
-                        for c in cos { let md = e.maximumDividend(companyID: c.id); if md > 0, c.cash > cur.scaledPrice(30_000) { _ = e.payDividend(companyID: c.id, amount: min(md, c.cash - cur.scaledPrice(30_000))) } }
+                        for c in cos { let md = e.maximumDividend(companyID: c.id); if md > 0, c.cash > cur.scaledPrice(30_000) { let amt = min(md, c.cash - cur.scaledPrice(30_000)); if c.form == .limited { _ = e.payDividend(companyID: c.id, amount: amt) } else { _ = e.takeMoneyOut(companyID: c.id, amount: amt) } } }
+                        if env["LEDGER_DEBUG"] != nil { print("EXPAND d\(d) need=\(Int(rd.cashNeeded / idx / 1000))k liquid=\(Int(Payments.liquid(e.state) / idx / 1000))k co=\(cos.map { Int($0.cash / idx / 1000) }) md=\(cos.map { Int(e.maximumDividend(companyID: $0.id) / idx / 1000) })") }
+                        if policy == "expert", Payments.liquid(e.state) < rd.cashNeeded {
+                            let short = (rd.cashNeeded - Payments.liquid(e.state)) * 1.05
+                            // a careful expander borrows only what the bank offers and only while every store makes money
+                            if e.loanOffer(kind: "biz", amount: short, companyID: nil).maximum >= short { _ = e.takeLoan(kind: "biz", amount: short, termMonths: 60, companyID: nil) }
+                        }
                         if Payments.liquid(e.state) >= rd.cashNeeded {
-                            if case .success(let nid) = e.startCompany(tradeID: trade, cityID: cities[min(ids.count, cities.count - 1)], form: .limited, name: "T\(d)", fundWith: rd.startCost + rd.rampReserve) {
+                            if case .success(let nid) = e.startCompany(tradeID: trade, cityID: cities[min(ids.count - 1, cities.count - 1)], form: .limited, name: "T\(d)", fundWith: rd.startCost + rd.rampReserve) {
                                 ids.append(nid); lastStoreDay = d
                                 setAds(nid)
+                                if let m = e.searchManagers(companyID: nid)?.first { _ = e.hireManager(personID: m.id, companyID: nid, monthlyWage: m.askingMonthlyWage * 1.3) }
                             }
                         }
                     }
