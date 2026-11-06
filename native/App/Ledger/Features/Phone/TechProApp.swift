@@ -110,31 +110,9 @@ struct TechProApp: View {
     private var showsTabs: Bool { step == .store || step == .category || step == .owned || step == .orders }
 
     private var tabBar: some View {
-        HStack(spacing: 6) {
-            tabButton("Store", on: step == .store) { step = .store }
-            tabButton("Products", on: step == .category) { shelf = .all; step = .category }
-            tabButton("My items", on: step == .owned) { step = .owned }
-            tabButton("My orders", on: step == .orders, flag: !store.messageItemIDs(.techPro, companyID: nil).isEmpty) { step = .orders }
-        }
-        .padding(.horizontal, 16).padding(.vertical, 8).background(P.ground)
-    }
-
-    private func tabButton(_ title: String, on: Bool, flag: Bool = false, _ action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.choose()
-            action()
-        } label: {
-            Text(title).font(.system(size: 13.5, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.75)
-                .foregroundStyle(on ? P.onAccent : P.ink)
-                .frame(maxWidth: .infinity, minHeight: 38)
-                .background(Capsule().fill(on ? P.accent : P.card))
-                .overlay(Capsule().strokeBorder(on ? P.accent : P.line, lineWidth: 1))
-                .overlay(alignment: .topTrailing) {
-                    if flag && !on { NewMarkerShape(style: .dot).environment(\.outsidePalette, P).offset(x: -6, y: 4) }
-                }
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("tp-tab-\(title)")
+        ShopTabs(items: TpTab.allCases, title: { (t: TpTab) -> String in t.title }, selection: tabSelection,
+                 identifier: { (t: TpTab) -> String in "tp-tab-\(t.title)" },
+                 badges: { (t: TpTab) -> Bool in t == .orders && !store.messageItemIDs(.techPro, companyID: nil).isEmpty })
     }
 
     private var band: some View {
@@ -150,9 +128,9 @@ struct TechProApp: View {
                 Haptics.tap()
                 step = .basket
             } label: {
-                GlyphView(glyph: Glyph.cart, size: 24, weight: 1.7, tint: Color.white)
-                    .frame(width: 40, height: 40)
-                    .overlay(alignment: .topTrailing) { ShopCount(count: basket.count, color: P.accent2).offset(x: 4, y: -2) }
+                LedgerGlyph(glyph: Glyph.cart, size: Theme.Icon.medium, tint: P.onAccent)
+                    .frame(width: 44, height: 44)
+                    .overlay(alignment: .topTrailing) { ShopCount(count: basket.count, color: P.accent2).offset(x: 2, y: 2) }
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
@@ -161,11 +139,21 @@ struct TechProApp: View {
         }
     }
 
-    private enum TpTab: Hashable, CaseIterable { case store, products, owned, orders }
+    private enum TpTab: Hashable, CaseIterable {
+        case store, products, owned, orders
+        var title: String {
+            switch self {
+            case .store: return "Store"
+            case .products: return "Products"
+            case .owned: return "My items"
+            case .orders: return "My orders"
+            }
+        }
+    }
 
-    /// The four tabs slide sideways in one pager; the tab bar above (in the top inset) stays fixed and follows the page.
-    private func tabsPager(_ e: GameEngine, _ co: Company) -> some View {
-        let selection: Binding<TpTab> = Binding<TpTab>(
+    /// The tab on show, shared by the tab bar and the pager under it.
+    private var tabSelection: Binding<TpTab> {
+        Binding<TpTab>(
             get: {
                 switch step {
                 case .category: return TpTab.products
@@ -182,7 +170,11 @@ struct TechProApp: View {
                 case .orders: step = .orders
                 }
             })
-        return SegmentPager(items: TpTab.allCases, selection: selection) { (t: TpTab) in
+    }
+
+    /// The four tabs slide sideways in one pager; the tab bar above (in the top inset) stays fixed and follows the page.
+    private func tabsPager(_ e: GameEngine, _ co: Company) -> some View {
+        SegmentPager(items: TpTab.allCases, selection: tabSelection) { (t: TpTab) in
             tabPage(e, co, t)
         }
     }
@@ -217,11 +209,9 @@ struct TechProApp: View {
     }
 
     private var emptyView: some View {
-        VStack(spacing: 8) {
-            Text("Nothing to buy for").font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink)
-            Text("The store sells to your companies. Start one first.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyState(glyph: Glyph.techPro, title: "Nothing to buy for", message: "The store sells to your companies. Start one first.")
+            .padding(.horizontal, Theme.Space.page)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func back() {
@@ -292,98 +282,68 @@ struct TechProApp: View {
 
     private func storeView(_ e: GameEngine, _ co: Company) -> some View {
         let needs: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: co.id)
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 16) {
-                storeCard(e, co)
+        return ShopPage {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                ShopCompanyBar(caption: "Shopping for", name: co.name, detail: "\(e.tradeName(co)) \u{00B7} cash \(store.short(co.cash, in: co))",
+                               canChange: shoppers(e).count > 1, open: $picking, identifier: "tp-change-store")
                 if picking { storePicker(e) }
-                hero
-                categoryRow(needs)
-                dealsStrip(e, co, needs)
-                popular(e, co, needs)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            hero
+            categoryRow(needs)
+            dealsStrip(e, co, needs)
+            popular(e, co, needs)
         }
         .accessibilityIdentifier("tp-store")
     }
 
-    private func storeCard(_ e: GameEngine, _ co: Company) -> some View {
-        Card(padding: 12) {
-            HStack(spacing: 12) {
-                GlyphView(glyph: Glyph.techPro, size: 22, weight: 1.6, tint: P.accent)
-                    .frame(width: 42, height: 42).background(Circle().fill(P.accent.opacity(0.1)))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Shopping for").font(.system(size: 12)).foregroundStyle(P.inkFaint)
-                    Text(co.name).font(.system(size: 16, weight: .semibold)).foregroundStyle(P.ink).lineLimit(1)
-                    Text("\(e.tradeName(co)) \u{00B7} cash \(store.short(co.cash, in: co))").font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                if shoppers(e).count > 1 {
-                    Button(picking ? "Close" : "Change") { picking.toggle() }.buttonStyle(QuietButtonStyle())
-                        .accessibilityIdentifier("tp-change-store")
-                }
-            }
-        }
-    }
-
     private func storePicker(_ e: GameEngine) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Space.s) {
             ForEach(shoppers(e), id: \.id) { (c: Company) in
                 ShopChoiceRow(title: c.name, subtitle: "\(e.tradeName(c)) \u{00B7} \(e.cityName(c))", selected: c.id == companyID, identifier: "tp-store-\(c.id)") { select(c.id) }
             }
         }
     }
 
+    /// The store's welcome: one line in the brand colour and the way into every product.
     private var hero: some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        return ZStack(alignment: .leading) {
-            shape.fill(LinearGradient(colors: [P.accent, Color(hex: 0x2E8B5A)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            GlyphView(glyph: Glyph.hardware, size: 92, weight: 1.2, tint: Color.white.opacity(0.22))
-                .frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 16)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Equip your business for success").font(.system(size: 22, weight: .bold)).foregroundStyle(Color.white).fixedSize(horizontal: false, vertical: true)
-                Button {
-                    Haptics.tap()
-                    shelf = .all
-                    step = .category
-                } label: {
-                    Text("Shop now").font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
-                        .padding(.horizontal, 16).frame(minHeight: 38)
-                        .background(Capsule().fill(Color.white))
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("tp-shop-now")
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            Text("Equip your business for success").textStyle(.figure, tint: P.onAccent).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: Theme.Space.s)
+            Button("Shop now") {
+                Haptics.tap()
+                shelf = .all
+                step = .category
             }
-            .padding(16).frame(maxWidth: 250, alignment: .leading)
+            .buttonStyle(PrimaryButtonStyle(size: .compact))
+            .environment(\.outsidePalette, OutsidePalette.techProSplash)
+            .accessibilityIdentifier("tp-shop-now")
         }
-        .frame(minHeight: 120)
+        .padding(Theme.Space.l)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.accent))
     }
 
     private func categoryRow(_ needs: [EquipmentMarket.Need]) -> some View {
         let shown: [TechCategory] = TechCategory.allCases.filter { (c: TechCategory) -> Bool in needs.contains { (n: EquipmentMarket.Need) -> Bool in TechCategory.of(n) == c } }
-        return ScrollView(.horizontal, showsIndicators: false) {
-        HStack(alignment: .top, spacing: 6) {
+        return ShopChipRow {
             ForEach(shown, id: \.self) { (c: TechCategory) in
-                let count: Int = needs.filter { (n: EquipmentMarket.Need) -> Bool in TechCategory.of(n) == c }.count
                 Button {
                     Haptics.tap()
                     shelf = .dept(c)
                     step = .category
                 } label: {
-                    VStack(spacing: 6) {
-                        GlyphView(glyph: c.glyph, size: 24, weight: 1.6, tint: count > 0 ? P.accent : P.inkDim)
-                            .frame(width: 54, height: 54).background(Circle().fill(P.card)).overlay(Circle().strokeBorder(P.line, lineWidth: 1))
-                        Text(c.rawValue).font(.system(size: 12, weight: .medium)).foregroundStyle(count > 0 ? P.ink : P.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+                    VStack(spacing: Theme.Space.xs) {
+                        LedgerGlyph(glyph: c.glyph, size: Theme.Icon.medium, tint: P.accent)
+                            .frame(width: 52, height: 52).background(Circle().fill(P.surface))
+                        Text(c.rawValue).textStyle(.caption, tint: P.ink, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    .frame(width: 74)
+                    .frame(width: 76)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
-                .disabled(count == 0)
                 .accessibilityIdentifier("tp-category-\(c.rawValue)")
             }
         }
-        }
-        .scrollBounceBehavior(.basedOnSize)
     }
 
     // MARK: What this business needs
@@ -409,13 +369,12 @@ struct TechProApp: View {
 
     @ViewBuilder private func popular(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
         let top: [EquipmentMarket.Need] = Array(needs.sorted { (a: EquipmentMarket.Need, b: EquipmentMarket.Need) -> Bool in rank(a) < rank(b) }.prefix(4))
-        VStack(alignment: .leading, spacing: 10) {
-            ShopHeading(text: "What \(e.tradeName(co).lowercased()) businesses need", trailing: "\(needs.count)")
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+        ShopSection(title: "What \(e.tradeName(co).lowercased()) businesses need", trailing: "\(needs.count)") {
+            ShopGrid {
                 ForEach(top) { (n: EquipmentMarket.Need) in tile(e, co, n) }
             }
             Button("See all \(needs.count) product groups") { shelf = .all; sort = .needs; step = .category }
-                .buttonStyle(QuietButtonStyle())
+                .buttonStyle(TertiaryButtonStyle())
                 .accessibilityIdentifier("tp-see-all")
         }
     }
@@ -462,13 +421,12 @@ struct TechProApp: View {
         if !onSale.isEmpty {
             let top: [EquipmentMarket.Need] = Array(onSale.prefix(4))
             let headline: String = StoreDeals.isBlackFridayWeek(e.state.week) ? "Black Friday: \(onSale.count) items up to \(top[0].dealPercent)% off" : "Deals this week"
-            VStack(alignment: .leading, spacing: 10) {
-                ShopHeading(text: headline, trailing: "\(onSale.count)")
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            ShopSection(title: headline, trailing: "\(onSale.count)") {
+                ShopGrid {
                     ForEach(top) { (n: EquipmentMarket.Need) in tile(e, co, n) }
                 }
                 Button("See all \(onSale.count) on sale") { shelf = .sale; sort = .needs; step = .category }
-                    .buttonStyle(QuietButtonStyle())
+                    .buttonStyle(TertiaryButtonStyle())
                     .accessibilityIdentifier("tp-see-sale")
             }
         }
@@ -503,62 +461,35 @@ struct TechProApp: View {
 
     private func categoryView(_ e: GameEngine, _ co: Company) -> some View {
         let needs: [EquipmentMarket.Need] = shelfItems(e, co)
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 14) {
-                searchField
-                categoryChips(presentDepartments(e, co))
-                sortChips
-                ShopHeading(text: shelf.title, trailing: needs.count == 1 ? "1 item" : "\(needs.count) items")
-                if needs.isEmpty {
-                    ShopEmptyNote(text: "Nothing here matches.", buttonTitle: "Show all items") { shelf = .all; query = ""; sort = .needs }
+        return ShopPage(spacing: Theme.Space.m) {
+            ShopSearchField(prompt: "Search the store", text: $query, identifier: "tp-search")
+            ShopChipRow {
+                ForEach(TechShelf.every(presentDepartments(e, co)), id: \.self) { (s: TechShelf) in
+                    ShopChip(title: s.title, selected: shelf == s) { shelf = s }
                 }
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            }
+            ShopChipRow {
+                ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
+                    ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
+                        .accessibilityIdentifier("tp-sort-\(s.rawValue)")
+                }
+            }
+            ShopSection(title: shelf.title, trailing: needs.count == 1 ? "1 item" : "\(needs.count) items") {
+                if needs.isEmpty {
+                    ShopEmptyNote(text: "Nothing here matches.", glyph: Glyph.search, buttonTitle: "Show all items") { shelf = .all; query = ""; sort = .needs }
+                }
+                ShopGrid {
                     ForEach(needs) { (n: EquipmentMarket.Need) in tile(e, co, n) }
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-category")
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 10) {
-            GlyphView(glyph: Glyph.search, size: 18, weight: 1.7, tint: P.inkFaint)
-            TextField("Search the store", text: $query)
-                .font(.system(size: 15)).foregroundStyle(P.ink)
-                .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .accessibilityIdentifier("tp-search")
-        }
-        .padding(.horizontal, 14).frame(minHeight: 44)
-        .background(Capsule().fill(P.card))
-        .overlay(Capsule().strokeBorder(P.line, lineWidth: 1))
     }
 
     private func presentDepartments(_ e: GameEngine, _ co: Company) -> Set<TechCategory> {
         var out: Set<TechCategory> = []
         for n in e.equipmentNeeds(companyID: co.id) { out.insert(TechCategory.of(n)) }
         return out
-    }
-
-    private func categoryChips(_ present: Set<TechCategory>) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(TechShelf.every(present), id: \.self) { (s: TechShelf) in
-                    ShopChip(title: s.title, selected: shelf == s) { shelf = s }
-                }
-            }
-        }
-    }
-
-    private var sortChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(PriceSort.allCases, id: \.self) { (s: PriceSort) in
-                    ShopChip(title: s.rawValue, selected: sort == s) { sort = s }
-                        .accessibilityIdentifier("tp-sort-\(s.rawValue)")
-                }
-            }
-        }
     }
 
     // MARK: An item
@@ -581,10 +512,7 @@ struct TechProApp: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !basket.isEmpty {
                     ShopActionBar(left: {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(basket.count == 1 ? "1 item" : "\(basket.count) items").font(.system(size: 16, weight: .bold)).foregroundStyle(P.ink)
-                            Text("in your basket").font(.system(size: 12)).foregroundStyle(P.inkFaint)
-                        }
+                        ShopPriceTag(value: basket.count == 1 ? "1 item" : "\(basket.count) items", caption: "in your basket")
                     }, action: {
                         Button("View basket") { step = .basket }.buttonStyle(ShopFilledButtonStyle()).accessibilityIdentifier("tp-view-basket")
                     })
@@ -625,68 +553,63 @@ struct TechProApp: View {
         let singles: [StoreOrders.Quote?] = basket.map { (l: StoreOrders.Line) -> StoreOrders.Quote? in e.storeQuote(companyID: co.id, lines: [l], delivery: .standard) }
         let broken: Bool = singles.contains { (q: StoreOrders.Quote?) -> Bool in q == nil }
         let due: Double = singles.compactMap { (q: StoreOrders.Quote?) -> Double? in q.map { (x: StoreOrders.Quote) -> Double in x.lines.first?.chargeNow ?? 0 } }.reduce(0, +)
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 14) {
-                ShopHeading(text: "Your basket", trailing: co.name)
-                if basket.isEmpty {
-                    Text("Your basket is empty. Choose something from the store.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+        return ShopPage {
+            ShopPageTitle(title: "Your basket", subtitle: co.name)
+            if basket.isEmpty {
+                EmptyState(glyph: Glyph.cart, title: "Your basket is empty", message: "Choose something from the store.")
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(basket.enumerated()), id: \.element.id) { (n: Int, l: StoreOrders.Line) in
+                        if n > 0 { Hairline() }
+                        basketRow(l, singles[n])
+                    }
                 }
-                ForEach(Array(basket.enumerated()), id: \.element.id) { n, l in basketRow(l, singles[n]) }
-                if broken {
-                    Text("Something in the basket is not on offer any more. Remove it to go on.").font(.system(size: 13)).foregroundStyle(P.loss)
-                }
-                if !basket.isEmpty { basketTotals(due) }
-                basketButtons(e, co, broken)
+                basketTotals(due)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            basketButtons(e, co, broken)
         }
         .accessibilityIdentifier("tp-basket")
     }
 
     private func basketRow(_ l: StoreOrders.Line, _ q: StoreOrders.Quote?) -> some View {
         let lq: StoreOrders.LineQuote? = q?.lines.first
-        return Card(padding: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(lq?.name ?? "Not on offer").font(.system(size: 15, weight: .semibold)).foregroundStyle(lq == nil ? P.loss : P.ink)
-                    if let lq {
-                        Text(lq.subtitle).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
-                        let note: String = lineNote(lq)
-                        if !note.isEmpty { Text(note).font(.system(size: 12)).foregroundStyle(P.inkSoft) }
-                    }
+        return HStack(alignment: .center, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(lq?.name ?? "Not on offer").textStyle(.headline, tint: lq == nil ? P.loss : nil)
+                if let lq {
+                    Text(lq.subtitle).textStyle(.caption)
+                    let note: String = lineNote(lq)
+                    if !note.isEmpty { Text(note).textStyle(.caption, tint: P.inkFaint) }
                 }
-                Spacer(minLength: 8)
-                if let lq { Text(linePrice(lq)).font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(P.ink) }
-                Button {
-                    Haptics.tap()
-                    basket.removeAll { (x: StoreOrders.Line) -> Bool in x.id == l.id }
-                } label: {
-                    GlyphView(glyph: Glyph.close, size: 14, weight: 1.8, tint: P.inkFaint).frame(width: 34, height: 34)
-                        .overlay(Circle().strokeBorder(P.line, lineWidth: 1))
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityLabel("Remove")
             }
+            Spacer(minLength: Theme.Space.s)
+            if let lq { Text(linePrice(lq)).textStyle(.headline, numeric: true) }
+            Button {
+                Haptics.tap()
+                basket.removeAll { (x: StoreOrders.Line) -> Bool in x.id == l.id }
+                store.show("Removed from your basket.", tone: "n")
+            } label: {
+                LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 44, height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Remove")
         }
+        .padding(.vertical, Theme.Space.xs)
     }
 
     private func basketTotals(_ due: Double) -> some View {
-        Card(padding: 14) {
-            VStack(spacing: 8) {
-                ShopFact(label: "Due for the items at checkout", value: money(due), strong: true)
-                Text("Shipping and the delivery date come next. Leases, finance and plans continue every month.")
-                    .font(.system(size: 12.5)).foregroundStyle(P.inkFaint).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-            }
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            ShopFact(label: "Due for the items at checkout", value: money(due), strong: true)
+            Text("Shipping and the delivery date come next. Leases, finance and plans continue every month.")
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func basketButtons(_ e: GameEngine, _ co: Company, _ broken: Bool) -> some View {
-        VStack(spacing: 6) {
-            Button("Checkout") { goCheckout(e) }
-                .buttonStyle(ShopFilledButtonStyle())
-                .disabled(basket.isEmpty || broken)
-                .accessibilityIdentifier("tp-checkout")
-            Button("Continue shopping") { step = .store }.buttonStyle(PlainTextButtonStyle(tint: P.accent))
+        let reason: String? = basket.isEmpty ? "Add something to the basket first." : (broken ? "Something in the basket is not on offer any more. Remove it to go on." : nil)
+        return VStack(spacing: Theme.Space.xs) {
+            PrimaryAction(title: "Checkout", blockedReason: reason, identifier: "tp-checkout") { goCheckout(e) }
+            Button("Continue shopping") { step = .store }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
         }
     }
 
@@ -702,42 +625,29 @@ struct TechProApp: View {
         let std: StoreOrders.Quote? = e.storeQuote(companyID: co.id, lines: basket, delivery: .standard)
         let chosen: StoreOrders.Quote? = e.storeQuote(companyID: co.id, lines: basket, delivery: delivery) ?? std
         let companies: [Company] = e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Checkout").font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
-                    Text("Complete your order").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-                }
-                itemsCard(chosen)
-                storeSection(co)
-                deliverySection(e, std)
-                receiptSection(companies)
-                totalsSection(chosen)
-                payButton(e, chosen)
-            }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+        return ShopPage {
+            ShopPageTitle(title: "Checkout", subtitle: "Complete your order")
+            itemsSection(chosen)
+            storeSection(co)
+            deliverySection(e, std)
+            ShopReceiptPicker(companies: companies, selection: $receiptID, idPrefix: "tp")
+            totalsSection(chosen)
+            payButton(e, chosen)
         }
         .accessibilityIdentifier("tp-checkout-page")
     }
 
-    private func itemsCard(_ q: StoreOrders.Quote?) -> some View {
-        Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(q?.lines ?? []) { (l: StoreOrders.LineQuote) in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(l.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink)
-                        Spacer(minLength: 8)
-                        Text(linePrice(l)).font(.system(size: 14.5, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
-                    }
-                }
+    private func itemsSection(_ q: StoreOrders.Quote?) -> some View {
+        ShopSection(title: "Items") {
+            ForEach(q?.lines ?? []) { (l: StoreOrders.LineQuote) in
+                ShopFact(label: l.name, value: linePrice(l))
             }
         }
     }
 
     private func storeSection(_ co: Company) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ShopHeading(text: "Store")
-            ShopChoiceRow(title: co.name, subtitle: "Company account \u{00B7} balance \(store.short(co.cash, in: co)). This account pays.", selected: true, identifier: "tp-store-account") { }
+        ShopSection(title: "Paid from") {
+            ShopChoiceRow(title: co.name, subtitle: "Company account \u{00B7} balance \(store.short(co.cash, in: co))", selected: true, identifier: "tp-store-account") { }
         }
     }
 
@@ -745,8 +655,7 @@ struct TechProApp: View {
         let ship: StoreOrders.ShippingOptions = e.storeShipping()
         let exp: StoreOrders.Quote? = e.storeQuote(companyID: companyID, lines: basket, delivery: .express)
         let own: StoreOrders.Quote? = ship.ownCompanyID != nil ? e.storeQuote(companyID: companyID, lines: basket, delivery: .own) : nil
-        return VStack(alignment: .leading, spacing: 8) {
-            ShopHeading(text: "Delivery method")
+        return ShopSection(title: "Delivery method") {
             if let std, !std.needsShipping {
                 ShopChoiceRow(title: "Digital delivery", subtitle: "Licences and plans arrive at once.", trailing: "Free", selected: true) { }
             } else {
@@ -766,36 +675,22 @@ struct TechProApp: View {
         }
     }
 
-    private func receiptSection(_ companies: [Company]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ShopHeading(text: "Receipt goes to")
-            ForEach(companies, id: \.id) { (c: Company) in
-                ShopChoiceRow(title: c.name, subtitle: "Accounting records", selected: receiptID == c.id, identifier: "tp-receipt-\(c.id)") { receiptID = c.id }
-            }
-        }
-    }
-
     private func totalsSection(_ q: StoreOrders.Quote?) -> some View {
         let goodsNow: Double = (q?.chargeNow ?? 0) - (q?.shipping ?? 0)
         let monthly: Double = (q?.lines ?? []).reduce(0) { (sum: Double, l: StoreOrders.LineQuote) -> Double in sum + l.monthly }
-        return Card(padding: 14) {
-            VStack(spacing: 8) {
-                ShopFact(label: "Items", value: money(goodsNow))
-                ShopFact(label: "Delivery", value: (q?.shipping ?? 0) == 0 ? "Free" : money(q?.shipping ?? 0))
-                if monthly > 0 { ShopFact(label: "Then every month", value: money(monthly)) }
-                ShopFact(label: "Arrives", value: (q?.days ?? 0) == 0 ? "Today" : (q?.deliveryText ?? ""))
-                ShopFact(label: "Total due now", value: money(q?.chargeNow ?? 0), strong: true)
-            }
-        }
+        var facts: [(label: String, value: String)] = [
+            (label: "Items", value: money(goodsNow)),
+            (label: "Delivery", value: (q?.shipping ?? 0) == 0 ? "Free" : money(q?.shipping ?? 0))
+        ]
+        if monthly > 0 { facts.append((label: "Then every month", value: money(monthly))) }
+        facts.append((label: "Arrives", value: (q?.days ?? 0) == 0 ? "Today" : (q?.deliveryText ?? "")))
+        return ShopFacts(facts: facts, total: (label: "Total due now", value: money(q?.chargeNow ?? 0)))
     }
 
     private func payButton(_ e: GameEngine, _ q: StoreOrders.Quote?) -> some View {
-        VStack(spacing: 6) {
-            Button("Pay securely") { goPayment(e) }
-                .buttonStyle(ShopFilledButtonStyle())
-                .disabled(q == nil)
-                .accessibilityIdentifier("tp-pay")
-            Text("Secure checkout by your bank").font(.system(size: 12)).foregroundStyle(P.inkFaint).frame(maxWidth: .infinity)
+        VStack(spacing: Theme.Space.xs) {
+            PrimaryAction(title: "Pay securely", blockedReason: q == nil ? "Something in the basket is not on offer any more." : nil, identifier: "tp-pay") { goPayment(e) }
+            Text("Secure checkout by your bank").textStyle(.caption, tint: P.inkFaint).frame(maxWidth: .infinity)
         }
     }
 
@@ -818,27 +713,30 @@ struct TechProApp: View {
 
     private func paymentView(_ e: GameEngine, _ co: Company) -> some View {
         let d: BankPaymentDetails? = e.bankPaymentDetails(companyID: co.id)
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Payment details").font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
-                    Text("Pay from the company account").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+        return ShopPage {
+            ShopPageTitle(title: "Payment details", subtitle: "Pay from the company account")
+            if let d {
+                savedAccount(d)
+                ShopNote(title: "Autofill from Bank", text: "Use the account name and number from your bank to fill this in instantly.",
+                         actionTitle: "Autofill", identifier: "tp-autofill") {
+                    holder = d.holder
+                    number = d.accountNumber
+                    payError = ""
                 }
-                if let d { savedAccount(d) }
-                if let d { autofillCard(d) }
-                fields(d)
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                field("Account holder", "Name on the account", $holder, id: "tp-holder")
+                field("Account number", "0000 0000 0000 0000", numberShown(d), id: "tp-number")
                 Toggle(isOn: $remember) {
-                    Text("Save my details for this store").font(.system(size: 15)).foregroundStyle(P.ink)
+                    Text("Save my details for this store").textStyle(.body)
                 }
                 .tint(P.accent)
+                .frame(minHeight: 44)
                 .accessibilityIdentifier("tp-remember")
                 if !payError.isEmpty { InlineMessage(text: payError) }
-                Button("Continue") { checkPayment(e, d) }
-                    .buttonStyle(ShopFilledButtonStyle())
-                    .disabled(holder.isEmpty || number.isEmpty)
-                    .accessibilityIdentifier("tp-continue")
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            PrimaryAction(title: "Continue", blockedReason: holder.isEmpty || number.isEmpty ? "Fill in the account holder and number, or use Autofill." : nil,
+                          identifier: "tp-continue") { checkPayment(e, d) }
         }
         .accessibilityIdentifier("tp-payment")
     }
@@ -852,31 +750,6 @@ struct TechProApp: View {
 
     private func masked(_ n: String) -> String { CardNumberDisplay.masked(n, companyID: companyID) }
 
-    private func autofillCard(_ d: BankPaymentDetails) -> some View {
-        Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Autofill from Bank").font(.system(size: 16, weight: .semibold)).foregroundStyle(P.ink)
-                Text("Use the account name and number from your bank to fill this in instantly.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Autofill") {
-                    Haptics.tap()
-                    holder = d.holder
-                    number = d.accountNumber
-                    payError = ""
-                }
-                .buttonStyle(QuietButtonStyle())
-                .accessibilityIdentifier("tp-autofill")
-            }
-        }
-    }
-
-    private func fields(_ d: BankPaymentDetails?) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            field("Account holder", "Name on the account", $holder, id: "tp-holder")
-            field("Account number", "0000 0000 0000 0000", numberShown(d), id: "tp-number")
-        }
-    }
-
     /// The number field shows the bank's number as sixteen digits with the first twelve starred; the engine's number stays what is kept and compared.
     private func numberShown(_ d: BankPaymentDetails?) -> Binding<String> {
         let hidden: String = d.map { (x: BankPaymentDetails) -> String in masked(x.accountNumber) } ?? ""
@@ -886,15 +759,10 @@ struct TechProApp: View {
     }
 
     private func field(_ title: String, _ prompt: String, _ text: Binding<String>, id: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.inkFaint)
-            TextField(prompt, text: text)
-                .font(.system(size: 16)).foregroundStyle(P.ink)
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(title).textStyle(.caption)
+            LedgerField(placeholder: prompt, text: text, identifier: id)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .padding(.horizontal, 12).frame(minHeight: 46)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(P.card))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-                .accessibilityIdentifier(id)
         }
     }
 
@@ -970,33 +838,35 @@ struct TechProApp: View {
         let all: [(company: Company, order: StoreOrders.Record)] = e.state.companies.flatMap { (c: Company) -> [(company: Company, order: StoreOrders.Record)] in
             e.storeOrders(companyID: c.id).map { (r: StoreOrders.Record) -> (company: Company, order: StoreOrders.Record) in (company: c, order: r) }
         }
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 14) {
-                ShopHeading(text: "My orders", trailing: all.isEmpty ? "" : "\(all.count)")
+        return ShopPage {
+            ShopSection(title: "My orders", trailing: all.isEmpty ? "" : "\(all.count)") {
                 if all.isEmpty {
-                    Text("No orders yet.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+                    ShopEmptyNote(text: "No orders yet.", glyph: Glyph.cart, buttonTitle: "Go to the store") { step = .store }
                 }
-                ForEach(Array(all.enumerated()), id: \.offset) { _, x in orderCard(x.company, x.order) }
+                ForEach(Array(all.enumerated()), id: \.offset) { (n: Int, x: (company: Company, order: StoreOrders.Record)) in
+                    if n > 0 { Hairline() }
+                    orderRow(x.company, x.order)
+                }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .accessibilityIdentifier("tp-orders")
     }
 
-    private func orderCard(_ c: Company, _ r: StoreOrders.Record) -> some View {
+    private func orderRow(_ c: Company, _ r: StoreOrders.Record) -> some View {
         let fresh: [String] = r.delivered ? store.messageItemIDs(.techPro, companyID: c.id) : []
-        return Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("#" + r.number).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                    Spacer(minLength: 8)
-                    Text(r.delivered ? "Delivered" : "On its way").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(r.delivered ? P.gain : P.caution)
-                }
-                Text(r.items.joined(separator: ", ")).font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                Text("\(c.name) \u{00B7} placed \(r.placedText) \u{00B7} " + (r.delivered ? "arrived" : "arrives") + " \(r.deliveryText) \u{00B7} \(r.carrier)")
-                    .font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("#" + r.number).textStyle(.headline, numeric: true)
+                Spacer(minLength: Theme.Space.s)
+                Text(r.delivered ? "Delivered" : "On its way").textStyle(.caption, tint: r.delivered ? P.gain : P.caution, weight: .semibold)
             }
+            Text(r.items.joined(separator: ", ")).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            Text("\(c.name) \u{00B7} placed \(r.placedText) \u{00B7} " + (r.delivered ? "arrived" : "arrives") + " \(r.deliveryText) \u{00B7} \(r.carrier)")
+                .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.vertical, Theme.Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .newGroupMarker(.techPro, fresh, style: .capsule, alignment: .topTrailing)
     }
+
 }

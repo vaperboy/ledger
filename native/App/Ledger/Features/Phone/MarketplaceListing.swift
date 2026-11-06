@@ -41,21 +41,10 @@ extension View {
     func shake(_ trigger: Int) -> some View { modifier(ShakeOnChange(count: trigger)) }
 }
 
-/// The two buttons of the price popup look the same: outlined, none filled or preselected.
+/// The two buttons of the price popup look the same (none filled or preselected): the secondary button at full width.
 struct MarketEqualButtonStyle: ButtonStyle {
-    @Environment(\.outsidePalette) private var P
-
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-        return configuration.label
-            .font(.system(size: 16, weight: .semibold))
-            .lineLimit(1).minimumScaleFactor(0.8)
-            .foregroundStyle(P.ink)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(shape.fill(P.card))
-            .overlay(shape.strokeBorder(P.lineStrong, lineWidth: 1.2))
-            .contentShape(shape)
-            .opacity(configuration.isPressed ? 0.7 : 1)
+        SecondaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
@@ -79,23 +68,17 @@ struct MarketplaceListingPage: View {
         let ago: Int = max(0, today - listing.postedDay)
         let agoText: String = ago == 0 ? "today" : (ago == 1 ? "yesterday" : "\(ago) days ago")
         let notSelling: Bool = blocked || refusedHere
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 14) {
-                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 220, cornerRadius: 16, item: key)
-                Text(listing.title).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
-                Text(cur.tidyShort(listing.askingPrice)).font(.system(size: 28, weight: .bold).monospacedDigit()).foregroundStyle(P.accent2)
-                Text(listing.blurb).font(.system(size: 15)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                Card(padding: 12) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ShopFact(label: "Seller", value: listing.sellerName)
-                        ShopFact(label: "City", value: listing.city)
-                        ShopFact(label: "Posted", value: agoText)
-                    }
-                }
-                lotCard
-                action(notSelling)
+        return ShopPage {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 220, item: key)
+                    .padding(.bottom, Theme.Space.s)
+                Text(listing.title).textStyle(.title).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
+                Text(cur.tidyShort(listing.askingPrice)).textStyle(.display, tint: P.accent2)
+                Text(listing.blurb).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            ShopFacts(facts: [(label: "Seller", value: listing.sellerName), (label: "City", value: listing.city), (label: "Posted", value: agoText)])
+            lotCard
+            action(notSelling)
         }
         .accessibilityIdentifier("mk-listing")
         .onAppear { blocked = store.marketRefused(listingID: listing.id, companyID: companyID) }
@@ -122,40 +105,32 @@ struct MarketplaceListingPage: View {
 
     @ViewBuilder private var lotCard: some View {
         if let lot = yardLot {
-            Card(padding: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ShopFact(label: "Your lot", value: "\(lot.used) of \(lot.spaces) spaces used")
-                    ShopFact(label: "Free spaces", value: "\(lot.free)", tint: lot.free == 0 ? P.caution : nil)
-                    if lot.free == 0 {
-                        Text(lot.spaces == 0 ? "These premises have no space for cars. You cannot buy this one." : "The lot is full. Sell a car before you buy this one.")
-                            .font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+            ShopSection(title: "Your lot") {
+                ShopFacts(facts: [(label: "Spaces used", value: "\(lot.used) of \(lot.spaces)"), (label: "Free spaces", value: "\(lot.free)")],
+                          tints: lot.free == 0 ? [1: P.caution] : [:])
             }
             .accessibilityIdentifier("mk-lot")
         }
     }
 
+    /// The one action, Message seller; when the seller will not sell or the lot is full it stays visible, disabled, with the reason under it.
     @ViewBuilder private func action(_ notSelling: Bool) -> some View {
-        if let lot = yardLot, lot.free == 0 {
-            Text("No free lot space")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(P.caution)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-                .accessibilityIdentifier("mk-lot-full")
-        } else if notSelling {
-            Text("Not selling to you")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(P.caution)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-                .accessibilityIdentifier("mk-not-selling")
-        } else {
+        let lotFull: Bool = (yardLot?.free ?? 1) == 0
+        let reason: String? = lotFull
+            ? ((yardLot?.spaces ?? 0) == 0 ? "These premises have no space for cars. You cannot buy this one." : "The lot is full. Sell a car before you buy this one.")
+            : (notSelling ? "Not selling to you." : nil)
+        VStack(spacing: Theme.Space.xs) {
             Button("Message seller") {
                 Haptics.tap()
                 talking = true
             }
             .buttonStyle(ShopFilledButtonStyle())
+            .disabled(reason != nil)
             .accessibilityIdentifier("mk-message")
+            if let reason {
+                Text(reason).textStyle(.caption, tint: P.caution).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(lotFull ? "mk-lot-full" : "mk-not-selling")
+            }
         }
     }
 }
@@ -191,10 +166,10 @@ struct MarketplaceDealView: View {
     var body: some View {
         let p: Double = price
         let priceText: String = cur.tidyShort(p)
-        return VStack(spacing: 14) {
-            Text(listing.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.inkSoft).multilineTextAlignment(.center).lineLimit(2)
+        return VStack(spacing: Theme.Space.m) {
+            Text(listing.title).textStyle(.headline, tint: P.inkSoft).multilineTextAlignment(.center).lineLimit(2)
             CountedFigure(value: p, format: { (v: Double) -> String in cur.tidyShort(v) }, tint: green ? P.gain : P.ink)
-                .font(.system(size: 42, weight: .bold))
+                .textStyle(.display)
                 .lineLimit(1).minimumScaleFactor(0.6)
                 .shake(shakes)
                 .accessibilityLabel("Price " + priceText)
@@ -203,7 +178,7 @@ struct MarketplaceDealView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: 40, alignment: .top)
             patienceBar
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.s) {
                 if stuck {
                     Button("Don't buy") {
                         Haptics.tap()
@@ -221,7 +196,7 @@ struct MarketplaceDealView: View {
                     .accessibilityIdentifier("mk-buy")
             }
         }
-        .padding(16)
+        .padding(Theme.Space.l)
         .frame(maxWidth: .infinity)
         .confirmAction($pending)
         .onAppear { begin() }
@@ -231,16 +206,9 @@ struct MarketplaceDealView: View {
     private var patienceBar: some View {
         let left: Int = neg?.patienceLeft ?? 0
         let ratio: Double = min(1, max(0, Double(left) / Double(max(topPatience, 1))))
-        return GeometryReader { (geo: GeometryProxy) in
-            ZStack(alignment: .leading) {
-                Capsule().fill(P.line)
-                Capsule().fill(P.accent).frame(width: geo.size.width * ratio)
-                    .animation(Motion.quickAnimation, value: ratio)
-            }
-        }
-        .frame(height: 4)
-        .accessibilityLabel("Seller's patience")
-        .accessibilityValue(ratio > 0.5 ? "high" : (ratio > 0.2 ? "running low" : "almost gone"))
+        return ProgressLine(fraction: ratio)
+            .accessibilityLabel("Seller's patience")
+            .accessibilityValue(ratio > 0.5 ? "high" : (ratio > 0.2 ? "running low" : "almost gone"))
     }
 
     private func begin() {
