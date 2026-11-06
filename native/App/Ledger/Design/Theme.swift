@@ -1,8 +1,7 @@
 import SwiftUI
 
-// Design system, in brief (what to use for what):
-// Colour   Theme roles page, surface, surfaceRaised, inset, line, lineStrong, ink, inkSoft, inkFaint, accent, accentInk, gain, loss, warn,
-//          alert, focus, scrim. In views read the same roles from `@Environment(\.outsidePalette)` so outside apps recolour themselves.
+// Colour   Theme roles page, surface, surfaceRaised, inset, line, lineStrong, ink, inkSoft, inkFaint, accent, accentInk, gain, loss,
+//          warn, alert, focus, scrim; views read them from `@Environment(\.outsidePalette)` so outside apps recolour themselves.
 // Type     `.textStyle(.display / .title / .figure / .headline / .body / .caption / .label)`: scales with Dynamic Type, sets the ink role.
 // Space    Theme.Space xxs 2, xs 4, s 8, m 12, l 16, xl 24, xxl 32 and one page margin `Theme.Space.page` (20). Radius small 8 (controls),
 //          medium 12 (groups, tiles), large 16 (popups). Elevation: flat in a page; `.elevation(.raised)` only for what floats.
