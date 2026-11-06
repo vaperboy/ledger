@@ -34,12 +34,12 @@ struct BankBillsList: View {
         return VStack(alignment: .leading, spacing: 4) {
             BankObligationRow(obligation: u, fmt: fmt)
             HStack(spacing: 8) {
-                Text(u.detail.tidyText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+                Text(u.detail.tidyText).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 action(u, alerts, e)
             }
             if short && u.daysAway <= 30 && account != .investments {
-                Text("The account does not hold this much yet. Move money in first.").font(.system(size: 11.5)).foregroundStyle(P.caution)
+                Text("The account does not hold this much yet. Move money in first.").textStyle(.caption, tint: P.caution)
             }
         }
         .padding(.bottom, 6)
@@ -51,7 +51,7 @@ struct BankBillsList: View {
             if alerts.contains(where: { $0.companyID == u.companyID }) {
                 SmallOutlineButton(title: "Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }
             } else {
-                Text("Run by a manager or accountant").font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
             }
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {

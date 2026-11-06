@@ -21,7 +21,7 @@ struct BankAllBillsScreen: View {
                         if let d = e.bankAccount(r.id), !d.upcoming.isEmpty { group(r, d) }
                     }
                     if groups.allSatisfy({ e.bankAccount($0.id)?.upcoming.isEmpty ?? true }) {
-                        Text("Nothing is due anywhere.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
+                        Text("Nothing is due anywhere.").textStyle(.body, tint: P.inkSoft)
                     }
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
@@ -38,7 +38,7 @@ struct BankAllBillsScreen: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("DUE IN 30 DAYS").capsLabel()
-                    Text(store.short(all.dueWithin30Days)).font(.hero(30)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.short(all.dueWithin30Days)).textStyle(.display).minimumScaleFactor(0.6).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Chip(text: all.isCovered ? "Covered" : "Not covered", tint: tint)
@@ -53,7 +53,7 @@ struct BankAllBillsScreen: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(r.name).capsLabel()
                 Spacer(minLength: 8)
-                Text("\(d.upcoming.count) · \(fmt.short(total))").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                Text("\(d.upcoming.count) · \(fmt.short(total))").textStyle(.caption, tint: P.inkFaint)
             }
             .padding(.horizontal, 2)
             Card(padding: 14, radius: Theme.Radius.hero) {

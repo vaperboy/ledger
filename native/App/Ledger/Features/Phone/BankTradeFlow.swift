@@ -23,7 +23,7 @@ struct BankRoundButton: View {
                     .frame(width: 56, height: 56)
                     .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
                     .overlay(alignment: .topTrailing) { RedBubble(count: badge, size: .small).offset(x: 2, y: -2) }
-                Text(title).font(.system(size: 12)).foregroundStyle(P.ink).lineLimit(1)
+                Text(title).textStyle(.caption, tint: P.ink).lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -82,10 +82,10 @@ struct BankAssetScreen: View {
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("PRICE").capsLabel()
-                Text(cur.tidyDisplay(live.price)).font(.system(size: 30, design: .serif).monospacedDigit()).foregroundStyle(P.ink)
+                Text(cur.tidyDisplay(live.price)).textStyle(.display, numeric: true)
                 Text(note).font(.system(size: 12.5)).foregroundStyle(P.change(live.weekChange ?? 0))
                 if hist.count >= 2 { Sparkline(values: hist, tint: up ? P.gain : P.loss).frame(height: 90) }
-                if live.kind == .crypto { Text("Very volatile: you can lose most of it.").font(.system(size: 11.5)).foregroundStyle(P.caution) }
+                if live.kind == .crypto { Text("Very volatile: you can lose most of it.").textStyle(.caption, tint: P.caution) }
             }
         }
     }
@@ -166,13 +166,13 @@ struct BankTradeFlow: View {
                     HStack {
                         Text("HOW MUCH").capsLabel()
                         Spacer()
-                        Text("available \(cur.tidyShort(tq.available))").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                        Text("available \(cur.tidyShort(tq.available))").textStyle(.caption, tint: P.inkFaint)
                     }
                     AmountField(title: "Amount to buy", currency: cur, amount: $amount)
-                    Text("Smallest order \(cur.tidyShort(tq.minimumPurchase)). The broker fee is added to the price.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                    Text("Smallest order \(cur.tidyShort(tq.minimumPurchase)). The broker fee is added to the price.").textStyle(.caption, tint: P.inkFaint)
                 }
             }
-            if amount > 0, let r = tq.refusal { Text(r).font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true) }
+            if amount > 0, let r = tq.refusal { Text(r).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true) }
             QuietButton(title: "Review", fullWidth: true) { step = 2 }.disabled(blocked).opacity(blocked ? 0.4 : 1)
         }
     }
@@ -205,8 +205,8 @@ struct BankTradeFlow: View {
                     line("Current account and savings after", cur.tidyDisplay(tq.cashAfter))
                 }
             }
-            Text(riskNote(buying)).font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-            if let r = problem ?? tq.refusal { Text(r).font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true) }
+            Text(riskNote(buying)).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
+            if let r = problem ?? tq.refusal { Text(r).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true) }
             QuietButton(title: buying ? "Confirm purchase" : "Confirm sale", tint: buying ? P.accent : Theme.roseGold, fullWidth: true) { confirm(tq, cur) }
                 .disabled(tq.refusal != nil).opacity(tq.refusal != nil ? 0.4 : 1)
         }
@@ -219,7 +219,7 @@ struct BankTradeFlow: View {
 
     private func line(_ label: String, _ value: String, tint: Color? = nil, strong: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 13.5)).foregroundStyle(strong ? P.ink : P.inkSoft)
+            Text(label).textStyle(.body, tint: strong ? P.ink : P.inkSoft)
             Spacer(minLength: 8)
             Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint ?? P.ink)
         }
@@ -248,7 +248,7 @@ struct BankTradeFlow: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
                 GlyphView(glyph: "M5 12 L10 17 L19 7", size: 18, weight: 2, tint: P.gain)
-                Text(text).font(.system(size: 13.5)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
+                Text(text).textStyle(.body).fixedSize(horizontal: false, vertical: true)
             }
             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.gain.opacity(0.10)))

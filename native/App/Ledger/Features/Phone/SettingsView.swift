@@ -266,15 +266,15 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 0) { inner }.padding(.horizontal, 14)
             }
             if !footer.isEmpty {
-                Text(footer).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).padding(.horizontal, 14).fixedSize(horizontal: false, vertical: true)
+                Text(footer).textStyle(.caption).padding(.horizontal, 14).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
     private func titleBlock(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 15)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-            if !detail.isEmpty { Text(detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+            Text(title).textStyle(.headline).fixedSize(horizontal: false, vertical: true)
+            if !detail.isEmpty { Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
         }
     }
 
@@ -294,7 +294,7 @@ struct SettingsView: View {
             IconCircle(glyph: glyph, size: 32, tint: tint)
             titleBlock(title, detail)
             Spacer(minLength: 8)
-            if !value.isEmpty { Text(value).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
+            if !value.isEmpty { Text(value).textStyle(.body, tint: Theme.inkSoft, numeric: true) }
             if chevron { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.ivoryDim) }
         }
         .padding(.vertical, 9).frame(minHeight: 52)

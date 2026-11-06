@@ -61,9 +61,9 @@ struct WorldMapApp: View {
         return HStack(spacing: 12) {
             OutsideBack()
             VStack(alignment: .leading, spacing: 1) {
-                Text("World").font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
+                Text("World").textStyle(.title).accessibilityAddTraits(.isHeader)
                 Text(presence.isEmpty ? "No company abroad or at home yet" : "\(sites) \(sites == 1 ? "company" : "companies") in \(presence.count) \(presence.count == 1 ? "country" : "countries")")
-                    .font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+                    .textStyle(.caption)
             }
             Spacer(minLength: 0)
         }
@@ -131,7 +131,7 @@ struct WorldMapApp: View {
             VStack(spacing: 2) {
                 if n > 0 {
                     WorldPinShape().fill(P.accent, style: FillStyle(eoFill: true)).frame(width: 16, height: 22)
-                    Text("\(n)").font(.system(size: 11, weight: .bold).monospacedDigit()).foregroundStyle(P.accent)
+                    Text("\(n)").textStyle(.caption, tint: P.accent, numeric: true, weight: .bold)
                 }
                 Text(s.name.uppercased()).font(.system(size: 8.5, weight: .semibold)).tracking(0.8)
                     .foregroundStyle(n > 0 ? P.ink : P.inkFaint).multilineTextAlignment(.center).lineLimit(2)
@@ -193,15 +193,15 @@ struct WorldMapApp: View {
             pin(on: sites > 0)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(c.flag + " " + c.name).font(.serifTitle(17)).foregroundStyle(P.ink)
+                    Text(c.flag + " " + c.name).textStyle(.figure)
                     if home { Text("HOME").font(.system(size: 9, weight: .bold)).tracking(1).foregroundStyle(P.accent) }
                 }
-                Text(facts(c)).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                Text(facts(c)).textStyle(.caption, tint: P.inkFaint)
                 if let here, sites > 0 {
                     let cities: String = here.cities.filter { $0.companies > 0 }.map { "\($0.name) (\($0.companies))" }.joined(separator: ", ")
-                    Text("\(sites) \(sites == 1 ? "company" : "companies"): " + cities).font(.system(size: 12.5)).foregroundStyle(P.accent).fixedSize(horizontal: false, vertical: true)
+                    Text("\(sites) \(sites == 1 ? "company" : "companies"): " + cities).textStyle(.caption, tint: P.accent).fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("No company here").font(.system(size: 12)).foregroundStyle(P.inkDim)
+                    Text("No company here").textStyle(.caption, tint: P.inkDim)
                 }
             }
             Spacer(minLength: 0)
@@ -239,8 +239,8 @@ struct WorldMapApp: View {
                     HStack(spacing: 12) {
                         GlyphView(glyph: p.glyph, size: 20, weight: 1.5, tint: P.accent).frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(p.rawValue).font(.system(size: 14.5)).foregroundStyle(P.ink)
-                            Text(p.note).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                            Text(p.rawValue).textStyle(.body)
+                            Text(p.note).textStyle(.caption, tint: P.inkFaint)
                         }
                         Spacer(minLength: 8)
                         GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim)

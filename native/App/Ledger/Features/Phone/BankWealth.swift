@@ -14,8 +14,8 @@ struct BankTotalPanel: View {
     var body: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Total balance").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
-                Text(totalText).font(.hero(32)).foregroundStyle(negative ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                Text("Total balance").textStyle(.caption)
+                Text(totalText).textStyle(.display, tint: negative ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
@@ -24,7 +24,7 @@ struct BankTotalPanel: View {
                     Text(dueText).foregroundStyle(P.ink)
                 }
                 .font(.system(size: 12))
-                Text(covered ? "\u{2713} covered" : "Short: not covered").font(.system(size: 12)).foregroundStyle(covered ? P.gain : P.loss)
+                Text(covered ? "\u{2713} covered" : "Short: not covered").textStyle(.caption, tint: covered ? P.gain : P.loss)
             }
         }
         .accessibilityElement(children: .combine)
@@ -46,9 +46,9 @@ struct BankWealthCard: View {
         BankCard(title: "Your wealth", trailing: "estimate") {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.money(b.total)).font(.hero(28)).foregroundStyle(b.total < 0 ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.money(b.total)).textStyle(.display, tint: b.total < 0 ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
                     Spacer(minLength: 8)
-                    Text("net worth").font(.system(size: 12)).foregroundStyle(P.inkFaint)
+                    Text("net worth").textStyle(.caption, tint: P.inkFaint)
                 }
                 FlatRow(label: "Money you can spend", value: store.short(b.liquid), sub: "current account and savings", rule: false)
                 if others > 0.5 { FlatRow(label: "Investments and valuables", value: store.short(others)) }
@@ -58,7 +58,7 @@ struct BankWealthCard: View {
                     toggle
                     if open { stakes(b) }
                 }
-                Text(b.note).font(.system(size: 11)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                Text(b.note).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 4)
             }
         }
     }
@@ -69,7 +69,7 @@ struct BankWealthCard: View {
             Haptics.choose()
         } label: {
             HStack {
-                Text(open ? "Hide companies" : "Show companies").font(.system(size: 13)).foregroundStyle(P.accent)
+                Text(open ? "Hide companies" : "Show companies").textStyle(.body, tint: P.accent)
                 Spacer()
             }
             .frame(minHeight: 40).contentShape(Rectangle())

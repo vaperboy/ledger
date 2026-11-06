@@ -120,31 +120,31 @@ struct NewCompanyDetailedSetupView: View {
         SharpTable {
             fieldRow("Name", hint: "Leave empty and one is chosen for you") {
                 TextField(t.name, text: $name).textFieldStyle(.plain).multilineTextAlignment(.trailing)
-                    .font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                    .textStyle(.body)
             }
             fieldRow("City", hint: "") {
                 Menu {
                     ForEach(cities) { c in Button(c.name) { cityID = c.id; placeIndex = nil; way = .rent } }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(cityName).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.ivoryFaint)
+                        Text(cityName).textStyle(.body)
+                        Image(systemName: "chevron.down").textStyle(.caption, tint: Theme.inkFaint, weight: .semibold)
                     }
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Legal form").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("Legal form").textStyle(.caption)
                 if t.needsLimitedCompany {
-                    Text("Limited company (this trade needs one)").font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                    Text("Limited company (this trade needs one)").textStyle(.body)
                 } else {
                     SegmentedPill(items: [FormChoice.sole, FormChoice.limited], title: { $0.rawValue }, selection: formChoice)
                 }
-                Text(taxNote).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(taxNote).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
             .overlay(alignment: .bottom) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
             fieldRow("Opening", hint: "Set it up, then open for business") {
-                Text("After set-up").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
+                Text("After set-up").textStyle(.body, tint: Theme.inkSoft)
             }
         }
     }
@@ -162,11 +162,11 @@ struct NewCompanyDetailedSetupView: View {
     private func fieldRow<C: View>(_ label: String, hint: String, @ViewBuilder value: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text(label).textStyle(.caption)
                 Spacer(minLength: 12)
                 value()
             }
-            if !hint.isEmpty { Text(hint).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+            if !hint.isEmpty { Text(hint).textStyle(.caption, tint: Theme.inkFaint) }
         }
         .frame(minHeight: 28)
         .padding(.horizontal, 12).padding(.vertical, 8)
@@ -180,11 +180,11 @@ struct NewCompanyDetailedSetupView: View {
             Text("Premises").capsLabel()
             switch plan.premisesKind {
             case .none:
-                Text("This trade needs no fixed premises, so there is no rent to pay.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                Text("This trade needs no fixed premises, so there is no rent to pay.").textStyle(.body, tint: Theme.inkSoft)
             case .home:
                 SegmentedPill(items: [Way.home], title: { $0.rawValue }, selection: .constant(Way.home))
                 Text("It starts at home: no rent, no deposit. Once the team reaches four people morale and quality slip every week until you move into a workshop or office. You can do that later under Operations.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             case .place:
                 placePicker(plan)
             }
@@ -211,14 +211,14 @@ struct NewCompanyDetailedSetupView: View {
         if let o = option {
             if way == .buy && o.canBuy {
                 Text("Buying: \(store.money(o.purchasePrice)). You pay \(store.money(o.downPayment)) down and \(store.money(o.fitOut)) to fit it out; the rest is a 15-year commercial mortgage. You own the place and pay no rent, but the money is tied up.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("Renting: a deposit of \(store.money(o.deposit)) (three months, returned when you leave) and \(store.money(o.fitOut)) to fit it out. Moving later is possible.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
         if placeIndex == nil {
-            Text("Nothing picked: the standard middle place is rented.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Nothing picked: the standard middle place is rented.").textStyle(.caption, tint: Theme.inkFaint)
         }
     }
 
@@ -233,16 +233,16 @@ struct NewCompanyDetailedSetupView: View {
             Rectangle().fill(Theme.divider).frame(height: 1).padding(.vertical, 2)
             amountLine("Total", costs.total + costs.shareCapital, strong: true)
             HStack {
-                Text("Paid from").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("Paid from").textStyle(.caption)
                 Spacer()
-                Text("Personal account · \(store.money(personal))").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text("Personal account · \(store.money(personal))").textStyle(.caption, tint: Theme.ink, numeric: true)
             }
             if plan.registrationShortfall > 0 {
                 Text("Your current account needs \(store.money(plan.registrationShortfall)) more for registration and share capital. Move money from savings in Bank.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.warn).fixedSize(horizontal: false, vertical: true)
             } else if plan.shortfall > 0 {
                 Text("You are \(store.money(plan.shortfall)) short of the whole cost, so opening would wait for money.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.warn).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14)

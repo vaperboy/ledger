@@ -74,19 +74,19 @@ struct AcctPayroll: View {
         return AcctPanel(padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Next payroll").font(.system(size: 14)).foregroundStyle(P.inkSoft)
+                    Text("Next payroll").textStyle(.body, tint: P.inkSoft)
                     Spacer(minLength: 8)
                     AcctPill(text: state.0, tone: state.1)
                 }
-                Text(r.payDateText).font(.serifTitle(24)).foregroundStyle(P.ink)
+                Text(r.payDateText).textStyle(.title)
                 AcctDivider()
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Total cost").font(.system(size: 12)).foregroundStyle(P.inkFaint)
-                        Text(fmt.full(r.totalEmployerCost)).font(.figure(24)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                        Text("Total cost").textStyle(.caption, tint: P.inkFaint)
+                        Text(fmt.full(r.totalEmployerCost)).textStyle(.figure).minimumScaleFactor(0.6).lineLimit(1)
                     }
                     Spacer(minLength: 8)
-                    Text(r.lines.count.peopleText).font(.system(size: 13)).foregroundStyle(P.inkSoft)
+                    Text(r.lines.count.peopleText).textStyle(.body, tint: P.inkSoft)
                 }
                 AcctPrimaryButton(title: "Run payroll", identifier: "acct-payroll-run") { m.payTab = .run }
             }
@@ -160,7 +160,7 @@ struct AcctPayroll: View {
                         }
                     }
                 }
-                Text("It follows from who is on the team: an accountant first, then a manager, otherwise you.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
+                Text("It follows from who is on the team: an accountant first, then a manager, otherwise you.").textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 2)
             }
         }
     }
@@ -327,7 +327,7 @@ struct AcctPayroll: View {
                 if r.paidLeaveCover > 0.5 { FlatRow(label: "Paid-leave cover", value: fmt.full(r.paidLeaveCover)) }
                 if r.serviceFee > 0.5 { FlatRow(label: "Service fee (external accountant)", value: fmt.full(r.serviceFee), sub: "Booked as an accounting expense") }
                 FlatRow(label: "Total employer cost", value: fmt.full(r.totalEmployerCost), tint: P.ink)
-                Text(r.deductionsNote).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                Text(r.deductionsNote).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
             }
         }
     }
@@ -341,7 +341,7 @@ struct AcctPayroll: View {
                 FlatRow(label: "To pay on pay day", value: fmt.full(r.amountDue))
                 FlatRow(label: "Available balance", value: fmt.full(r.availableBalance), tint: enough ? P.ink : P.loss)
                 if !enough {
-                    Text("The account does not cover this yet. Move money in through the Bank first, or part of the wages stays unpaid.").font(.system(size: 12.5)).foregroundStyle(P.caution)
+                    Text("The account does not cover this yet. Move money in through the Bank first, or part of the wages stays unpaid.").textStyle(.caption, tint: P.caution)
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                     Button("Move money in the Bank") { store.openBank(.company(m.companyID)) }
                         .buttonStyle(SecondaryButtonStyle(size: .compact)).padding(.top, Theme.Space.xs)
@@ -361,7 +361,7 @@ struct AcctPayroll: View {
             AcctPrimaryButton(title: "Pay late payroll now", enabled: canRun, identifier: "acct-payroll-confirm") { confirm(co, o, r, late: true) }
         } else if r.needsYourApproval {
             AcctPrimaryButton(title: "Approve payroll", enabled: canRun, identifier: "acct-payroll-confirm") { confirm(co, o, r, late: false) }
-            Text("You are the one who approves it. Once approved it goes out from the account on the pay date.").font(.system(size: 12)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
+            Text("You are the one who approves it. Once approved it goes out from the account on the pay date.").textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 2)
         } else if o.isApproved {
             AcctNotice(glyph: Glyph.check, title: "Approved", message: "It goes out on \(r.payDateText).", tint: P.gain)
             AcctPrimaryButton(title: "Approved", enabled: false, identifier: "acct-payroll-confirm") {}
@@ -450,8 +450,8 @@ struct AcctPayrollRunDetail: View {
                     Circle().fill((short ? P.caution : P.gain).opacity(0.14)).frame(width: 56, height: 56)
                     GlyphView(glyph: short ? Glyph.warning : Glyph.check, size: 26, weight: 2, tint: short ? P.caution : P.gain)
                 }
-                Text(short ? "Payroll part paid" : "Payroll processed").font(.serifTitle(21)).foregroundStyle(P.ink)
-                Text(short ? "\(fmt.short(run.short)) is still unpaid." : "All employees have been paid.").font(.system(size: 13)).foregroundStyle(P.inkSoft)
+                Text(short ? "Payroll part paid" : "Payroll processed").textStyle(.figure)
+                Text(short ? "\(fmt.short(run.short)) is still unpaid." : "All employees have been paid.").textStyle(.body, tint: P.inkSoft)
                 AcctDivider()
                 FlatRow(label: "Total cost", value: fmt.full(run.linesTotal), rule: false)
                 FlatRow(label: "Paid", value: fmt.full(run.paid), tint: short ? P.caution : P.ink)

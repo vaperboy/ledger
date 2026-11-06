@@ -276,9 +276,9 @@ private struct LoanStepChoose: View {
                     VStack(spacing: 2) {
                         LedgerSlider(value: value, in: lo...hi, step: 1).tint(P.accent)
                         HStack {
-                            Text("\(q.minTermMonths)").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
+                            Text("\(q.minTermMonths)").textStyle(.caption, tint: P.inkFaint)
                             Spacer()
-                            Text("\(q.maxTermMonths)").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
+                            Text("\(q.maxTermMonths)").textStyle(.caption, tint: P.inkFaint)
                         }
                     }
                     Text("\(q.termMonths)").popupText(.figure)
@@ -349,7 +349,7 @@ private struct LoanAmountPanel: View {
             Haptics.choose()
             setFraction(fraction)
         } label: {
-            Text(title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.accent).lineLimit(1).minimumScaleFactor(0.8)
+            Text(title).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 34)
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
                 .contentShape(Rectangle())
@@ -562,7 +562,7 @@ private struct LoanStepSummary: View {
 
     private func line(_ label: String, _ value: String, tint: Color? = nil, strong: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 13.5)).foregroundStyle(strong ? P.ink : P.inkSoft)
+            Text(label).textStyle(.body, tint: strong ? P.ink : P.inkSoft)
             Spacer(minLength: 8)
             Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint ?? P.ink)
         }
@@ -572,7 +572,7 @@ private struct LoanStepSummary: View {
     @ViewBuilder private var scheduleLink: some View {
         Button { showSchedule.toggle(); Haptics.choose() } label: {
             HStack {
-                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").font(.system(size: 13.5)).foregroundStyle(P.accent).underline()
+                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").textStyle(.body, tint: P.accent).underline()
                 Spacer()
             }.contentShape(Rectangle())
         }.buttonStyle(PressableStyle())

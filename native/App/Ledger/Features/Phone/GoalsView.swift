@@ -43,7 +43,7 @@ struct GoalsView: View {
                 GoalRing(progress: fraction, done: steps.count > 0 && done == steps.count, size: 64, label: steps.isEmpty ? "" : "\(Int((fraction * 100).rounded()))%")
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Your goals").capsLabel()
-                    Text(line).font(.serifTitle(20)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    Text(line).textStyle(.figure).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
@@ -61,8 +61,8 @@ struct GoalsView: View {
                 GoalRing(progress: st.progress, done: st.next == nil, size: 64, label: "\(Int((st.progress * 100).rounded()))%")
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Your rank").capsLabel()
-                    Text(st.rank.title).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
-                    Text(line).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(st.rank.title).textStyle(.title)
+                    Text(line).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
@@ -135,7 +135,7 @@ struct GoalsView: View {
             Haptics.tap()
             refresh()
         }
-        .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(PressableStyle()).frame(minHeight: 36)
+        .textStyle(.caption, tint: Theme.accent, weight: .medium).buttonStyle(PressableStyle()).frame(minHeight: 36)
     }
 
     // MARK: First steps
@@ -155,7 +155,7 @@ struct GoalsView: View {
                     if ok { store.show(hidden ? "First-step rewards are back." : "First-step rewards hidden. Rewards you have not claimed stay available.", tone: "n") }
                     else { store.show("That could not be changed.", tone: "warn") }
                 }
-                .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).buttonStyle(PressableStyle()).frame(minHeight: 36)
+                .textStyle(.caption, tint: Theme.accent, weight: .medium).buttonStyle(PressableStyle()).frame(minHeight: 36)
             }
         }
     }
@@ -178,10 +178,10 @@ struct GoalsView: View {
             if let path = e.currentAmbition, let name = e.ambitionPaths.first(where: { $0.id == path })?.name {
                 ambitionBody(e, path: path, name: name)
             } else {
-                Text("Choose what you want to build. Each path has its own milestones and a perk.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("Choose what you want to build. Each path has its own milestones and a perk.").textStyle(.caption)
             }
             if e.ambitionChangeIsFree {
-                Text("Change it freely until week 4.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("Change it freely until week 4.").textStyle(.caption, tint: Theme.inkFaint)
             }
             ambitionMenu(e)
         }
@@ -213,7 +213,7 @@ struct GoalsView: View {
             }
         } label: {
             Text(e.currentAmbition == nil ? "Choose your ambition" : "Switch ambition")
-                .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                .textStyle(.body, weight: .medium)
                 .padding(.horizontal, 16).frame(minHeight: 40)
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
         }
@@ -266,8 +266,8 @@ struct GoalRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.tidyText).font(.system(size: compact ? 13 : 14.5, weight: compact ? .regular : .medium))
                     .foregroundStyle(ring.done ? Theme.ivoryMuted : Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                if !detail.isEmpty { Text(detail.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-                if !reward.isEmpty { Text(reward.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true) }
+                if !detail.isEmpty { Text(detail.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
+                if !reward.isEmpty { Text(reward.tidyText).textStyle(.caption, tint: Theme.accent).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             if let action { Button(action, action: tap).buttonStyle(QuietButtonStyle()) }
@@ -306,9 +306,9 @@ struct TrophyShelfRow: View {
                         }
                     }
                     if let latest = got.first {
-                        Text("Latest: " + latest.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Latest: " + latest.name).textStyle(.caption)
                     } else {
-                        Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").textStyle(.caption)
                     }
                 }
             }

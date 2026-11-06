@@ -59,29 +59,29 @@ struct PlanStatement: View {
         let hasTeam: Bool = plan.choices.team == .standard || plan.notChosen.contains { $0.id == "team" }
         if hasStock || hasExtraKit || hasTeam {
             CardSection("Optional extras") {
-                Text("Nothing here is bought unless you choose it. Each choice shows what it costs.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("Nothing here is bought unless you choose it. Each choice shows what it costs.").textStyle(.caption, tint: Theme.inkFaint)
                 if hasStock {
                     SegmentedPill(items: SetupChoices.Stock.allCases, title: { stockTitle($0) }, selection: Binding(get: { choices.stock }, set: { choices.stock = $0 }))
-                    Text("Opening stock of the standard size costs \(cur.tidyShort(plan.estimate.stock)). It is bought when the last paper is approved.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Opening stock of the standard size costs \(cur.tidyShort(plan.estimate.stock)). It is bought when the last paper is approved.").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 if hasExtraKit, let line = plan.notChosen.first(where: { $0.id == "optEq" }) {
                     CardLine()
                     Toggle(isOn: Binding(get: { choices.optionalEquipment }, set: { choices.optionalEquipment = $0 })) {
-                        Text("Optional equipment and vehicles · \(cur.tidyShort(line.amount))").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("Optional equipment and vehicles · \(cur.tidyShort(line.amount))").textStyle(.body)
                     }
                 } else if choices.optionalEquipment {
                     CardLine()
                     Toggle(isOn: Binding(get: { choices.optionalEquipment }, set: { choices.optionalEquipment = $0 })) {
-                        Text("Optional equipment and vehicles").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("Optional equipment and vehicles").textStyle(.body)
                     }
                 }
                 if hasTeam {
                     CardLine()
                     Toggle(isOn: Binding(get: { choices.team == .standard }, set: { choices.team = $0 ? .standard : .minimum })) {
-                        Text("Hire the whole standard team now").font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                        Text("Hire the whole standard team now").textStyle(.body)
                     }
                     Text("By default only the core team is hired, and only while the company's cash carries two months of their wages. Every further hire is a monthly cost; the rest of the team is about \(cur.tidyShort(plan.notChosen.first { $0.id == "team" }?.amount ?? 0)) a month.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -118,8 +118,8 @@ struct PlanStatement: View {
             ForEach(Array(plan.alternatives.enumerated()), id: \.element.id) { n, a in
                 if n > 0 { CardLine() }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(a.title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(a.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(a.title).textStyle(.body, weight: .medium)
+                    Text(a.detail.tidyMoney).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                     QuietButton(title: "Use this") { apply(a) }
                 }
             }

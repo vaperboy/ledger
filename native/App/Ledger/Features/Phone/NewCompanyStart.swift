@@ -96,11 +96,11 @@ struct TradeDetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Start-up cost").capsLabel()
                 Spacer(minLength: 8)
-                Text(cur.tidyShort(plan.total)).font(.system(size: 22, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(cur.tidyShort(plan.total)).textStyle(.figure, numeric: true)
             }
             ProgressLine(fraction: covered, tint: tint, height: 6)
             HStack {
-                Text("You have \(cur.tidyShort(plan.available))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text("You have \(cur.tidyShort(plan.available))").textStyle(.caption)
                 Spacer(minLength: 8)
                 Text(verdict).font(.system(size: 12, weight: .medium)).foregroundStyle(tint).multilineTextAlignment(.trailing)
             }
@@ -118,14 +118,14 @@ struct TradeDetailView: View {
             Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
             CardLine()
             if t.needsLimitedCompany {
-                Text("This trade needs a limited company.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("This trade needs a limited company.").textStyle(.caption)
             } else {
                 SegmentedPill(items: [false, true], title: { $0 ? "Limited company" : "Sole trader" }, selection: $limited)
-                Text(formText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(formText).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
             if t.maxSize > t.minSize {
                 CardLine()
-                Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").font(.system(size: 14)).foregroundStyle(Theme.ivory) }
+                Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").textStyle(.body) }
             }
             CardLine()
             LedgerField(placeholder: "Company name (optional)", text: $name)
@@ -175,7 +175,7 @@ struct TradeDetailView: View {
                 if n > 0 { Hairline() }
                 HStack(alignment: .top, spacing: 10) {
                     GlyphView(glyph: Glyph.warning, size: 16, weight: 1.4, tint: Theme.caution)
-                    Text(r.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(r.tidyMoney).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 8)
             }
@@ -198,7 +198,7 @@ struct TradeDetailView: View {
     @ViewBuilder private func brandList(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], _ cur: Currency) -> some View {
         CardSection("Franchise brands for this trade") {
             Text("A known brand brings customers and support, and takes an entry fee and a royalty. You apply, they answer in a week or three, you agree the terms, then you start under the brand.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             ForEach(Array(brands.enumerated()), id: \.element.id) { n, b in
                 if n > 0 { CardLine() }
                 FranchiseBrandRow(brand: b)

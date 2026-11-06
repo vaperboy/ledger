@@ -19,7 +19,7 @@ struct BankDepositsTab: View {
         case .personal: BankSavingsAndDeposits()
         case .company:
             Text("A company account has no savings or fixed deposits. Spare cash can be moved to your own account, or the company can pay it out.")
-                .font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
         }
     }
 }

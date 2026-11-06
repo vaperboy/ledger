@@ -95,9 +95,9 @@ struct AcctInvoices: View {
         let late: Double = items.filter { $0.status == .overdue }.reduce(0) { $0 + $1.gross }
         let openLabel: String = kind == .customer ? "To collect" : "To pay"
         return HStack(alignment: .firstTextBaseline) {
-            Text(openLabel + " " + fmt.short(open)).font(.system(size: 12.5, weight: .medium).monospacedDigit()).foregroundStyle(P.ink)
+            Text(openLabel + " " + fmt.short(open)).textStyle(.caption, tint: P.ink, numeric: true, weight: .medium)
             Spacer(minLength: 8)
-            if late > 0.5 { Text("Overdue " + fmt.short(late)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(P.loss) }
+            if late > 0.5 { Text("Overdue " + fmt.short(late)).textStyle(.caption, tint: P.loss, numeric: true) }
         }
         .padding(.horizontal, 2)
         .accessibilityElement(children: .combine)
@@ -163,15 +163,15 @@ struct AcctInvoiceDetail: View {
     private func header(_ inv: InvoiceItem, _ fmt: BankFmt) -> some View {
         AcctPanel(padding: 16) {
             HStack(spacing: 12) {
-                Text(AcctRow.initials(inv.counterparty)).font(.system(size: 14, weight: .semibold)).foregroundStyle(P.onAccent)
+                Text(AcctRow.initials(inv.counterparty)).textStyle(.body, tint: P.onAccent, weight: .semibold)
                     .frame(width: 44, height: 44).background(Circle().fill(P.accent))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(inv.counterparty).font(.system(size: 16, weight: .medium)).foregroundStyle(P.ink).lineLimit(2)
-                    Text("#" + inv.number + (inv.kind == .customer ? " \u{00B7} customer" : " \u{00B7} supplier")).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+                    Text(inv.counterparty).textStyle(.headline).lineLimit(2)
+                    Text("#" + inv.number + (inv.kind == .customer ? " \u{00B7} customer" : " \u{00B7} supplier")).textStyle(.caption, tint: P.inkFaint)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(fmt.full(inv.gross)).font(.figure(18, weight: .semibold)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(fmt.full(inv.gross)).textStyle(.figure).minimumScaleFactor(0.6).lineLimit(1)
                     AcctPill(text: inv.status.label, tone: inv.status.tone)
                 }
             }
@@ -205,7 +205,7 @@ struct AcctInvoiceDetail: View {
         if inv.kind == .customer && inv.status == .draft {
             if canPay {
                 AcctPrimaryButton(title: "Send invoice", identifier: "acct-invoice-send") { confirmSend(co, inv) }
-                Text("A draft goes out with the next weekly run. Sending it now starts the payment terms today.").font(.system(size: 12)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
+                Text("A draft goes out with the next weekly run. Sending it now starts the payment terms today.").textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 2)
             } else {
                 AcctNotice(glyph: Glyph.lock, title: "Sending needs full bookkeeping access")
             }

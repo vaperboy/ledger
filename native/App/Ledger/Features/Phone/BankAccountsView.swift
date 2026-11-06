@@ -33,12 +33,12 @@ struct BankAccountsScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("YOUR COMPANIES").capsLabel()
                         if companies.isEmpty {
-                            Text("You have no company yet. Its account appears here once it exists.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+                            Text("You have no company yet. Its account appears here once it exists.").textStyle(.caption, tint: P.inkFaint)
                         }
                         ForEach(companies) { r in row(r, e) }
                     }
                     Text("Loans belong to the account they were taken for. Open an account and choose Loans.")
-                        .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
+                        .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)

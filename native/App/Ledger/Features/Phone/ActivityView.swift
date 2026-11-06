@@ -78,7 +78,7 @@ struct ActivityView: View {
         let sign: String = net > 0 ? "+" : net < 0 ? "\u{2212}" : ""
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Circle().fill(Theme.gold).frame(width: 7, height: 7).frame(width: 34)
-            Text(GameCalendar.dateString(week: g.week, dayOffset: g.day)).font(.serifTitle(17)).foregroundStyle(Theme.ivory)
+            Text(GameCalendar.dateString(week: g.week, dayOffset: g.day)).textStyle(.figure)
             Spacer(minLength: 8)
             Text("Day \(sign)\(store.short(abs(net)))").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.change(net))
         }
@@ -97,11 +97,11 @@ struct ActivityView: View {
                 .background(alignment: .top) { Rectangle().fill(Theme.border).frame(width: 1).padding(.top, 0).frame(maxHeight: .infinity) }
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(line.label.tidyText).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(3).multilineTextAlignment(.leading)
+                    Text(line.label.tidyText).textStyle(.body).lineLimit(3).multilineTextAlignment(.leading)
                     Spacer(minLength: 8)
-                    Text(sign + store.short(abs(line.amount))).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(income ? Theme.gain : Theme.ivory)
+                    Text(sign + store.short(abs(line.amount))).textStyle(.body, tint: income ? Theme.gain : Theme.ink, numeric: true, weight: .medium)
                 }
-                Text("Balance " + store.short(line.balanceAfter)).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                Text("Balance " + store.short(line.balanceAfter)).textStyle(.caption, tint: Theme.inkFaint, numeric: true)
             }
             .padding(.vertical, 8)
             .overlay(alignment: .bottom) { if !last { Rectangle().fill(Theme.tableLine).frame(height: 1) } }

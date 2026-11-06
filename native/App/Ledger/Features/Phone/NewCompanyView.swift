@@ -35,7 +35,7 @@ struct NewCompanyView: View {
                         .padding(.horizontal, -Theme.Space.margin)
                     table(e, shown)
                     Text("Demand is for this city; staff is the usual team size. Start-up costs are exact; the rest is an estimate and your result depends on price, location and management.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -66,17 +66,17 @@ struct NewCompanyView: View {
         let cities: [Country.City] = e.homeCountry.cities
         let name: String = cities.first { $0.id == city }?.name ?? "Home city"
         HStack {
-            Text("Priced for").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text("Priced for").textStyle(.caption)
             Menu {
                 ForEach(cities) { c in Button(c.name) { cityID = c.id; selectedID = nil } }
             } label: {
                 HStack(spacing: 4) {
-                    Text(name).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.gold)
+                    Text(name).textStyle(.caption, tint: Theme.accent, weight: .medium)
+                    Image(systemName: "chevron.down").textStyle(.caption, tint: Theme.accent, weight: .semibold)
                 }
             }
             Spacer()
-            Text("You have \(store.money(Payments.liquid(e.state)))").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+            Text("You have \(store.money(Payments.liquid(e.state)))").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
         }
     }
 

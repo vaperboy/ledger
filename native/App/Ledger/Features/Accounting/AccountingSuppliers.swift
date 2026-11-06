@@ -103,11 +103,11 @@ struct AcctSupplierProfile: View {
     private func header(_ s: SupplierRecord) -> some View {
         AcctPanel(padding: 16) {
             HStack(spacing: 12) {
-                Text(AcctRow.initials(s.name)).font(.system(size: 14, weight: .semibold)).foregroundStyle(P.onAccent)
+                Text(AcctRow.initials(s.name)).textStyle(.body, tint: P.onAccent, weight: .semibold)
                     .frame(width: 44, height: 44).background(Circle().fill(P.accent))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(s.name).font(.system(size: 16, weight: .medium)).foregroundStyle(P.ink).lineLimit(2)
-                    Text(s.owner.isEmpty ? s.relationship : s.owner + " \u{00B7} " + s.relationship).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(2)
+                    Text(s.name).textStyle(.headline).lineLimit(2)
+                    Text(s.owner.isEmpty ? s.relationship : s.owner + " \u{00B7} " + s.relationship).textStyle(.caption, tint: P.inkFaint).lineLimit(2)
                 }
                 Spacer(minLength: 8)
             }

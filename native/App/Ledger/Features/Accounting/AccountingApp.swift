@@ -262,9 +262,9 @@ struct AcctHome: View {
                 }
             } label: {
                 HStack {
-                    Text(current).font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink).lineLimit(1)
+                    Text(current).textStyle(.headline).lineLimit(1)
                     Spacer(minLength: 8)
-                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.inkFaint)
+                    Image(systemName: "chevron.up.chevron.down").textStyle(.caption, tint: P.inkFaint, weight: .semibold)
                 }
                 .padding(.horizontal, 14).frame(minHeight: 48)
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))

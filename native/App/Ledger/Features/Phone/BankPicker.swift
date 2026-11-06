@@ -22,7 +22,7 @@ struct BankPickerScreen: View {
                     section("GROUP", group, e)
                     section("YOUR COMPANIES", companies, e)
                     Text("Choose an account. Back from it shows every account and the totals.")
-                        .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
+                        .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
