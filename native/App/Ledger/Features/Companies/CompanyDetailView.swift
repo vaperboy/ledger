@@ -79,19 +79,14 @@ struct CompanyDetailView: View {
             let tabs: [CompanyTab] = Self.tabs(co, e)
             let pagerSelection: Binding<CompanyTab> = Binding(get: { tabs.contains(segment) ? segment : CompanyTab.overview }, set: { segment = $0 })
             VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 6) {
-                    if let context = contextLine(co, e) {
-                        Text(context).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                    }
-                    SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
-                }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, 2).padding(.bottom, 8)
+                SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
                 SegmentPager(items: tabs, selection: pagerSelection) { (t: CompanyTab) in
                     ScrollView {
                         VStack(alignment: .leading, spacing: Theme.Space.l) {
                             content(t, co, e)
                         }
-                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
+                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
                         .frame(maxWidth: 1100).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden)
@@ -99,12 +94,13 @@ struct CompanyDetailView: View {
                     .scrollDismissesKeyboard(.interactively)
                 }
             }
-            .appScreen(title: co.name, subtitle: "\(e.tradeName(co)) · \(e.cityName(co)) · \(form)".tidyText) {
+            // One metadata line: trade, city and form, then where it sits in the group and who runs it.
+            .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co), form] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " · ").tidyText) {
                 if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
             }
             .onAppear { applyPart(tabs) }
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 

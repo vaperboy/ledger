@@ -40,21 +40,28 @@ struct CompanyEquipmentScreen: View {
             let tabs: [EquipmentTab] = visibleTabs(e, needs)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    MoreHeader(glyph: Glyph.settings, title: co.name, blurb: "Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " · equipment \(Words.level($0 * 100, scale: .condition).lowercased())" } ?? ""))
-                    equipmentTable(e, co, needs, tabs)
+                    Text("Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " \u{00B7} equipment \(Words.level($0 * 100, scale: .condition).lowercased())" } ?? "") + " \u{00B7} buy in TechPro Store")
+                        .textStyle(.caption)
+                    // With only the equipment part there is no index to choose from: its page shows here directly.
+                    if tabs.count == 1 {
+                        pageContent(.needed, e, co, needs)
+                    } else {
+                        equipmentTable(e, co, needs, tabs)
+                    }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
-            .appScreen(title: "Equipment", subtitle: "What the company owns. Buy in TechPro Store", tab: .company)
+            .confirmAction(tabs.count == 1 ? $asking : .constant(nil))
+            .appScreen(title: "Equipment", subtitle: co.name, tab: .company)
             .navigationDestination(item: $tab) { (t: EquipmentTab) in
                 SettingsPage(title: t.rawValue, subtitle: co.name) { pageContent(t, e, co, needs) }
                     .confirmAction($asking)
             }
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.settings, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
