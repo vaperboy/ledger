@@ -10,23 +10,17 @@ func shortDate(week: Int) -> String {
     GameCalendar.dateString(week: week).split(separator: " ").dropLast().joined(separator: " ")
 }
 
-private extension View {
-    func projectCard(radius: CGFloat = Theme.Radius.hero) -> some View {
-        self.background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-    }
-}
-
-/// A caps label with an optional right-hand note (OPEN TENDERS, THIS AND NEXT WEEK).
+/// A section label with an optional right-hand note (Open tenders, This and next week).
 private struct ProjectCaps: View {
     var title: String
     var note: String = ""
     var body: some View {
-        HStack {
-            Text(title).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
-            Spacer(minLength: 8)
+        HStack(alignment: .firstTextBaseline) {
+            Text(title).capsLabel()
+            Spacer(minLength: Theme.Space.s)
             if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.inkFaint) }
         }
+        .padding(.top, Theme.Space.s)
     }
 }
 
@@ -34,20 +28,29 @@ private struct ProjectCaps: View {
 private struct ProjectFigures: View {
     var items: [(String, String, Color)]
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.offset) { n, it in
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(it.0).textStyle(.caption, tint: Theme.inkFaint)
-                    Text(it.1).textStyle(.body, tint: it.2, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, n == 0 ? 0 : 10)
-                .overlay(alignment: .leading) { if n > 0 { Rectangle().fill(Theme.hairline).frame(width: 1) } }
+        FigureRow(items: items.map { (it: (String, String, Color)) -> KeyFigures.Item in KeyFigures.Item(label: it.0, value: it.1, tint: it.2) }, columns: max(1, items.count), combineCells: true)
+            .padding(.top, Theme.Space.s)
+            .overlay(alignment: .top) { Hairline() }
+    }
+}
+
+/// Items of one list stacked flat with a hairline between them (no box around each).
+private struct ProjectList<Data: RandomAccessCollection, Row: View>: View where Data.Element: Identifiable {
+    var data: Data
+    @ViewBuilder var row: (Data.Element) -> Row
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(data.enumerated()), id: \.element.id) { (n: Int, x: Data.Element) in
+                if n > 0 { Hairline() }
+                row(x).padding(.vertical, Theme.Space.m)
             }
         }
-        .padding(.top, Theme.Space.s)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.hairline).frame(height: 1) }
     }
+}
+
+/// The status word of a project as a tinted pill.
+private func projectPillTone(_ tint: Color) -> AcctPill.Tone {
+    tint == Theme.gain ? .good : (tint == Theme.warn ? .warn : (tint == Theme.loss ? .bad : .neutral))
 }
 
 // MARK: Running (ProjectsA)
@@ -61,29 +64,28 @@ struct ProjectsRunningTab: View {
     var body: some View {
         let now = engine.state.week
         if rows.isEmpty {
-            note("Project companies (builders, agencies, developers) list their jobs, tenders and developments here. None of your companies takes projects yet.")
+            EmptyState(glyph: Glyph.projects, title: "No project companies yet", message: "Builders, agencies and developers list their jobs, tenders and developments here.")
         } else if running.isEmpty {
-            note("Nothing is running. Requests come in through the week; marketing and a good name bring more. Open tenders are under Bids and offers. Check staff and equipment under each company's Operations if a firm cannot take work.")
+            EmptyState(glyph: Glyph.projects, title: "Nothing is running", message: "Requests come in through the week; marketing and a good name bring more. Open tenders are under Bids and offers. If a firm cannot take work, check its staff and equipment under Operations.")
         }
-        ForEach(running.sorted { ($0.dueWeek ?? Int.max) < ($1.dueWeek ?? Int.max) }) { l in
+        ProjectList(data: running.sorted { ($0.dueWeek ?? Int.max) < ($1.dueWeek ?? Int.max) }) { (l: ProjectTimeline) in
             if let co = engine.state.company(l.companyID) {
                 NavigationLink { ProjectTimelineDetail(lineID: l.id) } label: { card(l, co, now) }
                     .buttonStyle(PressableStyle())
             }
         }
         if !rows.isEmpty {
-            ProjectCaps(title: "PROJECT COMPANIES").padding(.top, Theme.Space.s)
-            ForEach(rows.sorted { $0.board.outstandingPayments > $1.board.outstandingPayments }, id: \.co.id) { r in
-                Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
-                    ProjectCardRow(title: r.co.name, sub: companyLine(r.board) + (!r.board.isDeveloper && r.board.outstandingPayments > 0 ? " · owed \(store.short(r.board.outstandingPayments, in: r.co))" : ""))
+            ProjectCaps(title: "Project companies")
+            VStack(spacing: 0) {
+                ForEach(Array(rows.sorted { $0.board.outstandingPayments > $1.board.outstandingPayments }.enumerated()), id: \.element.co.id) { (n: Int, r: (co: Company, board: ProjectBoard)) in
+                    if n > 0 { Hairline() }
+                    Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
+                        ProjectCardRow(title: r.co.name, sub: companyLine(r.board) + (!r.board.isDeveloper && r.board.outstandingPayments > 0 ? " · owed \(store.short(r.board.outstandingPayments, in: r.co))" : ""))
+                    }
+                    .buttonStyle(PressableStyle()).accessibilityIdentifier("open-project-company")
                 }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("open-project-company")
             }
         }
-    }
-
-    private func note(_ s: String) -> some View {
-        Text(s).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, Theme.Space.s)
     }
 
     private func companyLine(_ b: ProjectBoard) -> String {
@@ -114,18 +116,16 @@ struct ProjectsRunningTab: View {
                     Text(l.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2)
                     Text("\(co.name) · \(kindWord(l.kind).lowercased()) · \(l.subtitle)").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
-                Spacer(minLength: 6)
-                Text(word).textStyle(.caption, tint: tint)
-                    .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+                Spacer(minLength: Theme.Space.s)
+                AcctPill(text: word, tone: projectPillTone(tint))
             }
             VStack(spacing: Theme.Space.xs) {
                 OrgProgressBar(fraction: frac, milestones: done)
                 HStack {
                     Text("\(done) of \(l.stages.count) milestones").orgTextSwap(done).orgPulse(done)
-                    Spacer(minLength: 8)
+                    Spacer(minLength: Theme.Space.s)
                     Text(next).lineLimit(1).orgTextSwap(next)
-                }.font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                }.textStyle(.caption, tint: Theme.inkFaint)
             }
             ProjectFigures(items: [
                 (l.kind == .development ? "Expected sales" : "Value", store.short(l.value, in: co), Theme.ivory),
@@ -133,8 +133,6 @@ struct ProjectsRunningTab: View {
                 ("Due", l.dueWeek.map { shortDate(week: $0) } ?? "No date", (l.dueWeek.map { $0 - now <= 2 } ?? false) ? Theme.caution : Theme.ivory),
             ])
         }
-        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
-        .projectCard()
         .contentShape(Rectangle())
     }
 }
@@ -150,7 +148,7 @@ struct ProjectsTimelineTab: View {
         let now = engine.state.week
         let work = lines.filter { $0.kind == .job || $0.kind == .event || $0.kind == .development }
         if work.isEmpty {
-            Text("Nothing to chart yet. Jobs, events and developments appear here with their dates.").textStyle(.caption, tint: Theme.inkFaint).padding(.vertical, Theme.Space.s)
+            EmptyState(glyph: Glyph.projects, title: "Nothing to chart yet", message: "Jobs, events and developments appear here with their dates.")
         } else {
             ProjectWeeksChart(lines: work, now: now)
         }
@@ -160,11 +158,12 @@ struct ProjectsTimelineTab: View {
                 return (week: w, stage: s, line: l)
             }
         }.sorted { $0.week < $1.week }
-        ProjectCaps(title: "THIS AND NEXT WEEK")
+        ProjectCaps(title: "This and next week")
         if soon.isEmpty {
-            Text("No milestone falls in the next two weeks.").textStyle(.caption, tint: Theme.inkFaint)
+            EmptyState(title: "No milestone in the next two weeks", centered: false)
         }
-        ForEach(Array(soon.enumerated()), id: \.offset) { _, x in
+        ForEach(Array(soon.enumerated()), id: \.offset) { n, x in
+            if n > 0 { Hairline() }
             NavigationLink { ProjectTimelineDetail(lineID: x.line.id) } label: {
                 HStack(spacing: Theme.Space.m) {
                     Text(shortDate(week: x.week)).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center).frame(width: 46)
@@ -172,11 +171,10 @@ struct ProjectsTimelineTab: View {
                         Text(x.stage.name).textStyle(.body, tint: Theme.ink, weight: .medium)
                         Text("\(x.line.title.tidyMoney) · \(x.line.companyName)").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                     }
-                    Spacer(minLength: 8)
-                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+                    Spacer(minLength: Theme.Space.s)
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
-                .projectCard(radius: Theme.Radius.card)
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }.buttonStyle(PressableStyle())
         }
@@ -205,20 +203,20 @@ struct ProjectsBidsTab: View {
         let closing = open.filter { $0.t.weeksToBid <= 0 }.count
         let blocked = rows.reduce(0) { $0 + $1.board.tenders.filter { !$0.qualifies && $0.myBid == nil }.count }
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            ProjectCaps(title: "OPEN TENDERS · \(open.count)", note: closing > 0 ? "\(closing) close this week" : "")
+            ProjectCaps(title: "Open tenders · \(open.count)", note: closing > 0 ? "\(closing) close this week" : "")
             if open.isEmpty {
-                Text(rows.isEmpty ? "None of your companies takes projects yet." : "No tender is open to you right now. New ones are posted through the weeks.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                EmptyState(title: rows.isEmpty ? "No project companies yet" : "No open tender for you",
+                           message: rows.isEmpty ? "None of your companies takes projects yet." : "New ones are posted through the weeks.", centered: false)
             }
-            ForEach(open) { x in tenderCard(x) }
+            ProjectList(data: open) { (x: Tender) in tenderCard(x) }
             if blocked > 0 {
                 Text("\(blocked) more \(blocked == 1 ? "tender needs" : "tenders need") requirements your firms do not meet yet.").textStyle(.caption, tint: Theme.inkFaint)
             }
             if !sent.isEmpty {
-                ProjectCaps(title: "YOUR BIDS · \(sent.count)", note: "waiting for a decision").padding(.top, Theme.Space.s)
-                ForEach(sent) { x in sentCard(x) }
+                ProjectCaps(title: "Your bids · \(sent.count)", note: "waiting for a decision")
+                ProjectList(data: sent) { (x: Tender) in sentCard(x) }
             }
-            ProjectCaps(title: "START SOMETHING").padding(.top, Theme.Space.s)
+            ProjectCaps(title: "Start something")
             startTiles
         }
         .confirmAction($pending)
@@ -234,29 +232,20 @@ struct ProjectsBidsTab: View {
                     Text(t.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2)
                     Text("\(x.co.name) · \(t.buyer)").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
                 Text(closes).textStyle(.caption, tint: t.weeksToBid <= 1 ? Theme.warn : Theme.inkFaint)
             }
             ProjectFigures(items: [("Budget", store.short(t.worth, in: x.co), Theme.ivory), ("Your cost est.", t.costEstimate.map { store.short($0, in: x.co) } ?? "n/a", Theme.ivory), ("Rivals bidding", t.rivals, Theme.ivory)])
             HStack(spacing: Theme.Space.s) {
-                NavigationLink { ProjectTimelineDetail(lineID: "t\(x.co.id)-\(t.id)") } label: {
-                    outlined("Details", strong: false)
-                }.buttonStyle(PressableStyle())
+                NavigationLink { ProjectTimelineDetail(lineID: "t\(x.co.id)-\(t.id)") } label: { Text("Details") }
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
                 Button { Haptics.choose(); Motion.animate(Motion.quickAnimation) { openKey = openKey == x.id ? nil : x.id; priceIndex = 3; higherQuality = false } } label: {
-                    outlined(openKey == x.id ? "Close" : "Place a bid ›", strong: true)
-                }.buttonStyle(PressableStyle())
+                    Text(openKey == x.id ? "Close" : "Place a bid")
+                }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: Theme.accent))
             }
             if openKey == x.id { bidPanel(x) }
         }
-        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
-        .projectCard()
-    }
-
-    private func outlined(_ s: String, strong: Bool) -> some View {
-        Text(s).font(.system(size: 13, weight: strong ? .medium : .regular)).foregroundStyle(Theme.ivory)
-            .frame(maxWidth: .infinity).padding(.vertical, Theme.Space.s)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).strokeBorder(strong ? Theme.gold : Theme.borderStrong, lineWidth: 1))
-            .contentShape(Rectangle())
     }
 
     private func bidPanel(_ x: Tender) -> some View {
@@ -266,10 +255,10 @@ struct ProjectsBidsTab: View {
             SegmentedChoice(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
             Toggle(isOn: $higherQuality) {
                 Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
-            }.tint(Theme.gold)
+            }.tint(Theme.accent).frame(minHeight: 44)
             Text("Lower prices win more often on price-heavy tenders, but you deliver at that price. Bids close in \(max(0, t.weeksToBid).weeksText); the buyer decides on \(GameCalendar.dateString(week: t.awardWeek)). Writing the bid costs \(store.money(t.bidCost, in: x.co)) even if you lose.")
-                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            QuietButton(title: "Send the bid", fullWidth: true) { askBid(x) }
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+            Button("Send the bid") { Haptics.tap(); askBid(x) }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
         }
         .padding(.top, Theme.Space.xxs)
     }
@@ -298,18 +287,16 @@ struct ProjectsBidsTab: View {
                     Text(t.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2)
                     Text("\(x.co.name) · \(t.buyer) · worth \(store.short(t.worth, in: x.co))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
                 Text(t.myBid.map { "Bid \(Int(($0 * 100).rounded()))%" } ?? "Bid sent").textStyle(.caption, tint: Theme.accent)
             }
             Text("Decision on \(GameCalendar.dateString(week: t.awardWeek)). You can take the bid back until the bids close; a new one costs the writing fee again.")
-                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             Button {
                 Haptics.tap()
                 store.settle(store.act { $0.withdrawBid(companyID: x.co.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.")
-            } label: { outlined("Take the bid back", strong: false) }.buttonStyle(PressableStyle())
+            } label: { Text("Take the bid back") }.buttonStyle(SecondaryButtonStyle(size: .compact))
         }
-        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
-        .projectCard()
     }
 
     // START SOMETHING: four tiles; each goes to the company section that does it (a menu when several companies could).
@@ -317,7 +304,7 @@ struct ProjectsBidsTab: View {
         let developers = rows.filter { $0.board.isDeveloper }.map(\.co)
         let contractors = rows.filter { !$0.board.isDeveloper }.map(\.co)
         let landlords = engine.state.companies.filter { $0.status.isLive && engine.tradeInfo(companyID: $0.id)?.family == "rent" }
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+        return LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible(), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
             startTile("Refurbishment", "improve a property", "M4 20 H20 M6 20 V10 L12 5 L18 10 V20", landlords, .properties, none: "No company owns property yet.")
             startTile("Developer project", "build and sell", "M5 21 V4 H15 V21 M15 9 H19 V21", developers, .projects, none: "No developer company yet.")
             startTile("Event or contract", "one-off work", "M5 5 H19 V20 H5 Z M5 10 H19 M9 3 V7 M15 3 V7", contractors, .projects, none: "No contracting or events company yet.")
@@ -339,15 +326,16 @@ struct ProjectsBidsTab: View {
 
     private func tile(_ name: String, _ note: String, _ icon: String) -> some View {
         HStack(spacing: Theme.Space.m) {
-            GlyphView(glyph: icon, size: 18, weight: 1.5)
+            LedgerGlyph(glyph: icon, size: Theme.Icon.medium, tint: Theme.accent)
             VStack(alignment: .leading, spacing: 0) {
                 Text(name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
                 Text(note).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.m)
-        .projectCard(radius: Theme.Radius.card)
+        .padding(Theme.Space.m)
+        .frame(minHeight: 44)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
         .contentShape(Rectangle())
     }
 }
@@ -364,25 +352,26 @@ struct ProjectsFinishedTab: View {
         let results = rows.flatMap { r in r.board.myTenders.filter { $0.outcome != nil }.map { (co: r.co, t: $0) } }
         let jobsDone = rows.filter { !$0.board.isDeveloper && $0.board.finishedCount > 0 }
         if devs.isEmpty && results.isEmpty && jobsDone.isEmpty {
-            Text("Nothing finished yet. Completed jobs, sold-out developments and decided tenders collect here.").textStyle(.caption, tint: Theme.inkFaint).padding(.vertical, Theme.Space.s)
+            EmptyState(glyph: Glyph.projects, title: "Nothing finished yet", message: "Completed jobs, sold-out developments and decided tenders collect here.")
         }
         if !devs.isEmpty {
-            ProjectCaps(title: "DEVELOPMENTS · \(devs.count)")
-            ForEach(Array(devs.enumerated()), id: \.offset) { _, x in
+            ProjectCaps(title: "Developments · \(devs.count)")
+            ForEach(Array(devs.enumerated()), id: \.offset) { n, x in
                 let profit = x.f.revenue - x.f.cost
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(x.f.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
                         Text("\(x.co.name) · sold for \(store.short(x.f.revenue, in: x.co)) · cost \(store.short(x.f.cost, in: x.co))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
                     }
-                    Spacer(minLength: 8)
+                    Spacer(minLength: Theme.Space.s)
                     Text((profit < 0 ? "−" : "+") + store.short(abs(profit), in: x.co)).textStyle(.headline, tint: profit < 0 ? Theme.loss : Theme.gain, numeric: true, weight: .semibold)
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m).projectCard(radius: Theme.Radius.card)
+                .padding(.vertical, Theme.Space.m)
+                .overlay(alignment: .top) { if n > 0 { Hairline() } }
             }
         }
         if !jobsDone.isEmpty {
-            ProjectCaps(title: "JOBS AND EVENTS DONE").padding(.top, Theme.Space.xs)
+            ProjectCaps(title: "Jobs and events done")
             ForEach(jobsDone, id: \.co.id) { r in
                 Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
                     ProjectCardRow(title: r.co.name, sub: "\(r.board.finishedCount) finished")
@@ -390,20 +379,18 @@ struct ProjectsFinishedTab: View {
             }
         }
         if !results.isEmpty {
-            ProjectCaps(title: "TENDER RESULTS").padding(.top, Theme.Space.xs)
-            ForEach(Array(results.prefix(12).enumerated()), id: \.offset) { _, x in
+            ProjectCaps(title: "Tender results")
+            ForEach(Array(results.prefix(12).enumerated()), id: \.offset) { n, x in
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(x.t.title.tidyMoney).textStyle(.body, tint: Theme.ink).lineLimit(1)
                         Text("\(x.co.name) · \(x.t.buyer) · worth \(store.short(x.t.worth, in: x.co))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                     }
-                    Spacer(minLength: 8)
-                    Text(x.t.outcome == "won" ? "Won" : x.t.outcome == "lost" ? "Lost" : "Closed")
-                        .font(.system(size: 11.5)).foregroundStyle(x.t.outcome == "won" ? Theme.gain : Theme.ivoryFaint)
-                        .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+                    Spacer(minLength: Theme.Space.s)
+                    AcctPill(text: x.t.outcome == "won" ? "Won" : x.t.outcome == "lost" ? "Lost" : "Closed", tone: x.t.outcome == "won" ? .good : .neutral)
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m).projectCard(radius: Theme.Radius.card)
+                .padding(.vertical, Theme.Space.m)
+                .overlay(alignment: .top) { if n > 0 { Hairline() } }
             }
         }
     }

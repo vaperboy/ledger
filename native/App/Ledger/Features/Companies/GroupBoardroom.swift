@@ -27,7 +27,7 @@ struct GroupBoardroom: View {
 
     var body: some View {
         let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             ForEach(cos) { (c: Company) in
                 companyCard(c, showName: cos.count > 1)
             }
@@ -48,30 +48,31 @@ struct GroupBoardroom: View {
         let people: [OwnerMeetings.Counterpart] = engine.ownerCounterparts(companyID: c.id)
         let advisory: Bool = engine.boardIsAdvisory(companyID: c.id)
         let dir: String? = engine.companyDirective(companyID: c.id)
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if showName { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            if showName { Text(c.name).capsLabel() }
             Text(advisory ? "You own it alone, so the board advises and you decide. Votes bind once a co-owner joins." : "Co-owners vote by their shares. Ask the board before a big move.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            if let dir { Chip(text: "Direction: " + OwnerMeetings.directiveLabel(dir), tint: Theme.gold) }
-            Button { Haptics.tap(); round = RoundRef(companyID: c.id) } label: {
-                CardRow(glyph: Glyph.achievements, title: "Call the board", subtitle: "Everyone reports from their seat; ask what they think of a big move")
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("boardroom-call-\(c.id)")
+                .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            if let dir { Chip(text: "Direction: " + OwnerMeetings.directiveLabel(dir), tint: Theme.accent) }
+            // The people come first: a talk is the main thing to do here; the board round follows as one row.
             if people.isEmpty {
-                Text("Nobody runs \(c.name) but you. Appoint a manager or department heads under Management to talk with them.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                EmptyState(glyph: Glyph.person, title: "Nobody runs \(c.name) but you", message: "Appoint a manager or department heads under Management to talk with them.", centered: false)
             } else {
-                Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(people.enumerated()), id: \.element.id) { (n: Int, p: OwnerMeetings.Counterpart) in
-                            personRow(c, p, first: n == 0)
-                        }
+                VStack(spacing: 0) {
+                    ForEach(Array(people.enumerated()), id: \.element.id) { (n: Int, p: OwnerMeetings.Counterpart) in
+                        if n > 0 { Hairline() }
+                        personRow(c, p)
                     }
                 }
+            }
+            VStack(spacing: 0) {
+                Hairline()
+                LedgerRow(leading: .glyph(Glyph.achievements), title: "Call the board", subtitle: "Everyone reports from their seat; ask what they think of a big move",
+                          identifier: "boardroom-call-\(c.id)", action: { round = RoundRef(companyID: c.id) })
             }
         }
     }
 
-    private func personRow(_ c: Company, _ p: OwnerMeetings.Counterpart, first: Bool) -> some View {
+    private func personRow(_ c: Company, _ p: OwnerMeetings.Counterpart) -> some View {
         let cid: Int = c.id
         let pid: Int = p.id
         return Button { Haptics.tap(); talk = TalkRef(companyID: cid, personID: pid) } label: {
@@ -79,17 +80,17 @@ struct GroupBoardroom: View {
                 if let person = engine.state.people[pid] {
                     ThumbnailView(kind: .person, key: person.role, size: 32, initials: p.name, face: person.faceKey)
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(p.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(p.name).textStyle(.headline).lineLimit(1)
                     Text(p.title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
-                Spacer(minLength: 6)
-                Text("Talk").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minWidth: 44, minHeight: 36, alignment: .trailing)
+                Spacer(minLength: Theme.Space.s)
+                Text("Talk").textStyle(.body, tint: Theme.accent, weight: .medium)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
-            .frame(minHeight: 46)
+            .padding(.vertical, Theme.Space.m)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
-            .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("boardroom-talk-\(pid)")
@@ -172,16 +173,15 @@ struct OwnerTalkSheet: View {
         }
     }
 
+    /// The person speaks first (their name once, then their words as quotes), then your answers with what each one does.
     private func sceneView(_ sc: OwnerMeetings.Scene) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            ForEach(Array(sc.lines.enumerated()), id: \.offset) { (_: Int, l: String) in
-                Text("\(sc.speaker): \"\(l)\"").popupText(.body).fixedSize(horizontal: false, vertical: true)
-            }
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            DialogueQuote(speaker: sc.speaker, lines: sc.lines)
             Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
             ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
                 ChoiceCard(title: c.label, subtitle: c.preview, selected: false) { choose(sc.topic, c.id) }
             }
-            QuietButton(title: "Back", fullWidth: true) { topic = nil }
+            Button("Back") { Haptics.tap(); topic = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
         }
     }
 
@@ -199,21 +199,23 @@ struct OwnerTalkSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(o.text).popupText(o.tone == "bad" ? .risk : .effect).fixedSize(horizontal: false, vertical: true)
             if o.resigned { dismissButton } else {
-                QuietButton(title: "Talk about something else", fullWidth: true) { outcome = nil; topic = nil }
-                QuietButton(title: "Done", fullWidth: true) { dismiss() }
+                Button("Done") { Haptics.tap(); dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                Button("Talk about something else") { Haptics.tap(); outcome = nil; topic = nil }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             }
         }
     }
 
-    private var dismissButton: some View { QuietButton(title: "Close", fullWidth: true) { dismiss() } }
+    private var dismissButton: some View {
+        Button("Close") { Haptics.tap(); dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
+    }
 
     private func voteView(_ e: GameEngine) -> some View {
         let v: ManagerModel.BoardVote = e.ceoVote(companyID: companyID)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             BoardVoteLines(vote: v, kind: "ceo")
             Button(v.active ? "Put it to the vote" : "Replace them") { Haptics.tap(); dismiss(); onReplace(companyID) }
-                .buttonStyle(TinyButtonStyle(tint: Theme.loss))
-            QuietButton(title: "Back", fullWidth: true) { voting = false }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: Theme.loss))
+            Button("Back") { Haptics.tap(); voting = false }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
         }
     }
 }
@@ -230,18 +232,17 @@ struct BoardRoundSheet: View {
         let name: String = store.engine?.state.company(companyID)?.name ?? "Board"
         Group {
             if let e = store.engine {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     if let k = kind {
                         BoardVoteLines(vote: e.advisoryVote(kind: k, companyID: companyID), kind: k)
-                        QuietButton(title: "Back", fullWidth: true) { kind = nil }
+                        Button("Back") { Haptics.tap(); kind = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
                     } else {
                         let lines: [OwnerMeetings.RoundLine] = e.boardRound(companyID: companyID)
-                        if lines.isEmpty { Text("Nobody sits at this table yet. Appoint a manager or department heads under Management.").popupText(.caption) }
+                        if lines.isEmpty {
+                            EmptyState(glyph: Glyph.person, title: "Nobody sits at this table yet", message: "Appoint a manager or department heads under Management.", centered: false)
+                        }
                         ForEach(lines) { (l: OwnerMeetings.RoundLine) in
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("\(l.name) \u{00B7} \(l.title)").popupText(.rowLabel)
-                                Text("\"\(l.text)\"").popupText(.body).fixedSize(horizontal: false, vertical: true)
-                            }.padding(.vertical, Theme.Space.xxs)
+                            DialogueQuote(speaker: "\(l.name) \u{00B7} \(l.title)", lines: [l.text])
                         }
                         Text("Ask the board").popupText(.subtitle).padding(.top, Theme.Space.xs)
                         ChoiceCard(title: "Should we sell it?", subtitle: "Each seat gives an opinion", selected: false) { kind = "sell" }
@@ -281,5 +282,25 @@ struct BoardVoteLines: View {
             Text("\(l.name) \u{00B7} \(l.title)" + (shares ? " \(Int(l.percent.rounded()))%" : "") + ": " + (l.yes ? "Yes" : "No")).popupText(.rowLabel)
             if !l.reason.isEmpty { Text(l.reason).popupText(.caption).fixedSize(horizontal: false, vertical: true) }
         }
+    }
+}
+
+/// What someone says in a meeting: their name once, then each line as a quote beside a thin accent rule.
+struct DialogueQuote: View {
+    var speaker: String
+    var lines: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(speaker).popupText(.rowLabel)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { (_: Int, l: String) in
+                    Text("\u{201C}\(l)\u{201D}").popupText(.body).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.leading, Theme.Space.m)
+            .overlay(alignment: .leading) { Rectangle().fill(Theme.accent.opacity(0.5)).frame(width: 1.5) }
+        }
+        .accessibilityElement(children: .combine)
     }
 }

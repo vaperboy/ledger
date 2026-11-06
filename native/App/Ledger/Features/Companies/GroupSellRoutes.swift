@@ -22,20 +22,37 @@ struct SaleRoutePicker: View {
 
     var body: some View {
         let routes: [CompanySale.Route] = engine.saleRoutes(companyID: company.id)
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("How do you want to sell? Listing is not a sale: nothing sells until you accept an offer or hammer a bid.")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            ForEach(routes) { (r: CompanySale.Route) in
-                Button { Haptics.tap(); pick(r) } label: {
-                    CardRow(glyph: glyph(r.id), title: r.title, subtitle: r.available ? r.pitch : r.why, value: r.available ? "" : "Closed")
-                        .opacity(r.available ? 1 : 0.55)
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("sell-route-\(r.id)")
+        let open: [CompanySale.Route] = routes.filter { (r: CompanySale.Route) -> Bool in r.available }
+        let shut: [CompanySale.Route] = routes.filter { (r: CompanySale.Route) -> Bool in !r.available }
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("How do you want to sell?").textStyle(.title)
+                Text("Listing is not a sale: nothing sells until you accept an offer or hammer a bid.")
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            }
+            if open.isEmpty {
+                EmptyState(glyph: Glyph.lock, title: "No way to sell is open now", message: "Each route below says what it needs.", centered: false)
+            } else {
+                routeList(open)
+            }
+            if !shut.isEmpty {
+                LedgerSection("Not open now") { routeList(shut) }
             }
         }
         .confirmAction($pending)
         .centerSheet(item: $sheet) { (s: RouteSheet) in sheetContent(s) }
+    }
+
+    /// Routes as calm rows under hairlines: an open route opens its step, a shut one says why (its subtitle) and is not a link.
+    private func routeList(_ list: [CompanySale.Route]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, r: CompanySale.Route) in
+                if n > 0 { Hairline() }
+                LedgerRow(leading: .glyph(glyph(r.id)), leadingTint: r.available ? nil : Theme.inkFaint, title: r.title,
+                          subtitle: r.available ? r.pitch : r.why, chevron: r.available, lineLimit: 3,
+                          identifier: "sell-route-\(r.id)", action: { pick(r) })
+            }
+        }
     }
 
     private func glyph(_ id: String) -> String {
@@ -109,16 +126,21 @@ struct SaleRoutePicker: View {
         let rivals: [CompanySale.MergeCandidate] = engine.mergeCandidates(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("The rival joins your company (more size, more customers). Its owner takes a share of the merged company; you keep the rest and the control. Less than 30% may be turned down.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-            ForEach(rivals) { (r: CompanySale.MergeCandidate) in
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text(r.name).popupText(.rowValue)
-                    Text("Owned by \(r.owner)").popupText(.caption)
-                    WrapRow {
+            if rivals.isEmpty { EmptyState(title: "No rival to merge with", message: "No rival in this trade and city is open to a merger now.", centered: false) }
+            ForEach(Array(rivals.enumerated()), id: \.element.id) { (n: Int, r: CompanySale.MergeCandidate) in
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(r.name).popupText(.rowValue)
+                        Text("Owned by \(r.owner)").popupText(.caption)
+                    }
+                    WrapRow(spacing: Theme.Space.s) {
                         ForEach([20, 25, 30], id: \.self) { (p: Int) in
-                            Button("Offer \(p)%") { merge(r, p) }.buttonStyle(QuietButtonStyle())
+                            Button("Offer \(p)%") { merge(r, p) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: p == 30 ? Theme.accent : nil))
                         }
                     }
-                }.padding(.vertical, Theme.Space.xs)
+                }
+                .padding(.vertical, Theme.Space.s)
+                .overlay(alignment: .top) { if n > 0 { Hairline() } }
             }
         }
         .centerSheetTitle("Merge with a rival")
@@ -145,7 +167,7 @@ struct SaleRoutePicker: View {
         let buyers: [CompanySale.GroupBuyer] = engine.groupBuyers(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("A rival group buys at its own quote and the company becomes one of its sites. Quotes move week to week.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-            if buyers.isEmpty { Text("No group is active in this country.").popupText(.caption) }
+            if buyers.isEmpty { EmptyState(title: "No group is buying here", message: "No rival group is active in this country.", centered: false) }
             ForEach(buyers) { (b: CompanySale.GroupBuyer) in
                 let mine: Double = b.price * company.ownership / 100
                 ChoiceCard(title: b.name, subtitle: "Pays " + cur.tidyShort(mine) + " for your share", selected: false) { sellToGroup(b, mine, cur) }
@@ -192,7 +214,7 @@ struct SaleRoutePicker: View {
         let countries: [Country] = engine.masterFranchiseCountries(companyID: company.id).filter { (c: Country) -> Bool in !masters.contains { (m: JSONValue) -> Bool in m["c"].string == c.code } }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Sign over the franchise rights of a country to a master franchisee. It costs legal work and cannot be undone.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-            if countries.isEmpty { Text("Every country you could sell is already taken.").popupText(.caption) }
+            if countries.isEmpty { EmptyState(title: "Nothing left to sign", message: "Every country you could sell is already taken.", centered: false) }
             ForEach(countries) { (c: Country) in
                 ChoiceCard(title: "\(c.flag) \(c.name)", subtitle: "Master franchise", selected: false) { sellMaster(c) }
             }
