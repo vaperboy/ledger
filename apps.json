@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.76",
+          "buildVersion": "76",
+          "date": "2026-11-06T12:19:03Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v76/Ledger-unsigned.ipa",
+          "size": 29296541,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; sheet text uses the shared popup styles\n- Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports "
+        },
+        {
           "version": "1.0.75",
           "buildVersion": "75",
           "date": "2026-11-06T11:58:05Z",
@@ -187,22 +196,13 @@
           "size": 28783869,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Balance: security, driving school, physio, dental, law now viable (staff cover and congestion fixes)\n- Real items for every trade, new-car dealership, used car dealer rework, travel/insurance/finance brokers\n- Item list and item page like the staff list, live profit/loss price slider\n\n# Missing / coming next\n- Popup system rework (one overlay host) in progress; suppliers jump-back fix comes with it\n- Own-delivery fee, typed prices per trade, chain/franchise steps, photos for vehicles/premises/equipment\n- Not yet tested on device: expect rough edges"
-        },
-        {
-          "version": "1.0.56",
-          "buildVersion": "56",
-          "date": "2026-11-04T21:00:10Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v56/Ledger-unsigned.ipa",
-          "size": 28743803,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Balance: security, driving school, physio, dental, law now viable (staff cover and congestion fixes)\n- Real items for every trade, new-car dealership, used car dealer rework, travel/insurance/finance brokers\n- Item list and item page like the staff list, live profit/loss price slider\n\n# Missing / coming next\n- Popup system rework (one overlay host) in progress; suppliers jump-back fix comes with it\n- Own-delivery fee, typed prices per trade, chain/franchise steps, photos for vehicles/premises/equipment\n- Not yet tested on device: expect rough edges"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.75",
-      "versionDate": "2026-11-06T11:58:05Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v75/Ledger-unsigned.ipa",
-      "size": 29314653
+      "version": "1.0.76",
+      "versionDate": "2026-11-06T12:19:03Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v76/Ledger-unsigned.ipa",
+      "size": 29296541
     }
   ]
 }
