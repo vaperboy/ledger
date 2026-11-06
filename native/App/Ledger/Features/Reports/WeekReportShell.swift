@@ -6,7 +6,8 @@ import Simulation
 /// The reveal shown when a week, month or year closes: title and period, one big profit number that
 /// counts up, one story sentence, three bars on one scale, one thing to do, a record line, then "Full report" and "Continue".
 /// Month and year add a movers list and one extreme line (the year also a 12-bar strip, tax and net worth) and keep their existing
-/// detail below a "More" divider. Real figures only; Reduce Motion shows everything at once. Continue works from the first frame.
+/// detail below a "More" divider. Finished goals that need no claim are listed inside the report (and leave the reward queue with it),
+/// so a week close is one popup, not a chain. Real figures only; Reduce Motion shows everything at once. Continue works from the first frame.
 struct WeekReportShell<More: View>: View {
     @EnvironmentObject var store: GameStore
     @Environment(AdCoordinator.self) private var ads
@@ -44,19 +45,73 @@ struct WeekReportShell<More: View>: View {
                 extras(r)
                 nextCard(r)
                 recordLine(r)
+                goalsBlock
                 moreBlock(r)
             }
         } else if loaded {
-            more()
+            VStack(alignment: .leading, spacing: PopupSpace.card) {
+                more()
+                goalsBlock
+            }
         }
+    }
+
+    // MARK: Goals reached this week
+
+    /// The finished goals waiting behind this report, in queue order, that need no claim of their own.
+    private var foldedGoals: [Celebration] {
+        let e: GameEngine? = store.engine
+        return Array(store.celebrationQueue.prefix(while: { (c: Celebration) -> Bool in CelebrationPopup.foldsIntoReport(c, e) }))
+    }
+
+    /// The goal after them, when it names a screen: its button opens that screen.
+    private var nextLadderGoal: PlayerGoals.LadderGoal? {
+        guard let e = store.engine, let g = PlayerGoals.currentLadderGoal(e.state), !g.link.isEmpty, !g.button.isEmpty else { return nil }
+        return g
+    }
+
+    @ViewBuilder private var goalsBlock: some View {
+        let goals: [Celebration] = foldedGoals
+        if !goals.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text(goals.count == 1 ? "Goal reached" : "Goals reached").capsLabel()
+                ForEach(goals) { (g: Celebration) in
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: Theme.gain)
+                        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                            Text(g.title).popupText(.body)
+                            if !g.reward.isEmpty { Text(g.reward).popupText(.caption) }
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if let next = nextLadderGoal {
+                    Button(next.button) {
+                        Haptics.tap()
+                        dismissFolded()
+                        store.dismissReportSheet()
+                        _ = store.openLadderLink(next.link)
+                    }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("report-next-goal")
+                }
+            }
+            .padding(.top, Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .top) { Hairline() }
+        }
+    }
+
+    /// The goals shown here have been seen: they leave the reward queue so no popup repeats them.
+    private func dismissFolded() {
+        let ids: Set<Int> = Set(foldedGoals.map { (c: Celebration) -> Int in c.id })
+        while let first = store.celebrationQueue.first, ids.contains(first.id) { store.dismissCelebration() }
     }
 
     private var footer: some View {
         PopupActionBar {
-            Button { Haptics.tap(); store.dismissReportSheet(openReports: true) } label: {
-                Text("Full report").popupText(.effect).frame(minHeight: 40).contentShape(Rectangle())
-            }
-            .buttonStyle(PressableStyle()).accessibilityIdentifier("report-open")
+            Button("Full report") { Haptics.tap(); dismissFolded(); store.dismissReportSheet(openReports: true) }
+                .buttonStyle(TertiaryButtonStyle()).accessibilityIdentifier("report-open")
             PopupOptionButton(title: "Continue", highlighted: true, identifier: "report-continue") { continueTapped() }
         }
     }
@@ -67,6 +122,7 @@ struct WeekReportShell<More: View>: View {
         let week: Int = store.engine?.state.week ?? 0
         let m4: Bool = store.engine.map { (e: GameEngine) -> Bool in PlayerGoals.ladder(e.state)?.first(where: { (g: PlayerGoals.LadderGoal) -> Bool in g.id == "M4" })?.done ?? true } ?? true
         let blocking: Bool = store.blockingMessageID != nil
+        dismissFolded()
         store.dismissReportSheet()
         if isWeek { Task { await ads.weekReportContinued(reportWeek: week, m4Done: m4, blockingInboxOpen: blocking) } }
     }
@@ -200,22 +256,22 @@ struct WeekReportShell<More: View>: View {
 
     @ViewBuilder private func nextCard(_ r: WeekRecap) -> some View {
         if let n = r.next {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text("One thing to do").capsLabel()
                 Text(n.title.tidyMoney).popupText(.title)
                 Text(n.detail.tidyMoney).popupText(.subtitle)
                 Button {
                     Haptics.tap()
+                    dismissFolded()
                     store.dismissReportSheet()
                     store.go(popup: n.action)
                 } label: {
                     Text(n.buttonTitle)
                 }
-                .buttonStyle(FoilButtonStyle()).padding(.top, 8).accessibilityIdentifier("report-next")
+                .buttonStyle(SecondaryButtonStyle(tint: Theme.accent)).padding(.top, Theme.Space.s).accessibilityIdentifier("report-next")
             }
-            .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .padding(.top, Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .top) { Hairline() }
             .offset(y: (cardShown || reduceMotion) ? 0 : 24)
             .opacity((cardShown || reduceMotion) ? 1 : 0)
         }
@@ -250,9 +306,9 @@ struct WeekReportShell<More: View>: View {
     @ViewBuilder private func moreBlock(_ r: WeekRecap) -> some View {
         if r.kind != .week {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
+                HStack(spacing: Theme.Space.m) {
                     Text("More").capsLabel()
-                    Rectangle().fill(Theme.divider).frame(height: 1)
+                    Hairline()
                 }
                 more()
             }

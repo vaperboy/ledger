@@ -185,8 +185,15 @@ struct CelebrationPopup: View {
 
     /// A first-step reward that is finished and not yet taken under this title. A ladder goal has none (the engine paid its reward when it
     /// finished), so it is closed with "Nice" instead of a claim button that could only say "Already claimed.".
-    private var claimableStep: PlayerGoals.FirstStep? {
-        (store.engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed })
+    private var claimableStep: PlayerGoals.FirstStep? { Self.claimableStep(item, store.engine) }
+
+    static func claimableStep(_ item: Celebration, _ engine: GameEngine?) -> PlayerGoals.FirstStep? {
+        (engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed })
+    }
+
+    /// A finished goal with nothing to claim: the week report tells it in a line instead of this popup.
+    static func foldsIntoReport(_ item: Celebration, _ engine: GameEngine?) -> Bool {
+        item.kind == "goal" && claimableStep(item, engine) == nil
     }
 
     /// The goal after a finished ladder goal, when it names a screen: its button opens that screen.

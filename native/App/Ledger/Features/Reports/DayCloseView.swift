@@ -18,9 +18,9 @@ struct DayCloseView: View {
 
     var body: some View {
         let target: Int = min(max(daysDone, 0), 7)
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if let p = profit {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Profit today").popupText(.rowLabel)
                     CountedFigure(value: p, format: format, tint: Theme.change(p), instant: instant)
                         .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
@@ -29,8 +29,8 @@ struct DayCloseView: View {
             Text(priorityLine).popupText(.subtitle).lineLimit(1)
             bar(shown: reduceMotion ? target : filled)
         }
-        .padding(10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.caution.opacity(lostMoney ? 0.14 : 0)))
+        .padding(Theme.Space.s)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.warn.opacity(lostMoney ? 0.14 : 0)))
         .onAppear {
             filled = max(0, target - 1)
             Motion.animate(Motion.quick(reduceMotion)) { filled = target }
