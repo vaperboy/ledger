@@ -111,7 +111,7 @@ struct CompanyOwnershipSection: View {
             Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
                 HStack(spacing: Theme.Space.m) {
                     IconCircle(glyph: Glyph.person, size: 38)
-                    Text("You are the only owner.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("You are the only owner.").textStyle(.body, tint: Theme.inkSoft)
                 }
             }
         } else {

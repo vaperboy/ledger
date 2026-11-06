@@ -107,7 +107,7 @@ struct CompanySaleSection: View {
             Text(header(l, cur)).textStyle(.body, tint: Theme.inkSoft)
             if l.route == "auction" { auctionStrip(l, cur) }
             if l.offers.isEmpty {
-                Text(l.route == "auction" ? "No bid has reached your reserve yet." : "No offers yet. Buyers show up over the coming weeks.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text(l.route == "auction" ? "No bid has reached your reserve yet." : "No offers yet. Buyers show up over the coming weeks.").textStyle(.body, tint: Theme.inkSoft)
             }
             ForEach(Array(l.offers.sorted { (a: CompanySale.Offer, b: CompanySale.Offer) -> Bool in a.price > b.price }.enumerated()), id: \.element.id) { i, o in
                 if i > 0 { Hairline() }

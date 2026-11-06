@@ -25,7 +25,7 @@ struct CompanyFinanceBook: View {
             }
             .confirmAction($pending)
         } else {
-            CardSection("Book") { Text("This company has no book of business to show yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+            CardSection("Book") { Text("This company has no book of business to show yet.").textStyle(.body, tint: Theme.inkSoft) }
         }
     }
 
@@ -74,7 +74,7 @@ struct CompanyFinanceBook: View {
             }
             if sellers.isEmpty {
                 CardSection("Salespeople") {
-                    Text("No salespeople yet. Hire agents under Team; each is verified per product before they sell it.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("No salespeople yet. Hire agents under Team; each is verified per product before they sell it.").textStyle(.body, tint: Theme.inkSoft)
                 }
             } else {
                 CardSection("Salespeople") {
