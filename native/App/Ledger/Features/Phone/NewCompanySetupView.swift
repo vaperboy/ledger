@@ -13,6 +13,8 @@ struct NewCompanyDraft: Equatable {
     var name: String
     var pick: NewCompanyPlan.Pick?
     var choices = SetupChoices()
+    /// The accountant a limited company is given; nil takes the standard one.
+    var accountantID: Int? = nil
 
     /// The size the picker prices the trade at, so the figures here match the table to the penny.
     func size(_ e: GameEngine) -> Double? {
@@ -47,6 +49,7 @@ struct NewCompanyDetailedSetupView: View {
     @State private var placeIndex: Int?
     @State private var goReview = false
     @State private var choices = SetupChoices()
+    @State private var accountantID: Int?
 
     init(tradeID: String, cityID: String) {
         self.tradeID = tradeID
@@ -59,7 +62,7 @@ struct NewCompanyDetailedSetupView: View {
             let form: LegalForm = (limited || t.needsLimitedCompany) ? .limited : .soleTrader
             let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
-            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices)
+            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices, accountantID: accountantID)
             let plan: NewCompanyPlan? = draft.plan(e)
             let costs: StartUpCostBreakdown? = draft.costs(e)
             let monthly: MonthlyFixedCostEstimate? = draft.monthly(e)
@@ -68,6 +71,7 @@ struct NewCompanyDetailedSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     fields(t, country, form, costs)
+                    if form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID) }
                     if let plan { premisesBlock(plan) }
                     if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
                     if let monthly { monthlyCard(monthly) }

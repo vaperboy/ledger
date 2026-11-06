@@ -21,6 +21,7 @@ struct TradeDetailView: View {
     @State private var buying = false
     @State private var pending: PendingAction?
     @State private var choices = SetupChoices()
+    @State private var accountantID: Int?
 
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
@@ -46,6 +47,7 @@ struct TradeDetailView: View {
                         if let plan {
                             premises(t, plan, cur)
                             PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
+                            if form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID) }
                             risks(plan)
                             if plan.registrationShortfall > 0 {
                                 NoteCard(text: "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital before this company can be registered. Move money from savings in Bank.", glyph: Glyph.warning, tint: Theme.caution)
@@ -229,8 +231,9 @@ struct TradeDetailView: View {
         let nm = name.trimmingCharacters(in: .whitespaces)
         let sz = size
         let chosen = choices
+        let accountant = accountantID
         return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
-            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen) }
+            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen, accountantID: accountant) }
             switch r {
             case .success(let out)?:
                 Haptics.success()

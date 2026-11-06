@@ -157,6 +157,7 @@ struct NewHoldingView: View {
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @State private var name = ""
     @State private var picked: Set<Int> = []
+    @State private var accountantID: Int?
 
     var body: some View {
         if let e = store.engine {
@@ -190,6 +191,7 @@ struct NewHoldingView: View {
                             }
                         }
                     }
+                    AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID)
                     MoreBlock("What it costs") {
                         VStack(spacing: 0) {
                             FlatRow(label: "Share capital", value: cur.tidyShort(country.shareCapitalMinimum), sub: "stays in the holding", rule: false)
@@ -197,7 +199,7 @@ struct NewHoldingView: View {
                         }
                     }
                     HStack { Button("Create the holding company") {
-                        let r = store.act { $0.createHolding(name: name, companies: Array(picked)) }
+                        let r = store.act { $0.createHolding(name: name, companies: Array(picked), accountantID: accountantID) }
                         switch r {
                         case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.openCompany(id)
                         case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.tidyShort(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")

@@ -46,6 +46,8 @@ enum AppRequest: Equatable {
     case report(ReportRef)
     /// Accounting on one company (its Payroll page when `payroll` is true).
     case accounting(companyID: Int, payroll: Bool)
+    /// Accounting on one company's Statements page (balance sheet and cash flow).
+    case accountingReports(companyID: Int)
     /// The Market app on one company (0 = all markets).
     case market(companyID: Int)
     /// The Reviews app on one company.
@@ -758,6 +760,11 @@ final class GameStore: ObservableObject {
         openApp(.accounting, request: .accounting(companyID: companyID, payroll: payroll))
     }
 
+    /// Opens the Accounting app on one company's Statements page (balance sheet and cash flow).
+    func openAccountingReports(companyID: Int) {
+        openApp(.accounting, request: .accountingReports(companyID: companyID))
+    }
+
     /// Opens the Market app (the Phone), on one company when `companyID` is given, else on all markets.
     func openMarket(companyID: Int? = nil) {
         openApp(.market, request: .market(companyID: companyID ?? 0))
@@ -803,6 +810,11 @@ final class GameStore: ObservableObject {
         guard case .accounting(let id, let payroll)? = appRequest else { return nil }
         appRequest = nil
         return (id, payroll)
+    }
+    func takeAccountingReportsRequest() -> Int? {
+        guard case .accountingReports(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return id
     }
     func takeMarketRequest() -> Int? {
         guard case .market(let id)? = appRequest else { return nil }

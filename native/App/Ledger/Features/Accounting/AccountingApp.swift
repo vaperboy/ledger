@@ -10,6 +10,7 @@ import Simulation
 /// Where the app is. `.home` is the root; every other page is pushed on `AcctModel.stack`.
 enum AcctRoute: Equatable {
     case home, transactions, payroll, invoices, suppliers, documents, settings
+    case balanceSheet, cashFlow
     case transaction(String)
     case invoice(String)
     case supplier(String)
@@ -136,6 +137,8 @@ struct AccountingApp: View {
         case .supplier(let id): AcctSupplierProfile(m: m, supplierID: id)
         case .documents: AcctDocuments(m: m)
         case .settings: AcctSettings(m: m)
+        case .balanceSheet: AcctBalanceSheet(m: m)
+        case .cashFlow: AcctCashFlow(m: m)
         case .access(let id): AcctAccessDetail(m: m, userID: id)
         case .addUser: AcctAddUser(m: m)
         }
@@ -158,6 +161,8 @@ struct AccountingApp: View {
         case .supplier: return ("Supplier", companyName)
         case .documents: return ("Documents", companyName)
         case .settings: return ("Settings", "Access and company records")
+        case .balanceSheet: return ("Balance sheet", companyName)
+        case .cashFlow: return ("Cash flow", companyName)
         case .access: return ("Access", companyName)
         case .addUser: return ("Add user", companyName)
         }
@@ -198,6 +203,13 @@ struct AccountingApp: View {
 
     /// A link from elsewhere (Team's payroll line, the Bank's payroll note, the Phone banner) names the company and page.
     private func take() {
+        if let id = store.takeAccountingReportsRequest() {
+            if store.engine?.state.company(id) != nil { m.companyID = id }
+            m.user = nil
+            m.userName = ""
+            m.stack = [.balanceSheet]
+            return
+        }
         guard let r = store.takeAccountingRequest() else { return }
         if store.engine?.state.company(r.companyID) != nil { m.companyID = r.companyID }
         m.user = nil
@@ -277,6 +289,8 @@ struct AcctHome: View {
             HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: "Manage salaries and timesheets", route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral, flag: payrollNeedsYou),
             HomeItem(key: "invoices", glyph: Glyph.reports, title: "Invoices & Payments", note: invoiceNote, route: .invoices, flag: overdue > 0),
             HomeItem(key: "suppliers", glyph: Glyph.projects, title: "Suppliers", note: "Supplier agreements and purchases", route: .suppliers),
+            HomeItem(key: "balance", glyph: Glyph.reports, title: "Balance sheet", note: "Assets, debts and equity", route: .balanceSheet),
+            HomeItem(key: "cashflow", glyph: Glyph.reports, title: "Cash flow", note: "Profit against cash, month by month", route: .cashFlow),
             HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Records, tax, contracts, insurance, applications", route: .documents),
             HomeItem(key: "settings", glyph: Glyph.settings, title: "Settings", note: "Access and user management", route: .settings),
         ]

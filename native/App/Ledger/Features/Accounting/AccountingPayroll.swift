@@ -58,7 +58,9 @@ struct AcctPayroll: View {
                            message: "Payroll starts when you hire someone or pay yourself a salary. It is run from here.")
             } else {
                 nextPayroll(o, r, fmt)
-                responsibility(o)
+                payday(o, fmt)
+                who(co, o, fmt)
+                CompanyPeopleCost(engine: e, company: co)
             }
             recent(e, co, fmt)
         } else {
@@ -98,10 +100,85 @@ struct AcctPayroll: View {
         return ("Ready", .good)
     }
 
-    private func responsibility(_ o: PayrollOverview) -> some View {
-        let who: String = o.responsibility?.name ?? "You"
+    // MARK: Pay day
+
+    private func payday(_ o: PayrollOverview, _ fmt: BankFmt) -> some View {
+        let notCovered: Bool = o.companyCash < o.estimate
+        return VStack(alignment: .leading, spacing: 8) {
+            AcctLabel(text: "Pay day")
+            AcctPanel(padding: 14) {
+                FlatRow(label: "Next pay day", value: o.nextPayText, rule: false)
+                FlatRow(label: "Wages owed now", value: fmt.full(o.wagesOwed), sub: "Booked, not yet paid out")
+                FlatRow(label: "Expected by pay day", value: fmt.full(o.estimate))
+                FlatRow(label: "Company cash", value: fmt.full(o.companyCash), tint: notCovered ? P.loss : P.ink)
+                FlatRow(label: "Approval", value: approvalText(o), sub: approvalNote(o))
+            }
+            paydayWarning(o, notCovered, fmt)
+        }
+    }
+
+    @ViewBuilder private func paydayWarning(_ o: PayrollOverview, _ notCovered: Bool, _ fmt: BankFmt) -> some View {
+        if o.wageShortfall > 0.5 {
+            AcctNotice(glyph: Glyph.warning, title: "Wages short by \(fmt.short(o.wageShortfall))",
+                       message: "The last payroll could not be paid in full. Move money into the company in the Bank, then pay it from Run payroll.", tint: P.loss)
+        } else if notCovered {
+            AcctNotice(glyph: Glyph.warning, title: "Cash does not cover the next payroll yet",
+                       message: "Put in \(fmt.short(o.estimate - o.companyCash)) more before pay day, or part of the wages stays unpaid.", tint: P.caution)
+        }
+    }
+
+    private func approvalText(_ o: PayrollOverview) -> String {
+        if o.mode != .manual { return "Run by " + (o.responsibility?.name ?? "someone else") }
+        return o.autoApproves ? "Approved for you" : "You approve it"
+    }
+
+    private func approvalNote(_ o: PayrollOverview) -> String {
+        if o.mode != .manual { return "Nothing to approve" }
+        return o.autoApproves ? "Your standing rule covers routine payroll" : "Use Run payroll before pay day"
+    }
+
+    // MARK: Who runs payroll
+
+    private func who(_ co: Company, _ o: PayrollOverview, _ fmt: BankFmt) -> some View {
+        let name: String = o.responsibility?.name ?? "You"
         let why: String = o.responsibility?.reason ?? "No accountant or suitable manager: you approve each payroll yourself."
-        return AcctNotice(glyph: Glyph.person, title: "Run by \(who)", message: why)
+        return VStack(alignment: .leading, spacing: 8) {
+            AcctLabel(text: "Who runs payroll")
+            AcctNotice(glyph: Glyph.person, title: "Run by \(name)", message: why)
+            if !o.modeIsFixed {
+                AcctPanel {
+                    ForEach(Array(o.choices.enumerated()), id: \.element.id) { n, c in
+                        VStack(spacing: 0) {
+                            if n > 0 { AcctDivider() }
+                            choiceRow(co, o, c, fmt)
+                        }
+                    }
+                }
+                Text("It follows from who is on the team: an accountant first, then a manager, otherwise you.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
+            }
+        }
+    }
+
+    private func choiceRow(_ co: Company, _ o: PayrollOverview, _ c: PayrollModeChoice, _ fmt: BankFmt) -> some View {
+        let id: Int = co.id
+        let fee: String = c.monthlyFee > 0.5 ? fmt.short(c.monthlyFee) + " a month" : "No extra fee"
+        var title: String = "You"
+        var note: String = "You approve each payroll yourself."
+        var go: (() -> Void)? = nil
+        switch c.mode {
+        case .manual:
+            break
+        case .accountant, .inHouse:
+            title = "Accountant"
+            note = o.responsibility?.who == .accountant ? (o.responsibility?.name ?? "") + " runs it." : "Appoint an accountant in Atlas to hand payroll over."
+            go = { store.openAtlas(companyID: id) }
+        case .manager:
+            title = "Manager"
+            note = "A manager who decides on their own runs it at no extra fee."
+            go = { store.openGroupEntity(companyID: id, section: "management") }
+        }
+        if let why = c.unavailable { note = why }
+        return AcctRow(title: title, subtitle: note, value: fee, pill: c.isCurrent ? "Now" : nil, pillTone: .good, identifier: "acct-payroll-who-" + c.mode.rawValue, action: go)
     }
 
     @ViewBuilder private func recent(_ e: GameEngine, _ co: Company, _ fmt: BankFmt) -> some View {

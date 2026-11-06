@@ -334,8 +334,8 @@ public extension GameEngine {
     /// equipment, the core team (or the whole team if chosen) only while the company's cash carries the wages, and an opening stock of the
     /// chosen share. What was left out comes back in `skipped` with its cost. `choices` default to the careful start.
     mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, form: LegalForm, size: Double?, name: String?, pick: NewCompanyPlan.Pick?, fundWith amount: Double,
-                                               choices: SetupChoices = SetupChoices()) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
-        let r = startCompany(tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, fundWith: amount, quickSetup: false)
+                                               choices: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
+        let r = startCompany(tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, accountantID: accountantID, fundWith: amount, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }
             return .failure(.notAllowedHere)

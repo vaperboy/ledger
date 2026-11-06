@@ -36,6 +36,7 @@ struct CompanyTeam: View {
                 ApplicantsLinkRow(engine: engine, companyID: company.id)
             }
             if !company.staff.isEmpty { CompanyStaffRoster(engine: engine, company: company) }
+            CompanyPeopleCost(engine: engine, company: company)
             settingsTable
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }

@@ -123,6 +123,7 @@ struct CompanyMoneySummary: View {
         return SharpTable {
             SettingsTableRow(title: "Ownership", note: "Dividends, owners, shares, selling", value: share) { part = .owners }
             SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
+            SettingsTableRow(title: "Statements", note: "Balance sheet and cash flow, in Accounting", value: "Open") { store.openAccountingReports(companyID: company.id) }
         }
     }
 }

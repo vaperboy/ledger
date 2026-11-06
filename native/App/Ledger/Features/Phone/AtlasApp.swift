@@ -100,6 +100,7 @@ struct AtlasApp: View {
                     policiesSection(e, co, o)
                     banner(o)
                     homeButtons(e, co, o)
+                    AtlasAccountantSection(companyID: co.id)
                 }
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)

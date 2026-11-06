@@ -15,6 +15,7 @@ struct ConversionSheet: View {
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var companyID: Int
     @State private var payer: CompanyConversion.Payer = .personal
+    @State private var accountantID: Int?
     @State private var pending: PendingAction?
     @State private var done: String?
 
@@ -25,7 +26,7 @@ struct ConversionSheet: View {
                     if let e = store.engine, let co = e.state.company(companyID) {
                         if let done {
                             resultCard(done)
-                        } else if let plan = e.conversionPlan(companyID: companyID, payer: payer) {
+                        } else if let plan = e.conversionPlan(companyID: companyID, payer: payer, accountantID: accountantID) {
                             if let why = plan.blocked { blockedCard(why) } else { review(e, co, plan) }
                         } else {
                             blockedCard(.unknownCountry)
@@ -46,6 +47,7 @@ struct ConversionSheet: View {
         let cur: Currency = e.currency(for: co)
         header(plan)
         costs(plan, cur)
+        accountantChoice(co, plan, cur)
         payerChoice(plan, cur)
         changes(plan, cur)
         loans(plan, cur)
@@ -75,6 +77,10 @@ struct ConversionSheet: View {
             }
             FlatRow(label: "Total paid now", value: cur.tidyDisplay(total), tint: Theme.ivory)
         }
+    }
+
+    @ViewBuilder private func accountantChoice(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
+        if plan.accountantRequired { AccountantStep(countryCode: co.countryCode, currency: cur, accountantID: $accountantID) }
     }
 
     private func payerChoice(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
@@ -164,18 +170,19 @@ struct ConversionSheet: View {
     private func confirm(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) {
         let id: Int = co.id
         let chosen: CompanyConversion.Payer = payer
+        let accountant: Int? = accountantID
         let total: Double = plan.fee + plan.shareCapital
         var message: String = "Cost: \(cur.tidyDisplay(plan.fee)) fee from \(plan.accountToCharge) and \(cur.tidyDisplay(plan.shareCapital)) share capital from you, \(cur.tidyDisplay(total)) in all. "
         message += "Effect: \(plan.nameAfter) becomes a limited company; you hold \(Currency.percent(plan.ownerSharePercent / 100, decimals: 0)) of its shares; "
         message += plan.accountantRequired ? "\(plan.accountantName) is appointed at \(cur.tidyShort(plan.accountantMonthlyFee)) a month. " : "its accountant stays. "
         message += "Risk: it cannot be undone, and your personal guarantee on its loans stays."
         pending = PendingAction(title: "Convert \(plan.companyName) to a limited company?", message: message, button: "Convert", destructive: true) {
-            run(id, chosen, plan, cur)
+            run(id, chosen, accountant, plan, cur)
         }
     }
 
-    private func run(_ id: Int, _ chosen: CompanyConversion.Payer, _ plan: CompanyConversion.Plan, _ cur: Currency) {
-        let result: GameEngine.ConvertResult? = store.act({ (e: inout GameEngine) -> GameEngine.ConvertResult in e.convertToLimited(companyID: id, payer: chosen) })
+    private func run(_ id: Int, _ chosen: CompanyConversion.Payer, _ accountant: Int?, _ plan: CompanyConversion.Plan, _ cur: Currency) {
+        let result: GameEngine.ConvertResult? = store.act({ (e: inout GameEngine) -> GameEngine.ConvertResult in e.convertToLimited(companyID: id, payer: chosen, accountantID: accountant) })
         switch result {
         case .ok?:
             Haptics.success()

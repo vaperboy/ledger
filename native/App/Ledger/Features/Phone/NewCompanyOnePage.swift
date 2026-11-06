@@ -11,7 +11,7 @@ import Simulation
     let size: Double? = d.size(e)
     let fund: Double = plan.intoCompany
     let nm: String? = d.name.isEmpty ? nil : d.name
-    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, form: d.form, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices) }
+    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, form: d.form, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices, accountantID: d.accountantID) }
     switch r {
     case .success(let out)?:
         Haptics.success()
@@ -46,10 +46,12 @@ struct NewCompanySetupView: View {
     @State private var name = ""
     @State private var working = false
     @State private var refusal: String?
+    @State private var accountantID: Int?
 
     private func draft(_ t: Trade, _ e: GameEngine) -> NewCompanyDraft {
         let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
         var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
+        d.accountantID = accountantID
         if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, form: form, size: s) }
         return d
     }
@@ -66,6 +68,7 @@ struct NewCompanySetupView: View {
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
                         .accessibilityIdentifier("new-company-name")
                     costBlock(plan)
+                    if d.form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID) }
                     if let refusal { Text(refusal).font(.system(size: 13)).foregroundStyle(Theme.loss).accessibilityIdentifier("register-refusal") }
                     NavigationLink { NewCompanyDetailedSetupView(tradeID: tradeID, cityID: cityID) } label: {
                         Text("Choose each item yourself").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 34)

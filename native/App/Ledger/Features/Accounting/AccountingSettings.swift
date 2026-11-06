@@ -67,14 +67,20 @@ struct AcctSettings: View {
 
     private func company(_ e: GameEngine, _ co: Company) -> some View {
         let stats: CompanyOverviewStats? = e.companyOverviewStats(companyID: co.id)
+        let accountant: AdviserOption? = e.coverageOverview(companyID: co.id)?.accountant
+        let fmt = BankFmt(store: store, company: co)
+        let fee: String = accountant.map { (a: AdviserOption) -> String in fmt.short(a.monthlyFee) + " a month" } ?? "None"
+        let rating: String = accountant.map { (a: AdviserOption) -> String in String(format: "rated %.1f of 5", a.rating) } ?? "Appoint one in Atlas"
         return VStack(alignment: .leading, spacing: 8) {
             AcctLabel(text: "Company")
             AcctPanel(padding: 14) {
                 FlatRow(label: "Legal form", value: stats?.legalForm ?? (co.form == .limited ? "Limited company" : "Sole trader"), rule: false)
                 if let since = stats?.incorporatedSince { FlatRow(label: "Registered since", value: since) }
                 FlatRow(label: "Appointed accountant", value: stats?.accountant ?? "None")
+                FlatRow(label: "Accountant fee", value: fee, sub: rating)
                 FlatRow(label: "Owner access", value: AccountingLevel.owner.title)
             }
+            AcctSecondaryButton(title: "Change accountant", identifier: "acct-change-accountant") { store.openAtlas(companyID: co.id) }
         }
     }
 }
