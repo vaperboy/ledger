@@ -25,19 +25,33 @@ struct OutsidePalette: Equatable {
     var loss: Color
     var caution: Color
     var isLight: Bool = false
+    /// The fill of what floats (popup, toast, menu); nil uses `card`.
+    var raised: Color? = nil
+
+    // The design-system role names (Theme.swift), so a screen reads one vocabulary whatever the palette.
+    var page: Color { ground }
+    var surface: Color { card }
+    var surfaceRaised: Color { raised ?? card }
+    var inset: Color { ink.opacity(0.05) }
+    var accentInk: Color { onAccent }
+    var warn: Color { caution }
+    var alert: Color { Theme.alert }
+    var focus: Color { accent }
+    var scrim: Color { Color.black.opacity(isLight ? 0.35 : 0.55) }
 
     var accentWash: Color { accent.opacity(0.14) }
-    var accentSelected: Color { accent.opacity(0.16) }
+    var accentSelected: Color { accent.opacity(0.14) }
     var accent2Wash: Color { accent2.opacity(0.14) }
 
     func change(_ v: Double) -> Color { v > 0.0000001 ? gain : v < -0.0000001 ? loss : inkSoft }
 
     /// The game's own colours: what every insider screen uses.
     static let game = OutsidePalette(
-        ground: Theme.page, ground2: Color(hex: 0x0B0C0D), card: Theme.surface, cardDeep: Theme.surfaceTable,
-        line: Theme.border, lineStrong: Theme.borderStrong, divider: Theme.divider, hairline: Theme.hairline,
-        ink: Theme.ivory, inkSoft: Theme.ivoryMuted, inkFaint: Theme.ivoryFaint, inkDim: Theme.ivoryDim,
-        accent: Theme.gold, accent2: Theme.gold, onAccent: Theme.page, gain: Theme.gain, loss: Theme.loss, caution: Theme.caution)
+        ground: Theme.page, ground2: Color(hex: 0x0B0C0D), card: Theme.surface, cardDeep: Theme.surface,
+        line: Theme.line, lineStrong: Theme.lineStrong, divider: Theme.line, hairline: Theme.line,
+        ink: Theme.ink, inkSoft: Theme.inkSoft, inkFaint: Theme.inkFaint, inkDim: Theme.inkFaint,
+        accent: Theme.accent, accent2: Theme.accent, onAccent: Theme.accentInk, gain: Theme.gain, loss: Theme.loss, caution: Theme.warn,
+        raised: Theme.surfaceRaised)
 
     /// News: newsprint. Warm off-white page, ink-black text, a muted red rule. Light on purpose (it imitates a paper).
     static let news = OutsidePalette(
