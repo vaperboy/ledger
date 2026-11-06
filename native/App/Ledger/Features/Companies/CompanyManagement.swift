@@ -71,7 +71,7 @@ struct CompanyManagement: View {
             if !nodes.hidden.isEmpty {
                 Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showVacant.toggle() } } label: {
                     Text(showVacant ? "Hide other posts" : "Other posts (\(nodes.hidden.count) open) \u{203A}")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 30)
+                        .textStyle(.caption, tint: Theme.accent).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 44)
                 }.buttonStyle(PressableStyle())
             }
         }
@@ -97,13 +97,12 @@ struct CompanyManagement: View {
 
     private func ownerToggle(_ works: Bool, _ toggle: @escaping () -> Void) -> some View {
         Button { toggle() } label: {
-            HStack(spacing: 5) {
-                GlyphView(glyph: works ? Glyph.check : Glyph.close, size: 11, weight: 2, tint: works ? Theme.gain : Theme.ivoryFaint)
-                Text(works ? "Works here" : "Not here").font(.system(size: 11.5, weight: .medium)).foregroundStyle(works ? Theme.ivory : Theme.ivoryMuted)
+            HStack(spacing: Theme.Space.xs) {
+                LedgerGlyph(glyph: works ? Glyph.check : Glyph.close, size: Theme.Icon.small, tint: works ? Theme.gain : Theme.inkFaint)
+                Text(works ? "Works here" : "Not here").textStyle(.caption, tint: works ? Theme.ink : Theme.inkSoft, weight: .medium)
             }
-            .padding(.horizontal, 9).frame(minHeight: 40)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.ivory.opacity(0.06)))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .padding(.horizontal, Theme.Space.s).frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
@@ -214,18 +213,27 @@ struct ManagerSheet: View {
     enum ManagerTab: String, CaseIterable, Hashable { case results = "Results", powers = "Powers", pay = "Pay and talks" }
 
 
+    /// The contract discussion replaces the manager's sheet inside the same popup (its close steps back here), never a popup on a popup.
     var body: some View {
-        PeopleSheet(title: "Manager") {
-            if let e = store.engine, let co = e.state.company(companyID) {
-                let cur = e.currency(for: co)
-                if let mid = co.managerID, let m = e.state.people[mid] { manage(e, co, m, cur) } else { hire(e, co, cur) }
-            } else {
-                Text("This company no longer exists.").popupText(.body)
+        if (discussing != nil || discussingOpen), let mid = store.engine?.state.company(companyID)?.managerID {
+            let back: () -> Void = { discussing = nil; discussingOpen = false }
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Button { Haptics.tap(); back() } label: { Text("\u{2039} Manager") }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
+                    .accessibilityLabel("Back to the manager")
+                ContractDiscussionView(companyID: companyID, personID: mid, startTopic: discussing)
+                    .environment(\.popupClose, back)
             }
-        }
-        .confirmAction($pending)
-        .centerSheet(isPresented: Binding(get: { discussing != nil || discussingOpen }, set: { if !$0 { discussing = nil; discussingOpen = false } })) {
-            if let mid = store.engine?.state.company(companyID)?.managerID { ContractDiscussionView(companyID: companyID, personID: mid, startTopic: discussing).environmentObject(store) }
+        } else {
+            PeopleSheet(title: "Manager") {
+                if let e = store.engine, let co = e.state.company(companyID) {
+                    let cur = e.currency(for: co)
+                    if let mid = co.managerID, let m = e.state.people[mid] { manage(e, co, m, cur) } else { hire(e, co, cur) }
+                } else {
+                    Text("This company no longer exists.").popupText(.body)
+                }
+            }
+            .confirmAction($pending)
         }
     }
 
@@ -354,16 +362,14 @@ struct ManagerSheet: View {
             handoverSide("Manager", on: managerHas)
             handoverSide("You", on: !managerHas)
         }
-        .padding(2)
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(Theme.Space.xxs)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
     }
 
     private func handoverSide(_ text: String, on: Bool) -> some View {
-        Text(text).font(.system(size: 11.5, weight: on ? .medium : .regular))
-            .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-            .padding(.horizontal, 9).padding(.vertical, 5)
-            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? Theme.goldSelected : Color.clear))
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? Theme.gold : Color.clear, lineWidth: 1))
+        Text(text).textStyle(.caption, tint: on ? Theme.ink : Theme.inkFaint, weight: on ? .medium : .regular)
+            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small - Theme.Space.xxs, style: .continuous).fill(on ? Theme.accentWash : Color.clear))
     }
 
     @ViewBuilder private func profitShare(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
@@ -396,7 +402,9 @@ struct ManagerSheet: View {
                                 store.show(said.map { "\(m.name): \($0)" } ?? "\(m.name) has nothing to add on that now.", tone: "n")
                             }
                         }
-                    } label: { Text("Ask for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold).padding(.horizontal, 14).padding(.vertical, 8).overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1)) }
+                    } label: { Text("Ask for\u{2026}") }
+                    .menuStyle(.button)
+                    .buttonStyle(SecondaryButtonStyle(tint: Theme.accent))
                     Button("Contract discussion…") { discussing = nil; discussingOpen = true }.buttonStyle(QuietButtonStyle())
                 }
             }
@@ -519,14 +527,14 @@ struct ManagerCandidateChecks: View {
         let checked = person.flag("ref")
         let fee = currency.scaledPrice(2500)
         VStack(alignment: .leading, spacing: 4) {
-            if !person.str("resume").isEmpty { Text(person.str("resume")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+            if !person.str("resume").isEmpty { Text(person.str("resume")).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
             ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
                 if let v = answer(k.key) {
-                    Text("\(k.label): " + (checked ? comparison(k.key) : "says they are \(words(v))")).font(.system(size: 11.5)).foregroundStyle(Theme.ivory)
+                    Text("\(k.label): " + (checked ? comparison(k.key) : "says they are \(words(v))")).textStyle(.caption, tint: Theme.ink)
                 }
             }
             ForEach(seenLines, id: \.self) { line in
-                Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(line).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             WrapRow {
                 ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
@@ -548,7 +556,7 @@ struct ManagerCandidateChecks: View {
                         store.show(ok ? "References are in: you can see whether the CV holds. Paid \(currency.tidyShort(fee))." : "Not enough cash for the reference check (\(currency.tidyShort(fee))).", tone: ok ? "n" : "warn")
                     }.buttonStyle(QuietButtonStyle())
                 } else {
-                    Text("References checked").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
+                    Text("References checked").textStyle(.caption, tint: Theme.gain)
                 }
             }
         }

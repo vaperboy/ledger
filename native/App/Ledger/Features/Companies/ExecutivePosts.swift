@@ -60,7 +60,7 @@ struct ExecutivePosts: View {
                             let amt = cur.scaledPrice(v)
                             Button(v == 0 ? "No limit set" : cur.tidyShort(amt)) { store.settle(store.act { $0.setGroupLimit(v == 0 ? 0 : amt) }, v == 0 ? "No group limit." : "Deals above \(cur.tidyShort(amt)) come to you.", same: "That limit is already set.") }
                         }
-                    }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold).padding(.top, 8)
+                    }.textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44).padding(.top, Theme.Space.s)
                 }
             }
         }
@@ -86,27 +86,27 @@ struct ExecutivePosts: View {
 
     @ViewBuilder private func row(_ p: Post, _ cur: Currency) -> some View {
         let person = p.rec.isNull ? nil : engine.state.people[p.rec["npc"].int]
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
                 if let person {
                     ThumbnailView(kind: .person, key: "executive", size: 34, initials: person.name, face: person.faceKey)
                 } else {
                     IconCircle(glyph: Glyph.hire, size: 34)
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 6) {
-                        Text(person?.name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(spacing: Theme.Space.s) {
+                        Text(person?.name ?? "Vacant").textStyle(.headline)
                         RoleScopeBadge(role: p.level == .md ? "Group managing director" : p.level.title, scope: p.scope)
                     }
-                    Text((person == nil ? "Would be employed by " : "Employed by ") + employer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                    if person == nil { Text(p.level.text.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                    Text((person == nil ? "Would be employed by " : "Employed by ") + employer).textStyle(.caption, tint: Theme.inkFaint)
+                    if person == nil { Text(p.level.text.tidyMoney).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true) }
                 }
-                Spacer(minLength: 8)
-                if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory) }
+                Spacer(minLength: Theme.Space.s)
+                if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).textStyle(.body, tint: Theme.ink, numeric: true) }
             }
             if person != nil {
                 let lvl = Int(p.rec["lvl"].double)
-                HStack(spacing: 16) {
+                HStack(spacing: Theme.Space.l) {
                     AuthorityPicker(level: lvl, currency: cur, limit: p.rec["buy"].double,
                                     limitSteps: [50000.0, 100000, 250000, 600000, 2000000].map { cur.scaledPrice($0) },
                                     setLevel: { l in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) }, "Authority changed.", same: "Authority is already at that level.") },
@@ -118,7 +118,7 @@ struct ExecutivePosts: View {
             } else {
                 searchButton(p, cur)
             }
-        }.padding(.vertical, 8)
+        }.padding(.vertical, Theme.Space.s)
     }
 
     @ViewBuilder private func searchButton(_ p: Post, _ cur: Currency) -> some View {
