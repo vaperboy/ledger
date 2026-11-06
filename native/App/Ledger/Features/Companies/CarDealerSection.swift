@@ -57,7 +57,6 @@ struct CarStockCard: View {
         .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .opacity(row.status == .inStock ? 1 : 0.6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -218,7 +217,6 @@ struct CarOrderSheet: View {
         .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.cardDeep))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.line, lineWidth: 1))
         .contentShape(Rectangle())
     }
 

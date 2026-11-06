@@ -341,9 +341,9 @@ struct CompanySourcing: View {
         } label: {
             Text(t.name).font(.system(size: 11.5, weight: t.isCurrent ? .semibold : .regular)).foregroundStyle(tint)
                 .lineLimit(2).minimumScaleFactor(0.8).multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, minHeight: 38)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(focused ? Theme.surface : Color.clear))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(t.isCurrent ? Theme.gold : Theme.border, lineWidth: 1))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(focused ? Theme.surface : Theme.inset))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(t.isCurrent ? Theme.accent : Color.clear, lineWidth: 1))
                 .opacity(locked ? 0.4 : 1)
                 .contentShape(Rectangle())
         }.buttonStyle(PressableStyle())

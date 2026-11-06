@@ -70,14 +70,14 @@ struct CompanyOtherSections: View {
             Haptics.tap()
             answer(c.raw, a)
         } label: {
-            VStack(spacing: 5) {
-                GlyphView(glyph: glyph, size: 18, weight: 1.6, tint: tint)
+            VStack(spacing: Theme.Space.xs) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: tint)
                 Text(title).textStyle(.caption, tint: Theme.ink, weight: .medium)
                 Text(note).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10).padding(.horizontal, 4)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(tint.opacity(0.6), lineWidth: 1))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.vertical, Theme.Space.s).padding(.horizontal, Theme.Space.xs)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
