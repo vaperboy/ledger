@@ -1,4 +1,5 @@
 # What's new
+- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play
 - Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels
 - Inbox: "Handled by" and a Handled tab; messages open the right app; research reports open as documents
 - Group: "Who runs what" table; own staff on a board; interview chips for manager candidates
@@ -8,4 +9,4 @@
 - Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades
 
 # Missing / coming next
-- Balance pass for skilled-vs-idle play; screen-tour fixes
+- Wider skilled-vs-idle gap; screen-tour fixes
