@@ -336,17 +336,21 @@ struct ContractDiscussionView: View {
         let pv = e.contractPreview(companyID: companyID, personID: personID, proposal: p)
         let talk = e.contractTalk(personID: personID)
         let answering = talk?.isRequest == true && talk?.proposal.topic == topic
-        Button(answering ? "Answer with this offer" : "Put it to \(first(n))") {
-            pending = PendingAction(
-                title: answering ? "Answer \(first(n)) with this?" : "Put this to \(first(n))?",
-                message: summary(pv, cur),
-                button: answering ? "Send answer" : "Put it to \(first(n))") {
-                    if answering { show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .counter(counterValue(p))) }) }
-                    else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }) }
+        let sendable: Bool = pv.blocked.isEmpty
+        // The send button is pinned under the long discussion so it never scrolls out of reach.
+        Color.clear.frame(height: 0)
+            .popupFooter {
+                PopupOptionButton(title: answering ? "Answer with this offer" : "Put it to \(first(n))", highlighted: true) {
+                    pending = PendingAction(
+                        title: answering ? "Answer \(first(n)) with this?" : "Put this to \(first(n))?",
+                        message: summary(pv, cur),
+                        button: answering ? "Send answer" : "Put it to \(first(n))") {
+                            if answering { show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .counter(counterValue(p))) }) }
+                            else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }) }
+                        }
                 }
-        }
-        .buttonStyle(QuietButtonStyle())
-        .disabled(!pv.blocked.isEmpty)
+                .disabled(!sendable).opacity(sendable ? 1 : 0.4)
+            }
     }
 
     /// The figure that goes with a counter, in the unit of the topic.

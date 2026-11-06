@@ -52,18 +52,13 @@ struct WeekReportShell<More: View>: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 6) {
+        PopupActionBar {
             Button { Haptics.tap(); store.dismissReportSheet(openReports: true) } label: {
                 Text("Full report").popupText(.effect).frame(minHeight: 40).contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle()).accessibilityIdentifier("report-open")
-            Button { Haptics.tap(); continueTapped() } label: {
-                Text("Continue").frame(maxWidth: .infinity).frame(minHeight: 8)
-            }
-            .buttonStyle(FoilButtonStyle()).accessibilityIdentifier("report-continue")
+            PopupOptionButton(title: "Continue", highlighted: true, identifier: "report-continue") { continueTapped() }
         }
-        .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 14)
-        .background(Theme.page)
     }
 
     /// Closes the report; a week report then offers the interstitial the ad rules allow (placement 1). Never blocks the player.

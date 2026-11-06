@@ -57,7 +57,7 @@ struct ConversionSheet: View {
     }
 
     private func header(_ plan: CompanyConversion.Plan) -> some View {
-        Card(padding: 16, radius: Theme.Radius.hero) {
+        Group {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Convert").capsLabel()
                 Text(plan.companyName).popupText(.figure).lineLimit(2)
@@ -69,7 +69,7 @@ struct ConversionSheet: View {
 
     private func costs(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
         let total: Double = plan.fee + plan.shareCapital
-        return CardSection("Costs") {
+        return PopupSection(title: "Costs") {
             FlatRow(label: "Conversion fee", value: cur.tidyDisplay(plan.fee), sub: "paid from the account you choose below", rule: false)
             FlatRow(label: "Share capital", value: cur.tidyDisplay(plan.shareCapital), sub: "paid by you personally; it becomes the company's capital")
             if plan.accountantRequired {
@@ -84,7 +84,7 @@ struct ConversionSheet: View {
     }
 
     private func payerChoice(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
-        CardSection("Who pays the fee") {
+        PopupSection(title: "Who pays the fee") {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(plan.payerOptions) { (o: CompanyConversion.PayerOption) in
                     let title: String = o.payer == .personal ? "Your own account" : "The company's account"
@@ -100,7 +100,7 @@ struct ConversionSheet: View {
     }
 
     private func changes(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
-        CardSection("What changes") {
+        PopupSection(title: "What changes") {
             FlatRow(label: "Legal form", value: plan.newFormName, sub: "was " + plan.currentFormName, rule: false)
             if plan.nameAfter != plan.nameBefore { FlatRow(label: "Name", value: plan.nameAfter, sub: "was " + plan.nameBefore) }
             FlatRow(label: "Ownership", value: Currency.percent(plan.ownerSharePercent / 100, decimals: 0), sub: "you hold \(Int(plan.shareCount)) shares of " + cur.tidyShort(plan.shareNominal) + " each")
@@ -115,7 +115,7 @@ struct ConversionSheet: View {
 
     @ViewBuilder private func loans(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
         if !plan.loans.isEmpty {
-            CardSection("Loans") {
+            PopupSection(title: "Loans") {
                 VStack(spacing: 0) {
                     ForEach(Array(plan.loans.enumerated()), id: \.element.id) { n, l in
                         FlatRow(label: l.name, value: cur.tidyShort(l.balance), sub: l.personallyGuaranteed ? "your personal guarantee stays" : "company loan", rule: n > 0)
@@ -128,7 +128,7 @@ struct ConversionSheet: View {
     }
 
     private func figures(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
-        CardSection("After the conversion") {
+        PopupSection(title: "After the conversion") {
             KeyFigures(items: [
                 .init(label: "Your account", value: cur.tidyShort(plan.personalBalanceAfter), tint: plan.personalBalanceAfter < 0 ? Theme.loss : Theme.ivory),
                 .init(label: "Company account", value: cur.tidyShort(plan.companyBalanceAfter), tint: plan.companyBalanceAfter < 0 ? Theme.loss : Theme.ivory),
@@ -140,7 +140,7 @@ struct ConversionSheet: View {
 
     @ViewBuilder private func consequences(_ plan: CompanyConversion.Plan) -> some View {
         if !plan.consequences.isEmpty {
-            CardSection("Consequences") {
+            PopupSection(title: "Consequences") {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(Array(plan.consequences.enumerated()), id: \.offset) { _, c in
                         Text(c.tidyText).popupText(.subtitle)
@@ -150,6 +150,7 @@ struct ConversionSheet: View {
         }
     }
 
+    /// The risk line stays in the body; Keep and Convert are pinned under it so they are always in reach.
     @ViewBuilder private func decision(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if !plan.affordable {
@@ -157,11 +158,10 @@ struct ConversionSheet: View {
                     .popupText(.risk)
                     .accessibilityIdentifier("conversion-unaffordable")
             }
-            QuietButton(title: "Convert to a limited company\u{2026}", fullWidth: true) { confirm(co, plan, cur) }
-                .disabled(!plan.affordable).opacity(plan.affordable ? 1 : 0.4)
-                .accessibilityIdentifier("conversion-confirm")
-            QuietButton(title: "Keep it as it is", tint: Theme.ivoryFaint, fullWidth: true) { dismiss() }
-                .accessibilityIdentifier("conversion-keep")
+        }
+        .popupFooter {
+            PopupFooter(cancel: "Keep it as it is", action: "Convert to a limited company\u{2026}", onCancel: { dismiss() }, onAction: { confirm(co, plan, cur) },
+                        actionEnabled: plan.affordable, cancelID: "conversion-keep", actionID: "conversion-confirm")
         }
     }
 
@@ -206,7 +206,7 @@ struct ConversionSheet: View {
     }
 
     private func resultCard(_ text: String) -> some View {
-        Card(padding: 16, radius: Theme.Radius.hero) {
+        Group {
             HStack(alignment: .top, spacing: 12) {
                 IconCircle(glyph: Glyph.check, tint: Theme.gain)
                 VStack(alignment: .leading, spacing: 4) {
@@ -220,7 +220,7 @@ struct ConversionSheet: View {
     }
 
     private func blockedCard(_ block: CompanyConversion.Block) -> some View {
-        Card(padding: 16, radius: Theme.Radius.hero) {
+        Group {
             HStack(alignment: .top, spacing: 12) {
                 IconCircle(glyph: Glyph.info)
                 Text(block.text).popupText(.body)

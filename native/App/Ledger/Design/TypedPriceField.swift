@@ -13,36 +13,23 @@ struct TypedPriceField: View {
     var onSet: (Double) -> Void
     @State private var text = ""
     @State private var note: String?
-    @FocusState private var focused: Bool
+    @State private var editing = false
+    @Environment(\.outsidePalette) private var P
 
     private var typed: PriceInput.Result? { PriceInput.parse(text, currency: cur, range: range) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(cur.country.currencySymbol).foregroundStyle(Theme.ivoryMuted)
-                TextField("Price", text: $text)
-                    .keyboardType(.decimalPad).focused($focused)
-                    .font(.system(size: 16, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    .accessibilityIdentifier("typed-price")
-                    .onSubmit { set() }
-                Text(unit).font(.caption).foregroundStyle(Theme.ivoryMuted)
-                Button("Set") { set() }
-                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(typed == nil ? Theme.ivoryFaint : Theme.gold)
-                    .disabled(typed == nil)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            if let t = typed, let h = hint(t.value) {
-                Text(h).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            }
+            PopupTextInput(placeholder: "Price", text: $text, prefix: cur.country.currencySymbol, suffix: unit, keyboard: .decimalPad,
+                           actionTitle: "Set", actionEnabled: typed != nil, identifier: "typed-price",
+                           hint: typed.flatMap { hint($0.value) }, message: nil,
+                           onFocusChange: { (f: Bool) in editing = f }, onSubmit: { set() }, onAction: { set() })
             if let n = note ?? rangeNote {
-                Text(n).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(n).popupText(.caption).foregroundStyle(P.inkFaint)
             }
         }
         .onAppear { text = PriceInput.text(price, currency: cur) }
-        .onChange(of: price) { _, p in if !focused { text = PriceInput.text(p, currency: cur) } }
+        .onChange(of: price) { _, p in if !editing { text = PriceInput.text(p, currency: cur) } }
     }
 
     private var rangeNote: String? {
@@ -52,7 +39,6 @@ struct TypedPriceField: View {
 
     private func set() {
         guard let t = typed else { return }
-        focused = false
         text = PriceInput.text(t.value, currency: cur)
         note = nil
         onSet(t.value)

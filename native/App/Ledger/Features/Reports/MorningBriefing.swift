@@ -150,6 +150,9 @@ struct DailyReportPopup: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { skip(count: total) }
+            }
+            // Continue is pinned and in the layout from the start (only faded), so the card never reflows when it appears.
+            .popupFooter {
                 PopupOptionButton(title: "Continue", highlighted: true, identifier: "daily-continue") { store.dismissDailySheet() }
                     .opacity(canContinue ? 1 : 0)
                     .allowsHitTesting(canContinue)
@@ -220,9 +223,8 @@ struct DailyReportPopup: View {
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("daily-insight-action")
             }
         }
-        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
-        .overlay(alignment: .leading) { Rectangle().fill(item.tint).frame(width: 2).padding(.vertical, 10) }
+        .padding(.leading, 12).frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .leading) { Rectangle().fill(item.tint).frame(width: 2) }
     }
 }
 

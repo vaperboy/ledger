@@ -13,13 +13,22 @@ struct Card<Content: View>: View {
     var stroke: Color? = nil
     @ViewBuilder var content: () -> Content
     @Environment(\.outsidePalette) private var palette
+    @Environment(\.insidePopup) private var insidePopup
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        content()
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(shape.fill(fill ?? palette.card))
-            .overlay(shape.strokeBorder(stroke ?? palette.line, lineWidth: 1))
+        if insidePopup && fill == nil && stroke == nil {
+            // In a popup a plain card is a flat group under a hairline, not a box inside the popup's own card.
+            content()
+                .padding(.vertical, padding * 0.6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .top) { Rectangle().fill(palette.line).frame(height: 1) }
+        } else {
+            content()
+                .padding(padding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(shape.fill(fill ?? palette.card))
+                .overlay(shape.strokeBorder(stroke ?? palette.line, lineWidth: 1))
+        }
     }
 }
 
@@ -301,10 +310,16 @@ struct AmountField: View {
                     let cleaned = new.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." }
                     amount = (Double(cleaned) ?? 0) * currency.rate
                 }
+            // The decimal pad has no return key and a keyboard toolbar does not show inside a popup overlay: Done sits beside the field.
+            if focused {
+                Button("Done") { Haptics.play(.tap); focused = false }
+                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
+                    .frame(minWidth: 44, minHeight: 36)
+                    .accessibilityIdentifier("amount-done")
+            }
         }
         .padding(.vertical, 10)
         .overlay(alignment: .bottom) { Rectangle().fill(focused ? P.accent : P.hairline).frame(height: focused ? 1 : 0.5) }
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { focused = false } } }
     }
 }
 

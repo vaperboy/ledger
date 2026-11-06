@@ -102,7 +102,7 @@ struct GrowIntoChain: View {
             }
             .disabled(blocked).opacity(blocked ? 0.5 : 1)
             .centerSheet(isPresented: $signing) {
-                PaperSignSheet(title: "Chain registration", to: "The business register", note: "A lawyer prepares the registration of \(company.name) as a chain. It is reviewed before it is approved.",
+                SignPopup(title: "Chain registration", to: "The business register", note: "A lawyer prepares the registration of \(company.name) as a chain. It is reviewed before it is approved.",
                                fee: cur.tidyShort(engine.documentFee(companyID: company.id, document: "chain")), wait: "after a review of some weeks", button: "Sign and send",
                                onSend: {
                     switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {

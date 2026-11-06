@@ -127,7 +127,7 @@ struct FranchiseBrandRow: View {
             if sx.ok {
                 Button("Apply") { signing = true }.buttonStyle(QuietButtonStyle())
                     .centerSheet(isPresented: $signing) {
-                        PaperSignSheet(title: "Application to \(b.name)", to: b.name, note: "You apply to run a unit under this brand. The brand reviews you, then meets you to agree the terms.",
+                        SignPopup(title: "Application to \(b.name)", to: b.name, note: "You apply to run a unit under this brand. The brand reviews you, then meets you to agree the terms.",
                                        fee: "None to apply", wait: "in about a week or three", button: "Sign and apply",
                                        onSend: {
                             switch store.act({ $0.applyToFranchiseBrand(b.id) }) {
