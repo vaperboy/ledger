@@ -266,9 +266,8 @@ struct AcctHome: View {
                     Spacer(minLength: 8)
                     Image(systemName: "chevron.up.chevron.down").textStyle(.caption, tint: P.inkFaint, weight: .semibold)
                 }
-                .padding(.horizontal, 14).frame(minHeight: 48)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+                .padding(.horizontal, Theme.Space.m).frame(minHeight: 48)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
                 .contentShape(Rectangle())
             }
             .accessibilityIdentifier("acct-company-picker")
@@ -283,14 +282,15 @@ struct AcctHome: View {
         let drafts: Int = e.invoices(companyID: id, kind: .customer, status: .draft, user: u)?.count ?? 0
         var invoiceNote: String = "Send, receive and track invoices"
         if overdue > 0 { invoiceNote = "\(overdue) overdue" } else if drafts > 0 { invoiceNote = "\(drafts) draft\(drafts == 1 ? "" : "s") to send" }
+        let payrollNote: String = payrollLine(e, id) ?? "Manage salaries, pay day and timesheets"
         let payrollNeedsYou: Bool = PhoneAlerts.payroll(engine: e).contains { (p: PayrollAlertInfo) -> Bool in p.companyID == id }
         let items: [HomeItem] = [
-            HomeItem(key: "transactions", glyph: BankGlyph.bill, title: "Transactions", note: "View and match all transactions", route: .transactions),
-            HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: "Manage salaries and timesheets", route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral, flag: payrollNeedsYou),
-            HomeItem(key: "invoices", glyph: Glyph.reports, title: "Invoices & Payments", note: invoiceNote, route: .invoices, flag: overdue > 0),
+            HomeItem(key: "transactions", glyph: BankGlyph.transfer, title: "Transactions", note: "View and match all transactions", route: .transactions),
+            HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: payrollNote, route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral, flag: payrollNeedsYou),
+            HomeItem(key: "invoices", glyph: BankGlyph.bill, title: "Invoices & Payments", note: invoiceNote, route: .invoices, flag: overdue > 0),
             HomeItem(key: "suppliers", glyph: Glyph.projects, title: "Suppliers", note: "Supplier agreements and purchases", route: .suppliers),
             HomeItem(key: "balance", glyph: Glyph.reports, title: "Balance sheet", note: "Assets, debts and equity", route: .balanceSheet),
-            HomeItem(key: "cashflow", glyph: Glyph.reports, title: "Cash flow", note: "Profit against cash, month by month", route: .cashFlow),
+            HomeItem(key: "cashflow", glyph: Glyph.market, title: "Cash flow", note: "Profit against cash, month by month", route: .cashFlow),
             HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Records, tax, contracts, insurance, applications", route: .documents),
             HomeItem(key: "settings", glyph: Glyph.settings, title: "Settings", note: "Access and user management", route: .settings),
         ]
@@ -314,6 +314,13 @@ struct AcctHome: View {
         var pill: String? = nil
         var tone: AcctPill.Tone = .neutral
         var flag: Bool = false
+    }
+
+    /// The live line under Payroll: the next pay day and what it should cost, when there is a payroll to run.
+    private func payrollLine(_ e: GameEngine, _ id: Int) -> String? {
+        guard e.canAccess(.payroll, companyID: id, user: m.user), let o = e.payrollOverview(companyID: id), o.hasPayroll else { return nil }
+        let fmt = BankFmt(store: store, company: e.state.company(id))
+        return "Next pay day \(o.nextPayText) \u{00B7} \(fmt.short(o.estimate))"
     }
 
     private func payrollTag(_ e: GameEngine, _ id: Int) -> (String, AcctPill.Tone)? {

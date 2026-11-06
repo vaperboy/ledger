@@ -239,18 +239,20 @@ private struct LoanStepChoose: View {
 
     private var valid: Bool { amount >= a.minimum && amount <= a.maximum + 0.5 && q.refusal == nil }
 
+    /// Why Continue waits: the engine's refusal first, else the approved range.
+    private var blockedReason: String? {
+        if valid { return nil }
+        if let r = q.refusal { return r.tidyText }
+        return amount < a.minimum ? "The bank lends at least \(cur.tidyDisplay(a.minimum))." : "The bank approved up to \(cur.tidyDisplay(a.maximum))."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             amountPanel
             termCard
             if a.payoutAccounts.count > 1 { payoutCard }
             figures
-            if !valid, let r = q.refusal {
-                Text(r.tidyText).popupText(.risk).fixedSize(horizontal: false, vertical: true)
-            }
-            QuietButton(title: "Continue", fullWidth: true, action: next)
-                .disabled(!valid).opacity(valid ? 1 : 0.4)
-                .accessibilityIdentifier("bank-loan-continue")
+            PrimaryAction(title: "Continue", blockedReason: blockedReason, identifier: "bank-loan-continue", action: next)
         }
     }
 
@@ -500,11 +502,9 @@ private struct LoanStepSummary: View {
                 }
                 .popupText(.rowLabel)
                 .onChange(of: refusal) { _, why in if why != nil { moreOpen = true } }
-                QuietButton(title: "Take the loan", fullWidth: true, action: onApply)
-                    .disabled(!agreed).opacity(agreed ? 1 : 0.4)
-                    .accessibilityIdentifier("bank-loan-confirm")
+                PrimaryAction(title: "Take the loan", blockedReason: agreed ? nil : "Tick that you agree to the terms first.", identifier: "bank-loan-confirm", action: onApply)
             } else {
-                QuietButton(title: "Done", fullWidth: true, action: onDone)
+                Button("Done", action: onDone).buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("bank-loan-done")
             }
         }

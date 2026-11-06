@@ -77,8 +77,8 @@ struct AbroadOptionsView: View {
             RowLine(glyph: affordable ? Glyph.check : Glyph.warning, tint: affordable ? Theme.gain : Theme.caution,
                     title: affordable ? "Covered by cash and savings" : "More than your cash and savings today",
                     subtitle: affordable ? "" : "Registration would fail until you have the money.")
-            QuietButton(title: "Register in \(o.name) for about \(cur.tidyShort(o.estimatedStartCost))", fullWidth: true) { register(co, o, cur) }
-                .disabled(weak).opacity(weak ? 0.4 : 1)
+            PrimaryAction(title: "Register in \(o.name) for about \(cur.tidyShort(o.estimatedStartCost))",
+                          blockedReason: weak ? "Build the brand's reputation at home first." : nil) { register(co, o, cur) }
         }
     }
 
