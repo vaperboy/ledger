@@ -114,9 +114,9 @@ struct GroupSupplierDirectory: View {
                 HStack(spacing: Theme.Space.s) {
                     Text(en.name).textStyle(.body, tint: Theme.ink, weight: .medium)
                         .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
-                    Spacer(minLength: 6)
+                    Spacer(minLength: Theme.Space.s)
                     if !stars.isEmpty { Text(stars).textStyle(.caption, tint: Theme.accent) }
-                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                 }
                 HStack(spacing: Theme.Space.s) {
                     Chip(text: Self.badge(first, own: en.ownCompanyID != nil), tint: en.ownCompanyID != nil ? Theme.gain : Theme.ivoryMuted)
@@ -130,10 +130,9 @@ struct GroupSupplierDirectory: View {
                     }
                 }
             }
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.m)
+            .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
             .contentShape(Rectangle())
         }.buttonStyle(PressableStyle())
     }

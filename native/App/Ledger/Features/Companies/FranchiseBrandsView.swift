@@ -93,13 +93,6 @@ struct FranchiseBrandRow: View {
         if let e = store.engine { row(e, brand, e.homeCurrency) }
     }
 
-    private func chipLabel(_ text: String, tint: Color = Theme.gold) -> some View {
-        Text(text).textStyle(.caption, tint: tint, weight: .medium)
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs).frame(minHeight: 28)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
-            .contentShape(Rectangle())
-    }
-
     private func statusLine(_ text: String, _ tint: Color) -> some View {
         Text(text.tidyMoney).textStyle(.caption, tint: tint).fixedSize(horizontal: false, vertical: true)
     }
@@ -113,13 +106,13 @@ struct FranchiseBrandRow: View {
             statusLine("Application sent. Answer in about \(max(1, a["due"].int - e.state.week).weeksText).", Theme.caution)
         case "invited":
             statusLine("They want to talk. Open for \(max(0, a["exp"].int - e.state.week)) more weeks.", Theme.gain)
-            NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Meet the \(b.role)") }.buttonStyle(PressableStyle())
+            NavigationLink { BrandMeetingView(brandID: b.id) } label: { Text("Meet the \(b.role)") }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
         case "agreed":
             let t = e.franchiseAgreedTerms(b.id)
             statusLine("Terms agreed. Entry fee \(cur.tidyShort(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).", Theme.gain)
             HStack(spacing: Theme.Space.s) {
-                NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Talk again", tint: Theme.ivoryMuted) }.buttonStyle(PressableStyle())
-                NavigationLink { StartFranchisedView(brandID: b.id) } label: { chipLabel("Start with this deal") }.buttonStyle(PressableStyle())
+                NavigationLink { BrandMeetingView(brandID: b.id) } label: { Text("Talk again") }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                NavigationLink { StartFranchisedView(brandID: b.id) } label: { Text("Start with this deal") }.buttonStyle(PrimaryButtonStyle(size: .compact))
             }
         default:
             if st == "refused" { statusLine("They turned you down for now.", Theme.loss) }
@@ -312,9 +305,9 @@ struct BrandMeetingView: View {
 
     private func arrow(_ glyph: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            GlyphView(glyph: glyph, size: 12, weight: 2, tint: Theme.gold)
-                .frame(width: 32, height: 32)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: Theme.accent)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Theme.surface).frame(width: 32, height: 32))
                 .contentShape(Circle())
         }.buttonStyle(PressableStyle())
     }

@@ -156,10 +156,9 @@ struct ChainSupplyOverview: View {
             }
         } label: {
             Text("Set a chain-wide provider")
-                .textStyle(.caption, tint: Theme.accent, weight: .medium)
-                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs).frame(minHeight: 28)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
         }
+        .menuStyle(.button)
+        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
     }
 
     private func confirmRule(_ r: Row, _ c: ChainSupplierChoice) {

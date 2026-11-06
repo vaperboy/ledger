@@ -144,13 +144,12 @@ struct ProjectWeeksChart: View {
                     }.frame(height: 22)
                 }
                 .padding(.top, Theme.Space.s)
-                .overlay(alignment: .top) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+                .overlay(alignment: .top) { Hairline() }
             }
             Text("White line is today. Amber bars are running late.").textStyle(.caption, tint: Theme.inkFaint)
         }
-        .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.m)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(Theme.Space.l)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Timeline of \(lines.count) projects: " + lines.map { "\($0.title) due \($0.dueWeek.map { shortDate(week: $0) } ?? "no date")" }.joined(separator: ", "))
     }

@@ -47,12 +47,11 @@ struct GroupEntityManagement: View {
     private func pickChip(_ c: Company, on: Bool) -> some View {
         let id: Int = c.id
         return Button { Haptics.choose(); picked = id } label: {
-            Text(c.name).font(.system(size: 12.5, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
+            Text(c.name).textStyle(.body, tint: on ? Theme.ink : Theme.inkFaint, weight: on ? .semibold : .regular)
                 .lineLimit(1)
-                .padding(.horizontal, Theme.Space.m).frame(minHeight: 34)
-                .background(Capsule().fill(on ? Theme.gold.opacity(0.16) : Theme.surface))
-                .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
+                .padding(.horizontal, Theme.Space.m).frame(minHeight: 44)
+                .background(Capsule().fill(on ? Theme.accentWash : Theme.surface))
+                .contentShape(Capsule())
         }
         .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])

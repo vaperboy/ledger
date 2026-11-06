@@ -108,9 +108,7 @@ struct RivalGroupProfileView: View {
     // MARK: Where it competes
 
     private func tag(_ text: String) -> some View {
-        Text(text).textStyle(.caption, tint: Theme.ink)
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+        AcctPill(text: text)
     }
 
     private func tagBlock(_ title: String, _ names: [String]) -> some View {

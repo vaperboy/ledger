@@ -88,9 +88,10 @@ struct CompanyFinanceBook: View {
                                         Button(p.name + (s.verified[p.id] != nil ? " (verified or in progress)" : "")) { verify(s.id, p) }
                                     }
                                 } label: {
-                                    Text("Verify for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold)
-                                        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.s).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75))
+                                    Text("Verify for\u{2026}")
                                 }
+                                .menuStyle(.button)
+                                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
                                 .disabled(products.allSatisfy { !$0.isOffered })
                             }
                             .padding(.vertical, Theme.Space.s)

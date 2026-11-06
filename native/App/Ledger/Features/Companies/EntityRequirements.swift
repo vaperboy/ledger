@@ -127,11 +127,9 @@ struct RequirementGuide: View {
         NavigationLink {
             HireWorkersView(companyID: company.id)
         } label: {
-            Text("Hire someone").textStyle(.caption, tint: Theme.accent, weight: .medium)
-                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs).frame(minHeight: 28)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+            Text("Hire someone")
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
     }
 
     // MARK: The paper
