@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.75",
+          "buildVersion": "75",
+          "date": "2026-11-06T11:58:05Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v75/Ledger-unsigned.ipa",
+          "size": 29314653,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades"
+        },
+        {
           "version": "1.0.74",
           "buildVersion": "74",
           "date": "2026-11-06T11:36:03Z",
@@ -187,22 +196,13 @@
           "size": 28743803,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Balance: security, driving school, physio, dental, law now viable (staff cover and congestion fixes)\n- Real items for every trade, new-car dealership, used car dealer rework, travel/insurance/finance brokers\n- Item list and item page like the staff list, live profit/loss price slider\n\n# Missing / coming next\n- Popup system rework (one overlay host) in progress; suppliers jump-back fix comes with it\n- Own-delivery fee, typed prices per trade, chain/franchise steps, photos for vehicles/premises/equipment\n- Not yet tested on device: expect rough edges"
-        },
-        {
-          "version": "1.0.55",
-          "buildVersion": "55",
-          "date": "2026-11-04T19:55:01Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v55/Ledger-unsigned.ipa",
-          "size": 28689774,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Real products: items now have cost, stock, supplier and a live profit/loss price slider (item list like Team)\n- Retail, food and drink, rentals and appointment trades sell real items (bakery recipes, rental units, treatments...)\n- New-car dealership with brand contracts; dealer warranty, car loans and insurance commission\n- Used car dealer: cars come only from the Marketplace, repairs by your own garage, lot spaces, stuck cars\n- New trades: travel agency, insurance broker, finance broker\n\n# Missing / coming next\n- Used car list, car dealer screens and dealer add-on screens are being wired into the app\n- Remaining trades (professional services, projects, venues, transport, finance) still sell generic items\n- Not yet tested on device: expect rough edges"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.74",
-      "versionDate": "2026-11-06T11:36:03Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v74/Ledger-unsigned.ipa",
-      "size": 29286218
+      "version": "1.0.75",
+      "versionDate": "2026-11-06T11:58:05Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v75/Ledger-unsigned.ipa",
+      "size": 29314653
     }
   ]
 }
