@@ -27,44 +27,45 @@ struct TeamInitials: View {
 
     var body: some View {
         if name == nil {
-            IconCircle(glyph: Glyph.hire, size: size, tint: Theme.ivoryMuted)
+            IconCircle(glyph: Glyph.hire, size: size, tint: Theme.inkSoft)
         } else {
             // Centred in the circle at a fixed size (the slot never changes with Dynamic Type, so rows do not reflow); long initials shrink to fit.
             ZStack {
-                Circle().fill(Theme.gold.opacity(0.06))
+                Circle().fill(Theme.accentWash)
                 Text(letters)
-                    .font(.serifTitle(size * 0.38)).foregroundStyle(Theme.gold)
+                    .font(.serifTitle(size * 0.38)).foregroundStyle(Theme.accent)
                     .lineLimit(1).minimumScaleFactor(0.6).multilineTextAlignment(.center)
                     .padding(.horizontal, size * 0.08)
             }
             .frame(width: size, height: size)
-            .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
-                .accessibilityHidden(true)
+            .accessibilityHidden(true)
         }
     }
 }
 
 /// A small outlined badge: the role or the scope (store, company, chain, region, group) of a person.
 struct TeamBadge: View {
+    @Environment(\.outsidePalette) private var P
     var text: String
-    var tint: Color = Theme.ivoryMuted
+    var tint: Color = Theme.inkSoft
 
     var body: some View {
         Text(text.tidyText)
-            .font(.system(size: 10.5, weight: .medium)).foregroundStyle(tint).lineLimit(1).minimumScaleFactor(0.8)
-            .padding(.horizontal, 7).padding(.vertical, 2)
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+            .textStyle(.caption, tint: tint, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
+            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(P.line, lineWidth: 1))
     }
 }
 
-/// One person of this company as a bordered card: initials circle, name, role and scope badges, a note, the monthly wage and a chevron.
+/// One person of this company on the surface tone: portrait, name, role and scope badges, a note, the monthly wage and a chevron.
 /// Used for the management posts and for the staff, so a person looks the same everywhere. A vacant post says "Vacant".
 struct PersonCard: View {
+    @Environment(\.outsidePalette) private var P
     var name: String?
     var role: String
     var scope: String
     var note: String = ""
-    var noteTint: Color = Theme.ivoryFaint
+    var noteTint: Color = Theme.inkFaint
     var wage: String? = nil
     var chevron = true
     /// The engine role id, for the picture; the displayed role is used when it is not given.
@@ -79,7 +80,7 @@ struct PersonCard: View {
         self.face = row.face
     }
 
-    init(name: String?, role: String, scope: String, note: String = "", noteTint: Color = Theme.ivoryFaint, wage: String? = nil, chevron: Bool = true, roleKey: String? = nil, face: String? = nil) {
+    init(name: String?, role: String, scope: String, note: String = "", noteTint: Color = Theme.inkFaint, wage: String? = nil, chevron: Bool = true, roleKey: String? = nil, face: String? = nil) {
         self.name = name; self.role = role; self.scope = scope
         self.note = note; self.noteTint = noteTint; self.wage = wage; self.chevron = chevron; self.roleKey = roleKey
         self.face = face
@@ -95,49 +96,47 @@ struct PersonCard: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: Theme.Space.m) {
             portrait
-            VStack(alignment: .leading, spacing: 4) {
-                Text(name ?? "Vacant").font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(name == nil ? Theme.ivoryMuted : Theme.ivory).lineLimit(1)
-                HStack(spacing: 5) {
-                    TeamBadge(text: role, tint: Theme.gold)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text((name ?? "Vacant").tidyText).textStyle(.headline, tint: name == nil ? P.inkSoft : P.ink).lineLimit(1)
+                HStack(spacing: Theme.Space.xs) {
+                    TeamBadge(text: role, tint: P.accent)
                     TeamBadge(text: scope)
                 }
                 if !note.isEmpty {
-                    Text(note.tidyText).font(.system(size: 12)).foregroundStyle(noteTint)
+                    Text(note.tidyText).textStyle(.caption, tint: noteTint)
                         .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                 }
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: Theme.Space.s)
             if let wage {
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(wage).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text("a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(wage).textStyle(.body, tint: P.ink, numeric: true).lineLimit(1)
+                    Text("a month").textStyle(.caption, tint: P.inkFaint)
                 }
             }
-            if chevron { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
+            if chevron { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint) }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.surface))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }
 
-/// A titled group of cards: a small champagne label with a note at the right, then the cards with a gap, no rule.
+/// A titled group: a small accent label with a note at the right, then the content with a gap, no rule.
 struct TeamGroup<Content: View, Trailing: View>: View {
     var title: String
     @ViewBuilder var trailing: () -> Trailing
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title).capsLabel()
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
                 trailing()
             }
             content()
@@ -151,7 +150,7 @@ extension TeamGroup where Trailing == EmptyView {
     }
 }
 
-/// A titled group whose content sits in one bordered card (targets, perks, contracts): the new-look `LedgerSection`.
+/// A titled group whose content sits in one card (targets, perks, contracts): the new-look `LedgerSection`.
 struct TeamCardGroup<Content: View, Trailing: View>: View {
     var title: String
     @ViewBuilder var trailing: () -> Trailing
@@ -159,7 +158,7 @@ struct TeamCardGroup<Content: View, Trailing: View>: View {
 
     var body: some View {
         TeamGroup(title: title, trailing: trailing) {
-            Card(padding: 14, radius: Theme.Radius.row) { content() }
+            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) { content() }
         }
     }
 }
@@ -169,10 +168,11 @@ extension TeamCardGroup where Trailing == EmptyView {
     }
 }
 
-/// A small outlined action inside a card, in the tint of what it does (champagne, red for letting go). Never filled.
+/// A small outlined action in the tint of what it does (accent, loss for letting go): the system's compact secondary button,
+/// drawn 32 pt high inside a 44 pt hit area. Never filled.
 struct TeamAction: View {
     var title: String
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
     var action: () -> Void
 
     var body: some View {
@@ -180,13 +180,9 @@ struct TeamAction: View {
             Haptics.tap()
             action()
         } label: {
-            Text(title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(tint).lineLimit(1)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(tint.opacity(0.7), lineWidth: 1))
-                .frame(minHeight: 32)
-                .contentShape(Rectangle())
+            Text(title)
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: tint))
     }
 }
 
@@ -205,7 +201,7 @@ struct CompanyTeamRoster: View {
             let cur = engine.currency(for: company)
             TeamGroup(title: "Management", trailing: {
                 let open = slots.filter { $0.personID == nil }.count
-                Text(open > 0 ? "\(open) vacant" : "all filled").font(.system(size: 11.5)).foregroundStyle(open > 0 ? Theme.caution : Theme.ivoryFaint)
+                Text(open > 0 ? "\(open) vacant" : "all filled").textStyle(.caption, tint: open > 0 ? Theme.warn : Theme.inkFaint)
             }) {
                 ForEach(slots) { slot in
                     let row: ManagementRow = TeamSlotSheet.row(slot, company: company, engine: engine, cur: cur)
@@ -259,7 +255,7 @@ struct TeamSlotSheet: View {
 
     @ViewBuilder private func filled(_ slot: ManagerModel.TeamSlot, _ p: Person, _ co: Company, _ cur: Currency) -> some View {
         LedgerSection("Who") {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 FlatRow(label: p.name, value: "\(cur.tidyShort(slot.monthlyWage)) a month", rule: false)
                 Text("In the post since \(GameCalendar.dateString(week: slot.since, dayOffset: 0)).").popupText(.caption)
                 Text(slot.detail.tidyMoney).popupText(.caption)
@@ -267,7 +263,7 @@ struct TeamSlotSheet: View {
         }
         if slot.key == "ceo" {
             LedgerSection("Decides") {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     AuthorityLevelPicker(level: slot.level) { l in
                         store.settle(store.act { $0.setTeamAuthority(companyID: co.id, level: l) }, "\(p.name) now \(GameEngine.authorityText(level: l)).", same: "\(p.name) already works that way.")
                     }
@@ -292,8 +288,7 @@ struct TeamSlotSheet: View {
                                     message: "Cost: about one month of pay (\(cur.tidyShort(slot.monthlyWage))) plus employer costs as severance, paid now. Their work goes back to the manager (or to you).",
                                     button: "Let go", destructive: true) {
                 let ok = store.act { $0.releaseTeam(companyID: co.id, key: slot.key, regionalID: slot.regionalID) } ?? false
-                if ok { Haptics.warning() }
-                if !ok { Haptics.warning() }
+                Haptics.warning()
                 store.show(ok ? "\(p.name) has left. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn")
             }
         }
@@ -303,7 +298,7 @@ struct TeamSlotSheet: View {
     @ViewBuilder private func vacant(_ slot: ManagerModel.TeamSlot, _ co: Company, _ cur: Currency, _ e: GameEngine) -> some View {
         let fee = ManagerModel.searchFee(currency: cur)
         LedgerSection("Vacant") {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text(slot.detail.tidyMoney).popupText(.subtitle)
                 Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",

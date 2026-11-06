@@ -252,22 +252,16 @@ struct ApplicantsView: View {
 /// The "Applicants" row with a count, for the company Team tab and Group Management: opens the Applicants page for that company.
 struct ApplicantsLinkRow: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var companyID: Int
 
     var body: some View {
         let n: Int = engine.applicants(companyID: companyID).count
-        Button { Haptics.tap(); store.openApplicants(companyID: companyID, role: nil) } label: {
-            HStack(spacing: 6) {
-                Text("Applicants").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                Spacer(minLength: 6)
-                Text(n == 0 ? "None yet" : "\(n)").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(n == 0 ? Theme.ivoryFaint : Theme.gold)
-                Text("\u{203A}").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold)
-            }
-            .frame(minHeight: 36).contentShape(Rectangle())
+        LedgerRow(leading: .glyph(Glyph.inbox), title: "Applicants", subtitle: "Everyone who answered an ad or an agency",
+                  value: n == 0 ? "None yet" : "\(n)", valueTint: n == 0 ? P.inkFaint : P.accent, identifier: "open-applicants") {
+            store.openApplicants(companyID: companyID, role: nil)
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("open-applicants")
     }
 }
 

@@ -24,17 +24,18 @@ enum StaffIssue {
     static func needsAttention(_ m: StaffMember) -> Bool { list(m).contains { !$0.hasSuffix("warning") && !$0.hasSuffix("warnings") } }
 }
 
-/// The company's own staff: a summary, issues first, then people grouped by role once the team is big enough to need it.
-/// A tap opens the person's profile, where every action on them lives.
+/// The company's own staff: paperwork first, then people who need attention, then everyone else, grouped by role once the team is big.
+/// A tap pushes the person's profile, where every action on them lives. The head count and the wage total are shown by the Team tab.
 struct CompanyStaffRoster: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var company: Company
     @State private var query = ""
     @State private var expanded: Set<String> = []
     @State private var pending: PendingAction?
-    /// The worker whose profile popup is open.
-    @State private var profile: WorkerRef?
+    /// The worker whose profile page is pushed; the Team tab owns the push so it outlives this list.
+    @Binding var profile: WorkerRef?
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -44,14 +45,12 @@ struct CompanyStaffRoster: View {
         let attention = shown.filter(StaffIssue.needsAttention)
         let rest = shown.filter { !StaffIssue.needsAttention($0) }
         let big = staff.count > 8
-        let total: String = cur.tidyShort(staff.reduce(0) { $0 + $1.monthlyWage })
-        TeamGroup(title: "Employees", trailing: {
-            Text("\(staff.count) \(staff.count == 1 ? "person" : "people") · \(total) a month").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-        }) {
-            if staff.count > 12 { search }
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            if staff.count > 12 { LedgerField(placeholder: "Search by name or role", text: $query) }
+            paperwork
             if !attention.isEmpty {
-                Text("Needs attention · \(attention.count)").font(.system(size: 10.5, weight: .semibold)).tracking(0.8).textCase(.uppercase).foregroundStyle(Theme.caution).padding(.top, 2)
-                ForEach(attention) { m in row(m, cur, showIssues: true) }
+                Text("Needs attention \u{00B7} \(attention.count)").textStyle(.label, tint: P.warn)
+                ForEach(attention) { m in row(m, cur) }
             }
             if big {
                 let groups = Dictionary(grouping: rest, by: { $0.role }).sorted { $0.value.count > $1.value.count }
@@ -64,85 +63,69 @@ struct CompanyStaffRoster: View {
                     } label: {
                         CardRowLabel(title: roleLabel(role), subtitle: "\(members.count) \(members.count == 1 ? "person" : "people")", value: pay, open: open)
                     }.buttonStyle(PressableStyle())
-                    if open { ForEach(members) { m in row(m, cur, showIssues: false) } }
+                    if open { ForEach(members) { m in row(m, cur) } }
                 }
             } else {
-                ForEach(rest) { m in row(m, cur, showIssues: false) }
+                ForEach(rest) { m in row(m, cur) }
             }
-            if !q.isEmpty && shown.isEmpty { Text("No one matches \"\(query)\".").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8) }
-            footer(cur)
+            if !q.isEmpty && shown.isEmpty { EmptyState(glyph: Glyph.search, title: "No one matches \"\(query)\"", centered: false) }
+            layOffRow(cur)
         }
         .confirmAction($pending)
-        .centerSheet(item: $profile) { (w: WorkerRef) -> AnyView in
-            AnyView(WorkerProfileSheet(companyID: company.id, employeeID: w.id).environmentObject(store))
-        }
-    }
-
-    private var search: some View {
-        HStack(spacing: 8) {
-            GlyphView(glyph: Glyph.person, size: 14, weight: 1.5, tint: Theme.ivoryFaint)
-            TextField("Name or role", text: $query).font(.system(size: 14)).foregroundStyle(Theme.ivory).textInputAutocapitalization(.never).autocorrectionDisabled()
-            if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.ivoryFaint) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search") }
-        }
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
     }
 
     private func name(_ m: StaffMember) -> String { engine.state.people[m.id]?.name ?? roleLabel(m.role) }
 
-    private func row(_ m: StaffMember, _ cur: Currency, showIssues: Bool) -> some View {
+    private func row(_ m: StaffMember, _ cur: Currency) -> some View {
         let issues: [String] = StaffIssue.list(m)
         let attention: Bool = StaffIssue.needsAttention(m)
-        let note: String = issues.isEmpty ? "" : issues.joined(separator: " · ")
+        let note: String = issues.isEmpty ? "" : issues.joined(separator: " \u{00B7} ")
         let wage: String = cur.tidyShort(m.monthlyWage)
         let id: Int = m.id
         return Button { Haptics.tap(); profile = WorkerRef(id: id) } label: {
-            ThinPersonRow(name: name(m), title: roleLabel(m.role), note: note, noteTint: attention ? Theme.caution : Theme.ivoryFaint, wage: wage, roleKey: m.role,
+            ThinPersonRow(name: name(m), title: roleLabel(m.role), note: note, noteTint: attention ? P.warn : P.inkFaint, wage: wage, roleKey: m.role,
                           face: engine.state.people[m.id]?.faceKey)
         }.buttonStyle(PressableStyle())
     }
 
-    @ViewBuilder private func footer(_ cur: Currency) -> some View {
+    /// Missing paperwork across the team, with one action that ticks it all. Nothing when every file is complete.
+    @ViewBuilder private var paperwork: some View {
         let staff = company.staff
         let papers = staff.reduce(0) { $0 + StaffExtras.missing($1).count }
         if papers > 0 {
-            Card(padding: 12, radius: Theme.Radius.row, stroke: Theme.caution.opacity(0.5)) {
-                HStack(spacing: 10) {
-                    GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: Theme.caution)
-                    Text("\(papers) paperwork \(papers == 1 ? "item" : "items") missing. An inspection can fine you.").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 6)
-                    TeamAction(title: "Do all") {
-                        var done = 0
-                        for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
-                        let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
-                        if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
-                        else if done > 0 { Haptics.warning(); store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
-                        else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
-                    }
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.medium, tint: P.warn)
+                Text("\(papers) paperwork \(papers == 1 ? "item" : "items") missing. An inspection can fine you.").textStyle(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: Theme.Space.s)
+                TeamAction(title: "Do all") {
+                    var done = 0
+                    for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
+                    let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
+                    if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
+                    else if done > 0 { Haptics.warning(); store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
+                    else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
                 }
             }
+            .padding(.vertical, Theme.Space.xs)
         }
+    }
+
+    /// Cutting costs: a quiet row at the end of the list whose menu picks how many of the weakest go; each choice asks first.
+    @ViewBuilder private func layOffRow(_ cur: Currency) -> some View {
+        let staff = company.staff
         if staff.count > 1 {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Cutting costs").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text("Lets the weakest go; severance is paid now.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                    }
-                    Spacer(minLength: 8)
-                    Menu {
-                        ForEach([1, 2, 3, 5].filter { $0 < staff.count }, id: \.self) { n in
-                            let p = engine.layoffPreview(companyID: company.id, count: n)
-                            Button("\(n) · saves \(cur.tidyShort(p.savesPerMonth)) a month, severance \(cur.tidyShort(p.severance))") { confirmLayOff(n, p, cur) }
-                        }
-                    } label: {
-                        Text("Lay off the weakest").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.loss)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.loss.opacity(0.7), lineWidth: 1))
-                    }
+            Menu {
+                ForEach([1, 2, 3, 5].filter { $0 < staff.count }, id: \.self) { n in
+                    let p = engine.layoffPreview(companyID: company.id, count: n)
+                    Button("\(n) \u{00B7} saves \(cur.tidyShort(p.savesPerMonth)) a month") { confirmLayOff(n, p, cur) }
                 }
+            } label: {
+                LedgerRow(leading: .symbol("person.fill.badge.minus"), leadingTint: P.loss, title: "Lay off the weakest",
+                          subtitle: "Cuts the wage bill; severance is paid now", chevron: true)
             }
+            .overlay(alignment: .top) { Hairline() }
+            .padding(.top, Theme.Space.s)
         }
     }
 
@@ -389,27 +372,27 @@ struct StaffProfileView: View {
     }
 }
 
-/// A group header of a long list (a role with its head count and pay): a compact card that opens or closes the people under it.
+/// A group header of a long list (a role with its head count and pay): a row on the inset tone that opens or closes the people under it.
 struct CardRowLabel: View {
+    @Environment(\.outsidePalette) private var P
     var title: String
     var subtitle: String
     var value: String
     var open: Bool
 
     var body: some View {
-        HStack(spacing: 10) {
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold).rotationEffect(.degrees(open ? 90 : 0))
+        HStack(spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.accent).rotationEffect(.degrees(open ? 90 : 0))
             VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                Text(subtitle).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(title.tidyText).textStyle(.headline)
+                Text(subtitle.tidyText).textStyle(.caption)
             }
-            Spacer(minLength: 8)
-            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+            Spacer(minLength: Theme.Space.s)
+            Text(value).textStyle(.body, tint: P.inkSoft, numeric: true).lineLimit(1)
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
