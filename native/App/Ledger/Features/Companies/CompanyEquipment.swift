@@ -184,8 +184,8 @@ struct CompanyEquipmentScreen: View {
                             if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(x.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
-                                    Text(needLine(x)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).multilineTextAlignment(.leading)
+                                    Text(x.name).textStyle(.body).multilineTextAlignment(.leading)
+                                    Text(needLine(x)).textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.leading)
                                 }
                                 Spacer(minLength: 8)
                                 Text(x.have + x.leased > 0 && x.have + x.leased >= x.need ? "Owned" : x.subscription ? "from " + cur.tidyShort(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.tidyShort(x.fromPrice))
@@ -226,7 +226,7 @@ struct CompanyEquipmentScreen: View {
                     ForEach(Array(o.units.enumerated()), id: \.element.id) { n, u in
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(u.name + (u.year > 0 ? " · \(u.year)" : "")).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text(u.name + (u.year > 0 ? " · \(u.year)" : "")).textStyle(.body)
                                 Text((u.boughtUsed ? "Bought used · " : "") + u.warranty + (u.daysInRepair > 0 ? " · in repair \(u.daysInRepair) days" : ""))
                                     .font(.system(size: 11)).foregroundStyle(u.daysInRepair > 0 ? Theme.loss : Theme.ivoryFaint)
                             }
@@ -277,13 +277,13 @@ struct CompanyEquipmentScreen: View {
         let owned = e.ownedEquipment(companyID: companyID)
         ForEach(needs.filter { $0.isVehicle }) { n in
             let mine = owned.first { $0.equipmentID == n.equipmentID }?.vehicles ?? []
-            CardSection(title: n.name, trailing: { Text(n.need > 0 ? "\(mine.count) of \(Int(n.need))" : "\(mine.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: n.name, trailing: { Text(n.need > 0 ? "\(mine.count) of \(Int(n.need))" : "\(mine.count)").textStyle(.caption) }) {
                 VStack(alignment: .leading, spacing: 0) {
-                    if mine.isEmpty { Text("No vehicles yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).padding(.bottom, 6) }
+                    if mine.isEmpty { Text("No vehicles yet.").textStyle(.body, tint: Theme.inkFaint).padding(.bottom, 6) }
                     ForEach(Array(mine.enumerated()), id: \.element.id) { i, v in
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                Text(v.name).textStyle(.body)
                                 Text(vehicleLine(v, cur))
                                     .font(.system(size: 11)).foregroundStyle(v.daysInRepair > 0 ? Theme.loss : Theme.ivoryFaint)
                             }
@@ -313,7 +313,7 @@ struct CompanyEquipmentScreen: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(worn.enumerated()), id: \.element.id) { i, v in
                         HStack(alignment: .firstTextBaseline) {
-                            Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                            Text(v.name).textStyle(.body)
                             Spacer(minLength: 8)
                             Menu {
                                 ForEach(CarRepairJobs.kinds) { (k: RepairKind) in
@@ -348,7 +348,7 @@ struct CompanyEquipmentScreen: View {
 
     @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
         if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
-            CardSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").textStyle(.caption) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
                         FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
@@ -361,7 +361,7 @@ struct CompanyEquipmentScreen: View {
     @ViewBuilder private func runningCosts(_ e: GameEngine, _ cur: Currency) -> some View {
         let run = e.fleetRunningCosts(companyID: companyID)
         if run.total > 0 {
-            CardSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }) {
+            CardSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").textStyle(.caption) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if run.fuel > 0 { FlatRow(label: "Fuel", value: cur.tidyShort(run.fuel), sub: "At full use; taxis, couriers and hauliers carry fuel in their cost of sales", rule: false) }
                     if run.leases > 0 { FlatRow(label: "Leases", value: cur.tidyShort(run.leases), sub: "Service included", rule: run.fuel > 0) }
@@ -403,9 +403,9 @@ struct CompanyEquipmentScreen: View {
                             if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(x.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).multilineTextAlignment(.leading)
+                                    Text(x.name).textStyle(.body).multilineTextAlignment(.leading)
                                     Text((mode == .subscription ? "Subscription only" : mode == .once ? "One-time licence" : "Licence up front + yearly updates") + (x.required ? " · required" : ""))
-                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                        .textStyle(.caption, tint: Theme.inkFaint)
                                 }
                                 Spacer(minLength: 8)
                                 Text(o?.subscription != nil ? cur.tidyShort(o?.subscriptionMonthly ?? 0) + "/mo" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Owned") : "from " + cur.tidyShort(mode == .subscription ? x.fromPrice / max(1, x.lifeYears) / 12 : x.fromPrice))

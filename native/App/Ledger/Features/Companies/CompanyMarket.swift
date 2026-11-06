@@ -107,11 +107,11 @@ struct CompanyMarket: View {
             HStack {
                 Text("Ranked by share").capsLabel()
                 Spacer()
-                Text("Green: losing ground").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("Green: losing ground").textStyle(.caption, tint: Theme.inkFaint)
             }.padding(.horizontal, 2)
             if rows.isEmpty {
                 Card(padding: 12, radius: Theme.Radius.row) {
-                    Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Rivals appear once the business has opened.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             } else {
                 SharpTable {
@@ -139,7 +139,7 @@ struct CompanyMarket: View {
             Text("Their prices against yours").capsLabel().padding(.horizontal, 2)
             if rows.isEmpty {
                 Card(padding: 12, radius: Theme.Radius.row) {
-                    Text("Prices appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Prices appear once the business has opened.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             } else {
                 SharpTable {
@@ -187,7 +187,7 @@ struct CompanyMarket: View {
             fieldBlock(row, detail)
         } else {
             Card(padding: 12, radius: Theme.Radius.row) {
-                Text("The market map fills in once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("The market map fills in once the business has opened.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -212,8 +212,8 @@ struct CompanyMarket: View {
                     HStack(alignment: .top, spacing: 10) {
                         IconCircle(glyph: Glyph.stats, size: 34)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(row.label).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
-                            Text(levelWords(row)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                            Text(row.label).textStyle(.headline).lineLimit(2)
+                            Text(levelWords(row)).textStyle(.caption, tint: Theme.inkFaint)
                         }
                         Spacer(minLength: 6)
                         MoreChevron()
@@ -221,7 +221,7 @@ struct CompanyMarket: View {
                     Text(row.shareText).font(.serifTitle(34)).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.6).orgTextSwap(row.shareText, interpolate: true)
                     // Without an analyst the share is a guess in words: no graph and no exact points.
                     if measured {
-                        Text(changeText).font(.system(size: 11.5)).foregroundStyle(changeTint)
+                        Text(changeText).textStyle(.caption, tint: changeTint)
                         shareChart(history)
                     }
                 }
@@ -243,13 +243,13 @@ struct CompanyMarket: View {
             .chartYAxis {
                 AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { (v: AxisValue) in
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
-                    AxisValueLabel { if let d = v.as(Double.self) { Text(String(format: "%.0f%%", d)).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) } }
+                    AxisValueLabel { if let d = v.as(Double.self) { Text(String(format: "%.0f%%", d)).font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
                 }
             }
             .frame(height: 96)
             .animation(Motion.revealAnimation, value: history)
         } else {
-            Text("The share line starts after the first month of trading.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("The share line starts after the first month of trading.").textStyle(.caption, tint: Theme.inkFaint)
         }
     }
 
@@ -267,7 +267,7 @@ struct CompanyMarket: View {
         let bars: [FieldBar] = fieldBars(detail, row.shareText)
         if row.level.canDrawShareGraph, bars.count >= 2 {
             MoreBlock(title: "Against the field", trailing: {
-                Text("\(max(0, bars.count - 1)) rivals sized").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("\(max(0, bars.count - 1)) rivals sized").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 fieldChart(bars)
             }
@@ -286,7 +286,7 @@ struct CompanyMarket: View {
         .chartXAxis(.hidden)
         .chartYAxis {
             AxisMarks(position: .leading) { (_: AxisValue) in
-                AxisValueLabel().font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis)
             }
         }
         .chartXScale(range: .plotDimension(endPadding: 56))
@@ -555,7 +555,7 @@ struct MarketView: View {
         case .competitors?: groups(e)
         case .prices?:
             Card(padding: 12, radius: Theme.Radius.row) {
-                Text("Choose a business above to compare its prices with its rivals.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("Choose a business above to compare its prices with its rivals.").textStyle(.caption, tint: Theme.inkFaint)
             }
         case .news?: MarketEventRows(events: MarketEventRows.relevant(e, companyID: nil, limit: 12))
         case .research?: DataAnalystCard()
@@ -568,14 +568,14 @@ struct MarketView: View {
         let note: String = weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position." : "At about a third of a local market, the competition authority starts to watch your pricing."
         return VStack(alignment: .leading, spacing: Theme.Space.l) { MoreBlock("Your share of each market") {
             VStack(spacing: 0) {
-                if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+                if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").textStyle(.caption, tint: Theme.inkFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
                     if n > 0 { CardLine() }
                     NavigationLink { MarketDetailView(marketKey: r.id) } label: {
                         HStack {
-                            Text(r.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                            Text(r.label).textStyle(.body)
                             Spacer()
-                            Text(r.shareText).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.gold).orgTextSwap(r.shareText, interpolate: true)
+                            Text(r.shareText).textStyle(.headline, tint: Theme.accent, numeric: true).orgTextSwap(r.shareText, interpolate: true)
                             MoreChevron()
                         }.padding(.vertical, 9).contentShape(Rectangle())
                     }.buttonStyle(PressableStyle())
@@ -590,34 +590,34 @@ struct MarketView: View {
                     if let r = e.yourRanking() { weightRow("Your rank by sales in your country", "\(r.rank) of \(r.of)") }
                     weightRow("Regulator attention", weight.attention)
                     Text(note)
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        .textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }
     }
 
     private func weightRow(_ label: String, _ value: String) -> some View {
-        HStack { Text(label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer(); Text(value).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted) }
+        HStack { Text(label).textStyle(.body); Spacer(); Text(value).textStyle(.body, tint: Theme.inkSoft, numeric: true) }
     }
 
     private func groups(_ e: GameEngine) -> some View {
         let gs = e.rivalGroupsAround()
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if gs.isEmpty { Text("Groups that compete near you appear once a business is open.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+            if gs.isEmpty { Text("Groups that compete near you appear once a business is open.").textStyle(.caption, tint: Theme.inkFaint) }
             ForEach(gs.prefix(12)) { g in
-                MoreBlock(title: g.name, card: true, trailing: { Text(g.strategyName).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+                MoreBlock(title: g.name, card: true, trailing: { Text(g.strategyName).textStyle(.caption, tint: Theme.inkFaint) }) {
                     VStack(alignment: .leading, spacing: 6) {
                         ThumbnailView(kind: .logo, key: "group|\(g.id)", size: 40, shape: .square, glyph: Glyph.group, initials: g.name)
                         Text("\(g.owner) · \(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : ""))
                             .font(.system(size: 12)).foregroundStyle(g.inTrouble ? Theme.caution : Theme.ivoryMuted)
-                        Text("Ambition: \(g.ambition)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        Text("Ambition: \(g.ambition)").textStyle(.caption, tint: Theme.inkFaint)
                         let mine = e.rivalsOfGroup(g.id)
                         NavigationLink { RivalGroupProfileView(groupID: g.id) } label: {
-                            HStack(spacing: 4) { Text("Open profile").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold); MoreChevron() }.contentShape(Rectangle())
+                            HStack(spacing: 4) { Text("Open profile").textStyle(.caption, tint: Theme.accent, weight: .medium); MoreChevron() }.contentShape(Rectangle())
                         }.buttonStyle(PressableStyle())
-                        if !mine.isEmpty { Text("In your markets: " + mine.map { $0.rival.name }.joined(separator: ", ")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted) }
+                        if !mine.isEmpty { Text("In your markets: " + mine.map { $0.rival.name }.joined(separator: ", ")).textStyle(.caption) }
                         ForEach(Array(g.moves.prefix(3).enumerated()), id: \.offset) { _, m in
-                            Text("Week \(m.week): \(m.text)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text("Week \(m.week): \(m.text)").textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
                 }
@@ -648,11 +648,11 @@ struct MarketDetailView: View {
                                 if n > 0 { CardLine() }
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(p.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                        if !p.detail.isEmpty { Text(p.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                                        Text(p.name).textStyle(.body).lineLimit(1)
+                                        if !p.detail.isEmpty { Text(p.detail.tidyMoney).textStyle(.caption, tint: Theme.inkFaint) }
                                     }
                                     Spacer()
-                                    Text(p.text.tidyMoney).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                    Text(p.text.tidyMoney).textStyle(.body, tint: Theme.inkSoft, numeric: true)
                                 }.padding(.vertical, 8)
                             }
                         }
@@ -665,10 +665,10 @@ struct MarketDetailView: View {
                     }
                     if !d.report.isEmpty {
                         MoreBlock(d.analystName.isEmpty ? "Report" : "\(d.analystName)'s report") {
-                            VStack(alignment: .leading, spacing: 5) { ForEach(d.report, id: \.self) { Text($0).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) } }
+                            VStack(alignment: .leading, spacing: 5) { ForEach(d.report, id: \.self) { Text($0).textStyle(.caption).fixedSize(horizontal: false, vertical: true) } }
                         }
                     } else {
-                        Text("Without an analyst you only have a feeling about the market.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        Text("Without an analyst you only have a feeling about the market.").textStyle(.caption, tint: Theme.inkFaint)
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)

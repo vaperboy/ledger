@@ -60,7 +60,7 @@ struct CompanyProperties: View {
     private func owned(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
         LedgerSection("Properties") {
             if pf.rows.isEmpty {
-                Text("No property yet. Buy one below to start earning rent.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("No property yet. Buy one below to start earning rent.").textStyle(.body, tint: Theme.inkSoft)
             }
             if !pf.rows.isEmpty {
                 SettingsTable(heading: "Property") {

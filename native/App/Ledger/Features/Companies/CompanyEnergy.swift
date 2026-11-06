@@ -101,11 +101,11 @@ struct CompanyEnergy: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.invest, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(f.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(fieldSub(f)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(f.name).textStyle(.headline)
+                    Text(fieldSub(f)).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer(minLength: 6)
-                Text(left).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Text(left).textStyle(.caption, numeric: true)
             }
         }
     }
@@ -117,8 +117,8 @@ struct CompanyEnergy: View {
             HStack(spacing: 10) {
                 IconCircle(glyph: Glyph.market, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(cur.tidyShort(cost)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text(title).textStyle(.headline)
+                    Text(cur.tidyShort(cost)).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer()
                 Button("Buy…") {
@@ -173,8 +173,8 @@ struct CompanyEnergy: View {
                         HStack(spacing: 10) {
                             IconCircle(glyph: Glyph.hire, size: 34)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text("Drill an exploration well").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                                Text("\(cur.tidyShort(drill)) · most wells find nothing; a hit takes about three years to produce").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                Text("Drill an exploration well").textStyle(.headline)
+                                Text("\(cur.tidyShort(drill)) · most wells find nothing; a hit takes about three years to produce").textStyle(.caption, tint: Theme.inkFaint)
                             }
                             Spacer()
                             Button("Drill…") { askToDrill(drill, cur) }.buttonStyle(TinyButtonStyle())
@@ -226,9 +226,9 @@ struct CompanySalmon: View {
                         EntityCard {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
-                                    Text("Cohort \(c.id + 1) · week \(c.age)").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                                    Text("Cohort \(c.id + 1) · week \(c.age)").textStyle(.headline)
                                     Spacer()
-                                    Text("\(Int((c.fish / 1000).rounded())) k fish · \(String(format: "%.1f", c.kilosEach)) kg").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                    Text("\(Int((c.fish / 1000).rounded())) k fish · \(String(format: "%.1f", c.kilosEach)) kg").textStyle(.caption, numeric: true)
                                 }
                                 RateBar(label: "Ready to harvest", fraction: c.readyShare, tint: c.readyShare >= 0.95 ? Theme.gain : Theme.gold)
                             }

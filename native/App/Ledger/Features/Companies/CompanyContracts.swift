@@ -99,7 +99,7 @@ struct CompanyContracts: View {
         if !list.isEmpty {
             timelineCard(list)
             Text("Promised units are a duty: a shop that cannot serve them gets warnings, then a penalty, and in the end loses the contract.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
             ForEach(list) { c in contractCard(c) }
         }
         if !orders.isEmpty { ordersCard(orders) }
@@ -116,7 +116,7 @@ struct CompanyContracts: View {
                 HStack {
                     Text("Terms and expiry").capsLabel()
                     Spacer(minLength: 8)
-                    Text("Next ends \(nextEnd)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Next ends \(nextEnd)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Chart {
                     ForEach(spans) { s in
@@ -134,7 +134,7 @@ struct CompanyContracts: View {
                     AxisMarks(values: .automatic(desiredCount: 3)) { v in
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
                         AxisValueLabel {
-                            if let w = v.as(Int.self) { Text(GameCalendar.dateString(week: w)).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) }
+                            if let w = v.as(Int.self) { Text(GameCalendar.dateString(week: w)).textStyle(.caption, tint: Theme.inkFaint) }
                         }
                     }
                 }
@@ -177,13 +177,13 @@ struct CompanyContracts: View {
                     HStack(spacing: 12) {
                         IconCircle(glyph: warned ? Glyph.warning : Glyph.reports, size: 38, tint: iconTint)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(c.name.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                            Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2).multilineTextAlignment(.leading)
+                            Text(c.name.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                            Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2).multilineTextAlignment(.leading)
                         }
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 1) {
-                            Text(worth).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                            Text(endsText).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                            Text(worth).textStyle(.headline, numeric: true)
+                            Text(endsText).textStyle(.caption)
                             if warned { Chip(text: warnText, tint: Theme.caution) }
                         }
                         GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
@@ -208,10 +208,10 @@ struct CompanyContracts: View {
             row("Unpaid invoices", store.short(d.outstanding, in: company))
             row("Warnings", "\(Int(c.warnings)) of 12" + (c.higherQuality ? " · higher quality promised" : ""))
             Text("Risks: a customer can go under (its unpaid invoices are lost), walk away from poor quality or not renew. Below 85% served, warnings build up: a penalty at six, the contract is cancelled at twelve.")
-                .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             if ending == c.id {
                 Text("Ending it now costs a penalty of about \(store.short(0.4 * d.price * c.units, in: company)) (10% of four weeks' business) and hurts your name.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.loss).fixedSize(horizontal: false, vertical: true)
                 HStack {
                     QuietButton(title: "Keep it", tint: Theme.ivoryMuted) { ending = nil }
                     Spacer()
@@ -233,7 +233,7 @@ struct CompanyContracts: View {
     private func tenders(_ open: [ProjectTenders.Tender]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("Buyers want a set volume every week. Bid a price against your list price; the best score on price and quality wins. Writing a bid costs money even when you lose.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
             ForEach(open, id: \.id) { t in tenderCard(t) }
         }
     }
@@ -255,15 +255,15 @@ struct CompanyContracts: View {
                     HStack(spacing: 12) {
                         IconCircle(glyph: Glyph.clock, size: 38)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(t.title.tidyMoney).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                            Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2).multilineTextAlignment(.leading)
-                            if !q.ok, let r = q.reason { Text(r).font(.system(size: 11.5)).foregroundStyle(Theme.caution).multilineTextAlignment(.leading) }
+                            Text(t.title.tidyMoney).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                            Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2).multilineTextAlignment(.leading)
+                            if !q.ok, let r = q.reason { Text(r).textStyle(.caption, tint: Theme.warn).multilineTextAlignment(.leading) }
                         }
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 1) {
                             if let b = mine { Chip(text: "Bid \(Int((b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
-                            else { Text("\(weeksToBid) wk to bid").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.gold) }
-                            Text(award).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+                            else { Text("\(weeksToBid) wk to bid").textStyle(.caption, tint: Theme.accent, numeric: true) }
+                            Text(award).textStyle(.caption)
                         }
                         GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim).rotationEffect(.degrees(isOpen ? -90 : 90))
                     }.contentShape(Rectangle())
@@ -300,15 +300,15 @@ struct CompanyContracts: View {
             row("Writing the bid costs", store.money(t.bidCost, in: company))
             Text(riskText(t, overCapacity: overCapacity)).font(.system(size: 11)).foregroundStyle(overCapacity ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if hasBid {
-                Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").textStyle(.caption, tint: Theme.inkFaint)
                 QuietButton(title: "Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
             } else if !qualifies {
-                Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+                Text("The firm does not meet the buyer's requirements yet.").textStyle(.caption, tint: Theme.warn)
             } else {
                 Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
                 SegmentedPill(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
                 Toggle(isOn: $higherQuality) {
-                    Text("Commit to higher quality (costs about 3% more to deliver)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
+                    Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
                 }.tint(Theme.gold)
                 QuietButton(title: "Send the bid…") {
                     let hq = higherQuality
@@ -337,9 +337,9 @@ struct CompanyContracts: View {
 
     private func row(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).textStyle(.caption)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory).multilineTextAlignment(.trailing)
+            Text(value).textStyle(.caption, tint: Theme.ink, numeric: true).multilineTextAlignment(.trailing)
         }
     }
 }

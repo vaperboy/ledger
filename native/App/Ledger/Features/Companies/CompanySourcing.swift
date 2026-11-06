@@ -59,7 +59,7 @@ struct CompanySourcing: View {
         let agreement: String? = engine.boardAgreement(scope: "goods").map { a in
             "Board agreement: goods for every company through \(engine.knownSuppliers.first { $0.id == a }?.name ?? "one supplier"), unless a company names its own."
         }
-        if let agreement { Text(agreement).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2) }
+        if let agreement { Text(agreement).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2) }
         if engine.isSuppliedFromInside(companyID: company.id) { Chip(text: "Own supplier", tint: Theme.gain) }
     }
 
@@ -95,7 +95,7 @@ struct CompanySourcing: View {
             }.padding(.horizontal, 2)
             if input.id == "goods" {
                 SegmentedPill(items: [0, 1, 2], title: { classNames[$0] }, selection: goodsClassBinding)
-                Text("Quality class: sets the cost and quality of all goods.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
+                Text("Quality class: sets the cost and quality of all goods.").textStyle(.caption, tint: Theme.inkFaint).padding(.horizontal, 2)
             }
             if let why = input.governedBy { notice(why, tint: Theme.caution) }
             if let none = input.noOwnProvider { notice(none, tint: Theme.ivoryMuted) }
@@ -134,7 +134,7 @@ struct CompanySourcing: View {
     private func notice(_ text: String, tint: Color) -> some View {
         HStack(alignment: .top, spacing: 8) {
             GlyphView(glyph: Glyph.lock, size: 14, weight: 1.6, tint: tint)
-            Text(text).font(.system(size: 11.5)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+            Text(text).textStyle(.caption, tint: tint).fixedSize(horizontal: false, vertical: true)
         }.padding(.horizontal, 2)
     }
 
@@ -315,7 +315,7 @@ struct CompanySourcing: View {
             }
             Text(explain).font(.system(size: 11.5)).foregroundStyle(lockedNow ? Theme.caution : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
             HStack(alignment: .center, spacing: 6) {
-                Text("Credit is a debt that falls due on its date.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text("Credit is a debt that falls due on its date.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Button { showDebtInfo = true } label: {
                     GlyphView(glyph: Glyph.info, size: 16, weight: 1.5, tint: Theme.ivoryMuted).frame(width: 32, height: 32).contentShape(Rectangle())
                 }.buttonStyle(PressableStyle()).accessibilityLabel("About buying on credit")

@@ -23,7 +23,7 @@ struct CompanySuppliersScreen: View {
             CompanySourcing(engine: e, company: co)
         } else {
             Text("No suppliers yet. They show here once the business is open.")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading)
+                .textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

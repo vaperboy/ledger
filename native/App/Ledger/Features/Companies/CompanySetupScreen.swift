@@ -26,7 +26,7 @@ struct CompanySetupScreen: View {
                         if n > 0 { Hairline() }
                         row(it)
                     }
-                    if missing.count > 6 { Text("and \(missing.count - 6) more").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6) }
+                    if missing.count > 6 { Text("and \(missing.count - 6) more").textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6) }
                 }
             }
             appCard(palette: .techPro, glyph: Glyph.techPro, title: "TechPro Store", note: "Equipment, software, tools and vehicles for your business: brands, used, lease and delivery.", button: "Open TechPro") {
@@ -66,8 +66,8 @@ struct CompanySetupScreen: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: "circle").foregroundStyle(Theme.ivoryFaint)
             VStack(alignment: .leading, spacing: 1) {
-                Text(it.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                if !it.detail.isEmpty { Text(it.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                Text(it.title.tidyMoney).textStyle(.headline)
+                if !it.detail.isEmpty { Text(it.detail.tidyMoney).textStyle(.caption, tint: Theme.inkFaint) }
             }
             Spacer(minLength: 6)
             if !hint.isEmpty { Text(hint).font(.system(size: 11.5)).foregroundStyle(hint.hasPrefix("Under") ? Theme.ivoryFaint : Theme.gold).fixedSize() }
@@ -80,10 +80,10 @@ struct CompanySetupScreen: View {
             GlyphView(glyph: glyph, size: 24, weight: 1.6, tint: P.accent)
                 .frame(width: 46, height: 46).background(Circle().fill(P.accent.opacity(0.14)))
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.ivory)
-                Text(note).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(title).textStyle(.headline, weight: .semibold)
+                Text(note).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 Button { Haptics.tap(); action() } label: {
-                    Text(button).font(.system(size: 14, weight: .semibold)).foregroundStyle(P.onAccent)
+                    Text(button).textStyle(.headline, tint: P.onAccent, weight: .semibold)
                         .padding(.horizontal, 18).frame(minHeight: 40)
                         .background(Capsule().fill(P.accent))
                 }

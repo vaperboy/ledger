@@ -47,7 +47,7 @@ struct DealerAddonsView: View {
                                     sub: o.active ? percent(o.takeRate) + " take it" : (o.setUp ? "Switched off" : "Not set up"))
                 })
                 Text("Added to the margin of each car sold. Switched-off add-ons do not count. Figures are averages over many customers.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -59,7 +59,7 @@ struct DealerAddonsView: View {
         let offer: DealerAddonOffer? = engine.dealerAddonPreview(companyID: company.id, priceFactor: Self.factors[priceStep]).first { $0.addon == a }
         return MoreBlock(title: a.title, trailing: { statusLabel(setup) }) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(blurb(a)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(blurb(a)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 if let s = setup {
                     switch s.phase {
                     case .approved: controls(a, offer, cur)
@@ -81,7 +81,7 @@ struct DealerAddonsView: View {
         case .rejected?: text = "Declined"; tint = Theme.loss
         default: text = "Not set up"
         }
-        return Text(text).font(.system(size: 11)).foregroundStyle(tint)
+        return Text(text).textStyle(.caption, tint: tint)
     }
 
     private func blurb(_ a: DealerAddon) -> String {
@@ -98,13 +98,13 @@ struct DealerAddonsView: View {
                 CardLine()
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.title + (r.isLicence ? "  (licence)" : "")).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                        Text(r.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text(r.title + (r.isLicence ? "  (licence)" : "")).textStyle(.body)
+                        Text(r.detail).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 8)
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(cur.tidyShort(r.cost)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                        Text("\(r.reviewWeeks) \(r.reviewWeeks == 1 ? "week" : "weeks")").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        Text(cur.tidyShort(r.cost)).textStyle(.caption, numeric: true)
+                        Text("\(r.reviewWeeks) \(r.reviewWeeks == 1 ? "week" : "weeks")").textStyle(.caption, tint: Theme.inkFaint)
                     }
                 }
             }
@@ -116,7 +116,7 @@ struct DealerAddonsView: View {
                 }
             }
             HStack {
-                Text("Review takes \(s.reviewWeeks) weeks. Fees are not refunded if it fails.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Review takes \(s.reviewWeeks) weeks. Fees are not refunded if it fails.").textStyle(.caption, tint: Theme.inkFaint)
                 Spacer(minLength: 8)
                 Button("Apply, " + cur.tidyShort(s.totalCost)) { Haptics.tap(); applying = a }
                     .buttonStyle(TinyButtonStyle(tint: Theme.gold)).disabled(!s.canStart)
@@ -128,18 +128,18 @@ struct DealerAddonsView: View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(s.requirements) { (r: DealerSetupRequirement) in
                 HStack {
-                    Text(r.title).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    Text(r.title).textStyle(.caption)
                     Spacer(minLength: 8)
-                    Text("Paid").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Paid").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
-            Text(weeks == 0 ? "The answer comes this week." : "The answer comes in \(weeks) \(weeks == 1 ? "week" : "weeks").").font(.system(size: 12)).foregroundStyle(Theme.gold)
+            Text(weeks == 0 ? "The answer comes this week." : "The answer comes in \(weeks) \(weeks == 1 ? "week" : "weeks").").textStyle(.caption, tint: Theme.accent)
         }
     }
 
     private func rejectedLines(_ a: DealerAddon, _ s: DealerSetupStatus, _ why: String, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(why).font(.system(size: 12.5)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+            Text(why).textStyle(.caption, tint: Theme.loss).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer(minLength: 0)
                 Button("Apply again, " + cur.tidyShort(s.totalCost)) { Haptics.tap(); applying = a }
@@ -202,15 +202,15 @@ struct DealerAddonsView: View {
             stepper(label, percent(value), minus: { commission(a, value - step) }, plus: { commission(a, value + step) })
             Text(a == .loan ? "The bank takes it from the customer's rate: a higher commission means a dearer loan and fewer customers choosing it. The bank's schedule allows 1 to 3 percent."
                              : "The insurer's budget for selling is fixed: what you take is what the customer does not save. The insurer's schedule allows 10 to 20 percent.")
-                .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func stepper(_ label: String, _ value: String, minus: @escaping () -> Void, plus: @escaping () -> Void) -> some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                Text(value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(label).textStyle(.caption, tint: Theme.inkFaint)
+                Text(value).textStyle(.headline, numeric: true)
             }
             Spacer(minLength: 8)
             Button { Haptics.choose(); minus() } label: { Image(systemName: "minus.circle").font(.system(size: 20)).foregroundStyle(Theme.ivoryMuted) }
@@ -223,14 +223,14 @@ struct DealerAddonsView: View {
     private func offerLines(_ o: DealerAddonOffer, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             CardLine()
-            Text(o.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            Text(o.detail).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             HStack {
-                Text("A sale of this kind brings").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text("A sale of this kind brings").textStyle(.caption)
                 Spacer(minLength: 8)
                 Text(signed(o.expectedNet, cur)).font(.system(size: 13, weight: .medium).monospacedDigit()).foregroundStyle(o.expectedNet >= 0 ? Theme.gain : Theme.loss)
             }
             if o.lostSaleChance > 0 {
-                Text("About \(percent(o.lostSaleChance)) of sales are lost when the bank declines the customer.").font(.system(size: 11.5)).foregroundStyle(Theme.loss)
+                Text("About \(percent(o.lostSaleChance)) of sales are lost when the bank declines the customer.").textStyle(.caption, tint: Theme.loss)
             }
         }
     }

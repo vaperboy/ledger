@@ -31,7 +31,7 @@ struct WorkerGrowthSection: View {
                 HStack {
                     Text("Growth").capsLabel()
                     Spacer(minLength: 6)
-                    Text(g.currentRoleName + " \u{2192} " + g.nextRoleName).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    Text(g.currentRoleName + " \u{2192} " + g.nextRoleName).textStyle(.caption, tint: Theme.ink, weight: .medium).lineLimit(1)
                 }
                 readinessBar(g, tint)
                 Text(missingLine(g)).font(.system(size: 11.5)).foregroundStyle(g.isReady ? Theme.gain : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
@@ -46,9 +46,9 @@ struct WorkerGrowthSection: View {
         let target: Double = min(1, max(0, g.readiness))
         return VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text("Readiness").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text("Readiness").textStyle(.caption)
                 Spacer(minLength: 6)
-                Text(String(Int((target * 100).rounded())) + "%").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(String(Int((target * 100).rounded())) + "%").textStyle(.caption, tint: Theme.ink, numeric: true)
             }
             GeometryReader { (geo: GeometryProxy) -> AnyView in
                 AnyView(ZStack(alignment: .leading) {
@@ -86,7 +86,7 @@ struct WorkerGrowthSection: View {
     @ViewBuilder private func successorRow(_ g: GrowthPath) -> some View {
         if let mgr = engine.state.company(companyID)?.managerID, mgr != employeeID {
             HStack {
-                Text("Make successor").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
+                Text("Make successor").textStyle(.caption, tint: Theme.ink)
                 Spacer(minLength: 6)
                 LedgerSwitch(isOn: Binding<Bool>(get: { g.isSuccessor }, set: { (on: Bool) in setSuccessor(mgr, on) })).hitHeight(28)
             }
@@ -143,8 +143,8 @@ struct GroupBrandLine: View {
         let parts: String = "Reputation: \(BrandWords.level(value: b.reputation, of: 40))\nYears trading: \(BrandWords.level(value: b.yearsTrading, of: 15))\nReach: \(BrandWords.level(value: b.reach, of: 25))\nAwards: \(BrandWords.level(value: b.awards, of: 20))"
         let help: String = "How well people know and trust the group's name. It lifts sale offers and franchise fees. It grows with a good reputation, more years trading, wider reach and awards.\n" + parts
         return HStack(spacing: 6) {
-            Text("Brand").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            Text(BrandWords.label(score: b.score)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
+            Text("Brand").textStyle(.caption)
+            Text(BrandWords.label(score: b.score)).textStyle(.caption, tint: Theme.accent, weight: .semibold)
             BrandBar(score: b.score)
             InfoPopoverButton(title: "Brand", text: help)
             Spacer(minLength: 0)
@@ -161,8 +161,8 @@ struct CompanyBrandLine: View {
     var body: some View {
         let score: Double = engine.brandValue(companyID: companyID)
         return HStack(spacing: 6) {
-            Text("Brand").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            Text(BrandWords.label(score: score)).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.gold)
+            Text("Brand").textStyle(.caption)
+            Text(BrandWords.label(score: score)).textStyle(.caption, tint: Theme.accent, weight: .semibold)
             BrandBar(score: score)
             Spacer(minLength: 0)
         }

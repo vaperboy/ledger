@@ -152,7 +152,7 @@ struct DemandCapacityChart: View {
         }
         .chartYAxis(.hidden)
         .chartXAxis {
-            AxisMarks { _ in AxisValueLabel().font(.caption2).foregroundStyle(Theme.inkFaint) }
+            AxisMarks { _ in AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) }
         }
         .accessibilityLabel("Demand against capacity over the last \(weeks.count) weeks")
     }

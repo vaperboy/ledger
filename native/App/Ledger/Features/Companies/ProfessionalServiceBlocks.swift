@@ -92,7 +92,7 @@ struct ProfessionalServiceBlock: View {
             Text("At this rate, a normal week").font(.subheadline).foregroundStyle(Theme.ivoryMuted)
             Spacer()
             Text(weekly.outcome == .breakEven ? word : word + " " + itemAmount(eco.weeklyProfit, cur))
-                .font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(tint)
+                .textStyle(.headline, tint: tint, numeric: true, weight: .semibold)
         }
     }
 

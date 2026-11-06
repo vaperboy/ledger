@@ -55,7 +55,7 @@ struct CompanyDevelopment: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
                     IconCircle(glyph: Self.kindGlyph(p.kind))
-                    Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(p.name).textStyle(.headline)
                     Spacer(minLength: 0)
                 }
                 RateBar(label: "Progress", fraction: fraction)
@@ -76,7 +76,7 @@ struct CompanyDevelopment: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 12) {
                     IconCircle(glyph: Self.kindGlyph(p.kind))
-                    Text(p.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(p.name).textStyle(.headline)
                     Spacer(minLength: 0)
                 }
                 StatStrip(cells: [
@@ -101,9 +101,9 @@ struct CompanyDevelopment: View {
                         if n > 0 { CardLine() }
                         HStack {
                             GlyphView(glyph: Glyph.check, size: 14, weight: 1.8, tint: Theme.gain)
-                            Text(d["n"].string).font(.system(size: 13)).foregroundStyle(Theme.ivory)
+                            Text(d["n"].string).textStyle(.body)
                             Spacer(minLength: 8)
-                            Text("\(Int((d["mag"].double * 100).rounded()))%").font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.gain)
+                            Text("\(Int((d["mag"].double * 100).rounded()))%").textStyle(.body, tint: Theme.gain, numeric: true)
                         }
                     }
                 }
