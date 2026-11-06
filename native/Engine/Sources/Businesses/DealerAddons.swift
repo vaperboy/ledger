@@ -330,9 +330,10 @@ public enum DealerAddons {
         // accounting units), so it scales with the ticket, not with the file's realistic prices (a 16 000 benchmark made every loan look unaffordable).
         // One ratio for every trade: the benchmark is 1.8 times the trade's ticket, so a car sold at the ticket price is approved about 90 percent
         // of the time and a dearer one less.
-        let ticket = data.catalog[co.type]?.ticket ?? 0
-        let scale = ticket > 0 ? ticket / 10000 : 1
-        return World(state: s, data: data).currency(co).scaledPrice(book["benchmarkPrice"].double * scale)
+        // The ticket as sold today (price level, city, inflation), not the catalog's: the cars on the lot are priced by it.
+        let w = World(state: s, data: data)
+        guard let bd = data.catalog[co.type], bd.ticket > 0 else { return w.currency(co).scaledPrice(book["benchmarkPrice"].double) }
+        return book["benchmarkPrice"].double / 10000 * Pricing.ticket(co, bd, w, withItems: false)
     }
 
     // MARK: Offers
@@ -364,8 +365,8 @@ public enum DealerAddons {
     public static func typicalSale(company co: Company, state s: GameState, data: GameData) -> (price: Double, car: DealerCar) {
         let t = book["typicalCar"][co.type]
         let cur = World(state: s, data: data).currency(co)
-        let ticket = data.catalog[co.type]?.ticket ?? 0
-        let price = cur.scaledPrice(ticket > 0 ? ticket : (t["price"].isNull ? 14000 : t["price"].double))
+        let ticket = data.catalog[co.type].map { $0.ticket > 0 ? Pricing.ticket(co, $0, World(state: s, data: data), withItems: false) : 0 } ?? 0
+        let price = ticket > 0 ? ticket : cur.scaledPrice(t["price"].isNull ? 14000 : t["price"].double)
         return (price, DealerCar(title: "Typical car", ageYears: t["age"].double, wear: t["wear"].double))
     }
 

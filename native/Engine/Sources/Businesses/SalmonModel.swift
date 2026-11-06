@@ -125,9 +125,10 @@ public enum SalmonModel {
     /// Cash needed to stock the first cohort. Original: the checklist of `FAM.prod`.
     public static func firstStockingCash(_ bd: Trade) -> Double { (bd.trait("tonnes") ?? 3500) / 4.6 * 1000 * 14.5 }
 
-    /// Extra buffer for the 15 months with no sales, in the start-up estimate. Original: `setupEstimate` (salmon step).
+    /// Extra buffer until the first harvest in the start-up estimate. Original: `setupEstimate` (salmon step) covered the 78 growing weeks;
+    /// the farm also opens about 26 weeks after the order, and the first cohort is stocked only then, so cash must last that much longer.
     public static func startupBuffer(_ bd: Trade, size: Double, country: Country) -> Double {
-        country.costIndex * 2_300_000 * pow(size, 0.9) * 0.85 * (bd.trait("grow") ?? 78)
+        country.costIndex * 2_300_000 * pow(size, 0.9) * 0.85 * ((bd.trait("grow") ?? 78) + 26)
     }
 
     // MARK: Reading for screens

@@ -233,9 +233,10 @@ extension ManagerModel {
         if !dutyAllows(n, dp.kind) { auth["lvl"] = 0 }
         // Within the budget the owner gave, a manager buys what the business is short of without waiting for an answer.
         let affordable = dp.kind == "hire" ? short <= 0 : co.cash > dp.cost * 0.5 + weekCost(s, co, data: data) * 6
-        if ["hire", "eq", "veh"].contains(dp.kind), auth["lvl"].double >= 1, affordable, (dp.kind == "hire" ? dp.cost / 12 : dp.cost) <= auth["buy"].double * ManagerVoice.budgetUse(n) {
+        // A quarter more space in the same premises is routine: within a manager's authority like a hire or a vehicle.
+        if ["hire", "eq", "veh", "space"].contains(dp.kind), auth["lvl"].double >= 1, affordable, (dp.kind == "hire" ? dp.cost / 12 : dp.cost) <= auth["buy"].double * ManagerVoice.budgetUse(n) {
             exec(&s, ci, dp, n, q, data: data)
-            if dp.kind != "hire" { ManagerVoice.record(&s, companyIndex: ci, "\(dp.kind == "veh" ? "added a vehicle" : "bought equipment") within your budget: customers were being turned away") }
+            if dp.kind != "hire" { ManagerVoice.record(&s, companyIndex: ci, "\(dp.kind == "veh" ? "added a vehicle" : dp.kind == "space" ? "took more space" : "bought equipment") within your budget: customers were being turned away") }
             return
         }
         // Someone above the manager judges it first and only passes on what is above their budget or a close call.
