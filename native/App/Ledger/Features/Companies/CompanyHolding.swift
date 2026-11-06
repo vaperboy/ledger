@@ -38,16 +38,14 @@ struct CompanyHolding: View {
                     VStack(alignment: .leading, spacing: 0) {
                         FigureStrip(items: figureItems(o, cur))
                         if o.groupCovered > 0 {
-                            Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").font(.caption2).foregroundStyle(Theme.gain).padding(.top, Theme.Space.s)
+                            Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").textStyle(.caption, tint: Theme.gain).padding(.top, Theme.Space.s)
                         }
                     }
                 }
                 MoreBlock(title: "Companies held", card: false, trailing: { Text("\(o.subsidiaries.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
                     VStack(spacing: Theme.Space.m) {
                         if o.subsidiaries.isEmpty {
-                            Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
-                                Text("No companies under this holding yet. Dividends from companies under it are taxed far lower.").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                            }
+                            EmptyState(glyph: Glyph.group, title: "No companies under this holding yet", message: "Dividends from companies under it are taxed far lower.", centered: false)
                         }
                         ForEach(o.subsidiaries, id: \.id) { k in heldCard(k, cur) }
                     }
@@ -65,7 +63,7 @@ struct CompanyHolding: View {
                                     }
                                 }
                             }
-                            Text("Only limited companies can be held. Owning 90% or more in the same country puts them in one tax group.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text("Only limited companies can be held. Owning 90% or more in the same country puts them in one tax group.").textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
                 }
@@ -73,19 +71,18 @@ struct CompanyHolding: View {
                 MoreBlock("Move money") {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         AmountField(title: "Amount", currency: cur, amount: $amount)
-                        HStack {
-                            Button("Put money in") {
-                                if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
-                                else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
-                            }.buttonStyle(TinyButtonStyle())
-                            Button("Treasury and dividends") { store.openGroupEntity(companyID: company.id, section: "money") }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
-                        }
-                        Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself. The index fund and paying yourself are in the Group tab under Money.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        Button("Put money in") {
+                            if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
+                            else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
+                        }.buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: Theme.accent))
+                        LedgerRow(leading: .glyph(Glyph.bank), title: "Treasury and dividends", subtitle: "The index fund and paying yourself, in Group under Money",
+                                  action: { store.openGroupEntity(companyID: company.id, section: "money") })
+                        Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself.")
+                            .textStyle(.caption, tint: Theme.inkFaint)
                     }
                 }
             } else {
-                Text("This holding company has no figures yet.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                Text("This holding company has no figures yet.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
         .confirmAction($pending)
@@ -155,7 +152,7 @@ struct NewHoldingView: View {
                     }
                     MoreBlock("Which companies it holds") {
                         VStack(spacing: 0) {
-                            if free.isEmpty { Text("No limited companies to hold yet. You can add them later.").font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                            if free.isEmpty { Text("No limited companies to hold yet. You can add them later.").textStyle(.caption, tint: Theme.inkFaint) }
                             ForEach(Array(free.enumerated()), id: \.element.id) { n, c in
                                 if n > 0 { Hairline() }
                                 Button {

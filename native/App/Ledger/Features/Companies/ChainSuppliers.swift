@@ -59,7 +59,7 @@ struct ChainSupplyOverview: View {
             MoreBlock(title: "Suppliers", card: false, trailing: { Text("\(links.count) from your own").textStyle(.caption, tint: Theme.inkFaint) }) {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Text("The usual provider of each input across the stores, and the stores that differ. Set a chain rule to make one provider the choice for every store the chain governs; without a rule each store chooses its own. A board agreement can set goods for every company.")
-                        .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     ForEach(rules) { rule in
                         EntityCard { ruleBlock(rule) }
                     }
@@ -79,14 +79,14 @@ struct ChainSupplyOverview: View {
                                     GroupLinkRow(title: x.store, sub: "Exception: \(x.provider)", subTint: Theme.caution)
                                 }.buttonStyle(PressableStyle())
                             }
-                            if r.exceptions.count > 8 { Text("and \(r.exceptions.count - 8) more stores differ").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
+                            if r.exceptions.count > 8 { Text("and \(r.exceptions.count - 8) more stores differ").textStyle(.caption, tint: Theme.inkFaint) }
                         }
                         }
                     }
                     setRuleMenu(all)
                     if !quiet.isEmpty {
                         Text("All stores buy outside: " + quiet.map { $0.title.lowercased() }.joined(separator: ", ") + ". Open a store's Operations > Suppliers to compare your own companies and business customers.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                            .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(links, id: \.id) { l in
                         let buyer = engine.state.company(l.buyerID)?.name ?? "Store"

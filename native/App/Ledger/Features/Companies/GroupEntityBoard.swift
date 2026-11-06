@@ -25,7 +25,7 @@ struct GroupEntityBoard: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if !message.isEmpty { NoteCard(text: message) }
             if active { roomLink(key) }
-            Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
+            LedgerSection("Board seats") {
                 VStack(spacing: 0) {
                     ownerRow
                     if active { seatRows(key) }
@@ -33,7 +33,7 @@ struct GroupEntityBoard: View {
             }
             if !active {
                 Text("Nobody else owns part of this company, so there are no seats to fill and no binding votes. A full board forms once you register a chain or a co-owner joins; until then your managers advise and you decide.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
         .confirmAction($pending)
@@ -51,8 +51,7 @@ struct GroupEntityBoard: View {
     private func avatar(_ text: String) -> some View {
         Text(text).textStyle(.caption, tint: Theme.accent, weight: .medium)
             .frame(width: 32, height: 32)
-            .background(Circle().fill(Color(hex: 0x1E1F21)))
-            .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            .background(Circle().fill(Theme.surface))
     }
 
     /// The person's portrait from the shared avatar (staff and managers alike); initials for a co-owner who is not a person record.
@@ -65,7 +64,7 @@ struct GroupEntityBoard: View {
     }
 
     private func plusRing() -> some View {
-        Image(systemName: "plus").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ivoryFaint)
+        Image(systemName: "plus").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
             .frame(width: 32, height: 32)
             .overlay(Circle().strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
     }
@@ -73,17 +72,18 @@ struct GroupEntityBoard: View {
     private func line<Lead: View, Trail: View>(first: Bool, @ViewBuilder lead: () -> Lead, title: String, sub: String, chip: String = "", @ViewBuilder trail: () -> Trail) -> some View {
         HStack(spacing: Theme.Space.m) {
             lead()
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
-                if !sub.isEmpty { Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1) }
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.headline).lineLimit(1)
+                if !sub.isEmpty { Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2) }
             }
-            if !chip.isEmpty { Chip(text: chip, tint: Theme.gold) }
-            Spacer(minLength: 6)
+            if !chip.isEmpty { Chip(text: chip, tint: Theme.accent) }
+            Spacer(minLength: Theme.Space.s)
             trail()
         }
-        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
-        .frame(minHeight: 46)
-        .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
+        .padding(.vertical, Theme.Space.s)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .overlay(alignment: .top) { if !first { Hairline() } }
     }
 
     /// True when the owner himself works in one of the entity's companies (no manager, hours above zero).
@@ -121,7 +121,7 @@ struct GroupEntityBoard: View {
         return Button { Haptics.tap(); seatSheet = SeatRef(id: id) } label: {
             line(first: false, lead: { plusRing() }, title: r.title, sub: r.text, trail: {
                 Text("Appoint").textStyle(.body, tint: Theme.accent, weight: .medium)
-                    .frame(minWidth: 64, minHeight: 36, alignment: .trailing)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
             })
         }.buttonStyle(PressableStyle())
     }
@@ -145,7 +145,8 @@ struct GroupEntityBoard: View {
         let waiting: Int = engine.boardOpenDecisions(key: key)
         let sub: String = waiting > 0 ? "\(waiting) \(waiting == 1 ? "point waits" : "points wait") for your decision" : "Agenda, minutes and how often it meets"
         return NavigationLink { BoardView(key: key) } label: {
-            CardRow(glyph: Glyph.achievements, title: "Board room", subtitle: sub, badge: waiting)
+            LedgerRow(leading: .glyph(Glyph.achievements), title: "Board room", subtitle: sub, badge: waiting, chevron: true)
+                .overlay(alignment: .top) { Hairline() }
         }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-board-room")
     }
 }
@@ -169,7 +170,7 @@ struct SeatPickerSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(r?.text ?? "").popupText(.caption).lineLimit(2)
             if cands.isEmpty {
-                Text("Nobody lined up for this seat yet.").popupText(.caption)
+                EmptyState(glyph: Glyph.person, title: "Nobody lined up for this seat yet", message: "A search finds candidates; it costs a fee.", centered: false)
             }
             ForEach(cands) { (p: Person) in
                 candidateRow(p)
@@ -187,7 +188,7 @@ struct SeatPickerSheet: View {
                 Text(p.name).popupText(.rowValue).lineLimit(1)
                 Text("\(p.str("advBg")) \u{00B7} \(store.short(fee * 12)) a year").popupText(.caption).lineLimit(1)
             }
-            Spacer(minLength: 6)
+            Spacer(minLength: Theme.Space.s)
             Button("Appoint") { seat(p, fee) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
         }
         .padding(.vertical, Theme.Space.xs)

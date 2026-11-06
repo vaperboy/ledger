@@ -59,7 +59,7 @@ struct CompanyFinanceBook: View {
                             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                                 Text(p.name).textStyle(.body, tint: Theme.ink)
                                 Text(p.status + (p.isOffered ? " · verified sellers \(Int(p.verifiedSellers.rounded()))" : " · approval " + cur.tidyShort(p.approvalFee)))
-                                    .font(.caption).foregroundStyle(p.status == "Live" ? Theme.gain : Theme.ivoryFaint)
+                                    .textStyle(.caption, tint: p.status == "Live" ? Theme.gain : Theme.inkFaint)
                             }
                             Spacer(minLength: 8)
                             Button(p.isOffered ? "Stop selling" : "Offer…") { confirmToggle(p, cur) }
@@ -70,7 +70,7 @@ struct CompanyFinanceBook: View {
                     }
                 }
                 Text("Each product needs the regulator's approval, and each salesperson must be verified for it before they sell it. Big storms can hit many policies at once; premiums minus claims is your profit. Your other companies can buy insurance here.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
             }
             if sellers.isEmpty {
                 CardSection("Salespeople") {
@@ -117,7 +117,7 @@ struct CompanyFinanceBook: View {
             CardSection("How the bank earns") {
                 Meter(label: "Capital", value: 100 * min(1, b.requiredRatio > 0 ? b.capitalRatio / (b.requiredRatio * 2) : 0))
                 Text("The bank earns the gap between what borrowers pay and what savers are paid. Bad loans reduce capital, and rumours can start a run on deposits: a solvent bank short of cash borrows from the central bank and repays as deposits come back. Choose the loan book and funding under Operations. Your other companies borrow cheaper here.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -134,7 +134,7 @@ struct CompanyFinanceBook: View {
                 .init(label: "Performance fee", value: Currency.percent(b.performanceFee, decimals: 0), sub: "of gains above the mark"),
             ])
             Text("You earn a fee on the assets every week and a performance fee at year end when the fund has beaten its high-water mark by 4%. Money flows in when returns are good and out when they are poor; the strategy and fee class under Operations decide how much risk you take and how many investors you attract.")
-                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                .textStyle(.caption, tint: Theme.inkFaint)
         }
     }
 

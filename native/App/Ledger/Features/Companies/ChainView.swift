@@ -138,7 +138,7 @@ struct ChainFigures: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 FigureStrip(items: items)
                 RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
-                Text(reachNote).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text(reachNote).textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -347,16 +347,16 @@ struct ChainRulesSection: View {
     var body: some View {
         MoreBlock("Chain rules") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").textStyle(.caption, tint: Theme.inkSoft)
                 priceRule
-                Text("Ordering").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Ordering").textStyle(.caption, tint: Theme.inkSoft)
                 orderingRule
-                Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Pay").textStyle(.caption, tint: Theme.inkSoft)
                 payRule
-                Text("Marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Marketing").textStyle(.caption, tint: Theme.inkSoft)
                 marketingRule
                 Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
                 knobRules
             }
         }
@@ -369,7 +369,7 @@ struct ChainRulesSection: View {
             store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) }
         })
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(current)).textStyle(.caption, tint: Theme.ink) }
+            HStack { Text("Price").textStyle(.caption, tint: Theme.inkSoft); Spacer(); Text(priceWord(current)).textStyle(.caption, tint: Theme.ink) }
             LedgerSlider(value: binding, in: -3...3, step: 0.5) { editing in
                 if !editing { store.saved("chain price rule.") }
             }
@@ -417,7 +417,7 @@ struct ChainRulesSection: View {
     private func knobStandard(_ knob: Knob, _ current: JSONValue) -> some View {
         let cur = engine.homeCurrency
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text(knob.name).font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text(knob.name).textStyle(.caption, tint: Theme.inkSoft)
             WrapRow {
                 Group {
                     Button("Each store decides") {
@@ -518,7 +518,7 @@ struct ChainNewStore: View {
                                                 button: "Open the store", amount: cost, currency: currency) { open(cityID: cityID) }
                     }
                 } else {
-                    Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                    Text("A new store is not possible in that city.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }

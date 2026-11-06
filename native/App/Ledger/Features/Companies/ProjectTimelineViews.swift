@@ -59,7 +59,7 @@ struct ProjectTimelineDetail: View {
             } else {
                 VStack(spacing: Theme.Space.s) {
                     Text("This project is finished or has been decided.").foregroundStyle(Theme.ivoryMuted)
-                    Text("Finished work is counted in the company's Projects section.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                    Text("Finished work is counted in the company's Projects section.").textStyle(.caption, tint: Theme.inkFaint)
                 }.padding(Theme.Space.margin).frame(maxWidth: .infinity)
             }
         }

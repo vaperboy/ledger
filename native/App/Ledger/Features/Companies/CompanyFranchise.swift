@@ -93,7 +93,7 @@ struct FranchisorCard: View {
     @ViewBuilder private func notYet(_ cur: Currency) -> some View {
         let reqs = engine.franchiseRequirements(companyID: company.id)
         Text("Others open units under your name for a fee and royalties, once the chain has proven itself. \(reqs.filter { $0.ok }.count) of \(reqs.count) ready.")
-            .font(.caption).foregroundStyle(Theme.ivoryMuted).padding(.bottom, Theme.Space.s)
+            .textStyle(.caption, tint: Theme.inkSoft).padding(.bottom, Theme.Space.s)
         RequirementGuide(engine: engine, company: company, requirements: reqs)
         if reqs.allSatisfy({ $0.ok }) {
             CardLine()
@@ -103,7 +103,7 @@ struct FranchisorCard: View {
 
     @ViewBuilder private func launchForm(_ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Terms for new units").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text("Terms for new units").textStyle(.caption, tint: Theme.inkSoft)
             HStack {
                 Text("Entry fee").font(.system(size: 13.5)); Spacer()
                 ForEach([50_000.0, 150_000, 300_000], id: \.self) { v in
@@ -407,7 +407,7 @@ struct FranchiseTalkView: View {
                                 choice("Entry fee · \(cur.tidyShort(co.value("fr")["fee"].double * terms.feeFactor))", [(1.0, "Full"), (0.5, "Half"), (0.0, "Waived")], current: terms.feeFactor) { terms.feeFactor = $0 }
                                 choice("Royalty of sales", [0.04, 0.05, 0.06, 0.07, 0.08, 0.10].map { ($0, "\(Int($0 * 100))%") }, current: terms.royalty) { terms.royalty = $0 }
                                 HStack {
-                                    Text("Your help with the setup").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer()
+                                    Text("Your help with the setup").textStyle(.caption, tint: Theme.inkSoft); Spacer()
                                 }
                                 HStack {
                                     ForEach([("none", "None"), ("l25", "Lend 25%"), ("l50", "Lend 50%"), ("c50", "Cover half")], id: \.0) { h in
@@ -425,7 +425,7 @@ struct FranchiseTalkView: View {
                                     FlatRow(label: "Yours a year", value: cur.tidyShort(s.yours), sub: s.youPutIn > 0 ? "You put in \(cur.tidyShort(s.youPutIn))." : "")
                                 }
                                 Text("Seems " + PatienceWords.feeling(left: patience, of: Franchising.patienceDots(for: a.personality)).text.lowercased() + ".")
-                                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                                    .textStyle(.caption, tint: Theme.inkFaint)
                                 Button("Send offer") { send(a, co: co, cur: cur) }.buttonStyle(TinyButtonStyle())
                             }
                         }
@@ -458,7 +458,7 @@ struct FranchiseTalkView: View {
 
     private func choice(_ title: String, _ options: [(Double, String)], current: Double, set: @escaping (Double) -> Void) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text(title).font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Text(title).textStyle(.caption, tint: Theme.inkSoft)
             WrapRow {
                 Group {
                     ForEach(options, id: \.0) { o in

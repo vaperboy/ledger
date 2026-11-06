@@ -96,7 +96,7 @@ struct CompanySaleSection: View {
             .init(label: "Reserve", value: cur.tidyShort(l.reserve * mine)),
             .init(label: "Top bid", value: top.map { (o: CompanySale.Offer) -> String in cur.tidyShort(o.price * mine) } ?? "None"),
         ])
-        Text(l.round < 3 ? "A new round of bids comes in each week. Bids rise, but a bidder may drop out." : "The bidding is over. The bids stand for a few days, then lapse.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+        Text(l.round < 3 ? "A new round of bids comes in each week. Bids rise, but a bidder may drop out." : "The bidding is over. The bids stand for a few days, then lapse.").textStyle(.caption, tint: Theme.inkFaint)
         if let top {
             Button("Hammer now at " + cur.tidyShort(top.price * mine)) { Haptics.tap(); askToSell(top) }.buttonStyle(QuietButtonStyle())
         }
@@ -117,7 +117,7 @@ struct CompanySaleSection: View {
                         Spacer()
                         Text(cur.tidyShort(l.pct < 100 ? o.price : o.price * company.ownership / 100)).textStyle(.body, tint: Theme.accent, numeric: true)
                     }
-                    Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     WrapRow {
                         Button("Accept…") { Haptics.tap(); askToSell(o) }.buttonStyle(QuietButtonStyle())
                         Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(QuietButtonStyle())

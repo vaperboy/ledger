@@ -171,7 +171,7 @@ struct StoreRules: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Own rules for this store").capsLabel(Theme.ivoryFaint)
             HStack {
-                Text("Price step").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Price step").textStyle(.caption, tint: Theme.inkSoft)
                 Spacer()
                 ForEach([-1.0, 0.0, 1.0], id: \.self) { v in
                     Button(v == 0 ? "Chain" : v < 0 ? "Lower" : "Higher") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .priceSteps(v)) }, "Store price rule saved.", same: "That price rule is already set.") }
@@ -179,7 +179,7 @@ struct StoreRules: View {
                 }
             }
             HStack {
-                Text("Local marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Local marketing").textStyle(.caption, tint: Theme.inkSoft)
                 Spacer()
                 ForEach([0.0, 0.01, 0.02], id: \.self) { v in
                     Button(v == 0 ? "None extra" : "+\(Int(v * 100))%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .marketing(v)) }, "Store marketing rule saved.", same: "That marketing rule is already set.") }
@@ -187,7 +187,7 @@ struct StoreRules: View {
                 }
             }
             HStack {
-                Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Pay").textStyle(.caption, tint: Theme.inkSoft)
                 Spacer()
                 ForEach([-0.1, 0.0, 0.1], id: \.self) { v in
                     Button(v == 0 ? "Chain pay" : v < 0 ? "−10%" : "+10%") { store.settle(store.act { $0.setStoreRule(companyID: storeID, rule: .pay(v)) }, "Store pay rule saved.", same: "That pay rule is already set.") }
