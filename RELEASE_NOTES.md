@@ -1,4 +1,5 @@
 # What's new
+- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; sheet text uses the shared popup styles
 - Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps
 - Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full
 - Week report: Continue and Full report stay pinned at the bottom of the card
