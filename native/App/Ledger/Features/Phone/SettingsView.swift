@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import GameCore
 import Simulation
 
-/// Settings app: a plain list like the system Settings. Grouped rows with a round icon in front, switches for on and off, popups for
+/// Settings app: a plain list like the system Settings. Grouped rows with an icon in front, switches for on and off, popups for
 /// a choice, chevrons for what opens something; no hero and no figures. Every control keeps its engine call and its "Saved" message.
 struct SettingsView: View {
     /// Inside the Start screen's popup: the popup is the panel, so no background of its own.
@@ -26,13 +26,14 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 feelGroup
                 savingGroup
                 proGroup
+                if store.classicStartUnlocked { newGameGroup }
                 gameGroup
             }
-            .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
@@ -112,20 +113,21 @@ struct SettingsView: View {
             Button { showPaste = true } label: {
                 plainRow(Glyph.download, "Paste save text", chevron: true)
             }.buttonStyle(PressableStyle())
-            if store.classicStartUnlocked { classicStarts }
         }
     }
 
-    /// The two older ways to begin, selectable once the new-player ladder has reached them.
-    @ViewBuilder private var classicStarts: some View {
-        rule
-        Button { askNewGame(.loan) } label: {
-            plainRow(Glyph.bank, "New game: start-up loan", detail: LifeStory.loan.tagline, chevron: true)
-        }.buttonStyle(PressableStyle())
-        rule
-        Button { askNewGame(.heir) } label: {
-            plainRow(Glyph.home, "New game: the family café", detail: LifeStory.heir.tagline, chevron: true)
-        }.buttonStyle(PressableStyle())
+    /// The two older ways to begin, once the new-player ladder has reached them. Their own group in red, away from the saves: each
+    /// replaces the running game (confirmed first).
+    private var newGameGroup: some View {
+        group("New game", footer: "Replaces the game you are playing; the copy before it is kept as a backup.") {
+            Button { askNewGame(.loan) } label: {
+                plainRow(Glyph.bank, "New game: start-up loan", detail: LifeStory.loan.tagline, tint: Theme.loss, chevron: true)
+            }.buttonStyle(PressableStyle())
+            rule
+            Button { askNewGame(.heir) } label: {
+                plainRow(Glyph.home, "New game: the family café", detail: LifeStory.heir.tagline, tint: Theme.loss, chevron: true)
+            }.buttonStyle(PressableStyle())
+        }
     }
 
     private func askNewGame(_ story: LifeStory) {
@@ -152,7 +154,7 @@ struct SettingsView: View {
             }
             if ent.isPlus {
                 rule
-                Button { Task { await ent.manageSubscription() } } label: { plainRow(Glyph.chevron, "Manage subscription", chevron: true) }
+                Button { Task { await ent.manageSubscription() } } label: { plainRow(Glyph.settings, "Manage subscription", chevron: true) }
                     .buttonStyle(PressableStyle())
             }
             rule
@@ -256,17 +258,18 @@ struct SettingsView: View {
 
     // MARK: Rows
 
-    private var rule: some View { Rectangle().fill(Theme.divider).frame(height: 1).padding(.leading, 44) }
+    /// The hairline between rows, starting under the title (past the icon).
+    private var rule: some View { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
 
     private func group<Content: View>(_ title: String, footer: String = "", @ViewBuilder _ content: () -> Content) -> some View {
         let inner = content()
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased()).font(.system(size: 12, weight: .medium)).tracking(0.6).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 14)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(title).capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             Card(padding: 0) {
-                VStack(alignment: .leading, spacing: 0) { inner }.padding(.horizontal, 14)
+                VStack(alignment: .leading, spacing: 0) { inner }.padding(.horizontal, Theme.Space.m)
             }
             if !footer.isEmpty {
-                Text(footer).textStyle(.caption).padding(.horizontal, 14).fixedSize(horizontal: false, vertical: true)
+                Text(footer).textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -279,25 +282,25 @@ struct SettingsView: View {
     }
 
     private func toggleRow(_ glyph: String, _ title: String, detail: String = "", isOn: Binding<Bool>) -> some View {
-        HStack(spacing: 12) {
-            IconCircle(glyph: glyph, size: 32)
+        HStack(spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: glyph, tint: Theme.accent)
             titleBlock(title, detail)
-            Spacer(minLength: 8)
+            Spacer(minLength: Theme.Space.s)
             LedgerSwitch(isOn: isOn)
         }
-        .padding(.vertical, 9).frame(minHeight: 52)
+        .padding(.vertical, Theme.Space.s).frame(minHeight: 52)
         .accessibilityElement(children: .combine)
     }
 
     private func plainRow(_ glyph: String, _ title: String, detail: String = "", value: String = "", tint: Color = Theme.gold, chevron: Bool = false) -> some View {
-        HStack(spacing: 12) {
-            IconCircle(glyph: glyph, size: 32, tint: tint)
+        HStack(spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: glyph, tint: tint)
             titleBlock(title, detail)
-            Spacer(minLength: 8)
+            Spacer(minLength: Theme.Space.s)
             if !value.isEmpty { Text(value).textStyle(.body, tint: Theme.inkSoft, numeric: true) }
-            if chevron { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.ivoryDim) }
+            if chevron { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
         }
-        .padding(.vertical, 9).frame(minHeight: 52)
+        .padding(.vertical, Theme.Space.s).frame(minHeight: 52)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
