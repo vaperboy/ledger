@@ -82,12 +82,13 @@ struct InboxView: View {
     /// A routine answer is sent at once, and the sheet closes. Only a consequential one is confirmed, in the in-game popup: one that cannot be
     /// undone, or a spend at or above the player's own "Ask before spending" size (the engine decides which, see `DecisionConfirm`). A small
     /// spend under that size is sent at once too, and the "Answered" message says what it was.
-    private func ask(_ message: Message, _ index: Int) {
+    /// `inline`: answered from the list row itself, so the player stays in the Inbox for the next one.
+    private func ask(_ message: Message, _ index: Int, inline: Bool = false) {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
         let opt = message.options[index]
         let label = e.displayText(opt["l"].string, companyID: message.companyID)
         let need: DecisionConfirmation = DecisionConfirm.confirmation(for: message, option: index)
-        guard need.needsQuestion else { answer(message, index, label); return }
+        guard need.needsQuestion else { answer(message, index, label, inline: inline); return }
         var lines: [String] = []
         let d = e.displayText(opt["d"].string, companyID: message.companyID)
         if !d.isEmpty { lines.append(d) }
@@ -98,27 +99,27 @@ struct InboxView: View {
         let fallback: String = e.displayText(message.title, companyID: message.companyID)
         let title: String = label + (where_.isEmpty ? "" : " · " + where_)
         let body: String = lines.isEmpty ? fallback : lines.joined(separator: "\n")
-        var action = PendingAction(title: title, message: body, button: label, destructive: need.irreversible) { answer(message, index, label) }
+        var action = PendingAction(title: title, message: body, button: label, destructive: need.irreversible) { answer(message, index, label, inline: inline) }
         if !need.irreversible, let amount = need.amount {
             // A message about the group or you personally has no company: its money is in the home currency.
             action.amount = amount
             action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
         }
         // Under the player's size: no question at all, so nothing can hold the answer back.
-        if ConfirmThreshold.skips(action) { answer(message, index, label); return }
+        if ConfirmThreshold.skips(action) { answer(message, index, label, inline: inline); return }
         pending = action
     }
 
     /// Sends the answer. The detail sheet closes at once: the answer is on record and the list shows it as answered.
-    private func answer(_ message: Message, _ index: Int, _ label: String) {
+    private func answer(_ message: Message, _ index: Int, _ label: String, inline: Bool = false) {
         var effects: [String] = []
         if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // An Inbox decision returns to Home with a one-line toast.
-            store.selectTab(.company)
+            // A decision answered in the detail returns to Home with a one-line toast; one answered in the list stays on the list.
+            if !inline { store.selectTab(.company) }
             store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
         } else {
             store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
@@ -197,7 +198,7 @@ struct InboxView: View {
             if list.isEmpty { empty(e, k).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
                 ForEach(b.messages) { (m: Message) in
-                    mailRow(m, week: week).transition(.opacity)
+                    mailRow(m, week: week, inline: k == .decisions).transition(.opacity)
                 }
             }
             if cut.hidden > 0 {
@@ -212,9 +213,10 @@ struct InboxView: View {
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
     }
 
-    private func mailRow(_ m: Message, week: Int) -> some View {
+    private func mailRow(_ m: Message, week: Int, inline: Bool) -> some View {
         let pinnedNow: Bool = pinned.contains(m.id)
-        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: { detailID = m.id })
+        let answer: ((Int) -> Void)? = inline ? { (i: Int) in ask(m, i, inline: true) } : nil
+        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: { detailID = m.id }, answer: answer)
             .id(m.id)
             .mailRowStyle()
             .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -250,7 +252,7 @@ struct InboxView: View {
             DocumentView(doc: d, close: { detailID = nil })
                 .onAppear { store.markRead(m.id) }
         } else if let e = store.engine, let id = detailID, let m = e.state.inbox.first(where: { $0.id == id }) {
-            MessageCard(message: m, week: e.state.week, full: true, ask: ask)
+            MessageCard(message: m, week: e.state.week, full: true, ask: { (msg: Message, i: Int) in ask(msg, i) })
                 .centerSheetTitle("Message")
                 .confirmAction($pending)
         } else {
@@ -260,17 +262,16 @@ struct InboxView: View {
 
     /// The search box (the system search field needs a navigation bar, which the app header replaces).
     private var searchField: some View {
-        HStack(spacing: 8) {
-            GlyphView(glyph: Glyph.search, size: 16, weight: 1.8, tint: P.inkFaint)
-            TextField("Search messages", text: $query).font(.system(size: 14)).foregroundStyle(P.ink).autocorrectionDisabled()
+        HStack(spacing: Theme.Space.s) {
+            LedgerGlyph(glyph: Glyph.search, size: Theme.Icon.small, tint: P.inkFaint)
+            TextField("Search messages", text: $query).textStyle(.body, tint: P.ink).autocorrectionDisabled().submitLabel(.search)
             if !query.isEmpty {
-                Button { query = "" } label: { GlyphView(glyph: Glyph.close, size: 13, weight: 2, tint: P.inkFaint).frame(width: 32, height: 32).contentShape(Rectangle()) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
+                Button { query = "" } label: { LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 44, height: 36).contentShape(Rectangle()) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 12).frame(minHeight: 36)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(P.cardDeep))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-        .padding(.horizontal, 18)
+        .padding(.horizontal, Theme.Space.m).frame(minHeight: 36)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
+        .padding(.horizontal, Theme.Space.page)
     }
 
     private var optionsMenu: some View {
@@ -303,9 +304,9 @@ struct InboxView: View {
     private func filterLine(_ e: GameEngine) -> some View {
         let name = companyFilter == 0 ? "Group and personal" : (companyFilter.flatMap { e.state.company($0)?.name } ?? "A former company")
         return HStack {
-            Text("Only " + name).font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+            Text("Only " + name).textStyle(.caption)
             Spacer()
-            Button("Show all") { companyFilter = nil }.font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.accent).buttonStyle(PressableStyle()).frame(minHeight: 36)
+            Button("Show all") { companyFilter = nil }.buttonStyle(TertiaryButtonStyle(size: .compact))
         }
     }
 
@@ -315,11 +316,8 @@ struct InboxView: View {
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
             : k == .decisions ? "Nothing needs you right now."
             : k == .handled ? "Decisions your managers answer for you are listed here." : "Nothing here yet."
-        return VStack(spacing: 8) {
-            IconCircle(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
-            Text(text).font(.bodyText).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity).padding(.top, 80)
+        return EmptyState(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, title: text)
+            .padding(.top, Theme.Space.xxl)
     }
 }
 

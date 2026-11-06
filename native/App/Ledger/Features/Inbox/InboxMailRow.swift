@@ -52,6 +52,8 @@ struct InboxMailRow: View {
     var week: Int
     var pinned: Bool
     var openDetail: () -> Void
+    /// Set on the Needs you list: a decision with one to three options is answered from the row (the same confirmation rules apply).
+    var answer: ((Int) -> Void)? = nil
 
     private var open: Bool { message.status == "open" }
     private var unread: Bool { open || !message.isRead }
@@ -73,27 +75,47 @@ struct InboxMailRow: View {
     }
 
     var body: some View {
-        Button { Haptics.tap(); openDetail() } label: { content }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("inbox-row")
-            .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button { Haptics.tap(); openDetail() } label: { content }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("inbox-row")
+            if let answer, open, message.doc == nil, (1...3).contains(message.options.count) { inlineOptions(answer) }
+        }
+        .padding(.vertical, Theme.Space.s)
+    }
+
+    /// The options as buttons under the row, side by side when they fit, else stacked; the first (the suggested answer) in the accent.
+    private func inlineOptions(_ answer: @escaping (Int) -> Void) -> some View {
+        let labels: [String] = message.options.map { (o: JSONValue) -> String in text(o["l"].string) }
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.s) { optionButtons(labels, answer, fullWidth: false) }
+            VStack(alignment: .leading, spacing: Theme.Space.s) { optionButtons(labels, answer, fullWidth: true) }
+        }
+        .padding(.leading, 40 + Theme.Space.m)
+    }
+
+    private func optionButtons(_ labels: [String], _ answer: @escaping (Int) -> Void, fullWidth: Bool) -> some View {
+        ForEach(Array(labels.enumerated()), id: \.offset) { (i: Int, label: String) in
+            Button(label) { Haptics.tap(); answer(i) }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: fullWidth, tint: i == 0 ? P.accent : nil))
+                .accessibilityIdentifier("inbox-inline-option")
+        }
     }
 
     private var content: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
             InboxAvatar(initial: "", glyph: message.inboxCategoryGlyph, tint: unread ? message.inboxTint(P) : P.inkFaint, size: 40, face: message.inboxFace(store.engine))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
-                    .foregroundStyle(unread ? P.ink : P.inkFaint).lineLimit(1)
-                Text(consequence).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(1)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.headline, tint: unread ? P.ink : P.inkFaint, weight: unread ? .semibold : .regular).lineLimit(1)
+                Text(consequence).textStyle(.caption, tint: P.inkFaint).lineLimit(2)
                 if !message.handledBy.isEmpty {
-                    Text("Handled by " + message.handledBy).font(.system(size: 11.5, weight: .medium)).foregroundStyle(P.accent).lineLimit(1)
+                    Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1)
                 }
                 if store.engine?.messageDocument(messageID: message.id) != nil {
-                    Text("Read the report").font(.system(size: 11.5, weight: .medium)).foregroundStyle(P.accent).lineLimit(1)
+                    Text("Read the report").textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1)
                 }
             }
-            Spacer(minLength: 6)
+            Spacer(minLength: Theme.Space.s)
             if open { expiryPill }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,8 +128,8 @@ struct InboxMailRow: View {
             let left: Int = exp - week
             let tint: Color = left <= 1 ? P.loss : P.caution
             Text(left > 0 ? "\(left)w left" : "This week")
-                .font(.system(size: 11, weight: .semibold)).foregroundStyle(tint)
-                .padding(.horizontal, 8).padding(.vertical, 3)
+                .textStyle(.caption, tint: tint, weight: .semibold).lineLimit(1).fixedSize()
+                .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
                 .background(Capsule().fill(tint.opacity(0.16)))
         }
     }

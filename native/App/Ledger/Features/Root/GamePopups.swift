@@ -142,8 +142,8 @@ struct NoticePopup: View {
     }
 }
 
-/// A decision from Home's top priorities, answered where the player is: the message, every option with what it does, and the same
-/// "Are you sure" rule as the Inbox. The result is told in a notice popup.
+/// A decision from Home's Needs you, answered where the player is: the message, every option with what it does, and the same
+/// "Are you sure" rule as the Inbox. The result is a toast, so a routine answer is two taps (the row, then the option).
 struct DecisionPopup: View {
     @EnvironmentObject var store: GameStore
     var messageID: Int
@@ -218,7 +218,16 @@ struct DecisionPopup: View {
         let effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
         let ok: Bool = store.act { $0.answer(messageID: m.id, option: index) } ?? false
         store.decisionPopup = nil
-        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
+        store.toastAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
+    }
+}
+
+extension GameStore {
+    /// An answered decision is told in one toast (what was chosen and its first effect) that needs no tap; a failed one stays a popup.
+    func toastAnswer(label: String, effects: [String], ok: Bool, messageTitle: String, companyID: Int) {
+        guard ok else { announceAnswer(label: label, effects: effects, ok: false, messageTitle: messageTitle, companyID: companyID); return }
+        Haptics.success()
+        show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
     }
 }
 
