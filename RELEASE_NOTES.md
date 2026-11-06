@@ -1,4 +1,5 @@
 # What's new
+- Week report: Continue and Full report stay pinned at the bottom of the card
 - Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play
 - Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels
 - Inbox: "Handled by" and a Handled tab; messages open the right app; research reports open as documents
