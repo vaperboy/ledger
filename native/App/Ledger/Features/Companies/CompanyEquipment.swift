@@ -54,7 +54,7 @@ struct CompanyEquipmentScreen: View {
             }
             .scrollIndicators(.hidden)
             .ledgerBackground()
-            .confirmAction(tabs.count == 1 ? $asking : .constant(nil))
+            .confirmAction(tabs.count == 1 ? $asking : Binding<PendingAction?>.constant(nil))
             .appScreen(title: "Equipment", subtitle: co.name, tab: .company)
             .navigationDestination(item: $tab) { (t: EquipmentTab) in
                 SettingsPage(title: t.rawValue, subtitle: co.name) { pageContent(t, e, co, needs) }

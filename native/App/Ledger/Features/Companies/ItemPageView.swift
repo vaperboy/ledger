@@ -155,7 +155,7 @@ struct ItemPageView: View {
         let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
         let reading = itemProfitReading(p.live, cur)
         let margin: String = p.live.outcome == .breakEven ? p.live.word : p.live.word + " " + itemAmount(p.live.amount, cur) + " each"
-        var facts: [String] = ["cost " + itemAmount(p.unitCost, cur) + (p.record == nil ? " (typical)" : ""),
+        let facts: [String] = ["cost " + itemAmount(p.unitCost, cur) + (p.record == nil ? " (typical)" : ""),
                                "market " + itemAmount(p.item.marketPrice, cur),
                                String(format: "about %.0f sold a week", f.units)]
         return LedgerSection("Price", rule: false) {
