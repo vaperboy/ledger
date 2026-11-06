@@ -8,8 +8,6 @@ import Simulation
 struct BankAccountsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
-    /// The account logged in as: the other rows stay visible but cannot be opened (swapping account goes through Log out).
-    var lockedTo: BankAccountID? = nil
     var onPick: (BankAccountID) -> Void
     @Environment(Entitlements.self) private var ent
     @State private var givingOpen = false
@@ -35,12 +33,12 @@ struct BankAccountsScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("YOUR COMPANIES").capsLabel()
                         if companies.isEmpty {
-                            Text("You have no company yet. Its account appears here once it exists.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+                            EmptyState(glyph: BankGlyph.company, title: "No company yet", message: "Its account appears here once it exists.", centered: false)
                         }
                         ForEach(companies) { r in row(r, e) }
                     }
                     Text("Loans belong to the account they were taken for. Open an account and choose Loans.")
-                        .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
+                        .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
@@ -105,8 +103,6 @@ struct BankAccountsScreen: View {
         }
         .newGroupMarker(.bank, r.hasAlert ? [] : store.messageItemIDs(.bank, companyID: r.companyID ?? 0), alignment: .topLeading)
         .buttonStyle(PressableStyle())
-        .disabled(lockedTo != nil && lockedTo != r.id)
-        .opacity(lockedTo != nil && lockedTo != r.id ? 0.5 : 1)
         .accessibilityIdentifier("bank-account-\(r.id.id)")
     }
 

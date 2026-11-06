@@ -22,7 +22,7 @@ struct InvestContent: View {
             VStack(alignment: .leading, spacing: 14) {
                 PortfolioRingCard(slices: Self.slices(e), cur: cur)
                 SegmentedPill(items: kinds(e), title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
-                if kind == .crypto { Text("Very volatile: you can lose most of it.").font(.system(size: 11.5)).foregroundStyle(Theme.caution) }
+                if kind == .crypto { Text("Very volatile: you can lose most of it.").textStyle(.caption, tint: Theme.warn) }
                 assets(title: "You hold", rows: mine, cur: cur, empty: "You hold nothing here yet. Open a name below to look at it and buy.")
                 if kind != .stock { assets(title: mine.isEmpty ? "Market" : "Other names", rows: rest, cur: cur, empty: "Nothing else is listed.") }
                 FundManagerCard(engine: e)
@@ -52,7 +52,7 @@ struct InvestContent: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).capsLabel().padding(.horizontal, 2)
             if rows.isEmpty {
-                Text(empty).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                EmptyState(glyph: Glyph.invest, title: empty, centered: false)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { n, q in
@@ -83,13 +83,13 @@ struct AssetRow: View {
         HStack(spacing: 10) {
             IconCircle(glyph: glyph, size: 34)
             VStack(alignment: .leading, spacing: 1) {
-                Text(quote.name.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(quote.symbol).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(quote.name.tidyText).textStyle(.body, weight: .medium).lineLimit(1)
+                Text(quote.symbol).textStyle(.caption, tint: Theme.inkFaint)
             }
             Spacer(minLength: 6)
             Sparkline(values: hist, tint: up ? Theme.gain : Theme.loss, filled: false).frame(width: 58, height: 24)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(main).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(main).textStyle(.body, numeric: true)
                 Text(weekText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(w.map { Theme.change($0) } ?? Theme.ivoryFaint)
             }
             .frame(minWidth: 62, alignment: .trailing)
@@ -119,9 +119,9 @@ struct PortfolioRingCard: View {
                     ForEach(slices) { s in
                         HStack(spacing: 8) {
                             Circle().fill(s.tint).frame(width: 8, height: 8)
-                            Text(s.name).font(.system(size: 13)).foregroundStyle(P.inkSoft)
+                            Text(s.name).textStyle(.body, tint: P.inkSoft)
                             Spacer(minLength: 4)
-                            Text(total > 0 ? String(format: "%.0f%%", s.value / total * 100) : "-").font(.system(size: 13).monospacedDigit()).foregroundStyle(P.ink)
+                            Text(total > 0 ? String(format: "%.0f%%", s.value / total * 100) : "-").textStyle(.body, numeric: true)
                         }
                     }
                 }
@@ -141,8 +141,8 @@ struct PortfolioRingCard: View {
                 .chartLegend(.hidden)
             }
             VStack(spacing: 0) {
-                Text(centerLabel).font(.system(size: 10)).foregroundStyle(P.inkFaint)
-                Text(cur.tidyShort(total)).font(.system(size: 17, design: .serif).monospacedDigit()).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                Text(centerLabel).textStyle(.caption, tint: P.inkFaint)
+                Text(cur.tidyShort(total)).textStyle(.figure, numeric: true).minimumScaleFactor(0.6).lineLimit(1)
             }
             .padding(.horizontal, 18)
         }

@@ -101,7 +101,7 @@ struct BankMoveSheet: View {
             if legs.count > 1 {
                 VStack(spacing: 8) {
                     ForEach(legs) { l in
-                        ChoiceCard(title: l.title, subtitle: l.note, selected: l.id == leg.id) { chosen = l.id; amount = 0 }
+                        ChoiceCard(title: l.title, subtitle: l.note, selected: l.id == leg.id) { chosen = l.id }
                     }
                 }
             } else {
@@ -113,19 +113,17 @@ struct BankMoveSheet: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Amount").capsLabel()
                 AmountField(title: "Amount", currency: leg.currency, amount: $amount)
-                HStack(spacing: 8) {
-                    Button("Half") { amount = max(0, leg.source / 2).rounded() }.buttonStyle(SmallOutlineButtonStyle())
-                    Button("All") { amount = max(0, leg.source) }.buttonStyle(SmallOutlineButtonStyle())
+                HStack(spacing: Theme.Space.s) {
+                    Button("Half") { amount = max(0, leg.source / 2).rounded() }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                    Button("All") { amount = max(0, leg.source) }.buttonStyle(SecondaryButtonStyle(size: .compact))
                     Spacer(minLength: 0)
                     Text("Available " + leg.currency.tidyShort(max(0, leg.source))).popupText(.caption)
                 }
-                if amount > leg.source + 0.5 {
-                    Text("More than this account can move now.").popupText(.risk)
-                }
             }
-            QuietButton(title: amount > 0 ? "\(kind.title) \(leg.currency.tidyShort(amount))" : "Enter an amount", fullWidth: true) { go(leg) }
-                .disabled(amount <= 0)
-                .opacity(amount <= 0 ? 0.5 : 1)
+            // Over the limit is blocked here with the reason, so the engine never has to refuse it.
+            PrimaryAction(title: amount > 0 ? "\(kind.title) \(leg.currency.tidyShort(amount))" : kind.title,
+                          blockedReason: amount <= 0 ? "Enter an amount." : (amount > leg.source + 0.5 ? "More than this account can move now (\(leg.currency.tidyShort(max(0, leg.source))) available)." : nil),
+                          identifier: "bank-move-go") { go(leg) }
         }
     }
 
@@ -135,7 +133,8 @@ struct BankMoveSheet: View {
                 Text("A limited company cannot hand its cash to you directly.").popupText(.button)
                 Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid from the company's Ownership section.")
                     .popupText(.subtitle)
-                QuietButton(title: "Open the company", fullWidth: true) { dismiss(); store.openCompany(cid, section: .finances) }
+                Button("Open the company") { dismiss(); store.openCompany(cid, section: .finances) }
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
             }
         } else {
             Text("There is nowhere to move money to yet. Start a company first.").popupText(.subtitle)

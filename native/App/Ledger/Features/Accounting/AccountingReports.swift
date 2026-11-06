@@ -28,9 +28,9 @@ struct AcctCompanyMenu: View {
                     }
                 } label: {
                     HStack {
-                        Text(current).font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink).lineLimit(1)
+                        Text(current).textStyle(.headline).lineLimit(1)
                         Spacer(minLength: 8)
-                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.inkFaint)
+                        Image(systemName: "chevron.up.chevron.down").textStyle(.caption, tint: P.inkFaint, weight: .semibold)
                     }
                     .padding(.horizontal, 14).frame(minHeight: 44)
                     .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
@@ -103,7 +103,7 @@ struct AcctBalanceSheet: View {
                 if b.distributed > 0.5 { FlatRow(label: "Paid out as dividends", value: fmt.full(b.distributed)) }
             }
             if b.equity < 0 {
-                Text("The company owes more than it has. Lenders and suppliers will notice.").font(.system(size: 12.5)).foregroundStyle(P.loss).padding(.horizontal, 2)
+                Text("The company owes more than it has. Lenders and suppliers will notice.").textStyle(.caption, tint: P.loss).padding(.horizontal, 2)
             }
         }
     }
@@ -155,7 +155,7 @@ struct AcctCashFlow: View {
                 }
             }
             Text("Other moves are money that is not profit: you putting in or taking out, loans, equipment, stock and unpaid bills.")
-                .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
+                .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 2)
         }
     }
 

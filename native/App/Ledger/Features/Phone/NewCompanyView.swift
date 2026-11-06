@@ -5,7 +5,7 @@ import Businesses
 import Finance
 import Simulation
 
-/// New company, step 1 of 3: choose the trade. A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
+/// New company, step 1 of 3: choose the trade (step 2 is the company, step 3 the review and payment). A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
 /// `tradePickerRows` supply every figure and the reason a trade cannot be started. Holding, franchise, abroad and club moved to
 /// Group (Add to group, and Expansion on a company's page).
 struct NewCompanyView: View {
@@ -35,13 +35,13 @@ struct NewCompanyView: View {
                         .padding(.horizontal, -Theme.Space.margin)
                     table(e, shown)
                     Text("Demand is for this city; staff is the usual team size. Start-up costs are exact; the rest is an estimate and your result depends on price, location and management.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar(picked) }
-            .appScreen(title: "New company", subtitle: "Choose the trade", tab: .company)
+            .appScreen(title: "New company", subtitle: "Step 1 of 3 · choose the trade", tab: .company)
             .navigationDestination(isPresented: $goNext) {
                 if let id = selectedID { NewCompanySetupView(tradeID: id, cityID: city) }
             }
@@ -66,24 +66,24 @@ struct NewCompanyView: View {
         let cities: [Country.City] = e.homeCountry.cities
         let name: String = cities.first { $0.id == city }?.name ?? "Home city"
         HStack {
-            Text("Priced for").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text("Priced for").textStyle(.caption)
             Menu {
                 ForEach(cities) { c in Button(c.name) { cityID = c.id; selectedID = nil } }
             } label: {
                 HStack(spacing: 4) {
-                    Text(name).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.gold)
+                    Text(name).textStyle(.caption, tint: Theme.accent, weight: .medium)
+                    Image(systemName: "chevron.down").textStyle(.caption, tint: Theme.accent, weight: .semibold)
                 }
             }
             Spacer()
-            Text("You have \(store.money(Payments.liquid(e.state)))").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+            Text("You have \(store.money(Payments.liquid(e.state)))").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
         }
     }
 
     @ViewBuilder private func table(_ e: GameEngine, _ shown: [TradePickerRow]) -> some View {
         if shown.isEmpty {
-            Text(rows.isEmpty ? "No trades are on offer here." : "No trade in this group.")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading)
+            EmptyState(glyph: Glyph.market, title: rows.isEmpty ? "No trades are on offer here." : "No trade in this group.",
+                       message: rows.isEmpty ? "Try another city." : "Pick another sector above.")
         } else {
             SharpTable {
                 TableHeader(columns: columns)
@@ -131,23 +131,8 @@ struct NewCompanyView: View {
         }
     }
 
+    /// Step 1's one action; it says why it waits until a trade is picked.
     private func bottomBar(_ picked: TradePickerRow?) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Selected").font(.system(size: 10.5)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint)
-                if let p = picked {
-                    let from: String = p.startUpCost.map { store.money($0) } ?? ""
-                    Text("\(p.name) · from \(from)").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                } else {
-                    Text("Pick a trade above").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
-                }
-            }
-            Spacer(minLength: 8)
-            QuietButton(title: "Continue ›") { if picked != nil { goNext = true } }
-                .opacity(picked == nil ? 0.4 : 1).disabled(picked == nil)
-        }
-        .padding(.horizontal, 18).padding(.vertical, 10)
-        .background(Theme.page)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+        NewCompanyStepBar(title: picked.map { "Continue · \($0.name)" } ?? "Continue", blockedReason: picked == nil ? "Pick a trade above." : nil) { goNext = true }
     }
 }

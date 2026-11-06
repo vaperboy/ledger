@@ -62,14 +62,14 @@ struct RankingView: View {
             Text("\(en.rank)").font(.caption.monospacedDigit()).foregroundStyle(en.isYou ? Theme.gold : Theme.ivoryFaint).frame(width: 38, alignment: .leading)
             ThumbnailView(kind: .logo, key: logoKey(en), size: 32, shape: .square, glyph: Glyph.group, initials: en.name)
             VStack(alignment: .leading, spacing: 2) {
-                Text(en.name + (en.isYou ? " (you)" : "")).font(.system(size: 14.5)).foregroundStyle(en.isYou ? Theme.gold : Theme.ivory)
+                Text(en.name + (en.isYou ? " (you)" : "")).textStyle(.body, tint: en.isYou ? Theme.accent : Theme.ink)
                 Text(en.isYou ? "\(en.companyCount) \(en.companyCount == 1 ? "company" : "companies")"
                      : en.rivalID != nil ? "Your rival" : "\(en.companyCount) sites")
                     .font(.caption).foregroundStyle(Theme.ivoryFaint)
             }
             Spacer(minLength: 8)
             Text(en.movement > 0 ? "▲" : en.movement < 0 ? "▼" : "").font(.caption).foregroundStyle(en.movement > 0 ? Theme.gain : Theme.loss)
-            Text(figure(en)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+            Text(figure(en)).textStyle(.body, numeric: true)
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
@@ -119,26 +119,26 @@ struct WorldAroundView: View {
                     }
                     CardSection("Seen as") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(img.label).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.gold)
-                            Text(img.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                            Text("Opens: " + img.opens).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-                            Text("Risks: " + img.risks).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text(img.label).textStyle(.headline, tint: Theme.accent, weight: .semibold)
+                            Text(img.text.tidyMoney).textStyle(.body, tint: Theme.inkSoft)
+                            Text("Opens: " + img.opens).textStyle(.caption, tint: Theme.inkFaint)
+                            Text("Risks: " + img.risks).textStyle(.caption, tint: Theme.inkFaint)
                             CardLine()
                             ForEach(img.groups) { g in
-                                HStack { Text(g.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer(); Text(g.word).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                                HStack { Text(g.name).textStyle(.body); Spacer(); Text(g.word).textStyle(.body, tint: Theme.inkSoft) }
                             }
                         }
                     }
                     CardSection("People you know") {
                         if people.isEmpty {
-                            Text("You know nobody in business yet. Open a company and people will find you.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                            Text("You know nobody in business yet. Open a company and people will find you.").textStyle(.body, tint: Theme.inkSoft)
                         } else {
                             VStack(spacing: 0) {
                                 ForEach(Array(people.enumerated()), id: \.element.id) { i, c in
                                     if i > 0 { CardLine() }
                                     HStack(alignment: .firstTextBaseline) {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(c.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                                            Text(c.name).textStyle(.body)
                                             Text(c.role.rawValue + " · " + c.organisation).font(.caption).foregroundStyle(Theme.ivoryFaint)
                                         }
                                         Spacer(minLength: 8)
@@ -147,7 +147,7 @@ struct WorldAroundView: View {
                                                 report(store.act { $0.askForFavour(contactID: c.id) })
                                             }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityLabel("Ask \(c.name) for a favour")
                                         }
-                                        Text(c.word).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                        Text(c.word).textStyle(.caption)
                                     }.padding(.vertical, 8)
                                 }
                             }
@@ -160,7 +160,7 @@ struct WorldAroundView: View {
                                     if i > 0 { CardLine() }
                                     HStack(alignment: .firstTextBaseline) {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(f.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                                            Text(f.name).textStyle(.body)
                                             Text((f.kind == .owed ? "Owes you: " : f.kind == .promise ? "You promised: " : "You owe them: ") + f.text).font(.caption).foregroundStyle(Theme.ivoryFaint)
                                         }
                                         Spacer(minLength: 8)
@@ -181,11 +181,11 @@ struct WorldAroundView: View {
                                 if i > 0 { CardLine() }
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(n.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                                        Text(n.name).textStyle(.body)
                                         Text(n.trade + (n.ownership < 100 ? " · you own \(Int(n.ownership.rounded()))%" : "")).font(.caption).foregroundStyle(Theme.ivoryFaint)
                                     }
                                     Spacer()
-                                    Text(store.short(n.value)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                    Text(store.short(n.value)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
                                 }.padding(.leading, CGFloat((n.depth - 1) * 18)).padding(.vertical, 8)
                             }
                         }
@@ -193,9 +193,9 @@ struct WorldAroundView: View {
                     CardSection("Where you are") {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(e.mapPresence()) { p in
-                                Text(p.flag + " " + p.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ivory)
+                                Text(p.flag + " " + p.name).textStyle(.body, weight: .semibold)
                                 ForEach(p.cities.filter { $0.companies > 0 }) { c in
-                                    HStack { Text(c.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory); Spacer()
+                                    HStack { Text(c.name).textStyle(.body); Spacer()
                                         Text("\(c.companies) · " + c.trades.joined(separator: ", ")).font(.caption).foregroundStyle(Theme.ivoryFaint) }
                                 }
                             }
@@ -227,10 +227,10 @@ struct WorldAroundView: View {
 
     private func circle(_ title: String, _ names: [String]) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+            Text(title).textStyle(.body)
             Spacer()
             Text(names.isEmpty ? "None yet" : names.prefix(3).joined(separator: ", ") + (names.count > 3 ? " +\(names.count - 3)" : ""))
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.trailing)
+                .textStyle(.caption).multilineTextAlignment(.trailing)
         }
     }
 }
@@ -246,7 +246,7 @@ struct DataAnalystCard: View {
             CardSection("Data analyst") {
                 VStack(alignment: .leading, spacing: 8) {
                     if e.hasDataAnalyst {
-                        Text("Your data analyst puts ranges on market shares, rivals and price forecasts.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Your data analyst puts ranges on market shares, rivals and price forecasts.").textStyle(.caption)
                         HStack {
                             Button("Report on all companies") {
                                 let r = store.act { $0.orderAnalystReport(companyID: nil) }
@@ -260,7 +260,7 @@ struct DataAnalystCard: View {
                             }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                         }
                     } else {
-                        Text("Without an analyst you only have your own guess. A data analyst in your head office gives ranges, sharper with experience.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                        Text("Without an analyst you only have your own guess. A data analyst in your head office gives ranges, sharper with experience.").textStyle(.caption)
                         if candidates.isEmpty {
                             Button("Find a data analyst") { candidates = store.act { $0.dataAnalystCandidates() } ?? [] }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
                         }

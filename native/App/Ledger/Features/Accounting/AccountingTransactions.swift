@@ -85,11 +85,11 @@ struct AcctTransactions: View {
     private func totals(_ page: TransactionPage, _ fmt: BankFmt) -> some View {
         let net: Double = page.income - page.expenses
         return HStack(alignment: .firstTextBaseline) {
-            Text(m.txRange.rawValue).font(.system(size: 12)).foregroundStyle(P.inkFaint)
+            Text(m.txRange.rawValue).textStyle(.caption, tint: P.inkFaint)
             Spacer(minLength: 8)
-            Text("In " + fmt.short(page.income)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(P.gain)
-            Text("Out " + fmt.short(page.expenses)).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(P.loss)
-            Text("Net " + fmt.signed(net)).font(.system(size: 12.5, weight: .medium).monospacedDigit()).foregroundStyle(net >= 0 ? P.ink : P.loss)
+            Text("In " + fmt.short(page.income)).textStyle(.caption, tint: P.gain, numeric: true)
+            Text("Out " + fmt.short(page.expenses)).textStyle(.caption, tint: P.loss, numeric: true)
+            Text("Net " + fmt.signed(net)).textStyle(.caption, tint: net >= 0 ? P.ink : P.loss, numeric: true, weight: .medium)
         }
         .padding(.horizontal, 2)
         .accessibilityElement(children: .combine)
@@ -115,7 +115,7 @@ struct AcctTransactions: View {
                         m.txLimit += 40
                         Haptics.tap()
                     } label: {
-                        Text("Show more (\(page.entries.count - shown.count) left)").font(.system(size: 13.5, weight: .medium)).foregroundStyle(P.accent)
+                        Text("Show more (\(page.entries.count - shown.count) left)").textStyle(.body, tint: P.accent, weight: .medium)
                             .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(AcctPressStyle())
@@ -175,11 +175,11 @@ struct AcctTransactionDetail: View {
             HStack(spacing: 12) {
                 IconCircle(glyph: AcctGlyphs.category(t.categoryID), size: 44, tint: P.accent2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(t.label.tidyText).font(.system(size: 15.5, weight: .medium)).foregroundStyle(P.ink).lineLimit(2)
-                    Text(t.category + " \u{00B7} " + t.dateText).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+                    Text(t.label.tidyText).textStyle(.headline).lineLimit(2)
+                    Text(t.category + " \u{00B7} " + t.dateText).textStyle(.caption, tint: P.inkFaint)
                 }
                 Spacer(minLength: 8)
-                Text(fmt.signed(t.amount)).font(.figure(20, weight: .semibold)).foregroundStyle(t.isIncome ? P.gain : P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                Text(fmt.signed(t.amount)).textStyle(.figure, tint: t.isIncome ? P.gain : P.ink).minimumScaleFactor(0.6).lineLimit(1)
             }
         }
     }
@@ -200,7 +200,7 @@ struct AcctTransactionDetail: View {
             if canNote {
                 TextField("Add a note for the books", text: $note, axis: .vertical)
                     .lineLimit(1...4)
-                    .font(.system(size: 14.5)).foregroundStyle(P.ink)
+                    .textStyle(.body)
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.line, lineWidth: 1))

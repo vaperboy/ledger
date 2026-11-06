@@ -22,7 +22,7 @@ struct AchievementsView: View {
                     ForEach(Trophies.groups, id: \.id) { g in
                         let list = entries.filter { $0.group == g.id }
                         if !list.isEmpty {
-                            CardSection(title: g.name, trailing: { Text("\(list.filter { $0.reachedWeek != nil }.count) of \(list.count)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }) {
+                            CardSection(title: g.name, trailing: { Text("\(list.filter { $0.reachedWeek != nil }.count) of \(list.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
                                 shelf(list)
                                 CardLine()
                                 VStack(spacing: 0) {
@@ -70,7 +70,7 @@ struct AchievementsView: View {
                           glyph: t.reachedWeek != nil ? Glyph.achievements : Glyph.ring, tint: t.reachedWeek != nil ? Theme.gold : Theme.ivoryDim)
                 .opacity(t.reachedWeek != nil ? 1 : 0.35)
             VStack(alignment: .leading, spacing: 2) {
-                Text(t.name).font(.system(size: 14.5)).foregroundStyle(t.reachedWeek != nil ? Theme.ivory : Theme.ivoryMuted)
+                Text(t.name).textStyle(.body, tint: t.reachedWeek != nil ? Theme.ink : Theme.inkSoft)
                 if t.reachedWeek != nil, !t.text.isEmpty { Text(t.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
@@ -98,7 +98,7 @@ struct TrophiesPreview: View {
                 }.buttonStyle(PressableStyle())
             }) {
                 if got.isEmpty {
-                    Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                    EmptyState(glyph: Glyph.goals, title: "No trophies yet", message: "Firsts and milestones show up here: the first customer, the first employee, the first million.", centered: false)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(got.prefix(3).enumerated()), id: \.element.id) { i, t in

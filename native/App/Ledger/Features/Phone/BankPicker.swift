@@ -4,7 +4,7 @@ import Countries
 import Simulation
 
 /// The first page of the Bank app: whose account to open. Lists the accounts the bank already has (the player personally, the investments
-/// account, each company); choosing one opens the Bank for it. "Log out" inside the Bank comes back here, the only way to swap account.
+/// account, each company); choosing one opens it. Back from there leads to the full list, where every account can be opened.
 struct BankPickerScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -21,8 +21,8 @@ struct BankPickerScreen: View {
                     section("YOU", you, e)
                     section("GROUP", group, e)
                     section("YOUR COMPANIES", companies, e)
-                    Text("Choose whose account to open. Log out inside the bank to swap.")
-                        .font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 4)
+                    Text("Choose an account. Back from it shows every account and the totals.")
+                        .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)

@@ -58,10 +58,10 @@ struct AcctSettings: View {
                 }
             }
             if granted.isEmpty {
-                Text("No one else has access to \(co.name). Add the accountant or a manager if they should see the books.").font(.system(size: 12.5)).foregroundStyle(P.inkSoft).padding(.horizontal, 2)
+                Text("No one else has access to \(co.name). Add the accountant or a manager if they should see the books.").textStyle(.caption).padding(.horizontal, 2)
             }
             AcctPrimaryButton(title: "Add user", identifier: "acct-access-add") { m.push(.addUser) }
-            Text("Access is per company: giving someone access here does not open the other companies in your group.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.horizontal, 2)
+            Text("Access is per company: giving someone access here does not open the other companies in your group.").textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 2)
         }
     }
 
@@ -129,11 +129,11 @@ struct AcctAccessDetail: View {
     private func header(_ p: AccountingUser) -> some View {
         AcctPanel(padding: 16) {
             HStack(spacing: 12) {
-                Text(AcctRow.initials(p.name)).font(.system(size: 14, weight: .semibold)).foregroundStyle(P.onAccent)
+                Text(AcctRow.initials(p.name)).textStyle(.body, tint: P.onAccent, weight: .semibold)
                     .frame(width: 44, height: 44).background(Circle().fill(P.accent))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(p.name).font(.system(size: 16, weight: .medium)).foregroundStyle(P.ink)
-                    Text(p.role.capitalized + " \u{00B7} now: " + p.level.title).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+                    Text(p.name).textStyle(.headline)
+                    Text(p.role.capitalized + " \u{00B7} now: " + p.level.title).textStyle(.caption, tint: P.inkFaint)
                 }
                 Spacer(minLength: 8)
             }
@@ -222,7 +222,7 @@ struct AcctAddUser: View {
                             AcctNotice(glyph: Glyph.people, title: "No one to add",
                                        message: "Everyone who works for \(co.name), and its accountant, already has access. Hire a manager or appoint an accountant to add more people.")
                         } else {
-                            Text("Choose who should see the books of \(co.name).").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.horizontal, 2)
+                            Text("Choose who should see the books of \(co.name).").textStyle(.body, tint: P.inkSoft).padding(.horizontal, 2)
                             AcctPanel {
                                 ForEach(Array(roster.candidates.enumerated()), id: \.element.id) { n, u in
                                     VStack(spacing: 0) {

@@ -18,7 +18,7 @@ struct BankBillsList: View {
         if let e = store.engine {
             let alerts: [PayrollAlert] = e.payrollAlerts()
             VStack(alignment: .leading, spacing: 0) {
-                if upcoming.isEmpty { Text("Nothing is due.").font(.system(size: 13)).foregroundStyle(P.inkSoft).padding(.vertical, 6) }
+                if upcoming.isEmpty { EmptyState(glyph: BankGlyph.bill, title: "Nothing is due.", centered: false) }
                 ForEach(Array(upcoming.enumerated()), id: \.element.id) { n, u in
                     if n > 0 { Hairline() }
                     row(u, alerts, e)
@@ -34,12 +34,12 @@ struct BankBillsList: View {
         return VStack(alignment: .leading, spacing: 4) {
             BankObligationRow(obligation: u, fmt: fmt)
             HStack(spacing: 8) {
-                Text(u.detail.tidyText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+                Text(u.detail.tidyText).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
                 action(u, alerts, e)
             }
             if short && u.daysAway <= 30 && account != .investments {
-                Text("The account does not hold this much yet. Move money in first.").font(.system(size: 11.5)).foregroundStyle(P.caution)
+                Text("The account does not hold this much yet. Move money in first.").textStyle(.caption, tint: P.caution)
             }
         }
         .padding(.bottom, 6)
@@ -49,16 +49,16 @@ struct BankBillsList: View {
         switch u.kind {
         case .payroll:
             if alerts.contains(where: { $0.companyID == u.companyID }) {
-                SmallOutlineButton(title: "Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }
+                Button("Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }.buttonStyle(SecondaryButtonStyle(size: .compact))
             } else {
-                Text("Run by a manager or accountant").font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
             }
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
-                SmallOutlineButton(title: "Pay now") { BankPay.instalment(store, loanID: loanID) }
+                Button("Pay now") { BankPay.instalment(store, loanID: loanID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
             }
         case .bills, .tax, .invoice:
-            SmallOutlineButton(title: "Pay now") { BankPay.early(store, u) }
+            Button("Pay now") { BankPay.early(store, u) }.buttonStyle(SecondaryButtonStyle(size: .compact))
         }
     }
 }
@@ -82,28 +82,34 @@ struct BankBillsTab: View {
                 BankCard(title: "Coming up", trailing: "\(detail.upcoming.count) payment\(detail.upcoming.count == 1 ? "" : "s")") {
                     BankBillsList(account: account, upcoming: detail.upcoming, cash: detail.balance)
                 }
-                if let co { CompanyPayroll(engine: e, company: co) }
+                if let co { payrollLink(co) }
                 taxCard(o, fmt)
                 rulesCard(o)
             }
         }
     }
 
+    /// Payroll and pay day are kept in Accounting; the Bank pays them and links there.
+    private func payrollLink(_ co: Company) -> some View {
+        CardSection("Payroll") {
+            LedgerRow(leading: .glyph(Glyph.accounting), title: "Payroll and pay day", subtitle: "Run payroll and choose the pay day in Accounting",
+                      identifier: "bills-open-accounting-payroll", action: { store.openAccounting(companyID: co.id, payroll: true) })
+        }
+    }
+
+    /// The one figure of the tab: what falls due in 30 days, with whether the account covers it.
     private func dueCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         let due: Double = d.upcoming.filter { $0.daysAway <= 30 }.reduce(0) { $0 + $1.amount }
         let short: Double = max(0, due - max(0, d.available))
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Due in the next 30 days").capsLabel()
-                    Spacer()
-                    Chip(text: short > 0 ? "Short by \(fmt.short(short))" : "Covered", tint: short > 0 ? P.loss : P.gain)
-                }
-                Text(fmt.full(due)).font(.hero(30)).foregroundStyle(short > 0 ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
-                if short > 0 {
-                    Text("This account will not cover what is due. Move money in, sell something or borrow before the dates below.")
-                        .font(.caption).foregroundStyle(P.loss).fixedSize(horizontal: false, vertical: true)
-                }
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(alignment: .top, spacing: Theme.Space.s) {
+                Figure(label: "Due in the next 30 days", value: fmt.full(due), tint: short > 0 ? P.loss : P.ink, size: .display)
+                Spacer(minLength: Theme.Space.s)
+                AcctPill(text: short > 0 ? "Short by \(fmt.short(short))" : "Covered", tone: short > 0 ? .bad : .good)
+            }
+            if short > 0 {
+                Text("This account will not cover what is due. Move money in, sell something or borrow before the dates below.")
+                    .textStyle(.caption, tint: P.loss).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -111,7 +117,7 @@ struct BankBillsTab: View {
     private func taxCard(_ o: FinanceOverview, _ fmt: BankFmt) -> some View {
         BankCard(title: "Tax and VAT", trailing: fmt.short(o.taxesOwed) + " owed") {
             VStack(spacing: 0) {
-                if o.taxes.isEmpty { Text("No tax is owed.").font(.system(size: 13)).foregroundStyle(P.inkSoft) }
+                if o.taxes.isEmpty { EmptyState(title: "No tax is owed.", centered: false) }
                 ForEach(Array(o.taxes.enumerated()), id: \.element.id) { n, l in
                     FlatRow(label: l.label, value: fmt.full(l.amount), sub: l.detail.tidyMoney, rule: n > 0)
                 }
@@ -127,10 +133,10 @@ struct BankBillsTab: View {
             VStack(alignment: .leading, spacing: 0) {
                 Button { showRules.toggle(); Haptics.choose() } label: {
                     HStack {
-                        Text(showRules ? "Hide the tax rules and licences" : "Show the tax rules and licences").font(.system(size: 13)).foregroundStyle(P.accent)
+                        Text(showRules ? "Hide the tax rules and licences" : "Show the tax rules and licences").textStyle(.body, tint: P.accent)
                         Spacer()
-                        Image(systemName: showRules ? "chevron.up" : "chevron.down").font(.system(size: 11)).foregroundStyle(P.accent)
-                    }.contentShape(Rectangle())
+                        Image(systemName: showRules ? "chevron.up" : "chevron.down").textStyle(.caption, tint: P.accent)
+                    }.frame(minHeight: 44).contentShape(Rectangle())
                 }.buttonStyle(PressableStyle())
                 if showRules {
                     ForEach(Array(o.rules.enumerated()), id: \.element.id) { n, r in FlatRow(label: r.label, value: r.value, rule: true) }

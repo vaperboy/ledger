@@ -35,7 +35,7 @@ struct BankLoanApplyFlow: View {
             let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: account.companyID)
             VStack(spacing: 0) {
                 AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: "Back") {
-                    SmallOutlineButton(title: "Done") { dismiss() }
+                    Button("Done") { dismiss() }.buttonStyle(SecondaryButtonStyle(size: .compact))
                 }
                 .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 StepDots(step: step, count: Self.stepCount, labels: ["Offer", "Choose", "Confirm"]).padding(.bottom, 8)
@@ -239,18 +239,20 @@ private struct LoanStepChoose: View {
 
     private var valid: Bool { amount >= a.minimum && amount <= a.maximum + 0.5 && q.refusal == nil }
 
+    /// Why Continue waits: the engine's refusal first, else the approved range.
+    private var blockedReason: String? {
+        if valid { return nil }
+        if let r = q.refusal { return r.tidyText }
+        return amount < a.minimum ? "The bank lends at least \(cur.tidyDisplay(a.minimum))." : "The bank approved up to \(cur.tidyDisplay(a.maximum))."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             amountPanel
             termCard
             if a.payoutAccounts.count > 1 { payoutCard }
             figures
-            if !valid, let r = q.refusal {
-                Text(r.tidyText).popupText(.risk).fixedSize(horizontal: false, vertical: true)
-            }
-            QuietButton(title: "Continue", fullWidth: true, action: next)
-                .disabled(!valid).opacity(valid ? 1 : 0.4)
-                .accessibilityIdentifier("bank-loan-continue")
+            PrimaryAction(title: "Continue", blockedReason: blockedReason, identifier: "bank-loan-continue", action: next)
         }
     }
 
@@ -276,9 +278,9 @@ private struct LoanStepChoose: View {
                     VStack(spacing: 2) {
                         LedgerSlider(value: value, in: lo...hi, step: 1).tint(P.accent)
                         HStack {
-                            Text("\(q.minTermMonths)").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
+                            Text("\(q.minTermMonths)").textStyle(.caption, tint: P.inkFaint)
                             Spacer()
-                            Text("\(q.maxTermMonths)").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
+                            Text("\(q.maxTermMonths)").textStyle(.caption, tint: P.inkFaint)
                         }
                     }
                     Text("\(q.termMonths)").popupText(.figure)
@@ -349,7 +351,7 @@ private struct LoanAmountPanel: View {
             Haptics.choose()
             setFraction(fraction)
         } label: {
-            Text(title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.accent).lineLimit(1).minimumScaleFactor(0.8)
+            Text(title).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 34)
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
                 .contentShape(Rectangle())
@@ -500,11 +502,9 @@ private struct LoanStepSummary: View {
                 }
                 .popupText(.rowLabel)
                 .onChange(of: refusal) { _, why in if why != nil { moreOpen = true } }
-                QuietButton(title: "Take the loan", fullWidth: true, action: onApply)
-                    .disabled(!agreed).opacity(agreed ? 1 : 0.4)
-                    .accessibilityIdentifier("bank-loan-confirm")
+                PrimaryAction(title: "Take the loan", blockedReason: agreed ? nil : "Tick that you agree to the terms first.", identifier: "bank-loan-confirm", action: onApply)
             } else {
-                QuietButton(title: "Done", fullWidth: true, action: onDone)
+                Button("Done", action: onDone).buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("bank-loan-done")
             }
         }
@@ -562,7 +562,7 @@ private struct LoanStepSummary: View {
 
     private func line(_ label: String, _ value: String, tint: Color? = nil, strong: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 13.5)).foregroundStyle(strong ? P.ink : P.inkSoft)
+            Text(label).textStyle(.body, tint: strong ? P.ink : P.inkSoft)
             Spacer(minLength: 8)
             Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint ?? P.ink)
         }
@@ -572,7 +572,7 @@ private struct LoanStepSummary: View {
     @ViewBuilder private var scheduleLink: some View {
         Button { showSchedule.toggle(); Haptics.choose() } label: {
             HStack {
-                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").font(.system(size: 13.5)).foregroundStyle(P.accent).underline()
+                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").textStyle(.body, tint: P.accent).underline()
                 Spacer()
             }.contentShape(Rectangle())
         }.buttonStyle(PressableStyle())

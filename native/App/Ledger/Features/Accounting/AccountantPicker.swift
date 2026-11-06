@@ -44,7 +44,7 @@ struct AccountantStep: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Accountant").capsLabel()
                 Text("A limited company keeps its books with one. The fee is paid each month and you can change it later in Atlas.")
-                    .font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 AccountantChoiceList(offers: offers, currency: currency, chosenID: chosen) { (o: AccountantOffer) -> Void in
                     accountantID = o.isDefault ? nil : o.id
                 }

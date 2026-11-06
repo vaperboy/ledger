@@ -25,8 +25,8 @@ struct HostingSection: View {
         HStack(spacing: 12) {
             IconCircle(glyph: Glyph.people, size: 34)
             VStack(alignment: .leading, spacing: 2) {
-                Text(g.title.tidyMoney).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
-                Text(g.detail + (g.hostedLately ? " · hosted lately" : "")).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(g.title.tidyMoney).textStyle(.body)
+                Text(g.detail + (g.hostedLately ? " · hosted lately" : "")).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
             Menu {
@@ -88,7 +88,7 @@ struct LendPieceSection: View {
         if let lent = engine.lentTo(pieceID: piece.id) {
             HStack(spacing: 8) {
                 GlyphView(glyph: Glyph.clock, size: 15, weight: 1.4, tint: Theme.ivoryFaint)
-                Text("Lent to \(lent.name) until \(GameCalendar.monthString(week: lent.until))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text("Lent to \(lent.name) until \(GameCalendar.monthString(week: lent.until))").textStyle(.caption)
             }.padding(.top, 8)
         } else if engine.lendablePieces.contains(where: { $0.id == piece.id }) {
             let people = engine.rewardCandidates
@@ -148,11 +148,11 @@ struct FundManagerCard: View {
                     HStack(spacing: 12) {
                         IconCircle(glyph: Glyph.person)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(a.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                            Text("Fund manager · \(a.mandate.title) · fee \(pct(a.fee)) a year").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                            Text(a.name).textStyle(.headline)
+                            Text("Fund manager · \(a.mandate.title) · fee \(pct(a.fee)) a year").textStyle(.caption)
                         }
                     }
-                    Text(cur.tidyShort(a.balance)).font(.hero(34)).foregroundStyle(Theme.ivory).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(cur.tidyShort(a.balance)).textStyle(.display).minimumScaleFactor(0.6).lineLimit(1)
                     Text("\(a.result >= 0 ? "+" : "−")\(pct(abs(a.result))) on \(cur.tidyShort(a.cost)) handed over").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.change(a.result))
                 }
             }
@@ -163,7 +163,7 @@ struct FundManagerCard: View {
                     QuietButton(title: "Take out", fullWidth: true) { takeOut(cur) }
                     QuietButton(title: "Let go", tint: Theme.loss, fullWidth: true) { askToLetGo() }
                 }
-                Text("A gain is taxed as a capital gain when you take it out. The fee is taken from the balance, so a weak year can leave you with less than you put in.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("A gain is taxed as a capital gain when you take it out. The fee is taken from the balance, so a weak year can leave you with less than you put in.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -195,11 +195,11 @@ struct FundManagerCard: View {
             CardSection("Fund manager") {
                 Text("Mandate").capsLabel(Theme.ivoryFaint)
                 SegmentedPill(items: FinanceManager.Mandate.allCases, title: { $0.title }, selection: $mandate)
-                Text(note(mandate)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text(note(mandate)).textStyle(.caption, tint: Theme.inkFaint)
                 AmountField(title: "Amount to hand over", currency: cur, amount: $amount)
             }
             ForEach(cands, id: \.id) { c in candidateCard(c) }
-            Text("Their claims may be exaggerated; how good they really are shows only in the results.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Their claims may be exaggerated; how good they really are shows only in the results.").textStyle(.caption, tint: Theme.inkFaint)
         }
     }
 
@@ -208,8 +208,8 @@ struct FundManagerCard: View {
             HStack(spacing: 12) {
                 IconCircle(glyph: Glyph.person, size: 36)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text("Age \(c.age) · \(GameEngine.cvImpression(claimed: c.claimedSkill, experience: c.yearsClaimed)) · fee \(pct(c.fee))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    Text(c.name).textStyle(.body, weight: .medium)
+                    Text("Age \(c.age) · \(GameEngine.cvImpression(claimed: c.claimedSkill, experience: c.yearsClaimed)) · fee \(pct(c.fee))").textStyle(.caption)
                 }
                 Spacer(minLength: 8)
                 QuietButton(title: "Hire") { askToHire(c) }
@@ -275,19 +275,19 @@ struct HoldingFinanceManagerCard: View {
         let role = engine.officeRoles.first { $0.id == "fin" }
         if let e = staffEntry {
             let id = e["id"].int
-            Text("Hired: \(e["name"].string), \(cur.tidyShort(e["wage"].double)) a month, paid by the group.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Text("Hired: \(e["name"].string), \(cur.tidyShort(e["wage"].double)) a month, paid by the group.").textStyle(.caption)
             ForEach(engine.officePaperwork(personID: id), id: \.key) { item in
                 HStack {
-                    Text(item.text.tidyMoney).font(.system(size: 11.5)).foregroundStyle(item.done ? Theme.ivoryFaint : Theme.ivory)
+                    Text(item.text.tidyMoney).textStyle(.caption, tint: item.done ? Theme.inkFaint : Theme.ink)
                     Spacer(minLength: 8)
                     if !item.done { QuietButton(title: "Done") { store.act { $0.tickOfficePaperwork(personID: id, item: item.key) } } }
                 }
             }
             QuietButton(title: "Let go", tint: Theme.loss) { askToFire() }
         } else if room == .ok {
-            Text("Wage about \(cur.tidyShort(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text("Wage about \(cur.tidyShort(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             if found.isEmpty {
-                HStack(spacing: 8) {
+                VStack(spacing: Theme.Space.s) {
                     QuietButton(title: "Ask around, free", fullWidth: true) { search(.network) }
                     QuietButton(title: "Job ad, \(cur.tidyShort(cur.scaledPrice(1500)))", fullWidth: true) { search(.ad) }
                     QuietButton(title: "Agency, \(cur.tidyShort(cur.scaledPrice(12000)))", fullWidth: true) { search(.agency) }
@@ -300,7 +300,7 @@ struct HoldingFinanceManagerCard: View {
                 }
             }
         } else {
-            Text(blockedText(room)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+            Text(blockedText(room)).textStyle(.caption)
         }
     }
 
@@ -319,8 +319,8 @@ struct HoldingFinanceManagerCard: View {
     private func termLine(_ glyph: String, _ label: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             GlyphView(glyph: glyph, size: 16, weight: 1.4, tint: label == "Risk" ? Theme.caution : Theme.gold)
-            Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivory).frame(width: 52, alignment: .leading)
-            Text(text).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            Text(label).textStyle(.caption, tint: Theme.ink, weight: .medium).frame(width: 52, alignment: .leading)
+            Text(text).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -334,7 +334,7 @@ struct HoldingFinanceManagerCard: View {
             termLine(Glyph.arrowIn, "Benefit", "Cash above \(cur.tidyShort(cur.scaledPrice(600000))) goes into the index fund each week, units are sold to cover a negative balance, and share sales are negotiated better.")
             termLine(Glyph.warning, "Risk", "The index fund can fall, and selling it costs 0.66%.")
             if staffEntry != nil { QuietButton(title: on ? "Take it back" : "Let the finance manager run it", fullWidth: true) { toggleManager() } }
-            else { Text("You have no finance manager. Hire one for the group office:").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted) }
+            else { Text("You have no finance manager. Hire one for the group office:").textStyle(.caption) }
             hireFlow
         }
         .confirmAction($pending)

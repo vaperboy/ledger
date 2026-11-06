@@ -24,7 +24,7 @@ struct SaveSlotsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("\(rows.count) of \(limit) slots used").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                Text("\(rows.count) of \(limit) slots used").textStyle(.body, tint: Theme.inkSoft)
                 Spacer(minLength: 8)
                 ProMark(feature: .saveSlots)
             }
@@ -55,8 +55,8 @@ struct SaveSlotsView: View {
         let isCurrent: Bool = r.id == "current"
         return Card(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(isCurrent ? "Current game" : r.id).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                Text(detail(r)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(isCurrent ? "Current game" : r.id).textStyle(.headline)
+                Text(detail(r)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 if renaming == r.id {
                     renameEditor(r)
                 } else if !isCurrent {
@@ -73,7 +73,7 @@ struct SaveSlotsView: View {
 
     private func renameEditor(_ r: SlotRow) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Slot name", text: $renameText).textFieldStyle(.plain).font(.system(size: 15)).foregroundStyle(Theme.ivory)
+            TextField("Slot name", text: $renameText).textFieldStyle(.plain).textStyle(.headline)
             HStack(spacing: 8) {
                 Button("Rename") {
                     if store.renameSlot(r.id, to: renameText) { renaming = nil; reload() } else { store.show("That name is empty or already used.", tone: "warn") }
@@ -86,8 +86,8 @@ struct SaveSlotsView: View {
     private var newSlot: some View {
         Card(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("New slot").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                TextField("Name this copy", text: $newName).textFieldStyle(.plain).font(.system(size: 15)).foregroundStyle(Theme.ivory)
+                Text("New slot").textStyle(.headline)
+                TextField("Name this copy", text: $newName).textFieldStyle(.plain).textStyle(.headline)
                 HStack(spacing: 8) {
                     Button("Save to slot") { ent.run(.saveSlots, "More save slots") { createSlot() } }
                         .buttonStyle(TinyButtonStyle()).disabled(store.engine == nil)
@@ -130,10 +130,10 @@ struct SaveSlotsView: View {
         Card(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Text("Cloud backup").font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text("Cloud backup").textStyle(.headline)
                     ProMark(feature: .cloudBackup)
                 }
-                Text(cloudLine).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text(cloudLine).textStyle(.caption)
                 HStack(spacing: 8) {
                     Button("Back up now") { ent.run(.cloudBackup, "Cloud backup") { backUp() } }
                         .buttonStyle(TinyButtonStyle()).disabled(!CloudConfig.iCloudReady || store.engine == nil)

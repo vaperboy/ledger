@@ -150,7 +150,7 @@ struct LoanDetailSheet: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text("REPAYMENT SCHEDULE").capsLabel()
             if rows.isEmpty {
-                Text("Nothing is left to schedule.").popupText(.subtitle)
+                EmptyState(glyph: Glyph.check, title: "Nothing is left to schedule.", centered: false)
             } else {
                 SharpTable {
                     TableHeader(columns: columns)
@@ -243,9 +243,9 @@ private struct LoanSummaryPanel: View {
     var body: some View {
         let repaid: Double = rec.principal > 0 ? max(0, min(1, 1 - rec.balance / rec.principal)) : 0
         VStack(alignment: .leading, spacing: 8) {
-            Text(rec.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(P.inkSoft)
-            Text(cur.tidyDisplay(rec.balance)).font(.hero(34)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1).moneyFlash(rec.balance)
-            Text("left to pay of " + cur.tidyDisplay(rec.principal)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+            Text(rec.name).textStyle(.body, tint: P.inkSoft, weight: .medium)
+            Text(cur.tidyDisplay(rec.balance)).textStyle(.display).minimumScaleFactor(0.6).lineLimit(1).moneyFlash(rec.balance)
+            Text("left to pay of " + cur.tidyDisplay(rec.principal)).textStyle(.caption, tint: P.inkFaint)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(P.lineStrong.opacity(0.35))
@@ -254,7 +254,7 @@ private struct LoanSummaryPanel: View {
                 }
             }
             .frame(height: 6)
-            Text("\(Int((repaid * 100).rounded()))% repaid").font(.system(size: 12)).foregroundStyle(P.inkSoft)
+            Text("\(Int((repaid * 100).rounded()))% repaid").textStyle(.caption)
         }
         .accessibilityElement(children: .combine)
     }

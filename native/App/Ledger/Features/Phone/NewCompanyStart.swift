@@ -23,6 +23,12 @@ struct TradeDetailView: View {
     @State private var choices = SetupChoices()
     @State private var accountantID: Int?
 
+    /// `startUnderBrand` opens on the franchise brands (the link from the set-up step); otherwise on starting alone.
+    init(tradeID: String, startUnderBrand: Bool = false) {
+        self.tradeID = tradeID
+        _way = State(initialValue: startUnderBrand ? .brand : .independent)
+    }
+
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
             let country = e.homeCountry
@@ -49,13 +55,12 @@ struct TradeDetailView: View {
                             PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
                             if form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID) }
                             risks(plan)
-                            if plan.registrationShortfall > 0 {
-                                NoteCard(text: "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital before this company can be registered. Move money from savings in Bank.", glyph: Glyph.warning, tint: Theme.caution)
+                            PrimaryAction(title: "Review and start · \(cur.tidyShort(plan.neededNow))",
+                                          blockedReason: plan.registrationShortfall > 0 ? "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital. Move money from savings in Bank." : nil) {
+                                pending = confirmation(e, t, plan, form, city, cityName, cur)
                             }
-                            QuietButton(title: "Review and start · \(cur.tidyShort(plan.neededNow))", fullWidth: true) { pending = confirmation(e, t, plan, form, city, cityName, cur) }
-                                .disabled(plan.registrationShortfall > 0).opacity(plan.registrationShortfall > 0 ? 0.4 : 1)
                         } else if ban == nil {
-                            NoteCard(text: "This trade cannot be priced here.")
+                            EmptyState(title: "This trade cannot be priced here.", centered: false)
                         }
                         if brands.isEmpty {
                             NoteCard(text: "No franchise brand is looking for operators in this trade right now. Another way in: buying a rival that is already trading, from the rival's page under Market.")
@@ -65,7 +70,8 @@ struct TradeDetailView: View {
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .appScreen(title: t.name, subtitle: t.category, tab: .company)
+            .scrollDismissesKeyboard(.interactively)
+            .appScreen(title: t.name, subtitle: way == .brand ? "Under a franchise brand" : t.category, tab: .company)
             .confirmAction($pending)
             .onAppear { if !sizeSet { size = e.affordableStartSize(tradeID: t.id, cityID: city) ?? CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); choices = e.suggestedChoices(tradeID: t.id, cityID: city, form: form, size: size); sizeSet = true } }
         }
@@ -75,15 +81,10 @@ struct TradeDetailView: View {
 
     /// A funding gauge instead of a figure card: how much of the start-up cost your money covers, then the verdict under it.
     private func summary(_ t: Trade, _ plan: NewCompanyPlan?, _ ban: String?, _ cur: Currency) -> some View {
-        Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                HStack(alignment: .top, spacing: Theme.Space.m) {
-                    IconCircle(glyph: Glyph.market, size: 44)
-                    Text(t.blurb.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                }
-                if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
-                if let plan { fundingGauge(plan, cur) }
-            }
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(t.blurb.tidyMoney).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            if let ban { Chip(text: ban, tint: Theme.loss, symbol: "nosign") }
+            if let plan { fundingGauge(plan, cur) }
         }
     }
 
@@ -95,17 +96,11 @@ struct TradeDetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Start-up cost").capsLabel()
                 Spacer(minLength: 8)
-                Text(cur.tidyShort(plan.total)).font(.system(size: 22, design: .serif).monospacedDigit()).foregroundStyle(Theme.ivory)
+                Text(cur.tidyShort(plan.total)).textStyle(.figure, numeric: true)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.border)
-                    Capsule().fill(tint).frame(width: max(6, geo.size.width * covered))
-                }
-            }
-            .frame(height: 6)
+            ProgressLine(fraction: covered, tint: tint, height: 6)
             HStack {
-                Text("You have \(cur.tidyShort(plan.available))").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                Text("You have \(cur.tidyShort(plan.available))").textStyle(.caption)
                 Spacer(minLength: 8)
                 Text(verdict).font(.system(size: 12, weight: .medium)).foregroundStyle(tint).multilineTextAlignment(.trailing)
             }
@@ -123,17 +118,17 @@ struct TradeDetailView: View {
             Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
             CardLine()
             if t.needsLimitedCompany {
-                Text("This trade needs a limited company.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("This trade needs a limited company.").textStyle(.caption)
             } else {
                 SegmentedPill(items: [false, true], title: { $0 ? "Limited company" : "Sole trader" }, selection: $limited)
-                Text(formText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text(formText).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
             if t.maxSize > t.minSize {
                 CardLine()
-                Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").font(.system(size: 14)).foregroundStyle(Theme.ivory) }
+                Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").textStyle(.body) }
             }
             CardLine()
-            TextField("Company name (optional)", text: $name).textFieldStyle(.plain).font(.system(size: 14.5)).padding(.vertical, 6)
+            LedgerField(placeholder: "Company name (optional)", text: $name)
         }
     }
 
@@ -180,7 +175,7 @@ struct TradeDetailView: View {
                 if n > 0 { Hairline() }
                 HStack(alignment: .top, spacing: 10) {
                     GlyphView(glyph: Glyph.warning, size: 16, weight: 1.4, tint: Theme.caution)
-                    Text(r.tidyMoney).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(r.tidyMoney).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 8)
             }
@@ -203,7 +198,7 @@ struct TradeDetailView: View {
     @ViewBuilder private func brandList(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], _ cur: Currency) -> some View {
         CardSection("Franchise brands for this trade") {
             Text("A known brand brings customers and support, and takes an entry fee and a royalty. You apply, they answer in a week or three, you agree the terms, then you start under the brand.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             ForEach(Array(brands.enumerated()), id: \.element.id) { n, b in
                 if n > 0 { CardLine() }
                 FranchiseBrandRow(brand: b)

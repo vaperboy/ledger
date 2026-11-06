@@ -23,7 +23,7 @@ struct BankRoundButton: View {
                     .frame(width: 56, height: 56)
                     .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
                     .overlay(alignment: .topTrailing) { RedBubble(count: badge, size: .small).offset(x: 2, y: -2) }
-                Text(title).font(.system(size: 12)).foregroundStyle(P.ink).lineLimit(1)
+                Text(title).textStyle(.caption, tint: P.ink).lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -82,10 +82,10 @@ struct BankAssetScreen: View {
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("PRICE").capsLabel()
-                Text(cur.tidyDisplay(live.price)).font(.system(size: 30, design: .serif).monospacedDigit()).foregroundStyle(P.ink)
+                Text(cur.tidyDisplay(live.price)).textStyle(.display, numeric: true)
                 Text(note).font(.system(size: 12.5)).foregroundStyle(P.change(live.weekChange ?? 0))
                 if hist.count >= 2 { Sparkline(values: hist, tint: up ? P.gain : P.loss).frame(height: 90) }
-                if live.kind == .crypto { Text("Very volatile: you can lose most of it.").font(.system(size: 11.5)).foregroundStyle(P.caution) }
+                if live.kind == .crypto { Text("Very volatile: you can lose most of it.").textStyle(.caption, tint: P.caution) }
             }
         }
     }
@@ -159,21 +159,15 @@ struct BankTradeFlow: View {
     // MARK: Step 1
 
     private func buyAmount(_ tq: TradeQuote, _ cur: Currency) -> some View {
-        let blocked: Bool = amount <= 0 || tq.refusal != nil
-        return VStack(alignment: .leading, spacing: 14) {
-            Card(padding: 16, radius: Theme.Radius.hero) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("HOW MUCH").capsLabel()
-                        Spacer()
-                        Text("available \(cur.tidyShort(tq.available))").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
-                    }
-                    AmountField(title: "Amount to buy", currency: cur, amount: $amount)
-                    Text("Smallest order \(cur.tidyShort(tq.minimumPurchase)). The broker fee is added to the price.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
-                }
+        let reason: String? = amount <= 0 ? "Enter an amount." : tq.refusal
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            LedgerSection(title: "How much", rule: false, trailing: {
+                Text("available \(cur.tidyShort(tq.available))").textStyle(.caption, tint: P.inkFaint)
+            }) {
+                AmountField(title: "Amount to buy", currency: cur, amount: $amount)
+                Text("Smallest order \(cur.tidyShort(tq.minimumPurchase)). The broker fee is added to the price.").textStyle(.caption, tint: P.inkFaint)
             }
-            if amount > 0, let r = tq.refusal { Text(r).font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true) }
-            QuietButton(title: "Review", fullWidth: true) { step = 2 }.disabled(blocked).opacity(blocked ? 0.4 : 1)
+            PrimaryAction(title: "Review", blockedReason: reason, identifier: "bank-trade-review") { step = 2 }
         }
     }
 
@@ -185,7 +179,7 @@ struct BankTradeFlow: View {
                 ChoiceCard(title: f == 1 ? "Sell all" : "Sell \(Int(f * 100))%", subtitle: "about \(cur.tidyShort(q.cashChange)) after the fee",
                            trailing: cur.tidyShort(q.amount), selected: fraction == f) { fraction = f }
             }
-            QuietButton(title: "Review", fullWidth: true) { step = 2 }
+            PrimaryAction(title: "Review", identifier: "bank-trade-review") { step = 2 }
         }
     }
 
@@ -193,22 +187,19 @@ struct BankTradeFlow: View {
 
     private func review(_ tq: TradeQuote, _ cur: Currency) -> some View {
         let buying: Bool = side == .buy
-        return VStack(alignment: .leading, spacing: 14) {
-            Card(padding: 16, radius: Theme.Radius.hero) {
-                VStack(spacing: 0) {
-                    line(buying ? "You buy" : "You sell", cur.tidyDisplay(tq.amount))
-                    line("Price", cur.tidyDisplay(quote.price))
-                    line("Units", String(format: "%.4f", tq.units))
-                    line("Broker fee", cur.tidyDisplay(tq.fee), tint: P.loss)
-                    Hairline().padding(.vertical, 6)
-                    line(buying ? "Leaves your accounts" : "Reaches your account", cur.tidyDisplay(tq.cashChange), tint: buying ? P.ink : P.gain, strong: true)
-                    line("Current account and savings after", cur.tidyDisplay(tq.cashAfter))
-                }
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            Figure(label: buying ? "Leaves your accounts" : "Reaches your account", value: cur.tidyDisplay(tq.cashChange), tint: buying ? P.ink : P.gain, size: .display)
+            VStack(spacing: 0) {
+                line(buying ? "You buy" : "You sell", cur.tidyDisplay(tq.amount))
+                line("Price", cur.tidyDisplay(quote.price))
+                line("Units", String(format: "%.4f", tq.units))
+                line("Broker fee", cur.tidyDisplay(tq.fee), tint: P.loss)
+                Hairline()
+                line("Current account and savings after", cur.tidyDisplay(tq.cashAfter), strong: true)
             }
-            Text(riskNote(buying)).font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-            if let r = problem ?? tq.refusal { Text(r).font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true) }
-            QuietButton(title: buying ? "Confirm purchase" : "Confirm sale", tint: buying ? P.accent : Theme.roseGold, fullWidth: true) { confirm(tq, cur) }
-                .disabled(tq.refusal != nil).opacity(tq.refusal != nil ? 0.4 : 1)
+            Text(riskNote(buying)).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
+            if let r = problem { Text(r).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true) }
+            PrimaryAction(title: buying ? "Confirm purchase" : "Confirm sale", blockedReason: tq.refusal, identifier: "bank-trade-confirm") { confirm(tq, cur) }
         }
     }
 
@@ -219,11 +210,11 @@ struct BankTradeFlow: View {
 
     private func line(_ label: String, _ value: String, tint: Color? = nil, strong: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 13.5)).foregroundStyle(strong ? P.ink : P.inkSoft)
+            Text(label).textStyle(.body, tint: strong ? P.ink : P.inkSoft)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint ?? P.ink)
+            Text(value).textStyle(strong ? .headline : .body, tint: tint ?? P.ink, numeric: true)
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, Theme.Space.s)
     }
 
     private func confirm(_ tq: TradeQuote, _ cur: Currency) {
@@ -245,15 +236,9 @@ struct BankTradeFlow: View {
     }
 
     private func doneCard(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 10) {
-                GlyphView(glyph: "M5 12 L10 17 L19 7", size: 18, weight: 2, tint: P.gain)
-                Text(text).font(.system(size: 13.5)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.gain.opacity(0.10)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.gain.opacity(0.45), lineWidth: 1))
-            QuietButton(title: "Done", fullWidth: true) { dismiss() }
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            EmptyState(glyph: Glyph.check, title: text, tint: P.gain)
+            Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("bank-trade-done")
         }
     }
 }

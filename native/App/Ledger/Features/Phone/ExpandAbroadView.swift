@@ -38,7 +38,7 @@ struct AbroadOptionsView: View {
                     countryTable(e, options, have, liquid)
                     if let pick { detail(e, co, pick, liquid: liquid, weak: weak) }
                     Text("Brand carried over: about 55% of the reputation and 40% of the awareness of \(co.name). Each country you operate in sets new rules from time to time; a head-office desk for that country handles them, without one a late change is fined.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -51,7 +51,7 @@ struct AbroadOptionsView: View {
 
     @ViewBuilder private func countryTable(_ e: GameEngine, _ options: [Abroad.Option], _ have: Set<String>, _ liquid: Double) -> some View {
         if options.isEmpty {
-            NoteCard(text: "This trade cannot be opened in any other country.")
+            EmptyState(glyph: Glyph.world, title: "This trade cannot be opened in any other country.", centered: false)
         } else {
             SharpTable {
                 TableHeader(columns: columns)
@@ -77,8 +77,8 @@ struct AbroadOptionsView: View {
             RowLine(glyph: affordable ? Glyph.check : Glyph.warning, tint: affordable ? Theme.gain : Theme.caution,
                     title: affordable ? "Covered by cash and savings" : "More than your cash and savings today",
                     subtitle: affordable ? "" : "Registration would fail until you have the money.")
-            QuietButton(title: "Register in \(o.name) for about \(cur.tidyShort(o.estimatedStartCost))", fullWidth: true) { register(co, o, cur) }
-                .disabled(weak).opacity(weak ? 0.4 : 1)
+            PrimaryAction(title: "Register in \(o.name) for about \(cur.tidyShort(o.estimatedStartCost))",
+                          blockedReason: weak ? "Build the brand's reputation at home first." : nil) { register(co, o, cur) }
         }
     }
 

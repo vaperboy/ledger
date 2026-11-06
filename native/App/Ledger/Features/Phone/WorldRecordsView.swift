@@ -93,7 +93,7 @@ struct WorldRecordsView: View {
                 .init(label: "They won", value: "\(n.losses)", tint: n.losses > n.wins ? Theme.loss : Theme.ivory)
             ], columns: 2)
             CardSection("The rivalry") {
-                if n.log.isEmpty { Text("Nothing has happened between you yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                if n.log.isEmpty { Text("Nothing has happened between you yet.").textStyle(.body, tint: Theme.inkSoft) }
                 VStack(spacing: 0) {
                     ForEach(Array(n.log.reversed().prefix(30).enumerated()), id: \.offset) { i, l in
                         FlatRow(label: e.displayText(l.text.tidyMoney), value: GameCalendar.dateString(week: l.week), rule: i > 0)
@@ -152,7 +152,7 @@ struct WorldRecordsView: View {
                     }
                 }
                 CardSection("Earlier months") {
-                    if m.months.isEmpty { Text("The first month is not closed yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted) }
+                    if m.months.isEmpty { Text("The first month is not closed yet.").textStyle(.body, tint: Theme.inkSoft) }
                     VStack(spacing: 0) {
                         ForEach(Array(m.months.enumerated()), id: \.offset) { i, mo in
                             FlatRow(label: monthName(mo.monthIndex), value: cur.tidyShort(mo.profit), sub: "Income " + cur.tidyShort(mo.income) + " · costs " + cur.tidyShort(mo.expenses), tint: Theme.change(mo.profit), rule: i > 0)

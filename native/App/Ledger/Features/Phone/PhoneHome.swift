@@ -103,7 +103,7 @@ struct PhoneHome: View {
                 Text(context.date, format: .dateTime.hour().minute())
                     .font(.serifTitle(52)).foregroundStyle(Theme.ivory).monospacedDigit()
             }
-            Text(dateLine).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(dateLine).textStyle(.caption)
         }
     }
 
@@ -146,7 +146,7 @@ struct AppIcon: View {
         Button(action: action) {
             VStack(spacing: 6) {
                 AppIconTile(glyph: app.glyph, tint: app.tint).opacity(lock == nil ? 1 : 0.35)
-                Text(lock ?? app.title).font(.system(size: 11.5)).foregroundStyle(lock == nil ? Theme.ivory : Theme.ivoryFaint).lineLimit(lock == nil ? 1 : 2).minimumScaleFactor(0.8)
+                Text(lock ?? app.title).textStyle(.caption, tint: lock == nil ? Theme.ink : Theme.inkFaint).lineLimit(lock == nil ? 1 : 2).minimumScaleFactor(0.8)
             }
             .animation(Motion.quick(reduceMotion), value: lock)
             .frame(maxWidth: .infinity)
