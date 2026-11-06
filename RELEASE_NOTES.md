@@ -1,4 +1,5 @@
 # What's new
+- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handles them, no flood after replacing a CEO, pay requests capped per week
 - Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed
 - Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)
 - Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device
