@@ -52,7 +52,7 @@ struct SettingsView: View {
                 TextEditor(text: $pasted).popupText(.code).frame(height: 220)
                     .scrollContentBackground(.hidden)
                     .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
-                Button(store.hasSavedGame ? "Import and replace" : "Import") { showPaste = false; store.importLegacy(text: pasted); pasted = "" }
+                Button(store.hasSavedGame ? "Import and replace" : "Import") { importPasted() }
                     .buttonStyle(QuietButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .centerSheetTitle("Paste save text")
@@ -192,6 +192,16 @@ struct SettingsView: View {
     }
 
     // MARK: Import
+
+    /// Pasted text replaces the running game, so it is asked first (the file path does the same).
+    private func importPasted() {
+        let text: String = pasted
+        showPaste = false
+        pasted = ""
+        guard store.hasSavedGame else { store.importLegacy(text: text); return }
+        pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",
+                                button: "Import and replace", destructive: true) { store.importLegacy(text: text) }
+    }
 
     private func importPicked(_ result: Result<URL, Error>) {
         guard case .success(let url) = result else { return }

@@ -44,7 +44,7 @@ struct InsightsView: View {
                 .popupText(.caption).multilineTextAlignment(.center)
             QuietButton(title: "Unlock with Ledger Pro") {
                 popupClose?()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { ent.paywall = PaywallRequest(title: "Insights") }
+                ent.paywall = PaywallRequest(title: "Insights")
             }
         }
         .padding(18)

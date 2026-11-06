@@ -27,6 +27,8 @@ enum Theme {
     static let goldDeep = Color(red: 0.722, green: 0.600, blue: 0.427)
     static let goldLight = Color(red: 0.863, green: 0.753, blue: 0.592)
     static let roseGold = Color(red: 0.851, green: 0.682, blue: 0.384)
+    /// Text and icons on a filled champagne button: a dark ink that stays legible whatever palette the screen around it uses.
+    static let onGold = Color(red: 0.09, green: 0.075, blue: 0.055)
     static let slateBlue = Color(red: 0.322, green: 0.451, blue: 0.682)
 
     // Meaning
@@ -57,6 +59,9 @@ enum Theme {
         /// small outline button 12, app icon 15.
         static let hero: CGFloat = 16, card: CGFloat = 14, row: CGFloat = 12, table: CGFloat = 8, appIcon: CGFloat = 15
     }
+
+    /// The one card/toast shadow: soft, low, black (no glow).
+    enum Shadow { static let color = Color.black.opacity(0.35); static let radius: CGFloat = 14; static let y: CGFloat = 6 }
 
     static func tone(_ name: String) -> Color {
         switch name { case "good": return gain; case "bad": return loss; case "warn": return caution; default: return ivoryMuted }

@@ -379,15 +379,19 @@ struct FranchisorCard: View {
                             ForEach(countries) { Text("\($0.flag) \($0.name)").tag($0.code) }
                         }.pickerStyle(.menu)
                         Spacer()
-                        Button("Sell master franchise") { sellMaster(countries[0].code) }.buttonStyle(TinyButtonStyle())
+                        Button("Sell master franchise") { sellMaster(countries[0].code, countries.first(where: { $0.code == masterCountry })?.name ?? countries[0].name) }.buttonStyle(TinyButtonStyle())
                     }
                 }
             }
         }
     }
 
-    private func sellMaster(_ firstCode: String) {
+    private func sellMaster(_ firstCode: String, _ name: String) {
         let code: String = masterCountry.isEmpty ? firstCode : masterCountry
+        pending = PendingAction(title: "Sell the master franchise for \(name)?", message: "You sign over the franchise rights for this country. It costs legal work and cannot be undone.", button: "Sell master franchise", destructive: true) { runSellMaster(code) }
+    }
+
+    private func runSellMaster(_ code: String) {
         switch store.act({ $0.sellMasterFranchise(companyID: company.id, country: code) }) {
         case .ok?: Haptics.success(); store.show("Master franchise signed.", tone: "good")
         case .cash?: store.show("Not enough cash for the legal work.", tone: "warn")

@@ -2,9 +2,10 @@ import SwiftUI
 import GameCore
 import Simulation
 
-// iOS-style notification banners: the one way the game tells the player something without a blocking popup.
-// A rounded translucent card below the status bar, slides down with a spring, swipes up to leave. One at a time, the most severe
-// first; it waits while a report or any popup is open. No game rules here.
+// Banners and toasts: the one way the game tells the player something without a blocking popup. A banner is a card below the
+// status bar (source, title, body); a toast is the compact one-line form for a result ("Not enough cash"), accented by its tone and
+// gone after a few seconds. Both slide down with a spring, swipe up to leave, show one at a time (a toast first, then the most
+// severe), and wait while a report or a blocking popup is open. No game rules here.
 
 /// What a tap on a banner does.
 enum BannerTarget {
@@ -31,9 +32,16 @@ struct BannerItem: Identifiable {
     var fromAlert = false
     var lifetime: Double = 5
     var target: BannerTarget = .none
+    /// A toast: one compact line coloured by `tone` ("n", "good", "warn", "bad"), never sticky.
+    var compact = false
+    var tone = "n"
 
-    var sticky: Bool { severity >= 4 || isAlert }
-    var tint: Color { isAlert ? Theme.alert : Theme.gold }
+    var sticky: Bool { !compact && (severity >= 4 || isAlert) }
+    var tint: Color {
+        if isAlert { return Theme.alert }
+        if compact && tone != "n" { return Theme.tone(tone) }
+        return Theme.gold
+    }
 }
 
 /// The "Take me to ...?" question after a tap on a banner that has no decision of its own.
@@ -58,9 +66,12 @@ final class BannerQueue: ObservableObject {
     func post(_ item: BannerItem) {
         if let c = current, c.key == item.key { return }
         pending.removeAll { (p: BannerItem) -> Bool in p.key == item.key }
+        // A toast is the answer to something the player just did: it takes the slot from a banner, which waits its turn again.
+        if item.compact, let c = current, !c.compact { pending.append(c); current = nil }
         pending.append(item)
         pending = pending.enumerated().sorted { (a: (offset: Int, element: BannerItem), b: (offset: Int, element: BannerItem)) -> Bool in
-            a.element.severity != b.element.severity ? a.element.severity > b.element.severity : a.offset < b.offset
+            if a.element.compact != b.element.compact { return a.element.compact }
+            return a.element.severity != b.element.severity ? a.element.severity > b.element.severity : a.offset < b.offset
         }.map { $0.element }
     }
 
@@ -89,6 +100,13 @@ extension GameStore {
     func banner(_ title: String, body: String = "", source: String = "Ledger", glyph: String = Glyph.check) {
         banners.post(BannerItem(key: "note-" + title + body, source: source, title: title.tidyText, body: body.tidyText, glyph: glyph, severity: 1, lifetime: 3))
     }
+
+    /// The toast: a refusal or a minor warning told in one compact line that leaves by itself (the ToastCenter is this banner queue).
+    func notify(_ text: String, tone: String = "warn") {
+        let line: String = text.tidyText
+        banners.post(BannerItem(key: "toast-" + line, source: "", title: line, glyph: tone == "good" ? Glyph.check : Glyph.warning,
+                                severity: 3, lifetime: Motion.toastSeconds, compact: true, tone: tone))
+    }
 }
 
 /// The banner layer: sits over the whole app, takes taps only on the card (and the question popup).
@@ -101,7 +119,7 @@ struct NotificationBannerLayer: View {
 
     /// A report, the daily report, a reward, a day running or any popup: banners wait until it is closed.
     private var blocked: Bool {
-        store.holdsHomeFigures || !store.notices.isEmpty || store.decisionPopup != nil || !store.redAlerts.isEmpty || queue.confirm != nil
+        store.holdsHomeFigures || store.popupOpen || queue.confirm != nil
     }
 
     private var slide: Animation { reduceMotion ? Motion.quickAnimation : Motion.moveAnimation }
@@ -112,7 +130,7 @@ struct NotificationBannerLayer: View {
             if store.engine != nil, let item = queue.current {
                 BannerCard(item: item, reduceMotion: reduceMotion, onTap: { tapped(item) }, onClose: { close(item) })
                     .id(item.id)
-                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                    .transition(Motion.toastTransition(reduceMotion))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -122,7 +140,8 @@ struct NotificationBannerLayer: View {
         .animation(slide, value: queue.current?.id)
         .task(id: key) {
             if key.blocked || key.hasCurrent || !key.hasPending { return }
-            try? await Task.sleep(nanoseconds: 450_000_000)
+            let gap: Double = queue.pending.first?.compact == true ? 0.05 : Motion.bannerGapSeconds
+            try? await Task.sleep(nanoseconds: UInt64(gap * 1_000_000_000))
             if Task.isCancelled { return }
             Motion.animate(slide) { queue.advance() }
         }
@@ -196,14 +215,24 @@ private struct BannerCard: View {
     var onClose: () -> Void
     @State private var drag: CGFloat = 0
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 22, style: .continuous) }
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous) }
 
-    var body: some View {
+    /// The compact line of a toast: a small accent glyph and the sentence, serif like the popups' titles.
+    private var toastLine: some View {
+        HStack(alignment: .center, spacing: 10) {
+            GlyphView(glyph: item.glyph, size: 16, weight: 1.6, tint: item.tint)
+            Text(item.title).font(.serifTitle(14.5)).foregroundStyle(Theme.ivory)
+                .lineLimit(3).multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var full: some View {
         HStack(alignment: .top, spacing: 12) {
             GlyphView(glyph: item.glyph, size: 18, weight: 1.6, tint: item.tint)
                 .frame(width: 38, height: 38)
-                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color(hex: 0x1C1D1F)))
-                .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(item.tint.opacity(0.45), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(item.tint.opacity(0.45), lineWidth: 1))
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(item.source).textCase(.uppercase).font(.system(size: 11, weight: .medium))
@@ -211,7 +240,7 @@ private struct BannerCard: View {
                     Text("now").font(.system(size: 11))
                 }
                 .foregroundStyle(Theme.ivoryFaint)
-                Text(item.title).font(.system(size: 14.5, weight: .bold)).foregroundStyle(Theme.ivory)
+                Text(item.title).font(.serifTitle(15)).foregroundStyle(Theme.ivory)
                     .lineLimit(2).multilineTextAlignment(.leading)
                 if !item.body.isEmpty {
                     Text(item.body).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
@@ -219,16 +248,19 @@ private struct BannerCard: View {
                 }
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+    }
+
+    var body: some View {
+        Group { if item.compact { toastLine } else { full } }
+        .padding(.horizontal, 14).padding(.vertical, item.compact ? 10 : 12)
         .frame(maxWidth: 460, alignment: .leading)
         .background(ZStack {
-            shape.fill(.ultraThinMaterial)
-            shape.fill(Color(hex: 0x1E1F21, opacity: 0.7))
+            shape.fill(Theme.surface)
             if item.isAlert { shape.fill(Theme.alert.opacity(0.10)) }
         })
-        .overlay(shape.strokeBorder(item.isAlert ? Theme.alert.opacity(0.55) : Color(hex: 0x3A3B3E), lineWidth: 1))
+        .overlay(shape.strokeBorder(item.isAlert || item.compact ? item.tint.opacity(0.55) : Theme.borderStrong, lineWidth: 1))
         .environment(\.colorScheme, .dark)
-        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.radius, y: Theme.Shadow.y)
         .padding(.horizontal, 12).padding(.top, 6)
         .offset(y: drag)
         .contentShape(Rectangle())
@@ -240,7 +272,7 @@ private struct BannerCard: View {
                     if v.translation.height < -28 || v.velocity.height < -350 {
                         Motion.animate(Motion.quickAnimation) { drag = -320 }
                         Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 190_000_000)
+                            try? await Task.sleep(nanoseconds: UInt64(Motion.bannerLeaveSeconds * 1_000_000_000))
                             onClose()
                         }
                     } else {

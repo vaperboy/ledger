@@ -4,17 +4,18 @@ import Countries
 import Events
 import Simulation
 
-/// Everything the game tells the player in words is a popup on the main screen, never a banner: the notice queue (a refusal, a warning,
-/// the outcome of an answer), a top-priority decision, the short daily report, the week, month and year reports and the rewards.
-/// This view only REGISTERS them with the app's popup host (see `PopupHost`, `PopupPriority`): the host draws
-/// them, one at a time, in the order confirm, decision, alert, notice, report and daily, reward, panel.
+/// What the player must read or decide is a popup on the main screen: the notice queue (a serious problem, the outcome of an answer),
+/// a top-priority decision, the daily report, the week, month and year reports and the rewards. A refusal or a minor warning is a
+/// toast instead (`GameStore.show`). This view only REGISTERS the popups with the app's popup host (see `PopupHost`, `PopupPriority`):
+/// the host draws them, one at a time, in the order confirm, decision, alert (error, red alert, notice), report and daily, reward and
+/// feature unlock, panel.
 struct PopupLayer: View {
     @EnvironmentObject var store: GameStore
 
     var body: some View {
         Color.clear
             .allowsHitTesting(false)
-            .hostedPopup(key: "error", priority: .confirm, active: store.errorText != nil, onClose: { store.errorText = nil }) {
+            .hostedPopup(key: "error", priority: .alert, active: store.errorText != nil, onClose: { store.errorText = nil }) {
                 ErrorPopup(text: store.errorText ?? "") { store.errorText = nil }
             }
             .hostedPopup(key: "decision-\(store.decisionPopup ?? 0)", priority: .decision, active: store.decisionPopup != nil, onClose: { store.decisionPopup = nil }) {
@@ -38,19 +39,21 @@ struct PopupLayer: View {
             .hostedPopup(key: "celebration-\(store.celebrationQueue.first?.id ?? 0)", priority: .celebration, active: !store.celebrationQueue.isEmpty, onClose: { }) {
                 if let c = store.celebrationQueue.first { CelebrationPopup(item: c).environmentObject(store) }
             }
-            .centerSheet(item: unlockBinding) { (p: UnlockPrompt) in
-                UnlockPopup(prompt: p).environmentObject(store)
-            }
+            .modifier(unlockRegistration)
     }
 
-    /// The announcement of a newly opened feature: shown only when nothing else is waiting; closing it counts as Skip.
-    private var unlockBinding: Binding<UnlockPrompt?> {
-        Binding<UnlockPrompt?>(
-            get: { store.unlockReady },
-            set: { (v: UnlockPrompt?) in
-                if v == nil, let p = store.unlockReady { store.dismissUnlock(p) }
-            }
-        )
+    /// The announcement of a newly opened feature: an announcement like a reward (not a panel the player opened), shown only when
+    /// nothing else is waiting; closing it counts as Skip.
+    private var unlockRegistration: HostedPopupModifier<AnyView> {
+        let ready: UnlockPrompt? = store.unlockReady
+        let s: GameStore = store
+        return HostedPopupModifier(key: "unlock-" + (ready?.id ?? ""), priority: .celebration, active: ready != nil,
+                                   draw: .card(title: "", size: .fit),
+                                   onClose: { if let p = s.unlockReady { s.dismissUnlock(p) } }, onDismiss: nil,
+                                   card: { () -> AnyView in
+                                       guard let p = s.unlockReady else { return AnyView(EmptyView()) }
+                                       return AnyView(UnlockPopup(prompt: p).environmentObject(s))
+                                   })
     }
 }
 
@@ -122,7 +125,7 @@ struct NoticePopup: View {
                         }
                     }
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
                 }
                 PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
             }
@@ -219,42 +222,29 @@ struct DecisionPopup: View {
     }
 }
 
-/// A company about to be force-sold: a see-through red alert over everything (declared variant: alert, white text). Tapping outside
-/// does nothing; the player has to read it and press Continue.
+/// A company about to be force-sold: a red alert in the shared popup frame (variant: alert), drawn with the alert token. Tapping
+/// outside does nothing; the player has to read it and press Continue.
 struct RedAlertPopup: View {
     @EnvironmentObject var store: GameStore
     var message: Message
 
     var body: some View {
-        ZStack {
-            Color(red: 0.8, green: 0.06, blue: 0.08).opacity(0.34).ignoresSafeArea()
-                .contentShape(Rectangle()).onTapGesture { }
-            VStack(alignment: .leading, spacing: PopupSpace.block) {
+        GamePopup(title: "About to be sold", showsClose: false, dismissOnBackdrop: false, variant: .alert, onClose: { }) {
+            PopupBody {
                 HStack(spacing: 10) {
-                    GlyphView(glyph: Glyph.warning, size: 24, weight: 1.8, tint: Color.white)
-                    Text("About to be sold").popupText(.rowLabel, variant: .alert)
+                    GlyphView(glyph: Glyph.warning, size: 24, weight: 1.8, tint: Theme.alert)
+                    Text(store.engine?.displayText(message.title, companyID: message.companyID) ?? message.title)
+                        .popupText(.title).fixedSize(horizontal: false, vertical: true)
                 }
-                Text(store.engine?.displayText(message.title, companyID: message.companyID) ?? message.title)
-                    .popupText(.figure, variant: .alert).fixedSize(horizontal: false, vertical: true)
                 Text((store.engine?.displayText(message.body, companyID: message.companyID) ?? message.body).tidyMoney)
-                    .popupText(.body, variant: .alert)
-                HStack(spacing: 10) {
-                    if message.companyID != 0 {
-                        Button("Open the company") {
-                            Haptics.tap(); store.dismissRedAlert(); store.openCompany(message.companyID, section: nil)
-                        }.buttonStyle(QuietButtonStyle(tint: Color.white))
+                    .popupText(.body)
+                if message.companyID != 0 {
+                    PopupOptionButton(title: "Open the company") {
+                        store.dismissRedAlert(); store.openCompany(message.companyID, section: nil)
                     }
-                    Spacer(minLength: 0)
-                    Button("Continue") { Haptics.tap(); store.dismissRedAlert() }
-                        .buttonStyle(QuietButtonStyle(tint: Color.white)).accessibilityIdentifier("alert-continue")
                 }
+                PopupOptionButton(title: "Continue", highlighted: true, identifier: "alert-continue") { store.dismissRedAlert() }
             }
-            .padding(PopupSpace.card).frame(maxWidth: 420)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Color(red: 0.42, green: 0.04, blue: 0.06).opacity(0.78)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Color(red: 1, green: 0.4, blue: 0.4).opacity(0.7), lineWidth: 1.5))
-            .padding(.horizontal, PopupMetrics.margin)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(.isModal)
     }
 }

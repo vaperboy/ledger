@@ -210,7 +210,7 @@ struct WardrobeView: View {
             if lockedByPro {
                 QuietButton(title: "Unlock with Ledger Pro", fullWidth: true) {
                     popupClose?()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { ent.paywall = PaywallRequest(title: "Wardrobe") }
+                    ent.paywall = PaywallRequest(title: "Wardrobe")
                 }
             } else {
                 Text("This badge is won in your career. Keep playing to earn it.")

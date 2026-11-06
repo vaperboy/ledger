@@ -41,10 +41,10 @@ struct CompanySales: View {
         .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id })) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
-                         onHireAdvisor: { addingService = nil; presentAfterSheet { showHire = true } },
+                         onHireAdvisor: { addingService = nil; showHire = true },
                          onAdded: { (name: String) in
                              let id: String? = store.engine?.salesItems(companyID: company.id).first(where: { (i: SalesItem) -> Bool in i.name == name })?.id
-                             if let id { presentAfterSheet { openItem = SalesItemPick(id: id) } }
+                             if let id { openItem = SalesItemPick(id: id) }
                          })
         }
         .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }

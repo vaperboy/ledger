@@ -82,10 +82,7 @@ struct CompanyHolding: View {
                                 if amount > 0, store.act({ $0.holdingInvest(holdingID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Invested.", tone: "good") }
                                 else { Haptics.warning(); store.show(amount > 0 ? "Not enough cash in the holding." : "Enter an amount first.", tone: "warn") }
                             }.buttonStyle(TinyButtonStyle())
-                            Button("Sell index") {
-                                if amount > 0, store.act({ $0.holdingDivest(holdingID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Sold.", tone: "good") }
-                                else { Haptics.warning(); store.show(amount > 0 ? "Nothing to sell." : "Enter an amount first.", tone: "warn") }
-                            }.buttonStyle(TinyButtonStyle())
+                            Button("Sell index") { askSellIndex(cur) }.buttonStyle(TinyButtonStyle())
                         }
                         Button("Pay a dividend to me…") { askDividend(cur) }.buttonStyle(TinyButtonStyle())
                         Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself. The index fund costs 0.66% to sell.")
@@ -118,6 +115,16 @@ struct CompanyHolding: View {
                     Spacer()
                 }
             }
+        }
+    }
+
+    /// Selling index holdings is a real divestment (0.66% fee): asked first, with the amount.
+    private func askSellIndex(_ cur: Currency) {
+        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
+        let sold: Double = amount
+        pending = PendingAction(title: "Sell \(cur.tidyShort(sold)) of the index fund?", message: "The holding sells index holdings worth this much. The fund charges 0.66% to sell.", button: "Sell index", destructive: true) {
+            if store.act({ $0.holdingDivest(holdingID: company.id, amount: sold) }) == true { Haptics.success(); store.show("Sold.", tone: "good") }
+            else { Haptics.warning(); store.show("Nothing to sell.", tone: "warn") }
         }
     }
 

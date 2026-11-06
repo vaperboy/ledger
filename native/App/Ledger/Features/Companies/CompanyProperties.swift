@@ -80,13 +80,13 @@ struct CompanyProperties: View {
     private func askToSell(_ p: PropertyRow, _ cur: Currency) {
         let tail: String = p.mortgage > 0 ? ", repay the mortgage" : ""
         pending = PendingAction(title: "Sell this property?", message: "Selling on the market costs 2.5% of the value. \(p.name)",
-                                button: "Sell for about " + cur.tidyShort(p.value * 0.975) + tail, destructive: true) { sell(p) }
+                                button: "Sell for about " + cur.tidyShort(p.value * 0.975) + tail, destructive: true) { detailID = nil; sell(p) }
     }
 
     private func askToRenovate(_ p: PropertyRow, _ cur: Currency) {
         let cost: Double = engine.renovationCost(companyID: company.id, propertyID: p.id) ?? 0
         pending = PendingAction(title: "Renovate this property?", message: "The work is paid from company cash. Better condition raises its value and rent.",
-                                button: "Renovate for \(cur.tidyShort(cost))", amount: cost, currency: cur) { renovate(p) }
+                                button: "Renovate for \(cur.tidyShort(cost))", amount: cost, currency: cur) { detailID = nil; renovate(p) }
     }
 
     private func askToBuy(_ L: PropertyListing, _ cur: Currency) {
@@ -127,12 +127,12 @@ struct CompanyProperties: View {
                             if p.mortgage > 0 { Text("Mortgage " + cur.tidyShort(p.mortgage)).popupText(.risk, variant: .destructive) }
                         }
                         HStack(spacing: 18) {
-                            Button("Renovate") { detailID = nil; presentAfterSheet { askToRenovate(p, cur) } }.popupText(.effect)
+                            Button("Renovate") { askToRenovate(p, cur) }.popupText(.effect)
                             if p.kind == "com" {
                                 Button(openTenants == p.id ? "Hide tenants" : "Tenants and buyers") { Motion.animate(Motion.quickAnimation) { openTenants = openTenants == p.id ? nil : p.id } }
                                     .popupText(.effect)
                             }
-                            Button("Sell") { detailID = nil; presentAfterSheet { askToSell(p, cur) } }.popupText(.risk, variant: .destructive)
+                            Button("Sell") { askToSell(p, cur) }.popupText(.risk, variant: .destructive)
                             Spacer()
                         }.buttonStyle(PressableStyle())
                         if openTenants == p.id { tenants(p, cur) }
@@ -177,7 +177,7 @@ struct CompanyProperties: View {
                             Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").popupText(.caption)
                         }
                         Spacer()
-                        Button("Sell to them") { detailID = nil; presentAfterSheet { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { sellBuilding(p, o) } } }.popupText(.risk, variant: .destructive).buttonStyle(PressableStyle())
+                        Button("Sell to them") { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { detailID = nil; sellBuilding(p, o) } }.popupText(.risk, variant: .destructive).buttonStyle(PressableStyle())
                     }
                 }
             }

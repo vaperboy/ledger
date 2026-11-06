@@ -42,9 +42,9 @@ struct CompanySaleSection: View {
         }
     }
 
-    /// The talk sheet is closing when it hands the offer over: ask once it is gone.
+    /// The talk sheet hands the offer over: the question is a confirm popup, which the host shows above any panel.
     private func laterAsk(_ o: CompanySale.Offer) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { askToSell(o) }
+        askToSell(o)
     }
 
     private func askToSell(_ o: CompanySale.Offer) {

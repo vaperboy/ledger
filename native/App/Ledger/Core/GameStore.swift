@@ -519,11 +519,14 @@ final class GameStore: ObservableObject {
     /// For a setting the engine applies without a result of its own (a limit, a duty, a slider): a short "Saved" with what it is now.
     func saved(_ what: String) { show("Saved: \(what)", tone: "n") }
 
-    /// A result line from an action. There is no banner: a refusal or a warning (tone "warn" or "bad") is told in a popup because the
-    /// player must see why nothing happened; a plain confirmation ("Saved", "Hired") is already visible on the screen, so it just goes.
+    /// A result line from an action. A refusal or a minor warning (tone "warn") is a toast: one compact line that leaves by itself and
+    /// never stops the game. A problem the player must read (tone "bad") is a popup; a plain confirmation ("Saved", "Hired") is a banner.
     func show(_ text: String, tone: String = "n") {
-        guard tone == "warn" || tone == "bad" else { banner(text); return }
-        tell("", text, tone: tone)
+        switch tone {
+        case "bad": tell("", text, tone: tone)
+        case "warn": notify(text, tone: tone)
+        default: banner(text)
+        }
     }
 
     /// Important information, always told in the popup (an answer with an immediate effect, a result the player waits for).

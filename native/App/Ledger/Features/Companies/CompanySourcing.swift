@@ -174,10 +174,10 @@ struct CompanySourcing: View {
         }
     }
 
-    /// Closes the popup, then runs the action once it has gone (its own confirmation popup would otherwise clash with it).
+    /// Closes the popup and runs the action; its confirmation popup is shown by the host above whatever panel is left.
     private func closeThen(_ action: @escaping () -> Void) {
         popup = nil
-        presentAfterSheet(action)
+        action()
     }
 
     private func supplierPopup(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) -> some View {

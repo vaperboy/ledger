@@ -78,6 +78,9 @@ final class PopupHost: ObservableObject {
         entries[key] = PopupEntry(key: key, seq: seq, priority: priority, draw: draw, content: content, onClose: onClose)
     }
 
+    /// The one definition of "a popup is showing here": at least one registered popup is drawn (any kind, panels included).
+    var hasVisible: Bool { !drawnEntries().isEmpty }
+
     func remove(_ key: String) {
         if entries[key] != nil { entries[key] = nil }
     }
@@ -118,11 +121,11 @@ struct PopupHostLayer: View {
                 let on: Bool = e.key == top
                 entryView(e)
                     .opacity(on ? 1 : 0)
-                    .scaleEffect(on || reduceMotion ? 1 : 0.94)
+                    .scaleEffect(on || reduceMotion || !e.priority.isDialog ? 1 : Motion.hiddenScale)
                     .allowsHitTesting(on)
                     .accessibilityHidden(!on)
                     .zIndex(on ? 1 : 0)
-                    .transition(.opacity)
+                    .transition(e.priority.isDialog ? Motion.confirmTransition(reduceMotion) : Motion.panelTransition(reduceMotion))
             }
         }
         .animation(Motion.arrive(reduceMotion), value: signature)

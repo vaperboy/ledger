@@ -16,6 +16,9 @@ enum PopupPriority: Int, Comparable, CaseIterable {
 
     /// A stack (newest on top): what the player opened or asked himself. The others are queues (oldest first, one after another).
     var isStack: Bool { self == .confirm || self == .panel }
+
+    /// A question or an alert (scale and fade in) as against a panel or a report (slides up from the bottom).
+    var isDialog: Bool { self == .confirm || self == .decision || self == .alert || self == .notice }
 }
 
 /// The pure ordering logic of the popup host: which registered popup is the visible one and in which order the others wait.
