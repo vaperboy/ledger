@@ -1,4 +1,5 @@
 # What's new
+- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device
 - Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap
 - Notices: minor "cannot / not enough" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette
 - Balance: managers can approve more space; nightclub wages sane; salmon farms no longer run dry before the first harvest; dealer customer loans approve far more often

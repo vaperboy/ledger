@@ -45,9 +45,11 @@ public struct EntitlementSnapshot: Equatable, Sendable {
     public var plusExpires: Date?
     /// When the 24-hour Pro pass from a rewarded ad ends (nil: none).
     public var passExpires: Date?
+    /// When a redeemed gift code stops opening the full game (nil: none).
+    public var giftExpires: Date?
 
-    public init(owned: Set<LedgerProduct> = [], plusExpires: Date? = nil, passExpires: Date? = nil) {
-        self.owned = owned; self.plusExpires = plusExpires; self.passExpires = passExpires
+    public init(owned: Set<LedgerProduct> = [], plusExpires: Date? = nil, passExpires: Date? = nil, giftExpires: Date? = nil) {
+        self.owned = owned; self.plusExpires = plusExpires; self.passExpires = passExpires; self.giftExpires = giftExpires
     }
 
     public static let free = EntitlementSnapshot()
@@ -57,7 +59,8 @@ public struct EntitlementSnapshot: Equatable, Sendable {
     public func isPlus(now: Date) -> Bool { plusExpires.map { $0 > now } ?? false }
     public func hasPass(now: Date) -> Bool { passExpires.map { $0 > now } ?? false }
     /// Everything Pro unlocks: bought Pro or Founder, Plus while active, or the one-day pass.
-    public func isPro(now: Date) -> Bool { ownsPro() || isPlus(now: now) || hasPass(now: now) }
+    public func hasGift(now: Date) -> Bool { giftExpires.map { $0 > now } ?? false }
+    public func isPro(now: Date) -> Bool { ownsPro() || isPlus(now: now) || hasPass(now: now) || hasGift(now: now) }
     /// Ads never show to Pro, Founder or Plus (a pass counts as Pro).
     public func isAdFree(now: Date) -> Bool { isPro(now: now) }
 

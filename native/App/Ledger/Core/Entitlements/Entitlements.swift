@@ -42,6 +42,8 @@ final class Entitlements {
         static let pass = "ledger.proPassExpires"
         static let debug = "ledger.debugEntitlements"
         static let hadPlus = "ledger.hadPlus"
+        static let gift = "ledger.giftExpires"
+        static let giftSerials = "ledger.giftSerials"
     }
 
     init() {
@@ -50,6 +52,8 @@ final class Entitlements {
         #endif
         let t: Double = UserDefaults.standard.double(forKey: Keys.pass)
         if t > 0 { snapshot.passExpires = Date(timeIntervalSince1970: t) }
+        let g: Double = UserDefaults.standard.double(forKey: Keys.gift)
+        if g > 0 { snapshot.giftExpires = Date(timeIntervalSince1970: g) }
         hadPlus = UserDefaults.standard.bool(forKey: Keys.hadPlus)
     }
 
@@ -130,12 +134,30 @@ final class Entitlements {
             owned.insert(p)
             if p.isPlus, let end = t.expirationDate { plusEnd = max(plusEnd ?? end, end) }
         }
-        var next = EntitlementSnapshot(owned: owned, plusExpires: plusEnd, passExpires: snapshot.passExpires)
+        var next = EntitlementSnapshot(owned: owned, plusExpires: plusEnd, passExpires: snapshot.passExpires, giftExpires: snapshot.giftExpires)
         if let pe = next.passExpires, pe <= Date() { next.passExpires = nil; UserDefaults.standard.removeObject(forKey: Keys.pass) }
         if plusEnd != nil { hadPlus = true; UserDefaults.standard.set(true, forKey: Keys.hadPlus) }
         else if hadPlus { plusEndedNotice = true; hadPlus = false; UserDefaults.standard.set(false, forKey: Keys.hadPlus) }
         snapshot = next
         scheduleExpiryRefresh()
+    }
+
+    /// Redeems a gift code on this device: it opens the full game for the code's period, added to any time still left.
+    /// Each code works once per device. Returns the line to show.
+    @discardableResult
+    func redeem(_ text: String) -> String {
+        guard let gift = GiftCodes.check(text) else { return "That code is not valid. Check it and try again." }
+        var used: [Int] = UserDefaults.standard.array(forKey: Keys.giftSerials) as? [Int] ?? []
+        if used.contains(gift.serial) { return "That code has already been used on this device." }
+        let start: Date = max(Date(), snapshot.giftExpires ?? Date())
+        let end: Date = start.addingTimeInterval(Double(gift.days) * AdPolicy.passDuration)
+        used.append(gift.serial)
+        UserDefaults.standard.set(used, forKey: Keys.giftSerials)
+        UserDefaults.standard.set(end.timeIntervalSince1970, forKey: Keys.gift)
+        snapshot.giftExpires = end
+        scheduleExpiryRefresh()
+        let f: DateFormatter = DateFormatter(); f.dateStyle = .medium
+        return "Unlocked until \(f.string(from: end))."
     }
 
     func purchase(_ p: LedgerProduct) async {
@@ -177,7 +199,7 @@ final class Entitlements {
     /// When the pass or a Plus period ends, look again so the locks come back without a restart.
     private func scheduleExpiryRefresh() {
         expiry?.cancel()
-        let next: Date? = [snapshot.passExpires, snapshot.plusExpires].compactMap { $0 }.filter { $0 > Date() }.min()
+        let next: Date? = [snapshot.passExpires, snapshot.plusExpires, snapshot.giftExpires].compactMap { $0 }.filter { $0 > Date() }.min()
         guard let when = next else { return }
         expiry = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(max(1, when.timeIntervalSinceNow + 1) * 1_000_000_000))
