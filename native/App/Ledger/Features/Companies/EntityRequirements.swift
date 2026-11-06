@@ -38,20 +38,20 @@ struct RequirementGuide: View {
     // MARK: Rows
 
     private func row(_ r: Chains.Requirement, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(r.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(r.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium)
                 Spacer(minLength: 8)
                 statusChip(r.status)
             }
             if r.key == "proven" {
                 provenLine(r)
             } else {
-                Text(how(r)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(how(r)).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             action(r, cur)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Space.s)
         .accessibilityElement(children: .contain)
     }
 
@@ -71,10 +71,10 @@ struct RequirementGuide: View {
     private func provenLine(_ r: Chains.Requirement) -> some View {
         let p = Franchising.provenProgress(engine.state, company)
         let fraction: Double = 0.5 * min(1, Double(p.weeks) / 52) + 0.5 * Double(p.quarters) / 4
-        return VStack(alignment: .leading, spacing: 5) {
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             ThinProgress(fraction: r.ok ? 1 : fraction, tint: r.ok ? Theme.gain : Theme.gold)
             Text(r.ok ? "The pilot has proved itself." : "A year of trading and four profitable quarters. Keep this company running well.")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -102,12 +102,12 @@ struct RequirementGuide: View {
         let again: Bool = r.detail.hasPrefix("Refused")
         let label: String = (again ? "Apply again" : "Apply") + " \u{00B7} " + fee(r.key, cur)
         let key: String = r.key
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Space.s) {
             Button(label) { Haptics.tap(); sheet = DocRef(id: key) }
                 .buttonStyle(TinyButtonStyle())
                 .disabled(blocked(r))
             if blocked(r) {
-                Text("After the steps above.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("After the steps above.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -127,11 +127,9 @@ struct RequirementGuide: View {
         NavigationLink {
             HireWorkersView(companyID: company.id)
         } label: {
-            Text("Hire someone").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
-                .padding(.horizontal, 10).padding(.vertical, 4).frame(minHeight: 28)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
+            Text("Hire someone")
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
     }
 
     // MARK: The paper

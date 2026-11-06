@@ -25,7 +25,7 @@ struct GivingView: View {
                         CardSection(title: "Gifts", trailing: { cityPicker(places, current: place) }) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text("Standing in \(place.name): \(Words.level(place.standing, scale: .quality).lowercased()). It fades slowly; more standing brings a little more demand to your companies there.")
-                                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
+                                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, Theme.Space.s)
                                 ForEach(Array(e.giftOptions.enumerated()), id: \.element.id) { n, g in
                                     if n > 0 { CardLine() }
                                     giftRow(e, g, place)
@@ -34,13 +34,13 @@ struct GivingView: View {
                         }
                     } else {
                         CardSection("Gifts") {
-                            Text("You need a city to give to: open a company or choose a home city first.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text("You need a city to give to: open a company or choose a home city first.").textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
                     foundationSection(e)
                     marksSection(e)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             }
         }
@@ -67,9 +67,9 @@ struct GivingView: View {
             if places.count > 1 {
                 Menu {
                     ForEach(places, id: \.key) { p in Button(p.name) { placeKey = p.key } }
-                } label: { Text("\(current.name)  ⌄").font(.system(size: 12)).foregroundStyle(Theme.gold) }
+                } label: { Text("\(current.name)  ⌄").textStyle(.caption, tint: Theme.accent) }
             } else {
-                Text(current.name).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text(current.name).textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -81,17 +81,17 @@ struct GivingView: View {
         let cost = e.giftCost(g.id)
         let done = e.giftDone(g.id, place: place)
         let short = e.state.cash < cost
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
-                Text(g.name).font(.system(size: 14)).foregroundStyle(Theme.ivory)
+                Text(g.name).textStyle(.body, tint: Theme.ink)
                 if g.yearly { Chip(text: "Every year", tint: Theme.gold) }
                 Spacer(minLength: 8)
-                Text(cur.tidyShort(cost) + (g.yearly ? " / yr" : "")).font(.system(size: 14).monospacedDigit()).foregroundStyle(short && !done ? Theme.loss : Theme.ivory)
+                Text(cur.tidyShort(cost) + (g.yearly ? " / yr" : "")).textStyle(.body, tint: short && !done ? Theme.loss : Theme.ink, numeric: true)
             }
-            Text(g.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            Text("Standing in \(place.name) +\(Int(g.standing)) · legacy +\(Int(g.legacy))").font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
+            Text(g.detail.tidyMoney).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+            Text("Standing in \(place.name) +\(Int(g.standing)) · legacy +\(Int(g.legacy))").textStyle(.caption, tint: Theme.inkSoft)
             if done {
-                Text("Done in \(place.name).").font(.system(size: 11.5)).foregroundStyle(Theme.gain)
+                Text("Done in \(place.name).").textStyle(.caption, tint: Theme.gain)
             } else {
                 Button(g.yearly ? "Sponsor" : "Give") {
                     pending = PendingAction(
@@ -100,9 +100,9 @@ struct GivingView: View {
                             + " Your standing in \(place.name) rises by about \(Int(g.standing)) and your legacy by \(Int(g.legacy)). It cannot be undone, and there is no financial return except the small demand lift in that city.",
                         button: g.yearly ? "Sponsor" : "Give", destructive: true) { give(g, place) }  // irreversible: always asks
                 }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).disabled(short)
-                if short { Text("Short by \(cur.tidyShort(cost - e.state.cash)).").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                if short { Text("Short by \(cur.tidyShort(cost - e.state.cash)).").textStyle(.caption, tint: Theme.inkFaint) }
             }
-        }.padding(.vertical, 10)
+        }.padding(.vertical, Theme.Space.m)
     }
 
     private func give(_ g: Giving.Gift, _ place: Giving.Place) {
@@ -121,22 +121,22 @@ struct GivingView: View {
         let cur = e.homeCurrency
         CardSection("Foundation") {
             if let f = e.foundation {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     FlatRow(label: "Endowment", value: cur.tidyShort(f.capital), rule: false)
                     FlatRow(label: "Given so far", value: cur.tidyShort(f.given))
                     FlatRow(label: "Next yearly grant", value: cur.tidyShort(f.capital * 0.04), sub: "about 4% of the endowment, spread over the cities you work in")
-                    Text("The capital stays; only the yearly grant is given. It adds legacy and goodwill every year and cannot be withdrawn.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text("The capital stays; only the yearly grant is given. It adds legacy and goodwill every year and cannot be withdrawn.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 let steps = [1.0, 5, 20, 50].map { e.homeCurrency.scaledPrice($0 * 1e6) }.map { ($0 / 1000).rounded() * 1000 }
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Put money in once and it gives about 4% of the endowment every year, for good. Your name goes on it, your legacy and your image grow, and the money is gone from your cash for good.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     Picker("Endowment", selection: $endowment) {
                         ForEach(Array(steps.enumerated()), id: \.offset) { n, v in Text(cur.tidyShort(v)).tag(n) }
                     }.pickerStyle(.segmented)
                     let amount = steps[min(endowment, steps.count - 1)]
-                    Text("Yearly grant: about \(cur.tidyShort(amount * 0.04)).").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Yearly grant: about \(cur.tidyShort(amount * 0.04)).").textStyle(.caption, tint: Theme.inkFaint)
                     Button("Start the foundation") {
                         pending = PendingAction(
                             title: "Endow a foundation with \(cur.tidyShort(amount))?",
@@ -150,7 +150,7 @@ struct GivingView: View {
                             }
                         }
                     }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).disabled(e.state.cash < amount)
-                    if e.state.cash < amount { Text("Short by \(cur.tidyShort(amount - e.state.cash)).").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                    if e.state.cash < amount { Text("Short by \(cur.tidyShort(amount - e.state.cash)).").textStyle(.caption, tint: Theme.inkFaint) }
                 }
             }
         }
@@ -162,16 +162,16 @@ struct GivingView: View {
         let marks = e.givingMarks
         CardSection("Your marks") {
             if marks.isEmpty {
-                Text("Nothing yet. Each gift leaves a named mark here and in your legacy.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Nothing yet. Each gift leaves a named mark here and in your legacy.").textStyle(.caption, tint: Theme.inkFaint)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(marks.enumerated()), id: \.offset) { n, m in
                         if n > 0 { CardLine() }
                         HStack(alignment: .firstTextBaseline) {
-                            Text(m.name).font(.system(size: 13)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                            Text(m.name).textStyle(.body, tint: Theme.ink).fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 8)
-                            Text((m.yearly ? "Yearly · " : "") + GameCalendar.dateString(week: m.week)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.vertical, 8)
+                            Text((m.yearly ? "Yearly · " : "") + GameCalendar.dateString(week: m.week)).textStyle(.caption, tint: Theme.inkFaint)
+                        }.padding(.vertical, Theme.Space.s)
                     }
                 }
             }

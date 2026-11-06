@@ -46,7 +46,7 @@ struct ChainView: View {
                     SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
                     partBody(part, e, sum, cur)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -91,7 +91,7 @@ struct ChainView: View {
         if e.boardIsActive(key: key) {
             MoreBlock("Board") {
                 NavigationLink { BoardView(key: key) } label: {
-                    HStack(spacing: 10) {
+                    HStack(spacing: Theme.Space.m) {
                         IconCircle(glyph: Glyph.achievements, size: 34)
                         BoardLinkRow(engine: e, key: key)
                     }
@@ -134,11 +134,11 @@ struct ChainFigures: View {
     var body: some View {
         let r = summary.reach
         let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets: wider name, more demand, cheaper goods." : "A worldwide name."
-        Card(padding: 14, radius: Theme.Radius.hero) {
+        Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 FigureStrip(items: items)
                 RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
-                Text(reachNote).font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text(reachNote).textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -182,11 +182,11 @@ struct ChainAttention: View {
 
     private func line(_ title: String, _ sub: String, glyph: String, tint: Color) -> some View {
         EntityCard {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
                 IconCircle(glyph: glyph, size: 34, tint: tint)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(tint)
-                    Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(title).textStyle(.body, tint: tint, weight: .medium)
+                    Text(sub).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
             }
@@ -200,13 +200,13 @@ struct ChainAttention: View {
         let owed = engine.groupLoanBalance(companyID: c.id)
         let sub: String = "Cash \(currency.tidyShort(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.tidyShort(owed))" : "")
         return EntityCard {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: Theme.Space.m) {
                         IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.loss)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("\(c.name) is out of cash").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.loss)
-                            Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                            Text("\(c.name) is out of cash").textStyle(.body, tint: Theme.loss, weight: .medium)
+                            Text(sub).textStyle(.caption, tint: Theme.inkSoft)
                         }
                         Spacer(minLength: 8)
                         MoreChevron()
@@ -244,14 +244,14 @@ struct ChainStoreComparison: View {
     var body: some View {
         let all = sorted(summary.stores.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.cityName.localizedCaseInsensitiveContains(query) })
         let shown = showAll || query.count > 0 ? all : Array(all.prefix(pageSize))
-        MoreBlock(title: "Stores", card: false, trailing: { Text("\(summary.stores.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-            VStack(alignment: .leading, spacing: 10) {
+        MoreBlock(title: "Stores", card: false, trailing: { Text("\(summary.stores.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if summary.stores.count > 1 {
                     SegmentedPill(items: Sort.allCases, title: { $0.rawValue }, selection: $sort)
                 }
                 if summary.stores.count > pageSize {
-                    Card(padding: 10, radius: Theme.Radius.table) {
-                        HStack(spacing: 8) {
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
+                        HStack(spacing: Theme.Space.s) {
                             GlyphView(glyph: Glyph.search, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
                             TextField("Search stores or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14))
                         }
@@ -265,8 +265,8 @@ struct ChainStoreComparison: View {
                         HStack {
                             Text(city).capsLabel(Theme.ivoryFaint)
                             Spacer()
-                            Text("\(list.count) · \(currency.tidyShort(list.reduce(0) { $0 + $1.profit })) / mo").font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
-                        }.padding(.top, 6)
+                            Text("\(list.count) · \(currency.tidyShort(list.reduce(0) { $0 + $1.profit })) / mo").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                        }.padding(.top, Theme.Space.s)
                         ForEach(list) { s in row(s) }
                     }
                 } else {
@@ -302,19 +302,19 @@ struct ChainStoreComparison: View {
         let rulesTitle: String = openRulesFor == s.id ? "Hide rules" : "Own rules"
         let isNew: Bool = freshStores.contains(s.id)
         EntityCard {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(alignment: .top, spacing: Theme.Space.m) {
                     NavigationLink(value: CompanyRoute.company(s.id)) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: Theme.Space.m) {
                             ThumbnailView(kind: .trade, key: summary.tradeID, size: 34, glyph: Glyph.home)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(s.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                                Text(s.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                                Text(line).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
                             }
                             Spacer(minLength: 6)
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(currency.tidyShort(s.profit)).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(profitTint)
-                                Text(currency.tidyShort(s.revenue) + " rev").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                                Text(currency.tidyShort(s.profit)).textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
+                                Text(currency.tidyShort(s.revenue) + " rev").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                             }
                             MoreChevron()
                         }.contentShape(Rectangle())
@@ -347,16 +347,16 @@ struct ChainRulesSection: View {
     var body: some View {
         MoreBlock("Chain rules") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").textStyle(.caption, tint: Theme.inkSoft)
                 priceRule
-                Text("Ordering").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Ordering").textStyle(.caption, tint: Theme.inkSoft)
                 orderingRule
-                Text("Pay").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Pay").textStyle(.caption, tint: Theme.inkSoft)
                 payRule
-                Text("Marketing").font(.caption).foregroundStyle(Theme.ivoryMuted)
+                Text("Marketing").textStyle(.caption, tint: Theme.inkSoft)
                 marketingRule
                 Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
                 knobRules
             }
         }
@@ -368,8 +368,8 @@ struct ChainRulesSection: View {
         let binding = Binding<Double>(get: { current }, set: { (v: Double) in
             store.act { $0.setChainRule(chainID: chainID, rule: .price((v * 2).rounded() / 2)) }
         })
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack { Text("Price").font(.caption).foregroundStyle(Theme.ivoryMuted); Spacer(); Text(priceWord(current)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack { Text("Price").textStyle(.caption, tint: Theme.inkSoft); Spacer(); Text(priceWord(current)).textStyle(.caption, tint: Theme.ink) }
             LedgerSlider(value: binding, in: -3...3, step: 0.5) { editing in
                 if !editing { store.saved("chain price rule.") }
             }
@@ -416,8 +416,8 @@ struct ChainRulesSection: View {
     /// A chain standard for one way of selling: mandatory for the stores while set (they see it locked), or left to each store.
     private func knobStandard(_ knob: Knob, _ current: JSONValue) -> some View {
         let cur = engine.homeCurrency
-        return VStack(alignment: .leading, spacing: 4) {
-            Text(knob.name).font(.caption).foregroundStyle(Theme.ivoryMuted)
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(knob.name).textStyle(.caption, tint: Theme.inkSoft)
             WrapRow {
                 Group {
                     Button("Each store decides") {
@@ -441,7 +441,7 @@ struct ChainRulesSection: View {
             let exceptions = engine.chainKnobExceptions(chainID: chainID, knob: knob.id)
             if !exceptions.isEmpty {
                 let names: String = exceptions.map { ex in ex.storeName + " (" + optionNames(knob, ex.value) + ")" }.joined(separator: "; ")
-                HStack(alignment: .top, spacing: 8) {
+                HStack(alignment: .top, spacing: Theme.Space.s) {
                     GlyphView(glyph: Glyph.warning, size: 14, weight: 1.5, tint: Theme.caution)
                     Text("\(exceptions.count) store\(exceptions.count == 1 ? "" : "s") could not follow yet and keep what they have: " + names + ".")
                         .font(.system(size: 11.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
@@ -518,7 +518,7 @@ struct ChainNewStore: View {
                                                 button: "Open the store", amount: cost, currency: currency) { open(cityID: cityID) }
                     }
                 } else {
-                    Text("A new store is not possible in that city.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                    Text("A new store is not possible in that city.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }
@@ -544,14 +544,14 @@ struct ChainJoin: View {
         let join = engine.companiesThatCanJoin(chainID: summary.id)
         if !join.isEmpty {
             MoreBlock("Add your other \((engine.data.catalog[summary.tradeID]?.name ?? "").lowercased()) companies", card: false) {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     ForEach(join, id: \.id) { (c: Company) in
                         EntityCard {
-                            HStack(spacing: 10) {
+                            HStack(spacing: Theme.Space.m) {
                                 ThumbnailView(kind: .trade, key: c.type, size: 34, glyph: Glyph.home)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                                    Text(engine.cityName(c)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                    Text(c.name).textStyle(.body, tint: Theme.ink, weight: .medium)
+                                    Text(engine.cityName(c)).textStyle(.caption, tint: Theme.inkFaint)
                                 }
                                 Spacer()
                                 Button("Add") { add(c, rename: false) }.buttonStyle(TinyButtonStyle())

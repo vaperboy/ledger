@@ -54,7 +54,7 @@ struct AcquisitionSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         MoreHeader(glyph: Glyph.invest, title: "Buy \(r.name)", blurb: "Agreed price \(cur.tidyDisplay(price)). Choose what it becomes.")
                         MoreBlock("What it becomes", card: false) {
-                            VStack(spacing: 8) {
+                            VStack(spacing: Theme.Space.s) {
                                 ForEach(plan.choices, id: \.id) { (c: AcquisitionPlan.Choice) in
                                     let cashText: String = c.affordable ? cur.tidyShort(c.cashNeeded) : "Short of cash"
                                     ChoiceCard(title: title(c.kind), trailing: cashText, selected: selected == c.kind) { selected = c.kind }
@@ -64,7 +64,7 @@ struct AcquisitionSheet: View {
                         }
                         costs(plan, ch, price: price, cur: cur)
                         MoreBlock("What changes") {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 labelled("You get", fx.gets)
                                 labelled("Control", fx.control)
                                 labelled("Risk", fx.risk)

@@ -58,7 +58,7 @@ struct ConversionSheet: View {
 
     private func header(_ plan: CompanyConversion.Plan) -> some View {
         Group {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Convert").capsLabel()
                 Text(plan.companyName).popupText(.figure).lineLimit(2)
                 Text("From \(plan.currentFormName) to \(plan.newFormName). Nothing happens until you confirm.")
@@ -85,7 +85,7 @@ struct ConversionSheet: View {
 
     private func payerChoice(_ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
         PopupSection(title: "Who pays the fee") {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 ForEach(plan.payerOptions) { (o: CompanyConversion.PayerOption) in
                     let title: String = o.payer == .personal ? "Your own account" : "The company's account"
                     let avail: String = o.accountName + ": " + cur.tidyDisplay(o.spendable) + " available"
@@ -121,7 +121,7 @@ struct ConversionSheet: View {
                         FlatRow(label: l.name, value: cur.tidyShort(l.balance), sub: l.personallyGuaranteed ? "your personal guarantee stays" : "company loan", rule: n > 0)
                     }
                     Text("Banks keep the personal guarantee; ask to release it in the Bank app, at a higher margin.")
-                        .popupText(.caption).padding(.top, 6)
+                        .popupText(.caption).padding(.top, Theme.Space.s)
                 }
             }
         }
@@ -141,7 +141,7 @@ struct ConversionSheet: View {
     @ViewBuilder private func consequences(_ plan: CompanyConversion.Plan) -> some View {
         if !plan.consequences.isEmpty {
             PopupSection(title: "Consequences") {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     ForEach(Array(plan.consequences.enumerated()), id: \.offset) { _, c in
                         Text(c.tidyText).popupText(.subtitle)
                     }
@@ -152,7 +152,7 @@ struct ConversionSheet: View {
 
     /// The risk line stays in the body; Keep and Convert are pinned under it so they are always in reach.
     @ViewBuilder private func decision(_ co: Company, _ plan: CompanyConversion.Plan, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if !plan.affordable {
                 Text("The chosen account cannot cover this: pick the other or put money in. Nothing is charged.")
                     .popupText(.risk)
@@ -207,9 +207,9 @@ struct ConversionSheet: View {
 
     private func resultCard(_ text: String) -> some View {
         Group {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
                 IconCircle(glyph: Glyph.check, tint: Theme.gain)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text("Converted").popupText(.rowValue)
                     Text(text.tidyText).popupText(.subtitle)
                     Text("Form, name and records are updated; see Accounting > Documents for the registration.")
@@ -221,7 +221,7 @@ struct ConversionSheet: View {
 
     private func blockedCard(_ block: CompanyConversion.Block) -> some View {
         Group {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
                 IconCircle(glyph: Glyph.info)
                 Text(block.text).popupText(.body)
             }

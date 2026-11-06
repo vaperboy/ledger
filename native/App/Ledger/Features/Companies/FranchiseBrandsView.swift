@@ -15,7 +15,7 @@ struct FranchisesView: View {
             let brands: [FranchiseBrands.Brand] = e.franchiseBrands()
             let trades: [String] = Array(Set(brands.map { $0.tradeID })).sorted { (e.data.catalog[$0]?.name ?? $0) < (e.data.catalog[$1]?.name ?? $1) }
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     NoteCard(text: "Brands that take new franchisees. You apply, they answer in a week or three, then you meet them to agree the terms. When the terms are agreed you can start the company under the brand.")
                     if brands.isEmpty {
                         NoteCard(text: "No brand is looking for franchisees right now.", glyph: Glyph.clock)
@@ -24,7 +24,7 @@ struct FranchisesView: View {
                     }
                     ForEach(trades, id: \.self) { t in tradeShelf(e, brands, trade: t) }
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -41,12 +41,12 @@ struct FranchisesView: View {
             .init(label: "Trades", value: "\(trades.count)"),
             .init(label: "Lowest entry fee", value: cur.tidyShort(cheapest)),
         ]
-        return Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: items, columns: 3) }
+        return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) { FigureStrip(items: items, columns: 3) }
     }
 
     private func tradeShelf(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], trade t: String) -> some View {
         let list: [FranchiseBrands.Brand] = brands.filter { $0.tradeID == t }
-        return MoreBlock(title: e.data.catalog[t]?.name ?? t, card: false, trailing: { Text("\(list.count)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+        return MoreBlock(title: e.data.catalog[t]?.name ?? t, card: false, trailing: { Text("\(list.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
             ForEach(list, id: \.id) { b in FranchiseBrandRow(brand: b) }
         }
     }
@@ -68,14 +68,14 @@ struct FranchiseStepsList: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             ForEach(steps) { (st: FranchiseBrands.Step) in
                 let m = mark(st.state)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(m.0).font(.system(size: 12, weight: .semibold)).foregroundStyle(m.1).frame(width: 16)
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                    Text(m.0).textStyle(.caption, tint: m.1, weight: .semibold).frame(width: 16)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(st.title).font(.system(size: 13, weight: .medium)).foregroundStyle(st.state == .todo ? Theme.ivoryMuted : Theme.ivory)
-                        Text(st.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        Text(st.title).textStyle(.body, tint: st.state == .todo ? Theme.inkSoft : Theme.ink, weight: .medium)
+                        Text(st.detail.tidyMoney).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -93,15 +93,8 @@ struct FranchiseBrandRow: View {
         if let e = store.engine { row(e, brand, e.homeCurrency) }
     }
 
-    private func chipLabel(_ text: String, tint: Color = Theme.gold) -> some View {
-        Text(text).font(.system(size: 12, weight: .medium)).foregroundStyle(tint)
-            .padding(.horizontal, 10).padding(.vertical, 4).frame(minHeight: 28)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
-            .contentShape(Rectangle())
-    }
-
     private func statusLine(_ text: String, _ tint: Color) -> some View {
-        Text(text.tidyMoney).font(.system(size: 12.5)).foregroundStyle(tint).fixedSize(horizontal: false, vertical: true)
+        Text(text.tidyMoney).textStyle(.caption, tint: tint).fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private func next(_ e: GameEngine, _ b: FranchiseBrands.Brand, _ cur: Currency) -> some View {
@@ -113,13 +106,13 @@ struct FranchiseBrandRow: View {
             statusLine("Application sent. Answer in about \(max(1, a["due"].int - e.state.week).weeksText).", Theme.caution)
         case "invited":
             statusLine("They want to talk. Open for \(max(0, a["exp"].int - e.state.week)) more weeks.", Theme.gain)
-            NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Meet the \(b.role)") }.buttonStyle(PressableStyle())
+            NavigationLink { BrandMeetingView(brandID: b.id) } label: { Text("Meet the \(b.role)") }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
         case "agreed":
             let t = e.franchiseAgreedTerms(b.id)
             statusLine("Terms agreed. Entry fee \(cur.tidyShort(t?.fee ?? 0)), royalty \(Currency.percent(t?.royalty ?? 0, decimals: 1)).", Theme.gain)
-            HStack(spacing: 8) {
-                NavigationLink { BrandMeetingView(brandID: b.id) } label: { chipLabel("Talk again", tint: Theme.ivoryMuted) }.buttonStyle(PressableStyle())
-                NavigationLink { StartFranchisedView(brandID: b.id) } label: { chipLabel("Start with this deal") }.buttonStyle(PressableStyle())
+            HStack(spacing: Theme.Space.s) {
+                NavigationLink { BrandMeetingView(brandID: b.id) } label: { Text("Talk again") }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                NavigationLink { StartFranchisedView(brandID: b.id) } label: { Text("Start with this deal") }.buttonStyle(PrimaryButtonStyle(size: .compact))
             }
         default:
             if st == "refused" { statusLine("They turned you down for now.", Theme.loss) }
@@ -149,12 +142,12 @@ struct FranchiseBrandRow: View {
             .init(label: "Brand", value: FranchiseBrands.brandWord(b.strength)),
         ]
         EntityCard {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(spacing: Theme.Space.m) {
                     IconCircle(glyph: Glyph.group, size: 36)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(b.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Text("\(b.tierDescription) · \(b.units) \(b.units == 1 ? "unit" : "units")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                        Text(b.name).textStyle(.headline, tint: Theme.ink).lineLimit(2)
+                        Text("\(b.tierDescription) · \(b.units) \(b.units == 1 ? "unit" : "units")").textStyle(.caption, tint: Theme.inkSoft).lineLimit(2)
                     }
                     Spacer(minLength: 0)
                 }
@@ -185,7 +178,7 @@ struct BrandMeetingView: View {
             let st = e.franchiseStatus(b)
             let a = e.franchiseApplication(b.id)
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if !st.ok {
                         NoteCard(text: st.why.tidyMoney, glyph: Glyph.warning, tint: Theme.loss)
                     } else if !["invited", "agreed"].contains(a["st"].string) {
@@ -196,7 +189,7 @@ struct BrandMeetingView: View {
                     FranchiseStepsList(steps: e.franchiseeSteps(b))
                     facts(e, b)
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -220,10 +213,10 @@ struct BrandMeetingView: View {
         let cur: Currency = e.homeCurrency
         let bd = e.data.catalog[b.tradeID]
         let signable: Bool = result?.terms != nil && (result?.kind == .accept || result?.kind == .counter)
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
             NoteCard(text: result?.message ?? "\(b.contact) is listening. Standard terms are below. Ask for what would make this work for you.", glyph: Glyph.people, tint: replyTint())
             MoreBlock("Terms") { termSteppers(b, bd) }
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.m) {
                 QuietButton(title: result?.terms != nil ? "Propose again" : "Propose these terms", fullWidth: true) {
                     let r: FranchiseBrands.Negotiation? = store.act({ $0.negotiateFranchise(brandID, ask: ask) }) ?? nil
                     result = r
@@ -235,7 +228,7 @@ struct BrandMeetingView: View {
             }
             if signable, let t = result?.terms {
                 Text("Entry fee \(cur.tidyShort(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.horizontal, 2)
+                    .textStyle(.caption, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.xxs)
             }
         }
     }
@@ -292,7 +285,7 @@ struct BrandMeetingView: View {
         return MoreBlock(title: "Facts", trailing: {
             Button(showFacts ? "Less" : "More") { showFacts.toggle() }.buttonStyle(TinyButtonStyle())
         }) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 FigureStrip(items: factItems(e, b, cur), columns: 3)
                 if showFacts {
                     CardLine()
@@ -312,23 +305,23 @@ struct BrandMeetingView: View {
 
     private func arrow(_ glyph: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            GlyphView(glyph: glyph, size: 12, weight: 2, tint: Theme.gold)
-                .frame(width: 32, height: 32)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: Theme.accent)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Theme.surface).frame(width: 32, height: 32))
                 .contentShape(Circle())
         }.buttonStyle(PressableStyle())
     }
 
     private func stepper(_ title: String, _ steps: [Double], current: Double, label: @escaping (Double) -> String, set: @escaping (Double) -> Void) -> some View {
         let i: Int = steps.firstIndex(where: { abs($0 - current) < 0.0001 }) ?? 0
-        return HStack(spacing: 8) {
-            Text(title).font(.system(size: 14)).foregroundStyle(Theme.ivory)
+        return HStack(spacing: Theme.Space.s) {
+            Text(title).textStyle(.body, tint: Theme.ink)
             Spacer(minLength: 6)
             arrow(Glyph.back) { set(steps[(i - 1 + steps.count) % steps.count]); result = nil }
-            Text(label(steps[i])).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+            Text(label(steps[i])).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium)
                 .frame(minWidth: 104).multilineTextAlignment(.center).lineLimit(1).minimumScaleFactor(0.8)
             arrow(Glyph.chevron) { set(steps[(i + 1) % steps.count]); result = nil }
-        }.padding(.vertical, 8)
+        }.padding(.vertical, Theme.Space.s)
     }
 }
 
@@ -367,11 +360,11 @@ struct StartFranchisedView: View {
             let pick = rentIndex.map { NewCompanyPlan.Pick(listingIndex: $0, buy: buying) }
             let fp = e.franchiseStartPlan(brandID: brandID, cityID: city, form: form, pick: pick)
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     whereAndHow(country, city: city, needsLimited: bd?.needsLimitedCompany == true)
                     if let fp { plan(e, b, t, fp, cur: cur, city: city, form: form, pick: pick) }
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -385,15 +378,15 @@ struct StartFranchisedView: View {
 
     private func whereAndHow(_ country: Country, city: String, needsLimited: Bool) -> some View {
         MoreBlock("Where and how") {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(spacing: Theme.Space.m) {
                     IconCircle(glyph: Glyph.world, size: 34)
                     Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                     Spacer(minLength: 0)
                 }
-                if needsLimited { Text("This trade needs a limited company.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+                if needsLimited { Text("This trade needs a limited company.").textStyle(.caption, tint: Theme.inkSoft) }
                 else { SegmentedPill(items: [false, true], title: { $0 ? "Limited company" : "Sole trader" }, selection: $limited) }
-                Card(padding: 10, radius: Theme.Radius.table) {
+                Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
                     TextField("Company name", text: $name).textFieldStyle(.plain).font(.system(size: 15))
                 }
             }
@@ -428,15 +421,15 @@ struct StartFranchisedView: View {
                 FlatRow(label: "Start-up estimate", value: cur.tidyShort(fp.plan.total), sub: "Documents, equipment, the place you picked, stock, first payroll.", rule: false)
                 FlatRow(label: "Franchise entry fee", value: cur.tidyShort(fp.fee))
                 if t.cover > 0 || t.rent > 0 || t.vehicles != 0 { FlatRow(label: "The brand covers", value: "part of the set-up", sub: "It arrives in the company's account when you start.", tint: Theme.gain) }
-                CardLine().padding(.vertical, 8)
+                CardLine().padding(.vertical, Theme.Space.s)
                 FigureStrip(items: items, columns: 2)
             }
         }
     }
 
     private func risks(_ b: FranchiseBrands.Brand, _ t: FranchiseBrands.Terms, _ f: StartFigures, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Risks").capsLabel().padding(.horizontal, 2)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Risks").capsLabel().padding(.horizontal, Theme.Space.xxs)
             NoteCard(text: "You pay \(Currency.percent(t.royalty, decimals: 1)) of sales as royalty and \(Currency.percent(t.marketing, decimals: 0)) to the brand's marketing for \(b.termYears) years. Leaving early means a buyout.", glyph: Glyph.reports)
             NoteCard(text: "The brand sets standards you must keep. The brand approves the place you pick; the equipment is set up with the standard choices.", glyph: Glyph.achievements)
             if f.short > 0 {

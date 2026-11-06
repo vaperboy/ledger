@@ -49,7 +49,7 @@ struct ProjectsView: View {
         ProjectUnderlineTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, count: { $0 == .running ? running.count : 0 })
         switch part {
         case .running:
-            ProjectUnderlineTabs(items: RunPart.allCases, title: { $0.rawValue }, selection: $runPart)
+            ProjectUnderlineTabs(items: RunPart.allCases, title: { $0.rawValue }, selection: $runPart, sub: true)
             runContent(e, rows, lines, running)
         case .ideas: VenturesFeedApp(embedded: true)
         case .finished: ProjectsFinishedTab(engine: e, rows: rows)
@@ -71,59 +71,35 @@ struct ProjectsView: View {
             return acc + l.value * e.currency(for: co).rate / max(home.rate, 0.000001)
         }
         let sub = running.isEmpty ? "Nothing running" : "\(running.count) running · \(store.short(committed)) committed"
-        return HStack(spacing: 12) {
-            IconCircle(glyph: Glyph.projects, size: 44)
-            AppHeader(title: "Ventures", subtitle: sub) {
-                SmallOutlineButton(title: "New project") { part = .running; runPart = .bids }
-            }
+        return AppHeader(title: "Ventures", subtitle: sub) {
+            SmallOutlineButton(title: "New project") { part = .running; runPart = .bids }
         }
     }
 }
 
-/// Text tabs with a champagne underline on the chosen one and a hairline under the row (ProjectsA).
+/// The Ventures tab rows: the house `SectionTabs` (a count after the title when there is one); `sub` is the second-level row.
 struct ProjectUnderlineTabs<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
     var count: (T) -> Int = { _ in 0 }
+    var sub: Bool = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(items, id: \.self) { item in
-                let on = item == selection
-                let n = count(item)
-                Button { if !on { Haptics.choose(); selection = item } } label: {
-                    Text(title(item) + (n > 0 ? " \(n)" : ""))
-                        .font(.system(size: 13.5)).lineLimit(1).minimumScaleFactor(0.75)
-                        .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-                        .frame(maxWidth: .infinity).padding(.vertical, 8).padding(.bottom, 1)
-                        .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 2) } }
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
-            }
-        }
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
+        SectionTabs(items: items, title: { (item: T) -> String in
+            let n: Int = count(item)
+            return title(item) + (n > 0 ? " \(n)" : "")
+        }, selection: $selection, sub: sub)
+        // The page already has its margin: the row runs to the page edges instead of indenting twice.
+        .padding(.horizontal, -Theme.Space.margin)
     }
 }
 
-/// A simple tappable card line with a chevron, for links to other screens.
+/// A link to another screen: the house row with a chevron, no box.
 struct ProjectCardRow: View {
     var title: String
     var sub: String = ""
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title.tidyText).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
-            }
-            Spacer(minLength: 8)
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        .contentShape(Rectangle())
+        LedgerRow(title: title, subtitle: sub, chevron: true, lineLimit: 3)
     }
 }

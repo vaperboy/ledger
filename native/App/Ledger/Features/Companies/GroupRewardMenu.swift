@@ -44,11 +44,10 @@ struct GroupRewardMenu: View {
         Menu {
             ForEach(rewards) { r in Button(r.title) { confirm(r) } }
         } label: {
-            Text("Reward").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1))
-                .frame(minHeight: 32)
+            Text("Reward")
         }
+        .menuStyle(.button)
+        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
         .accessibilityIdentifier("group-reward")
         .confirmAction($pending)
     }

@@ -69,7 +69,7 @@ struct BoardView: View {
         if let engine = store.engine, engine.boardIsActive(key: key) {
             let companies: [Company] = ManagerModel.boardCompanies(engine.state, key: key)
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if !message.isEmpty { NoteCard(text: message) }
                     agenda(engine)
                     followUps(engine)
@@ -79,7 +79,7 @@ struct BoardView: View {
                     minutes(engine)
                     ownersLink(companies)
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -115,7 +115,7 @@ struct BoardView: View {
             if open.isEmpty { NoteCard(text: "Nothing waits for the board.", glyph: Glyph.check) }
             ForEach(open) { m in meeting(m, engine) }
             if preview.isEmpty {
-                Text("No meeting is due: the board meets when a seat brings a proposal or a concern.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("No meeting is due: the board meets when a seat brings a proposal or a concern.").textStyle(.caption, tint: Theme.inkFaint)
             } else {
                 QuietButton(title: "Hold a board meeting · \(preview.count) \(preview.count == 1 ? "point" : "points")") {
                     let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
@@ -126,7 +126,7 @@ struct BoardView: View {
     }
 
     private func emergencyButtons(_ m: ManagerModel.BoardMeeting) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: String) in
                 Button(o) {
                     pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true) {
@@ -175,17 +175,17 @@ struct BoardView: View {
         let co: Company? = engine.state.company(it.companyID)
         var costText: String = "Nothing"
         if it.cost > 0, let co { costText = store.short(it.cost, in: co) }
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(it.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-            if !it.raisedBy.isEmpty { Text("Raised by \(it.raisedBy)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(it.text.tidyMoney).textStyle(.body, tint: Theme.ink).fixedSize(horizontal: false, vertical: true)
+            if !it.raisedBy.isEmpty { Text("Raised by \(it.raisedBy)").textStyle(.caption, tint: Theme.inkFaint) }
             if !it.effect.isEmpty {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     detailLine("If you approve", it.effect.tidyMoney)
                     detailLine("Cost now", costText)
                     detailLine("Risk", it.risk)
                 }
             }
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.m) {
                 Button(approveWord(it)) { approve(m, it, engine) }.buttonStyle(QuietButtonStyle())
                 Button(declineWord(it)) { decline(m, it) }.buttonStyle(GreyOutlineButtonStyle())
             }
@@ -194,25 +194,25 @@ struct BoardView: View {
 
     @ViewBuilder private func detailLine(_ label: String, _ value: String) -> some View {
         if !value.isEmpty {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(label).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint).frame(width: 92, alignment: .leading)
-                Text(value).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(label).textStyle(.caption, tint: Theme.inkFaint, weight: .medium).frame(width: 92, alignment: .leading)
+                Text(value).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
     @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting, _ engine: GameEngine) -> some View {
-        Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
+        Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(alignment: .top, spacing: Theme.Space.m) {
                     IconCircle(glyph: m.isEmergency ? Glyph.warning : Glyph.calendar, size: 36, tint: m.isEmergency ? Theme.caution : Theme.gold)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(m.title.tidyMoney).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-                        Text(GameCalendar.dateString(week: m.week)).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        if !m.why.isEmpty && m.why != "Regular meeting" { Text(m.why.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(m.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).fixedSize(horizontal: false, vertical: true)
+                        Text(GameCalendar.dateString(week: m.week)).textStyle(.caption, tint: Theme.inkSoft)
+                        if !m.why.isEmpty && m.why != "Regular meeting" { Text(m.why.tidyMoney).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
                         if !m.attendees.isEmpty {
                             let present: String = "Present: " + m.attendees.joined(separator: " · ")
-                            Text(present).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                            Text(present).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -235,12 +235,12 @@ struct BoardView: View {
         if !open.isEmpty {
             MoreBlock(title: "Follow-up jobs", card: false, trailing: { RedBubble(count: open.count, size: .small) }) {
                 ForEach(open) { f in
-                    Card(padding: 12, radius: Theme.Radius.card) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(f.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.card) {
+                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                            Text(f.text.tidyMoney).textStyle(.body, tint: Theme.ink).fixedSize(horizontal: false, vertical: true)
                             let lapse: String = f.assignee + " · lapses " + GameCalendar.dateString(week: f.due)
-                            Text(lapse).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                            HStack(spacing: 10) {
+                            Text(lapse).textStyle(.caption, tint: Theme.inkFaint)
+                            HStack(spacing: Theme.Space.m) {
                                 NavigationLink(value: CompanyRoute.company(f.companyID)) { Text("Open company").font(.system(size: 13, weight: .medium)) }.buttonStyle(QuietButtonStyle())
                                 Button("Mark done") {
                                     _ = store.act { $0.completeBoardFollowUp(key: key, id: f.id) }
@@ -260,17 +260,17 @@ struct BoardView: View {
         let lines: [String] = m.minutes.map { (line: String) -> String in "· " + line.tidyMoney }
         let title: String = m.title.tidyMoney
         let date: String = GameCalendar.dateString(week: m.week)
-        return Card(padding: 12, radius: Theme.Radius.card) {
-            VStack(alignment: .leading, spacing: 6) {
+        return Card(padding: Theme.Space.m, radius: Theme.Radius.card) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text(title).textStyle(.body, tint: Theme.ink, weight: .medium)
                     Spacer(minLength: 8)
-                    Text(date).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(date).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 ForEach(Array(lines.enumerated()), id: \.offset) { (_: Int, line: String) in
-                    Text(line).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    Text(line).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 }
-                if lines.isEmpty { Text("Nothing was decided.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint) }
+                if lines.isEmpty { Text("Nothing was decided.").textStyle(.caption, tint: Theme.inkFaint) }
             }
         }
     }
@@ -279,7 +279,7 @@ struct BoardView: View {
         let state: String = f.status == "done" ? "done" : "lapsed"
         let note: String = f.note.isEmpty ? "" : " (" + f.note + ")"
         let text: String = "Follow-up " + state + ": " + f.text.tidyMoney + note
-        return Text(text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+        return Text(text).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private func minutes(_ engine: GameEngine) -> some View {
@@ -298,12 +298,12 @@ struct BoardView: View {
     // MARK: Who sits at the table
 
     private func voterCard(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat]) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.m) {
             voterPortrait(v)
                 .orgEdge(freshSeats.contains(v.id) ? Theme.gold : nil, radius: 17)
             VStack(alignment: .leading, spacing: 1) {
-                Text(v.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text("\(v.title) · \(v.votes ? "votes" : "advises")").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                Text(v.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                Text("\(v.title) · \(v.votes ? "votes" : "advises")").textStyle(.caption, tint: Theme.inkSoft).lineLimit(2)
             }
             Spacer(minLength: 8)
             if let pid = v.personID, seats.contains(where: { $0.id == pid }) {
@@ -323,10 +323,10 @@ struct BoardView: View {
     }
 
     private func seatFinder(_ engine: GameEngine) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             SegmentedPill(items: [false, true], title: { (own: Bool) -> String in own ? "Your people" : "Search" }, selection: $ownTab)
             Text(ownTab ? "Employees and managers keep their job. One from the board's own company sits for half the fee." : "Add to the board (a search costs a fee)")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                .textStyle(.caption, tint: Theme.inkSoft)
             WrapRow {
                 Group {
                     ForEach(engine.seatRoles) { r in
@@ -351,8 +351,8 @@ struct BoardView: View {
 
     private func ownRow(_ c: BoardCandidate) -> some View {
         let fee: Double = c.feePerYear / 12
-        return HStack(spacing: 10) {
-            Text("\(c.name) \u{00B7} \(c.qualification)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+        return HStack(spacing: Theme.Space.m) {
+            Text("\(c.name) \u{00B7} \(c.qualification)").textStyle(.caption, tint: Theme.ink).lineLimit(2)
             Spacer(minLength: 8)
             Button("Seat \u{00B7} \(store.short(fee)) a month") {
                 pending = PendingAction(title: "Seat \(c.name) on the board?", message: "They keep their job and also sit on the board. Cost: \(store.short(fee)) a month in fees.", button: "Seat them", amount: fee, currency: store.engine?.homeCurrency) { seatOwn(c) }
@@ -373,8 +373,8 @@ struct BoardView: View {
 
     private func candidateRow(_ p: Person) -> some View {
         let fee: Double = p.num("fee13")
-        return HStack(spacing: 10) {
-            Text("\(p.name) · \(p.str("advBg"))").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+        return HStack(spacing: Theme.Space.m) {
+            Text("\(p.name) · \(p.str("advBg"))").textStyle(.caption, tint: Theme.ink).lineLimit(2)
             Spacer(minLength: 8)
             Button("Seat · \(store.short(fee)) a month") {
                 pending = PendingAction(title: "Seat \(p.name) on the board?", message: "Cost: \(store.short(fee)) a month in fees, for as long as they sit. The owners vote on it, and may refuse. You can let an adviser go later.", button: "Seat them", amount: fee, currency: store.engine?.homeCurrency) { seat(p, fee: fee) }
@@ -385,13 +385,13 @@ struct BoardView: View {
     @ViewBuilder private func table(_ engine: GameEngine) -> some View {
         let seats: [ManagerModel.Seat] = engine.boardSeats(key: key)
         MoreBlock("At the table") {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 ForEach(Array(engine.boardVoters(key: key).enumerated()), id: \.element.id) { (n: Int, v: ManagerModel.Voter) in
                     if n > 0 { CardLine() }
                     voterCard(v, seats: seats).transition(AnyTransition.orgNode)
                 }
                 ForEach(seats.filter { $0.isAdviser }) { s in
-                    Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 CardLine()
                 seatFinder(engine)
@@ -426,13 +426,13 @@ struct BoardView: View {
             else { store.settle(store.act { $0.setBoardMode(key: key, quarterly: false) }, "The board meets every 4 weeks.", same: "It already meets every 4 weeks.") }
         })
         MoreBlock("Meets") {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 SegmentedPill(items: [false, true], title: { $0 ? "Regularly" : "When needed" }, selection: modeBinding)
                 if regular {
                     SegmentedPill(items: [false, true], title: { $0 ? "Quarterly" : "Every 4 weeks" }, selection: freqBinding)
                 }
                 Text(regular ? "The board meets on a schedule and puts its own items on the agenda." : "The board meets only when you call it or something needs it.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -442,9 +442,9 @@ struct BoardView: View {
     private func voteRow(label: String, vote: ManagerModel.BoardVote) -> some View {
         let pct: Double = vote.percentYes
         let tail: String = (vote.passes ? "would pass" : "would not pass") + (vote.decidingOwner.map { " · \($0) decides" } ?? "")
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             RateBar(label: label, fraction: pct / 100, tint: vote.passes ? Theme.gain : Theme.caution)
-            Text("\(Int(pct.rounded()))% yes · \(tail)").font(.system(size: 11.5)).foregroundStyle(vote.passes ? Theme.gain : Theme.caution)
+            Text("\(Int(pct.rounded()))% yes · \(tail)").textStyle(.caption, tint: vote.passes ? Theme.gain : Theme.warn)
         }
     }
 
@@ -454,10 +454,10 @@ struct BoardView: View {
             let power = engine.ownersPower(companyID: co.id)
             if !votes.isEmpty || !(power?.text.isEmpty ?? true) {
                 MoreBlock("What the board says to a big move") {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
                         ForEach(Array(votes.enumerated()), id: \.offset) { _, v in voteRow(label: v.label, vote: v.vote) }
                         if let p = power, !p.text.isEmpty {
-                            Text("Other owners: " + p.text).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text("Other owners: " + p.text).textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
                 }

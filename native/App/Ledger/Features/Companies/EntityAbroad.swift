@@ -31,18 +31,18 @@ struct EntityAbroadSection: View {
     }
 
     @ViewBuilder private func openSection(_ e: GameEngine, _ co: Company, _ options: [Abroad.Option]) -> some View {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) { Text("EXPAND ABROAD").capsLabel(); ProMark(feature: .expansionAbroad) }
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(spacing: Theme.Space.s) { Text("EXPAND ABROAD").capsLabel(); ProMark(feature: .expansionAbroad) }
                 Text("A foreign subsidiary of \(co.name) is a new limited company that takes part of its brand along.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if options.isEmpty {
-                    Text("This trade cannot be opened in any other country.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("This trade cannot be opened in any other country.").textStyle(.caption, tint: Theme.inkFaint)
                 } else {
                     table(e, options)
                     if options.count > limit {
                         Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { all.toggle() } } label: {
                             Text(all ? "Show fewer" : "Show all \(options.count) countries \u{203A}")
-                                .font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
+                                .textStyle(.caption, tint: Theme.accent).frame(maxWidth: .infinity, alignment: .trailing).frame(minHeight: 32)
                         }.buttonStyle(PressableStyle())
                     }
                 }

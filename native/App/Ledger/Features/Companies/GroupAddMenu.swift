@@ -26,7 +26,7 @@ struct GroupAddMenu: View {
     var onPick: (GroupAddDestination) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Pick how the group grows.").popupText(.subtitle)
             row(.newCompany, title: "New company", line: "Start a business from scratch in a trade and city of your choice.", id: "group-add-company")
             row(.holding, title: "Holding company", line: "Owns your other companies and collects their dividends.", id: "group-add-holding")
@@ -37,10 +37,10 @@ struct GroupAddMenu: View {
     }
 
     private func row(_ d: GroupAddDestination, title: String, line: String, id: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Theme.Space.s) {
             Button { Haptics.tap(); onPick(d) } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(spacing: Theme.Space.s) {
                         Text(title).popupText(.button)
                         if let g = d.gate { ProMark(feature: g) }
                     }
@@ -55,7 +55,7 @@ struct GroupAddMenu: View {
             if d == .holding { HoldingInfoButton() }
             else { GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim) }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Theme.Space.xs)
         .overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 1) }
     }
 }

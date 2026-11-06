@@ -41,7 +41,7 @@ struct CompanyOwnershipSection: View {
             case .raise:
                 raise(cur)
             case .shares:
-                if isOrdinary { sell(cur) } else { Text("Only a limited company has shares to issue or sell.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+                if isOrdinary { sell(cur) } else { Text("Only a limited company has shares to issue or sell.").textStyle(.caption, tint: Theme.inkSoft) }
             }
         }
         .confirmAction($pending)
@@ -66,19 +66,19 @@ struct CompanyOwnershipSection: View {
             StatStrip.Cell(label: "Other owners", value: String(format: "%.1f%%", Shareholders.outside(company))),
             StatStrip.Cell(label: "Board seats held", value: "\(seats)")
         ]
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
+        return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("You own").capsLabel()
                     Spacer(minLength: 8)
                     GlyphView(glyph: Glyph.group, size: 17, weight: 1.6)
                 }
-                Text("\(Int(company.ownership.rounded()))%").font(.hero(34)).foregroundStyle(Theme.ivory)
+                Text("\(Int(company.ownership.rounded()))%").textStyle(.display, tint: Theme.ink)
                 ownershipBar(all)
-                Text(power.text).font(.system(size: 12)).foregroundStyle(power.kind == .control ? Theme.caution : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(power.text).textStyle(.caption, tint: power.kind == .control ? Theme.warn : Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 StatStrip(cells: cells)
                 if let t = engine.capTable(companyID: company.id) {
-                    Text("\(t.total) shares in issue, \(t.you) of them yours.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(t.total) shares in issue, \(t.you) of them yours.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }
@@ -98,7 +98,7 @@ struct CompanyOwnershipSection: View {
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .frame(height: 22)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
         .accessibilityLabel("Ownership: you \(Int(company.ownership.rounded())) percent")
     }
 
@@ -108,10 +108,10 @@ struct CompanyOwnershipSection: View {
         let list = engine.owners(companyID: company.id)
         let all: [Piece] = pieces(list)
         if list.isEmpty {
-            Card(padding: 14, radius: Theme.Radius.row) {
-                HStack(spacing: 12) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
+                HStack(spacing: Theme.Space.m) {
                     IconCircle(glyph: Glyph.person, size: 38)
-                    Text("You are the only owner.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("You are the only owner.").textStyle(.body, tint: Theme.inkSoft)
                 }
             }
         } else {
@@ -127,17 +127,17 @@ struct CompanyOwnershipSection: View {
         let held: Int = engine.capTable(companyID: company.id)?.holders.first { $0.name == h.name }?.shares ?? 0
         let sub: String = "\(Shareholders.profileNames[h.profile] ?? "") · mood: \(h.moodWord)" + (held > 0 ? " · \(held) shares" : "")
         let buyBack: Double? = engine.buyBackPrice(companyID: id, holder: h.name)
-        return Card(padding: 12, radius: Theme.Radius.row) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
+        return Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(spacing: Theme.Space.m) {
                     IconCircle(glyph: Glyph.person, size: 38, tint: tint)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(h.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2)
+                        Text(h.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2)
+                        Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
                     }
                     Spacer(minLength: 8)
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(String(format: "%.1f%%", h.pct)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                        Text(String(format: "%.1f%%", h.pct)).textStyle(.headline, tint: Theme.ink, numeric: true)
                         if h.boardSeat { Chip(text: "Board seat", tint: Theme.gold) }
                     }
                 }
@@ -173,21 +173,21 @@ struct CompanyOwnershipSection: View {
         let amount: Double = engine.suggestedFundingAmount(companyID: id)
         let offers = engine.fundingOffers(companyID: id)
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Card(padding: 14, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 12) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(spacing: Theme.Space.m) {
                         IconCircle(glyph: Glyph.invest, size: 38)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Investors").font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
-                            Text(engine.investorInterest(companyID: id).word).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                            Text("Investors").textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
+                            Text(engine.investorInterest(companyID: id).word).textStyle(.body, tint: Theme.ink, weight: .medium)
                         }
                     }
                     QuietButton(title: "Pitch for " + cur.tidyShort(amount), fullWidth: true) { pitch(amount) }
-                    Text("A pitch brings offers over the coming weeks. Nothing is taken until you accept.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("A pitch brings offers over the coming weeks. Nothing is taken until you accept.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
             if offers.isEmpty {
-                Text("No offers on the table.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
+                Text("No offers on the table.").textStyle(.caption, tint: Theme.inkFaint).padding(.horizontal, Theme.Space.xxs)
             }
             ForEach(offers) { o in offerCard(o, cur: cur) }
         }
@@ -208,15 +208,15 @@ struct CompanyOwnershipSection: View {
     private func offerCard(_ o: Funding.FundOffer, cur: Currency) -> some View {
         let id = company.id
         let headline: String = "\(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%"
-        return Card(padding: 12, radius: Theme.Radius.row) {
-            VStack(alignment: .leading, spacing: 10) {
+        return Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(o.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(o.says).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        Text(o.name).textStyle(.body, tint: Theme.ink, weight: .medium)
+                        Text(o.says).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 8)
-                    Text(headline).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text(headline).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium)
                 }
                 WrapRow {
                     QuietButton(title: "Accept") {
@@ -242,13 +242,13 @@ struct CompanyOwnershipSection: View {
         let listed: Bool = engine.isListed(companyID: id)
         let goal: Double = engine.holdingValue(companyID: id) * 0.1
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Card(padding: 14, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 12) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    HStack(spacing: Theme.Space.m) {
                         IconCircle(glyph: listed ? Glyph.check : Glyph.market, size: 38, tint: listed ? Theme.gain : Theme.gold)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("Stock exchange").font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
-                            Text(listed ? "Listed on the exchange" : "Not listed").font(.system(size: 14.5, weight: .medium)).foregroundStyle(listed ? Theme.gain : Theme.ivory)
+                            Text("Stock exchange").textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
+                            Text(listed ? "Listed on the exchange" : "Not listed").textStyle(.body, tint: listed ? Theme.gain : Theme.ink, weight: .medium)
                         }
                     }
                     if !listed {
@@ -256,14 +256,14 @@ struct CompanyOwnershipSection: View {
                     }
                 }
             }
-            Card(padding: 14, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 10) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Text("Issue new shares").capsLabel()
                     WrapRow {
                         QuietButton(title: "Raise " + cur.tidyShort(goal) + " privately") { confirmRaise(goal, publicOffering: false, cur: cur) }
                         if listed { QuietButton(title: "Raise on the exchange") { confirmRaise(goal, publicOffering: true, cur: cur) } }
                     }
-                    Text("New shares are issued for money, so your share shrinks and a fee is taken.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("New shares are issued for money, so your share shrinks and a fee is taken.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }
@@ -291,7 +291,7 @@ struct CompanyOwnershipSection: View {
         let columns: [TableColumn] = [TableColumn(title: "Share"), TableColumn(title: "You receive", width: 100)]
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             if !offers.isEmpty {
-                Text("Offers from buyers now").capsLabel().padding(.horizontal, 2)
+                Text("Offers from buyers now").capsLabel().padding(.horizontal, Theme.Space.xxs)
                 SharpTable {
                     TableHeader(columns: columns)
                     ForEach(Array(offers), id: \.pct) { o in
@@ -299,15 +299,15 @@ struct CompanyOwnershipSection: View {
                     }
                 }
             }
-            Card(padding: 14, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 10) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Text("New shares for a private investor").capsLabel()
-                    HStack(spacing: 8) {
+                    HStack(spacing: Theme.Space.s) {
                         ForEach([5, 10, 20], id: \.self) { p in
                             QuietButton(title: "\(p)%", fullWidth: true) { confirmNewShares(p, cur: cur) }
                         }
                     }
-                    Text("The company issues new shares and receives the money; every owner, you included, is diluted. Different from selling some of your own shares above.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                    Text("The company issues new shares and receives the money; every owner, you included, is diluted. Different from selling some of your own shares above.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
         }

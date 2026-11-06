@@ -38,34 +38,32 @@ struct CompanyHolding: View {
                     VStack(alignment: .leading, spacing: 0) {
                         FigureStrip(items: figureItems(o, cur))
                         if o.groupCovered > 0 {
-                            Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").font(.caption2).foregroundStyle(Theme.gain).padding(.top, 8)
+                            Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").textStyle(.caption, tint: Theme.gain).padding(.top, Theme.Space.s)
                         }
                     }
                 }
-                MoreBlock(title: "Companies held", card: false, trailing: { Text("\(o.subsidiaries.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                    VStack(spacing: 10) {
+                MoreBlock(title: "Companies held", card: false, trailing: { Text("\(o.subsidiaries.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
+                    VStack(spacing: Theme.Space.m) {
                         if o.subsidiaries.isEmpty {
-                            Card(padding: 12, radius: Theme.Radius.row) {
-                                Text("No companies under this holding yet. Dividends from companies under it are taxed far lower.").font(.caption).foregroundStyle(Theme.ivoryFaint)
-                            }
+                            EmptyState(glyph: Glyph.group, title: "No companies under this holding yet", message: "Dividends from companies under it are taxed far lower.", centered: false)
                         }
                         ForEach(o.subsidiaries, id: \.id) { k in heldCard(k, cur) }
                     }
                 }
                 if !free.isEmpty {
                     MoreBlock("Put a company under it", card: false) {
-                        VStack(spacing: 10) {
+                        VStack(spacing: Theme.Space.m) {
                             ForEach(free, id: \.id) { c in
                                 EntityCard {
-                                    HStack(spacing: 10) {
+                                    HStack(spacing: Theme.Space.m) {
                                         ThumbnailView(kind: .trade, key: c.type, size: 34, glyph: Glyph.home)
-                                        Text(c.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+                                        Text(c.name).textStyle(.body, tint: Theme.ink, weight: .medium)
                                         Spacer()
                                         Button("Add…") { askAdd(c.id, c.name) }.buttonStyle(TinyButtonStyle())
                                     }
                                 }
                             }
-                            Text("Only limited companies can be held. Owning 90% or more in the same country puts them in one tax group.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                            Text("Only limited companies can be held. Owning 90% or more in the same country puts them in one tax group.").textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
                 }
@@ -73,19 +71,18 @@ struct CompanyHolding: View {
                 MoreBlock("Move money") {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         AmountField(title: "Amount", currency: cur, amount: $amount)
-                        HStack {
-                            Button("Put money in") {
-                                if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
-                                else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
-                            }.buttonStyle(TinyButtonStyle())
-                            Button("Treasury and dividends") { store.openGroupEntity(companyID: company.id, section: "money") }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
-                        }
-                        Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself. The index fund and paying yourself are in the Group tab under Money.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        Button("Put money in") {
+                            if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
+                            else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
+                        }.buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: Theme.accent))
+                        LedgerRow(leading: .glyph(Glyph.bank), title: "Treasury and dividends", subtitle: "The index fund and paying yourself, in Group under Money",
+                                  action: { store.openGroupEntity(companyID: company.id, section: "money") })
+                        Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself.")
+                            .textStyle(.caption, tint: Theme.inkFaint)
                     }
                 }
             } else {
-                Text("This holding company has no figures yet.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                Text("This holding company has no figures yet.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
         .confirmAction($pending)
@@ -95,15 +92,15 @@ struct CompanyHolding: View {
         let tax: String = k.inTaxGroup ? " · tax group" : ""
         let line: String = "\(Int(k.ownership.rounded()))% · profit \(cur.tidyShort(k.profitTTM)) · cash \(cur.tidyShort(k.cash))\(tax)"
         return EntityCard {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(alignment: .top, spacing: Theme.Space.m) {
                     ThumbnailView(kind: .trade, key: k.trade, size: 34, glyph: Glyph.home)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(k.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                        Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                        Text(k.name).textStyle(.body, tint: Theme.ink, weight: .medium)
+                        Text(line).textStyle(.caption, tint: Theme.inkFaint)
                     }
                     Spacer(minLength: 8)
-                    Text(cur.tidyShort(k.share)).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
+                    Text(cur.tidyShort(k.share)).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium)
                 }
                 HStack {
                     Button("Release…") { askRelease(k.id, k.name) }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
@@ -155,7 +152,7 @@ struct NewHoldingView: View {
                     }
                     MoreBlock("Which companies it holds") {
                         VStack(spacing: 0) {
-                            if free.isEmpty { Text("No limited companies to hold yet. You can add them later.").font(.caption).foregroundStyle(Theme.ivoryFaint) }
+                            if free.isEmpty { Text("No limited companies to hold yet. You can add them later.").textStyle(.caption, tint: Theme.inkFaint) }
                             ForEach(Array(free.enumerated()), id: \.element.id) { n, c in
                                 if n > 0 { Hairline() }
                                 Button {
@@ -163,10 +160,10 @@ struct NewHoldingView: View {
                                     Haptics.choose()
                                 } label: {
                                     HStack {
-                                        Text(c.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                        Text(c.name).textStyle(.body, tint: Theme.ink)
                                         Spacer()
                                         Image(systemName: picked.contains(c.id) ? "checkmark.circle.fill" : "circle").foregroundStyle(picked.contains(c.id) ? Theme.gold : Theme.ivoryFaint)
-                                    }.padding(.vertical, 10).contentShape(Rectangle())
+                                    }.padding(.vertical, Theme.Space.m).contentShape(Rectangle())
                                 }.buttonStyle(PressableStyle()).accessibilityValue(picked.contains(c.id) ? "Selected" : "Not selected")
                             }
                         }
@@ -187,7 +184,7 @@ struct NewHoldingView: View {
                         }
                     }.buttonStyle(TinyButtonStyle()); Spacer() }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .ledgerBackground()

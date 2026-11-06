@@ -33,7 +33,7 @@ struct ProjectTimelineDetail: View {
                     if let p = line.progress { RateBar(label: "Progress", fraction: p, tint: line.delayed ? Theme.caution : Theme.gain) }
                     if let b = line.blocking {
                         LedgerSection("What is in the way") {
-                            Text(b).font(.system(size: 13)).foregroundStyle(line.delayed ? Theme.caution : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(b).textStyle(.body, tint: line.delayed ? Theme.warn : Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     LedgerSection("Milestones") {
@@ -45,8 +45,8 @@ struct ProjectTimelineDetail: View {
                         }
                     }
                     LedgerSection("If it runs late") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(line.ifLate).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                            Text(line.ifLate).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                             if let a = line.atStake, a > 0 { FlatRow(label: line.atStakeLabel, value: store.short(a, in: co)) }
                         }
                     }
@@ -54,12 +54,12 @@ struct ProjectTimelineDetail: View {
                         GroupLinkRow(title: "Open \(co.name) > Projects", sub: line.kind == .tender ? "Bid, or withdraw a bid, there." : "Hold, price or review the order book there.")
                     }.buttonStyle(PressableStyle())
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: Theme.Space.s) {
                     Text("This project is finished or has been decided.").foregroundStyle(Theme.ivoryMuted)
-                    Text("Finished work is counted in the company's Projects section.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                    Text("Finished work is counted in the company's Projects section.").textStyle(.caption, tint: Theme.inkFaint)
                 }.padding(Theme.Space.margin).frame(maxWidth: .infinity)
             }
         }
@@ -87,18 +87,18 @@ struct ProjectTimelineDetail: View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             Image(systemName: s.state == .done ? "checkmark.circle.fill" : s.state == .current ? "circle.dotted" : "circle")
                 .font(.system(size: 14)).foregroundStyle(s.state == .upcoming ? Theme.ivoryFaint : Theme.gold).padding(.top, 1)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(s.name).font(.system(size: 13.5, weight: s.state == .current ? .semibold : .regular)).foregroundStyle(s.state == .upcoming ? Theme.ivoryMuted : Theme.ivory)
-                if !s.detail.isEmpty { Text(s.detail.tidyMoney).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                if !s.detail.isEmpty { Text(s.detail.tidyMoney).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             if let w = s.week {
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(GameCalendar.dateString(week: w)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                    if s.state != .done { Text(dueText(w, now: now)).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint) }
+                    Text(GameCalendar.dateString(week: w)).textStyle(.caption, tint: Theme.inkSoft, numeric: true)
+                    if s.state != .done { Text(dueText(w, now: now)).textStyle(.caption, tint: Theme.inkFaint) }
                 }
             }
-        }.padding(.vertical, 9)
+        }.padding(.vertical, Theme.Space.s)
     }
 }
 
@@ -115,19 +115,19 @@ struct ProjectWeeksChart: View {
     private func x(_ week: Int, _ w: CGFloat) -> CGFloat { CGFloat(min(max(Double(week - (now - back)) / span, 0), 1)) * w }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: 0) {
                 Color.clear.frame(width: 96)
                 GeometryReader { g in
                     ForEach(Array(stride(from: now - back, to: now + ahead, by: 2).enumerated()), id: \.offset) { _, wk in
-                        Text(shortDate(week: wk)).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8).fixedSize()
+                        Text(shortDate(week: wk)).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8).fixedSize()
                             .position(x: x(wk, g.size.width) + 14, y: 7)
                     }
                 }.frame(height: 14)
             }
             ForEach(lines.sorted { ($0.startWeek ?? now) < ($1.startWeek ?? now) }) { l in
-                HStack(spacing: 4) {
-                    Text(l.title.tidyMoney).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).frame(width: 92, alignment: .leading)
+                HStack(spacing: Theme.Space.xs) {
+                    Text(l.title.tidyMoney).textStyle(.caption, tint: Theme.ink, weight: .medium).lineLimit(2).frame(width: 92, alignment: .leading)
                     GeometryReader { g in
                         let start = l.startWeek ?? now
                         let rawEnd = l.dueWeek ?? (now + 4)
@@ -143,14 +143,13 @@ struct ProjectWeeksChart: View {
                         }.frame(maxHeight: .infinity)
                     }.frame(height: 22)
                 }
-                .padding(.top, 8)
-                .overlay(alignment: .top) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+                .padding(.top, Theme.Space.s)
+                .overlay(alignment: .top) { Hairline() }
             }
-            Text("White line is today. Amber bars are running late.").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryDim)
+            Text("White line is today. Amber bars are running late.").textStyle(.caption, tint: Theme.inkFaint)
         }
-        .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(Theme.Space.l)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Timeline of \(lines.count) projects: " + lines.map { "\($0.title) due \($0.dueWeek.map { shortDate(week: $0) } ?? "no date")" }.joined(separator: ", "))
     }

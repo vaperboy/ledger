@@ -12,9 +12,8 @@ struct GroupWhoRunsWhat: View {
         let overview: TeamOverview = engine.teamOverview()
         let lines: [TeamOverview.CompanyLine] = overview.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
         if !lines.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("WHO RUNS WHAT").capsLabel()
-                VStack(spacing: 6) {
+            LedgerSection("Who runs what") {
+                VStack(spacing: Theme.Space.s) {
                     ForEach(lines) { (l: TeamOverview.CompanyLine) in
                         row(l, passedUp: overview.issues.filter { (i: TeamOverview.Issue) -> Bool in i.companyID == l.id && i.beyondAuthority }.count)
                     }

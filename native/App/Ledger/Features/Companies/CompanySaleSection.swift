@@ -21,7 +21,7 @@ struct CompanySaleSection: View {
             let value = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
             let listing = CompanySale.listing(engine.state, companyID: company.id)
             CardSection(title: "Sell the company", trailing: {
-                Text("Worth about " + cur.tidyShort(value * company.ownership / 100)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                Text("Worth about " + cur.tidyShort(value * company.ownership / 100)).textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 if let l = listing {
                     listed(l, cur)
@@ -96,7 +96,7 @@ struct CompanySaleSection: View {
             .init(label: "Reserve", value: cur.tidyShort(l.reserve * mine)),
             .init(label: "Top bid", value: top.map { (o: CompanySale.Offer) -> String in cur.tidyShort(o.price * mine) } ?? "None"),
         ])
-        Text(l.round < 3 ? "A new round of bids comes in each week. Bids rise, but a bidder may drop out." : "The bidding is over. The bids stand for a few days, then lapse.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+        Text(l.round < 3 ? "A new round of bids comes in each week. Bids rise, but a bidder may drop out." : "The bidding is over. The bids stand for a few days, then lapse.").textStyle(.caption, tint: Theme.inkFaint)
         if let top {
             Button("Hammer now at " + cur.tidyShort(top.price * mine)) { Haptics.tap(); askToSell(top) }.buttonStyle(QuietButtonStyle())
         }
@@ -104,26 +104,26 @@ struct CompanySaleSection: View {
 
     @ViewBuilder private func listed(_ l: CompanySale.Listing, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text(header(l, cur)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Text(header(l, cur)).textStyle(.body, tint: Theme.inkSoft)
             if l.route == "auction" { auctionStrip(l, cur) }
             if l.offers.isEmpty {
-                Text(l.route == "auction" ? "No bid has reached your reserve yet." : "No offers yet. Buyers show up over the coming weeks.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text(l.route == "auction" ? "No bid has reached your reserve yet." : "No offers yet. Buyers show up over the coming weeks.").textStyle(.body, tint: Theme.inkSoft)
             }
             ForEach(Array(l.offers.sorted { (a: CompanySale.Offer, b: CompanySale.Offer) -> Bool in a.price > b.price }.enumerated()), id: \.element.id) { i, o in
                 if i > 0 { Hairline() }
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(o.buyer).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                        Text(o.buyer).textStyle(.body, tint: Theme.ink)
                         Spacer()
-                        Text(cur.tidyShort(l.pct < 100 ? o.price : o.price * company.ownership / 100)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.gold)
+                        Text(cur.tidyShort(l.pct < 100 ? o.price : o.price * company.ownership / 100)).textStyle(.body, tint: Theme.accent, numeric: true)
                     }
-                    Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     WrapRow {
                         Button("Accept…") { Haptics.tap(); askToSell(o) }.buttonStyle(QuietButtonStyle())
                         Button("Talk to the buyer") { Haptics.tap(); talking = o.id }.buttonStyle(QuietButtonStyle())
                         Button("Decline") { store.settle(store.act { $0.declineSaleOffer(companyID: company.id, offerID: o.id) }, "Offer from \(o.buyer) declined.", same: "That offer had already gone.") }.buttonStyle(QuietButtonStyle())
                     }
-                }.padding(.vertical, 6)
+                }.padding(.vertical, Theme.Space.s)
             }
             Button("Take it off the market") {
                 store.act { $0.update { s, _, _ in CompanySale.withdraw(&s, companyID: company.id) } }
@@ -152,7 +152,7 @@ struct BuyerTalkSheet: View {
                     let cur = e.currency(for: co)
                     let mine = co.ownership / 100
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Space.xs) {
                             Text(o.buyer).popupText(.figure)
                             Text(o.note.tidyMoney).popupText(.caption)
                         }
@@ -163,7 +163,7 @@ struct BuyerTalkSheet: View {
                         ])
                         if !o.talk.isEmpty {
                             CardSection("The talk") {
-                                VStack(alignment: .leading, spacing: 6) {
+                                VStack(alignment: .leading, spacing: Theme.Space.s) {
                                     ForEach(Array(o.talk.enumerated()), id: \.offset) { _, l in
                                         Text((l.mine ? "You: " : "\(o.buyer): ") + l.text).popupText(l.mine ? .subtitle : .body)
                                     }

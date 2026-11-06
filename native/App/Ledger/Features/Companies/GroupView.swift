@@ -26,6 +26,8 @@ struct GroupView: View {
                 }
             }
             .ledgerBackground()
+            // The entity page is a page of this root, not a push: the edge swipe steps back to the picker like the round back does.
+            .swipeBackEnabled(canStep: { pickedID != nil }, step: { close() })
             .toolbar(.hidden, for: .navigationBar)
             .companyRouteDestinations()
             .navigationDestination(isPresented: $showSuppliers) {
@@ -58,8 +60,8 @@ struct GroupView: View {
         } else {
             VStack(spacing: 0) {
                 header
-                    .padding(.horizontal, 18).padding(.top, 6)
-                ScrollScreen(top: 12) {
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
+                ScrollScreen(top: Theme.Space.l) {
                     GroupLanding(engine: e, onPick: { (g: GroupEntity) in open(g, .overview) },
                                  onSuppliers: { showSuppliers = true }, onAdd: { showAddMenu = true })
                 }
@@ -78,11 +80,10 @@ struct GroupView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            IconCircle(glyph: Glyph.group, size: 44)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Group").font(.serifTitle(28)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text("Choose a company, holding or chain").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+        HStack(spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Group").textStyle(.title).lineLimit(1)
+                Text("Choose a company, holding or chain").textStyle(.caption).lineLimit(2)
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)

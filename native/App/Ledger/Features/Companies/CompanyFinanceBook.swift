@@ -25,18 +25,18 @@ struct CompanyFinanceBook: View {
             }
             .confirmAction($pending)
         } else {
-            CardSection("Book") { Text("This company has no book of business to show yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
+            CardSection("Book") { Text("This company has no book of business to show yet.").textStyle(.body, tint: Theme.inkSoft) }
         }
     }
 
     private func regulator(_ b: FinanceBook) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            Image(systemName: "exclamationmark.shield.fill").font(.system(size: 15)).foregroundStyle(Theme.loss).padding(.top, 2)
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            Image(systemName: "exclamationmark.shield.fill").font(.system(size: 15)).foregroundStyle(Theme.loss).padding(.top, Theme.Space.xxs)
             Text(b.kind == .insurer ? "The regulator restricts the company: solvency is too low, so new business is cut in half. Put capital into the company under Finances."
                                     : "The regulator warns about the capital ratio. Put equity into the company under Finances, or lend less.")
                 .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Theme.Space.xs)
     }
 
     // MARK: Insurance
@@ -56,44 +56,45 @@ struct CompanyFinanceBook: View {
                 VStack(spacing: 0) {
                     ForEach(Array(products.enumerated()), id: \.element.id) { n, p in
                         HStack(alignment: .firstTextBaseline) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(p.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                                Text(p.name).textStyle(.body, tint: Theme.ink)
                                 Text(p.status + (p.isOffered ? " · verified sellers \(Int(p.verifiedSellers.rounded()))" : " · approval " + cur.tidyShort(p.approvalFee)))
-                                    .font(.caption).foregroundStyle(p.status == "Live" ? Theme.gain : Theme.ivoryFaint)
+                                    .textStyle(.caption, tint: p.status == "Live" ? Theme.gain : Theme.inkFaint)
                             }
                             Spacer(minLength: 8)
                             Button(p.isOffered ? "Stop selling" : "Offer…") { confirmToggle(p, cur) }
                                 .buttonStyle(QuietButtonStyle(tint: p.isOffered ? Theme.loss : Theme.gold))
                         }
-                        .padding(.vertical, 9)
+                        .padding(.vertical, Theme.Space.s)
                         if n < products.count - 1 { Hairline() }
                     }
                 }
                 Text("Each product needs the regulator's approval, and each salesperson must be verified for it before they sell it. Big storms can hit many policies at once; premiums minus claims is your profit. Your other companies can buy insurance here.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
             }
             if sellers.isEmpty {
                 CardSection("Salespeople") {
-                    Text("No salespeople yet. Hire agents under Team; each is verified per product before they sell it.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("No salespeople yet. Hire agents under Team; each is verified per product before they sell it.").textStyle(.body, tint: Theme.inkSoft)
                 }
             } else {
                 CardSection("Salespeople") {
                     VStack(spacing: 0) {
                         ForEach(Array(sellers.enumerated()), id: \.element.id) { n, s in
                             HStack(alignment: .firstTextBaseline) {
-                                Text(s.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                                Text(s.name).textStyle(.body, tint: Theme.ink)
                                 Spacer(minLength: 8)
                                 Menu {
                                     ForEach(products.filter { $0.isOffered }) { p in
                                         Button(p.name + (s.verified[p.id] != nil ? " (verified or in progress)" : "")) { verify(s.id, p) }
                                     }
                                 } label: {
-                                    Text("Verify for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold)
-                                        .padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75))
+                                    Text("Verify for\u{2026}")
                                 }
+                                .menuStyle(.button)
+                                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
                                 .disabled(products.allSatisfy { !$0.isOffered })
                             }
-                            .padding(.vertical, 9)
+                            .padding(.vertical, Theme.Space.s)
                             if n < sellers.count - 1 { Hairline() }
                         }
                     }
@@ -117,7 +118,7 @@ struct CompanyFinanceBook: View {
             CardSection("How the bank earns") {
                 Meter(label: "Capital", value: 100 * min(1, b.requiredRatio > 0 ? b.capitalRatio / (b.requiredRatio * 2) : 0))
                 Text("The bank earns the gap between what borrowers pay and what savers are paid. Bad loans reduce capital, and rumours can start a run on deposits: a solvent bank short of cash borrows from the central bank and repays as deposits come back. Choose the loan book and funding under Operations. Your other companies borrow cheaper here.")
-                    .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
@@ -134,7 +135,7 @@ struct CompanyFinanceBook: View {
                 .init(label: "Performance fee", value: Currency.percent(b.performanceFee, decimals: 0), sub: "of gains above the mark"),
             ])
             Text("You earn a fee on the assets every week and a performance fee at year end when the fund has beaten its high-water mark by 4%. Money flows in when returns are good and out when they are poor; the strategy and fee class under Operations decide how much risk you take and how many investors you attract.")
-                .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                .textStyle(.caption, tint: Theme.inkFaint)
         }
     }
 
