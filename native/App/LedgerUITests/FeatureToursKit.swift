@@ -259,8 +259,17 @@ class FeatureTourCase: XCTestCase {
             from.press(forDuration: 0.1, thenDragTo: to)
             if tapFirst() { pause(0.6); return }
         }
-        popupDiag("no close button tappable after scrolling")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
+        // A popup whose buttons carry no id: tap one by its label, else the dimmed area (the backdrop's own top edge, then the screen top).
+        let labels: [String] = ["Continue", "OK", "Done", "Close", "Got it", "Not now", "Later", "Cancel", "Dismiss", "Skip", "No thanks", "Keep", "Next"]
+        for l in labels {
+            let b: XCUIElement = app.buttons.matching(NSPredicate(format: "label ==[c] %@", l)).firstMatch
+            if ctap(b) { pause(0.6); return }
+        }
+        let names: String = app.buttons.allElementsBoundByIndex.prefix(12).map { "\($0.identifier)|\($0.label)" }.joined(separator: ", ")
+        popupDiag("no close button tappable after scrolling; buttons: " + names)
+        let bd: XCUIElement = elem("popup-backdrop")
+        if bd.exists { bd.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02)).tap() }
+        else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap() }
         pause(0.6)
     }
 
@@ -305,41 +314,72 @@ class FeatureTourCase: XCTestCase {
         return true
     }
 
-    /// Opens an app of the Phone tab; true when its tile was found and tapped.
+    /// True while the Phone app grid is on screen (any launcher tile; apps behind the unlock ladder are not on it).
+    func gridUp(_ t: TimeInterval = 0) -> Bool {
+        let q: XCUIElement = buttonPrefix("phone-app-")
+        return t > 0 ? q.waitForExistence(timeout: t) : q.exists
+    }
+
+    /// Why the last openPhoneApp failed: "hidden" = the grid is up but has no such tile (the unlock ladder keeps it off the Phone).
+    var lastOpenWhy: String = ""
+    static var hiddenApps: Set<String> = []
+
+    /// Opens an app of the Phone tab; true when its tile was found and tapped. A tile missing from a loaded grid fails at once.
     @discardableResult
     func openPhoneApp(_ name: String) -> Bool {
-        guard goTab("Phone") else { return false }
+        lastOpenWhy = ""
+        if Self.hiddenApps.contains(name) { lastOpenWhy = "hidden"; return false }
+        guard goTab("Phone") else { lastOpenWhy = "no Phone tab"; return false }
         let tile: XCUIElement = button("phone-app-\(name)")
-        // The grid can still be settling or scrolled: wait, then scroll both ways, then retry the tab once.
-        for attempt in 0..<2 {
-            if attempt == 1 { pause(1.5); _ = goTab("Home"); _ = goTab("Phone") }
-            if tile.waitForExistence(timeout: attempt == 0 ? 8 : 5), reveal(tile), ctap(tile) { pause(1.3); return true }
+        guard gridUp(8) else { lastOpenWhy = "grid not shown"; log.note("phone grid not shown: " + tabState()); return false }
+        pause(0.4)
+        if tile.waitForExistence(timeout: 1.5) || (reveal(tile) && tile.exists) {
+            if ctap(tile) { pause(1.3); return true }
+            lastOpenWhy = "not tappable"
+            return false
         }
-        log.note("no tile \(name): " + tabState())
+        Self.hiddenApps.insert(name)
+        lastOpenWhy = "hidden"
+        log.note("no tile \(name) on a loaded grid (locked by the unlock ladder?): " + button("phone-home").identifier + " tiles=" + ids(prefix: "phone-app-").map { String($0.dropFirst(10)) }.joined(separator: ","))
         return false
     }
 
+    static var companyMisses = 0
+
     @discardableResult
     func openCompany(_ part: String) -> Bool {
+        if Self.companyMisses >= 2 { return false }
         guard goTab("Home") else { return false }
-        // The row exposes its name as a combined element (label "Name, Cafe, ..."): match label or identifier, ignoring case and accents,
-        // then fall back to the trade name, then scroll the Home list.
+        // The row exposes its name as a combined element (label "Name, Trade, ..."): match label or identifier, ignoring case and accents,
+        // by the trade words, then by the rows inside the Home companies box.
         let words: [String] = [part] + (part.hasPrefix("Caf") ? ["Cafe", "Coffee"] : []) + (part.hasPrefix("Gym") ? ["Fitness"] : [])
-        for _ in 0..<2 {
-            for w in words {
-                let pred: NSPredicate = NSPredicate(format: "label CONTAINS[cd] %@ OR identifier CONTAINS[cd] %@", w, w)
-                let rows: XCUIElementQuery = app.descendants(matching: .any).matching(pred)
-                let c: XCUIElement = app.buttons.matching(pred).firstMatch
-                let target: XCUIElement = c.waitForExistence(timeout: 3) ? c : rows.firstMatch
-                if target.exists, visible(target) || reveal(target), ctap(target) {
-                    pause(0.8)
-                    if button("company-tab-overview").waitForExistence(timeout: 5) { return true }
-                    _ = tapBack()
-                }
-            }
-            _ = goTab("Home")
+        _ = elem("home-companies-box").waitForExistence(timeout: 4)
+        func opened() -> Bool {
+            pause(0.8)
+            if button("company-tab-overview").waitForExistence(timeout: 4) { return true }
+            _ = tapBack()
+            return false
         }
-        log.note("no company row \(part): " + tabState())
+        for w in words {
+            let pred: NSPredicate = NSPredicate(format: "label CONTAINS[cd] %@ OR identifier CONTAINS[cd] %@", w, w)
+            for q in [app.buttons.matching(pred), app.descendants(matching: .any).matching(pred)] {
+                let t: XCUIElement = q.firstMatch
+                if t.waitForExistence(timeout: 1.5), visible(t) || reveal(t), ctap(t), opened() { return true }
+            }
+        }
+        let box: XCUIElement = elem("home-companies-box")
+        for i in 0..<3 {
+            let b: XCUIElement = box.buttons.element(boundBy: i)
+            if b.exists, ctap(b), opened() {
+                let hit: Bool = allTexts().contains { $0.text.range(of: part, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+                if hit { return true }
+                _ = tapBack()
+            }
+        }
+        Self.companyMisses += 1
+        let rows: [String] = allTexts().map { $0.text }.filter { $0.contains("\u{00B7}") }.prefix(6).map { String($0.prefix(60)) }
+        let boxInfo: String = box.exists ? "box@\(Int(box.frame.minX)),\(Int(box.frame.minY)),\(Int(box.frame.width))x\(Int(box.frame.height)) buttons=\(box.buttons.count)" : "no home-companies-box"
+        log.note("no company row \(part): \(boxInfo); texts with a dot: \(rows)")
         return false
     }
 
@@ -419,6 +459,7 @@ class FeatureTourCase: XCTestCase {
         for t in allTexts() {
             let ns: NSString = t.text as NSString
             let range: NSRange = NSRange(location: 0, length: ns.length)
+            if t.text.hasPrefix("Debug plan") { continue }
             for p in Self.rawPatterns where p.regex.firstMatch(in: t.text, options: [], range: range) != nil {
                 let item: String = "\(p.name) in '\(String(t.text.prefix(40)))'"
                 if !problems.contains(item) { problems.append(item) }

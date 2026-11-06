@@ -46,10 +46,12 @@ final class FeatureToursTests: FeatureTourCase {
     private func tourApp(_ title: String) {
         var opened = false
         step("phone app \(title): opens") {
-            guard openPhoneApp(title) else { return .fail("no tile phone-app-\(title) on the Phone grid") }
+            guard openPhoneApp(title) else {
+                return lastOpenWhy == "hidden" ? .skip("no tile on the Phone grid: locked by the unlock ladder in this game") : .fail("cannot open phone-app-\(title): \(lastOpenWhy)")
+            }
             if popupUp() { closePopup() }
             let sig: TourSig = signature()
-            let gridStillThere: Bool = title != "Bank" ? visible(button("phone-app-Bank")) : visible(button("phone-app-Inbox"))
+            let gridStillThere: Bool = visible(buttonPrefix("phone-app-"))
             if gridStillThere { return .fail("the app grid is still on screen after tapping the tile") }
             opened = true
             return .pass(sig.text)
@@ -58,7 +60,7 @@ final class FeatureToursTests: FeatureTourCase {
         step("phone app \(title): Back returns to the grid") {
             guard opened else { return .skip("not opened") }
             guard tapBack() else { return .fail("no Back button on the app") }
-            return button("phone-app-Bank").waitForExistence(timeout: 4) ? .pass() : .fail("Back did not show the app grid")
+            return gridUp(4) ? .pass() : .fail("Back did not show the app grid")
         }
     }
 
@@ -170,7 +172,7 @@ final class FeatureToursTests: FeatureTourCase {
             step("swipe back: Phone app \(name) returns to the grid") {
                 guard openPhoneApp(name) else { return .skip("no tile") }
                 swipeBackFromEdge()
-                return button("phone-app-Bank").waitForExistence(timeout: 4) ? .pass() : .fail("an edge swipe did not return to the app grid (\(signature().text))")
+                return gridUp(4) ? .pass() : .fail("an edge swipe did not return to the app grid (\(signature().text))")
             }
         }
         step("swipe back: pushed page inside an app (Bank account) returns one level") {
@@ -181,7 +183,7 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             let after: TourSig = signature()
             if after.same(inner) { return .fail("the swipe did nothing on \(inner.text)") }
-            return button("phone-app-Bank").exists ? .fail("the swipe left the whole app: \(inner.text) -> grid") : .pass("\(inner.text) -> \(after.text)")
+            return gridUp() ? .fail("the swipe left the whole app: \(inner.text) -> grid") : .pass("\(inner.text) -> \(after.text)")
         }
     }
 

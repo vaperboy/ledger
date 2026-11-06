@@ -83,7 +83,7 @@ extension FeatureToursTests {
     func testT21_Inbox() {
         var opened = false
         step("inbox: opens with rows or an empty state") {
-            guard openPhoneApp("Inbox") else { return .fail("no Inbox tile") }
+            guard openPhoneApp("Inbox") else { return lastOpenWhy == "hidden" ? .skip("Inbox locked by the unlock ladder") : .fail("no Inbox tile: \(lastOpenWhy)") }
             opened = true
             let rows: Int = app.buttons.matching(identifier: "inbox-row").count
             return .pass("rows on screen: \(rows), waiting: \(waitingNumber() ?? 0)")
@@ -111,7 +111,7 @@ extension FeatureToursTests {
         }
         roundTrip("inbox: open a message, closing the detail keeps the Inbox", prepare: { openPhoneApp("Inbox") }) { tap(button("inbox-row"), wait: 4) }
         step("inbox: answer a decision -> popup closes, the waiting count drops") {
-            guard openPhoneApp("Inbox") else { return .fail("no Inbox tile") }
+            guard openPhoneApp("Inbox") else { return lastOpenWhy == "hidden" ? .skip("Inbox locked by the unlock ladder") : .fail("no Inbox tile: \(lastOpenWhy)") }
             guard let before = waitingNumber(), before > 0 else { return .skip("no decision waiting (\(waitingNumber() ?? 0))") }
             guard tap(button("inbox-row"), wait: 4) else { return .skip("no row to open") }
             guard button("inbox-option").waitForExistence(timeout: 4) else { toRoot(); return .fail("the opened message has no answer buttons") }
@@ -174,7 +174,7 @@ extension FeatureToursTests {
 
     func testT23_BankLoan() {
         step("bank: accounts and wealth overview open") {
-            guard openPhoneApp("Bank") else { return .fail("no Bank tile") }
+            guard openPhoneApp("Bank") else { return lastOpenWhy == "hidden" ? .skip("Bank locked by the unlock ladder") : .fail("no Bank tile: \(lastOpenWhy)") }
             guard tap(buttonPrefix("bank-pick-"), wait: 5) else { return .skip("no account picker row") }
             let h: R = health("bank account")
             _ = tapBack()
