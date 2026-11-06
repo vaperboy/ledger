@@ -781,10 +781,11 @@ extension PlaytestReworkTours {
     func testScratchRework() throws {
         try XCTSkipUnless(PT.env["LEDGER_PT_SCRATCH"] == "1")
         let mode = PT.env["LEDGER_PT_SCRATCH_MODE"] ?? "neg"
-        let bot = try PlayBot(Job(country: PT.env["LEDGER_PT_COUNTRY"] ?? "DE", trade: PT.env["LEDGER_PT_TRADE"] ?? "cafe", seed: Int(PT.env["LEDGER_PT_SEED"] ?? "1") ?? 1, policy: .competent, scenario: .rework, years: 1))
+        let bot = try PlayBot(Job(country: PT.env["LEDGER_PT_COUNTRY"] ?? "DE", trade: PT.env["LEDGER_PT_TRADE"] ?? "cafe", seed: Int(PT.env["LEDGER_PT_SEED"] ?? "1") ?? 1, policy: .competent, scenario: Scenario(rawValue: PT.env["LEDGER_PT_SCENARIO"] ?? "rework") ?? .rework, years: 1))
         bot.scenarioSetup()
         var shown = 0
         var prevCash = 0.0
+        var floodWeek: [String] = []
         for d in 0..<((Int(PT.env["LEDGER_PT_WEEKS"] ?? "45") ?? 45) * 7) {
             if mode == "nw", bot.e.state.week >= 55, bot.e.state.week <= 56 { for m in bot.e.openDecisions { print("S OPEN", bot.e.state.week, bot.e.state.day, m.actionID, m.title.prefix(60), m.options.map { "\($0["l"].string)|cash \(Int($0["fx"]["cash"].double))" }, "pick", bot.pick(m)) } }
             bot.answerAll()
@@ -796,6 +797,8 @@ extension PlaytestReworkTours {
                 for l in bot.e.state.statement.suffix(6) { print("S   line", l.week, l.day, Int(l.amount), l.label) }
                 for m in o.newMessages.prefix(4) { print("S   msg", m.title) }
             }
+            if mode == "flood2" { for m in o.newMessages where (m.kind == "ask" || m.kind == "decision") && m.status == "open" && m.isOwnerAddressed { floodWeek.append("\(m.actionID)|\(m.title.prefix(50))") } }
+            if mode == "flood2", o.completedWeek { if floodWeek.count >= 6 { print("S FLOODWEEK", bot.e.state.week, floodWeek.count, floodWeek) }; floodWeek = [] }
             if mode == "flood", bot.e.state.week >= 31 && bot.e.state.week <= 34 { for m in o.newMessages where (m.kind == "ask" || m.kind == "decision") && m.status == "open" && m.isOwnerAddressed { print("S FLOOD wk", bot.e.state.week, m.actionID, m.title.prefix(70)) } }
             if mode == "room", shown < 4, let c = bot.e.state.company(bot.mainID), c.cash < -bot.e.context.overdraftRoom(c, bot.e.state) - 1 {
                 shown += 1
