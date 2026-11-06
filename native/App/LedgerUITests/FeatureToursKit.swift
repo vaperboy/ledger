@@ -207,9 +207,14 @@ class FeatureTourCase: XCTestCase {
     func buttonContaining(_ text: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch }
     func buttonPrefix(_ idPrefix: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", idPrefix)).firstMatch }
 
+    /// The screen area of the app: the application frame (windows.firstMatch can be a small helper window, not the main one).
     func win() -> CGRect {
-        if winCache.width < 1 { winCache = app.windows.firstMatch.frame }
-        return winCache.width < 1 ? CGRect(x: 0, y: 0, width: 402, height: 874) : winCache
+        if winCache.width < 200 {
+            let a: CGRect = app.frame
+            if a.width >= 200 { winCache = a }
+            else { winCache = app.windows.allElementsBoundByIndex.map { $0.frame }.max { $0.width * $0.height < $1.width * $1.height } ?? .zero }
+        }
+        return winCache.width < 200 ? CGRect(x: 0, y: 0, width: 402, height: 874) : winCache
     }
 
     /// On screen: exists with a frame that overlaps the window (a tab kept alive to the side does not count).
@@ -666,7 +671,8 @@ class FeatureTourCase: XCTestCase {
             var lowestMax: CGFloat = 0
             var lowestLabel = ""
             var hidden: [String] = []
-            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && h.id != "notification-banner" {
+            let tabFrames: [CGRect] = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { $0.frame.insetBy(dx: -2, dy: -2) }
+            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && h.id != "notification-banner" && !tabFrames.contains(where: { $0.contains(h.frame) }) {
                 guard h.type == .staticText || h.type == .button || h.type == .textField || h.type == .switch || h.type == .slider else { continue }
                 let r: CGRect = h.frame
                 guard !h.label.isEmpty, r.minY >= w.minY, r.minY < w.maxY - 1 else { continue }
