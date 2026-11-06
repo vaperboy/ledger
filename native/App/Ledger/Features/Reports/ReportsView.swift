@@ -88,7 +88,7 @@ struct ReportsPage: View {
             } else {
                 CardSection("No report yet") {
                     Text("A report is written each time a week, month or year ends. The first one arrives after your first full week.")
-                        .font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
+                        .textStyle(.body, tint: Theme.inkSoft)
                 }
             }
         }
@@ -132,7 +132,7 @@ struct ReportsPage: View {
                 stepButton(glyph: Glyph.back, enabled: i > 0, label: "Earlier report") { chosen[kind.rawValue] = all[i - 1].id }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(r.title.tidyMoney).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-                    Text(r.range).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    Text(r.range).textStyle(.caption, tint: Theme.inkFaint)
                 }
                 Spacer(minLength: 8)
                 stepButton(glyph: Glyph.chevron, enabled: i < all.count - 1, label: "Later report") { chosen[kind.rawValue] = all[i + 1].id }
@@ -169,7 +169,7 @@ struct ReportsPage: View {
                                    note: worthNote, noteTint: Theme.change(worthChange), live: r.netWorthEnd.total, countFormat: f.short)
             }
             if let p = worthPrev, r.previous != nil {
-                Text("Net worth change before: " + f.signed(p)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Net worth change before: " + f.signed(p)).textStyle(.caption, tint: Theme.inkFaint)
             }
             if r.partial {
                 Text("This period began part-way through: the game was saved before reports existed.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
@@ -246,7 +246,7 @@ struct ReportsPage: View {
         let order = r.ranking + r.companies.map { $0.id }.filter { !r.ranking.contains($0) }
         let rows = order.compactMap { r.company($0) }
         return CardSection(title: kind == .year ? "Ranking" : "Companies", trailing: {
-            Text("Net profit  ·  change  ·  tap to open").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
+            Text("Net profit  ·  change  ·  tap to open").textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if rows.isEmpty {
                 Text("No company has figures for this period.").font(.caption).foregroundStyle(Theme.ivoryFaint)
@@ -256,21 +256,21 @@ struct ReportsPage: View {
                     let before = r.previous?.companies.first(where: { $0.id == c.id })?.pnl.netProfit
                     Button { store.go(.openCompany(c.id)) } label: {
                         HStack(spacing: 10) {
-                            if kind == .year { Text("\(i + 1)").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryFaint).frame(width: 16) }
+                            if kind == .year { Text("\(i + 1)").textStyle(.caption, tint: Theme.inkFaint, numeric: true).frame(width: 16) }
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
-                                    Text(c.name).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(1)
+                                    Text(c.name).textStyle(.body).lineLimit(1)
                                     if c.id == r.bestCompanyID { Chip(text: "Best", tint: Theme.gain) }
                                     if c.id == r.worstCompanyID { Chip(text: "Weakest", tint: Theme.loss) }
                                 }
                                 Text("Revenue " + f.short(c.pnl.revenue) + (c.margin.map { " · margin " + String(format: "%.0f%%", $0 * 100) } ?? ""))
-                                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                    .textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                CountedFigure(value: c.pnl.netProfit, format: f.short, tint: c.pnl.netProfit < 0 ? Theme.loss : Theme.ivory).font(.system(size: 14).monospacedDigit())
+                                CountedFigure(value: c.pnl.netProfit, format: f.short, tint: c.pnl.netProfit < 0 ? Theme.loss : Theme.ivory).textStyle(.body, numeric: true)
                                 if let b = before {
-                                    Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.change(c.pnl.netProfit - b))
+                                    Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).textStyle(.caption, tint: Theme.change(c.pnl.netProfit - b), numeric: true)
                                 }
                             }
                             GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
@@ -443,7 +443,7 @@ struct ReportsPage: View {
                     ForEach(Array(events.enumerated()), id: \.offset) { _, e in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Circle().fill(Theme.tone(e.tone)).frame(width: 5, height: 5)
-                            Text(e.text.tidyMoney).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                            Text(e.text.tidyMoney).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }

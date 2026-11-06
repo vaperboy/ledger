@@ -54,10 +54,10 @@ struct ReportMovements: View {
                     }
                 }
             }
-            CardSection(title: "Bank movements", trailing: { Text(report.range).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Bank movements", trailing: { Text(report.range).textStyle(.caption, tint: Theme.inkFaint) }) {
                 if list.isEmpty {
                     Text(all.isEmpty ? "No company money moved in this period, or it is older than what the companies keep." : "Nothing of this kind in this period.")
-                        .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                        .textStyle(.caption, tint: Theme.inkFaint)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(list.prefix(limit).enumerated()), id: \.element.id) { i, m in
@@ -95,14 +95,13 @@ struct ReportMovements: View {
         Button { store.openCompany(m.companyID, section: .finances) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(m.label).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
                     Text((companyID == nil ? m.companyName + " · " : "") + GameCalendar.dateString(week: m.week))
-                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                        .textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                Text(fmt.signed(m.amount, company: m.companyID)).font(.system(size: 13.5).monospacedDigit())
-                    .foregroundStyle(m.amount > 0 ? Theme.gain : Theme.ivory)
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+                Text(fmt.signed(m.amount, company: m.companyID)).textStyle(.body, tint: m.amount > 0 ? Theme.gain : Theme.ink, numeric: true)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
             .padding(.vertical, 8).contentShape(Rectangle())
         }
@@ -129,9 +128,9 @@ struct ReportBills: View {
                 .init(label: CashWording.available(companyID: companyID), value: fmt.short(o.cashAvailable, company: companyID ?? 0)),
                 .init(label: "Short by", value: o.shortfall > 0 ? fmt.short(o.shortfall, company: companyID ?? 0) : "–", tint: o.shortfall > 0 ? Theme.loss : Theme.ivory),
             ], columns: 3)
-            CardSection(title: "Coming due", trailing: { Text("\(o.upcoming.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Coming due", trailing: { Text("\(o.upcoming.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
                 if o.upcoming.isEmpty {
-                    Text("Nothing is due: no payroll, bills, tax or loan instalments are waiting.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Nothing is due: no payroll, bills, tax or loan instalments are waiting.").textStyle(.caption, tint: Theme.inkFaint)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(o.upcoming.enumerated()), id: \.element.id) { i, u in
@@ -139,14 +138,14 @@ struct ReportBills: View {
                             Button { if u.companyID != 0 { store.openCompany(u.companyID, section: .finances) } } label: {
                                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(u.title.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                                        Text(u.detail.tidyMoney).font(.system(size: 11)).foregroundStyle(u.detail == "Needs your approval" ? Theme.caution : Theme.ivoryFaint).lineLimit(1)
+                                        Text(u.title.tidyMoney).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
+                                        Text(u.detail.tidyMoney).textStyle(.caption, tint: u.detail == "Needs your approval" ? Theme.caution : Theme.ivoryFaint).lineLimit(1)
                                     }
                                     Spacer(minLength: 8)
                                     VStack(alignment: .trailing, spacing: 2) {
-                                        Text(fmt.short(u.amount, company: u.companyID)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                        Text(fmt.short(u.amount, company: u.companyID)).textStyle(.body, numeric: true)
                                         Text(u.daysAway <= 0 ? "Due now" : u.daysAway == 1 ? "Tomorrow" : "\(u.dateText) · \(u.daysAway) days")
-                                            .font(.system(size: 10.5)).foregroundStyle(u.daysAway <= 7 ? Theme.caution : Theme.ivoryFaint)
+                                            .textStyle(.caption, tint: u.daysAway <= 7 ? Theme.caution : Theme.ivoryFaint)
                                     }
                                     if u.companyID != 0 { GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim) }
                                 }
@@ -158,21 +157,21 @@ struct ReportBills: View {
                     }
                 }
             }
-            CardSection(title: "Paid in this " + report.kind.noun, trailing: { Text(report.range).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
+            CardSection(title: "Paid in this " + report.kind.noun, trailing: { Text(report.range).textStyle(.caption, tint: Theme.inkFaint) }) {
                 if paid.isEmpty {
-                    Text("No payroll, rent, bills or tax were paid by the companies in this period.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                    Text("No payroll, rent, bills or tax were paid by the companies in this period.").textStyle(.caption, tint: Theme.inkFaint)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(paid.enumerated()), id: \.element.id) { i, m in
                             if i > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline, spacing: 10) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(m.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+                                    Text(m.label).textStyle(.body).lineLimit(2)
                                     Text((companyID == nil ? m.companyName + " · " : "") + m.kind.title + " · " + GameCalendar.dateString(week: m.week))
-                                        .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                        .textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                                 }
                                 Spacer(minLength: 8)
-                                Text(fmt.signed(m.amount, company: m.companyID)).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+                                Text(fmt.signed(m.amount, company: m.companyID)).textStyle(.body, numeric: true)
                             }
                             .padding(.vertical, 8)
                         }

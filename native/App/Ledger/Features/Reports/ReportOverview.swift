@@ -102,7 +102,7 @@ struct ReportHistoryChart: View {
                 AxisMarks(values: bars.map { $0.index }) { v in
                     AxisValueLabel {
                         if let i = v.as(Int.self), i < bars.count, bars.count <= 8 || i % 2 == bars.count % 2 {
-                            Text(bars[i].label).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint)
+                            Text(bars[i].label).font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis)
                         }
                     }
                 }
@@ -110,7 +110,7 @@ struct ReportHistoryChart: View {
             .chartYAxis {
                 AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
-                    AxisValueLabel { if let d = v.as(Double.self) { Text(format.short(d)).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) } }
+                    AxisValueLabel { if let d = v.as(Double.self) { Text(format.short(d)).font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
                 }
             }
             .frame(height: 150)
@@ -164,7 +164,7 @@ struct ReportStoryRows: View {
                 Card(padding: 10, radius: Theme.Radius.row) {
                     HStack(alignment: .top, spacing: 10) {
                         IconCircle(glyph: glyph(s), size: 32)
-                        Text(s.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineSpacing(2)
+                        Text(s.tidyMoney).textStyle(.body).lineSpacing(2)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -227,7 +227,7 @@ struct ReportLineDetail: View {
                     .chartYAxis {
                         AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
                             AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(Theme.hairline)
-                            AxisValueLabel { if let d = v.as(Double.self) { Text(format.short(d)).font(.system(size: 9.5)).foregroundStyle(Theme.ivoryFaint) } }
+                            AxisValueLabel { if let d = v.as(Double.self) { Text(format.short(d)).font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
                         }
                     }
                     .frame(height: 120)
@@ -254,11 +254,11 @@ struct ReportLineDetail: View {
     private func companyRow(_ e: Entry) -> some View {
         let c = ReportChangeText(now: e.now, before: e.before, isCost: key.isCost, format: format)
         return HStack {
-            Text(e.name).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(1)
+            Text(e.name).textStyle(.body).lineLimit(1)
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(format.short(e.now)).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory)
-                if !c.text.isEmpty { Text(c.text).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(c.tint) }
+                Text(format.short(e.now)).textStyle(.body, numeric: true)
+                if !c.text.isEmpty { Text(c.text).textStyle(.caption, tint: c.tint, numeric: true) }
             }
         }
         .padding(.vertical, 6)

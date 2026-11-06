@@ -48,40 +48,46 @@ struct ReportTableRow: View {
         }
     }
 
+    /// Column widths grow with Dynamic Type (from 66 and 52 pt), so figures keep their size; the label wraps to a second line instead.
+    @ScaledMetric(relativeTo: .body) private var wide: CGFloat = 66
+    @ScaledMetric(relativeTo: .body) private var narrow: CGFloat = 52
+
     var body: some View {
-        HStack(spacing: 6) {
+        let weight: Font.Weight? = strong ? .semibold : nil
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
             Text(label)
-                .font(.system(size: 13.5, weight: strong ? .semibold : .regular))
-                .foregroundStyle(strong ? Theme.ivory : Theme.ivoryMuted)
-                .lineLimit(1).minimumScaleFactor(0.8)
+                .textStyle(.body, tint: strong ? Theme.ink : Theme.inkSoft, weight: weight)
+                .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            cell(0, first, tint: Theme.ivory).font(.system(size: 13.5, weight: strong ? .semibold : .regular).monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.7).frame(width: 66, alignment: .trailing)
-            cell(1, second, tint: Theme.ivoryMuted).font(.system(size: 13.5).monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.7).frame(width: 66, alignment: .trailing)
-            cell(2, third, tint: thirdTint).font(.system(size: 12.5).monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.7).frame(width: 52, alignment: .trailing)
+            cell(0, first, tint: Theme.ink).textStyle(.body, numeric: true, weight: weight)
+                .lineLimit(1).minimumScaleFactor(0.85).frame(width: wide, alignment: .trailing)
+            cell(1, second, tint: Theme.inkSoft).textStyle(.body, tint: Theme.inkSoft, numeric: true)
+                .lineLimit(1).minimumScaleFactor(0.85).frame(width: wide, alignment: .trailing)
+            cell(2, third, tint: thirdTint).textStyle(.caption, tint: thirdTint, numeric: true)
+                .lineLimit(1).minimumScaleFactor(0.85).frame(width: narrow, alignment: .trailing)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, Theme.Space.s)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// The header of a report table, in small caps.
+/// The header of a report table, in small caps, over the same scaled columns as `ReportTableRow`.
 struct ReportTableHeader: View {
     var first: String
     var second: String
     var third: String
+    @ScaledMetric(relativeTo: .body) private var wide: CGFloat = 66
+    @ScaledMetric(relativeTo: .body) private var narrow: CGFloat = 52
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Theme.Space.s) {
             Spacer(minLength: 0)
-            Text(first).frame(width: 66, alignment: .trailing)
-            Text(second).frame(width: 66, alignment: .trailing)
-            Text(third).frame(width: 52, alignment: .trailing)
+            Text(first).frame(width: wide, alignment: .trailing)
+            Text(second).frame(width: wide, alignment: .trailing)
+            Text(third).frame(width: narrow, alignment: .trailing)
         }
-        .font(.system(size: 10, weight: .semibold)).tracking(0.8).textCase(.uppercase)
-        .foregroundStyle(Theme.ivoryFaint)
-        .padding(.bottom, 4)
+        .textStyle(.label, tint: Theme.inkFaint)
+        .lineLimit(1).minimumScaleFactor(0.8)
+        .padding(.bottom, Theme.Space.xs)
     }
 }
 
@@ -105,11 +111,11 @@ struct ReportLine: View {
 
     var body: some View {
         HStack {
-            Text(label).font(.system(size: 13.5, weight: strong ? .semibold : .regular)).foregroundStyle(strong ? Theme.ivory : Theme.ivoryMuted)
-            Spacer(minLength: 8)
-            figure.font(.system(size: 13.5, weight: strong ? .semibold : .regular).monospacedDigit())
+            Text(label).textStyle(.body, tint: strong ? Theme.ink : Theme.inkSoft, weight: strong ? .semibold : nil)
+            Spacer(minLength: Theme.Space.s)
+            figure.textStyle(.body, tint: tint, numeric: true, weight: strong ? .semibold : nil)
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, Theme.Space.s)
         .accessibilityElement(children: .combine)
     }
 }
