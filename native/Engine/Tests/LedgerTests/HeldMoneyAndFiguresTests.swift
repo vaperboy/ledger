@@ -111,9 +111,9 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
         let nw = e.netWorth
         XCTAssertEqual(nw.total, nw.totalAssets - nw.debt - nw.pendingTax, accuracy: 0.01)
         XCTAssertEqual(nw.debt, Banking.totalDebt(e.state, personalOnly: true), accuracy: 0.5, "personal debt is the loans that are not a company's")
-        XCTAssertEqual(nw.personal, e.state.cash + e.state.savings, accuracy: 0.01)
-        // the company counts at its value times your share, once
+        XCTAssertEqual(nw.personal, e.state.cash + e.state.savings + HeldMoney.playerRemaining(e.state), accuracy: 0.01)
+        // the company counts at its value plus the money of the week still on its way in, times your share, once
         let co = try XCTUnwrap(e.state.company(id))
-        XCTAssertEqual(nw.companies, Valuation.companyValue(co, state: e.state, trades: e.data.catalog) * co.ownership / 100, accuracy: 1)
+        XCTAssertEqual(nw.companies, (Valuation.companyValue(co, state: e.state, trades: e.data.catalog) + HeldMoney.remaining(e.state, companyID: co.id)) * co.ownership / 100, accuracy: 1)
     }
 }

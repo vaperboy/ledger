@@ -110,6 +110,14 @@ final class MoneyLiteralLintTests: XCTestCase {
         "PlayerGoals.swift": ["25000": "reward, scaled by cash()", "6000": "reward, scaled by cash()", "3000": "reward, scaled by cash()", "2500": "reward, scaled by cash()",
                               "15000": "reward, scaled by cash()", "1500": "people (count)", "300000": "milestone target, scaled by K()/m()", "700000": "milestone target, scaled by K()/m()"],
         "MiscActions.swift": ["86400": "seconds in a day"],
+        // Career ranks and goals are reference-level targets; every read scales them (rankIndex via scaledPrice, goals via money()/text).
+        "Career.swift": ["25_000": "reference-level target, scaled with scaledPrice where read", "100_000": "reference-level target, scaled where read", "400_000": "reference-level target, scaled where read",
+                         "1_000_000": "reference-level target, scaled where read", "5_000_000": "reference-level target, scaled where read", "25_000_000": "reference-level target, scaled where read",
+                         "100_000_000": "reference-level target, scaled where read", "1_000_000_000": "reference-level target, scaled where read", "200_000": "goal target, scaled by money()",
+                         "30_000": "goal target, scaled by money()", "10_000_000": "goal target, scaled by money()", "600_000": "goal target, scaled by money()"],
+        "MonetisationCosmetics.swift": ["9999": "upper clamp of a parsed count, not money"],
+        "OpeningChecklist.swift": ["300000": "fallback vehicle price at the reference level, multiplied by the inflation index"],
+        "SetupFunding.swift": ["1000": "rounding step of a loan amount already in the company's currency"],
         // Models ported after the second scaling pass (lint triage): each literal is a rounding step, hash, count, or a reference-level amount that
         // is scaled where it is used; the reason says which.
         "Advisers.swift": ["1400": "adviser fee at the reference level, multiplied by the market wage level (wage) and rounded in the currency", "3500": "adviser fee at the reference level, multiplied by the market wage level (wage) and rounded in the currency"],

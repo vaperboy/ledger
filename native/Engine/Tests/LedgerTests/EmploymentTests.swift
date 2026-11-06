@@ -455,7 +455,8 @@ final class EmploymentTests: XCTestCase {
                 tried[temp, default: 0] += 1
                 // a raise: never refused
                 guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payRise, amount: 0.07)) else { return XCTFail("a raise is taken") }
-                // a big cut in hours
+                // a big cut in hours; the draw is keyed on the person and the eight-week block, and ids repeat across seeds, so move to a different block
+                e.update { s, _, _ in s.week += k * 8 }
                 if case .unwilling = e.contractPropose(companyID: id, personID: pid, proposal: .init(.hours, amount: 40, choice: "percent")) { refused[temp, default: 0] += 1 }
                 // a small cut is not a significant change
                 var e2 = e

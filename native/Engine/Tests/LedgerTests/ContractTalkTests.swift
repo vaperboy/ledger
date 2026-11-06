@@ -236,11 +236,28 @@ final class ContractTalkTests: XCTestCase {
     func testPayBasisFixedMixCommissionAndTheSalaryForAnHourlyWorker() throws {
         var (e, id) = try shop("estate")
         let pid = hire(&e, id, role: "estate")
-        guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, amount: 0.05, choice: "mix")) else { return XCTFail("mix") }
+        // a move to a less secure plan may be refused (the draw is per person and eight-week block): the same offer in a later block goes through
+        var mix = false
+        for _ in 0..<12 where !mix {
+            switch e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, amount: 0.05, choice: "mix")) {
+            case .agreed: mix = true
+            case .unwilling: e.update { s, _, _ in s.week += 8 }
+            default: return XCTFail("mix")
+            }
+        }
+        XCTAssertTrue(mix, "mix is agreed in some block")
         XCTAssertEqual(member(e, id, pid)?.commissionMode, "mix")
         XCTAssertEqual(member(e, id, pid)?.commissionRate ?? 0, 0.05, accuracy: 1e-9)
         XCTAssertGreaterThan(wage(e, id, pid), 0)
-        guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: "com")) else { return XCTFail("com") }
+        var com = false
+        for _ in 0..<12 where !com {
+            switch e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: "com")) {
+            case .agreed: com = true
+            case .unwilling: e.update { s, _, _ in s.week += 8 }
+            default: return XCTFail("com")
+            }
+        }
+        XCTAssertTrue(com, "com is agreed in some block")
         XCTAssertEqual(wage(e, id, pid), 0, "commission only: nothing in base")
         guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.payBasis, choice: "fix")) else { return XCTFail("fix is a rise and is never refused") }
         XCTAssertGreaterThan(wage(e, id, pid), 0)
