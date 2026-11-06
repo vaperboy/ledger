@@ -40,6 +40,8 @@ struct GivingView: View {
                     foundationSection(e)
                     marksSection(e)
                 }
+                // Blocks sit on the page with no surface of their own.
+                .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             }

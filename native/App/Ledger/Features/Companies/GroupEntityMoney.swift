@@ -39,20 +39,24 @@ struct GroupEntityMoney: View {
         .confirmAction($pending)
     }
 
+    /// The cash leads as a figure; moving money in or out are rows under it.
     private var cashBox: some View {
         let cash: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
         let main: Company? = engine.state.company(entity.companyID)
         let canTake: Bool = main.map { (c: Company) -> Bool in c.form != .limited && c.type != "hold" } ?? false
         let id: Int = entity.companyID
-        return LedgerSection(entity.isHolding ? "Group cash" : "Cash", rule: false) {
-            HStack(alignment: .center, spacing: Theme.Space.s) {
-                LiveFigure(value: cash, text: store.short(cash)).textStyle(.figure, tint: cash < 0 ? Theme.loss : nil)
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                Spacer(minLength: Theme.Space.s)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(entity.isHolding ? "Group cash" : "Cash").textStyle(.label, tint: Theme.inkFaint)
+            LiveFigure(value: cash, text: store.short(cash)).textStyle(.figure, tint: cash < 0 ? Theme.loss : nil)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            VStack(spacing: 0) {
+                LedgerRow(leading: .symbol("arrow.down.to.line"), title: "Put money in", subtitle: "From your own account",
+                          identifier: "money-put-in", action: { move = MoveTarget(companyID: id, kind: .deposit) })
                 if canTake {
-                    Button("Take out") { move = MoveTarget(companyID: id, kind: .withdraw) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                    Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
+                    LedgerRow(leading: .symbol("arrow.up.to.line"), title: "Take money out", subtitle: "Into your own account",
+                              identifier: "money-take-out", action: { move = MoveTarget(companyID: id, kind: .withdraw) })
                 }
-                Button("Put in") { move = MoveTarget(companyID: id, kind: .deposit) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
             }
         }
     }
@@ -61,7 +65,8 @@ struct GroupEntityMoney: View {
     private var treasuryBox: some View {
         let main: Company? = engine.state.company(entity.companyID)
         let cur: Currency = main.map { (c: Company) -> Currency in engine.currency(for: c) } ?? engine.homeCurrency
-        return LedgerSection("Treasury") {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Treasury").textStyle(.label, tint: Theme.inkFaint)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 AmountField(title: "Amount", currency: cur, amount: $amount)
                 HStack(spacing: Theme.Space.s) {
@@ -112,30 +117,28 @@ struct GroupEntityMoney: View {
         }
     }
 
+    /// What sister companies lent each other, as one row; when a company is short, the row offers the loan.
     private var loansBox: some View {
         let owed: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + engine.groupLoanBalance(companyID: c.id) }
         let short: Company? = cos.first { (c: Company) -> Bool in c.cash < 0 && c.type != "hold" }
-        return LedgerSection("Group loans") {
-            HStack(alignment: .center, spacing: Theme.Space.s) {
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    if owed > 0 {
-                        Text(store.short(owed)).textStyle(.figure, tint: Theme.warn, numeric: true).lineLimit(1).minimumScaleFactor(0.6)
-                    } else {
-                        Text("No loans").textStyle(.body, tint: Theme.inkSoft)
-                    }
-                    if short == nil { Text("Nobody is short of cash").textStyle(.caption, tint: Theme.inkFaint) }
-                }
-                Spacer(minLength: Theme.Space.s)
-                if let c = short { lendButton(c) }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Group loans").textStyle(.label, tint: Theme.inkFaint)
+            if let c = short {
+                lendRow(c, owed: owed)
+            } else {
+                LedgerRow(leading: .glyph(Glyph.bank), leadingTint: Theme.inkFaint, title: owed > 0 ? "Owed between your companies" : "No loans",
+                          subtitle: "Nobody is short of cash", value: owed > 0 ? store.short(owed) : "", valueTint: Theme.warn)
             }
         }
     }
 
-    private func lendButton(_ c: Company) -> some View {
+    private func lendRow(_ c: Company, owed: Double) -> some View {
         let cur: Currency = engine.currency(for: c)
         let weekly: Double = engine.companyHealth(c).weeklyCost
         let need: Double = cur.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
-        return Button("Lend \(cur.tidyShort(need))") { askLoan(c, need, cur) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
+        return LedgerRow(leading: .glyph(Glyph.warning), leadingTint: Theme.warn, title: "Lend \(cur.tidyShort(need)) to \(c.name)",
+                         subtitle: "It is short of cash; a sister company pays", value: owed > 0 ? store.short(owed) : "",
+                         valueNote: owed > 0 ? "owed now" : "", identifier: "money-lend", action: { askLoan(c, need, cur) })
     }
 
     /// The dividend desk, or (while the company has no retained profit to pay out) a locked line that says what opens it. A holding collects, so it is never locked.
@@ -151,13 +154,14 @@ struct GroupEntityMoney: View {
         let d = engine.lastDividendDecision(companyID: entity.companyID)
         let main: Company? = engine.state.company(entity.companyID)
         let last: String = lastLine(d, main)
-        return LedgerSection(title: entity.isHolding ? "Dividends \u{00B7} collect" : "Dividends \u{00B7} pay out", trailing: {
-            Button("Policy") { Haptics.tap(); policyOpen = true }.buttonStyle(TertiaryButtonStyle(size: .compact)).accessibilityIdentifier("money-policy")
-        }) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil, compact: true)
-                Text(last).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(entity.isHolding ? "Dividends \u{00B7} collect" : "Dividends").textStyle(.label, tint: Theme.inkFaint)
+                Spacer(minLength: Theme.Space.s)
+                Button("Policy") { Haptics.tap(); policyOpen = true }.buttonStyle(TertiaryButtonStyle(size: .compact)).accessibilityIdentifier("money-policy")
             }
+            GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil, compact: true)
+            Text(last).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
         }
     }
 

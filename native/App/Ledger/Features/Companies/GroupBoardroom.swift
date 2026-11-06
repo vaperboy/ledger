@@ -49,23 +49,30 @@ struct GroupBoardroom: View {
         let advisory: Bool = engine.boardIsAdvisory(companyID: c.id)
         let dir: String? = engine.companyDirective(companyID: c.id)
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if showName { Text(c.name).capsLabel() }
-            Text(advisory ? "You own it alone, so the board advises and you decide. Votes bind once a co-owner joins." : "Co-owners vote by their shares. Ask the board before a big move.")
-                .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-            if let dir { Chip(text: "Direction: " + OwnerMeetings.directiveLabel(dir), tint: Theme.accent) }
+            if showName { Text(c.name).textStyle(.label, tint: Theme.inkFaint) }
+            // The state of the board leads: who decides, then the direction it was given.
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(advisory ? "You decide, the board advises" : "Co-owners vote by their shares").textStyle(.figure)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(advisory ? "Votes bind once a co-owner joins." : "Ask the board before a big move.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                if let dir { Text("Direction: " + OwnerMeetings.directiveLabel(dir)).textStyle(.caption, tint: Theme.ink).padding(.top, Theme.Space.xxs) }
+            }
+            .accessibilityElement(children: .combine)
             // The people come first: a talk is the main thing to do here; the board round follows as one row.
+            Text("Talk to").textStyle(.label, tint: Theme.inkFaint).padding(.top, Theme.Space.s)
             if people.isEmpty {
                 EmptyState(glyph: Glyph.person, title: "Nobody runs \(c.name) but you", message: "Appoint a manager or department heads under Management to talk with them.", centered: false)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(people.enumerated()), id: \.element.id) { (n: Int, p: OwnerMeetings.Counterpart) in
-                        if n > 0 { Hairline() }
+                        if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
                         personRow(c, p)
                     }
                 }
             }
             VStack(spacing: 0) {
-                Hairline()
+                Hairline().padding(.leading, 28 + Theme.Space.m)
                 LedgerRow(leading: .glyph(Glyph.achievements), title: "Call the board", subtitle: "Everyone reports from their seat; ask what they think of a big move",
                           identifier: "boardroom-call-\(c.id)", action: { round = RoundRef(companyID: c.id) })
             }
@@ -78,7 +85,7 @@ struct GroupBoardroom: View {
         return Button { Haptics.tap(); talk = TalkRef(companyID: cid, personID: pid) } label: {
             HStack(spacing: Theme.Space.m) {
                 if let person = engine.state.people[pid] {
-                    ThumbnailView(kind: .person, key: person.role, size: 32, initials: p.name, face: person.faceKey)
+                    ThumbnailView(kind: .person, key: person.role, size: 40, initials: p.name, face: person.faceKey)
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(p.name).textStyle(.headline).lineLimit(1)
@@ -88,8 +95,8 @@ struct GroupBoardroom: View {
                 Text("Talk").textStyle(.body, tint: Theme.accent, weight: .medium)
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
-            .padding(.vertical, Theme.Space.m)
-            .frame(minHeight: 44)
+            .padding(.vertical, Theme.Space.s)
+            .frame(minHeight: 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())

@@ -25,7 +25,7 @@ struct GroupEntityBoard: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if !message.isEmpty { NoteCard(text: message) }
             if active { roomLink(key) }
-            LedgerSection("Board seats") {
+            LedgerSection("Board seats", rule: false) {
                 VStack(spacing: 0) {
                     ownerRow
                     if active { seatRows(key) }
@@ -76,7 +76,7 @@ struct GroupEntityBoard: View {
                 Text(title).textStyle(.headline).lineLimit(1)
                 if !sub.isEmpty { Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2) }
             }
-            if !chip.isEmpty { Chip(text: chip, tint: Theme.accent) }
+            if !chip.isEmpty { Chip(text: chip, tint: Theme.inkSoft) }
             Spacer(minLength: Theme.Space.s)
             trail()
         }
@@ -128,8 +128,9 @@ struct GroupEntityBoard: View {
 
     @ViewBuilder private func trailFor(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat], key: String) -> some View {
         if let pid = v.personID, seats.contains(where: { (s: ManagerModel.Seat) -> Bool in s.id == pid }) {
-            Button("Remove from board") { askToRemove(v, pid: pid, key: key) }
-                .buttonStyle(TinyButtonStyle(tint: Theme.loss))
+            Button("Remove") { askToRemove(v, pid: pid, key: key) }
+                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
+                .accessibilityLabel("Remove \(v.name) from the board")
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .accessibilityIdentifier("board-remove-seat")
         } else {

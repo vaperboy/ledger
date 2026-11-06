@@ -69,7 +69,8 @@ struct BoardView: View {
         if let engine = store.engine, engine.boardIsActive(key: key) {
             let companies: [Company] = ManagerModel.boardCompanies(engine.state, key: key)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                    hero(engine)
                     if !message.isEmpty { NoteCard(text: message) }
                     agenda(engine)
                     followUps(engine)
@@ -79,7 +80,9 @@ struct BoardView: View {
                     minutes(engine)
                     ownersLink(companies)
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
+                // Blocks sit on the page; only the open meetings keep a surface (they wait for you).
+                .environment(\.insideCard, true)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -101,6 +104,21 @@ struct BoardView: View {
         }
     }
 
+    // MARK: Hero
+
+    /// How many points wait for the board is the one figure of the page.
+    private func hero(_ engine: GameEngine) -> some View {
+        let n: Int = engine.boardOpenDecisions(key: key)
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text("To decide").textStyle(.label, tint: Theme.inkFaint)
+            Text(n == 0 ? "Nothing waits" : "\(n) \(n == 1 ? "point" : "points")").textStyle(.display, tint: n == 0 ? Theme.inkSoft : nil)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(n == 0 ? "The board meets when a seat brings a proposal or a concern." : "Approve or decline each point below.")
+                .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: To decide
 
     /// Concerns are answered with "Act on it" / "Leave it"; proposals with "Approve" / "Decline".
@@ -111,13 +129,12 @@ struct BoardView: View {
     @ViewBuilder private func agenda(_ engine: GameEngine) -> some View {
         let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: key).filter { $0.isOpen }
         let preview: [ManagerModel.MeetingItem] = engine.boardAgendaPreview(key: key)
-        MoreBlock(title: "To decide", card: false, trailing: { RedBubble(count: engine.boardOpenDecisions(key: key), size: .small) }) {
-            if open.isEmpty { NoteCard(text: "Nothing waits for the board.", glyph: Glyph.check) }
+        MoreBlock("Agenda", card: false) {
             ForEach(open) { m in meeting(m, engine) }
             if preview.isEmpty {
-                Text("No meeting is due: the board meets when a seat brings a proposal or a concern.").textStyle(.caption, tint: Theme.inkFaint)
+                if open.isEmpty { Text("No meeting is due.").textStyle(.caption, tint: Theme.inkFaint) }
             } else {
-                QuietButton(title: "Hold a board meeting · \(preview.count) \(preview.count == 1 ? "point" : "points")") {
+                PrimaryAction(title: "Hold a board meeting \u{00B7} \(preview.count) \(preview.count == 1 ? "point" : "points")", identifier: "board-hold-meeting") {
                     let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
                     if id == nil { message = "Nothing to meet about right now." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
                 }
@@ -202,7 +219,7 @@ struct BoardView: View {
     }
 
     @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting, _ engine: GameEngine) -> some View {
-        Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
+        Card(padding: Theme.Space.l, radius: Theme.Radius.hero, fill: Theme.surface) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .top, spacing: Theme.Space.m) {
                     IconCircle(glyph: m.isEmergency ? Glyph.warning : Glyph.calendar, size: 36, tint: m.isEmergency ? Theme.caution : Theme.gold)

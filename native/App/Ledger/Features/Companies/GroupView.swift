@@ -3,8 +3,8 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab, built like Banking: it opens the picker of companies, holdings and chains (with the group Overview above it and the
-/// Suppliers row under it); tapping an entity opens its own page with Overview, Management, Board, Money, Expansion and Deals.
+/// The Group tab: a dashboard of the group (value, what waits, one row per company); tapping a company, holding or chain opens its own
+/// page with Overview, Management, Boardroom, Money, Expansion and Ownership.
 /// Choosing the Group tab again returns to the picker. Other screens can ask for an entity page through `GroupRouteBox`.
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
@@ -61,9 +61,9 @@ struct GroupView: View {
             VStack(spacing: 0) {
                 header
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
-                ScrollScreen(top: Theme.Space.l) {
-                    GroupLanding(engine: e, onPick: { (g: GroupEntity) in open(g, .overview) },
-                                 onSuppliers: { showSuppliers = true }, onAdd: { showAddMenu = true })
+                ScrollScreen(top: Theme.Space.m) {
+                    GroupLanding(engine: e, onPick: { (g: GroupEntity, s: GroupSection) in open(g, s) },
+                                 onSuppliers: { showSuppliers = true })
                 }
             }
             .transition(.move(edge: .leading))
@@ -79,15 +79,23 @@ struct GroupView: View {
         }
     }
 
+    /// The tab's name and, at the right, the one way to grow the group (a popup of the four routes).
     private var header: some View {
-        HStack(spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Group").textStyle(.title).lineLimit(1)
-                Text("Choose a company, holding or chain").textStyle(.caption).lineLimit(2)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            Text("Group").textStyle(.title).lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
+            Button { Haptics.tap(); showAddMenu = true } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Theme.inset))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Add to group")
+            .accessibilityIdentifier("group-add")
         }
     }
 

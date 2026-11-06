@@ -15,16 +15,17 @@ struct FranchisesView: View {
             let brands: [FranchiseBrands.Brand] = e.franchiseBrands()
             let trades: [String] = Array(Set(brands.map { $0.tradeID })).sorted { (e.data.catalog[$0]?.name ?? $0) < (e.data.catalog[$1]?.name ?? $1) }
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    NoteCard(text: "Brands that take new franchisees. You apply, they answer in a week or three, then you meet them to agree the terms. When the terms are agreed you can start the company under the brand.")
+                VStack(alignment: .leading, spacing: Theme.Space.xxl) {
                     if brands.isEmpty {
-                        NoteCard(text: "No brand is looking for franchisees right now.", glyph: Glyph.clock)
+                        EmptyState(glyph: Glyph.clock, title: "No brand takes franchisees right now", message: "Brands open up again over the coming weeks.")
                     } else {
                         overview(e, brands, trades)
                     }
                     ForEach(trades, id: \.self) { t in tradeShelf(e, brands, trade: t) }
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
+                // Brands sit on the page, separated by hairlines; plain cards draw flat.
+                .environment(\.insideCard, true)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -36,18 +37,24 @@ struct FranchisesView: View {
     private func overview(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], _ trades: [String]) -> some View {
         let cur: Currency = e.homeCurrency
         let cheapest: Double = brands.map { e.franchiseEntryFee($0) }.min() ?? 0
-        let items: [KeyFigures.Item] = [
-            .init(label: "Brands open", value: "\(brands.count)"),
-            .init(label: "Trades", value: "\(trades.count)"),
-            .init(label: "Lowest entry fee", value: cur.tidyShort(cheapest)),
-        ]
-        return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) { FigureStrip(items: items, columns: 3) }
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text("Entry from").textStyle(.label, tint: Theme.inkFaint)
+            Text(cur.tidyShort(cheapest)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+            Text("\(brands.count) \(brands.count == 1 ? "brand" : "brands") in \(trades.count) \(trades.count == 1 ? "trade" : "trades") take franchisees")
+                .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            Text("Apply, meet them to agree the terms, then start under the brand.")
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func tradeShelf(_ e: GameEngine, _ brands: [FranchiseBrands.Brand], trade t: String) -> some View {
         let list: [FranchiseBrands.Brand] = brands.filter { $0.tradeID == t }
         return MoreBlock(title: e.data.catalog[t]?.name ?? t, card: false, trailing: { Text("\(list.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
-            ForEach(list, id: \.id) { b in FranchiseBrandRow(brand: b) }
+            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, b: FranchiseBrands.Brand) in
+                if n > 0 { Hairline() }
+                FranchiseBrandRow(brand: b)
+            }
         }
     }
 }

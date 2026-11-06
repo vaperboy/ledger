@@ -26,9 +26,9 @@ struct SaleRoutePicker: View {
         let shut: [CompanySale.Route] = routes.filter { (r: CompanySale.Route) -> Bool in !r.available }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text("How do you want to sell?").textStyle(.title)
-                Text("Listing is not a sale: nothing sells until you accept an offer or hammer a bid.")
-                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Text("How to sell").textStyle(.label, tint: Theme.inkFaint)
+                Text("Nothing sells until you accept an offer or hammer a bid.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             if open.isEmpty {
                 EmptyState(glyph: Glyph.lock, title: "No way to sell is open now", message: "Each route below says what it needs.", centered: false)
@@ -36,7 +36,10 @@ struct SaleRoutePicker: View {
                 routeList(open)
             }
             if !shut.isEmpty {
-                LedgerSection("Not open now") { routeList(shut) }
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("Not open now").textStyle(.label, tint: Theme.inkFaint)
+                    routeList(shut)
+                }
             }
         }
         .confirmAction($pending)
@@ -47,8 +50,8 @@ struct SaleRoutePicker: View {
     private func routeList(_ list: [CompanySale.Route]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, r: CompanySale.Route) in
-                if n > 0 { Hairline() }
-                LedgerRow(leading: .glyph(glyph(r.id)), leadingTint: r.available ? nil : Theme.inkFaint, title: r.title,
+                if n > 0 { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
+                LedgerRow(leading: .glyph(glyph(r.id)), leadingTint: r.available ? Theme.ink : Theme.inkFaint, title: r.title,
                           subtitle: r.available ? r.pitch : r.why, chevron: r.available, lineLimit: 3,
                           identifier: "sell-route-\(r.id)", action: { pick(r) })
             }

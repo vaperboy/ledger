@@ -27,7 +27,7 @@ struct GroupDividendsPage: View {
             if let h = hold {
                 let under: [DividendRow] = rows.filter { (r: DividendRow) -> Bool in r.holdingID == h.id }
                 let total: Double = under.reduce(0) { $0 + $1.payable }
-                compactLine("Up to \(store.short(total, in: h))", payable: total > 0) { (s: Double) in askCollect(h, total, s) }
+                compactLine("Up to \(store.short(total, in: h))", payable: total > 0, verb: "Collect") { (s: Double) in askCollect(h, total, s) }
             } else if rows.isEmpty {
                 Text("Nothing to pay out yet").textStyle(.caption, tint: Theme.inkFaint)
             } else {
@@ -39,14 +39,32 @@ struct GroupDividendsPage: View {
         .confirmAction($pending)
     }
 
-    private func compactLine(_ text: String, payable: Bool, _ pick: @escaping (Double) -> Void) -> some View {
-        HStack(spacing: Theme.Space.s) {
-            Text(text).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium).lineLimit(1).minimumScaleFactor(0.7)
-            Spacer(minLength: 4)
-            if payable {
-                Button("Half") { pick(0.5) }.buttonStyle(TinyButtonStyle())
-                Button("All") { pick(1.0) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+    /// One payable line: what may be paid, and a menu (half or all) behind the row, so the row stays one calm line.
+    @ViewBuilder private func compactLine(_ text: String, payable: Bool, verb: String = "Pay", _ pick: @escaping (Double) -> Void) -> some View {
+        if payable {
+            Menu {
+                Button(verb + " half") { pick(0.5) }
+                Button(verb + " all") { pick(1.0) }
+            } label: {
+                HStack(spacing: Theme.Space.s) {
+                    Text(text).textStyle(.headline, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
+                    Spacer(minLength: Theme.Space.s)
+                    Text(verb).textStyle(.body, tint: Theme.accent, weight: .medium)
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                }
+                .frame(minHeight: 48)
+                .contentShape(Rectangle())
             }
+            .menuStyle(.button)
+            .buttonStyle(PressableStyle())
+            .accessibilityHint(verb + " half or all")
+        } else {
+            HStack(spacing: Theme.Space.s) {
+                Text(text).textStyle(.headline, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: Theme.Space.s)
+                Text("Nothing yet").textStyle(.caption, tint: Theme.inkFaint)
+            }
+            .frame(minHeight: 48)
         }
     }
 

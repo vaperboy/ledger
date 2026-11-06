@@ -42,10 +42,12 @@ struct ChainView: View {
         if let e = store.engine, let sum = e.chainSummary(id: chainID), let first = sum.stores.first.flatMap({ e.state.company($0.id) }) {
             let cur = e.currency(for: first)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
                     partBody(part, e, sum, cur)
                 }
+                // The chain's blocks sit on the page: plain cards draw flat.
+                .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
@@ -119,11 +121,8 @@ struct ChainFigures: View {
 
     private var items: [KeyFigures.Item] {
         let r = summary.reach
-        let profitTint: Color = summary.profit < 0 ? Theme.loss : Theme.ivory
         let rebate: String = String(format: "%.1f%%", r.rebate * 100)
         return [
-            .init(label: "Revenue / mo", value: currency.tidyShort(summary.revenue)),
-            .init(label: "Profit / mo", value: currency.tidyShort(summary.profit), tint: profitTint),
             .init(label: "Staff", value: "\(summary.staff)"),
             .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
             .init(label: "Buying discount", value: rebate, sub: "of cost of sales"),
@@ -134,9 +133,17 @@ struct ChainFigures: View {
     var body: some View {
         let r = summary.reach
         let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets: wider name, more demand, cheaper goods." : "A worldwide name."
-        Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                FigureStrip(items: items)
+        // The chain's monthly profit is the hero; revenue sits under it, the reach and buying figures follow in one strip.
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Profit a month").textStyle(.label, tint: Theme.inkFaint)
+                Text(currency.tidyShort(summary.profit)).textStyle(.display, tint: summary.profit < 0 ? Theme.loss : nil)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text("on revenue of \(currency.tidyShort(summary.revenue)) a month").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+            FigureRow(items: items, columns: 2, combineCells: true)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
                 Text(reachNote).textStyle(.caption, tint: Theme.inkFaint)
             }
