@@ -7,13 +7,13 @@ import Businesses
 import Simulation
 
 /// The company's own figures on Stats > Finances: where the money goes first (the total in the box, no title), the margins
-/// box right under it (no title), and later the legal and ownership facts. Cash is not repeated here (it is on the Overview). All from
+/// box right under it (no title), and later the company record (registration, capital, equity). Cash is not repeated here (it is on the Overview). All from
 /// `companyOverviewStats`, so Overview and Stats read the same numbers.
 struct CompanyStatsFigures: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    /// `spending` = where the money goes and the margins under it; `legal` = legal form and ownership.
+    /// `spending` = where the money goes and the margins under it; `legal` = the company record not already in the settings rows.
     var block: Block = .spending
     @State private var period: StatsPeriod = .year
 
@@ -109,19 +109,32 @@ struct CompanyStatsFigures: View {
         }
     }
 
-    // MARK: Legal and ownership
+    // MARK: Company record
+
+    private struct RecordLine {
+        var label: String
+        var value: String
+        var sub: String = ""
+        var tint: Color? = nil
+    }
 
     private func legalCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        let holders: String = s.otherShareholders.isEmpty ? "None" : s.otherShareholders.joined(separator: ", ")
-        // Legal form and your share are the values of the Legal form and Ownership rows above: not repeated here.
-        return LedgerSection("Legal and ownership") {
+        // The legal form, your share and (when you own it all) its worth are the Legal form and Ownership rows above: only the rest here.
+        let ownsAll: Bool = company.ownership >= 99.5 && SaleListings.canSell(engine.state, companyID: company.id)
+        var rows: [RecordLine] = []
+        if !s.otherShareholders.isEmpty { rows.append(RecordLine(label: "Other shareholders", value: s.otherShareholders.joined(separator: ", "))) }
+        if let since = s.incorporatedSince { rows.append(RecordLine(label: "Registered since", value: since)) }
+        if s.shareCapital > 0.5 {
+            rows.append(RecordLine(label: "Share capital", value: cur.tidyShort(s.shareCapital), sub: s.shareCount.map { String(Int($0)) + " shares" } ?? ""))
+        }
+        if let acc = s.accountant { rows.append(RecordLine(label: "Accountant", value: acc)) }
+        rows.append(RecordLine(label: "Equity (assets less debts)", value: cur.tidyShort(s.equity), tint: s.equity < 0 ? Theme.loss : nil))
+        if !ownsAll { rows.append(RecordLine(label: "Estimated value", value: cur.tidyShort(s.estimatedValue), sub: "an estimate of the whole company, not cash")) }
+        return LedgerSection("Company record") {
             VStack(spacing: 0) {
-                FlatRow(label: "Other shareholders", value: holders, rule: false)
-                if let since = s.incorporatedSince { FlatRow(label: "Registered since", value: since) }
-                if s.shareCapital > 0.5 { FlatRow(label: "Share capital", value: cur.tidyShort(s.shareCapital), sub: s.shareCount.map { String(Int($0)) + " shares" } ?? "") }
-                if let acc = s.accountant { FlatRow(label: "Accountant", value: acc) }
-                FlatRow(label: "Equity (assets less debts)", value: cur.tidyShort(s.equity), tint: s.equity < 0 ? Theme.loss : nil)
-                FlatRow(label: "Estimated value", value: cur.tidyShort(s.estimatedValue), sub: "an estimate of the whole company, not cash")
+                ForEach(Array(rows.enumerated()), id: \.offset) { n, r in
+                    FlatRow(label: r.label, value: r.value, sub: r.sub, tint: r.tint, rule: n > 0)
+                }
             }
         }
     }
