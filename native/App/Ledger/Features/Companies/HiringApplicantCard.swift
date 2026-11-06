@@ -110,6 +110,7 @@ struct ApplicantRow: View {
 }
 
 /// The paid trial week, asked the same way from every applicant list.
+@MainActor
 enum ApplicantTrial {
     static func ask(_ store: GameStore, _ a: Applicant, companyID: Int, _ cur: Currency) -> PendingAction {
         let cost: Double = ApplicantRow.trialCost(a)
