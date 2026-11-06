@@ -37,14 +37,16 @@ struct AmbitionPrompt: View {
 
     private func row(_ id: String, _ name: String) -> some View {
         Button { Haptics.tap(); store.chooseAmbition(id) } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(name).popupText(.rowValue)
-                Text(Self.lines[id] ?? "").popupText(.caption)
+            HStack(spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(name).popupText(.rowValue)
+                    Text(Self.lines[id] ?? "").popupText(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surfaceTable))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+            .padding(.vertical, Theme.Space.s).frame(minHeight: 44)
+            .overlay(alignment: .bottom) { Hairline() }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())

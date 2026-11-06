@@ -36,27 +36,25 @@ enum CompanyRoute: Hashable {
     }
 }
 
-/// The companies and the group as a whole: totals at the top, then every company in one comparable list (a table on iPad).
-/// Replaces the former separate Group tab, which listed the same companies again.
+/// The Home tab: one scrolling page with net worth, what needs the owner, every company in one comparable list (a table on iPad),
+/// then rank and shortcuts. The Next day bar stays pinned at the bottom.
 struct CompaniesView: View {
     enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sort: Sort = .attention
-    /// With many companies: a name search and a filter by chain ("all", "independent" or a chain id).
-    @State private var query = ""
-    @State private var chainFilter = "all"
-    /// The measured height of Home's fixed top block (date, net worth, shortcuts, priorities); the estimate holds until the first pass.
-    @State private var topHeight: CGFloat = 330
+    /// The phone list shows the first `previewCount` companies (worst first) until the owner asks for all of them.
+    @State private var showAll = false
+    static let previewCount = 6
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
             Group {
                 if let e = store.engine {
                     let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
-                    let rows = cos.filter(matches).map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
-                    homeScreen(e, cos: cos, rows: rows)
+                    let rows = cos.map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
+                    homeScreen(e, rows: rows)
                     .id(store.rootToken(.company))
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }
@@ -71,122 +69,68 @@ struct CompaniesView: View {
         }
     }
 
-    // MARK: The locked Home screen
+    // MARK: The Home page
 
-    private static let rowHeight: CGFloat = 46
-    /// The companies box shows this many rows at most, so the next row peeks out and says the list scrolls.
-    static let peekRows: CGFloat = 3.5
-    private static let boxPadding: CGFloat = 6
-    private static let moreHeight: CGFloat = 30
-
-    /// Height of the scrolling part of the companies box: all rows when they are few, otherwise `peekRows` rows, and never more than the
-    /// room that is left on the page (but always at least two rows).
-    static func boxScrollHeight(count: Int, pitch: CGFloat, extra: CGFloat, room: CGFloat) -> CGFloat {
-        let natural: CGFloat = CGFloat(count) * pitch - 5 + extra
-        let cap: CGFloat = peekRows * pitch + extra
-        let minimum: CGFloat = 2 * pitch - 5 + extra
-        return min(natural, cap, max(minimum, room))
-    }
-
-    /// One locked screen. The top block has its natural height; the companies sit in a box of their own that scrolls inside itself
-    /// (about three and a half rows), so the page never scrolls for them.
-    @ViewBuilder private func homeScreen(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)]) -> some View {
-        let regular: Bool = sizeClass == .regular
-        GeometryReader { (geo: GeometryProxy) in
-            let total: CGFloat = geo.size.height - 12
-            let head: CGFloat = 27
-            let pitch: CGFloat = regular ? 52 : Self.rowHeight + 5
-            let extra: CGFloat = regular ? 44 : 0
-            let boxFrame: CGFloat = head + Self.boxPadding * 2 + 10 + Self.moreHeight
-            let minCompanies: CGFloat = cos.isEmpty ? 120 : boxFrame + CGFloat(min(2, cos.count)) * pitch - 5 + extra
-            let fixedParts: CGFloat = 290 + 68 + 36 + 32 + 8 + 8
-            let spare: CGFloat = total - fixedParts - minCompanies
-            let rowsFit: Int = Int((spare / 38).rounded(.down))
-            let priorities: Int = max(1, min(3, rowsFit))
-            let mid: CGFloat = max(0, total - topHeight - 8)
-            let scrollH: CGFloat = Self.boxScrollHeight(count: rows.count, pitch: pitch, extra: extra, room: mid - boxFrame)
-            VStack(alignment: .leading, spacing: 8) {
-                HomeSummary(engine: e, onNewCompany: { store.push(.newCompany, on: .company) }, maxPriorities: priorities)
-                    .background(GeometryReader { (g: GeometryProxy) in Color.clear.preference(key: HomeTopHeightKey.self, value: g.size.height) })
-                companiesBlock(e, cos: cos, rows: rows, scrollHeight: scrollH)
-                Spacer(minLength: 0)
+    /// A normal vertical scroll, so larger text and small phones push content down instead of clipping it.
+    private func homeScreen(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
+        ScrollView(.vertical) {
+            HomeSummary(engine: e, onNewCompany: { store.push(.newCompany, on: .company) }) {
+                companiesBlock(e, rows: rows)
             }
-            .onPreferenceChange(HomeTopHeightKey.self) { topHeight = $0 }
-            .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 4)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
             .frame(maxWidth: 1100).frame(maxWidth: .infinity)
-            .frame(height: geo.size.height, alignment: .top)
-            .clipped()
         }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
     }
 
-    @ViewBuilder private func companiesBlock(_ e: GameEngine, cos: [Company], rows: [(co: Company, h: CompanyHealth)], scrollHeight: CGFloat) -> some View {
-        if cos.isEmpty {
-            Card(padding: 12, radius: Theme.Radius.card) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("No companies yet").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text("Pick a trade, see the full start-up cost, then decide.").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                    QuietButton(title: "Choose a trade") { store.push(.newCompany, on: .company) }
-                }
+    @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
+        if rows.isEmpty {
+            LedgerSection("Companies") {
+                EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Pick a trade, see the full start-up cost, then decide.",
+                           actionTitle: "Choose a trade") { store.push(.newCompany, on: .company) }
             }
         } else {
-            VStack(alignment: .leading, spacing: 5) {
-                companiesHeader(count: rows.count)
-                Card(padding: Self.boxPadding, rule: false, radius: Theme.Radius.card) {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        companyRows(e, rows: rows)
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
-                    .frame(height: scrollHeight)
+            let regular: Bool = sizeClass == .regular
+            let shown: [(co: Company, h: CompanyHealth)] = (showAll || regular) ? rows : Array(rows.prefix(Self.previewCount))
+            LedgerSection(title: "Companies · \(rows.count)", trailing: { sortMenu }) {
+                companyRows(e, rows: shown)
                     .accessibilityIdentifier("home-companies-box")
+                if shown.count < rows.count {
+                    Button("Show all \(rows.count) companies") { Haptics.tap(); Motion.animate(Motion.quick(reduceMotion)) { showAll = true } }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .accessibilityIdentifier("home-show-all-companies")
                 }
-                Button { Haptics.tap(); store.selectTab(.group) } label: {
-                    HStack {
-                        Spacer()
-                        Text("All \(rows.count) companies in Group ›").font(.system(size: 11.5)).foregroundStyle(Theme.gold)
-                    }
-                    .frame(height: Self.moreHeight).contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("home-open-group")
             }
         }
     }
 
-    private func companiesHeader(count: Int) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Companies · \(count)").font(.system(size: 10.5, weight: .semibold)).tracking(1.4).textCase(.uppercase).foregroundStyle(Theme.gold)
-            Spacer()
-            Menu {
-                Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-            } label: {
-                Text("Sorted by \(sort.rawValue.lowercased())  ⌄").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+    private var sortMenu: some View {
+        Menu {
+            Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+        } label: {
+            HStack(spacing: Theme.Space.xs) {
+                Text("Sorted by \(sort.rawValue.lowercased())").textStyle(.caption, tint: Theme.inkFaint)
+                Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint).accessibilityHidden(true)
             }
+            .frame(minHeight: 44).contentShape(Rectangle())
         }
-        .frame(height: 22)
     }
 
     @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
         if sizeClass == .regular {
             CompanyTable(engine: e, rows: rows) { store.push(.company($0), on: .company) }
         } else {
-            LazyVStack(alignment: .leading, spacing: 5) {
-                ForEach(rows, id: \.co.id) { r in
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
+                    if i > 0 { Hairline() }
                     NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
-                        .frame(height: Self.rowHeight)
                         .transition(.opacity)
                 }
             }
             .animation(Motion.quick(reduceMotion), value: rows.map { (r: (co: Company, h: CompanyHealth)) -> Int in r.co.id })
-        }
-    }
-
-    private func matches(_ co: Company) -> Bool {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        if !q.isEmpty && !co.name.lowercased().contains(q) && !(store.engine.map { $0.cityName(co).lowercased().contains(q) || $0.tradeName(co).lowercased().contains(q) } ?? false) { return false }
-        switch chainFilter {
-        case "all": return true
-        case "independent": return co.value("chain").isNull
-        default: return !co.value("chain").isNull && String(co.value("chain").int) == chainFilter
         }
     }
 
@@ -221,44 +165,43 @@ struct CompanyTable: View {
     var rows: [(co: Company, h: CompanyHealth)]
     var open: (Int) -> Void
     var body: some View {
-        Card(padding: 0, rule: false) {
-            Grid(alignment: .leading, horizontalSpacing: Theme.Space.l, verticalSpacing: 0) {
+        Grid(alignment: .leading, horizontalSpacing: Theme.Space.l, verticalSpacing: 0) {
+            GridRow {
+                ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Run by", "Staff", "Limited by"], id: \.self) { h in
+                    Text(h).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
+                }
+            }
+            .padding(.vertical, Theme.Space.s)
+            ForEach(rows, id: \.co.id) { r in
+                Hairline().gridCellUnsizedAxes(.horizontal)
                 GridRow {
-                    ForEach(["Company", "Status", "Revenue 12 mo", "Profit 12 mo", "Margin", "Cash", "Cash lasts", "Run by", "Staff", "Limited by"], id: \.self) { h in
-                        Text(h).font(.system(size: 9.5, weight: .semibold)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint)
-                    }
+                    Button { Haptics.tap(); open(r.co.id) } label: {
+                        HStack(spacing: Theme.Space.s) {
+                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                                Text(r.co.name).textStyle(.headline, tint: Theme.accent).lineLimit(1)
+                                Text("\(engine.tradeName(r.co)) · \(engine.cityName(r.co))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                            }
+                            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                        }
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                    }.buttonStyle(PressableStyle())
+                    .accessibilityHint("Opens the company")
+                    HealthChip(label: r.h.label)
+                    num(store.short(r.h.revenueTTM, in: r.co))
+                    num(store.short(r.h.profitTTM, in: r.co), Theme.change(r.h.profitTTM) == Theme.inkSoft ? Theme.ink : Theme.change(r.h.profitTTM))
+                    num(r.h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "–")
+                    num(store.short(r.co.cash, in: r.co), r.co.cash < 0 ? Theme.loss : Theme.ink)
+                    num(RunwayText.of(r.h), r.h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.warn } ?? Theme.inkSoft)
+                    Text(RunBy.name(engine, r.co)).textStyle(.caption).lineLimit(1)
+                    num("\(r.co.staff.count)")
+                    Text(r.h.bottleneck ?? "–").textStyle(.caption).lineLimit(1)
                 }
-                .padding(.vertical, Theme.Space.m)
-                ForEach(rows, id: \.co.id) { r in
-                    Hairline().gridCellUnsizedAxes(.horizontal)
-                    GridRow {
-                        Button { Haptics.tap(); open(r.co.id) } label: {
-                            HStack(spacing: 6) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(r.co.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold).lineLimit(1)
-                                    Text("\(engine.tradeName(r.co)) · \(engine.cityName(r.co))").font(.caption2).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                                }
-                                Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gold)
-                            }.contentShape(Rectangle())
-                        }.buttonStyle(PressableStyle())
-                        .accessibilityHint("Opens the company")
-                        HealthChip(label: r.h.label)
-                        num(store.short(r.h.revenueTTM, in: r.co))
-                        num(store.short(r.h.profitTTM, in: r.co), Theme.change(r.h.profitTTM) == Theme.ivoryMuted ? Theme.ivory : Theme.change(r.h.profitTTM))
-                        num(r.h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "–")
-                        num(store.short(r.co.cash, in: r.co), r.co.cash < 0 ? Theme.loss : Theme.ivory)
-                        num(RunwayText.of(r.h), r.h.runwayWeeks.map { $0 < 8 ? Theme.loss : Theme.caution } ?? Theme.ivoryMuted)
-                        Text(RunBy.name(engine, r.co)).font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                        num("\(r.co.staff.count)")
-                        Text(r.h.bottleneck ?? "–").font(.caption).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
-                    }
-                    .padding(.vertical, 10)
-                }
+                .padding(.vertical, Theme.Space.xs)
             }
         }
     }
-    private func num(_ s: String, _ c: Color = Theme.ivory) -> some View {
-        Text(s).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(c).lineLimit(1)
+    private func num(_ s: String, _ c: Color = Theme.ink) -> some View {
+        Text(s).textStyle(.body, tint: c, numeric: true).lineLimit(1)
     }
 }
 
@@ -294,7 +237,7 @@ struct StatusChip: View {
     }
 }
 
-/// One company in the list, a slim card as in the Home mockup: icon, name with trade, city and people, value, and profit a year.
+/// One company in the Home list, unboxed between hairlines: icon, name with trade, city and people, profit a year and cash.
 struct CompanyRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -310,30 +253,27 @@ struct CompanyRow: View {
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-        HStack(spacing: 10) {
-            ThumbnailView(kind: .trade, key: co.type, size: 30)
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 5) {
-                    if urgent { GlyphView(glyph: Glyph.warning, size: 12, weight: 1.9, tint: Theme.loss).accessibilityLabel("Needs attention") }
-                    Text(co.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+        let profitTint: Color = h.profitTTM < -0.5 ? Theme.loss : h.profitTTM > 0.5 ? Theme.gain : Theme.inkSoft
+        HStack(spacing: Theme.Space.m) {
+            ThumbnailView(kind: .trade, key: co.type, size: 36)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                HStack(spacing: Theme.Space.xs) {
+                    if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }
+                    Text(co.name).textStyle(.headline).lineLimit(1)
                     CosmeticBadgeView(badge: badge, tint: accent, size: 16)
                 }
-                Text(subtitle(co)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                Text(subtitle(co)).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 0) {
+            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
                 Text((h.profitTTM < 0 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co) + " / yr")
-                    .font(.system(size: 13, weight: .medium).monospacedDigit())
-                    .foregroundStyle(h.profitTTM < -0.5 ? Theme.loss : h.profitTTM > 0.5 ? Theme.gain : Theme.ivoryMuted)
-                Text("cash " + store.short(co.cash, in: co)).font(.system(size: 11).monospacedDigit()).foregroundStyle(co.cash < 0 ? Theme.loss : Theme.ivoryFaint)
+                    .textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
+                Text("cash " + store.short(co.cash, in: co)).textStyle(.caption, tint: co.cash < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
             }
             .lineLimit(1)
-            GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: Theme.ivoryDim)
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
         }
-        .padding(.horizontal, 12).padding(.vertical, 7)
-        .background(shape.fill(Theme.surface))
-        .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
+        .padding(.vertical, Theme.Space.m)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
@@ -352,10 +292,4 @@ enum RunBy {
         if let b = e.decisionChain(companyID: co.id).first { return b.name }
         return OwnerHours.works(co) ? "You" : (co.status == .open ? "No one" : "–")
     }
-}
-
-/// Carries the measured height of Home's fixed top block up to the screen that lays the rest out.
-struct HomeTopHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

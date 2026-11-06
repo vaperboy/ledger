@@ -110,15 +110,14 @@ struct HomeShortcutEditor: View {
             if on { chosen.removeAll { $0 == item } } else if !full { chosen.append(item) }
             Haptics.choose()
         } label: {
-            HStack(spacing: 10) {
-                GlyphView(glyph: item.glyph, size: 17, weight: 1.7)
+            HStack(spacing: Theme.Space.m) {
+                LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium)
                 Text(item.title).popupText(.body)
                 Spacer()
-                if on { GlyphView(glyph: Glyph.check, size: 15, weight: 2, tint: Theme.gold) }
+                if on { LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: Theme.accent) }
             }
-            .padding(.horizontal, 12).frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(on ? Theme.goldSelected : Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
+            .padding(.horizontal, Theme.Space.m).frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(on ? Theme.accentWash : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())

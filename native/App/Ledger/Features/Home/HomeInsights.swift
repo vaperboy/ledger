@@ -24,7 +24,7 @@ struct InsightsView: View {
                         companiesCard(accent: accent)
                         runwayCard(accent: accent)
                     }
-                    .padding(.horizontal, 18).padding(.bottom, 24)
+                    .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xl)
                 }
                 .scrollIndicators(.hidden)
                 .blur(radius: pro ? 0 : 9)
@@ -38,7 +38,7 @@ struct InsightsView: View {
 
     private var lockCard: some View {
         VStack(spacing: 10) {
-            Image(systemName: "lock.fill").font(.system(size: 22)).foregroundStyle(Theme.gold)
+            Image(systemName: "lock.fill").font(.title2).foregroundStyle(Theme.accent).accessibilityHidden(true)
             Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
             Text("Net worth over time, which company is pulling ahead, and how many days of cash you have left.")
                 .popupText(.caption).multilineTextAlignment(.center)
@@ -47,11 +47,11 @@ struct InsightsView: View {
                 ent.paywall = PaywallRequest(title: "Insights")
             }
         }
-        .padding(18)
+        .padding(Theme.Space.l)
         .frame(maxWidth: 320)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface.opacity(0.96)))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        .padding(.horizontal, 24)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous).fill(Theme.surfaceRaised))
+        .elevation(.raised)
+        .padding(.horizontal, Theme.Space.xl)
     }
 
     // MARK: Cards
@@ -64,8 +64,7 @@ struct InsightsView: View {
                 HStack {
                     Text("Net worth over time").capsLabel()
                     Spacer()
-                    Text((change >= 0 ? "▲ " : "▼ ") + store.short(abs(change))).font(.system(size: 12, weight: .medium).monospacedDigit())
-                        .foregroundStyle(Theme.change(change))
+                    Text((change >= 0 ? "▲ " : "▼ ") + store.short(abs(change))).textStyle(.caption, tint: Theme.change(change), numeric: true, weight: .medium)
                 }
                 InsightLine(values: series, tint: accent, drawn: drawn).frame(height: 90)
             }
@@ -111,8 +110,7 @@ struct InsightsView: View {
             HStack {
                 Text(m.name).popupText(.body).lineLimit(1)
                 Spacer()
-                Text((m.amount >= 0 ? "+" : "−") + store.short(abs(m.amount))).font(.system(size: 12, weight: .medium).monospacedDigit())
-                    .foregroundStyle(Theme.change(m.amount))
+                Text((m.amount >= 0 ? "+" : "−") + store.short(abs(m.amount))).textStyle(.caption, tint: Theme.change(m.amount), numeric: true, weight: .medium)
             }
             GeometryReader { (g: GeometryProxy) in
                 Capsule().fill(m.amount >= 0 ? accent : Theme.loss)

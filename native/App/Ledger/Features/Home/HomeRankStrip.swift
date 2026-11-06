@@ -5,7 +5,7 @@ import Simulation
 
 /// The career strip under the net worth on Home: the logo badge inside a ring that fills towards the next rank, the rank title with
 /// its percentage (counting up), the next short goal, the play streak and today's mission. Tap the ring or the text for Goals; the
-/// small chart button opens Insights (Pro). A missed day never shows a loss: the streak simply starts again.
+/// small chart button opens Insights (Pro). Unboxed, near the bottom of Home. A missed day never shows a loss: the streak starts again.
 struct HomeRankStrip: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -28,15 +28,12 @@ struct HomeRankStrip: View {
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
         let rankIndex: Int = st.rank.index
         let tick: Int = engine.state.week * 7 + engine.state.day
-        return Card(padding: 0, radius: Theme.Radius.card) {
-            HStack(spacing: 10) {
-                ringButton(st, accent: accent, badge: badge)
-                textBlock(st, goals: goals, accent: accent)
-                Spacer(minLength: 4)
-                missionColumn(accent: accent)
-                insightsButton(accent: accent)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 6)
+        return HStack(spacing: Theme.Space.m) {
+            ringButton(st, accent: accent, badge: badge)
+            textBlock(st, goals: goals, accent: accent)
+            Spacer(minLength: Theme.Space.xs)
+            missionColumn(accent: accent)
+            insightsButton(accent: accent)
         }
         .onAppear {
             refreshDaily()
@@ -59,7 +56,6 @@ struct HomeRankStrip: View {
                 CosmeticBadgeView(badge: badge, tint: accent, size: 28)
             }
             .scaleEffect(burst ? 1.22 : 1)
-            .shadow(color: accent.opacity(burst ? 0.7 : 0), radius: burst ? 10 : 0)
             .frame(width: 48, height: 48)
             .contentShape(Rectangle())
         }
@@ -71,14 +67,14 @@ struct HomeRankStrip: View {
     private func textBlock(_ st: Career.RankStatus, goals: [Career.Goal], accent: Color) -> some View {
         let goalLine: String = goals.first.map { (g: Career.Goal) -> String in "Next: " + g.title } ?? "Keep building"
         return Button { Haptics.tap(); store.openApp(.goals) } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(st.rank.title).font(.serifTitle(16)).foregroundStyle(Theme.ivory).lineLimit(1)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                HStack(spacing: Theme.Space.s) {
+                    Text(st.rank.title).textStyle(.headline).lineLimit(1)
                     if st.next != nil {
-                        CountUpPercent(value: shownProgress * 100).font(.system(size: 11, weight: .medium)).foregroundStyle(accent)
+                        CountUpPercent(value: shownProgress * 100).textStyle(.caption, tint: accent, weight: .medium)
                     }
                 }
-                Text(goalLine).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+                Text(goalLine).textStyle(.caption).lineLimit(2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -94,18 +90,17 @@ struct HomeRankStrip: View {
         let claimable: Bool = (daily?.done ?? false) && !(daily?.claimed ?? false)
         let claimed: Bool = daily?.claimed ?? false
         let line: String = claimable ? "Claim" : claimed ? "Done today" : daily != nil ? "Mission" : ""
-        let lineColor: Color = claimable ? accent : claimed ? Theme.gain : Theme.ivoryFaint
+        let lineColor: Color = claimable ? accent : claimed ? Theme.gain : Theme.inkFaint
         return Button {
             if claimable { claim() } else { Haptics.tap(); store.openApp(.goals) }
         } label: {
-            VStack(spacing: 1) {
-                HStack(spacing: 3) {
-                    Image(systemName: "flame.fill").font(.system(size: 12)).foregroundStyle(streak > 0 ? accent : Theme.ivoryDim)
-                    Text(streak > 0 ? "\(streak)" : "0").font(.system(size: 13, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(streak > 0 ? Theme.ivory : Theme.ivoryFaint)
+            VStack(spacing: Theme.Space.xxs) {
+                HStack(spacing: Theme.Space.xs) {
+                    Image(systemName: "flame.fill").font(.caption).foregroundStyle(streak > 0 ? accent : Theme.inkFaint)
+                    Text(streak > 0 ? "\(streak)" : "0").textStyle(.body, tint: streak > 0 ? Theme.ink : Theme.inkFaint, numeric: true, weight: .semibold)
                 }
                 if !line.isEmpty {
-                    Text(line).font(.system(size: 10.5, weight: claimable ? .semibold : .regular)).foregroundStyle(lineColor)
+                    Text(line).textStyle(.caption, tint: lineColor, weight: claimable ? .semibold : nil).lineLimit(1)
                         .opacity(claimable && claimGlow ? 0.55 : 1)
                 }
             }
@@ -122,11 +117,10 @@ struct HomeRankStrip: View {
     private func insightsButton(accent: Color) -> some View {
         Button { Haptics.tap(); onInsights() } label: {
             ZStack(alignment: .topTrailing) {
-                Image(systemName: "chart.line.uptrend.xyaxis").font(.system(size: 15, weight: .medium)).foregroundStyle(accent)
-                    .frame(width: 34, height: 34)
-                    .background(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
+                Image(systemName: "chart.line.uptrend.xyaxis").font(.body.weight(.medium)).foregroundStyle(accent)
+                    .frame(width: Theme.Icon.large, height: Theme.Icon.large)
                 if !ent.isPro {
-                    Image(systemName: "lock.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.gold).offset(x: 3, y: -2)
+                    Image(systemName: "lock.fill").font(.caption2.weight(.bold)).foregroundStyle(Theme.accent).offset(x: Theme.Space.xs, y: -Theme.Space.xxs)
                 }
             }
             .frame(minWidth: 44, minHeight: 44)
