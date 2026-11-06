@@ -56,8 +56,8 @@ struct ChainSupplyOverview: View {
         let quiet = all.filter { r in r.exceptions.isEmpty && isOutside(r.usual) && r.id != "goods" && r.id != "repair" }
         let rules = engine.chainSupplierRules(chainID: summary.id)
         if !all.isEmpty {
-            MoreBlock(title: "Suppliers", card: false, trailing: { Text("\(links.count) from your own").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 10) {
+            MoreBlock(title: "Suppliers", card: false, trailing: { Text("\(links.count) from your own").textStyle(.caption, tint: Theme.inkFaint) }) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Text("The usual provider of each input across the stores, and the stores that differ. Set a chain rule to make one provider the choice for every store the chain governs; without a rule each store chooses its own. A board agreement can set goods for every company.")
                         .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                     ForEach(rules) { rule in
@@ -65,14 +65,14 @@ struct ChainSupplyOverview: View {
                     }
                     ForEach(active) { (r: Row) in
                         EntityCard {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: Theme.Space.xs) {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text(r.title.tidyMoney).font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
-                                    Text(r.usual).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                                    Text(r.title.tidyMoney).textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
+                                    Text(r.usual).textStyle(.body, tint: Theme.ink)
                                 }
                                 Spacer(minLength: 8)
-                                Text("\(r.usualCount) of \(r.byStore.count) stores").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                                Text("\(r.usualCount) of \(r.byStore.count) stores").textStyle(.caption, tint: Theme.inkSoft, numeric: true)
                             }
                             ForEach(Array(r.exceptions.prefix(8)), id: \.storeID) { x in
                                 NavigationLink(value: CompanyRoute.companyAt(x.storeID, .operations)) {
@@ -112,11 +112,11 @@ struct ChainSupplyOverview: View {
         let following = rule.plan.lines.filter { !$0.changes && !$0.free }.count
         let kept = rule.plan.lines.filter { $0.changes && $0.reason != nil && !$0.free }
         let free = rule.plan.lines.filter { $0.free }
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Chain rule · \(rule.title)").font(.system(size: 11.5, weight: .medium)).foregroundStyle(Theme.ivoryFaint)
-                    Text(rule.providerName).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                    Text("Chain rule · \(rule.title)").textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
+                    Text(rule.providerName).textStyle(.body, tint: Theme.ink)
                 }
                 Spacer(minLength: 8)
                 Chip(text: "Mandatory", tint: Theme.gold)
@@ -128,7 +128,7 @@ struct ChainSupplyOverview: View {
                     GroupLinkRow(title: l.storeName, sub: "Keeps its own, locked by the rule: \(l.reason ?? "")", subTint: Theme.caution)
                 }.buttonStyle(PressableStyle())
             }
-            HStack(spacing: 12) {
+            HStack(spacing: Theme.Space.m) {
                 if !kept.isEmpty || rule.plan.changing > 0 {
                     Button("Try the stores that differ again") {
                         let r = store.act { $0.setChainSupplier(chainID: summary.id, input: rule.input, to: rule.change) }
@@ -157,7 +157,7 @@ struct ChainSupplyOverview: View {
         } label: {
             Text("Set a chain-wide provider")
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
-                .padding(.horizontal, 10).padding(.vertical, 4).frame(minHeight: 28)
+                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs).frame(minHeight: 28)
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
         }
     }

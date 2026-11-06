@@ -71,7 +71,7 @@ struct ProjectsView: View {
             return acc + l.value * e.currency(for: co).rate / max(home.rate, 0.000001)
         }
         let sub = running.isEmpty ? "Nothing running" : "\(running.count) running · \(store.short(committed)) committed"
-        return HStack(spacing: 12) {
+        return HStack(spacing: Theme.Space.m) {
             IconCircle(glyph: Glyph.projects, size: 44)
             AppHeader(title: "Ventures", subtitle: sub) {
                 SmallOutlineButton(title: "New project") { part = .running; runPart = .bids }
@@ -88,7 +88,7 @@ struct ProjectUnderlineTabs<T: Hashable>: View {
     var count: (T) -> Int = { _ in 0 }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Space.s) {
             ForEach(items, id: \.self) { item in
                 let on = item == selection
                 let n = count(item)
@@ -96,7 +96,7 @@ struct ProjectUnderlineTabs<T: Hashable>: View {
                     Text(title(item) + (n > 0 ? " \(n)" : ""))
                         .font(.system(size: 13.5)).lineLimit(1).minimumScaleFactor(0.75)
                         .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-                        .frame(maxWidth: .infinity).padding(.vertical, 8).padding(.bottom, 1)
+                        .frame(maxWidth: .infinity).padding(.vertical, Theme.Space.s).padding(.bottom, 1)
                         .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 2) } }
                         .contentShape(Rectangle())
                 }
@@ -113,15 +113,15 @@ struct ProjectCardRow: View {
     var title: String
     var sub: String = ""
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(title.tidyText).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+                Text(title.tidyText).textStyle(.body, tint: Theme.ink, weight: .medium)
+                if !sub.isEmpty { Text(sub.tidyText).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 8)
             GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
         }
-        .padding(.horizontal, 14).padding(.vertical, 10)
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
         .contentShape(Rectangle())

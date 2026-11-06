@@ -91,8 +91,8 @@ struct CompanyMoneySummary: View {
             .init(label: "Debt", value: cur.tidyShort(h.debt), tint: debtTint),
             .init(label: "Due in 30 days", value: cur.tidyShort(o.dueWithin30Days), tint: dueTint),
         ]
-        return Card(padding: 14, radius: Theme.Radius.card) {
-            VStack(alignment: .leading, spacing: 10) {
+        return Card(padding: Theme.Space.l, radius: Theme.Radius.card) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 StatStrip(cells: cells, ruled: false)
                 loansRow(cur, h.debt)
             }
@@ -105,7 +105,7 @@ struct CompanyMoneySummary: View {
         let loans = engine.state.loans.filter { $0.companyID == company.id && $0.balance > 0 }
         let monthly = loans.reduce(0) { $0 + $1.monthlyPayment }
         let sub: String = loans.isEmpty ? "No loans" : "\(loans.count) \(loans.count == 1 ? "loan" : "loans") · \(cur.tidyShort(monthly)) a month"
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             FlatRow(label: "Loans", value: cur.tidyShort(debt), sub: sub, rule: true)
         }
     }
@@ -143,7 +143,7 @@ struct CompanyPaymentStress: View {
         let billsOwed = (company.payables["rent"] ?? 0) + (company.payables["other"] ?? 0)
         if missed > 0 || company.flag("loanFrozen") || called != 0 || sup > 0 || vatOver > 1 {
             CardSection("Behind on payments") {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     if called != 0 { line("The bank has called the loan: pay the next instalment within \(max(0, weeksLeft).weeksText) or the company is wound up.", Theme.loss) }
                     else if missed > 0 { line("\(missed) loan instalment\(missed == 1 ? "" : "s") missed. Unpaid interest and a penalty were added to the loan.", Theme.loss) }
                     if company.flag("loanFrozen") { line("Credit restricted: no new loans until the instalments are back on track.", Theme.caution) }
@@ -156,8 +156,8 @@ struct CompanyPaymentStress: View {
         }
     }
     private func line(_ text: String, _ tint: Color) -> some View {
-        HStack(alignment: .top, spacing: 9) {
-            Image(systemName: tint == Theme.ivoryMuted ? "info.circle" : "exclamationmark.triangle.fill").font(.system(size: 12)).foregroundStyle(tint).padding(.top, 2)
+        HStack(alignment: .top, spacing: Theme.Space.s) {
+            Image(systemName: tint == Theme.ivoryMuted ? "info.circle" : "exclamationmark.triangle.fill").font(.system(size: 12)).foregroundStyle(tint).padding(.top, Theme.Space.xxs)
             Text(text).font(.system(size: 13.5, weight: tint == Theme.ivoryMuted ? .regular : .medium)).foregroundStyle(tint == Theme.ivoryMuted ? Theme.ivoryMuted : Theme.ivory).fixedSize(horizontal: false, vertical: true)
         }
     }

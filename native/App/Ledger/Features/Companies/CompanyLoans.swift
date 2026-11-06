@@ -21,8 +21,8 @@ struct CompanyLoans: View {
         let missedTotal = loans.reduce(0) { $0 + $1.int("miss") }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if missedTotal > 0 || company.int("loanCall") != 0 {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(P.loss).padding(.top, 2)
+                HStack(alignment: .top, spacing: Theme.Space.m) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(P.loss).padding(.top, Theme.Space.xxs)
                     Text(company.int("loanCall") != 0 ? "The bank has called a loan. Pay the next instalment in time or the company is wound up."
                          : "\(missedTotal) missed \(missedTotal == 1 ? "instalment" : "instalments"). Penalties are added each month until the loan is back on track.")
                         .font(.system(size: 14, weight: .medium)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
@@ -36,20 +36,20 @@ struct CompanyLoans: View {
                 VStack(spacing: 0) {
                     ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                         if n > 0 { Hairline() }
-                        HStack(alignment: .center, spacing: 10) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(l.name).font(.system(size: 13.5)).foregroundStyle(P.ink)
+                        HStack(alignment: .center, spacing: Theme.Space.m) {
+                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                                Text(l.name).textStyle(.body, tint: P.ink)
                                 Text("Interest \(Currency.percent(Banking.rate(of: l, state: engine.state, modifiers: engine.context.lending, countryShift: shift), decimals: 2)) · \(cur.tidyDisplay(l.monthlyPayment)) a month" + (l.termMonths > 0 ? " · \(l.termMonths / 12 >= 1 && l.termMonths % 12 == 0 ? "\(l.termMonths / 12)-year" : "\(l.termMonths)-month") term" : "") + (l.isGuaranteed ? " · you guarantee it" : ""))
                                     .font(.system(size: 11)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-                                if l.int("miss") > 0 { Text("\(l.int("miss")) instalment\(l.int("miss") == 1 ? "" : "s") missed").font(.system(size: 11)).foregroundStyle(P.loss) }
+                                if l.int("miss") > 0 { Text("\(l.int("miss")) instalment\(l.int("miss") == 1 ? "" : "s") missed").textStyle(.caption, tint: P.loss) }
                             }
                             Spacer(minLength: 8)
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(cur.tidyShort(l.balance)).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(P.ink)
+                            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                                Text(cur.tidyShort(l.balance)).textStyle(.headline, tint: P.ink, numeric: true)
                                 Button("Details…") { repaying = l }.buttonStyle(QuietButtonStyle())
                                     .accessibilityIdentifier("company-loan-details")
                             }
-                        }.padding(.vertical, 9)
+                        }.padding(.vertical, Theme.Space.s)
                     }
                 }
             }

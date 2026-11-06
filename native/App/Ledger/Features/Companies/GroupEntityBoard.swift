@@ -22,10 +22,10 @@ struct GroupEntityBoard: View {
     var body: some View {
         let key: String = engine.boardKey(companyID: entity.companyID) ?? ""
         let active: Bool = !key.isEmpty && engine.boardIsActive(key: key)
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             if !message.isEmpty { NoteCard(text: message) }
             if active { roomLink(key) }
-            Card(padding: 4, radius: Theme.Radius.hero) {
+            Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
                 VStack(spacing: 0) {
                     ownerRow
                     if active { seatRows(key) }
@@ -49,7 +49,7 @@ struct GroupEntityBoard: View {
     }
 
     private func avatar(_ text: String) -> some View {
-        Text(text).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+        Text(text).textStyle(.caption, tint: Theme.accent, weight: .medium)
             .frame(width: 32, height: 32)
             .background(Circle().fill(Color(hex: 0x1E1F21)))
             .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
@@ -71,17 +71,17 @@ struct GroupEntityBoard: View {
     }
 
     private func line<Lead: View, Trail: View>(first: Bool, @ViewBuilder lead: () -> Lead, title: String, sub: String, chip: String = "", @ViewBuilder trail: () -> Trail) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Space.m) {
             lead()
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                if !sub.isEmpty { Text(sub).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1) }
+                Text(title).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                if !sub.isEmpty { Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1) }
             }
             if !chip.isEmpty { Chip(text: chip, tint: Theme.gold) }
             Spacer(minLength: 6)
             trail()
         }
-        .padding(.horizontal, 10).padding(.vertical, 7)
+        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
         .frame(minHeight: 46)
         .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
     }
@@ -120,7 +120,7 @@ struct GroupEntityBoard: View {
         let id: String = r.id
         return Button { Haptics.tap(); seatSheet = SeatRef(id: id) } label: {
             line(first: false, lead: { plusRing() }, title: r.title, sub: r.text, trail: {
-                Text("Appoint").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
+                Text("Appoint").textStyle(.body, tint: Theme.accent, weight: .medium)
                     .frame(minWidth: 64, minHeight: 36, alignment: .trailing)
             })
         }.buttonStyle(PressableStyle())
@@ -166,7 +166,7 @@ struct SeatPickerSheet: View {
     var body: some View {
         let r: ManagerModel.SeatRole? = store.engine?.seatRoles.first { (x: ManagerModel.SeatRole) -> Bool in x.id == role }
         let cands: [Person] = (store.engine?.boardCandidates(key: key) ?? []).filter { (p: Person) -> Bool in p.str("adv13") == role }
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(r?.text ?? "").popupText(.caption).lineLimit(2)
             if cands.isEmpty {
                 Text("Nobody lined up for this seat yet.").popupText(.caption)
@@ -182,7 +182,7 @@ struct SeatPickerSheet: View {
 
     private func candidateRow(_ p: Person) -> some View {
         let fee: Double = p.num("fee13")
-        return HStack(spacing: 8) {
+        return HStack(spacing: Theme.Space.s) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(p.name).popupText(.rowValue).lineLimit(1)
                 Text("\(p.str("advBg")) \u{00B7} \(store.short(fee * 12)) a year").popupText(.caption).lineLimit(1)
@@ -190,7 +190,7 @@ struct SeatPickerSheet: View {
             Spacer(minLength: 6)
             Button("Appoint") { seat(p, fee) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Theme.Space.xs)
     }
 
     private func search() {

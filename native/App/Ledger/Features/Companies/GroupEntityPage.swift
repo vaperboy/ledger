@@ -15,11 +15,11 @@ struct GroupEntityPage: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-                .padding(.horizontal, 18).padding(.top, 6)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
             if let e = store.engine {
                 let shown: [GroupSection] = visibleSections(e)
                 GroupSectionBar(tab: $section, badges: badges(e), sections: shown)
-                    .padding(.horizontal, 18).padding(.top, 10)
+                    .padding(.top, Theme.Space.s)
                 SegmentPager(items: shown, selection: $section) { (s: GroupSection) in
                     screen(e, s)
                 }
@@ -31,11 +31,7 @@ struct GroupEntityPage: View {
     }
 
     @ViewBuilder private func screen(_ e: GameEngine, _ s: GroupSection) -> some View {
-        if s == .money && !entity.isHolding {
-            FixedScreen(top: 12) { content(e, s) }
-        } else {
-            ScrollScreen(top: 12) { content(e, s) }
-        }
+        ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.l) { content(e, s) }
     }
 
     /// Every tab. The Boardroom is always there: with no co-owner it is an advisory board of your managers.
@@ -47,28 +43,32 @@ struct GroupEntityPage: View {
         return n > 0 ? [.board: n] : [:]
     }
 
+    /// Back, then the name and kind, then the entity's value as the lead figure with its 30-day change.
     private var header: some View {
         let ch = GroupFmt.change(entity, store)
-        return HStack(spacing: 10) {
+        return HStack(alignment: .top, spacing: Theme.Space.xs) {
             Button { Haptics.tap(); onBack() } label: {
-                Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.gold)
-                    .frame(width: 40, height: 44)
+                LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: Theme.accent)
+                    .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel("Back to Group")
             .accessibilityIdentifier("group-back")
-            VStack(alignment: .leading, spacing: 1) {
-                Text(entity.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
-                Text(entity.kind).font(.system(size: 12)).foregroundStyle(entity.isChain ? Theme.gold : Theme.ivoryMuted).lineLimit(1)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(entity.name).textStyle(.headline).lineLimit(1)
+                Text(entity.kind).textStyle(.caption, tint: entity.isChain ? Theme.accent : nil).lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                    LiveFigure(value: entity.value, text: store.short(entity.value)).textStyle(.display, numeric: true)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                    Text(ch.text).textStyle(.caption, tint: ch.tint).lineLimit(1)
+                }
+                .padding(.top, Theme.Space.xs)
             }
+            .padding(.top, Theme.Space.s)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 6)
-            VStack(alignment: .trailing, spacing: 1) {
-                LiveFigure(value: entity.value, text: store.short(entity.value)).font(.system(size: 18, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
-                Text(ch.text).font(.system(size: 11.5)).foregroundStyle(ch.tint).lineLimit(1)
-            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -78,7 +78,7 @@ struct GroupEntityPage: View {
         case .management: GroupEntityManagement(engine: e, entity: entity)
         case .board: GroupBoardroom(engine: e, entity: entity)
         case .expansion:
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
                 EntityExpansionView(companyID: entity.companyID)
                 GroupBuyRows(engine: e, entity: entity)
             }
@@ -102,32 +102,33 @@ struct GroupEntityOverview: View {
         var label: String
         var value: String
         var tint: Color = Theme.ivory
+        /// The three money figures, shown as one strip above the facts.
+        static let moneyLabels: Set<String> = ["Revenue this month", "Profit this month", "Cash"]
     }
 
     var body: some View {
         let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
-        VStack(alignment: .leading, spacing: 14) {
-            Card(padding: 12, radius: Theme.Radius.hero) {
-                VStack(spacing: 0) {
-                    let list: [Stat] = stats(cos)
-                    ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, s: Stat) in
-                        HStack {
-                            Text(s.label).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
-                            Spacer(minLength: 8)
-                            Text(s.value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(s.tint).lineLimit(1).minimumScaleFactor(0.7)
-                        }
-                        .padding(.vertical, 8)
-                        .overlay(alignment: .top) { if n > 0 { Rectangle().fill(Theme.divider).frame(height: 1) } }
-                    }
+        let list: [Stat] = stats(cos)
+        let money: [Stat] = list.filter { (s: Stat) -> Bool in Stat.moneyLabels.contains(s.label) }
+        let facts: [Stat] = list.filter { (s: Stat) -> Bool in !Stat.moneyLabels.contains(s.label) }
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            FigureRow(items: money.map { (s: Stat) -> KeyFigures.Item in KeyFigures.Item(label: s.label, value: s.value, tint: s.tint) }, columns: 3, combineCells: true)
+            VStack(spacing: Theme.Space.s) {
+                ForEach(Array(facts.enumerated()), id: \.element.id) { (n: Int, s: Stat) in
+                    if n > 0 { Hairline() }
+                    ValueRow(label: s.label, value: s.value, tint: s.tint)
+                        .accessibilityElement(children: .combine)
                 }
             }
             if entity.isHolding { subsidiaries }
-            Button { Haptics.tap(); store.openCompany(entity.companyID, section: .staff) } label: {
-                CardRow(glyph: Glyph.team, title: "Staff", subtitle: "Workers, hiring, job ads and perks. Managers and executives are in Management")
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-entity-team")
-            Button { Haptics.tap(); openEntityCompany() } label: {
-                CardRow(glyph: Glyph.home, title: entity.isChain ? "Open the flagship store" : "Open the company", subtitle: "Manage, sales, stats and the rest of its screens")
-            }.buttonStyle(PressableStyle())
+            VStack(spacing: 0) {
+                LedgerRow(leading: .glyph(Glyph.team), title: "Staff", subtitle: "Workers, hiring, job ads and perks",
+                          identifier: "group-entity-team", action: { store.openCompany(entity.companyID, section: .staff) })
+                Hairline()
+                LedgerRow(leading: .glyph(Glyph.home), title: entity.isChain ? "Open the flagship store" : "Open the company",
+                          subtitle: "Manage, sales, stats and the rest of its screens", action: { openEntityCompany() })
+            }
+            .overlay(alignment: .top) { Hairline() }
         }
     }
 
@@ -164,7 +165,7 @@ struct GroupEntityOverview: View {
         }
         out.append(Stat(label: "Employees", value: "\(staff)"))
         out.append(Stat(label: "Revenue this month", value: store.short(revenue)))
-        out.append(Stat(label: "Profit this month", value: store.short(profit), tint: profit < 0 ? Theme.loss : Theme.gain))
+        out.append(Stat(label: "Profit this month", value: store.short(profit), tint: Theme.change(profit)))
         out.append(Stat(label: "Cash", value: store.short(cash), tint: cash < 0 ? Theme.loss : Theme.ivory))
         let brand: Double = engine.brandValue(companyID: entity.companyID)
         out.append(Stat(label: "Brand", value: BrandWords.label(score: brand), tint: Theme.gold))
@@ -186,12 +187,14 @@ struct GroupEntityOverview: View {
     @ViewBuilder private var subsidiaries: some View {
         let subs: [Company] = entity.members.dropFirst().compactMap { (id: Int) -> Company? in engine.state.company(id) }
         if !subs.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("UNDER THIS HOLDING").capsLabel()
-                ForEach(subs) { (c: Company) in
-                    Button { Haptics.tap(); store.openCompany(c.id) } label: {
-                        CardRow(glyph: Glyph.home, title: c.name, subtitle: "\(engine.tradeName(c)) \u{00B7} \(engine.cityName(c))", value: store.short(Valuation.companyValue(c, state: engine.state, trades: engine.data.catalog), in: c))
-                    }.buttonStyle(PressableStyle())
+            LedgerSection("Under this holding") {
+                VStack(spacing: 0) {
+                    ForEach(Array(subs.enumerated()), id: \.element.id) { (n: Int, c: Company) in
+                        if n > 0 { Hairline() }
+                        LedgerRow(leading: .glyph(Glyph.home), title: c.name, subtitle: "\(engine.tradeName(c)) \u{00B7} \(engine.cityName(c))",
+                                  value: store.short(Valuation.companyValue(c, state: engine.state, trades: engine.data.catalog), in: c),
+                                  action: { store.openCompany(c.id) })
+                    }
                 }
             }
         }

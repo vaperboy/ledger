@@ -30,13 +30,13 @@ struct CompanyFinanceBook: View {
     }
 
     private func regulator(_ b: FinanceBook) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            Image(systemName: "exclamationmark.shield.fill").font(.system(size: 15)).foregroundStyle(Theme.loss).padding(.top, 2)
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            Image(systemName: "exclamationmark.shield.fill").font(.system(size: 15)).foregroundStyle(Theme.loss).padding(.top, Theme.Space.xxs)
             Text(b.kind == .insurer ? "The regulator restricts the company: solvency is too low, so new business is cut in half. Put capital into the company under Finances."
                                     : "The regulator warns about the capital ratio. Put equity into the company under Finances, or lend less.")
                 .font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, Theme.Space.xs)
     }
 
     // MARK: Insurance
@@ -56,8 +56,8 @@ struct CompanyFinanceBook: View {
                 VStack(spacing: 0) {
                     ForEach(Array(products.enumerated()), id: \.element.id) { n, p in
                         HStack(alignment: .firstTextBaseline) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(p.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                                Text(p.name).textStyle(.body, tint: Theme.ink)
                                 Text(p.status + (p.isOffered ? " · verified sellers \(Int(p.verifiedSellers.rounded()))" : " · approval " + cur.tidyShort(p.approvalFee)))
                                     .font(.caption).foregroundStyle(p.status == "Live" ? Theme.gain : Theme.ivoryFaint)
                             }
@@ -65,7 +65,7 @@ struct CompanyFinanceBook: View {
                             Button(p.isOffered ? "Stop selling" : "Offer…") { confirmToggle(p, cur) }
                                 .buttonStyle(QuietButtonStyle(tint: p.isOffered ? Theme.loss : Theme.gold))
                         }
-                        .padding(.vertical, 9)
+                        .padding(.vertical, Theme.Space.s)
                         if n < products.count - 1 { Hairline() }
                     }
                 }
@@ -81,7 +81,7 @@ struct CompanyFinanceBook: View {
                     VStack(spacing: 0) {
                         ForEach(Array(sellers.enumerated()), id: \.element.id) { n, s in
                             HStack(alignment: .firstTextBaseline) {
-                                Text(s.name).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
+                                Text(s.name).textStyle(.body, tint: Theme.ink)
                                 Spacer(minLength: 8)
                                 Menu {
                                     ForEach(products.filter { $0.isOffered }) { p in
@@ -89,11 +89,11 @@ struct CompanyFinanceBook: View {
                                     }
                                 } label: {
                                     Text("Verify for…  ⌄").font(.system(.subheadline).weight(.semibold)).foregroundStyle(Theme.gold)
-                                        .padding(.horizontal, 14).padding(.vertical, 8).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75))
+                                        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.s).overlay(Capsule().strokeBorder(Theme.gold.opacity(0.45), lineWidth: 0.75))
                                 }
                                 .disabled(products.allSatisfy { !$0.isOffered })
                             }
-                            .padding(.vertical, 9)
+                            .padding(.vertical, Theme.Space.s)
                             if n < sellers.count - 1 { Hairline() }
                         }
                     }

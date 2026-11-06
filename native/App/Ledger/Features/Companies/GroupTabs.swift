@@ -13,33 +13,50 @@ enum GroupSection: String, CaseIterable, Hashable {
     var key: String { rawValue.lowercased() }
 }
 
-/// Text tabs with a champagne underline, equal widths, never scrolling sideways (six titles: Overview, Management, Boardroom, Money, Expansion, Ownership fit 375 pt at 12.5 pt with the shrink).
+/// Text tabs with a champagne underline. When all six titles fit at their natural size they share the width equally; on a narrow
+/// phone or with larger text the row scrolls sideways and keeps the chosen tab in view, so a title is never shrunk or clipped.
 struct GroupSectionBar: View {
     @Binding var tab: GroupSection
     var badges: [GroupSection: Int] = [:]
     /// The tabs shown (all six: the Boardroom always exists, advisory until a co-owner joins).
     var sections: [GroupSection] = GroupSection.allCases
+    @Environment(\.outsidePalette) private var P
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(sections, id: \.self) { (t: GroupSection) in
-                Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0) }
-                    .buttonStyle(PressableStyle())
-                    .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
-                    .accessibilityIdentifier("group-tab-\(t.rawValue)")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) { cells(equal: true) }.padding(.horizontal, Theme.Space.page)
+            ScrollViewReader { (reader: ScrollViewProxy) in
+                ScrollView(.horizontal) {
+                    HStack(spacing: Theme.Space.xs) { cells(equal: false) }
+                }
+                .scrollIndicators(.hidden)
+                .contentMargins(.horizontal, Theme.Space.page, for: .scrollContent)
+                .onAppear { reader.scrollTo(tab, anchor: .center) }
+                .onChange(of: tab) { _, now in Motion.animate(Motion.quickAnimation) { reader.scrollTo(now, anchor: .center) } }
             }
         }
-        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
+        .background(alignment: .bottom) { Hairline() }
     }
 
-    private func cell(_ text: String, on: Bool, badge: Int) -> some View {
-        HStack(spacing: 2) {
-            Text(text).font(.system(size: 12.5, weight: on ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
+    private func cells(equal: Bool) -> some View {
+        ForEach(sections, id: \.self) { (t: GroupSection) in
+            Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0, equal: equal) }
+                .buttonStyle(PressableStyle())
+                .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
+                .accessibilityIdentifier("group-tab-\(t.rawValue)")
+                .id(t)
+        }
+    }
+
+    private func cell(_ text: String, on: Bool, badge: Int, equal: Bool) -> some View {
+        HStack(spacing: Theme.Space.xs) {
+            Text(text).textStyle(.body, tint: on ? P.accent : P.inkFaint, weight: on ? .semibold : .regular)
+                .lineLimit(1).fixedSize()
             RedBubble(count: badge, size: .small)
         }
-        .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-        .frame(maxWidth: .infinity, minHeight: 40, alignment: .center)
-        .overlay(alignment: .bottom) { if on { Rectangle().fill(Theme.gold).frame(height: 2) } }
+        .padding(.horizontal, equal ? Theme.Space.xs : Theme.Space.m)
+        .frame(maxWidth: equal ? .infinity : nil, minHeight: 44)
+        .overlay(alignment: .bottom) { if on { Rectangle().fill(P.accent).frame(height: 1.5) } }
         .contentShape(Rectangle())
     }
 }
@@ -182,66 +199,59 @@ struct GroupLanding: View {
 
     var body: some View {
         let list: [GroupEntity] = GroupEntities.build(engine)
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             overview
-            VStack(alignment: .leading, spacing: 8) {
-                Text("COMPANIES AND CHAINS").capsLabel()
+            LedgerSection("Companies and chains", rule: false) {
                 if list.isEmpty {
-                    Text("Start a company from Home to build a group.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                    EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Start a company from Home to build a group.")
                 } else {
-                    Card(padding: 4, radius: Theme.Radius.hero) {
-                        VStack(spacing: 0) {
-                            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, g: GroupEntity) in
-                                row(g, first: n == 0)
-                            }
+                    VStack(spacing: 0) {
+                        ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, g: GroupEntity) in
+                            if n > 0 { Hairline().padding(.leading, g.indent ? Theme.Space.xl : 0) }
+                            row(g)
                         }
                     }
                 }
             }
             GroupWhoRunsWhat(engine: engine)
-            Button { Haptics.tap(); onSuppliers() } label: {
-                CardRow(glyph: Glyph.bank, title: "Suppliers", subtitle: "Every supplier your companies use, with profiles")
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-suppliers")
-            Button { Haptics.tap(); onAdd() } label: {
-                HStack {
-                    Text("Add to group").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                    Spacer()
-                    Text("Choose \u{203A}").font(.system(size: 12.5)).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.7)
-                }
-                .padding(.horizontal, 14).padding(.vertical, 11)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.borderStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
-                .contentShape(Rectangle())
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-add")
+            VStack(spacing: 0) {
+                LedgerRow(leading: .glyph(Glyph.bank), title: "Suppliers", subtitle: "Every supplier your companies use, with profiles",
+                          identifier: "group-suppliers", action: onSuppliers)
+                Hairline()
+                LedgerRow(leading: .symbol("plus"), title: "Add to group", subtitle: "A company, a holding, a franchise or a club",
+                          identifier: "group-add", action: onAdd)
+            }
+            .overlay(alignment: .top) { Hairline() }
         }
     }
 
     // MARK: Overview header
 
+    /// The group's value leads; cash sits beside it; the 90-day line and the brand line follow. No box: type carries the hierarchy.
     private var overview: some View {
         let value: Double = engine.netWorth.companies
         let vc = DayHistory.change(engine.dayHistory.companies, days: 30)
         let cc = engine.groupCashChange(days: 30)
         let vt = GroupFmt.change(vc?.amount ?? 0, vc?.share, has: vc != nil, store)
         let ct = GroupFmt.change(cc?.amount ?? 0, cc?.share, has: cc != nil, store)
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("OVERVIEW").capsLabel()
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Group value").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        LiveFigure(value: value, text: store.short(value)).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                        Text(vt.text + " in 30 days").font(.system(size: 11.5)).foregroundStyle(vt.tint).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Group cash").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-                        LiveFigure(value: engine.groupCash, text: store.short(engine.groupCash)).font(.system(size: 20, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
-                        Text(ct.text).font(.system(size: 11.5)).foregroundStyle(ct.tint).lineLimit(1)
-                    }
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text("Group value").textStyle(.label)
+                    LiveFigure(value: value, text: store.short(value)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+                    Text(vt.text + " in 30 days").textStyle(.caption, tint: vt.tint).lineLimit(1)
                 }
-                NetWorthChart(engine: engine, days: 90, height: 44)
-                GroupBrandLine(engine: engine)
+                .accessibilityElement(children: .combine)
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    Text("Group cash").textStyle(.label)
+                    LiveFigure(value: engine.groupCash, text: store.short(engine.groupCash)).textStyle(.figure).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(ct.text).textStyle(.caption, tint: ct.tint).lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
             }
+            NetWorthChart(engine: engine, days: 90, height: 44)
+            GroupBrandLine(engine: engine)
         }
     }
 
@@ -249,31 +259,13 @@ struct GroupLanding: View {
 
     private func glyph(_ g: GroupEntity) -> String { g.isHolding ? Glyph.bank : (g.isChain ? Glyph.group : Glyph.home) }
 
-    private func row(_ g: GroupEntity, first: Bool) -> some View {
+    private func row(_ g: GroupEntity) -> some View {
         let ch = GroupFmt.change(g, store)
         let key: String = engine.boardKey(companyID: g.companyID) ?? ""
         let waiting: Int = (!key.isEmpty && engine.boardIsActive(key: key)) ? engine.boardOpenDecisions(key: key) : 0
-        return Button { Haptics.tap(); onPick(g) } label: {
-            HStack(spacing: 10) {
-                IconCircle(glyph: glyph(g), size: 32)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(g.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text(g.kind).font(.system(size: 11.5)).foregroundStyle(g.isChain ? Theme.gold : Theme.ivoryFaint).lineLimit(1)
-                }
-                Spacer(minLength: 6)
-                RedBubble(count: waiting, size: .small)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(store.short(g.value)).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(g.value < 0 ? Theme.loss : Theme.ivory).lineLimit(1)
-                    Text(ch.text).font(.system(size: 11.5)).foregroundStyle(ch.tint).lineLimit(1)
-                }
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-            }
-            .padding(.leading, g.indent ? 26 : 10).padding(.trailing, 10).padding(.vertical, 9)
-            .frame(minHeight: 48)
-            .contentShape(Rectangle())
-            .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("group-entity-\(g.id)")
+        return LedgerRow(leading: .glyph(glyph(g)), title: g.name, subtitle: g.kind, value: store.short(g.value),
+                         valueTint: g.value < 0 ? Theme.loss : nil, valueNote: ch.text, valueNoteTint: ch.tint, badge: waiting,
+                         lineLimit: 1, identifier: "group-entity-\(g.id)", action: { onPick(g) })
+            .padding(.leading, g.indent ? Theme.Space.xl : 0)
     }
 }

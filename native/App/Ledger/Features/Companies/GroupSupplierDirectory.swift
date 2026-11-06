@@ -43,7 +43,7 @@ struct GroupSupplierDirectory: View {
             let entries: [Entry] = Self.entries(e)
             ScrollScreen {
                 if entries.isEmpty {
-                    Text("No company of the group uses a named supplier yet.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                    Text("No company of the group uses a named supplier yet.").textStyle(.body, tint: Theme.inkFaint)
                 } else {
                     Text("\(entries.count) \(entries.count == 1 ? "supplier" : "suppliers") across the group").capsLabel(Theme.ivoryFaint)
                     ForEach(entries) { (en: Entry) in row(en, e) }
@@ -110,27 +110,27 @@ struct GroupSupplierDirectory: View {
             Haptics.tap()
             picked = DirectoryPick(id: en.id)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text(en.name).font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(spacing: Theme.Space.s) {
+                    Text(en.name).textStyle(.body, tint: Theme.ink, weight: .medium)
                         .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                     Spacer(minLength: 6)
-                    if !stars.isEmpty { Text(stars).font(.system(size: 11)).foregroundStyle(Theme.gold) }
+                    if !stars.isEmpty { Text(stars).textStyle(.caption, tint: Theme.accent) }
                     GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
                 }
-                HStack(spacing: 6) {
+                HStack(spacing: Theme.Space.s) {
                     Chip(text: Self.badge(first, own: en.ownCompanyID != nil), tint: en.ownCompanyID != nil ? Theme.gain : Theme.ivoryMuted)
-                    Text(what).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    Text(what).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
-                WrapRow(spacing: 5) {
+                WrapRow(spacing: Theme.Space.xs) {
                     ForEach(en.companyIDs, id: \.self) { (id: Int) in
-                        Text(companyName(id, e)).font(.system(size: 11)).foregroundStyle(Theme.ivoryMuted)
-                            .padding(.horizontal, 7).padding(.vertical, 2)
+                        Text(companyName(id, e)).textStyle(.caption, tint: Theme.inkSoft)
+                            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
                             .background(Capsule().fill(Theme.surfaceTable))
                     }
                 }
             }
-            .padding(.horizontal, 12).padding(.vertical, 10)
+            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
@@ -173,13 +173,13 @@ struct GroupSupplierDirectory: View {
         let discount: Double = en.uses.compactMap { $0.option.discount }.max() ?? 0
         let extra: Double = en.uses.compactMap { $0.option.dealExtra }.max() ?? 0
         let risks: [String] = Array(Set(en.uses.flatMap { $0.option.risks })).sorted()
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(spacing: Theme.Space.s) {
                 Chip(text: Self.badge(o, own: en.ownCompanyID != nil), tint: en.ownCompanyID != nil ? Theme.gain : Theme.ivoryMuted)
                 Spacer(minLength: 0)
             }
             Group {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     PopupRow(label: "Supplies", value: Self.whatText(en))
                     PopupRow(label: "Quality", value: o.quality ?? "Not rated")
                     PopupRow(label: "Lead time", value: o.delivery)
@@ -188,7 +188,7 @@ struct GroupSupplierDirectory: View {
                     if discount > 0 { PopupRow(label: "Discount", value: "\(Int((discount * 100).rounded()))% off") }
                     if extra > 0 { Text("Negotiated: \(Int((extra * 100).rounded()))% extra off.").popupText(.effect) }
                     if !risks.isEmpty { Text("Risk: " + risks.joined(separator: " ")).popupText(.risk) }
-                    Text("Terms by company").capsLabel(Theme.ivoryFaint).padding(.top, 4)
+                    Text("Terms by company").capsLabel(Theme.ivoryFaint).padding(.top, Theme.Space.xs)
                     ForEach(Array(en.uses.enumerated()), id: \.offset) { pair in
                         PopupRow(label: pair.element.companyName, value: pair.element.option.terms)
                     }
@@ -201,7 +201,7 @@ struct GroupSupplierDirectory: View {
     }
 
     @ViewBuilder private func openButtons(_ en: Entry) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Space.s) {
             ForEach(en.companyIDs, id: \.self) { (id: Int) in
                 let name: String = en.uses.first(where: { $0.companyID == id })?.companyName ?? "company"
                 SmallOutlineButton(title: "Open in \(name)") {

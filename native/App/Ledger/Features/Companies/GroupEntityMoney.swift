@@ -7,7 +7,7 @@ import Simulation
 
 // MARK: - Money
 
-/// One fixed screen for an entity's money: a cash box and a group-loans box side by side, and a dividends box below.
+/// An entity's money as one vertical list: cash with Put in and Take out, group loans, dividends, and (a holding) its treasury.
 struct GroupEntityMoney: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -28,12 +28,9 @@ struct GroupEntityMoney: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                cashBox
-                loansBox
-            }
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            cashBox
+            loansBox
             dividendsOrLock
             if entity.isHolding { treasuryBox }
         }
@@ -47,39 +44,41 @@ struct GroupEntityMoney: View {
         let main: Company? = engine.state.company(entity.companyID)
         let canTake: Bool = main.map { (c: Company) -> Bool in c.form != .limited && c.type != "hold" } ?? false
         let id: Int = entity.companyID
-        return Card(padding: 10, radius: Theme.Radius.table) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(entity.isHolding ? "GROUP CASH" : "CASH").capsLabel()
-                LiveFigure(value: cash, text: store.short(cash)).font(.serifTitle(24)).foregroundStyle(cash < 0 ? Theme.loss : Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                HStack(spacing: 6) {
-                    Button("Put in") { move = MoveTarget(companyID: id, kind: .deposit) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
-                    if canTake {
-                        Button("Take out") { move = MoveTarget(companyID: id, kind: .withdraw) }.buttonStyle(TinyButtonStyle())
-                    }
+        return LedgerSection(entity.isHolding ? "Group cash" : "Cash", rule: false) {
+            HStack(alignment: .center, spacing: Theme.Space.s) {
+                LiveFigure(value: cash, text: store.short(cash)).textStyle(.figure, tint: cash < 0 ? Theme.loss : nil)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Spacer(minLength: Theme.Space.s)
+                if canTake {
+                    Button("Take out") { move = MoveTarget(companyID: id, kind: .withdraw) }.buttonStyle(SecondaryButtonStyle(size: .compact))
                 }
-                .lineLimit(1).minimumScaleFactor(0.8)
+                Button("Put in") { move = MoveTarget(companyID: id, kind: .deposit) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// The holding's treasury: the index fund and paying yourself a dividend (moved here from the holding's own page).
+    /// The holding's treasury: an amount, then one main action (a dividend to you) and a menu for the index fund.
     private var treasuryBox: some View {
         let main: Company? = engine.state.company(entity.companyID)
         let cur: Currency = main.map { (c: Company) -> Currency in engine.currency(for: c) } ?? engine.homeCurrency
-        return Card(padding: 10, radius: Theme.Radius.table) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("TREASURY").capsLabel()
+        return LedgerSection("Treasury") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 AmountField(title: "Amount", currency: cur, amount: $amount)
-                HStack(spacing: 6) {
-                    Button("Invest in index") { investIndex() }.buttonStyle(TinyButtonStyle())
-                    Button("Sell index") { askSellIndex(cur) }.buttonStyle(TinyButtonStyle())
-                    Button("Pay me a dividend\u{2026}") { askDividend(cur) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+                HStack(spacing: Theme.Space.s) {
+                    Button("Pay me a dividend\u{2026}") { askDividend(cur) }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    Menu {
+                        Button("Invest in index") { investIndex() }
+                        Button("Sell index\u{2026}") { askSellIndex(cur) }
+                    } label: {
+                        Text("Index fund")
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityHint("Invest in or sell the index fund")
                 }
-                .lineLimit(1).minimumScaleFactor(0.8)
-                Text("The index fund costs 0.66% to sell. A dividend to you comes out of retained profit and is taxed as your income.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                Text("The index fund costs 0.66% to sell. A dividend to you comes out of retained profit and is taxed as your income.")
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -116,21 +115,19 @@ struct GroupEntityMoney: View {
     private var loansBox: some View {
         let owed: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + engine.groupLoanBalance(companyID: c.id) }
         let short: Company? = cos.first { (c: Company) -> Bool in c.cash < 0 && c.type != "hold" }
-        return Card(padding: 10, radius: Theme.Radius.table) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("GROUP LOANS").capsLabel()
-                if owed > 0 {
-                    Text(store.short(owed)).font(.system(size: 20, weight: .medium).monospacedDigit()).foregroundStyle(Theme.caution).lineLimit(1).minimumScaleFactor(0.6)
-                } else {
-                    Text("No loans").font(.system(size: 14)).foregroundStyle(Theme.ivoryFaint)
+        return LedgerSection("Group loans") {
+            HStack(alignment: .center, spacing: Theme.Space.s) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    if owed > 0 {
+                        Text(store.short(owed)).textStyle(.figure, tint: Theme.warn, numeric: true).lineLimit(1).minimumScaleFactor(0.6)
+                    } else {
+                        Text("No loans").textStyle(.body, tint: Theme.inkSoft)
+                    }
+                    if short == nil { Text("Nobody is short of cash").textStyle(.caption, tint: Theme.inkFaint) }
                 }
-                if let c = short {
-                    lendButton(c)
-                } else {
-                    Text("Nobody is short").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                }
+                Spacer(minLength: Theme.Space.s)
+                if let c = short { lendButton(c) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -138,7 +135,7 @@ struct GroupEntityMoney: View {
         let cur: Currency = engine.currency(for: c)
         let weekly: Double = engine.companyHealth(c).weeklyCost
         let need: Double = cur.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
-        return Button("Lend \(cur.tidyShort(need))") { askLoan(c, need, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.gold)).lineLimit(1).minimumScaleFactor(0.8)
+        return Button("Lend \(cur.tidyShort(need))") { askLoan(c, need, cur) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
     }
 
     /// The dividend desk, or (while the company has no retained profit to pay out) a locked line that says what opens it. A holding collects, so it is never locked.
@@ -154,17 +151,13 @@ struct GroupEntityMoney: View {
         let d = engine.lastDividendDecision(companyID: entity.companyID)
         let main: Company? = engine.state.company(entity.companyID)
         let last: String = lastLine(d, main)
-        return Card(padding: 10, radius: Theme.Radius.table) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(entity.isHolding ? "DIVIDENDS \u{00B7} COLLECT" : "DIVIDENDS \u{00B7} PAY OUT").capsLabel()
-                    Spacer(minLength: 6)
-                    Button("Policy") { Haptics.tap(); policyOpen = true }.buttonStyle(TinyButtonStyle()).accessibilityIdentifier("money-policy")
-                }
+        return LedgerSection(title: entity.isHolding ? "Dividends \u{00B7} collect" : "Dividends \u{00B7} pay out", trailing: {
+            Button("Policy") { Haptics.tap(); policyOpen = true }.buttonStyle(TertiaryButtonStyle(size: .compact)).accessibilityIdentifier("money-policy")
+        }) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil, compact: true)
-                Text(last).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
+                Text(last).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -196,7 +189,7 @@ struct DividendPolicySheet: View {
 
     var body: some View {
         let chosen: String = store.engine?.dividendPolicy(companyID: companyID) ?? "none"
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             ForEach(Shareholders.policies, id: \.self) { (p: String) in
                 ChoiceCard(title: Shareholders.policyNames[p] ?? p, subtitle: blurb(p), selected: chosen == p) { pick(p) }
             }

@@ -89,7 +89,7 @@ struct SaleRoutePicker: View {
         let cur: Currency = engine.currency(for: company)
         let value: Double = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
         let mine: Double = company.ownership / 100
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Worth about " + cur.tidyShort(value * mine)).popupText(.figure)
             Text("Name the lowest price you accept. Three weekly rounds of bids follow: bids rise about 7% a round, but a bidder may drop out. Hammer the top bid at any time, or wait. Fee 4%; staff hear about it.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             ForEach([0.7, 0.85, 1.0], id: \.self) { (f: Double) in
@@ -107,10 +107,10 @@ struct SaleRoutePicker: View {
 
     private var mergerSheet: some View {
         let rivals: [CompanySale.MergeCandidate] = engine.mergeCandidates(companyID: company.id)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("The rival joins your company (more size, more customers). Its owner takes a share of the merged company; you keep the rest and the control. Less than 30% may be turned down.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             ForEach(rivals) { (r: CompanySale.MergeCandidate) in
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text(r.name).popupText(.rowValue)
                     Text("Owned by \(r.owner)").popupText(.caption)
                     WrapRow {
@@ -118,7 +118,7 @@ struct SaleRoutePicker: View {
                             Button("Offer \(p)%") { merge(r, p) }.buttonStyle(QuietButtonStyle())
                         }
                     }
-                }.padding(.vertical, 4)
+                }.padding(.vertical, Theme.Space.xs)
             }
         }
         .centerSheetTitle("Merge with a rival")
@@ -143,7 +143,7 @@ struct SaleRoutePicker: View {
     private var groupSheet: some View {
         let cur: Currency = engine.currency(for: company)
         let buyers: [CompanySale.GroupBuyer] = engine.groupBuyers(companyID: company.id)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("A rival group buys at its own quote and the company becomes one of its sites. Quotes move week to week.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             if buyers.isEmpty { Text("No group is active in this country.").popupText(.caption) }
             ForEach(buyers) { (b: CompanySale.GroupBuyer) in
@@ -167,7 +167,7 @@ struct SaleRoutePicker: View {
 
     private var stakeSheet: some View {
         let tiers: [CompanySale.StakeTier] = engine.stakeTiers(companyID: company.id)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Sell part of your shares and keep running it. Each step gives the buyer more.").popupText(.caption)
             SegmentedPill(items: [false, true], title: { (b: Bool) -> String in b ? "Broker (4%)" : "Quietly" }, selection: $brokerStake)
             ForEach(tiers) { (t: CompanySale.StakeTier) in
@@ -190,7 +190,7 @@ struct SaleRoutePicker: View {
     private var franchiseSheet: some View {
         let masters: [JSONValue] = company.value("fr")["masters"].array
         let countries: [Country] = engine.masterFranchiseCountries(companyID: company.id).filter { (c: Country) -> Bool in !masters.contains { (m: JSONValue) -> Bool in m["c"].string == c.code } }
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Sign over the franchise rights of a country to a master franchisee. It costs legal work and cannot be undone.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             if countries.isEmpty { Text("Every country you could sell is already taken.").popupText(.caption) }
             ForEach(countries) { (c: Country) in

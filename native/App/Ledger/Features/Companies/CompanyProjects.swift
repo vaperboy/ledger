@@ -20,7 +20,7 @@ struct CompanyProjects: View {
                 JobList(engine: engine, company: company, board: board)
             }
         } else {
-            Text("This business does not take projects.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Text("This business does not take projects.").textStyle(.body, tint: Theme.inkSoft)
         }
     }
 }
@@ -40,20 +40,20 @@ private struct JobList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreHeader(glyph: Glyph.projects, title: board.isEvent ? "Bookings" : "Jobs", blurb: board.isEvent ? "Events booked, what is due and the tenders you can bid for." : "Jobs on the go and waiting, and the tenders you can bid for.")
-            Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: figureItems) }
+            Card(padding: Theme.Space.l, radius: Theme.Radius.hero) { FigureStrip(items: figureItems) }
             MoreBlock(title: board.isEvent ? "Bookings" : "Jobs on the go", card: false, trailing: {
-                Text("last week \(board.lastWeekTaken) of \(board.lastWeekRequests) requests taken").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text("last week \(board.lastWeekTaken) of \(board.lastWeekRequests) requests taken").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 if board.jobs.isEmpty && board.queuedJobs.isEmpty {
-                    Card(padding: 12, radius: Theme.Radius.row) {
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
                         Text(board.hoursPerWeek > 0 ? "Nothing booked yet. Requests come in through the week; marketing and a good name bring more." : "The firm cannot take work yet: check staff and equipment under Operations.")
                             .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
-                VStack(spacing: 10) {
+                VStack(spacing: Theme.Space.m) {
                     ForEach(board.jobs, id: \.id) { (j: ProjectBoard.JobRow) in jobRow(j) }
                     if !board.queuedJobs.isEmpty {
-                        Text("Waiting their turn").capsLabel(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                        Text("Waiting their turn").capsLabel(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, Theme.Space.xs)
                         ForEach(board.queuedJobs, id: \.id) { (j: ProjectBoard.JobRow) in jobRow(j) }
                     }
                 }
@@ -87,22 +87,22 @@ private struct JobList: View {
     }
 
     private func jobBody(_ j: ProjectBoard.JobRow) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(j.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text(subtitle(j)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    Text(j.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                    Text(subtitle(j)).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(store.short(j.value, in: company)).font(.figure(13.5, weight: .semibold)).foregroundStyle(Theme.ivory)
-                    Text("margin before pay \(Int((j.margin * 100).rounded()))%").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                    Text(store.short(j.value, in: company)).textStyle(.headline, tint: Theme.ink, numeric: true, weight: .semibold)
+                    Text("margin before pay \(Int((j.margin * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                 }
             }
             if j.started {
                 RateBar(label: "\(Int(j.hoursDone.rounded())) of \(Int(j.hours.rounded())) h", fraction: j.progress, tint: j.held ? Theme.caution : Theme.gain)
                     .animation(Motion.quickAnimation, value: j.progress)
-                if j.held { Text("Held up").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+                if j.held { Text("Held up").textStyle(.caption, tint: Theme.warn) }
             }
         }
     }
@@ -129,24 +129,24 @@ private struct JobList: View {
                 }
             }) {
                 if board.tenders.isEmpty {
-                    Card(padding: 12, radius: Theme.Radius.row) {
-                        Text("Nothing is open for tender right now. New ones come every few weeks.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
+                        Text("Nothing is open for tender right now. New ones come every few weeks.").textStyle(.caption, tint: Theme.inkSoft)
                     }
                 }
-                VStack(spacing: 10) {
+                VStack(spacing: Theme.Space.m) {
                     ForEach(board.tenders, id: \.id) { (t: ProjectBoard.TenderRow) in tenderRow(t) }
                 }
                 let results = board.myTenders.filter { $0.outcome != nil }
                 if !results.isEmpty {
-                    Text("Results").capsLabel(Theme.ivoryFaint).padding(.top, 6)
-                    VStack(spacing: 10) {
+                    Text("Results").capsLabel(Theme.ivoryFaint).padding(.top, Theme.Space.s)
+                    VStack(spacing: Theme.Space.m) {
                         ForEach(Array(results.prefix(5)), id: \.id) { (t: ProjectBoard.TenderRow) in
                             let outcomeText: String = t.outcome == "won" ? "Won" : t.outcome == "lost" ? "Lost" : "Closed"
                             EntityCard {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(t.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                        Text(t.buyer).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                        Text(t.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                                        Text(t.buyer).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                                     }
                                     Spacer()
                                     Chip(text: outcomeText, tint: t.outcome == "won" ? Theme.gain : Theme.ivoryMuted)
@@ -164,20 +164,20 @@ private struct JobList: View {
     }
 
     private func tenderBody(_ t: ProjectBoard.TenderRow) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Button {
                 Motion.animate(Motion.quickAnimation) { openTender = openTender == t.id ? nil : t.id }
                 Haptics.choose()
             } label: {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(t.title.tidyMoney).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
-                        Text("\(t.buyer) · about \(store.short(t.worth, in: company))").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
-                        if let r = t.requirement, !t.qualifies { Text("Needs \(r)").font(.system(size: 11)).foregroundStyle(Theme.caution) }
+                        Text(t.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2).multilineTextAlignment(.leading)
+                        Text("\(t.buyer) · about \(store.short(t.worth, in: company))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                        if let r = t.requirement, !t.qualifies { Text("Needs \(r)").textStyle(.caption, tint: Theme.warn) }
                     }
                     Spacer(minLength: 8)
                     if let b = t.myBid { Chip(text: "Bid \(Int((b * 100).rounded()))%", tint: Theme.gold) }
-                    else { Text("\(t.weeksToBid) wk to bid").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.gold) }
+                    else { Text("\(t.weeksToBid) wk to bid").textStyle(.caption, tint: Theme.accent, numeric: true) }
                     MoreChevron()
                 }
                 .contentShape(Rectangle())
@@ -187,21 +187,21 @@ private struct JobList: View {
     }
 
     private func tenderSheet(_ t: ProjectBoard.TenderRow) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             valueRow("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int((t.priceWeight * 100).rounded()))% · quality \(Int(((1 - t.priceWeight) * 100).rounded()))%")
             valueRow("Bids close", "in \(t.weeksToBid.weeksText) · award \(GameCalendar.dateString(week: t.awardWeek))")
             valueRow("Writing the bid costs", store.money(t.bidCost, in: company))
             if t.myBid != nil {
-                Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").textStyle(.caption, tint: Theme.inkFaint)
                 Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
                     .buttonStyle(TinyButtonStyle())
             } else if !t.qualifies {
-                Text("The firm does not meet the buyer's requirements yet.").font(.system(size: 11.5)).foregroundStyle(Theme.caution)
+                Text("The firm does not meet the buyer's requirements yet.").textStyle(.caption, tint: Theme.warn)
             } else {
                 Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
                 SectionTabs(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
                 Toggle(isOn: $higherQuality) {
-                    Text("Commit to higher quality (costs about 3% more to deliver)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory)
+                    Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
                 }.tint(Theme.gold)
                 Button("Send the bid") {
                     let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: prices[priceIndex], higherQuality: higherQuality) }
@@ -214,14 +214,14 @@ private struct JobList: View {
                 }.buttonStyle(TinyButtonStyle())
             }
         }
-        .padding(.bottom, 4)
+        .padding(.bottom, Theme.Space.xs)
     }
 
     private func valueRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).textStyle(.caption, tint: Theme.inkSoft)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory).multilineTextAlignment(.trailing)
+            Text(value).textStyle(.caption, tint: Theme.ink, numeric: true).multilineTextAlignment(.trailing)
         }
     }
 }
@@ -243,22 +243,22 @@ private struct DevelopmentList: View {
         let active = board.developments
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreHeader(glyph: Glyph.projects, title: "Developments", blurb: "Land, zoning, building and selling units: each development is one project with its own risks.")
-            Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: devItems(active)) }
+            Card(padding: Theme.Space.l, radius: Theme.Radius.hero) { FigureStrip(items: devItems(active)) }
             MoreBlock(title: "Developments", card: false, trailing: {
                 Button(showStart ? "Close" : "Start a project") { Motion.animate(Motion.quickAnimation) { showStart.toggle() }; Haptics.choose() }.buttonStyle(TinyButtonStyle())
             }) {
-                if showStart { Card(padding: 14, radius: Theme.Radius.card) { startSheet } }
+                if showStart { Card(padding: Theme.Space.l, radius: Theme.Radius.card) { startSheet } }
                 if active.isEmpty && !showStart {
                     Text("No project yet. Buy land and wait for zoning (about six months, and it can be refused), build (about 16 months), then sell the units. The first income arrives roughly two years after you start, so keep cash for the wait.")
                         .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(spacing: 10) {
+                VStack(spacing: Theme.Space.m) {
                     ForEach(active, id: \.id) { (p: ProjectBoard.DevelopmentRow) in projectRow(p) }
                 }
             }
             if !board.finishedDevelopments.isEmpty {
                 MoreBlock("Finished", card: false) {
-                    VStack(spacing: 10) {
+                    VStack(spacing: Theme.Space.m) {
                         ForEach(board.finishedDevelopments, id: \.id) { f in
                             let profit: Double = f.revenue - f.cost
                             let line: String = "sold for \(store.short(f.revenue, in: company)) · cost \(store.short(f.cost, in: company))"
@@ -266,11 +266,11 @@ private struct DevelopmentList: View {
                             EntityCard {
                                 HStack(alignment: .firstTextBaseline) {
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(f.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                                        Text(line).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                                        Text(f.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                                        Text(line).textStyle(.caption, tint: Theme.inkFaint)
                                     }
                                     Spacer(minLength: 8)
-                                    Text(result).font(.figure(13.5, weight: .semibold)).foregroundStyle(profit < 0 ? Theme.loss : Theme.gain)
+                                    Text(result).textStyle(.headline, tint: profit < 0 ? Theme.loss : Theme.gain, numeric: true, weight: .semibold)
                                 }
                             }
                         }
@@ -312,9 +312,9 @@ private struct DevelopmentList: View {
     private var startSheet: some View {
         let size = sizes[sizeIndex].factor
         let q = engine.developmentQuote(companyID: company.id, size: size, financed: financed)
-        return VStack(alignment: .leading, spacing: 9) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             SectionTabs(items: Array(sizes.indices), title: { sizes[$0].name }, selection: $sizeIndex)
-            Toggle(isOn: $financed) { Text("Construction loan (up to 70% of the building)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory) }.tint(Theme.gold)
+            Toggle(isOn: $financed) { Text("Construction loan (up to 70% of the building)").textStyle(.caption, tint: Theme.ink) }.tint(Theme.gold)
             if let q {
                 row("Land", store.short(q.land, in: company))
                 row("Building", store.short(q.build, in: company))
@@ -325,14 +325,14 @@ private struct DevelopmentList: View {
             }
             Button("Buy the land and start") { askStart(size, q) }.buttonStyle(TinyButtonStyle())
         }
-        .padding(.bottom, 6)
+        .padding(.bottom, Theme.Space.s)
     }
 
     private func row(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            Text(label).textStyle(.caption, tint: Theme.inkSoft)
             Spacer(minLength: 8)
-            Text(value).font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.ivory)
+            Text(value).textStyle(.caption, tint: Theme.ink, numeric: true)
         }
     }
 
@@ -350,23 +350,23 @@ private struct DevelopmentList: View {
     }
 
     private func projectBody(_ p: ProjectBoard.DevelopmentRow) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(p.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text(stageText(p)).font(.system(size: 11)).foregroundStyle(p.delayWeeks > 0 ? Theme.caution : Theme.ivoryFaint)
+                    Text(p.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                    Text(stageText(p)).textStyle(.caption, tint: p.delayWeeks > 0 ? Theme.warn : Theme.inkFaint)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text("\(p.sold) / \(p.units) sold").font(.figure(13.5, weight: .semibold)).foregroundStyle(Theme.ivory)
-                    Text("land \(store.short(p.land, in: company)) · build \(store.short(p.build, in: company))").font(.system(size: 10.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(p.sold) / \(p.units) sold").textStyle(.headline, tint: Theme.ink, numeric: true, weight: .semibold)
+                    Text("land \(store.short(p.land, in: company)) · build \(store.short(p.build, in: company))").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                 }
             }
             RateBar(label: "Sold", fraction: p.units > 0 ? Double(p.sold) / Double(p.units) : 0, tint: Theme.gain)
                 .animation(Motion.quickAnimation, value: p.sold)
-            if p.loanBalance > 0 { Text("Construction loan \(store.short(p.loanBalance, in: company)), repaid from 70% of each sale").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+            if p.loanBalance > 0 { Text("Construction loan \(store.short(p.loanBalance, in: company)), repaid from 70% of each sale").textStyle(.caption, tint: Theme.inkFaint) }
             HStack {
-                Text("Price per unit \(store.short(p.unitPrice * p.priceMultiplier, in: company))").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted)
+                Text("Price per unit \(store.short(p.unitPrice * p.priceMultiplier, in: company))").textStyle(.caption, tint: Theme.inkSoft)
                 Spacer()
                 ForEach([0.9, 1.0, 1.1], id: \.self) { (m: Double) in
                     let label: String = m == 0.9 ? "−10%" : m == 1.0 ? "Standard" : "+10%"

@@ -19,7 +19,7 @@ struct GroupEntityManagement: View {
         let members: [Company] = liveMembers
         let chosen: Int = picked ?? entity.companyID
         let co: Company? = members.first { (c: Company) -> Bool in c.id == chosen } ?? engine.state.company(entity.companyID)
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             if members.count > 1 { picker(members, selected: co?.id ?? chosen) }
             if let co {
                 header(co)
@@ -28,7 +28,7 @@ struct GroupEntityManagement: View {
                 ApplicantsLinkRow(engine: engine, companyID: co.id)
                 openPosts(co)
             } else {
-                Text("This company no longer exists.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+                Text("This company no longer exists.").textStyle(.body, tint: Theme.inkFaint)
             }
         }
     }
@@ -36,7 +36,7 @@ struct GroupEntityManagement: View {
     // MARK: Picker
 
     private func picker(_ members: [Company], selected: Int) -> some View {
-        WrapRow(spacing: 6) {
+        WrapRow(spacing: Theme.Space.s) {
             ForEach(members) { (c: Company) in
                 pickChip(c, on: c.id == selected)
             }
@@ -50,7 +50,7 @@ struct GroupEntityManagement: View {
             Text(c.name).font(.system(size: 12.5, weight: on ? .semibold : .regular))
                 .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
                 .lineLimit(1)
-                .padding(.horizontal, 12).frame(minHeight: 34)
+                .padding(.horizontal, Theme.Space.m).frame(minHeight: 34)
                 .background(Capsule().fill(on ? Theme.gold.opacity(0.16) : Theme.surface))
                 .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
         }
@@ -68,16 +68,16 @@ struct GroupEntityManagement: View {
         let stakes: Double = GroupStakes.stakesValue(engine.state)
         let office: String = gm.groupOfficeEstablished ? "Group office set up" : "No group office"
         let count: String = "\(gm.managerCount) manager\(gm.managerCount == 1 ? "" : "s") \u{00B7} you run \(gm.runByYou.count) yourself \u{00B7} " + office
-        return Card(padding: 12, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(count).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+        return Card(padding: Theme.Space.m, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text(count).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if let line {
                     Text("Complaints: \(line.complaints) \u{00B7} Payroll: \(line.payroll) \u{00B7} Re-hiring: \(line.rehire)")
                         .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    Text("Highest rank here: \(line.top)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Highest rank here: \(line.top)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 if stakes > 0 {
-                    Text("Stakes in other groups: " + store.short(stakes)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                    Text("Stakes in other groups: " + store.short(stakes)).textStyle(.caption, tint: Theme.inkFaint)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -87,7 +87,7 @@ struct GroupEntityManagement: View {
     // MARK: People
 
     @ViewBuilder private func people(_ co: Company) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("MANAGEMENT").capsLabel()
             CompanyManagement(engine: engine, company: co, showAll: true)
             CompanyTeamRoster(engine: engine, company: co)
@@ -101,8 +101,8 @@ struct GroupEntityManagement: View {
     @ViewBuilder private func approvalNote(_ co: Company) -> some View {
         let asst: AppointmentAuthority = engine.appointmentAuthority(companyID: co.id, role: "assistant manager")
         let gm: AppointmentAuthority = engine.appointmentAuthority(companyID: co.id, role: "general manager")
-        VStack(alignment: .leading, spacing: 3) {
-            Text(gm.reason).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(gm.reason).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             if let above = asst.needsConfirmationFrom {
                 Text(above == .ceo ? "Assistant manager: needs confirmation from the CEO" : "Assistant manager: needs your confirmation")
                     .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
@@ -118,9 +118,9 @@ struct GroupEntityManagement: View {
             v.companyID == co.id || (entity.chainID != nil && v.chainID == entity.chainID)
         }
         if !mine.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("OPEN POSTS").capsLabel()
-                Card(padding: 4, radius: Theme.Radius.hero) {
+                Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
                     VStack(spacing: 0) {
                         ForEach(Array(mine.enumerated()), id: \.element.id) { (n: Int, v: TeamOverview.Vacancy) in
                             OpenPostRow(engine: engine, vacancy: v, first: n == 0)

@@ -16,17 +16,17 @@ struct RivalGroupProfileView: View {
     var body: some View {
         ScrollView {
             if let e = store.engine, let g = RivalGroups.group(e.state, id: groupID), !g.gone {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     identity(e, g)
                     meaning(e, g)
                     strategy(g)
                     competes(e, g)
                     moves(g)
                 }
-                .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             } else {
-                NoteCard(text: "This group no longer exists.", glyph: Glyph.info).padding(18)
+                NoteCard(text: "This group no longer exists.", glyph: Glyph.info).padding(Theme.Space.l)
             }
         }
         .scrollIndicators(.hidden)
@@ -45,20 +45,20 @@ struct RivalGroupProfileView: View {
             .init(label: "Cash", value: g.cashWord, tint: g.cash <= 0 ? Theme.loss : Theme.ivory),
             .init(label: "Debt", value: g.debtWord, tint: g.debtWord == "Very high" ? Theme.caution : Theme.ivory),
         ]
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
+        return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(spacing: Theme.Space.m) {
                     ThumbnailView(kind: .logo, key: "group|\(g.id)", size: 44, shape: .square, glyph: Glyph.group, initials: g.name)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(g.name).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(2)
-                        Text("Owner \(g.owner) · \(g.strategyName)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(g.name).textStyle(.title, tint: Theme.ink).lineLimit(2)
+                        Text("Owner \(g.owner) · \(g.strategyName)").textStyle(.caption, tint: Theme.inkSoft)
                     }
                     Spacer(minLength: 0)
                 }
                 if g.inTrouble {
-                    HStack(spacing: 8) {
+                    HStack(spacing: Theme.Space.s) {
                         GlyphView(glyph: Glyph.warning, size: 16, weight: 1.5, tint: Theme.caution)
-                        Text("In money trouble: may sell cheaply").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.caution)
+                        Text("In money trouble: may sell cheaply").textStyle(.caption, tint: Theme.warn, weight: .medium)
                     }
                 }
                 CardLine()
@@ -82,7 +82,7 @@ struct RivalGroupProfileView: View {
                 }.buttonStyle(PressableStyle())
             }
             if !mine.isEmpty {
-                Text("Rivals it owns in your markets").capsLabel(Theme.ivoryFaint).padding(.horizontal, 2)
+                Text("Rivals it owns in your markets").capsLabel(Theme.ivoryFaint).padding(.horizontal, Theme.Space.xxs)
                 ForEach(Array(mine.enumerated()), id: \.offset) { _, m in
                     CardRow(glyph: Glyph.market, title: m.rival.name, subtitle: "competes with \(m.company.name)", chevron: false)
                 }
@@ -94,12 +94,12 @@ struct RivalGroupProfileView: View {
 
     private func strategy(_ g: RivalGroups.Group) -> some View {
         MoreBlock("How it plays") {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(g.strategyText).font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text(g.strategyText).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 CardLine()
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Space.s) {
                     GlyphView(glyph: Glyph.goals, size: 16, weight: 1.5)
-                    Text("Ambition: \(g.ambition)").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text("Ambition: \(g.ambition)").textStyle(.body, tint: Theme.ink, weight: .medium)
                 }
             }
         }
@@ -108,14 +108,14 @@ struct RivalGroupProfileView: View {
     // MARK: Where it competes
 
     private func tag(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(Theme.ivory)
-            .padding(.horizontal, 10).padding(.vertical, 5)
+        Text(text).textStyle(.caption, tint: Theme.ink)
+            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs)
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.borderStrong, lineWidth: 1))
     }
 
     private func tagBlock(_ title: String, _ names: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(title).textStyle(.caption, tint: Theme.inkFaint)
             WrapRow {
                 ForEach(names, id: \.self) { n in tag(n) }
             }
@@ -126,7 +126,7 @@ struct RivalGroupProfileView: View {
         let trades: [String] = g.trades.map { e.data.catalog[$0]?.name ?? $0 }
         let countries: [String] = g.countries.map { e.data.countries[$0]?.name ?? $0 }
         return MoreBlock("Where it competes") {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 tagBlock("Trades", trades)
                 CardLine()
                 tagBlock("Countries", countries)
@@ -137,15 +137,15 @@ struct RivalGroupProfileView: View {
     // MARK: Recent moves
 
     private func moveRow(_ m: (week: Int, text: String), last: Bool) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
             VStack(spacing: 0) {
-                Circle().fill(Theme.gold).frame(width: 7, height: 7).padding(.top, 5)
+                Circle().fill(Theme.gold).frame(width: 7, height: 7).padding(.top, Theme.Space.xs)
                 if !last { Rectangle().fill(Theme.divider).frame(width: 1).frame(maxHeight: .infinity) }
             }
             .frame(width: 8)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Week \(m.week)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                Text(m.text).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text("Week \(m.week)").textStyle(.caption, tint: Theme.inkFaint)
+                Text(m.text).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.bottom, last ? 0 : 10)
         }
@@ -155,7 +155,7 @@ struct RivalGroupProfileView: View {
         let list = Array(g.moves.prefix(10))
         return MoreBlock("Recent moves") {
             if list.isEmpty {
-                Text("No moves seen yet. Groups act about once a month.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("No moves seen yet. Groups act about once a month.").textStyle(.caption, tint: Theme.inkFaint)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(list.enumerated()), id: \.offset) { (i: Int, m: (week: Int, text: String)) in moveRow(m, last: i == list.count - 1) }

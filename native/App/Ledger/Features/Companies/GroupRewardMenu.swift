@@ -44,8 +44,8 @@ struct GroupRewardMenu: View {
         Menu {
             ForEach(rewards) { r in Button(r.title) { confirm(r) } }
         } label: {
-            Text("Reward").font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
-                .padding(.horizontal, 12).padding(.vertical, 6)
+            Text("Reward").textStyle(.caption, tint: Theme.accent, weight: .medium)
+                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1))
                 .frame(minHeight: 32)
         }

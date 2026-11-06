@@ -27,7 +27,7 @@ struct GroupBoardroom: View {
 
     var body: some View {
         let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
             ForEach(cos) { (c: Company) in
                 companyCard(c, showName: cos.count > 1)
             }
@@ -48,7 +48,7 @@ struct GroupBoardroom: View {
         let people: [OwnerMeetings.Counterpart] = engine.ownerCounterparts(companyID: c.id)
         let advisory: Bool = engine.boardIsAdvisory(companyID: c.id)
         let dir: String? = engine.companyDirective(companyID: c.id)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             if showName { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
             Text(advisory ? "You own it alone, so the board advises and you decide. Votes bind once a co-owner joins." : "Co-owners vote by their shares. Ask the board before a big move.")
                 .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
@@ -60,7 +60,7 @@ struct GroupBoardroom: View {
                 Text("Nobody runs \(c.name) but you. Appoint a manager or department heads under Management to talk with them.")
                     .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             } else {
-                Card(padding: 4, radius: Theme.Radius.hero) {
+                Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
                     VStack(spacing: 0) {
                         ForEach(Array(people.enumerated()), id: \.element.id) { (n: Int, p: OwnerMeetings.Counterpart) in
                             personRow(c, p, first: n == 0)
@@ -75,18 +75,18 @@ struct GroupBoardroom: View {
         let cid: Int = c.id
         let pid: Int = p.id
         return Button { Haptics.tap(); talk = TalkRef(companyID: cid, personID: pid) } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: Theme.Space.m) {
                 if let person = engine.state.people[pid] {
                     ThumbnailView(kind: .person, key: person.role, size: 32, initials: p.name, face: person.faceKey)
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(p.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text(p.title).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    Text(p.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                    Text(p.title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
                 Spacer(minLength: 6)
-                Text("Talk").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).frame(minWidth: 44, minHeight: 36, alignment: .trailing)
+                Text("Talk").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minWidth: 44, minHeight: 36, alignment: .trailing)
             }
-            .padding(.horizontal, 10).padding(.vertical, 6)
+            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
             .frame(minHeight: 46)
             .contentShape(Rectangle())
             .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
@@ -144,7 +144,7 @@ struct OwnerTalkSheet: View {
     }
 
     @ViewBuilder private func content(_ e: GameEngine, _ who: OwnerMeetings.Counterpart) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             if let o = outcome {
                 outcomeView(o)
             } else if voting {
@@ -160,7 +160,7 @@ struct OwnerTalkSheet: View {
     private func topicList(_ e: GameEngine, _ who: OwnerMeetings.Counterpart) -> some View {
         let topics: [OwnerMeetings.Topic] = e.ownerTopics(companyID: companyID, personID: personID)
         let isCEO: Bool = e.state.company(companyID)?.managerID == personID
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("What do you want to talk about?").popupText(.subtitle)
             ForEach(topics) { (t: OwnerMeetings.Topic) in
                 ChoiceCard(title: t.label, subtitle: t.waitWeeks > 0 ? "You talked about this lately. Again in \(t.waitWeeks) \(t.waitWeeks == 1 ? "week" : "weeks")." : t.hint, selected: false) { topic = t.id }
@@ -173,11 +173,11 @@ struct OwnerTalkSheet: View {
     }
 
     private func sceneView(_ sc: OwnerMeetings.Scene) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             ForEach(Array(sc.lines.enumerated()), id: \.offset) { (_: Int, l: String) in
                 Text("\(sc.speaker): \"\(l)\"").popupText(.body).fixedSize(horizontal: false, vertical: true)
             }
-            Text("Your answer").popupText(.subtitle).padding(.top, 4)
+            Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
             ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
                 ChoiceCard(title: c.label, subtitle: c.preview, selected: false) { choose(sc.topic, c.id) }
             }
@@ -196,7 +196,7 @@ struct OwnerTalkSheet: View {
     }
 
     private func outcomeView(_ o: OwnerMeetings.Outcome) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(o.text).popupText(o.tone == "bad" ? .risk : .effect).fixedSize(horizontal: false, vertical: true)
             if o.resigned { dismissButton } else {
                 QuietButton(title: "Talk about something else", fullWidth: true) { outcome = nil; topic = nil }
@@ -209,7 +209,7 @@ struct OwnerTalkSheet: View {
 
     private func voteView(_ e: GameEngine) -> some View {
         let v: ManagerModel.BoardVote = e.ceoVote(companyID: companyID)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             BoardVoteLines(vote: v, kind: "ceo")
             Button(v.active ? "Put it to the vote" : "Replace them") { Haptics.tap(); dismiss(); onReplace(companyID) }
                 .buttonStyle(TinyButtonStyle(tint: Theme.loss))
@@ -230,7 +230,7 @@ struct BoardRoundSheet: View {
         let name: String = store.engine?.state.company(companyID)?.name ?? "Board"
         Group {
             if let e = store.engine {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     if let k = kind {
                         BoardVoteLines(vote: e.advisoryVote(kind: k, companyID: companyID), kind: k)
                         QuietButton(title: "Back", fullWidth: true) { kind = nil }
@@ -241,9 +241,9 @@ struct BoardRoundSheet: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("\(l.name) \u{00B7} \(l.title)").popupText(.rowLabel)
                                 Text("\"\(l.text)\"").popupText(.body).fixedSize(horizontal: false, vertical: true)
-                            }.padding(.vertical, 2)
+                            }.padding(.vertical, Theme.Space.xxs)
                         }
-                        Text("Ask the board").popupText(.subtitle).padding(.top, 4)
+                        Text("Ask the board").popupText(.subtitle).padding(.top, Theme.Space.xs)
                         ChoiceCard(title: "Should we sell it?", subtitle: "Each seat gives an opinion", selected: false) { kind = "sell" }
                         ChoiceCard(title: "Should we close it?", subtitle: "Each seat gives an opinion", selected: false) { kind = "close" }
                         ChoiceCard(title: "Should we replace the CEO?", subtitle: "Managers advise; co-owners vote by shares", selected: false) { kind = "ceo" }
@@ -263,7 +263,7 @@ struct BoardVoteLines: View {
     private var question: String { kind == "sell" ? "Sell the company" : kind == "close" ? "Close the company" : kind == "ceo" ? "Replace the CEO" : "Take the loan" }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(question).popupText(.subtitle)
             Text(vote.active ? "Co-owners vote by their shares; the board advises." : "You own it alone: everyone advises and you decide.").popupText(.caption)
             ForEach(vote.advice + vote.board) { (l: ManagerModel.VoteLine) in line(l, shares: false) }

@@ -61,9 +61,9 @@ struct GrowIntoChain: View {
         let reqs = engine.chainRequirements(companyID: company.id)
         let doc = engine.documentState(companyID: company.id, document: "chain")
         let ready: Int = reqs.filter { $0.ok }.count
-        VStack(alignment: .leading, spacing: 16) {
-            MoreBlock(title: "Grow into a chain", trailing: { Text("\(ready) of \(reqs.count) ready").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
-                VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreBlock(title: "Grow into a chain", trailing: { Text("\(ready) of \(reqs.count) ready").textStyle(.caption, tint: Theme.inkFaint) }) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     RateBar(label: "Ready", fraction: reqs.isEmpty ? 0 : Double(ready) / Double(reqs.count), tint: ready == reqs.count ? Theme.gain : Theme.gold)
                     CardLine()
                     RequirementGuide(engine: engine, company: company, requirements: reqs)
@@ -84,9 +84,9 @@ struct GrowIntoChain: View {
             NoteCard(text: "Chain registration is in progress: about \(weeksLeft) \(weeksLeft == 1 ? "week" : "weeks") left. The lawyer is writing the operations manual.", glyph: Glyph.clock, tint: Theme.caution)
         } else if status == "ok" {
             MoreBlock("Name the chain") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Chain approved. Name the chain: every store will carry this name.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                    Card(padding: 10, radius: Theme.Radius.table) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    Text("Chain approved. Name the chain: every store will carry this name.").textStyle(.caption, tint: Theme.inkSoft)
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
                         TextField("Chain name", text: $name).textFieldStyle(.plain).font(.system(size: 15))
                     }
                     QuietButton(title: "Make \(name.isEmpty ? company.name : name) a chain", fullWidth: true) {
@@ -131,7 +131,7 @@ struct StoreInChainCard: View {
         let rank = (ranked.firstIndex { $0.id == company.id } ?? 0) + 1
         let owed = engine.groupLoanBalance(companyID: company.id)
         let mine: Double = summary.stores.first { $0.id == company.id }?.profit ?? 0
-        MoreBlock(title: "Store of \(summary.name)", card: false, trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }) {
+        MoreBlock(title: "Store of \(summary.name)", card: false, trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").textStyle(.caption, tint: Theme.inkFaint) }) {
             NavigationLink { ChainView(chainID: summary.id) } label: {
                 CardRow(glyph: Glyph.group, title: "Open the chain", subtitle: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
                         value: cur.tidyShort(summary.profit) + " / mo", valueTint: summary.profit < 0 ? Theme.loss : Theme.ivory)
@@ -151,10 +151,10 @@ struct StoreInChainCard: View {
         }
         if owed > 0 { items.append(.init(label: "Owes sister stores", value: cur.tidyShort(owed), tint: Theme.caution, sub: "group loan")) }
         let columns: Int = max(1, min(3, items.count))
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
+        return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 FigureStrip(items: items, columns: columns)
-                if owed > 0 { Text("A group loan, paid back by itself once the store has a cushion.").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint) }
+                if owed > 0 { Text("A group loan, paid back by itself once the store has a cushion.").textStyle(.caption, tint: Theme.inkFaint) }
             }
         }
     }
@@ -168,7 +168,7 @@ struct StoreRules: View {
 
     var body: some View {
         let off = engine.state.company(storeID)?.value("off") ?? .null
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Own rules for this store").capsLabel(Theme.ivoryFaint)
             HStack {
                 Text("Price step").font(.caption).foregroundStyle(Theme.ivoryMuted)

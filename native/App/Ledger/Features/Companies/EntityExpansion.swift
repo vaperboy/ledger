@@ -17,7 +17,7 @@ struct EntityExpansionView: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co)
         } else {
-            Text("This company no longer exists.").font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint)
+            Text("This company no longer exists.").textStyle(.body, tint: Theme.inkFaint)
         }
     }
 
@@ -31,7 +31,7 @@ struct EntityExpansionView: View {
             if relevant && live {
                 stage(e, co, chain: chain, franchisee: franchisee)
             } else {
-                Text("Not available for this company yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                Text("Not available for this company yet.").textStyle(.caption, tint: Theme.inkFaint)
             }
             EntityAbroadSection(companyID: co.id)
         }
@@ -77,9 +77,9 @@ struct EntityExpansionView: View {
             title = "Franchisor with \(units) \(units == 1 ? "franchisee" : "franchisees")"
             tint = Theme.gold
         }
-        return HStack(spacing: 8) {
+        return HStack(spacing: Theme.Space.s) {
             GlyphView(glyph: Glyph.group, size: 16, weight: 1.5, tint: tint).frame(width: 20)
-            Text(title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
+            Text(title.tidyText).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2)
             Spacer(minLength: 0)
         }
     }
