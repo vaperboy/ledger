@@ -343,7 +343,6 @@ struct RivalSheet: View {
             ownerSection(d)
             groupSection(d)
             reviewsSection(d)
-            HostingSection(engine: e, onlyRival: rivalID)
             cutSection(e, d)
             actionsSection(e, co, d, cur)
         }

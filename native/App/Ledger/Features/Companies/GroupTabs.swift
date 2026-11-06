@@ -9,15 +9,15 @@ import Simulation
 
 /// The tabs of an entity page. `key` is the name other screens use to ask for one (`GroupRouteBox.Request.section`).
 enum GroupSection: String, CaseIterable, Hashable {
-    case overview = "Overview", management = "Management", board = "Board", money = "Money", expansion = "Expansion", deals = "Deals"
+    case overview = "Overview", management = "Management", board = "Boardroom", money = "Money", expansion = "Expansion", deals = "Ownership"
     var key: String { rawValue.lowercased() }
 }
 
-/// Text tabs with a champagne underline, equal widths, never scrolling sideways (six titles: Overview, Management, Board, Money, Expansion, Deals fit 375 pt at 12.5 pt with the shrink).
+/// Text tabs with a champagne underline, equal widths, never scrolling sideways (six titles: Overview, Management, Boardroom, Money, Expansion, Ownership fit 375 pt at 12.5 pt with the shrink).
 struct GroupSectionBar: View {
     @Binding var tab: GroupSection
     var badges: [GroupSection: Int] = [:]
-    /// The tabs shown (the Board tab is left out until somebody could sit on it).
+    /// The tabs shown (all six: the Boardroom always exists, advisory until a co-owner joins).
     var sections: [GroupSection] = GroupSection.allCases
 
     var body: some View {

@@ -146,7 +146,11 @@ extension ManagerModel {
             out.append(ManagerProposal(kind: "eq", title: "Buy \(e.name)", why: "It is our bottleneck right now.", role: "", id: p.id, addedCost: 0, addedRevenue: tk * max(1, D - cap) * 0.8, once: p.cost))
         }
         if co.maintenance > 0 && rev > 0 && out.count < 3 { out.append(ManagerProposal(kind: "save", title: "Trim upkeep", why: "A little less maintenance saves money with small risk.", role: "", id: "", addedCost: -max(cur.scaledPrice(100), rev * 0.015), addedRevenue: -rev * 0.01, once: 0)) }
-        var scored: [(ManagerProposal, Double)] = out.map { x in (x, x.addedRevenue - x.addedCost - x.once / 26 + s.random.gauss() * abs(x.addedRevenue - x.addedCost + 1) * 0.6 * (1 - q)) }
+        let dir = OwnerMeetings.directive(co)
+        var scored: [(ManagerProposal, Double)] = out.map { x in
+            let lean = dir.map { OwnerMeetings.bias(directive: $0, kind: x.kind) * max(abs(x.addedRevenue - x.addedCost), rev * 0.05) } ?? 0   // the owner's strategic direction tilts the ranking
+            return (x, x.addedRevenue - x.addedCost - x.once / 26 + s.random.gauss() * abs(x.addedRevenue - x.addedCost + 1) * 0.6 * (1 - q) + lean)
+        }
         scored.sort { $0.1 > $1.1 }
         return scored.prefix(3).map { $0.0 }
     }

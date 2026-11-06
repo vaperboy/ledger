@@ -5,20 +5,19 @@ import Countries
 import Events
 import Simulation
 
-/// Owners, raising money and selling shares, in the Money tab of a company. Logic: `Funding`, `Shareholders`, `CompanySale`.
+/// Owners, raising money and issuing or selling shares, in Group > Ownership. Logic: `Funding`, `Shareholders`, `CompanySale`.
 ///
-/// Layout: a control hero (your share as a serif figure, a stacked ownership bar and what the other owners can do), then sub-tabs.
-/// Owners: the holders list with votes, mood and board seats, buy-backs and the dividend policy. Raise money: investors, pitches and
-/// the offers on the table (a holding: listing and issuing shares). Sell shares: the engine's offers and listing a share for sale.
+/// `mode` picks the page: owners (a control hero with your share, a stacked ownership bar and what the other owners can do, then the holders
+/// with votes, mood, buy-backs and the dividend policy), raise (investors, pitches and offers; a holding: listing and issuing shares) or
+/// shares (offers for blocks of your shares and new shares for an investor). Looking for a buyer for a stake is a route in `SaleRoutePicker`.
 struct CompanyOwnershipSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var page: Part?
+    enum Mode { case owners, raise, shares }
+    var mode: Mode = .owners
     @State private var pending: PendingAction?
     @State private var policyOpen = false
-
-    private enum Part: String, CaseIterable, Identifiable { case owners = "Owners", raise = "Raise money", sell = "Sell shares"; var id: String { rawValue } }
 
     /// One slice of the ownership bar.
     private struct Piece: Identifiable {
@@ -32,42 +31,21 @@ struct CompanyOwnershipSection: View {
     private var isOrdinary: Bool { company.form == .limited && company.type != "hold" }
     private var isHolding: Bool { company.type == "hold" }
 
-    private var parts: [Part] {
-        if isOrdinary { return [.owners, .raise, .sell] }
-        if isHolding { return [.owners, .raise] }
-        return [.owners]
-    }
-
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            control
-            owners(cur)
-            if parts.count > 1 { moreTable }
-        }
-        .navigationDestination(item: $page) { (p: Part) in
-            SettingsPage(title: p.rawValue, subtitle: company.name) { pageContent(p, cur) }
+            switch mode {
+            case .owners:
+                control
+                owners(cur)
+            case .raise:
+                raise(cur)
+            case .shares:
+                if isOrdinary { sell(cur) } else { Text("Only a limited company has shares to issue or sell.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+            }
         }
         .confirmAction($pending)
         .centerSheet(isPresented: $policyOpen) { DividendPolicySheet(companyID: company.id).environmentObject(store) }
-    }
-
-    /// Raising money and selling shares are bigger decisions: rows that open pages of their own.
-    private var moreTable: some View {
-        SettingsTable(heading: "Money and shares") {
-            SettingsTableRow(title: Part.raise.rawValue, note: "New owners put money into the company", value: "Open") { page = .raise }
-            if parts.contains(.sell) {
-                SettingsTableRow(title: Part.sell.rawValue, note: "Sell some of your own shares", value: "\(Int(company.ownership.rounded()))% yours") { page = .sell }
-            }
-        }
-    }
-
-    @ViewBuilder private func pageContent(_ p: Part, _ cur: Currency) -> some View {
-        switch p {
-        case .owners: owners(cur)
-        case .raise: raise(cur)
-        case .sell: sell(cur)
-        }
     }
 
     // MARK: Control
@@ -332,20 +310,6 @@ struct CompanyOwnershipSection: View {
                     Text("The company issues new shares and receives the money; every owner, you included, is diluted. Different from selling some of your own shares above.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
                 }
             }
-            Card(padding: 14, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        GlyphView(glyph: Glyph.arrowOut, size: 15, weight: 1.6)
-                        Text("Look for a buyer").capsLabel()
-                    }
-                    HStack(spacing: 8) {
-                        ForEach([10, 25, 34, 49], id: \.self) { p in
-                            QuietButton(title: "\(p)%", fullWidth: true) { confirmListingForSale(p) }
-                        }
-                    }
-                    Text("Buyers make offers over the coming weeks; nothing is sold until you accept one.").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                }
-            }
         }
     }
 
@@ -371,15 +335,6 @@ struct CompanyOwnershipSection: View {
             case .blocked?: Haptics.warning(); store.show("The other owners block new shares for now.", tone: "warn")
             default: Haptics.warning(); store.show("Not possible now.", tone: "warn")
             }
-        }
-    }
-
-    private func confirmListingForSale(_ p: Int) {
-        let id = company.id
-        pending = PendingAction(title: "Look for a buyer for \(p)%?", message: "Buyers make offers over the coming weeks; nothing is sold until you accept one.", button: "List \(p)%") {
-            let ok = store.act { $0.listSharesForSale(companyID: id, percent: p, broker: false) } ?? false
-            if !ok { Haptics.warning() }
-            store.show(ok ? "\(p)% listed. Offers arrive in the Inbox." : "Not possible now: it may already be listed, or would cost you control.", tone: ok ? "good" : "warn")
         }
     }
 

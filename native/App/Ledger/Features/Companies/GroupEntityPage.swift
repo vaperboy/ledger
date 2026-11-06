@@ -31,18 +31,15 @@ struct GroupEntityPage: View {
     }
 
     @ViewBuilder private func screen(_ e: GameEngine, _ s: GroupSection) -> some View {
-        if s == .money {
+        if s == .money && !entity.isHolding {
             FixedScreen(top: 12) { content(e, s) }
         } else {
             ScrollScreen(top: 12) { content(e, s) }
         }
     }
 
-    /// Every tab, minus Board while nobody could sit on it. A board that exists always shows.
-    private func visibleSections(_ e: GameEngine) -> [GroupSection] {
-        let open: Bool = store.isUnlocked("board", companyID: entity.companyID)
-        return GroupSection.allCases.filter { (s: GroupSection) -> Bool in s != .board || open }
-    }
+    /// Every tab. The Boardroom is always there: with no co-owner it is an advisory board of your managers.
+    private func visibleSections(_ e: GameEngine) -> [GroupSection] { GroupSection.allCases }
 
     private func badges(_ e: GameEngine) -> [GroupSection: Int] {
         guard let key = e.boardKey(companyID: entity.companyID), e.boardIsActive(key: key) else { return [:] }
@@ -79,10 +76,14 @@ struct GroupEntityPage: View {
         switch s {
         case .overview: GroupEntityOverview(engine: e, entity: entity)
         case .management: GroupEntityManagement(engine: e, entity: entity)
-        case .board: GroupEntityBoard(engine: e, entity: entity)
-        case .expansion: EntityExpansionView(companyID: entity.companyID)
+        case .board: GroupBoardroom(engine: e, entity: entity)
+        case .expansion:
+            VStack(alignment: .leading, spacing: 14) {
+                EntityExpansionView(companyID: entity.companyID)
+                GroupBuyRows(engine: e, entity: entity)
+            }
         case .money: GroupEntityMoney(engine: e, entity: entity)
-        case .deals: GroupEntityDeals(engine: e, entity: entity)
+        case .deals: GroupEntityOwnership(engine: e, entity: entity)
         }
     }
 }

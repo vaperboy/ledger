@@ -4,12 +4,14 @@ import Countries
 import Events
 import Simulation
 
-/// Selling the company: put it on the market privately or through a broker, then take, counter or decline the offers that come.
-/// Original: V.sale in features/player/selling_startups_and_crisis.js. Shown in the company's Money tab.
+/// Selling the company: pick a route (`SaleRoutePicker`), then take, talk to, hammer or decline the offers that come.
+/// Original: V.sale in features/player/selling_startups_and_crisis.js. Shown in Group > Ownership > Sell.
 struct CompanySaleSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
+    /// Where "Go public" points (the Raise page).
+    var onGoRaise: () -> Void = {}
     @State private var pending: PendingAction?
     @State private var talking: Int?
 
@@ -24,15 +26,7 @@ struct CompanySaleSection: View {
                 if let l = listing {
                     listed(l, cur)
                 } else {
-                    VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Text("A quiet private sale draws fewer buyers and is slower; staff and rivals do not hear. A broker finds more buyers for a 4% fee, but word gets out.")
-                            .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                        WrapRow {
-                            Button("Quiet private sale") { list(broker: false) }.buttonStyle(QuietButtonStyle())
-                            Button("Use a broker (4% fee)") { list(broker: true) }.buttonStyle(QuietButtonStyle())
-                        }
-                        Text("Listing is not a sale: nothing sells until you accept an offer.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
-                    }
+                    SaleRoutePicker(engine: engine, company: company, onGoRaise: onGoRaise)
                 }
             }
             .centerSheet(item: Binding(get: { talking.map { TalkID(id: $0) } }, set: { talking = $0?.id })) { t in
@@ -47,18 +41,23 @@ struct CompanySaleSection: View {
         askToSell(o)
     }
 
+    /// True when the listing sells part of your shares: the offer is then the price of that stake, not of the company.
+    private var stake: Bool { (CompanySale.listing(engine.state, companyID: company.id)?.pct ?? 100) < 100 }
+
     private func askToSell(_ o: CompanySale.Offer) {
         let cur: Currency = engine.currency(for: company)
-        let mine: Double = o.price * company.ownership / 100
+        let mine: Double = stake ? o.price : o.price * company.ownership / 100
         let tail: String = o.kind == "mbo" ? ", a third of it after two years" : ""
         let message: String = "\(o.buyer) pays " + cur.tidyDisplay(mine) + tail + ". " + consequences(o, cur)
-        pending = PendingAction(title: "Sell \(company.name)?", message: message, button: "Sell for " + cur.tidyShort(mine), destructive: true) { accept(o) }
+        pending = PendingAction(title: stake ? "Sell part of \(company.name)?" : "Sell \(company.name)?", message: message, button: "Sell for " + cur.tidyShort(mine), destructive: true) { accept(o) }
     }
 
     private func accept(_ o: CompanySale.Offer) {
+        let wasStake: Bool = stake
         let alone = engine.boardVote(kind: "sell", companyID: company.id).pushedThroughAlone
         let got = store.act { $0.update { s, data, ctx in CompanySale.accept(&s, companyID: company.id, offerID: o.id, data: data, context: ctx) } }
-        if store.engine?.state.company(company.id)?.status == .sold {
+        let done: Bool = wasStake ? CompanySale.listing(store.engine?.state ?? engine.state, companyID: company.id) == nil : store.engine?.state.company(company.id)?.status == .sold
+        if done {
             if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
             Haptics.success(); store.show("\(company.name) is sold to \(o.buyer)." + (alone ? " The other owners did not want this." : ""), tone: "good")
         }
@@ -66,14 +65,6 @@ struct CompanySaleSection: View {
     }
 
     private struct TalkID: Identifiable { var id: Int }
-
-    private func list(broker: Bool) {
-        Haptics.tap()
-        store.act { $0.update { s, _, _ in CompanySale.startListing(&s, companyID: company.id, broker: broker) } }
-        if CompanySale.listing(store.engine?.state ?? engine.state, companyID: company.id) != nil {
-            store.show(broker ? "\(company.name) is on the market through a broker. Offers arrive over the coming weeks." : "\(company.name) is quietly on the market. Offers arrive over the coming weeks.", tone: "n")
-        } else { Haptics.warning(); store.show("It could not be put on the market now.", tone: "warn") }
-    }
 
     /// What the sale does: what you are paid, which loans are settled, who loses a job, what the buyer does with it.
     private func consequences(_ o: CompanySale.Offer, _ cur: Currency) -> String {
@@ -84,20 +75,47 @@ struct CompanySaleSection: View {
         return t
     }
 
+    private func header(_ l: CompanySale.Listing, _ cur: Currency) -> String {
+        let how: String
+        switch l.route {
+        case "broker": how = " through a broker"
+        case "auction": how = " at auction"
+        case "mbo": how = " to your manager"
+        default: how = ", a quiet private sale"
+        }
+        let part: String = l.pct < 100 ? "\(l.pct)% of your shares" : "The company"
+        return part + " is on the market since " + GameCalendar.dateString(week: l.since) + how + " \u{00B7} \(l.offers.count) \(l.offers.count == 1 ? "offer" : "offers")"
+    }
+
+    /// The auction's progress: the round, your reserve, and the hammer.
+    @ViewBuilder private func auctionStrip(_ l: CompanySale.Listing, _ cur: Currency) -> some View {
+        let top: CompanySale.Offer? = l.offers.max { (a: CompanySale.Offer, b: CompanySale.Offer) -> Bool in a.price < b.price }
+        let mine: Double = l.pct < 100 ? 1 : company.ownership / 100
+        KeyFigures(items: [
+            .init(label: "Round", value: "\(min(3, l.round)) of 3"),
+            .init(label: "Reserve", value: cur.tidyShort(l.reserve * mine)),
+            .init(label: "Top bid", value: top.map { (o: CompanySale.Offer) -> String in cur.tidyShort(o.price * mine) } ?? "None"),
+        ])
+        Text(l.round < 3 ? "A new round of bids comes in each week. Bids rise, but a bidder may drop out." : "The bidding is over. The bids stand for a few days, then lapse.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+        if let top {
+            Button("Hammer now at " + cur.tidyShort(top.price * mine)) { Haptics.tap(); askToSell(top) }.buttonStyle(QuietButtonStyle())
+        }
+    }
+
     @ViewBuilder private func listed(_ l: CompanySale.Listing, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("On the market since " + GameCalendar.dateString(week: l.since) + (l.broker ? " through a broker" : ", a quiet private sale") + " · \(l.offers.count) offer\(l.offers.count == 1 ? "" : "s")")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            Text(header(l, cur)).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+            if l.route == "auction" { auctionStrip(l, cur) }
             if l.offers.isEmpty {
-                Text("No offers yet. Buyers show up over the coming weeks.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                Text(l.route == "auction" ? "No bid has reached your reserve yet." : "No offers yet. Buyers show up over the coming weeks.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
             }
-            ForEach(Array(l.offers.enumerated()), id: \.element.id) { i, o in
+            ForEach(Array(l.offers.sorted { (a: CompanySale.Offer, b: CompanySale.Offer) -> Bool in a.price > b.price }.enumerated()), id: \.element.id) { i, o in
                 if i > 0 { Hairline() }
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline) {
                         Text(o.buyer).font(.system(size: 14.5)).foregroundStyle(Theme.ivory)
                         Spacer()
-                        Text(cur.tidyShort(o.price * company.ownership / 100)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.gold)
+                        Text(cur.tidyShort(l.pct < 100 ? o.price : o.price * company.ownership / 100)).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(Theme.gold)
                     }
                     Text(o.note + " Open until " + GameCalendar.dateString(week: o.expiresWeek) + ".").font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     WrapRow {

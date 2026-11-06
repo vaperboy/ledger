@@ -15,7 +15,7 @@ final class BoardAgendaTests: XCTestCase {
             guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 8_000_000) else { throw XCTSkip("could not start a company") }
             ids.append(id)
             e.update { s, _, _ in
-                if let i = s.companyIndex(id) { s.companies[i].set("holders", .array([.object(["name": "Ann Partner", "pct": 15, "in": 0, "k27": "quiet", "sat": 60, "w0": 0])])) }
+                if let i = s.companyIndex(id) { s.companies[i].status = .open; s.companies[i].set("holders", .array([.object(["name": "Ann Partner", "pct": 15, "in": 0, "k27": "quiet", "sat": 60, "w0": 0])])) }
             }
             let key = try XCTUnwrap(e.boardKey(companyID: id))
             keys.append(key)

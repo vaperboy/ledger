@@ -78,14 +78,9 @@ struct CompanyHolding: View {
                                 if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
                                 else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
                             }.buttonStyle(TinyButtonStyle())
-                            Button("Invest in index") {
-                                if amount > 0, store.act({ $0.holdingInvest(holdingID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Invested.", tone: "good") }
-                                else { Haptics.warning(); store.show(amount > 0 ? "Not enough cash in the holding." : "Enter an amount first.", tone: "warn") }
-                            }.buttonStyle(TinyButtonStyle())
-                            Button("Sell index") { askSellIndex(cur) }.buttonStyle(TinyButtonStyle())
+                            Button("Treasury and dividends") { store.openGroupEntity(companyID: company.id, section: "money") }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                         }
-                        Button("Pay a dividend to me…") { askDividend(cur) }.buttonStyle(TinyButtonStyle())
-                        Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself. The index fund costs 0.66% to sell.")
+                        Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself. The index fund and paying yourself are in the Group tab under Money.")
                             .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                     }
                 }
@@ -118,16 +113,6 @@ struct CompanyHolding: View {
         }
     }
 
-    /// Selling index holdings is a real divestment (0.66% fee): asked first, with the amount.
-    private func askSellIndex(_ cur: Currency) {
-        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        let sold: Double = amount
-        pending = PendingAction(title: "Sell \(cur.tidyShort(sold)) of the index fund?", message: "The holding sells index holdings worth this much. The fund charges 0.66% to sell.", button: "Sell index", destructive: true) {
-            if store.act({ $0.holdingDivest(holdingID: company.id, amount: sold) }) == true { Haptics.success(); store.show("Sold.", tone: "good") }
-            else { Haptics.warning(); store.show("Nothing to sell.", tone: "warn") }
-        }
-    }
-
     private func askRelease(_ id: Int, _ name: String) {
         pending = PendingAction(title: "Release \(name)?", message: "It leaves the holding and is owned by you directly again. It drops out of the tax group, and dividends to you are taxed at the normal rate.", button: "Release", destructive: true) {
             let ok: Bool = store.act { $0.releaseFromHolding(companyID: id) } ?? false
@@ -140,18 +125,6 @@ struct CompanyHolding: View {
         pending = PendingAction(title: "Put \(name) under this holding?", message: "The holding takes over your shares in it. Dividends then flow into the holding at the lower rate, and at 90% or more in one country it joins the tax group.", button: "Put under holding", alwaysAsk: true) {
             if store.act({ $0.moveToHolding(companyID: id, holdingID: company.id) }) == true { Haptics.success(); store.show("\(name) is now held by \(company.name).", tone: "good") }
             else { Haptics.warning(); store.show("\(name) could not be moved under the holding.", tone: "warn") }
-        }
-    }
-
-    private func askDividend(_ cur: Currency) {
-        let amt: Double = amount
-        guard amt > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        pending = PendingAction(title: "Pay \(cur.tidyShort(amt)) to yourself?", message: "It comes out of the holding's retained profits and is taxed as your income. It cannot be paid back in as a dividend.", button: "Pay dividend", amount: amt, currency: cur) {
-            switch store.act({ $0.payDividend(companyID: company.id, amount: amt) }) {
-            case .ok?: Haptics.success(); store.show("Dividend of \(cur.tidyShort(amt)) paid.", tone: "good")
-            case .noRetainedProfit?: Haptics.warning(); store.show("There are no retained profits to pay out.", tone: "warn")
-            default: Haptics.warning(); store.show("Not enough cash in the holding.", tone: "warn")
-            }
         }
     }
 }

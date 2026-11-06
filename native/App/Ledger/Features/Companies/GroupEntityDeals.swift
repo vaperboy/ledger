@@ -2,48 +2,46 @@ import SwiftUI
 import GameCore
 import Countries
 import Businesses
+import Events
 import Simulation
 
-/// An entity's deals behind a small Buy / Sell / Offers control: rivals to buy and franchise brands to join, selling the company, and
-/// the offers and stakes that come to it (franchise applications, co-owners and their buy-backs, hosting, ventures).
-struct GroupEntityDeals: View {
+/// Everything about who owns an entity, behind a small Owners / Sell / Raise / Offers control: the owners and their mood, every way to sell
+/// (one route picker, one offers ladder), raising money and issuing shares, and the offers that come to it (franchise applications, bids,
+/// owners' demands, hosting). This is the only place in the app where a company is sold or shares are issued or sold.
+struct GroupEntityOwnership: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var entity: GroupEntity
-    @State private var part: DealPart = .buy
+    @State private var part: OwnPart = .owners
 
-    enum DealPart: String, CaseIterable, Hashable { case buy = "Buy", sell = "Sell", offers = "Offers" }
+    enum OwnPart: String, CaseIterable, Hashable { case owners = "Owners", sell = "Sell", raise = "Raise", offers = "Offers" }
 
     var body: some View {
         let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
         VStack(alignment: .leading, spacing: 12) {
-            SegmentedPill(items: DealPart.allCases, title: { (p: DealPart) -> String in p.rawValue }, selection: $part, identifier: { (p: DealPart) -> String in "group-deals-\(p.rawValue)" })
+            SegmentedPill(items: OwnPart.allCases, title: { (p: OwnPart) -> String in p.rawValue }, selection: $part, identifier: { (p: OwnPart) -> String in "group-ownership-\(p.rawValue)" })
             switch part {
-            case .buy: buy(cos)
+            case .owners: owners(cos)
             case .sell: sell(cos)
+            case .raise: raise(cos)
             case .offers: offers(cos)
             }
         }
     }
 
-    // MARK: Buy
+    /// The companies that have owners to show: limited companies and holdings, one block each.
+    private func ownable(_ cos: [Company]) -> [Company] { cos.filter { (c: Company) -> Bool in c.form == .limited || c.type == "hold" } }
 
-    @ViewBuilder private func buy(_ cos: [Company]) -> some View {
-        let open: [Company] = cos.filter { (c: Company) -> Bool in c.status == .open }
-        let brands = engine.franchiseBrands()
-        VStack(alignment: .leading, spacing: 8) {
-            if open.isEmpty {
-                Text("Open this company to look at rivals you could buy.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            } else {
-                Button { Haptics.tap(); store.openMarket(companyID: entity.companyID) } label: {
-                    CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
-                }.buttonStyle(PressableStyle())
-            }
-            NavigationLink { FranchisesView() } label: {
-                CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
-                        subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") \u{00B7} apply, meet them, agree terms",
-                        value: brands.isEmpty ? "" : "\(brands.count)")
-            }.buttonStyle(PressableStyle())
+    // MARK: Owners
+
+    @ViewBuilder private func owners(_ cos: [Company]) -> some View {
+        let list: [Company] = ownable(cos)
+        if list.isEmpty {
+            Text("You own this outright. Turn it into a limited company to bring in owners.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+        }
+        ForEach(list) { (c: Company) in
+            if list.count > 1 { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
+            CompanyOwnershipSection(engine: engine, company: c, mode: .owners)
         }
     }
 
@@ -53,8 +51,22 @@ struct GroupEntityDeals: View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(cos) { (c: Company) in
                 if cos.count > 1 { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
-                CompanySaleSection(engine: engine, company: c)
+                CompanySaleSection(engine: engine, company: c, onGoRaise: { part = .raise })
+                if c.form == .limited && c.type != "hold" { CompanyOwnershipSection(engine: engine, company: c, mode: .shares) }
             }
+        }
+    }
+
+    // MARK: Raise
+
+    @ViewBuilder private func raise(_ cos: [Company]) -> some View {
+        let list: [Company] = ownable(cos)
+        if list.isEmpty {
+            Text("Only a limited company or a holding can raise money from investors.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+        }
+        ForEach(list) { (c: Company) in
+            if list.count > 1 { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
+            CompanyOwnershipSection(engine: engine, company: c, mode: .raise)
         }
     }
 
@@ -62,19 +74,62 @@ struct GroupEntityDeals: View {
 
     @ViewBuilder private func offers(_ cos: [Company]) -> some View {
         let franchisors: [Company] = cos.filter { (c: Company) -> Bool in engine.isFranchisor(companyID: c.id) }
+        let ids: Set<Int> = Set(cos.map { (c: Company) -> Int in c.id })
+        let asks: [Message] = engine.state.inbox.filter { (m: Message) -> Bool in m.status == "open" && ids.contains(m.companyID) && Self.isOwnerOffer(m) }
         VStack(alignment: .leading, spacing: 12) {
-            if !franchisors.isEmpty { applicants(franchisors) }
-            if let first = cos.first(where: { (c: Company) -> Bool in c.type != "hold" }) ?? cos.first {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("STAKES AND OWNERS").capsLabel()
-                    CompanyOwnershipSection(engine: engine, company: first)
-                }
+            if asks.isEmpty && franchisors.isEmpty {
+                Text("No bids or demands right now. Bids on listed companies show under Sell.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
             }
+            if !asks.isEmpty { bids(asks) }
+            if !franchisors.isEmpty { applicants(franchisors) }
             VStack(alignment: .leading, spacing: 6) {
-                Text("OTHER GROUP DEALS").capsLabel()
+                Text("HOSTING").capsLabel()
                 HostingSection(engine: engine)
             }
         }
+    }
+
+    /// Inbound offers and owners' demands that used to be answered in the Inbox.
+    static let ownerActions: Set<String> = ["g27bid", "own27"]
+    static let ownerDecisions: Set<String> = ["s_acqoffer", "e_merger", "t_pe", "t_hostile", "t_ipo", "t_auction", "t_activist"]
+    static func isOwnerOffer(_ m: Message) -> Bool {
+        ownerActions.contains(m.actionID) || (m.actionID == StrategicDecisions.action && ownerDecisions.contains(m.value("data")["id"].string))
+    }
+    @State private var pending: PendingAction?
+
+    private func bids(_ asks: [Message]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("BIDS AND DEMANDS").capsLabel()
+            ForEach(asks) { (m: Message) in
+                Card(padding: 12, radius: Theme.Radius.row) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(engine.displayText(m.title, companyID: m.companyID)).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                        Text(engine.displayText(m.body, companyID: m.companyID)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        WrapRow {
+                            ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: JSONValue) in
+                                Button(engine.displayText(o["l"].string, companyID: m.companyID)) { ask(m, i) }.buttonStyle(QuietButtonStyle())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    /// An answer that cannot be undone or spends money is confirmed first, as in the Inbox (`DecisionConfirm`).
+    private func ask(_ m: Message, _ i: Int) {
+        guard m.options.indices.contains(i) else { return }
+        let label: String = engine.displayText(m.options[i]["l"].string, companyID: m.companyID)
+        let need: DecisionConfirmation = DecisionConfirm.confirmation(for: m, option: i)
+        let mid: Int = m.id
+        let run: () -> Void = {
+            let ok: Bool = store.act { $0.answer(messageID: mid, option: i) } ?? false
+            if ok { Haptics.success(); store.show(label + ".", tone: "good") } else { Haptics.warning(); store.show("That offer has already gone.", tone: "warn") }
+        }
+        if need.needsQuestion {
+            pending = PendingAction(title: label, message: engine.displayText(m.title, companyID: m.companyID), button: label, destructive: need.irreversible, run: run)
+        } else { run() }
     }
 
     private func applicants(_ franchisors: [Company]) -> some View {
@@ -91,6 +146,36 @@ struct GroupEntityDeals: View {
                     }.buttonStyle(PressableStyle())
                 }
             }
+        }
+    }
+}
+
+// MARK: - Buying (Expansion tab)
+
+/// What you could buy: a rival in the market, or a franchise brand to join. Shown under the Expansion tab; selling and owning are under Ownership.
+struct GroupBuyRows: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var entity: GroupEntity
+
+    var body: some View {
+        let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
+        let open: [Company] = cos.filter { (c: Company) -> Bool in c.status == .open }
+        let brands = engine.franchiseBrands()
+        VStack(alignment: .leading, spacing: 8) {
+            Text("BUY").capsLabel()
+            if open.isEmpty {
+                Text("Open this company to look at rivals you could buy.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            } else {
+                Button { Haptics.tap(); store.openMarket(companyID: entity.companyID) } label: {
+                    CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
+                }.buttonStyle(PressableStyle())
+            }
+            NavigationLink { FranchisesView() } label: {
+                CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
+                        subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") \u{00B7} apply, meet them, agree terms",
+                        value: brands.isEmpty ? "" : "\(brands.count)")
+            }.buttonStyle(PressableStyle())
         }
     }
 }
