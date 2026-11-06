@@ -9,11 +9,13 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var popups = PopupHost()
+    /// Screenshots only: `-showcase-gameover` shows the end screen over the showcase game.
+    private static let showsGameOver: Bool = ProcessInfo.processInfo.arguments.contains("-showcase-gameover")
 
     var body: some View {
         Group {
             if let e = store.engine {
-                if e.state.isGameOver { GameOverView(engine: e) } else { GameShell() }
+                if e.state.isGameOver || Self.showsGameOver { GameOverView(engine: e) } else { GameShell() }
             } else { StartView() }
         }
         .background(Theme.page.ignoresSafeArea())
