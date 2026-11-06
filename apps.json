@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.74",
+          "buildVersion": "74",
+          "date": "2026-11-06T11:36:03Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v74/Ledger-unsigned.ipa",
+          "size": 29286218,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades\n\n# Missing / coming next\n- Wider skilled-vs-idle gap; screen-tour fixes"
+        },
+        {
           "version": "1.0.73",
           "buildVersion": "73",
           "date": "2026-11-06T07:26:35Z",
@@ -187,22 +196,13 @@
           "size": 28689774,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Real products: items now have cost, stock, supplier and a live profit/loss price slider (item list like Team)\n- Retail, food and drink, rentals and appointment trades sell real items (bakery recipes, rental units, treatments...)\n- New-car dealership with brand contracts; dealer warranty, car loans and insurance commission\n- Used car dealer: cars come only from the Marketplace, repairs by your own garage, lot spaces, stuck cars\n- New trades: travel agency, insurance broker, finance broker\n\n# Missing / coming next\n- Used car list, car dealer screens and dealer add-on screens are being wired into the app\n- Remaining trades (professional services, projects, venues, transport, finance) still sell generic items\n- Not yet tested on device: expect rough edges"
-        },
-        {
-          "version": "1.0.54",
-          "buildVersion": "54",
-          "date": "2026-11-04T12:55:15Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v54/Ledger-unsigned.ipa",
-          "size": 27596874,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- New start: country, trade, name; your business opens on day 1 with money for the first weeks and no loan; bills wait a day instead of overdrawing; the ambition appears after your first profitable month\n- Skip to opening: pass the waiting days of a new company in one go\n- More new-item markers (Reviews, Goals, Trophies, Bank loans, Applications, Competitors), at most eight per screen\n- No false unlock announcements at the start of a game; the Custom tab falls back to Pick tab\n- Week, month and year reports: short reveal with one story line; profit counts up in the daily report\n- Events: fewer bad events early, more good ones, every event has a choice; first four weeks are quiet\n- First-year ladder (10 goals) with rewards; owner hours capped before week 13; no supplier cutoff or bankruptcy in the first year\n- New start: three steps (country, trade, name), company open on day 1; import/export moved to Settings \u203a Saves\n- Play: Next day is one day; Play to end of week from week 2; Inbox shows Needs you and All; a blocking event makes Play wait\n- Reminders: three gentle notifications at most (20 h, 2 days, 7 days), off in Settings; play streak flame from 3 days\n- Own staff"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.73",
-      "versionDate": "2026-11-06T07:26:35Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v73/Ledger-unsigned.ipa",
-      "size": 29284450
+      "version": "1.0.74",
+      "versionDate": "2026-11-06T11:36:03Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v74/Ledger-unsigned.ipa",
+      "size": 29286218
     }
   ]
 }
