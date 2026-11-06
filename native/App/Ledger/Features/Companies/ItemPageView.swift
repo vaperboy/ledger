@@ -217,6 +217,11 @@ struct ItemPageView: View {
                         .tint(Theme.gold)
                         .accessibilityIdentifier("sales-item-price")
                         ProfitBand(lo: lo, hi: hi, cost: p.unitCost, price: price)
+                        TypedPriceField(price: price, range: lo...hi, cur: cur, unit: p.item.isService ? "per service" : "each",
+                                        hint: { (v: Double) -> String? in
+                            let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
+                            return lp.outcome == .breakEven ? "At this price you break even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
+                        }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
                     }
                     Text("Cost \(itemAmount(p.unitCost, cur)). Market price \(itemAmount(p.item.marketPrice, cur)). Red is a loss, green a profit; you can go from 30% to 300% of the market price.")
                         .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)

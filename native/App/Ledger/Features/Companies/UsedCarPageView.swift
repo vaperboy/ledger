@@ -88,6 +88,12 @@ struct UsedCarPageView: View {
                 LedgerSlider(value: binding, in: lo...hi, step: step, valueText: cur.tidyShort(price)) { (editing: Bool) in
                     if !editing { commit(price) }
                 }
+                TypedPriceField(price: price, range: lo...hi, cur: cur, unit: "per car",
+                                hint: { (v: Double) -> String? in
+                    guard let q else { return nil }
+                    let d: Double = q.profit + (v - price)
+                    return (d >= 0 ? "Profit if it sells at this price: " : "Loss if it sells at this price: ") + usedCarMoney(d, cur)
+                }, onSet: { (v: Double) in draft = v; commit(v) })
                 if let q { liveRows(car, q, cur, price, lo, hi) }
             }
         }

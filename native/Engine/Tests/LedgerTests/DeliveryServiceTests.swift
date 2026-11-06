@@ -77,6 +77,24 @@ final class DeliveryServiceTests: XCTestCase {
         XCTAssertEqual(after.yearlySpend ?? 0, 0, accuracy: 1e-9)
     }
 
+    func testOwnDeliveryBooksTheCustomersDeliveryFeeAsRevenue() throws {
+        var e = try ChainsTests.engine()
+        let r = ChainsTests.start(&e, "cafe")
+        let courier = ChainsTests.start(&e, "courier")
+        openUp(&e, [r, courier])
+        deliveryOn(&e, r)
+        func fees() -> Double {
+            e.state.company(r)!.value("led").object.values.flatMap { $0.array }
+                .filter { $0.array.count > 3 && $0.array[3].string == "Delivery fees from customers" }.reduce(0.0) { $0 + $1.array[0].double }
+        }
+        ChainsTests.play(&e, days: 28)
+        XCTAssertEqual(fees(), 0, "an outside courier takes the fee")
+        XCTAssertEqual(e.switchSupplier(companyID: r, input: "deliv", to: .ownCompany(courier, mode: "mkt")), .ok)
+        ChainsTests.play(&e, days: 28)
+        XCTAssertGreaterThan(fees(), 0)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
     func testDeliveryDemandFollowsSupply() throws {
         var e = try ChainsTests.engine()
         let r = ChainsTests.start(&e, "cafe")

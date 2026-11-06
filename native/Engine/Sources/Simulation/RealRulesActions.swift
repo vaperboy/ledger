@@ -22,6 +22,12 @@ public extension GameEngine {
         FranchiseBrands.requirements(brand, state, World(state: state, data: data), country: country)
     }
 
+    /// The steps of a franchisee's way into a brand: eligibility, entry fee, approval and terms, opening.
+    func franchiseeSteps(_ brand: FranchiseBrands.Brand, country: String? = nil) -> [FranchiseBrands.Step] {
+        let cc = FranchiseBrands.application(state, brand.id)["country"].string
+        return FranchiseBrands.steps(brand, state, World(state: state, data: data), country: country ?? (cc.isEmpty ? state.homeCountryCode : cc))
+    }
+
     /// The structured document a "doc" message carries (a research report, a disclosure result); nil for an ordinary message.
     func messageDocument(messageID: Int) -> InboxDocument? {
         state.inbox.first { $0.id == messageID }?.doc
