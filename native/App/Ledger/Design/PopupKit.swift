@@ -79,41 +79,19 @@ struct PopupPressFeedback: ViewModifier {
     }
 }
 
-/// The filled button of a popup with a SOLE action (Continue, OK, Claim): champagne, full width. Never used beside other options.
+/// The filled button of a popup with a SOLE action (Continue, OK, Claim): the primary button at full width. Never beside other options.
 struct PopupPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14.5, weight: .semibold))
-            .lineLimit(1).minimumScaleFactor(0.85)
-            .foregroundStyle(PopupInk.onGold)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.horizontal, 14)
-            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .top, endPoint: .bottom)))
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.8 : 1)
-            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
+        PrimaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
-/// An option of a popup: an equal, neutral outline (same size and weight for every option, no red). A passive option
+/// An option of a popup: the secondary button at full width, the same for every option. A passive option
 /// (Decide later, Postpone, Later, Not now, Skip, Remind me) is drawn lightly grayed.
 struct PopupQuietButtonStyle: ButtonStyle {
     var passive: Bool = false
-    @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
-        let edge: Color = passive ? P.lineStrong.opacity(0.5) : P.lineStrong
-        let ink: Color = passive ? P.ink.opacity(0.5) : P.ink
-        return configuration.label
-            .font(.system(size: 14, weight: .medium))
-            .lineLimit(1).minimumScaleFactor(0.85)
-            .foregroundStyle(ink)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.horizontal, 14)
-            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(edge, lineWidth: 1))
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.7 : 1)
-            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
+        SecondaryButtonStyle(fullWidth: true, passive: passive).makeBody(configuration: configuration)
     }
 }
 

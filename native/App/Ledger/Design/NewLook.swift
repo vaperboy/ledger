@@ -716,11 +716,10 @@ struct TableRow: View {
 
 // MARK: Buttons
 
-/// The outlined secondary button (Continue, Register ...): champagne outline, 8 pt corners, ivory text. Never filled: only Next Day is.
+/// The secondary button as a view (Continue, Register ...); `tint` colours the text.
 struct QuietButton: View {
     var title: String
     var tint: Color? = nil
-    @Environment(\.outsidePalette) private var palette
     var fullWidth = false
     var action: () -> Void
 
@@ -730,18 +729,12 @@ struct QuietButton: View {
             action()
         } label: {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(palette.ink)
-                .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 28)
-                .padding(.horizontal, 16).padding(.vertical, 8)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint ?? palette.accent, lineWidth: 1))
-                .contentShape(Rectangle())
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(SecondaryButtonStyle(fullWidth: fullWidth, tint: tint))
     }
 }
 
-/// The small outlined button next to a title (New company): 12 pt text, 12 pt corners, a grey outline.
+/// The compact secondary button next to a title (New company): accent text, 44 pt hit area.
 struct SmallOutlineButton: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -753,14 +746,8 @@ struct SmallOutlineButton: View {
             action()
         } label: {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(P.accent)
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
-                .frame(minHeight: 30)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
         .accessibilityLabel(title)
     }
 }

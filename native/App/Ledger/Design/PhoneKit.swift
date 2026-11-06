@@ -204,19 +204,10 @@ struct LinkLabel: View {
     }
 }
 
-/// The grey-outlined secondary button for the other answers next to a `QuietButtonStyle` one (8 pt corners, never filled).
+/// The other answers next to a primary one: the secondary button.
 struct GreyOutlineButtonStyle: ButtonStyle {
-    @Environment(\.outsidePalette) private var palette
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .medium))
-            .lineLimit(1)
-            .foregroundStyle(palette.ink)
-            .padding(.horizontal, 14).padding(.vertical, 8)
-            .frame(minHeight: 36)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(palette.lineStrong, lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.7 : 1)
-            .contentShape(Rectangle())
+        SecondaryButtonStyle().makeBody(configuration: configuration)
     }
 }
 

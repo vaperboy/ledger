@@ -113,32 +113,11 @@ struct FigureStrip: View {
     }
 }
 
-/// The tiny outlined button: 12 pt text in `tint`, a grey outline, 12 pt corners. Never filled (only Next Day is).
+/// The compact secondary button: text in `tint` (accent by default), 32 pt drawn, 44 pt hit area.
 struct TinyButtonStyle: ButtonStyle {
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
 
     func makeBody(configuration: Configuration) -> some View {
-        TinyButtonBody(configuration: configuration, tint: tint)
-    }
-
-    private struct TinyButtonBody: View {
-        let configuration: ButtonStyleConfiguration
-        let tint: Color
-        @Environment(\.isEnabled) private var enabled
-
-        var body: some View {
-            let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-            let edge: Color = tint == Theme.loss ? Theme.loss.opacity(0.6) : Theme.borderStrong
-            let fade: Double = enabled ? (configuration.isPressed ? 0.6 : 1) : 0.4
-            configuration.label
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(tint)
-                .lineLimit(1)
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .frame(minHeight: 28)
-                .overlay(shape.strokeBorder(edge, lineWidth: 1))
-                .contentShape(Rectangle())
-                .opacity(fade)
-        }
+        SecondaryButtonStyle(size: .compact, tint: tint).makeBody(configuration: configuration)
     }
 }

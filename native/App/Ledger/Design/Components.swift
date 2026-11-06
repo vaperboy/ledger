@@ -104,36 +104,18 @@ struct ListRow: View {
     }
 }
 
-/// The one filled control: a champagne pill with dark text. House rule: ONLY Next Day uses it; every other action is `QuietButton` /
-/// `QuietButtonStyle` (outline) or `SmallOutlineButton`.
+/// Next Day: the primary button at full width.
 struct GoldButtonStyle: ButtonStyle {
-    @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(P.isLight ? P.onAccent : Color(red: 0.09, green: 0.075, blue: 0.055))
-            .padding(.horizontal, 24)
-            .frame(maxWidth: .infinity, minHeight: 46)
-            .background(Capsule().fill(P.isLight ? P.accent : Theme.gold))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(Motion.tapAnimation, value: configuration.isPressed)
+        PrimaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 
-/// A quiet text button with a champagne outline (8 pt corners) for secondary actions. `QuietButton` in NewLook.swift is the same as a view.
+/// A secondary action: the secondary button; `tint` colours the text.
 struct QuietButtonStyle: ButtonStyle {
     var tint: Color? = nil
-    @Environment(\.outsidePalette) private var palette
     func makeBody(configuration: Configuration) -> some View {
-        let tint: Color = self.tint ?? palette.accent
-        return configuration.label
-            .font(.system(.subheadline).weight(.semibold))
-            .lineLimit(1)
-            .foregroundStyle(tint)
-            .padding(.horizontal, 14).padding(.vertical, 8)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(tint.opacity(0.7), lineWidth: 1))
-            .opacity(configuration.isPressed ? 0.7 : 1)
+        SecondaryButtonStyle(tint: tint).makeBody(configuration: configuration)
     }
 }
 
@@ -480,15 +462,10 @@ struct RateBar: View {
     }
 }
 
-/// Compact hairline button for the other answers.
+/// The other answers beside a primary one: the secondary button at full width.
 struct SmallOutlineButtonStyle: ButtonStyle {
-    @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(P.ink)
-            .frame(maxWidth: .infinity, minHeight: 34)
-            .overlay(Capsule().strokeBorder(P.ink.opacity(configuration.isPressed ? 0.4 : 0.22), lineWidth: 0.75))
+        SecondaryButtonStyle(fullWidth: true).makeBody(configuration: configuration)
     }
 }
 

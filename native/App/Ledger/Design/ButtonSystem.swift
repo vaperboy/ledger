@@ -1,61 +1,150 @@
 import SwiftUI
 
-// The game's button and alert system (dark ledger look). Phone sizes: compact
-// buttons that hug their label, never wide-format; the Cancel | Apply footer is the only place two actions share a row.
-//   Basic / secondary : `PlainTextButtonStyle` (Cancel, Decline) and the existing `GreyOutlineButtonStyle` (Back, View documents).
-//   Important         : `ImportantButtonStyle`, a gold-filled button (Verify, Authorize, Execute).
-//   Expensive         : `FoilButtonStyle`, a gold-foil outline with the amount in the label ("Acquire asset - 12,500,000").
-//   Popup footer      : `PopupFooter` (Cancel | Apply).
-//   Sole action       : `PopupPrimaryButtonStyle` / `PopupOptionButton(highlighted: true)`; on a celebration card `ClaimButton` (Celebration.swift), the same button with a pulse.
-//   Haptics           : every popup button plays a soft tap, a destructive footer a warning, a claim a success (`Haptics.play`).
+// The three buttons of the game. Every older style below maps onto one of them.
+//   Primary   : `PrimaryButtonStyle`, solid accent, accent ink. One per screen or popup (Next Day, Continue, Claim, Execute).
+//   Secondary : `SecondaryButtonStyle`, a quiet outline with ink text; `tint` colours the text (accent = recommended, loss = irreversible).
+//   Tertiary  : `TertiaryButtonStyle`, text only (Cancel, See all, links).
+//   Sizes     : `.regular` is 44 pt high; `.compact` draws 32 pt but keeps a 44 pt hit area. Disabled buttons look disabled themselves.
+//   Blocked   : `PrimaryAction` shows the reason under a disabled primary button instead of fading it silently.
 
-private let goldInk = PopupInk.onGold
+/// Height of a button: regular (44 pt) or compact (32 pt drawn inside a 44 pt hit area).
+enum LedgerButtonSize { case regular, compact }
 
-/// Cancel, Decline: text only, no box.
+/// The one body behind the three button styles.
+private struct LedgerButtonBody: View {
+    enum Tier { case primary, secondary, tertiary }
+    let configuration: ButtonStyleConfiguration
+    let tier: Tier
+    let size: LedgerButtonSize
+    let fullWidth: Bool
+    let tint: Color?
+    var passive: Bool = false
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.outsidePalette) private var P
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var compact: Bool { size == .compact }
+
+    private var textColor: Color {
+        guard enabled else { return tier == .primary ? P.inkSoft : P.inkFaint }
+        switch tier {
+        case .primary: return P.accentInk
+        case .secondary: return passive ? P.inkSoft : (tint ?? P.ink)
+        case .tertiary: return tint ?? P.accent
+        }
+    }
+
+    private var fillColor: Color {
+        guard tier == .primary else { return Color.clear }
+        return enabled ? (tint ?? P.accent) : P.inset
+    }
+
+    private var edgeColor: Color {
+        guard tier == .secondary else { return Color.clear }
+        if !enabled || passive { return P.line }
+        if let t = tint, t == P.loss { return P.loss.opacity(0.6) }
+        return P.lineStrong
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+        let pressed: Bool = configuration.isPressed
+        let step: TextStep = compact ? .body : .headline
+        let weight: Font.Weight = tier == .primary ? .semibold : .medium
+        configuration.label
+            .textStyle(step, tint: textColor, weight: weight)
+            .lineLimit(1).minimumScaleFactor(0.85)
+            .padding(.horizontal, tier == .tertiary ? Theme.Space.s : (compact ? Theme.Space.m : Theme.Space.l))
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : 44)
+            .background(shape.fill(fillColor))
+            .overlay(shape.strokeBorder(edgeColor, lineWidth: 1))
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(pressed ? 0.72 : 1)
+            .scaleEffect(pressed && !reduceMotion ? 0.98 : 1)
+            .animation(Motion.tap(reduceMotion), value: pressed)
+    }
+}
+
+/// The one filled button: solid accent, no gradient, no glow. Use once per screen or popup.
+struct PrimaryButtonStyle: ButtonStyle {
+    var size: LedgerButtonSize = .regular
+    var fullWidth = false
+    /// A fill other than the accent (rare: a palette's own brand colour).
+    var tint: Color? = nil
+    func makeBody(configuration: Configuration) -> some View {
+        LedgerButtonBody(configuration: configuration, tier: .primary, size: size, fullWidth: fullWidth, tint: tint)
+    }
+}
+
+/// The quiet outline: every other action. `tint` colours the text; `passive` greys a Later / Skip answer.
+struct SecondaryButtonStyle: ButtonStyle {
+    var size: LedgerButtonSize = .regular
+    var fullWidth = false
+    var tint: Color? = nil
+    var passive = false
+    func makeBody(configuration: Configuration) -> some View {
+        LedgerButtonBody(configuration: configuration, tier: .secondary, size: size, fullWidth: fullWidth, tint: tint, passive: passive)
+    }
+}
+
+/// Text only: Cancel, links, See all. Accent unless tinted.
+struct TertiaryButtonStyle: ButtonStyle {
+    var size: LedgerButtonSize = .regular
+    var fullWidth = false
+    var tint: Color? = nil
+    func makeBody(configuration: Configuration) -> some View {
+        LedgerButtonBody(configuration: configuration, tier: .tertiary, size: size, fullWidth: fullWidth, tint: tint)
+    }
+}
+
+/// The primary action of a screen that may be blocked: when `blockedReason` is set the button is disabled and the reason shows under it.
+struct PrimaryAction: View {
+    var title: String
+    var blockedReason: String? = nil
+    var fullWidth = true
+    var identifier: String = ""
+    var action: () -> Void
+
+    var body: some View {
+        let blocked: Bool = !(blockedReason ?? "").isEmpty
+        VStack(spacing: Theme.Space.xs) {
+            Button { Haptics.tap(); action() } label: { Text(title) }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: fullWidth))
+                .disabled(blocked)
+                .accessibilityIdentifier(identifier.isEmpty ? title : identifier)
+                .accessibilityHint(blockedReason ?? "")
+            if blocked, let reason = blockedReason {
+                Text(reason.tidyText).textStyle(.caption).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier((identifier.isEmpty ? title : identifier) + "-blocked")
+            }
+        }
+    }
+}
+
+/// Cancel, Decline: the tertiary button in soft ink.
 struct PlainTextButtonStyle: ButtonStyle {
     @Environment(\.outsidePalette) private var P
     var tint: Color? = nil
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(tint ?? P.inkSoft)
-            .padding(.horizontal, 14).frame(minHeight: 40)
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.6 : 1)
+        TertiaryButtonStyle(tint: tint ?? P.inkSoft).makeBody(configuration: configuration)
     }
 }
 
-/// An important action: a gold-filled button that hugs its label (compact, not wide).
+/// An important action: the primary button, hugging its label.
 struct ImportantButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .semibold))
-            .lineLimit(1)
-            .foregroundStyle(goldInk)
-            .padding(.horizontal, 18).frame(minHeight: 40)
-            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .top, endPoint: .bottom)))
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.8 : 1)
-            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
+        PrimaryButtonStyle().makeBody(configuration: configuration)
     }
 }
 
-/// An expensive action: a gold-foil outline with a faint gold wash. Put the amount in the label.
+/// An expensive or irreversible action: the secondary button with the text in `tint` (accent by default). Put the amount in the label.
 struct FoilButtonStyle: ButtonStyle {
+    @Environment(\.outsidePalette) private var P
     var tint: Color? = nil
     func makeBody(configuration: Configuration) -> some View {
-        let c: Color = tint ?? Theme.gold
-        return configuration.label
-            .font(.system(size: 14, weight: .semibold))
-            .lineLimit(1).minimumScaleFactor(0.85)
-            .foregroundStyle(c)
-            .padding(.horizontal, 16).frame(minHeight: 40)
-            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).fill(c.opacity(0.12)))
-            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(c.opacity(0.85), lineWidth: 1.2))
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.75 : 1)
-            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
+        SecondaryButtonStyle(tint: tint ?? P.accent).makeBody(configuration: configuration)
     }
 }
 
@@ -81,8 +170,8 @@ struct PopupFooter: View {
     var body: some View {
         HStack(spacing: 10) {
             PopupOptionButton(title: cancel, identifier: cancelID, action: onCancel)
-                .disabled(!cancelEnabled).opacity(cancelEnabled ? 1 : 0.4)
-            actionButton.disabled(!actionEnabled).opacity(actionEnabled ? 1 : 0.4)
+                .disabled(!cancelEnabled)
+            actionButton.disabled(!actionEnabled)
         }
         .padding(.top, 4)
     }
@@ -92,10 +181,10 @@ struct PopupFooter: View {
             switch tone {
             case .expensive:
                 Button(action: { Haptics.play(.tap); onAction() }) { Text(action) }
-                    .buttonStyle(FoilButtonStyle()).accessibilityIdentifier(actionID)
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.accent)).accessibilityIdentifier(actionID)
             case .destructive:
                 Button(action: { Haptics.play(.warning); onAction() }) { Text(action) }
-                    .buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier(actionID)
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.loss)).accessibilityIdentifier(actionID)
             case .normal:
                 PopupOptionButton(title: action, identifier: actionID, action: onAction)
             }
@@ -111,13 +200,13 @@ struct PopupActionBar<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Rectangle().fill(P.line).frame(height: 1)
+            Hairline()
             VStack(spacing: PopupSpace.row) { content() }
                 .padding(.horizontal, PopupSpace.card)
                 .padding(.top, PopupSpace.block).padding(.bottom, PopupSpace.block)
         }
         .frame(maxWidth: .infinity)
-        .background(P.card)
+        .background(P.surfaceRaised)
     }
 }
 

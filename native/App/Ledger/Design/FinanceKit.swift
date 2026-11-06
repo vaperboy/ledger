@@ -208,9 +208,8 @@ struct AcctPill: View {
 
 // MARK: Buttons
 
-/// The one primary action of a screen: forest green, ivory text. Disabled looks disabled and does nothing.
+/// The one primary action of a screen: the primary button at full width in the palette's accent. Disabled looks disabled and does nothing.
 struct AcctPrimaryButton: View {
-    @Environment(\.outsidePalette) private var P
     var title: String
     var enabled: Bool = true
     var identifier: String = ""
@@ -222,19 +221,14 @@ struct AcctPrimaryButton: View {
             action()
         } label: {
             Text(title)
-                .font(.system(size: 15, weight: .semibold)).foregroundStyle(P.onAccent)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.accent))
-                .opacity(enabled ? 1 : 0.35)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(AcctButtonPressStyle())
+        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
         .disabled(!enabled)
         .accessibilityIdentifier(identifier.isEmpty ? title : identifier)
     }
 }
 
-/// A quieter second action: an outline in forest green.
+/// A quieter second action: the secondary button at full width, text in `tint` (the palette's accent by default).
 struct AcctSecondaryButton: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -248,12 +242,8 @@ struct AcctSecondaryButton: View {
             action()
         } label: {
             Text(title)
-                .font(.system(size: 14.5, weight: .medium)).foregroundStyle(tint ?? P.accent)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(tint ?? P.accent, lineWidth: 1))
-                .contentShape(Rectangle())
         }
-        .buttonStyle(AcctButtonPressStyle())
+        .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: tint ?? P.accent))
         .accessibilityIdentifier(identifier.isEmpty ? title : identifier)
     }
 }
