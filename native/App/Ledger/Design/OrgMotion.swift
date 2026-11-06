@@ -71,7 +71,7 @@ extension View {
     /// A location pin that drops in (fade and scale) at the top leading corner while `active`.
     func orgPin(_ active: Bool) -> some View { modifier(OrgPin(active: active)) }
 
-    /// A short scale pulse with a gold glow when `value` changes (badge, milestone). Not on first appearance.
+    /// A short scale pulse (no glow) when `value` changes (badge, milestone). Not on first appearance.
     func orgPulse<V: Equatable>(_ value: V, tint: Color = Theme.gold) -> some View { modifier(OrgPulse(value: value, tint: tint)) }
 
     /// Text that cross-fades (or morphs with `interpolate`) when `value` changes.
@@ -182,7 +182,6 @@ private struct OrgPulse<V: Equatable>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scaleEffect(on ? 1.1 : 1)
-            .shadow(color: tint.opacity(on ? 0.7 : 0), radius: on ? 6 : 0)
             .onChange(of: value) { _, _ in
                 guard !reduceMotion else { return }
                 Motion.animate(Motion.quickAnimation) { on = true }
@@ -225,31 +224,15 @@ private struct OrgRedraw<V: Equatable>: ViewModifier {
 
 // MARK: Pieces
 
-/// A progress bar whose fill animates (350 ms) and that pulses gold when `milestones` goes up.
+/// A progress bar whose fill animates: `ProgressLine` at the given height. `milestones` and `track` are kept so call sites compile;
+/// the gold milestone glow is retired.
 struct OrgProgressBar: View {
     var fraction: Double
     var milestones: Int
-    var height: CGFloat = 5
-    var track: Color = Color(hex: 0x26272A)
-    @State private var glow = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var height: CGFloat = 4
+    var track: Color = Theme.line
 
-    var body: some View {
-        GeometryReader { g in
-            ZStack(alignment: .leading) {
-                Capsule().fill(track)
-                Capsule().fill(Theme.gold).frame(width: g.size.width * CGFloat(min(1, max(0, fraction))))
-                    .shadow(color: Theme.gold.opacity(glow ? 0.8 : 0), radius: glow ? 5 : 0)
-            }
-        }
-        .frame(height: height)
-        .animation(OrgMotion.fill(reduceMotion), value: fraction)
-        .onChange(of: milestones) { old, new in
-            guard new > old, !reduceMotion else { return }
-            Motion.animate(Motion.quickAnimation) { glow = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { Motion.animate(Motion.quickAnimation) { glow = false } }
-        }
-    }
+    var body: some View { ProgressLine(fraction: fraction, height: height) }
 }
 
 /// One line of notice that comes and goes by itself (a resignation reason, a recognition chip).

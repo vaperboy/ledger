@@ -13,10 +13,8 @@ struct InfoSheetButton: View {
 
     var body: some View {
         Button { Haptics.tap(); open = true } label: {
-            Text("i").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(P.inkSoft)
-                .frame(width: 17, height: 17)
-                .overlay(Circle().strokeBorder(P.inkSoft, lineWidth: 1))
-                .frame(width: 32, height: 32)
+            LedgerGlyph(glyph: Glyph.info, size: Theme.Icon.small, tint: P.inkFaint)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())

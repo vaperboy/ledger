@@ -49,16 +49,15 @@ enum PopupVariant {
 
     var figureSize: CGFloat {
         switch self {
-        case .report: return 28
-        case .reward: return 30
-        default: return 22
+        case .report, .reward: return TextStep.title.size
+        default: return TextStep.figure.size
         }
     }
 
     /// The figure font alone (for a counting figure that keeps its own gain or loss colour).
     var figureFont: Font { Font.system(size: figureSize, weight: .medium, design: .serif).monospacedDigit() }
     /// The value font alone (a secondary amount beside a figure).
-    var valueFont: Font { Font.system(size: 13.5, weight: .medium).monospacedDigit() }
+    var valueFont: Font { TextStep.body.font(size: TextStep.body.size, numeric: true, weight: .medium) }
 
     var risksAreRed: Bool { self == .destructive }
     var footerTone: PopupFooter.Tone {
@@ -70,12 +69,12 @@ enum PopupVariant {
     }
 }
 
-/// One spacing scale for the inside of every popup.
+/// The spacing scale inside every popup: the same steps as `Theme.Space`.
 enum PopupSpace {
-    static let tight: CGFloat = 4
-    static let row: CGFloat = 8
-    static let block: CGFloat = 12
-    static let card: CGFloat = 16
+    static let tight: CGFloat = Theme.Space.xs
+    static let row: CGFloat = Theme.Space.s
+    static let block: CGFloat = Theme.Space.m
+    static let card: CGFloat = Theme.Space.l
 }
 
 private struct InsidePopupKey: EnvironmentKey { static let defaultValue: Bool = false }
@@ -90,17 +89,18 @@ extension EnvironmentValues {
 
 /// One corner-radius set for everything inside a popup: the card, a control (button, field), and an inner block (signature box, photo).
 enum PopupRadius {
-    static let card: CGFloat = Theme.Radius.hero
-    static let control: CGFloat = Theme.Radius.table
-    static let inner: CGFloat = Theme.Radius.row
+    static let card: CGFloat = Theme.Radius.large
+    static let control: CGFloat = Theme.Radius.small
+    static let inner: CGFloat = Theme.Radius.medium
 }
 
 /// The champagne gold of an action that is meant to stand out, readable on the dark card and on a light outside palette.
 enum PopupInk {
-    /// Dark ink on a gold fill.
-    static let onGold = Color(red: 0.09, green: 0.075, blue: 0.055)
+    /// Dark ink on a gold fill (the accent ink role).
+    static let onGold = Theme.accentInk
 }
 
+/// Each role is a step of the type scale (Theme.swift), so popup text scales with Dynamic Type like the rest of the game.
 private struct PopupTextStyle: ViewModifier {
     @Environment(\.outsidePalette) private var P
     var role: PopupRole
@@ -108,32 +108,32 @@ private struct PopupTextStyle: ViewModifier {
 
     private var ink: Color { variant == .alert ? Color.white : P.ink }
     private var soft: Color { variant == .alert ? Color.white.opacity(0.9) : P.inkSoft }
+    private var big: Bool { variant == .report || variant == .reward }
 
     func body(content: Content) -> some View {
         switch role {
         case .title:
             content.font(.system(size: 16, weight: .semibold, design: .serif)).foregroundStyle(ink)
         case .subtitle:
-            content.font(.system(size: 12.5)).foregroundStyle(soft).fixedSize(horizontal: false, vertical: true)
+            content.textStyle(.caption, tint: soft).fixedSize(horizontal: false, vertical: true)
         case .body:
-            content.font(.system(size: 14)).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
+            content.textStyle(.body, tint: ink).fixedSize(horizontal: false, vertical: true)
         case .caption:
-            content.font(.system(size: 12)).foregroundStyle(soft).fixedSize(horizontal: false, vertical: true)
+            content.textStyle(.caption, tint: soft).fixedSize(horizontal: false, vertical: true)
         case .figure:
-            content.font(.system(size: variant.figureSize, weight: .medium, design: .serif).monospacedDigit())
-                .foregroundStyle(variant == .reward ? Theme.gold : ink)
+            content.textStyle(big ? .title : .figure, tint: variant == .reward ? P.accent : ink, numeric: true)
         case .hero:
-            content.font(.hero(34)).foregroundStyle(ink).minimumScaleFactor(0.6).lineLimit(1)
+            content.textStyle(.display, tint: ink).minimumScaleFactor(0.6).lineLimit(1)
         case .rowLabel:
-            content.font(.system(size: 13)).foregroundStyle(soft)
+            content.textStyle(.body, tint: soft)
         case .rowValue:
-            content.font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(ink)
+            content.textStyle(.body, tint: ink, numeric: true, weight: .medium)
         case .effect:
-            content.font(.system(size: 12)).foregroundStyle(Theme.gold).fixedSize(horizontal: false, vertical: true)
+            content.textStyle(.caption, tint: P.accent).fixedSize(horizontal: false, vertical: true)
         case .risk:
-            content.font(.system(size: 12.5)).foregroundStyle(variant.risksAreRed ? P.loss : P.caution).fixedSize(horizontal: false, vertical: true)
+            content.textStyle(.caption, tint: variant.risksAreRed ? P.loss : P.warn).fixedSize(horizontal: false, vertical: true)
         case .button:
-            content.font(.system(size: 14, weight: .medium)).foregroundStyle(ink)
+            content.textStyle(.body, tint: ink, weight: .medium)
         case .code:
             content.font(.system(size: 12, design: .monospaced)).foregroundStyle(ink)
         }
@@ -153,17 +153,15 @@ private struct PopupFieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .textFieldStyle(.plain)
-            .font(.system(size: 15))
-            .foregroundStyle(P.ink)
+            .textStyle(.headline, weight: .regular)
             .padding(.horizontal, PopupSpace.block)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).fill(P.cardDeep))
-            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).fill(P.inset))
     }
 }
 
 extension View {
-    /// The one text field of a popup: 15, ink, 44pt high, the card's deep fill and a hairline. Apply it to a `TextField` and nothing else.
+    /// The one text field of a popup: the `LedgerField` look (15, ink, 44 pt high, inset fill, no outline). Apply it to a `TextField` only.
     func popupField() -> some View { modifier(PopupFieldStyle()) }
 }
 
@@ -204,10 +202,10 @@ struct PopupSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PopupSpace.row) {
-            if !title.isEmpty { Text(title).popupText(.caption).textCase(.uppercase) }
+            if !title.isEmpty { Text(title).textStyle(.label, tint: P.inkFaint) }
             VStack(alignment: .leading, spacing: PopupSpace.row) { content() }
                 .padding(.top, PopupSpace.row)
-                .overlay(alignment: .top) { Rectangle().fill(P.line).frame(height: 1) }
+                .overlay(alignment: .top) { Hairline() }
         }
     }
 }

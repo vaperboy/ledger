@@ -4,39 +4,10 @@ import SwiftUI
 
 // MARK: Profit glow
 
-/// A soft green band sweeps once across a figure when `value` rises (0.8 s). Nothing for a fall, the first appearance or Reduce Motion.
+/// Retired decoration: the green sweep across a rising figure. Kept as a no-op so call sites compile; `moneyFlash` carries the change.
 struct ProfitGlow: ViewModifier {
     var value: Double
-    @State private var phase: CGFloat = -0.6
-    @State private var active: Bool = false
-    @State private var token: Int = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .overlay {
-                GeometryReader { geo in
-                    LinearGradient(colors: [Color.clear, Theme.gain, Color.clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: geo.size.width * 0.5)
-                        .offset(x: geo.size.width * phase)
-                        .opacity(active ? 0.85 : 0)
-                }
-                .mask(content)
-                .allowsHitTesting(false)
-            }
-            .onChange(of: value) { old, new in
-                guard new > old, !reduceMotion else { return }
-                token += 1
-                let mine: Int = token
-                phase = -0.6
-                active = true
-                Motion.animate(Motion.revealAnimation) { phase = 1.1 }
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 900_000_000)
-                    if mine == token { active = false }
-                }
-            }
-    }
+    func body(content: Content) -> some View { content }
 }
 
 // MARK: Chart draws itself
@@ -73,26 +44,10 @@ extension Motion {
 
 // MARK: Gold pulse
 
-/// One gold ring pulse (700 ms) outward from the view when `trigger` turns true: an achievement unlocked or a goal completed.
+/// Retired decoration: the gold ring pulse. Kept as a no-op so call sites compile.
 struct GoldPulse: ViewModifier {
     var trigger: Bool
-    @State private var pulse: Bool = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .overlay {
-                Circle().strokeBorder(Theme.gold, lineWidth: 2)
-                    .scaleEffect(pulse ? 1.5 : 0.9)
-                    .opacity(pulse ? 0 : (trigger ? 0.9 : 0))
-                    .allowsHitTesting(false)
-            }
-            .onChange(of: trigger) { old, new in
-                guard new, !old, !reduceMotion else { return }
-                pulse = false
-                Motion.animate(Motion.revealAnimation) { pulse = true }
-            }
-    }
+    func body(content: Content) -> some View { content }
 }
 
 // MARK: Staggered reveal
@@ -116,11 +71,11 @@ struct StaggerReveal: ViewModifier {
 }
 
 extension View {
-    /// A soft green sweep across the figure when `value` rises (see `ProfitGlow`).
+    /// Retired: does nothing (see `ProfitGlow`).
     func profitGlow(_ value: Double) -> some View { modifier(ProfitGlow(value: value)) }
     /// The chart draws itself from left to right the first time it appears (see `DrawInOnce`).
     func drawsItself(duration: Double = 0.7) -> some View { modifier(DrawInOnce(duration: duration)) }
-    /// A gold ring pulse when `trigger` turns true (see `GoldPulse`).
+    /// Retired: does nothing (see `GoldPulse`).
     func goldPulse(_ trigger: Bool) -> some View { modifier(GoldPulse(trigger: trigger)) }
     /// Reveals this section 40 ms after the previous one (see `StaggerReveal`).
     func staggerReveal(_ index: Int) -> some View { modifier(StaggerReveal(index: index)) }
@@ -163,8 +118,8 @@ struct TransferChipView: View {
             Text("+" + store.short(chip.amount)).font(.system(size: 13.5, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.gold)
         }
         .padding(.horizontal, 12).padding(.vertical, 7)
-        .background(Capsule().fill(Theme.surface))
-        .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.6), lineWidth: 1))
+        .background(Capsule().fill(Theme.surfaceRaised))
+        .elevation(.raised)
         .opacity(step == 1 ? 1 : 0)
         .offset(y: reduceMotion ? 0 : (step == 0 ? 24 : (step == 1 ? 0 : -24)))
         .task(id: chip.id) {
@@ -181,10 +136,9 @@ struct TransferChipView: View {
 
 // MARK: Luxury reveal
 
-/// The card shown over a high-value purchase confirmation: a gold-edged panel whose edge draws round once (900 ms) while it fades in.
+/// The card shown over a high-value purchase confirmation: a plain surface panel that fades in (the self-drawing gold edge is retired).
 struct GoldReveal<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var edge: CGFloat = 0
     @State private var shown: Bool = false
     var content: Content
 
@@ -194,32 +148,24 @@ struct GoldReveal<Content: View>: View {
         content
             .padding(16)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
-                    .trim(from: 0, to: reduceMotion ? 1 : edge)
-                    .stroke(Theme.gold, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-            )
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous).fill(Theme.surface))
             .opacity(shown || reduceMotion ? 1 : 0)
             .scaleEffect(shown || reduceMotion ? 1 : 0.97)
             .onAppear {
                 guard !reduceMotion else { return }
                 Motion.animate(Motion.quickAnimation) { shown = true }
-                Motion.animate(Motion.revealAnimation) { edge = 1 }
             }
     }
 }
 
 // MARK: Milestone ring
 
-/// The milestone mark: a gold ring that draws round (800 ms) with a single light shimmer sweeping across it, then rests. No particles.
+/// The milestone mark: a gold ring that draws round (800 ms), then rests. No shimmer, no particles.
 struct GoldRingMark: View {
     var glyph: String
     var size: CGFloat = 64
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var draw: CGFloat = 0
-    @State private var sweep: CGFloat = -0.4
 
     var body: some View {
         ZStack {
@@ -227,19 +173,12 @@ struct GoldRingMark: View {
             Circle().trim(from: 0, to: reduceMotion ? 1 : draw)
                 .stroke(Theme.gold, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Circle().stroke(Color.white.opacity(0.7), lineWidth: 3)
-                .mask(
-                    LinearGradient(colors: [Color.clear, Color.white, Color.clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: size * 0.4).offset(x: size * sweep)
-                )
-                .opacity(reduceMotion ? 0 : 0.8)
             GlyphView(glyph: glyph, size: size * 0.42, weight: 1.6, tint: Theme.gold)
         }
         .frame(width: size, height: size)
         .onAppear {
             guard !reduceMotion else { return }
             Motion.animate(Motion.revealAnimation) { draw = 1 }
-            Motion.animate(Motion.revealAnimation.delay(0.5)) { sweep = 0.5 }
         }
     }
 }

@@ -27,11 +27,11 @@ struct NetWorthChart: View {
             if points.count >= 2 {
                 Chart(points) { p in
                     AreaMark(x: .value("Day", p.id), yStart: .value("Low", lo - pad), yEnd: .value("Net worth", p.value))
-                        .foregroundStyle(LinearGradient(colors: [tint.opacity(0.20), tint.opacity(0.0)], startPoint: .top, endPoint: .bottom))
+                        .foregroundStyle(tint.opacity(ChartPalette.areaOpacity))
                         .interpolationMethod(.monotone)
                     LineMark(x: .value("Day", p.id), y: .value("Net worth", p.value))
                         .foregroundStyle(tint)
-                        .lineStyle(StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                        .lineStyle(StrokeStyle(lineWidth: ChartPalette.lineWidth, lineCap: .round, lineJoin: .round))
                         .interpolationMethod(.monotone)
                 }
                 .chartYScale(domain: (lo - pad)...(hi + pad))
@@ -41,7 +41,7 @@ struct NetWorthChart: View {
                 .animation(reduceMotion ? nil : Motion.quickAnimation, value: days)
                 .drawsItself()
             } else {
-                Text("The chart fills in day by day.").font(.caption).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, minHeight: height)
+                Text("The chart fills in day by day.").textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, minHeight: height)
             }
         }
     }

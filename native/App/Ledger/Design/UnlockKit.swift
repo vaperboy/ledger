@@ -76,7 +76,7 @@ extension GameStore {
     }
 }
 
-/// The centred announcement: a gold ring that scales in with a soft glow, "<Feature> unlocked!", why, and two buttons (Take me there is the
+/// The centred announcement: a champagne mark that scales in, "<Feature> unlocked!", why, and two buttons (Take me there is the
 /// highlighted one, Skip is quiet). Locked: a tap outside does not close it. One light haptic, none of the motion under Reduce Motion.
 struct UnlockPopup: View {
     @EnvironmentObject var store: GameStore
@@ -97,12 +97,9 @@ struct UnlockPopup: View {
                 Button { Haptics.tap(); store.goToUnlock(prompt) } label: {
                     Text("Take me there").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("unlock-go")
-                Button { store.dismissUnlock(prompt) } label: {
-                    Text("Skip").popupText(.rowLabel).frame(maxWidth: .infinity, minHeight: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("unlock-skip")
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("unlock-go")
+                Button { store.dismissUnlock(prompt) } label: { Text("Skip") }
+                    .buttonStyle(PlainTextButtonStyle()).accessibilityIdentifier("unlock-skip")
             }
             .padding(.top, 4)
         }
@@ -117,12 +114,10 @@ struct UnlockPopup: View {
     private var ring: some View {
         let on: Bool = shown || reduceMotion
         return ZStack {
-            Circle().fill(Theme.gold.opacity(on ? 0.10 : 0))
-            Circle().strokeBorder(Theme.gold, lineWidth: 3)
-            GlyphView(glyph: Glyph.achievements, size: 30, weight: 1.6, tint: Theme.gold)
+            Circle().fill(Theme.accentWash.opacity(on ? 1 : 0))
+            LedgerGlyph(glyph: Glyph.achievements, size: Theme.Icon.large, tint: Theme.accent)
         }
         .frame(width: 84, height: 84)
-        .shadow(color: Theme.gold.opacity(on ? 0.45 : 0), radius: 16)
         .scaleEffect(on ? 1 : 0.8)
         .accessibilityHidden(true)
     }
@@ -137,34 +132,25 @@ struct LockedBlock: View {
 
     var body: some View {
         Card(padding: 12, radius: Theme.Radius.card) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    GlyphView(glyph: Glyph.lock, size: 15, weight: 1.6, tint: Theme.ivoryFaint).frame(width: 20)
-                    Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivoryMuted).lineLimit(1)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(spacing: Theme.Space.s) {
+                    LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.small, tint: Theme.inkFaint).frame(width: 20)
+                    Text(title).textStyle(.headline, tint: Theme.inkSoft).lineLimit(1)
                     Spacer(minLength: 0)
                 }
-                Text(reason).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                if let progress { ThinProgress(fraction: progress, tint: Theme.gold) }
+                Text(reason).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                if let progress { ProgressLine(fraction: progress) }
             }
         }
-        .opacity(0.78)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), locked. \(reason)")
     }
 }
 
-/// A thin progress line (no label, no number): used where "how far" is shown as a shape, not a figure.
+/// A progress line with no label or number: `ProgressLine`.
 struct ThinProgress: View {
     var fraction: Double
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
 
-    var body: some View {
-        GeometryReader { (g: GeometryProxy) in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Theme.hairline)
-                Capsule().fill(tint).frame(width: max(3, g.size.width * CGFloat(min(1, max(0, fraction)))))
-            }
-        }
-        .frame(height: 3)
-    }
+    var body: some View { ProgressLine(fraction: fraction, tint: tint) }
 }

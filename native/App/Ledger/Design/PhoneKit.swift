@@ -85,55 +85,27 @@ struct CardLine: View {
     var body: some View { Hairline() }
 }
 
-/// Key figures in a bordered card, cells separated by vertical lines; a second row follows the first when there are more than `columns`.
+/// Key figures on a surface tile (flat inside a group): `FigureRow`, cells separated by hairlines.
 struct FigureCard: View {
-    @Environment(\.outsidePalette) private var P
     typealias Item = KeyFigures.Item
     var items: [Item]
     var columns = 3
-    @Environment(\.insideCard) private var insideCard
 
     var body: some View {
-        if insideCard {
-            strip
-        } else {
-            Card(padding: 14, radius: Theme.Radius.hero) { strip }
-        }
-    }
-
-    private var strip: some View {
-        let rows: [[Item]] = stride(from: 0, to: items.count, by: columns).map { Array(items[$0..<min($0 + columns, items.count)]) }
-        return VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { r, row in
-                if r > 0 { CardLine().padding(.vertical, 10) }
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.element.id) { i, it in
-                        Stat(label: it.label, value: it.value, tint: it.tint, sub: it.sub)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, i == 0 ? 0 : 12)
-                            .overlay(alignment: .leading) { if i > 0 { Rectangle().fill(P.divider).frame(width: 1) } }
-                    }
-                    ForEach(0..<(columns - row.count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
-                }
-            }
-        }
+        Card(padding: 14, radius: Theme.Radius.hero) { FigureRow(items: items, columns: columns) }
     }
 }
 
-/// The headline of a page: a small label over one big serif figure, in a hero card, with an optional grey line under it.
+/// The headline of a page: a caps label over one big serif figure (`Figure` at display size), with an optional grey line under it.
 struct HeroFigure: View {
     var label: String
     var value: String
-    var tint: Color = Theme.ivory
+    var tint: Color = Theme.ink
     var note: String = ""
 
     var body: some View {
         Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(label).capsLabel()
-                Text(value.tidyText).font(.hero(34)).foregroundStyle(tint).minimumScaleFactor(0.6).lineLimit(1)
-                if !note.isEmpty { Text(note.tidyText).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-            }
+            Figure(label: label, value: value, note: note, tint: tint, size: .display)
         }
         .accessibilityElement(children: .combine)
     }

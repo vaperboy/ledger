@@ -441,16 +441,16 @@ extension View {
 
 // MARK: Containers
 
-/// Cells separated by hairline dividers, like the Private / Companies / Owed strip of the Home net-worth card.
+/// Cells separated by hairlines, like the Private / Companies / Owed strip of the Home net-worth card: `FigureRow`, centred.
 struct StatStrip: View {
-    @Environment(\.outsidePalette) private var P
     struct Cell: Identifiable {
         var id: String { label }
         var label: String
         var value: String
-        var tint: Color = Theme.ivory
-        /// The number behind `value`: it rolls (and the profit glow runs when `glow`) as the number changes.
+        var tint: Color = Theme.ink
+        /// The number behind `value`: the figure rolls and flashes as it changes.
         var live: Double? = nil
+        /// Kept so older call sites compile; the profit glow is retired.
         var glow: Bool = false
     }
     var cells: [Cell]
@@ -458,21 +458,12 @@ struct StatStrip: View {
     var ruled = true
 
     var body: some View {
+        let items: [KeyFigures.Item] = cells.map { (c: Cell) -> KeyFigures.Item in
+            KeyFigures.Item(label: c.label, value: c.value, tint: c.tint, live: c.live)
+        }
         VStack(spacing: 0) {
-            if ruled { Rectangle().fill(P.divider).frame(height: 1).padding(.bottom, 7) }
-            HStack(spacing: 0) {
-                ForEach(Array(cells.enumerated()), id: \.element.id) { i, c in
-                    if i > 0 { Rectangle().fill(P.divider).frame(width: 1) }
-                    VStack(spacing: 2) {
-                        Text(c.label).font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
-                        Text(c.value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(c.tint.inPalette(P))
-                            .lineLimit(1).minimumScaleFactor(0.7).moneyFlash(c.live ?? 0).profitGlow(c.glow ? (c.live ?? 0) : 0)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .combine)
-                }
-            }
-            .fixedSize(horizontal: false, vertical: true)
+            if ruled { Hairline().padding(.bottom, Theme.Space.s) }
+            FigureRow(items: items, columns: max(1, items.count), alignment: .center, combineCells: true)
         }
     }
 }
@@ -567,7 +558,7 @@ struct ChoiceCard: View {
     }
 }
 
-/// The switch between a few short options (Rent / Buy / Home): a sharp bordered track, the chosen segment washed and outlined in champagne.
+/// The switch between a few short options (Rent / Buy / Home): the one segment look (`SegmentTrack`).
 struct SegmentedPill<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
@@ -576,34 +567,11 @@ struct SegmentedPill<T: Hashable>: View {
     var identifier: ((T) -> String)? = nil
     /// Segments that hold something new or important get a small marker in the app's colour (nil = none).
     var badges: ((T) -> Bool)? = nil
-    @Environment(\.outsidePalette) private var palette
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(items, id: \.self) { item in
-                let on = selection == item
-                Button {
-                    selection = item
-                    Haptics.choose()
-                } label: {
-                    Text(title(item))
-                        .font(.system(size: 12.5, weight: on ? .medium : .regular))
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                        .foregroundStyle(on ? palette.ink : palette.inkSoft)
-                        .frame(maxWidth: .infinity, minHeight: 34)
-                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(on ? palette.accentSelected : Color.clear))
-                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(on ? palette.accent : Color.clear, lineWidth: 1))
-                        .contentShape(Rectangle())
-                        .flagMarker(!on && (badges?(item) ?? false), alignment: .topTrailing)
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityIdentifier(identifier?(item) ?? "segment-\(title(item))")
-            }
-        }
-        .padding(4)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(palette.cardDeep))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(palette.line, lineWidth: 1))
+        let title: (T) -> String = self.title
+        let ids: (T) -> String = identifier ?? { (item: T) -> String in "segment-\(title(item))" }
+        SegmentTrack(items: items, title: title, selection: $selection, identifier: ids, badges: badges)
     }
 }
 

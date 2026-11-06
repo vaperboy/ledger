@@ -129,15 +129,15 @@ struct Sparkline: View {
                             for pt in pts { p.addLine(to: pt) }
                             p.addLine(to: CGPoint(x: pts[pts.count - 1].x, y: geo.size.height))
                             p.closeSubpath()
-                        }.fill(LinearGradient(colors: [tint.opacity(0.22), tint.opacity(0)], startPoint: .top, endPoint: .bottom))
+                        }.fill(tint.opacity(ChartPalette.areaOpacity))
                     }
                     Path { p in
                         p.move(to: pts[0])
                         for pt in pts.dropFirst() { p.addLine(to: pt) }
-                    }.stroke(tint, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+                    }.stroke(tint, style: StrokeStyle(lineWidth: ChartPalette.lineWidth, lineCap: .round, lineJoin: .round))
                 }
             } else {
-                Rectangle().fill(Theme.hairline).frame(height: 1).frame(maxHeight: .infinity, alignment: .center)
+                Hairline().frame(maxHeight: .infinity, alignment: .center)
             }
         }
     }
@@ -151,53 +151,41 @@ struct Chip: View {
     var symbol: String? = nil
     var body: some View {
         HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol).font(.system(size: 9, weight: .bold)) } else { Circle().fill(tint.inPalette(P)).frame(width: 5, height: 5) }
-            Text(text.tidyText).font(.system(size: 11.5, weight: .medium))
+            if let symbol { Image(systemName: symbol).font(.system(size: 9, weight: .bold)) } else { Circle().fill(tint.inPalette(P)).frame(width: 6, height: 6) }
+            Text(text.tidyText).textStyle(.caption, tint: tint, weight: .medium)
         }
         .foregroundStyle(tint.inPalette(P))
     }
 }
 
-/// A label with a figure beneath it.
+/// A label with a figure beneath it: `Figure` at the inline size.
 struct Stat: View {
     var label: String
     var value: String
-    var tint: Color = Theme.ivory
+    var tint: Color = Theme.ink
     var sub: String = ""
-    @Environment(\.outsidePalette) private var palette
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.system(size: 10.5)).foregroundStyle(palette.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
-            Text(value.tidyText).font(.figure(15.5, weight: .semibold)).foregroundStyle(tint.inPalette(palette)).minimumScaleFactor(0.7).lineLimit(1)
-            if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 10)).foregroundStyle(palette.inkFaint).lineLimit(1).minimumScaleFactor(0.8) }
-        }
+        Figure(label: label, value: value, note: sub, tint: tint, size: .inline)
     }
 }
 
-/// Key figures in a joined row, separated by vertical hairlines. `columns` per row; a second row follows the first.
+/// Key figures in a joined row under a hairline: `FigureRow`. `columns` per row; a second row follows the first.
 struct KeyFigures: View {
-    @Environment(\.outsidePalette) private var P
-    struct Item: Identifiable { var id = UUID(); var label: String; var value: String; var tint: Color = Theme.ivory; var sub: String = "" }
+    struct Item: Identifiable {
+        var id = UUID()
+        var label: String
+        var value: String
+        var tint: Color = Theme.ink
+        var sub: String = ""
+        /// The number behind `value`: when set, the figure rolls and flashes as it changes.
+        var live: Double? = nil
+    }
     var items: [Item]
     var columns = 3
     var body: some View {
-        let rows = stride(from: 0, to: items.count, by: columns).map { Array(items[$0..<min($0 + columns, items.count)]) }
-        VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { r, row in
-                if r > 0 { Hairline().padding(.vertical, 9) }
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.element.id) { i, it in
-                        Stat(label: it.label, value: it.value, tint: it.tint, sub: it.sub)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, i == 0 ? 0 : 10)
-                            .overlay(alignment: .leading) { if i > 0 { Rectangle().fill(P.hairline).frame(width: 0.5) } }
-                    }
-                    ForEach(0..<(columns - row.count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
-                }
-            }
-        }
-        .padding(.vertical, 10)
-        .overlay(alignment: .top) { Hairline() }
+        FigureRow(items: items, columns: columns)
+            .padding(.vertical, Theme.Space.m)
+            .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -272,13 +260,12 @@ struct AmountField: View {
 
     var body: some View {
         HStack {
-            Text(currency.country.currencyCode).font(.label).foregroundStyle(P.inkFaint)
+            Text(currency.country.currencyCode).textStyle(.caption, tint: P.inkFaint, weight: .medium)
             TextField(title, text: $text)
                 .keyboardType(.decimalPad)
                 .focused($focused)
-                .font(.system(.body, design: .default).monospacedDigit())
+                .textStyle(.headline, numeric: true)
                 .multilineTextAlignment(.trailing)
-                .foregroundStyle(P.ink)
                 .onChange(of: text) { _, new in
                     let cleaned = new.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." }
                     amount = (Double(cleaned) ?? 0) * currency.rate
@@ -286,13 +273,13 @@ struct AmountField: View {
             // The decimal pad has no return key and a keyboard toolbar does not show inside a popup overlay: Done sits beside the field.
             if focused {
                 Button("Done") { Haptics.play(.tap); focused = false }
-                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
-                    .frame(minWidth: 44, minHeight: 36)
+                    .textStyle(.body, tint: P.accent, weight: .semibold)
+                    .frame(minWidth: 44, minHeight: 44)
                     .accessibilityIdentifier("amount-done")
             }
         }
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(focused ? P.accent : P.hairline).frame(height: focused ? 1 : 0.5) }
+        .padding(.vertical, Theme.Space.s)
+        .overlay(alignment: .bottom) { Rectangle().fill(focused ? P.focus : P.hairline).frame(height: focused ? 1 : 0.5) }
     }
 }
 
@@ -351,8 +338,7 @@ struct SectionTabs<T: Hashable>: View {
     }
 
     private func countView(_ n: Int) -> some View {
-        Text("\(n)").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.page)
-            .padding(.horizontal, 5).padding(.vertical, 1).background(Capsule().fill(Theme.loss))
+        RedBubble(count: n, size: .small)
     }
 
     var body: some View {
@@ -396,9 +382,8 @@ struct SectionTabs<T: Hashable>: View {
 
     private func cell(_ text: String, count: Int, on: Bool, more: Bool, tight: Bool) -> some View {
         HStack(spacing: 3) {
-            Text(sub ? text.uppercased() : text)
-                .font(.system(size: sub ? 11 : 14, weight: on ? .semibold : .regular))
-                .tracking(sub ? 0.6 : 0)
+            Text(text)
+                .textStyle(sub ? .label : .body, tint: on ? palette.accent : palette.inkFaint, weight: on || sub ? .semibold : .regular)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .fixedSize(horizontal: !tight, vertical: false)
@@ -408,46 +393,36 @@ struct SectionTabs<T: Hashable>: View {
         .foregroundStyle(on ? palette.accent : palette.inkFaint)
         .padding(.horizontal, tight ? 2 : 10)
         .frame(maxWidth: .infinity, minHeight: sub ? 34 : 44)
-        .background(RoundedRectangle(cornerRadius: 6).fill(sub && on ? palette.hairline : Color.clear))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(sub && on ? palette.inset : Color.clear))
         .contentShape(Rectangle())
         .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(palette.accent).frame(height: 1.5) } }
     }
 }
 
-/// A 0–100 meter such as reputation or quality: a thin bar.
+/// A 0–100 meter such as reputation or quality: label, the one progress line, the level word.
 struct Meter: View {
     var label: String
     var value: Double
     var scale: Words.Scale = .quality
     var body: some View {
-        HStack(spacing: 10) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).frame(minWidth: 90, alignment: .leading)
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.hairline)
-                    Capsule().fill(Theme.gold).frame(width: max(3, g.size.width * CGFloat(min(100, max(0, value)) / 100)))
-                }
-            }.frame(height: 3)
-            Text(Words.level(value, scale: scale)).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).frame(minWidth: 34, alignment: .trailing)
+        HStack(spacing: Theme.Space.s) {
+            Text(label).textStyle(.caption).frame(minWidth: 90, alignment: .leading)
+            ProgressLine(fraction: min(100, max(0, value)) / 100)
+            Text(Words.level(value, scale: scale)).textStyle(.caption, tint: Theme.ink).frame(minWidth: 34, alignment: .trailing)
         }
     }
 }
 
-/// A thin labelled bar for a share (capacity used, demand met): label, bar, percent.
+/// A labelled share (capacity used, demand met): label, the one progress line, percent.
 struct RateBar: View {
     var label: String
     var fraction: Double
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
     var body: some View {
-        HStack(spacing: 10) {
-            Text(label).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).frame(width: 104, alignment: .leading)
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.hairline)
-                    Capsule().fill(tint).frame(width: max(3, g.size.width * CGFloat(min(1, max(0, fraction)))))
-                }
-            }.frame(height: 4)
-            Text(String(format: "%.0f%%", fraction * 100)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 42, alignment: .trailing)
+        HStack(spacing: Theme.Space.s) {
+            Text(label).textStyle(.caption).lineLimit(1).minimumScaleFactor(0.85).frame(width: 104, alignment: .leading)
+            ProgressLine(fraction: fraction, tint: tint)
+            Text(String(format: "%.0f%%", fraction * 100)).textStyle(.caption, tint: Theme.ink, numeric: true).frame(width: 42, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
     }
@@ -568,10 +543,9 @@ extension View {
     }
 }
 
-/// Compact segmented control for a choice made inside a page (Minimal / Normal / Thorough, Shares / Crypto / Funds). A filled
-/// track with the chosen option raised, so it never reads as page navigation (the underlined SectionTabs).
+/// Segmented control for a choice made inside a page (Minimal / Normal / Thorough): the one segment look (`SegmentTrack`), so it never
+/// reads as page navigation (the underlined SectionTabs).
 struct SegmentedChoice<T: Hashable>: View {
-    @Environment(\.outsidePalette) private var P
     var items: [T]
     var title: (T) -> String
     @Binding var selection: T
@@ -579,24 +553,6 @@ struct SegmentedChoice<T: Hashable>: View {
     var badges: ((T) -> Bool)? = nil
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(items, id: \.self) { item in
-                let on = selection == item
-                Button { selection = item; Haptics.choose() } label: {
-                    Text(title(item))
-                        .font(.system(size: 13, weight: on ? .semibold : .regular))
-                        .lineLimit(1).minimumScaleFactor(0.85)
-                        .foregroundStyle(on ? P.ink : P.inkSoft)
-                        .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(on ? P.hairline : Color.clear))
-                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(on ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
-                        .contentShape(Rectangle())
-                        .flagMarker(!on && (badges?(item) ?? false), alignment: .topTrailing)
-                }
-                .buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
-        .padding(2)
-        .background(RoundedRectangle(cornerRadius: 9).fill(P.ink.opacity(0.05)))
+        SegmentTrack(items: items, title: title, selection: $selection, identifier: { (_: T) -> String in "" }, badges: badges)
     }
 }

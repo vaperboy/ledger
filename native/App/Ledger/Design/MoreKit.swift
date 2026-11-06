@@ -74,39 +74,13 @@ struct MoreChevron: View {
     var body: some View { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
 }
 
-/// Figures in a strip separated by hairlines, up to `columns` to a line (the shape of `KeyFigures`, in the new look).
+/// Figures in a strip separated by hairlines, up to `columns` to a line, centred: `FigureRow`.
 struct FigureStrip: View {
     var items: [KeyFigures.Item]
     var columns = 3
 
     var body: some View {
-        let count: Int = max(1, columns)
-        let starts: [Int] = Array(stride(from: 0, to: items.count, by: count))
-        VStack(spacing: 8) {
-            ForEach(starts, id: \.self) { (start: Int) in
-                let row: [KeyFigures.Item] = Array(items[start..<min(start + count, items.count)])
-                if start > 0 { Rectangle().fill(Theme.divider).frame(height: 1) }
-                HStack(spacing: 0) {
-                    ForEach(Array(row.enumerated()), id: \.element.id) { (i: Int, it: KeyFigures.Item) in
-                        if i > 0 { Rectangle().fill(Theme.divider).frame(width: 1) }
-                        cell(it)
-                    }
-                    ForEach(0..<(count - row.count), id: \.self) { (_: Int) in Color.clear.frame(maxWidth: .infinity) }
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func cell(_ it: KeyFigures.Item) -> some View {
-        VStack(spacing: 2) {
-            Text(it.label).font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8)
-            Text(it.value.tidyText).font(.system(size: 14, weight: .medium).monospacedDigit()).foregroundStyle(it.tint)
-                .lineLimit(1).minimumScaleFactor(0.7)
-            if !it.sub.isEmpty { Text(it.sub.tidyText).font(.system(size: 10)).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.8) }
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
+        FigureRow(items: items, columns: columns, alignment: .center, combineCells: true)
     }
 }
 

@@ -219,7 +219,7 @@ private struct BannerCard: View {
     /// The compact line of a toast: a small accent glyph and the sentence, serif like the popups' titles.
     private var toastLine: some View {
         HStack(alignment: .center, spacing: 10) {
-            GlyphView(glyph: item.glyph, size: 16, weight: 1.6, tint: item.tint)
+            LedgerGlyph(glyph: item.glyph, size: Theme.Icon.small, tint: item.tint)
             Text(item.title).font(.serifTitle(14.5)).foregroundStyle(Theme.ivory)
                 .lineLimit(3).multilineTextAlignment(.leading)
             Spacer(minLength: 0)
@@ -228,10 +228,8 @@ private struct BannerCard: View {
 
     private var full: some View {
         HStack(alignment: .top, spacing: 12) {
-            GlyphView(glyph: item.glyph, size: 18, weight: 1.6, tint: item.tint)
-                .frame(width: 38, height: 38)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(item.tint.opacity(0.45), lineWidth: 1))
+            LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: item.tint)
+                .frame(width: 28, height: 38)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(item.source).textCase(.uppercase).font(.system(size: 11, weight: .medium))
@@ -254,12 +252,12 @@ private struct BannerCard: View {
         .padding(.horizontal, 14).padding(.vertical, item.compact ? 10 : 12)
         .frame(maxWidth: 460, alignment: .leading)
         .background(ZStack {
-            shape.fill(Theme.surface)
+            shape.fill(Theme.surfaceRaised)
             if item.isAlert { shape.fill(Theme.alert.opacity(0.10)) }
         })
-        .overlay(shape.strokeBorder(item.isAlert || item.compact ? item.tint.opacity(0.55) : Theme.borderStrong, lineWidth: 1))
+        .overlay(shape.strokeBorder(item.isAlert ? item.tint.opacity(0.55) : Theme.line, lineWidth: item.isAlert ? 1 : 0.5))
         .environment(\.colorScheme, .dark)
-        .shadow(color: Theme.Shadow.color, radius: Theme.Shadow.radius, y: Theme.Shadow.y)
+        .elevation(.raised)
         .padding(.horizontal, 12).padding(.top, 6)
         .offset(y: drag)
         .contentShape(Rectangle())

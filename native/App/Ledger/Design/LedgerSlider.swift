@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The one slider of the app: a slim 3pt track, the active part in the Ledger champagne, a small refined 20pt thumb inside an invisible
+/// The one slider of the app: a slim 3pt track, the active part in the accent, a plain 20pt ink thumb (no shadow, no ring) inside an invisible
 /// 44pt touch area, an optional value text, step snapping, and a haptic only when a snap point (or an end) is reached.
 /// Same use as `Slider(value:in:step:onEditingChanged:)`; `onEditingChanged(true)` fires when a drag starts and `(false)` when it ends,
 /// so a caller can commit on release while the binding follows the finger.
@@ -76,7 +76,7 @@ struct LedgerSlider: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 0) {
             if let valueText {
-                Text(valueText).font(.system(size: 12.5, weight: .medium).monospacedDigit()).foregroundStyle(P.inkSoft)
+                Text(valueText).textStyle(.caption, numeric: true, weight: .medium)
             }
             track
         }
@@ -102,11 +102,9 @@ struct LedgerSlider: View {
                 Capsule().fill(P.lineStrong).frame(height: 3)
                 Capsule().fill(P.accent).frame(width: x, height: 3)
                 Circle()
-                    .fill(P.accent)
-                    .overlay(Circle().strokeBorder(P.card, lineWidth: 2))
+                    .fill(P.ink)
                     .frame(width: thumb, height: thumb)
                     .scaleEffect(dragging ? 1.12 : 1)
-                    .shadow(color: Color.black.opacity(0.35), radius: 2, y: 1)
                     .offset(x: x - thumb / 2)
             }
             .frame(width: w, height: hit)

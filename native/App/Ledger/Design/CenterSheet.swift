@@ -55,15 +55,13 @@ struct PopupHeaderRow: View {
                 if showsClose { closeButton }
             }
             .frame(height: PopupMetrics.header)
-            if !title.isEmpty { Rectangle().fill(P.line).frame(height: 1) }
+            if !title.isEmpty { Hairline() }
         }
     }
 
     private var closeButton: some View {
         Button { onClose() } label: {
-            GlyphView(glyph: Glyph.close, size: 13, weight: 1.8, tint: P.ink)
-                .frame(width: 32, height: 32)
-                .overlay(Circle().strokeBorder(P.lineStrong, lineWidth: 1))
+            LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkSoft)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -147,7 +145,7 @@ struct CenterSheetFrame<Content: View>: View {
 
     private func card(screen: CGSize, cls: PopupSizeClass) -> some View {
         let room: CGFloat = PopupSizing.room(screenHeight: screen.height)
-        let head: CGFloat = shownTitle.isEmpty ? PopupMetrics.header : PopupMetrics.header + 1
+        let head: CGFloat = shownTitle.isEmpty ? PopupMetrics.header : PopupMetrics.header + 0.5
         let swipe: Bool = cls.isSwipeable && !locked && backdropCloses
         let fixedHeight: CGFloat? = size == .tall ? PopupSizing.fullHeight(screenHeight: screen.height) : nil
         let shape: RoundedRectangle = RoundedRectangle(cornerRadius: PopupRadius.card, style: .continuous)
@@ -164,9 +162,10 @@ struct CenterSheetFrame<Content: View>: View {
         .environment(\.colorScheme, P.isLight ? .light : .dark)
         .frame(height: fixedHeight)
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
-        .background(shape.fill(P.card))
+        .background(shape.fill(P.surfaceRaised))
         .clipShape(shape)
-        .overlay(shape.strokeBorder(P.lineStrong, lineWidth: 1))
+        .overlay(shape.strokeBorder(P.line, lineWidth: 0.5))
+        .elevation(.raised)
         .overlay(alignment: .top) { grabber(swipe) }
         .overlay { celebration }
     }
