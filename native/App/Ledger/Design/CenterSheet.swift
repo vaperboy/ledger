@@ -286,7 +286,8 @@ extension View {
 
     /// Inside a centred popup: pins this action row (a `PopupActionBar`) under the scrolling body, so the buttons never scroll away.
     func popupFooter<F: View>(@ViewBuilder _ footer: () -> F) -> some View {
-        preference(key: CenterSheetFooterKey.self, value: AnyView(PopupActionBar { footer() }))
+        let built: F = footer()
+        return preference(key: CenterSheetFooterKey.self, value: AnyView(PopupActionBar { built }))
     }
 
     /// Inside a centred popup: a tap outside the card does not close it.
