@@ -242,7 +242,17 @@ class FeatureTourCase: XCTestCase {
             let b: XCUIElement = button(id)
             if ctap(b) { pause(0.6); return }
         }
-        popupDiag("no close button tappable")
+        // The card can be taller than the screen (the week report keeps Continue at the end of its scrolling content): scroll inside it.
+        for _ in 0..<6 {
+            let from: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+            let to: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+            from.press(forDuration: 0.1, thenDragTo: to)
+            for id in prefer + Self.closeIDs {
+                let b: XCUIElement = button(id)
+                if ctap(b) { pause(0.6); return }
+            }
+        }
+        popupDiag("no close button tappable after scrolling")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
         pause(0.6)
     }
