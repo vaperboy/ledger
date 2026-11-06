@@ -160,7 +160,7 @@ struct AcctPill: View {
 
     var body: some View {
         Text(text)
-            .textStyle(.label, tint: tint).lineLimit(1)
+            .textStyle(.caption, tint: tint, weight: .semibold).lineLimit(1)
             .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
             .background(Capsule().fill(tint.opacity(0.14)))
     }

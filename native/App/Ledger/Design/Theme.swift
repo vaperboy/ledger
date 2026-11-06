@@ -55,8 +55,9 @@ enum Theme {
     static let ivoryFaint = inkFaint
     static let ivoryDim = inkFaint
     static let gold = accent
-    static let goldDeep = accent
-    static let goldLight = accent
+    /// Chart-only hues now (no gradients use them); new charts take `ChartPalette`.
+    static let goldDeep = Color(red: 0.722, green: 0.600, blue: 0.427)
+    static let goldLight = Color(red: 0.863, green: 0.753, blue: 0.592)
     static let onGold = accentInk
     static let caution = warn
     static let goldWash = accentWash
