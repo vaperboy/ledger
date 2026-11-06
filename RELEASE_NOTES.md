@@ -1,4 +1,5 @@
 # What's new
+- Notices: minor "cannot / not enough" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette
 - Balance: managers can approve more space; nightclub wages sane; salmon farms no longer run dry before the first harvest; dealer customer loans approve far more often
 - Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; sheet text uses the shared popup styles
 - Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps
