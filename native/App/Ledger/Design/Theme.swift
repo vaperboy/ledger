@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Colour   Theme roles page, surface, surfaceRaised, inset, line, lineStrong, ink, inkSoft, inkFaint, accent, accentInk, gain, loss,
 //          warn, alert, focus, scrim; views read them from `@Environment(\.outsidePalette)` so outside apps recolour themselves.
@@ -199,6 +200,42 @@ enum TextStep {
     func font(size s: CGFloat, numeric: Bool, weight w: Font.Weight?) -> Font {
         let base: Font = Font.system(size: max(11, s), weight: w ?? weight, design: design)
         return (numeric || isNumeric) ? base.monospacedDigit() : base
+    }
+}
+
+extension TextStep {
+    /// The UIKit text style the step scales with (the same curve as `relativeTo`).
+    var uiTextStyle: UIFont.TextStyle {
+        switch self {
+        case .display: return .largeTitle
+        case .title: return .title2
+        case .figure: return .title3
+        case .headline: return .subheadline
+        case .body: return .body
+        case .caption: return .caption1
+        case .label: return .caption2
+        }
+    }
+
+    /// The step's point size at a Dynamic Type size (nil: the system's current size).
+    func scaledSize(_ dynamicType: DynamicTypeSize? = nil) -> CGFloat {
+        let metrics = UIFontMetrics(forTextStyle: uiTextStyle)
+        guard let dynamicType else { return metrics.scaledValue(for: size) }
+        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dynamicType))
+        return metrics.scaledValue(for: size, compatibleWith: traits)
+    }
+
+    /// The step as a scaled `Font` for places `.textStyle` cannot reach (`Text + Text` joins, `TextField`, `Font` parameters).
+    /// Font only: ink, tracking and capitals stay with the caller. Pass `@Environment(\.dynamicTypeSize)` so the view redraws on a change.
+    func scaledFont(_ dynamicType: DynamicTypeSize? = nil, numeric: Bool = false, weight: Font.Weight? = nil) -> Font {
+        font(size: scaledSize(dynamicType), numeric: numeric, weight: weight)
+    }
+}
+
+extension Font {
+    /// `Font.step(.caption)`: one step of the type scale as a Dynamic Type scaled `Font` (see `TextStep.scaledFont`).
+    static func step(_ step: TextStep, dynamicType: DynamicTypeSize? = nil, numeric: Bool = false, weight: Font.Weight? = nil) -> Font {
+        step.scaledFont(dynamicType, numeric: numeric, weight: weight)
     }
 }
 

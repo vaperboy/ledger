@@ -23,6 +23,14 @@ enum Motion {
     static let bannerGapSeconds: Double = 0.45
     static let bannerLeaveSeconds: Double = 0.19
     static let toastSeconds: Double = 3.5
+    /// The gap before a toast (shorter than a banner's: a toast answers the tap just made).
+    static let toastGapSeconds: Double = 0.05
+    /// How long a `quick` change takes (a bump holds this long before it settles back).
+    static let quickSeconds: Double = 0.22
+    /// When a `move` spring has visibly settled (a page slide finishes, taps are taken again).
+    static let settleSeconds: Double = 0.3
+    /// How long a closing sheet takes to leave, so what opens next is not lost to its dismissal.
+    static let sheetLeaveSeconds: Double = 0.45
     /// The size a waiting (not visible) confirmation sits at, and the one a scale-in confirmation starts from.
     static let hiddenScale: CGFloat = 0.94
 

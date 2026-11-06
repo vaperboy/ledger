@@ -100,7 +100,7 @@ struct LedgerRow: View {
             LedgerGlyph(glyph: g, size: Theme.Icon.medium, tint: (leadingTint ?? P.accent).inPalette(P))
         case .symbol(let name):
             Image(systemName: name)
-                .font(.system(size: 15, weight: .regular))
+                .font(.system(size: Theme.Icon.small, weight: .regular))
                 .foregroundStyle((leadingTint ?? P.accent).inPalette(P))
                 .frame(width: Theme.Icon.medium, height: Theme.Icon.medium)
                 .accessibilityHidden(true)

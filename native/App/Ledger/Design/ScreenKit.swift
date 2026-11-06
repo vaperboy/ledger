@@ -13,16 +13,16 @@ private struct FixedHeightKey: PreferenceKey {
 /// A vertical scroll page: bounces only when the content is taller, cannot be dragged sideways, content pinned to the screen width.
 /// The tab bar clearance comes from `ledgerBackground()` (a bottom safe-area inset), so the last row always clears the bar.
 struct ScrollScreen<Content: View>: View {
-    var spacing: CGFloat = 12
+    var spacing: CGFloat = Theme.Space.m
     var top: CGFloat = 6
-    var bottom: CGFloat = 24
+    var bottom: CGFloat = Theme.Space.xl
     var maxWidth: CGFloat = 760
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: spacing) { content() }
-                .padding(.horizontal, 18).padding(.top, top).padding(.bottom, bottom)
+                .padding(.horizontal, Theme.Space.page).padding(.top, top).padding(.bottom, bottom)
                 .frame(maxWidth: maxWidth)
                 .frame(maxWidth: .infinity)
         }
@@ -36,7 +36,7 @@ struct ScrollScreen<Content: View>: View {
 /// and scaled down, never below `minScale`) and clipped. With `overflowScrolls`, a page whose content would need less than `minScale`
 /// (a long list on a small phone) falls back to a `ScrollScreen` instead of becoming unreadable.
 struct FixedScreen<Content: View>: View {
-    var spacing: CGFloat = 12
+    var spacing: CGFloat = Theme.Space.m
     var top: CGFloat = 6
     var maxWidth: CGFloat = 760
     var minScale: CGFloat = 0.8
@@ -59,7 +59,7 @@ struct FixedScreen<Content: View>: View {
                 .onPreferenceChange(FixedHeightKey.self) { (h: CGFloat) in measured(h, avail: avail) }
             } else {
                 VStack(alignment: .leading, spacing: spacing) { content() }
-                    .padding(.horizontal, 18).padding(.top, top).padding(.bottom, 12)
+                    .padding(.horizontal, Theme.Space.page).padding(.top, top).padding(.bottom, 12)
                     .frame(width: layoutWidth, alignment: .topLeading)
                     .fixedSize(horizontal: false, vertical: true)
                     .background(GeometryReader { (g: GeometryProxy) in

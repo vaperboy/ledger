@@ -13,8 +13,7 @@ struct StepperPill: View {
             Button { value = min(range.upperBound, value + step); Haptics.choose() } label: { LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.small, tint: Theme.accent).frame(width: 44, height: 44) }
                 .disabled(value >= range.upperBound).accessibilityLabel("Increase")
         }
-        .font(.system(size: 13, weight: .semibold))
-        .foregroundStyle(Theme.gold)
+        .textStyle(.body, tint: Theme.accent, weight: .semibold)
         .buttonStyle(PressableStyle())
         .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset).padding(.vertical, 6))
     }

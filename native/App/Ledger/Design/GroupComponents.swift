@@ -23,17 +23,17 @@ struct AuthorityPicker: View {
         let lvl = min(2, max(0, level))
         switch style {
         case .compact:
-            HStack(spacing: 16) {
+            HStack(spacing: Theme.Space.l) {
                 Menu(AuthorityWords.label(lvl)) {
                     ForEach(0..<3, id: \.self) { l in Button(AuthorityWords.label(l)) { setLevel(l); Haptics.choose() } }
                 }
                 limitMenu(lvl)
             }
         case .full:
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 SectionTabs(items: [0, 1, 2], title: { AuthorityWords.label($0) }, selection: Binding(get: { lvl }, set: { setLevel($0) }))
-                Text(AuthorityWords.consequence(lvl)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                limitMenu(lvl).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.gold)
+                Text(AuthorityWords.consequence(lvl)).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                limitMenu(lvl).textStyle(.caption, tint: Theme.accent, weight: .medium)
             }
         }
     }

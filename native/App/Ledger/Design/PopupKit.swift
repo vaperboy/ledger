@@ -145,7 +145,7 @@ struct LedgerField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PopupSpace.tight) {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Space.s) {
                 if let p = prefix { Text(p).popupText(.rowLabel) }
                 TextField(placeholder, text: $text)
                     .keyboardType(keyboard).focused($focused)

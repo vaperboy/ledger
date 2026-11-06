@@ -44,7 +44,7 @@ struct TabPager<Content: View>: View {
         .onChange(of: store.tab) { _, _ in
             settling = true
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 300_000_000)
+                try? await Task.sleep(nanoseconds: UInt64(Motion.settleSeconds * 1_000_000_000))
                 settling = false
             }
         }

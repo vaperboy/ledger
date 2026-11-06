@@ -140,7 +140,7 @@ struct NotificationBannerLayer: View {
         .animation(slide, value: queue.current?.id)
         .task(id: key) {
             if key.blocked || key.hasCurrent || !key.hasPending { return }
-            let gap: Double = queue.pending.first?.compact == true ? 0.05 : Motion.bannerGapSeconds
+            let gap: Double = queue.pending.first?.compact == true ? Motion.toastGapSeconds : Motion.bannerGapSeconds
             try? await Task.sleep(nanoseconds: UInt64(gap * 1_000_000_000))
             if Task.isCancelled { return }
             Motion.animate(slide) { queue.advance() }
@@ -216,31 +216,30 @@ private struct BannerCard: View {
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous) }
 
-    /// The compact line of a toast: a small accent glyph and the sentence, serif like the popups' titles.
+    /// The compact line of a toast: a small accent glyph and the sentence.
     private var toastLine: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: Theme.Space.s) {
             LedgerGlyph(glyph: item.glyph, size: Theme.Icon.small, tint: item.tint)
-            Text(item.title).font(.serifTitle(14.5)).foregroundStyle(Theme.ivory)
+            Text(item.title).textStyle(.headline)
                 .lineLimit(3).multilineTextAlignment(.leading)
             Spacer(minLength: 0)
         }
     }
 
     private var full: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
             LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: item.tint)
-                .frame(width: 28, height: 38)
-            VStack(alignment: .leading, spacing: 2) {
+                .frame(width: Theme.Icon.large, height: 38)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 HStack {
-                    Text(item.source).textCase(.uppercase).font(.system(size: 11, weight: .medium))
+                    Text(item.source).textCase(.uppercase).textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
                     Spacer(minLength: 0)
-                    Text("now").font(.system(size: 11))
+                    Text("now").textStyle(.caption, tint: Theme.inkFaint)
                 }
-                .foregroundStyle(Theme.ivoryFaint)
-                Text(item.title).font(.serifTitle(15)).foregroundStyle(Theme.ivory)
+                Text(item.title).textStyle(.headline)
                     .lineLimit(2).multilineTextAlignment(.leading)
                 if !item.body.isEmpty {
-                    Text(item.body).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
+                    Text(item.body).textStyle(.body, tint: Theme.inkSoft)
                         .lineLimit(2).multilineTextAlignment(.leading)
                 }
             }
