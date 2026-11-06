@@ -16,6 +16,7 @@ struct HireOnePage: View {
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.outsidePalette) private var P
     var request: HireRequest
     var embedded = false
     @StateObject private var model = HireFlowModel()
@@ -45,8 +46,8 @@ struct HireOnePage: View {
                       let opts = e.hireDraftOptions(post: request.post, companyID: request.companyID, personID: request.personID) {
                 page(e, person, opts)
             } else {
-                Text("\(first) is no longer on the market.").popupText(.body).padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                EmptyState(glyph: Glyph.person, title: "\(first) is no longer on the market.")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .modifier(HireFrame(embedded: embedded, title: "Hire \(HireWords.first(store.engine?.state.people[request.personID]?.name ?? "worker"))",
@@ -68,7 +69,7 @@ struct HireOnePage: View {
         } else {
             ScrollView {
                 content()
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.l)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -133,33 +134,25 @@ struct HireOnePage: View {
 
     /// One header for both pages: who they are and what they claim.
     private func header(_ e: GameEngine, _ person: Person) -> some View {
-        return HStack(spacing: 10) {
+        return HStack(spacing: Theme.Space.m) {
             ThumbnailView(kind: .person, key: person.role, size: 36, initials: person.name, face: person.faceKey)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(person.name).font(.serifTitle(17)).foregroundStyle(Theme.ivory).lineLimit(1)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(person.name.tidyText).textStyle(.figure).lineLimit(1)
                 Text(CandidateClaims.line(e, person)).popupText(.caption).lineLimit(1)
             }
             Spacer(minLength: 0)
         }
     }
 
-    private func cardBox<C: View>(@ViewBuilder _ content: @escaping () -> C) -> some View {
-        Card(padding: 12, radius: Theme.Radius.card) { content() }
-    }
-
     private func block<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text(title).capsLabel()
             content()
         }
     }
 
     private func chip(_ title: String, _ on: Bool, _ action: @escaping () -> Void) -> some View {
-        Button(title, action: action).buttonStyle(QuietButtonStyle(tint: on ? Theme.gold : Theme.ivoryMuted))
-    }
-
-    private func problemText(_ problem: String?) -> some View {
-        Text(problem ?? "").popupText(.risk)
+        HireChip(title: title, on: on) { Haptics.choose(); action() }
     }
 
     // MARK: Page 1: the going rate
@@ -169,22 +162,19 @@ struct HireOnePage: View {
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: rate)
         let annual: Double = talk?.annualEmployerCost ?? 0
         let startText: String = GameCalendar.dateString(week: s.startWeek)
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            cardBox {
-                VStack(alignment: .leading, spacing: 8) {
-                    FlatRow(label: "Asks", value: s.ask.map { (a: Double) -> String in cur.tidyShort(a) + " a month" } ?? "Names it when you offer", rule: false)
-                    FlatRow(label: "Going rate", value: cur.tidyShort(rate) + " a month", rule: false)
-                    FlatRow(label: "Starts", value: startText, rule: false)
-                }
-            }
-            if problem != nil { problemText(problem) }
-            QuietButton(title: "Offer the going rate", fullWidth: true) { confirm(rate, annual, cur, terms) }
-                .opacity(problem == nil ? 1 : 0.5).disabled(problem != nil)
-                .accessibilityIdentifier("hire-quick-offer")
-            Button { go(2) } label: {
-                Text("Change the offer").popupText(.subtitle).frame(maxWidth: .infinity, minHeight: 34)
-            }
-            .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-next")
+        let items: [KeyFigures.Item] = [
+            .init(label: "Asks", value: s.ask.map { (a: Double) -> String in cur.tidyShort(a) } ?? "Not yet", sub: s.ask == nil ? "names it when you offer" : "a month"),
+            .init(label: "Going rate", value: cur.tidyShort(rate), sub: "a month"),
+            .init(label: "Starts", value: startText),
+        ]
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            FigureRow(items: items, columns: 3, combineCells: true)
+                .padding(.vertical, Theme.Space.m)
+                .overlay(alignment: .top) { Hairline() }
+            PrimaryAction(title: "Offer the going rate", blockedReason: problem, identifier: "hire-quick-offer") { confirm(rate, annual, cur, terms) }
+            Button("Change the offer") { go(2) }
+                .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("hire-next")
         }
     }
 
@@ -224,15 +214,17 @@ struct HireOnePage: View {
 
     @ViewBuilder private func promisesBlock(_ opts: HireDraftOptions) -> some View {
         if has(opts, "promises") && !opts.promiseKinds.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Promises you make").capsLabel()
                 ForEach(Array(model.draft.promises.enumerated()), id: \.offset) { i, d -> AnyView in
                     AnyView(HStack {
                         Text(d.kind.title).popupText(.body)
                         Spacer(minLength: 6)
                         Text("in \(HireWords.weeksText(d.dueInWeeks))").popupText(.caption)
-                        Button { model.draft.promises.remove(at: i) } label: { Image(systemName: "xmark.circle").foregroundStyle(Theme.ivoryFaint) }
-                            .buttonStyle(PressableStyle()).accessibilityLabel("Remove this promise")
+                        Button { model.draft.promises.remove(at: i) } label: {
+                            Image(systemName: "xmark.circle").foregroundStyle(P.inkFaint).frame(width: 44, height: 44).contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressableStyle()).accessibilityLabel("Remove this promise")
                     })
                 }
                 PromiseMaker(options: opts, current: model.draft.percent) { (d: StaffPromises.Draft) -> Void in model.draft.promises.append(d) }
@@ -257,29 +249,28 @@ struct HireOnePage: View {
             counterChips(s, shown)
             offerSlider(s, cur, shown)
             costLine(talk, cur, comOnly)
-            if has(opts, "percent") { cardBox { hoursBlock(opts) } }
-            if problem != nil { problemText(problem) }
+            if has(opts, "percent") { hoursBlock(opts) }
             if let last = model.lines.last { SpeechBubble(text: last.text, mine: last.mine) }
             moreTerms(e, opts)
-            actions(talk, cur, terms, shown, blocked: problem != nil)
+            actions(talk, cur, terms, shown, problem: problem)
         }
     }
 
+    /// The offer is the one big figure of the page; their ask and the market sit under it.
     private func figuresCard(_ s: HirePay, _ cur: Currency, _ shown: Double) -> some View {
-        cardBox {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(cur.tidyShort(shown)).font(.serifTitle(34)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6)
-                    Text("a month, yours").popupText(.caption)
-                    Spacer(minLength: 0)
-                }
-                HStack {
-                    Text(s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet").popupText(.risk)
-                    Spacer(minLength: 6)
-                    Text("Market " + cur.tidyShort(s.market)).popupText(.caption)
-                }
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(cur.tidyShort(shown)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+                Text("a month, yours").textStyle(.caption)
+                Spacer(minLength: 0)
+            }
+            HStack {
+                Text(s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet").textStyle(.caption, tint: P.warn)
+                Spacer(minLength: Theme.Space.s)
+                Text("Market " + cur.tidyShort(s.market)).textStyle(.caption)
             }
         }
+        .padding(.top, Theme.Space.xs)
     }
 
     private func chipTitle(_ id: String) -> String {
@@ -294,7 +285,7 @@ struct HireOnePage: View {
     private func counterChips(_ s: HirePay, _ shown: Double) -> some View {
         let picks: [HireCounter] = s.counters.filter { (o: HireCounter) -> Bool in o.id == "ask" || o.id == "market" || o.id == "middle" }
         let anyOn: Bool = picks.contains { (o: HireCounter) -> Bool in abs(o.wage - shown) < 0.5 }
-        return HStack(spacing: 6) {
+        return HStack(spacing: Theme.Space.xs) {
             ForEach(picks) { (o: HireCounter) -> AnyView in
                 let on: Bool = abs(o.wage - shown) < 0.5
                 let id: String = o.id == "ask" ? "hire-offer-ask" : o.id == "market" ? "hire-offer-market" : "hire-offer-" + o.id
@@ -315,17 +306,17 @@ struct HireOnePage: View {
                 model.lines.append(HireLine(mine: false, text: "I would want about \(HireWords.hourly(amount / factor, cur)) an hour for this."))
             }
         } label: {
-            Text("Hear their ask").popupText(.effect).frame(maxWidth: .infinity, minHeight: 34).contentShape(Rectangle())
+            Text("Hear their ask")
         }
-        .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-hear-ask")
+        .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true, tint: P.accent)).accessibilityIdentifier("hire-hear-ask")
     }
 
     private func chipButton(_ title: String, _ on: Bool, _ id: String, _ action: @escaping () -> Void) -> some View {
         Button { Haptics.choose(); action() } label: {
-            Text(title).font(.system(size: 13, weight: on ? .semibold : .regular)).foregroundStyle(on ? Theme.ivory : Theme.ivoryMuted)
+            Text(title).textStyle(.body, tint: on ? P.ink : P.inkSoft, weight: on ? .semibold : .regular).lineLimit(1).minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 34)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(on ? Theme.goldSelected : Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(on ? P.accentWash : P.inset))
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -344,12 +335,12 @@ struct HireOnePage: View {
             model.offer = snapped
             model.offerSet = true
         })
-        return HStack(spacing: 8) {
-            Button { model.offer = max(low, shown - step); model.offerSet = true } label: { Image(systemName: "minus.circle").foregroundStyle(Theme.ivoryMuted) }
-                .buttonStyle(PressableStyle()).accessibilityLabel("Offer less")
-            LedgerSlider(value: binding, in: low...high).tint(Theme.gold)
-            Button { model.offer = shown + step; model.offerSet = true } label: { Image(systemName: "plus.circle").foregroundStyle(Theme.ivoryMuted) }
-                .buttonStyle(PressableStyle()).accessibilityLabel("Offer more")
+        return HStack(spacing: Theme.Space.s) {
+            Button { Haptics.choose(); model.offer = max(low, shown - step); model.offerSet = true } label: { Image(systemName: "minus") }
+                .buttonStyle(SecondaryButtonStyle(size: .compact)).accessibilityLabel("Offer less")
+            LedgerSlider(value: binding, in: low...high).tint(P.accent)
+            Button { Haptics.choose(); model.offer = shown + step; model.offerSet = true } label: { Image(systemName: "plus") }
+                .buttonStyle(SecondaryButtonStyle(size: .compact)).accessibilityLabel("Offer more")
         }
     }
 
@@ -373,8 +364,8 @@ struct HireOnePage: View {
         let more: [HireDraft.Pay] = opts.payBases.map { (b: HireOption) -> HireDraft.Pay in b.id == "fix" ? HireDraft.Pay.fix : HireDraft.Pay.hour }
         let keys: [HireDraft.Pay] = [HireDraft.Pay.usual] + more
         let seller: Bool = sells(e)
-        return cardBox {
-            VStack(alignment: .leading, spacing: 8) {
+        return Group {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 block("Pay basis") {
                     SegmentedChoice(items: keys, title: { (p: HireDraft.Pay) -> String in basisTitle(p, opts) }, selection: $model.draft.pay)
                 }
@@ -393,7 +384,7 @@ struct HireOnePage: View {
         let full: String = "\(hourly) an hour \u{00B7} costs you \(monthly) a month in all"
         let line: String = comOnly ? "No base wage: you pay a share of their sales" : full
         let lifted: Bool = talk?.liftedToMinimum ?? false
-        return VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(line).popupText(.body)
             if lifted { Text("Lifted to the minimum wage.").popupText(.risk) }
         }
@@ -407,7 +398,7 @@ struct HireOnePage: View {
         let label: String = picked == 0 ? "More terms" : "More terms (\(picked) chosen)"
         let seller: Bool = sells(e) && model.draft.plan != .salary
         return DisclosureGroup(label) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if has(opts, "contractType") { contractBlock(opts); basisCard(e, opts) }
                 if model.draft.kind == .temporary { weeksStepper(opts) }
                 if model.draft.kind == .seasonal { seasonBlock(opts) }
@@ -416,9 +407,10 @@ struct HireOnePage: View {
                 if has(opts, "expectations") { expectationsBlock(opts) }
                 promisesBlock(opts)
             }
-            .padding(.top, 6)
+            .padding(.top, Theme.Space.s)
         }
         .popupText(.subtitle)
+        .tint(P.accent)
     }
 
     private func rateBlock() -> some View {
@@ -435,7 +427,7 @@ struct HireOnePage: View {
     }
 
     private func benefitsBlock(_ opts: HireDraftOptions) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if !opts.companyPerks.isEmpty {
                 Text("Already given: " + opts.companyPerks.joined(separator: ", ")).popupText(.caption)
             }
@@ -489,21 +481,16 @@ struct HireOnePage: View {
 
     // MARK: Buttons
 
-    private func actions(_ talk: HireSalaryTalk?, _ cur: Currency, _ terms: Hiring.Terms, _ shown: Double, blocked: Bool) -> some View {
+    /// Make the offer, with the reason under it while the terms cannot be offered; Back and Walk away as quiet links.
+    private func actions(_ talk: HireSalaryTalk?, _ cur: Currency, _ terms: Hiring.Terms, _ shown: Double, problem: String?) -> some View {
         let annual: Double = talk?.annualEmployerCost ?? 0
-        return VStack(spacing: 4) {
-            QuietButton(title: "Make the offer", fullWidth: true) { confirm(shown, annual, cur, terms) }
-                .opacity(blocked ? 0.5 : 1).disabled(blocked)
-                .accessibilityIdentifier("hire-make-offer")
+        return VStack(spacing: Theme.Space.xs) {
+            PrimaryAction(title: "Make the offer", blockedReason: problem, identifier: "hire-make-offer") { confirm(shown, annual, cur, terms) }
             HStack {
-                Button { go(1) } label: {
-                    Text("Back").popupText(.subtitle).frame(maxWidth: .infinity, minHeight: 34)
-                }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-back")
-                Button { Haptics.tap(); dismiss() } label: {
-                    Text("Walk away").popupText(.subtitle).frame(maxWidth: .infinity, minHeight: 34)
-                }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("hire-walk-away")
+                Button("Back") { go(1) }
+                    .buttonStyle(TertiaryButtonStyle(fullWidth: true)).accessibilityIdentifier("hire-back")
+                Button("Walk away") { Haptics.tap(); dismiss() }
+                    .buttonStyle(TertiaryButtonStyle(fullWidth: true, tint: P.inkSoft)).accessibilityIdentifier("hire-walk-away")
             }
         }
     }
@@ -540,9 +527,10 @@ struct HireOnePage: View {
     private var ended: some View {
         scrolled {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                VStack(spacing: 8) { ForEach(model.lines) { (l: HireLine) -> SpeechBubble in SpeechBubble(text: l.text, mine: l.mine) } }
-                Text(model.closing).font(.system(size: 14, weight: .medium)).foregroundStyle(model.hired ? Theme.gain : Theme.ivoryMuted)
-                QuietButton(title: "Done", fullWidth: true) { model.finished = true }.accessibilityIdentifier("hire-done")
+                VStack(spacing: Theme.Space.s) { ForEach(model.lines) { (l: HireLine) -> SpeechBubble in SpeechBubble(text: l.text, mine: l.mine) } }
+                Text(model.closing.tidyText).textStyle(.headline, tint: model.hired ? P.gain : P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Button("Done") { model.finished = true }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("hire-done")
             }
         }
     }

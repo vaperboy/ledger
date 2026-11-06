@@ -26,8 +26,8 @@ enum ApplicantSort: String, CaseIterable, Hashable {
     case best = "Best match", wage = "Lowest wage ask", newest = "Newest"
 }
 
-/// Everyone who answered a job ad or agency search, in one page: a company picker and a role filter in a fixed header, then a row per applicant.
-/// "Hear them out" opens the same terms page as the hire flow (`HireOnePage`). Reached from the inbox, Team, the hire page and Group Management
+/// Everyone who answered a job ad or agency search, in one page: a company picker and a role filter in a fixed header, then one `ApplicantRow`
+/// per applicant (the same row as the hire page). "Talk terms" opens the same terms page as the hire flow (`HireOnePage`). Reached from the inbox, Team, the hire page and Group Management
 /// through `GameStore.openApplicants`; Back returns to where the player came from (the page is a route on the tab's stack).
 struct ApplicantsView: View {
     @EnvironmentObject var store: GameStore
@@ -38,6 +38,9 @@ struct ApplicantsView: View {
     /// No list shows more than 40 rows at once; `Show more` adds 40.
     @State private var limit = 40
     @State private var showHire = false
+    /// The applicant whose CV is open.
+    @State private var openID: String?
+    @State private var pending: PendingAction?
 
     init(companyID: Int?, role: String?) {
         _companySel = State(initialValue: companyID ?? 0)
@@ -48,7 +51,7 @@ struct ApplicantsView: View {
         if let e = store.engine {
             screen(e)
         } else {
-            Text("Nothing to show.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding().appScreen(title: "Applicants", tab: store.tab)
+            EmptyState(title: "Nothing to show.").appScreen(title: "Applicants", tab: store.tab)
         }
     }
 
@@ -113,6 +116,7 @@ struct ApplicantsView: View {
                 list(e, shown)
             }
         }
+        .confirmAction($pending)
         .navigationDestination(item: $talk) { (t: ApplicantTalk) -> HireOnePageHost in HireOnePageHost(companyID: t.companyID, personID: t.personID) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: hireTarget(cos)) }
         .appScreen(title: "Applicants", tab: store.tab)
@@ -126,7 +130,7 @@ struct ApplicantsView: View {
     // MARK: Header
 
     private func header(_ e: GameEngine, _ cos: [Company], _ all: [ApplicantRowItem], _ roles: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if cos.count > 1 || companySel != 0 {
                 chipRow {
                     chip("All companies", on: companySel == 0) { companySel = 0; roleSel = "" }
@@ -149,7 +153,7 @@ struct ApplicantsView: View {
                 }
             }
         }
-        .padding(.horizontal, Theme.Space.margin).padding(.vertical, 8)
+        .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -158,93 +162,62 @@ struct ApplicantsView: View {
     }
 
     private func chipRow<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        WrapRow(spacing: 6) { content() }
+        WrapRow(spacing: Theme.Space.xs) { content() }
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button { Haptics.choose(); action() } label: {
-            Text(title).font(.system(size: 12.5, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? Theme.ivory : Theme.ivoryFaint)
-                .lineLimit(1)
-                .padding(.horizontal, 12).frame(minHeight: 34)
-                .background(Capsule().fill(on ? Theme.goldSelected : Theme.surface))
-                .overlay(Capsule().strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
+        HireChip(title: title, on: on) { Haptics.choose(); action() }
     }
 
     // MARK: List
 
     private func list(_ e: GameEngine, _ rows: [ApplicantRowItem]) -> some View {
         ScrollView {
-            VStack(spacing: 10) {
-                ForEach(Array(rows.prefix(limit))) { (r: ApplicantRowItem) in
+            VStack(spacing: 0) {
+                ForEach(Array(rows.prefix(limit).enumerated()), id: \.element.id) { n, r in
+                    if n > 0 { Hairline() }
                     row(e, r)
                 }
                 if rows.count > limit {
-                    QuietButton(title: "Show more", fullWidth: true) { limit += 40 }
+                    Button("Show \(min(40, rows.count - limit)) more") { limit += 40 }
+                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                        .padding(.top, Theme.Space.m)
                 }
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, 4).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-    }
-
-    private func wageWords(_ r: ApplicantRowItem, _ cur: Currency) -> String {
-        guard let ask = r.ask, let market = r.market, market > 0 else { return "Going rate " + cur.tidyShort(r.applicant.marketMonthly) + " a month" }
-        let ratio: Double = ask / market
-        var words = "asks well above the going rate"
-        if ratio < 0.95 { words = "asks below the going rate" } else if ratio <= 1.05 { words = "asks about the going rate" } else if ratio <= 1.2 { words = "asks a little above the going rate" }
-        return "Likely " + words + ": " + cur.tidyShort(ask) + " against " + cur.tidyShort(market) + " a month"
     }
 
     private func row(_ e: GameEngine, _ r: ApplicantRowItem) -> some View {
         let a: Applicant = r.applicant
         let co: Company? = e.state.company(r.companyID)
         let cur: Currency = co.map { (c: Company) -> Currency in e.currency(for: c) } ?? e.currency(for: e.state.companies[0])
-        let claims: String = e.state.people[a.personID].map { (p: Person) -> String in CandidateClaims.line(e, p) } ?? a.cvImpression
-        let at: String = companySel == 0 ? (" \u{00B7} " + (co?.name ?? "")) : ""
         let tag: ApplicantTalk = ApplicantTalk(companyID: r.companyID, personID: a.personID)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                ThumbnailView(kind: .person, key: a.role, size: 44, initials: a.name, face: a.faceKey)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(a.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(roleName(e, r.companyID, a.role) + at).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
-                }
-                Spacer(minLength: 6)
-            }
-            Text(claims).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            Text(wageWords(r, cur)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-            QuietButton(title: "Hear them out", fullWidth: true) { talk = tag }
-                .accessibilityIdentifier("applicant-hear-out")
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        .accessibilityElement(children: .contain)
+        let preview: (ask: Double, market: Double)? = r.ask.flatMap { (ask: Double) -> (ask: Double, market: Double)? in r.market.map { (ask: ask, market: $0) } }
+        return ApplicantRow(applicant: a, roleName: roleName(e, r.companyID, a.role), companyName: companySel == 0 ? (co?.name ?? "") : "",
+                            currency: cur, ask: preview, open: openID == r.id, talkIdentifier: "applicant-hear-out",
+                            onTap: { Motion.animate(Motion.quickAnimation) { openID = openID == r.id ? nil : r.id } },
+                            onTrial: { pending = ApplicantTrial.ask(store, a, companyID: r.companyID, cur) },
+                            onTalk: { talk = tag })
     }
 
     // MARK: Empty
 
     private func emptyState(_ e: GameEngine, _ cos: [Company]) -> some View {
-        VStack(spacing: 10) {
-            Text("No applicants yet").font(.system(size: 16, weight: .medium)).foregroundStyle(Theme.ivory)
-            Text("People answer a job ad or an agency search over the following weeks. Each reply also arrives as a message.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            if hireTarget(cos) != 0 {
-                Button { Haptics.tap(); showHire = true } label: {
-                    Text("Post a job ad \u{203A}").font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 36).contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("applicants-post-ad")
+        let canHire: Bool = hireTarget(cos) != 0
+        return VStack(spacing: 0) {
+            EmptyState(glyph: Glyph.inbox, title: "No applicants yet",
+                       message: "People answer a job ad or an agency search over the following weeks. Each reply also arrives as a message.")
+            if canHire {
+                Button("Post a job ad") { Haptics.tap(); showHire = true }
+                    .buttonStyle(SecondaryButtonStyle(tint: Theme.accent))
+                    .accessibilityIdentifier("applicants-post-ad")
             }
         }
-        .padding(.horizontal, 28).padding(.top, 40)
+        .padding(.horizontal, Theme.Space.xxl).padding(.top, Theme.Space.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
