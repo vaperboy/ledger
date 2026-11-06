@@ -12,7 +12,7 @@ import Simulation
 /// Chain and group posts are the same kind of rows seen from the chain and from Group (see ExecutivePosts).
 // MARK: Person cards (new look)
 
-/// The initials of a name in a round outlined holder: the face of every person card. A vacant post shows the plus icon instead.
+/// The initials of a name on a round accent wash: the face of every person card. A vacant post shows the plus icon instead.
 struct TeamInitials: View {
     var name: String?
     var size: CGFloat = 42

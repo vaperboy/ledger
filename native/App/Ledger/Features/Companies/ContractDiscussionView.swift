@@ -340,6 +340,7 @@ struct ContractDiscussionView: View {
         // The send button is pinned under the long discussion so it never scrolls out of reach.
         Color.clear.frame(height: 0)
             .popupFooter {
+                VStack(spacing: Theme.Space.xs) {
                 PopupOptionButton(title: answering ? "Answer with this offer" : "Put it to \(first(n))", highlighted: true) {
                     pending = PendingAction(
                         title: answering ? "Answer \(first(n)) with this?" : "Put this to \(first(n))?",
@@ -350,6 +351,9 @@ struct ContractDiscussionView: View {
                         }
                 }
                 .disabled(!sendable).opacity(sendable ? 1 : 0.4)
+                // Says why it cannot be sent right under the greyed button.
+                if !sendable { Text(pv.blocked.tidyText).popupText(.caption).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true) }
+                }
             }
     }
 
