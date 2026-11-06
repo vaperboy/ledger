@@ -86,6 +86,12 @@ struct InboxMailRow: View {
                 Text(title).font(.system(size: 14.5, weight: unread ? .semibold : .regular))
                     .foregroundStyle(unread ? P.ink : P.inkFaint).lineLimit(1)
                 Text(consequence).font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(1)
+                if !message.handledBy.isEmpty {
+                    Text("Handled by " + message.handledBy).font(.system(size: 11.5, weight: .medium)).foregroundStyle(P.accent).lineLimit(1)
+                }
+                if store.engine?.messageDocument(messageID: message.id) != nil {
+                    Text("Read the report").font(.system(size: 11.5, weight: .medium)).foregroundStyle(P.accent).lineLimit(1)
+                }
             }
             Spacer(minLength: 6)
             if open { expiryPill }

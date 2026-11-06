@@ -29,14 +29,16 @@ extension View {
 // MARK: Ladder goal links
 
 extension GameStore {
-    /// The screen a ladder goal's button names (`PlayerGoals.LadderGoal.link`): sales, hire, inbox, marketing, money, company, management,
-    /// newCompany. Each goes straight to its target on the stack of the tab the player is on, so Back walks up. A link that needs a
-    /// company uses the first one that is open; without one it opens the new-company page. Returns false for an unknown or empty link.
+    /// The screen a goal's button names (ladder, career and daily goals): sales, hire, inbox, marketing, money, company, management,
+    /// customers, achievements, newCompany. Each goes straight to its target on the stack of the tab the player is on, so Back walks up.
+    /// A link that needs a company opens the one the goal is about (`ladderCompany`); without one it opens the new-company page.
+    /// Returns false for an unknown or empty link.
     @discardableResult func openLadderLink(_ link: String) -> Bool {
         if link == "inbox" { openApp(.inbox); return true }
+        if link == "achievements" { openApp(.achievements); return true }
         if link == "newCompany" { open(.newCompany, on: .company); return true }
-        guard let id = engine?.state.companies.first(where: { $0.status.isLive && $0.type != "hold" })?.id else {
-            if ["sales", "hire", "marketing", "money", "company", "management"].contains(link) { open(.newCompany, on: .company); return true }
+        guard let id = ladderCompany(for: link) else {
+            if ["sales", "hire", "marketing", "money", "company", "management", "customers"].contains(link) { open(.newCompany, on: .company); return true }
             return false
         }
         switch link {
@@ -46,9 +48,26 @@ extension GameStore {
         case "money": openCompany(id, section: .finances)
         case "company": openCompany(id)
         case "management": openCompany(id, section: .operations)
+        case "customers": openCompany(id, section: .customers)
         default: return false
         }
         return true
+    }
+
+    /// The open company a goal link is about: the thinnest team for hiring, the least known for marketing, the least cash for money,
+    /// the weakest reputation for sales and customers; otherwise the first.
+    func ladderCompany(for link: String) -> Int? {
+        guard let e = engine else { return nil }
+        let live: [Company] = e.state.companies.filter { $0.status.isLive && $0.type != "hold" }
+        let pick: Company?
+        switch link {
+        case "hire": pick = live.min { (a: Company, b: Company) -> Bool in a.staff.count < b.staff.count }
+        case "marketing": pick = live.min { (a: Company, b: Company) -> Bool in a.awareness < b.awareness }
+        case "money": pick = live.min { (a: Company, b: Company) -> Bool in a.cash < b.cash }
+        case "sales", "customers", "management": pick = live.min { (a: Company, b: Company) -> Bool in a.reputation < b.reputation }
+        default: pick = live.first
+        }
+        return pick?.id
     }
 }
 

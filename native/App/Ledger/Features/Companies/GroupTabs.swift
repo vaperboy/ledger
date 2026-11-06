@@ -198,6 +198,7 @@ struct GroupLanding: View {
                     }
                 }
             }
+            GroupWhoRunsWhat(engine: engine)
             Button { Haptics.tap(); onSuppliers() } label: {
                 CardRow(glyph: Glyph.bank, title: "Suppliers", subtitle: "Every supplier your companies use, with profiles")
             }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-suppliers")

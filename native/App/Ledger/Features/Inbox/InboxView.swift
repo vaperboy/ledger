@@ -9,7 +9,8 @@ import Countries
 struct InboxView: View {
     private var P: OutsidePalette { .game }
     /// Needs you: open decisions; All: everything.
-    enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", all = "All" }
+    /// Handled: decisions a hired manager or rank answered for you.
+    enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", handled = "Handled", all = "All" }
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tab: Tab = .decisions
@@ -40,6 +41,7 @@ struct InboxView: View {
         switch t {
         case .all: return true
         case .decisions: return m.status == "open"
+        case .handled: return !m.handledBy.isEmpty
         }
     }
 
@@ -311,7 +313,8 @@ struct InboxView: View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
             : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
-            : k == .decisions ? "Nothing needs you right now." : "Nothing here yet."
+            : k == .decisions ? "Nothing needs you right now."
+            : k == .handled ? "Decisions your managers answer for you are listed here." : "Nothing here yet."
         return VStack(spacing: 8) {
             IconCircle(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, size: 56, tint: P.inkFaint)
             Text(text).font(.bodyText).foregroundStyle(P.inkSoft).multilineTextAlignment(.center)
@@ -404,12 +407,18 @@ struct MessageCard: View {
             if let o = store.engine?.answeredOutcome(message) {
                 Text(o).font(.caption2.weight(.medium)).foregroundStyle(P.inkFaint).padding(.top, 2)
             }
+            if !message.handledBy.isEmpty {
+                Text("Handled by " + message.handledBy).font(.caption2.weight(.medium)).foregroundStyle(P.accent)
+            }
             if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
                 let sec = Self.section(for: message)
                 let app = store.applicantLink(message)
                 Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
                     LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
                 }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
+            } else if message.companyID == 0, let app = PhoneApp(rawValue: message.appLink) {
+                Button { store.openApp(app) } label: { LinkLabel(text: "Open \(app.title)") }
+                    .buttonStyle(PressableStyle()).accessibilityIdentifier("open-app-link")
             }
         }
         .padding(.horizontal, full ? 0 : 14).padding(.vertical, full ? 0 : 11)

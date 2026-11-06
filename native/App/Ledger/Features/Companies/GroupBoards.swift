@@ -27,6 +27,10 @@ struct BoardView: View {
     var key: String
     @State private var message = ""
     @State private var candidates: [Person] = []
+    /// The seat picker's second tab: your own employees and managers who qualify (they keep their job).
+    @State private var ownTab = false
+    @State private var ownList: [BoardCandidate] = []
+    @State private var ownSeat = ""
     @State private var pending: PendingAction?
     @State private var freshSeats: Set<String> = []
 
@@ -296,17 +300,50 @@ struct BoardView: View {
 
     private func seatFinder(_ engine: GameEngine) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Add to the board (a search costs a fee)").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+            SegmentedPill(items: [false, true], title: { (own: Bool) -> String in own ? "Your people" : "Search" }, selection: $ownTab)
+            Text(ownTab ? "Employees and managers keep their job. One from the board's own company sits for half the fee." : "Add to the board (a search costs a fee)")
+                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
             WrapRow {
                 Group {
                     ForEach(engine.seatRoles) { r in
                         Button(r.title) {
+                            if ownTab { loadOwn(engine, seat: r.id); return }
                             let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
                             if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
                         }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
                     }
                 }
             }
+        }
+    }
+
+    /// The company whose board this is (for a chain, its first store): the engine finds the board again from it.
+    private func loadOwn(_ engine: GameEngine, seat: String) {
+        guard let cid = ManagerModel.boardCompanies(engine.state, key: key).first?.id else { return }
+        ownList = engine.boardCandidates(companyID: cid, seat: seat).filter { (c: BoardCandidate) -> Bool in c.isOwnStaff }
+        ownSeat = seat
+        message = ownList.isEmpty ? "None of your people qualify for that seat yet." : ""
+    }
+
+    private func ownRow(_ c: BoardCandidate) -> some View {
+        let fee: Double = c.feePerYear / 12
+        return HStack(spacing: 10) {
+            Text("\(c.name) \u{00B7} \(c.qualification)").font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(2)
+            Spacer(minLength: 8)
+            Button("Seat \u{00B7} \(store.short(fee)) a month") {
+                pending = PendingAction(title: "Seat \(c.name) on the board?", message: "They keep their job and also sit on the board. Cost: \(store.short(fee)) a month in fees.", button: "Seat them", amount: fee, currency: store.engine?.homeCurrency) { seatOwn(c) }
+            }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
+        }
+    }
+
+    private func seatOwn(_ c: BoardCandidate) {
+        guard let e = store.engine, let cid = ManagerModel.boardCompanies(e.state, key: key).first?.id else { return }
+        let seat: String = ownSeat
+        let r: SettingResult? = store.act { $0.appointOwnToBoard(companyID: cid, seat: seat, personID: c.personID) }
+        switch r {
+        case .applied?: message = "\(c.name) joins the board."; ownList = []; Haptics.success()
+        case .refused(let why)?: message = why
+        default: message = "\(c.name) could not be seated."
         }
     }
 
@@ -334,7 +371,11 @@ struct BoardView: View {
                 }
                 CardLine()
                 seatFinder(engine)
-                ForEach(candidates) { p in candidateRow(p) }
+                if ownTab {
+                    ForEach(ownList) { c in ownRow(c) }
+                } else {
+                    ForEach(candidates) { p in candidateRow(p) }
+                }
             }
             .orgArrivals(engine.boardVoters(key: key).map { $0.id }, fresh: $freshSeats)
         }

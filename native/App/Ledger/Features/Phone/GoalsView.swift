@@ -77,7 +77,11 @@ struct GoalsView: View {
                 ForEach(Array(goals.enumerated()), id: \.element.id) { i, g in
                     if i > 0 { CardLine() }
                     GoalRow(ring: GoalRing(progress: g.progress, done: false, label: "\(Int((g.progress * 100).rounded()))"),
-                            title: g.title, detail: g.horizon.label + " goal. " + g.body, reward: "Reward: " + g.reward, action: nil) {}
+                            title: g.title, detail: g.horizon.label + " goal. " + g.body, reward: "Reward: " + g.reward,
+                            action: g.link.isEmpty ? nil : "Go") {
+                        Haptics.tap()
+                        _ = store.openLadderLink(g.link)
+                    }
                 }
             }
         }
@@ -110,7 +114,8 @@ struct GoalsView: View {
                 GoalRow(ring: GoalRing(progress: g.done || g.claimed ? 1 : 0, done: g.done || g.claimed),
                         title: g.title, detail: sub,
                         reward: "Reward " + cur.tidyShort(g.reward) + streak,
-                        action: g.done && !g.claimed ? "Claim" : nil) {
+                        action: g.done && !g.claimed ? "Claim" : (g.claimed || g.link.isEmpty ? nil : "Go")) {
+                    if !g.done && !g.claimed { Haptics.tap(); _ = store.openLadderLink(g.link); return }
                     if let r = store.act({ $0.claimDailyGoal() }) ?? nil {
                         Haptics.success(); store.show("Daily goal: \(cur.tidyShort(r)). A new goal comes tomorrow.", tone: "good"); refresh()
                     } else { Haptics.warning(); store.show("That goal cannot be claimed yet.", tone: "warn") }
