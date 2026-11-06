@@ -12,9 +12,10 @@ struct ProfitGlow: ViewModifier {
 
 // MARK: Chart draws itself
 
-/// Reveals a chart from left to right once, the first time it appears (700 ms). Instant under Reduce Motion.
+/// Reveals a chart from left to right once, the first time it appears (`reveal`, 0.6 s; `duration` is kept for older call sites).
+/// Instant under Reduce Motion.
 struct DrawInOnce: ViewModifier {
-    var duration: Double = 0.7
+    var duration: Double = Motion.revealSeconds
     @State private var progress: CGFloat = 0
     @State private var started: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -36,9 +37,9 @@ struct DrawInOnce: ViewModifier {
 
 /// A debt or loan figure: rolls down and flashes red to neutral when it falls (`moneyFlash`), and the bar beside it should use `.animation(Motion.fill(...))`.
 extension Motion {
-    /// A progress bar or ring filling to a new value (500 ms ease-out); nil under Reduce Motion.
+    /// A progress bar or ring filling to a new value (`quick`, 0.22 s); nil under Reduce Motion.
     static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
-    /// A figure counting to a new value (350 ms); nil under Reduce Motion.
+    /// A figure counting to a new value (`quick`, 0.22 s); nil under Reduce Motion.
     static func count(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
 }
 
@@ -74,7 +75,7 @@ extension View {
     /// Retired: does nothing (see `ProfitGlow`).
     func profitGlow(_ value: Double) -> some View { modifier(ProfitGlow(value: value)) }
     /// The chart draws itself from left to right the first time it appears (see `DrawInOnce`).
-    func drawsItself(duration: Double = 0.7) -> some View { modifier(DrawInOnce(duration: duration)) }
+    func drawsItself(duration: Double = Motion.revealSeconds) -> some View { modifier(DrawInOnce(duration: duration)) }
     /// Retired: does nothing (see `GoldPulse`).
     func goldPulse(_ trigger: Bool) -> some View { modifier(GoldPulse(trigger: trigger)) }
     /// Reveals this section 40 ms after the previous one (see `StaggerReveal`).
@@ -113,11 +114,11 @@ struct TransferChipView: View {
     @State private var step: Int = 0
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(chip.label).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
-            Text("+" + store.short(chip.amount)).font(.system(size: 13.5, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.gold)
+        HStack(spacing: Theme.Space.s) {
+            Text(chip.label).textStyle(.caption, tint: Theme.inkSoft)
+            Text("+" + store.short(chip.amount)).textStyle(.body, tint: Theme.accent, numeric: true, weight: .semibold)
         }
-        .padding(.horizontal, 12).padding(.vertical, 7)
+        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
         .background(Capsule().fill(Theme.surfaceRaised))
         .elevation(.raised)
         .opacity(step == 1 ? 1 : 0)

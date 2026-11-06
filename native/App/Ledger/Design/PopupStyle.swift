@@ -113,7 +113,7 @@ private struct PopupTextStyle: ViewModifier {
     func body(content: Content) -> some View {
         switch role {
         case .title:
-            content.font(.system(size: 16, weight: .semibold, design: .serif)).foregroundStyle(ink)
+            content.textStyle(.figure, tint: ink, weight: .semibold)
         case .subtitle:
             content.textStyle(.caption, tint: soft).fixedSize(horizontal: false, vertical: true)
         case .body:
@@ -135,7 +135,7 @@ private struct PopupTextStyle: ViewModifier {
         case .button:
             content.textStyle(.body, tint: ink, weight: .medium)
         case .code:
-            content.font(.system(size: 12, design: .monospaced)).foregroundStyle(ink)
+            content.font(.system(size: TextStep.caption.size, design: .monospaced)).foregroundStyle(ink)
         }
     }
 }

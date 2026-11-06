@@ -5,13 +5,13 @@ import SwiftUI
 /// red = loss. Nothing here blocks touches or loops. Reduce Motion: the root view already drops animation transactions, and the
 /// helpers also pass `nil` animations, so only a static colour highlight can remain.
 enum OrgMotion {
-    /// Row insertion and removal: 250 ms.
+    /// Row insertion and removal: `quick` (0.22 s).
     static func row(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
-    /// Hierarchy changes: the app's arrive spring (response 0.38, damping 0.86).
+    /// Hierarchy changes: the `move` spring (response 0.32, damping 0.86).
     static func hierarchy(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.moveAnimation }
-    /// Progress bars and small value changes: 350 ms.
+    /// Progress bars and small value changes: `quick` (0.22 s).
     static func fill(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.quickAnimation }
-    /// Chart redraw: 700 ms.
+    /// Chart redraw: `reveal` (0.6 s).
     static func chart(_ reduceMotion: Bool) -> Animation? { reduceMotion ? nil : Motion.revealAnimation }
     /// How long a new item stays marked as new.
     static let flashSeconds: Double = 1.6
@@ -185,7 +185,7 @@ private struct OrgPulse<V: Equatable>: ViewModifier {
             .onChange(of: value) { _, _ in
                 guard !reduceMotion else { return }
                 Motion.animate(Motion.quickAnimation) { on = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { Motion.animate(Motion.quickAnimation) { on = false } }
+                DispatchQueue.main.asyncAfter(deadline: .now() + Motion.quickSeconds) { Motion.animate(Motion.quickAnimation) { on = false } }
             }
     }
 }
@@ -255,10 +255,10 @@ struct OrgNote: Identifiable, Equatable {
 struct OrgNoteStack: View {
     var notes: [OrgNote]
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
             ForEach(notes) { n in
-                Text(n.text).font(.system(size: 11.5)).foregroundStyle(n.tint).lineLimit(2)
-                    .padding(.horizontal, 10).padding(.vertical, 4)
+                Text(n.text).textStyle(.caption, tint: n.tint).lineLimit(2)
+                    .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
                     .background(Capsule().fill(Theme.surface))
                     .overlay(Capsule().strokeBorder(n.tint.opacity(0.6), lineWidth: 1))
                     .transition(AnyTransition.opacity.combined(with: AnyTransition.move(edge: .top)))
@@ -286,15 +286,15 @@ struct OrgCompletionCard: View {
 
     var body: some View {
         Button(action: dismiss) {
-            HStack(spacing: 12) {
+            HStack(spacing: Theme.Space.m) {
                 ZStack {
                     Circle().stroke(Theme.hairline, lineWidth: 2)
                     Circle().trim(from: 0, to: ring).stroke(Theme.gold, style: StrokeStyle(lineWidth: 2.5, lineCap: .round)).rotationEffect(.degrees(-90))
                 }.frame(width: 34, height: 34)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(item.title.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold)
-                    Text(item.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                    Text(item.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(item.title).textStyle(.label)
+                    Text(item.name).textStyle(.headline).lineLimit(1)
+                    Text(item.detail).textStyle(.caption).lineLimit(2)
                 }
                 .opacity(textIn ? 1 : 0)
                 Spacer(minLength: 0)

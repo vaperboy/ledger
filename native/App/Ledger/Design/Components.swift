@@ -150,8 +150,8 @@ struct Chip: View {
     var tint: Color = Theme.ivoryMuted
     var symbol: String? = nil
     var body: some View {
-        HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol).font(.system(size: 9, weight: .bold)) } else { Circle().fill(tint.inPalette(P)).frame(width: 6, height: 6) }
+        HStack(spacing: Theme.Space.xs) {
+            if let symbol { Image(systemName: symbol).font(TextStep.label.fixedFont) } else { Circle().fill(tint.inPalette(P)).frame(width: 6, height: 6) }
             Text(text.tidyText).textStyle(.caption, tint: tint, weight: .medium)
         }
         .foregroundStyle(tint.inPalette(P))
@@ -324,7 +324,12 @@ struct SectionTabs<T: Hashable>: View {
     var urgent: Bool = false
     /// Second-level row (sub-navigation under another tab row): small capitals, no underline bar, a faint track.
     var sub: Bool = false
+    /// An accessibility identifier per item (nil: none). It takes precedence over an identifier set on the whole row.
+    var itemIdentifier: ((T) -> String)? = nil
+    /// Every item in one sideways-scrolling row (the chosen one scrolled into view) instead of a fixed row plus "More".
+    var scrolls: Bool = false
     @Environment(\.outsidePalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The items kept in the fixed row. `condensed` is the narrow variant used when the full row does not fit.
     private func fixed(condensed: Bool) -> [T] {
@@ -342,24 +347,55 @@ struct SectionTabs<T: Hashable>: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            tabRow(fixed(condensed: false), tight: false)
-            tabRow(fixed(condensed: true), tight: true)
+        if scrolls {
+            scrollRow
+                .background(alignment: .bottom) { if !sub { Hairline() } }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                tabRow(fixed(condensed: false), tight: false)
+                tabRow(fixed(condensed: true), tight: true)
+            }
+            .padding(.horizontal, Theme.Space.margin)
+            .background(alignment: .bottom) { if !sub { Hairline() } }
         }
-        .padding(.horizontal, Theme.Space.margin)
-        .background(alignment: .bottom) { if !sub { Hairline() } }
+    }
+
+    /// The `scrolls` variant: all items at their natural width, the page margin as content inset, the selection kept in view.
+    private var scrollRow: some View {
+        ScrollViewReader { (proxy: ScrollViewProxy) in
+            ScrollView(.horizontal) {
+                HStack(spacing: Theme.Space.xs) {
+                    ForEach(items, id: \.self) { (item: T) in
+                        tabButton(item, tight: false).id(item)
+                    }
+                }
+                .padding(.horizontal, Theme.Space.margin)
+            }
+            .scrollIndicators(.hidden)
+            .onAppear { proxy.scrollTo(selection, anchor: .center) }
+            .onChange(of: selection) { (_: T, new: T) in
+                Motion.animate(Motion.quick(reduceMotion)) { proxy.scrollTo(new, anchor: .center) }
+            }
+        }
+    }
+
+    private func tabButton(_ item: T, tight: Bool) -> some View {
+        let on: Bool = selection == item
+        return Button { selection = item; Haptics.choose() } label: {
+            cell(title(item), count: badge(item), on: on, more: false, tight: tight)
+                .flagMarker(!on && (dots?(item) ?? false), important: urgent, alignment: .topTrailing)
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .modifier(OptionalIdentifier(identifier: itemIdentifier?(item) ?? ""))
     }
 
     /// The row of tabs: the fixed items, then a "More" menu for the rest. The width is shared equally, so a row never needs to scroll.
     private func tabRow(_ fixed: [T], tight: Bool) -> some View {
         let rest: [T] = items.filter { !fixed.contains($0) }
-        return HStack(spacing: 4) {
-            ForEach(fixed, id: \.self) { item in
-                let on = selection == item
-                Button { selection = item; Haptics.choose() } label: {
-                    cell(title(item), count: badge(item), on: on, more: false, tight: tight)
-                        .flagMarker(!on && (dots?(item) ?? false), important: urgent, alignment: .topTrailing)
-                }.buttonStyle(PressableStyle()).accessibilityAddTraits(on ? .isSelected : [])
+        return HStack(spacing: Theme.Space.xs) {
+            ForEach(fixed, id: \.self) { (item: T) in
+                tabButton(item, tight: tight)
             }
             if !rest.isEmpty { moreMenu(rest, tight: tight) }
         }
@@ -374,6 +410,7 @@ struct SectionTabs<T: Hashable>: View {
                     let t = n > 0 ? "\(title(item)) (\(n))" : title(item)
                     if selection == item { Label(t, systemImage: "checkmark") } else { Text(t) }
                 }
+                .modifier(OptionalIdentifier(identifier: itemIdentifier?(item) ?? ""))
             }
         } label: {
             cell(inRest ? title(selection) : "More", count: rest.reduce(0) { $0 + badge($1) }, on: inRest, more: true, tight: tight)
@@ -381,17 +418,17 @@ struct SectionTabs<T: Hashable>: View {
     }
 
     private func cell(_ text: String, count: Int, on: Bool, more: Bool, tight: Bool) -> some View {
-        HStack(spacing: 3) {
+        HStack(spacing: Theme.Space.xs) {
             Text(sub ? text.uppercased() : text)
                 .textStyle(sub ? .label : .body, tint: on ? palette.accent : palette.inkFaint, weight: on || sub ? .semibold : .regular)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .fixedSize(horizontal: !tight, vertical: false)
-            if more { Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)) }
+            if more { Image(systemName: "chevron.down").font(TextStep.label.fixedFont) }
             if count > 0 { countView(count) }
         }
         .foregroundStyle(on ? palette.accent : palette.inkFaint)
-        .padding(.horizontal, tight ? 2 : 10)
+        .padding(.horizontal, tight ? Theme.Space.xxs : Theme.Space.s)
         .frame(maxWidth: .infinity, minHeight: sub ? 34 : 44)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(sub && on ? palette.inset : Color.clear))
         .contentShape(Rectangle())
@@ -532,7 +569,7 @@ private struct ConfirmActionModifier: ViewModifier {
 
 /// Runs `show` once a sheet that is closing has gone, so the popup it opens is not lost to the sheet's dismissal.
 func presentAfterSheet(_ show: @escaping () -> Void) {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: show)
+    DispatchQueue.main.asyncAfter(deadline: .now() + Motion.sheetLeaveSeconds, execute: show)
 }
 
 extension View {

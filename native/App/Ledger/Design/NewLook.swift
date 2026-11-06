@@ -238,7 +238,7 @@ struct RedBubble: View {
                     guard new > old else { return }
                     Motion.animate(Motion.quickAnimation) { bounced = true }
                     Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 220_000_000)
+                        try? await Task.sleep(nanoseconds: UInt64(Motion.quickSeconds * 1_000_000_000))
                         Motion.animate(Motion.quickAnimation) { bounced = false }
                     }
                 }
@@ -405,9 +405,9 @@ struct ReturnLine: View {
                 Haptics.tap()
                 store.returnToOrigin()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.left").font(.system(size: 12, weight: .semibold))
-                    Text("Back to \(store.title(for: r.from))").font(.system(size: 13, weight: .medium))
+                HStack(spacing: Theme.Space.xs) {
+                    Image(systemName: "chevron.left").textStyle(.caption, tint: Theme.accent, weight: .semibold)
+                    Text("Back to \(store.title(for: r.from))").textStyle(.body, tint: Theme.accent, weight: .medium)
                     Spacer()
                 }
                 .foregroundStyle(Theme.accent)

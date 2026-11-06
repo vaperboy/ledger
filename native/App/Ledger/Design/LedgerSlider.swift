@@ -28,11 +28,20 @@ struct LedgerSlider: View {
     private var span: Double { max(range.upperBound - range.lowerBound, 0.000001) }
     private let thumb: CGFloat = 20
     private var hit: CGFloat = 44
+    /// Uneven snap points (sorted, inside the range); empty: `step` or a free value.
+    private var stops: [Double] = []
 
     /// A shorter touch area for dense rows (still at least 30pt high); the default is 44pt.
     func hitHeight(_ h: CGFloat) -> LedgerSlider {
         var c: LedgerSlider = self
         c.hit = max(30, h)
+        return c
+    }
+
+    /// Snaps to the nearest of `values` (uneven steps such as 0, 10, 25, 50, 100) instead of `step`. Empty keeps the default.
+    func detents(_ values: [Double]) -> LedgerSlider {
+        var c: LedgerSlider = self
+        c.stops = values.filter { range.contains($0) }.sorted()
         return c
     }
 
@@ -43,6 +52,7 @@ struct LedgerSlider: View {
 
     private func snapped(_ raw: Double) -> Double {
         var v: Double = min(range.upperBound, max(range.lowerBound, raw))
+        if let near = stops.min(by: { (a: Double, b: Double) -> Bool in abs(a - v) < abs(b - v) }) { return near }
         if let step, step > 0 {
             let n: Double = ((v - range.lowerBound) / step).rounded()
             v = min(range.upperBound, range.lowerBound + n * step)
@@ -60,10 +70,20 @@ struct LedgerSlider: View {
         }
         if v != value { value = v }
         let atEnd: Bool = v == range.lowerBound || v == range.upperBound
-        if (step != nil || atEnd) && v != lastTick {
+        if (step != nil || !stops.isEmpty || atEnd) && v != lastTick {
             lastTick = v
             Haptics.choose()
         }
+    }
+
+    /// One VoiceOver adjustment: the next detent, else one `step` (or a twentieth of the range).
+    private func nudged(up: Bool) -> Double {
+        if !stops.isEmpty {
+            let next: Double? = up ? stops.first(where: { (s: Double) -> Bool in s > value }) : stops.last(where: { (s: Double) -> Bool in s < value })
+            return next ?? value
+        }
+        let d: Double = step ?? (span / 20)
+        return snapped(up ? value + d : value - d)
     }
 
     private func finish() {
@@ -84,10 +104,9 @@ struct LedgerSlider: View {
         .accessibilityElement(children: .ignore)
         .accessibilityValue(valueText ?? String(format: "%.0f", value))
         .accessibilityAdjustableAction { (direction: AccessibilityAdjustmentDirection) in
-            let d: Double = step ?? (span / 20)
             switch direction {
-            case .increment: value = snapped(value + d); onEditingChanged(true); onEditingChanged(false)
-            case .decrement: value = snapped(value - d); onEditingChanged(true); onEditingChanged(false)
+            case .increment: value = nudged(up: true); onEditingChanged(true); onEditingChanged(false)
+            case .decrement: value = nudged(up: false); onEditingChanged(true); onEditingChanged(false)
             @unknown default: break
             }
         }
