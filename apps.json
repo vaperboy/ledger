@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.82",
+          "buildVersion": "82",
+          "date": "2026-11-06T21:52:52Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v82/Ledger-unsigned.ipa",
+          "size": 28850939,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Speed: screens redraw much faster (money text, Home, Group, Phone badges and Accounting lists no longer redo whole-game work on every redraw); text on filled buttons, chips and photo banners always uses the fill's readable ink\n- Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale\n- Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring without the extra toggle; Group pages, Treasury, sale routes and Boardroom calmer; new-company flow reviews the cost before paying; Bank flatter, payroll lives in Accounting\n- Look: new design system: one type scale that follows your text size, one spacing and corner set, unboxed sections and rows, three button styles with full-size tap areas, buttons say why they are disabled, no gradients or glows\n- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handle"
+        },
+        {
           "version": "1.0.81",
           "buildVersion": "81",
           "date": "2026-11-06T20:01:37Z",
@@ -187,22 +196,13 @@
           "size": 28848010,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Code clean-up: no behaviour change (comments, notes and unused screens removed, files renamed by what they do)\n- Board removal, portraits, Home companies box, chain/regional manager hiring, Market notice fix\n\n# Missing / coming next\n- Play-test findings are being fixed batch by batch"
-        },
-        {
-          "version": "1.0.62",
-          "buildVersion": "62",
-          "date": "2026-11-05T21:39:38Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v62/Ledger-unsigned.ipa",
-          "size": 28848004,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Code clean-up: no behaviour change (comments, notes and unused screens removed, files renamed by what they do)\n- Board removal, portraits, Home companies box, chain/regional manager hiring, Market notice fix\n\n# Missing / coming next\n- Play-test findings are being fixed batch by batch"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.81",
-      "versionDate": "2026-11-06T20:01:37Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v81/Ledger-unsigned.ipa",
-      "size": 28887763
+      "version": "1.0.82",
+      "versionDate": "2026-11-06T21:52:52Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v82/Ledger-unsigned.ipa",
+      "size": 28850939
     }
   ]
 }
