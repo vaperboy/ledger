@@ -12,59 +12,50 @@ enum TeamPage: String, Hashable, Identifiable {
     var id: String { rawValue }
 }
 
-/// One company's Team tab on ONE page, STAFF ONLY: the hire button, free places, the workers and a table of settings (goals, perks).
-/// Managers, the owner and executive posts live in Group > the company > Management. Perks open as a popup; the labour rules are in Stats. Payroll is in Accounting and the Bank, not here.
+/// One company's Team tab on ONE page, STAFF ONLY: the head count with the hire button, why hiring is blocked or the free places, the
+/// workers, what they cost, and a flat list of team settings (applicants, goals, perks, the management link). Managers, the owner and
+/// executive posts live in Group > the company > Management. Perks open as a popup; labour rules are in Stats; payroll in Accounting.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var company: Company
     @State private var page: TeamPage?
     @State private var showPerks = false
-
-    /// One plain line of text (not a card).
-    private func line(_ text: String, tint: Color, medium: Bool) -> some View {
-        Text(text).font(.system(size: 12, weight: medium ? .medium : .regular)).foregroundStyle(tint)
-            .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-    }
+    @State private var profile: WorkerRef?
 
     var body: some View {
-        VStack(spacing: Theme.Space.l) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 header
                 placesNote
-                managementNote
-                ApplicantsLinkRow(engine: engine, companyID: company.id)
             }
-            if !company.staff.isEmpty { CompanyStaffRoster(engine: engine, company: company) }
+            if company.staff.isEmpty {
+                EmptyState(glyph: Glyph.hire, title: "No staff yet", message: "Hire the people the business needs to open and serve customers.", centered: false)
+            } else {
+                CompanyStaffRoster(engine: engine, company: company, profile: $profile)
+            }
             CompanyPeopleCost(engine: engine, company: company)
-            settingsTable
+            settingsList
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
+        .navigationDestination(item: $profile) { (w: WorkerRef) -> StaffProfileView in StaffProfileView(companyID: company.id, staffID: w.id) }
         .centerSheet(isPresented: $showPerks) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
     }
 
     // MARK: Header and places
 
-    /// Managers and executives are not here any more: they are hired per company in Group > the company > Management.
-    private var managementNote: some View {
-        Button { Haptics.tap(); store.openGroupEntity(companyID: company.id, section: "management") } label: {
-            HStack(spacing: 6) {
-                Text("Managers and executive posts are in Group").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                Spacer(minLength: 6)
-                Text("Management \u{203A}").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
-            }
-            .frame(minHeight: 32).contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("team-open-management")
-    }
-
-    /// "Staff" with the hire button at the top right: "Hire workers" while nobody is hired, "Hire" after.
+    /// The head count and the one filled action of the tab: "Hire workers" while nobody is hired, "Hire" after.
     private var header: some View {
-        HStack(alignment: .center) {
-            Text("Staff").capsLabel()
-            Spacer(minLength: 8)
-            TeamAction(title: company.staff.isEmpty ? "Hire workers" : "Hire") { page = .hire }
+        let n: Int = company.staff.count
+        return HStack(alignment: .center, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Staff").textStyle(.label)
+                Text(n == 0 ? "Nobody yet" : (n == 1 ? "1 person" : "\(n) people")).textStyle(.figure)
+            }
+            Spacer(minLength: Theme.Space.s)
+            Button { Haptics.tap(); page = .hire } label: { Text(n == 0 ? "Hire workers" : "Hire") }
+                .buttonStyle(PrimaryButtonStyle(size: .compact))
                 .accessibilityIdentifier("team-hire-workers")
         }
     }
@@ -72,23 +63,33 @@ struct CompanyTeam: View {
     /// Why hiring is blocked (the engine's reason), else how many places are free where the premises have a limit. Nothing for unlimited premises.
     @ViewBuilder private var placesNote: some View {
         if let why = engine.hireBlock(companyID: company.id) {
-            line(why, tint: Theme.caution, medium: true)
+            Text(why.tidyText).textStyle(.caption, tint: P.warn, weight: .medium).fixedSize(horizontal: false, vertical: true)
         } else if let w = engine.workplaces(companyID: company.id), let cap = w.capacity, let free = w.free {
-            line(free == 1 ? "1 of \(cap) places is free" : "\(free) of \(cap) places are free", tint: Theme.ivoryFaint, medium: false)
+            Text(free == 1 ? "1 of \(cap) places is free" : "\(free) of \(cap) places are free").textStyle(.caption)
         }
     }
 
-    // MARK: Table of settings
+    // MARK: Team settings
 
-    private var settingsTable: some View {
+    /// Applicants, goals, perks and the way to the managers, as one flat list of rows.
+    private var settingsList: some View {
         let cur: Currency = engine.currency(for: company)
         let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
         let perksOn: Int = engine.staffPerkOptions.filter { engine.staffPerkIsOn(companyID: company.id, perk: $0.id) }.count
         let perksCost: Double = engine.staffPerksMonthlyTotal(companyID: company.id)
-        let perksValue: String = perksOn == 0 ? "None on" : "\(perksOn) on · " + cur.tidyShort(perksCost) + " a month"
-        return SettingsTable(heading: "Team matters") {
-            SettingsTableRow(title: "Goals", note: "Monthly targets and bonus", value: goals) { page = .targets }
-            SettingsTableRow(title: "Perks", note: "Cars and staff benefits for every worker", value: perksValue) { showPerks = true }
+        let perksValue: String = perksOn == 0 ? "None on" : "\(perksOn) on"
+        let perksNote: String = perksOn == 0 ? "" : cur.tidyShort(perksCost) + " a month"
+        return LedgerSection("Team") {
+            VStack(spacing: 0) {
+                ApplicantsLinkRow(engine: engine, companyID: company.id)
+                Hairline()
+                LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: "Monthly targets and bonus", value: goals) { page = .targets }
+                Hairline()
+                LedgerRow(leading: .glyph(Glyph.person), title: "Perks", subtitle: "Cars and benefits for every worker", value: perksValue, valueNote: perksNote) { showPerks = true }
+                Hairline()
+                LedgerRow(leading: .glyph(Glyph.group), title: "Managers and executives", subtitle: "Hired in Group, under this company's Management",
+                          identifier: "team-open-management") { store.openGroupEntity(companyID: company.id, section: "management") }
+            }
         }
     }
 }
@@ -110,7 +111,7 @@ struct TeamPageDestination: View {
                 SettingsPage(title: page.rawValue, subtitle: co.name) { content(e, co) }
             }
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(title: "This company no longer exists.").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 

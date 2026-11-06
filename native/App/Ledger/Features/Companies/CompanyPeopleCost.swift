@@ -3,36 +3,38 @@ import GameCore
 import Countries
 import Simulation
 
-/// What the whole team costs the company: the monthly and yearly employer cost, gross wages and hours. Shown in Team and in Accounting > Payroll,
-/// both read from the one employer-cost rule that payroll books.
+/// What the whole team costs the company, from the one employer-cost rule payroll books: the monthly total once (gross wages are its
+/// note), the year and the hours, then the manager's share and perks when there are any. Shown in Team and in Accounting > Payroll.
 struct CompanyPeopleCost: View {
     var engine: GameEngine
     var company: Company
 
     var body: some View {
         if let t = engine.teamMetrics(companyID: company.id), t.workers > 0 {
-            card(t)
+            section(t)
         }
     }
 
-    private func card(_ t: TeamMetrics) -> some View {
+    private func section(_ t: TeamMetrics) -> some View {
         let cur: Currency = engine.currency(for: company)
-        let hours: String = String(format: "%.0f", t.totalHoursPerWeek) + " h a week"
-        let rate: String = "average " + cur.tidyShort(t.averageHourlyRate) + " an hour"
-        let bonus: Double = engine.companyEmployerCost(companyID: company.id)?.managerBonus ?? 0
-        let perks: Double = engine.companyEmployerCost(companyID: company.id)?.perksAndExpenses ?? 0
-        return Card(padding: 14, radius: Theme.Radius.card) {
+        let cost = engine.companyEmployerCost(companyID: company.id)
+        let bonus: Double = cost?.managerBonus ?? 0
+        let perks: Double = cost?.perksAndExpenses ?? 0
+        let items: [KeyFigures.Item] = [
+            .init(label: "A month", value: cur.tidyShort(t.totalMonthlyCost), sub: "wages " + cur.tidyShort(t.grossMonthlyWages) + " plus taxes and cover"),
+            .init(label: "A year", value: cur.tidyShort(t.totalAnnualCost), sub: t.workers.peopleText),
+            .init(label: "Hours a week", value: String(format: "%.0f", t.totalHoursPerWeek), sub: "average " + cur.tidyShort(t.averageHourlyRate) + " an hour"),
+        ]
+        return LedgerSection("What your people cost") {
             VStack(alignment: .leading, spacing: 0) {
-                Text("What your people cost").capsLabel().padding(.bottom, 6)
-                FlatRow(label: "A month", value: cur.tidyShort(t.totalMonthlyCost), sub: "wages, employer taxes, insurance and leave cover", rule: false)
-                FlatRow(label: "A year", value: cur.tidyShort(t.totalAnnualCost))
-                FlatRow(label: "Gross wages a month", value: cur.tidyShort(t.grossMonthlyWages), sub: t.workers.peopleText)
-                FlatRow(label: "Hours", value: hours, sub: rate)
+                FigureRow(items: items, columns: 3, combineCells: true)
                 if bonus > 0.5 {
-                    FlatRow(label: "Manager's profit share", value: cur.tidyShort(bonus), sub: "a month, at the expected size")
+                    Hairline().padding(.top, Theme.Space.m)
+                    LedgerRow(title: "Manager's profit share", subtitle: "A month, at the expected size", value: cur.tidyShort(bonus), density: .compact)
                 }
                 if perks > 0.5 {
-                    FlatRow(label: "Perks and expenses", value: cur.tidyShort(perks), sub: "a month, for the whole team")
+                    Hairline().padding(.top, bonus > 0.5 ? 0 : Theme.Space.m)
+                    LedgerRow(title: "Perks and expenses", subtitle: "A month, for the whole team", value: cur.tidyShort(perks), density: .compact)
                 }
             }
         }

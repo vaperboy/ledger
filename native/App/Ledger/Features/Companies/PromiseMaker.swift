@@ -24,46 +24,48 @@ struct PromiseMaker: View {
     @State private var open = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button(open ? "Close" : label) { open.toggle(); if let k = kinds.first, !kinds.contains(kind) { kind = k } }
-                .buttonStyle(QuietButtonStyle(tint: Theme.gold)).accessibilityIdentifier("hire-add-promise")
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button(open ? "Close" : label) { Haptics.tap(); open.toggle(); if let k = kinds.first, !kinds.contains(kind) { kind = k } }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent)).accessibilityIdentifier("hire-add-promise")
             if open { maker }
         }
     }
 
     private var maker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            WrapRow {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            WrapRow(spacing: Theme.Space.xs) {
                 ForEach(kinds, id: \.self) { k in
-                    Button(k.title) { kind = k; detail = "" }.buttonStyle(QuietButtonStyle(tint: kind == k ? Theme.gold : Theme.ivoryMuted))
+                    HireChip(title: k.title, on: kind == k) { Haptics.choose(); kind = k; detail = "" }
                 }
             }
-            Text(details[kind.rawValue] ?? "").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+            Text((details[kind.rawValue] ?? "").tidyText).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             detailChoices
-            Text("Due in").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-            WrapRow {
+            Text("Due in").textStyle(.label)
+            WrapRow(spacing: Theme.Space.xs) {
                 ForEach([4, 8, 13, 26, 52], id: \.self) { w in
-                    Button(HireWords.weeksText(w)) { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryMuted))
+                    HireChip(title: HireWords.weeksText(w), on: weeks == w) { Haptics.choose(); weeks = w }
                 }
             }
             let draft = StaffPromises.Draft(kind, dueInWeeks: weeks, detail: detail)
-            QuietButton(title: "Promise \(kind.title.lowercased())") { add(draft); open = false; detail = "" }
-                .opacity(draft.isPlausible ? 1 : 0.4).disabled(!draft.isPlausible)
+            Button("Promise \(kind.title.lowercased())") { Haptics.tap(); add(draft); open = false; detail = "" }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: Theme.accent))
+                .disabled(!draft.isPlausible)
                 .accessibilityIdentifier("promise-confirm")
+            if !draft.isPlausible { Text("Choose what exactly is promised first.").textStyle(.caption) }
         }
     }
 
     @ViewBuilder private var detailChoices: some View {
         if kind == .futureBenefits {
-            WrapRow {
+            WrapRow(spacing: Theme.Space.xs) {
                 ForEach(benefits) { c in
-                    Button(c.title) { detail = c.id }.buttonStyle(QuietButtonStyle(tint: detail == c.id ? Theme.gold : Theme.ivoryMuted))
+                    HireChip(title: c.title, on: detail == c.id) { Haptics.choose(); detail = c.id }
                 }
             }
         } else if kind == .percentageChange {
-            WrapRow {
+            WrapRow(spacing: Theme.Space.xs) {
                 ForEach(percents.filter { abs($0 - current) > 0.5 }, id: \.self) { p in
-                    Button("\(Int(p)) percent") { detail = String(Int(p)) }.buttonStyle(QuietButtonStyle(tint: detail == String(Int(p)) ? Theme.gold : Theme.ivoryMuted))
+                    HireChip(title: "\(Int(p)) percent", on: detail == String(Int(p))) { Haptics.choose(); detail = String(Int(p)) }
                 }
             }
         }

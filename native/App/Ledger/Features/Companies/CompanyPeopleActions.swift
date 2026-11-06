@@ -16,14 +16,14 @@ private struct PurposeHeader: View {
     var glyph: String
     var title: String
     var note: String = ""
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
 
     var body: some View {
-        HStack(spacing: 12) {
-            IconCircle(glyph: glyph, size: 36, tint: tint)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.serifTitle(17)).foregroundStyle(Theme.ivory)
-                if !note.isEmpty { Text(note).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+        HStack(spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.large, tint: tint)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.figure)
+                if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 0)
         }
@@ -37,19 +37,19 @@ private struct ConsequenceNote: View {
     var risk: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            line(Glyph.cost, "Cost", cost, Theme.ivoryMuted)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            line(Glyph.cost, "Cost", cost, Theme.inkSoft)
             line(Glyph.market, "Benefit", benefit, Theme.gain)
-            line(Glyph.warning, "Risk", risk, Theme.caution)
+            line(Glyph.warning, "Risk", risk, Theme.warn)
         }
-        .padding(10)
+        .padding(.vertical, Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.divider, lineWidth: 1))
+        .overlay(alignment: .top) { Hairline() }
     }
 
     private func line(_ glyph: String, _ label: String, _ text: String, _ tint: Color) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            GlyphView(glyph: glyph, size: 14, weight: 1.6, tint: tint).padding(.top, 1)
+        HStack(alignment: .top, spacing: Theme.Space.s) {
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: tint).padding(.top, 1)
             (Text(label + "  ").font(.system(size: 11.5, weight: .semibold)).foregroundColor(tint)
              + Text(text).font(.system(size: 11.5)).foregroundColor(Theme.ivoryMuted))
                 .fixedSize(horizontal: false, vertical: true)
@@ -76,7 +76,7 @@ struct CompanyTargetsCard: View {
         if let st = engine.targetStatus(companyID: company.id) {
             let cur = engine.currency(for: company)
             TeamGroup(title: "Goals", trailing: {
-                Text(st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text(st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 monthCard(st, cur)
                 budgetCard(st, cur)
@@ -100,11 +100,11 @@ struct CompanyTargetsCard: View {
 
     // This month: one bar per target.
     private func monthCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
-        Card(padding: 14, radius: Theme.Radius.card) {
+        Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
             VStack(alignment: .leading, spacing: 12) {
                 PurposeHeader(glyph: Glyph.goals, title: "This month", note: "Where each target stands")
                 if st.standing.isEmpty {
-                    Text("No targets this month yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
+                    Text("No targets this month yet.").textStyle(.body, tint: Theme.inkSoft)
                 }
                 ForEach(st.standing, id: \.key) { s in standingRow(s, cur) }
             }
@@ -115,9 +115,9 @@ struct CompanyTargetsCard: View {
         let tint: Color = s.onTrack ? Theme.gain : Theme.caution
         return VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
-                Text(Self.names[s.key] ?? s.key).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                Text(Self.names[s.key] ?? s.key).textStyle(.body, tint: Theme.ink)
                 Spacer(minLength: 8)
-                Text("\(value(s.key, s.now, cur)) of \(value(s.key, s.target, cur))").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(tint)
+                Text("\(value(s.key, s.now, cur)) of \(value(s.key, s.target, cur))").textStyle(.caption, tint: tint, numeric: true)
                 GlyphView(glyph: s.onTrack ? Glyph.check : Glyph.clock, size: 13, weight: 1.8, tint: tint)
             }
             GeometryReader { g in
@@ -133,17 +133,17 @@ struct CompanyTargetsCard: View {
     // The year's budget.
     @ViewBuilder private func budgetCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if let b = st.budget {
-            Card(padding: 14, radius: Theme.Radius.card) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
                 VStack(alignment: .leading, spacing: 12) {
                     PurposeHeader(glyph: Glyph.reports, title: "Budget \(b.year)", note: b.by.isEmpty ? "The year's aim" : "Drafted by \(b.by)")
                     RateBar(label: "Sales", fraction: share(b.doneRev, b.rev))
-                    Text("\(cur.tidyShort(b.doneRev)) of \(cur.tidyShort(b.rev))").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+                    Text("\(cur.tidyShort(b.doneRev)) of \(cur.tidyShort(b.rev))").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                     RateBar(label: "Profit", fraction: share(b.doneProfit, b.profit), tint: b.doneProfit < 0 ? Theme.loss : Theme.gold)
-                    Text("\(cur.tidyShort(b.doneProfit)) of \(cur.tidyShort(b.profit))").font(.system(size: 11.5).monospacedDigit()).foregroundStyle(b.doneProfit < 0 ? Theme.loss : Theme.ivoryFaint)
+                    Text("\(cur.tidyShort(b.doneProfit)) of \(cur.tidyShort(b.profit))").textStyle(.caption, tint: b.doneProfit < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
                     if b.approved {
                         HStack(spacing: 6) {
                             GlyphView(glyph: Glyph.check, size: 13, weight: 1.8, tint: Theme.gain)
-                            Text("Approved").font(.system(size: 12)).foregroundStyle(Theme.gain)
+                            Text("Approved").textStyle(.caption, tint: Theme.gain)
                         }
                     } else {
                         approval(b, cur)
@@ -157,7 +157,7 @@ struct CompanyTargetsCard: View {
         VStack(alignment: .leading, spacing: 8) {
             CardLine()
             Text("Waiting for your approval. Approving makes these the numbers the manager is judged on this year; you can still change targets each month.")
-                .font(.system(size: 12.5, weight: .medium)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.warn, weight: .medium).fixedSize(horizontal: false, vertical: true)
             QuietButton(title: "Approve the budget") {
                 if store.act({ $0.approveBudget(companyID: company.id) }) == true { Haptics.success(); store.show("Budget \(b.year) approved: sales \(cur.tidyShort(b.rev)), profit \(cur.tidyShort(b.profit)).", tone: "good") }
                 else { Haptics.warning(); store.show("The budget could not be approved now.", tone: "warn") }
@@ -168,7 +168,7 @@ struct CompanyTargetsCard: View {
     // Past months: three pips each, filled for every target met.
     @ViewBuilder private func historyCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if !st.log.isEmpty {
-            Card(padding: 14, radius: Theme.Radius.row) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
                 VStack(alignment: .leading, spacing: 10) {
                     PurposeHeader(glyph: Glyph.calendar, title: "Last months", note: "Targets met each month, oldest first")
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 10) {
@@ -197,8 +197,8 @@ struct CompanyTargetsCard: View {
     // Setting the month's targets.
     @ViewBuilder private func setterCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if st.canSet, let pv = engine.targetPreview(companyID: company.id, mode: mode) {
-            Card(padding: 14, radius: Theme.Radius.card) {
-                VStack(alignment: .leading, spacing: 12) {
+            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     PurposeHeader(glyph: Glyph.arrowOut, title: "Set this month's targets", note: "How hard to push")
                     modeChoices
                     previewTable(pv, cur)
@@ -207,16 +207,12 @@ struct CompanyTargetsCard: View {
                         SegmentedPill(items: [0, 1, 2], title: { ManagerTargets.bonusLevels[$0].name }, selection: $bonus)
                     }
                     ConsequenceNote(cost: costLine(pv, cur), benefit: benefitLine + " This also approves the year's budget.", risk: riskLine)
-                    QuietButton(title: "Set targets", fullWidth: true) { setTargets(cur) }
+                    Button("Set targets") { Haptics.tap(); setTargets(cur) }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 }
             }
         } else if !st.canSet && !st.setter.isOwner {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                HStack(spacing: 10) {
-                    GlyphView(glyph: Glyph.lock, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
-                    Text("\(st.setter.name) sets the targets here.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                }
-            }
+            EmptyState(glyph: Glyph.lock, title: "\(st.setter.name) sets the targets here.", centered: false)
         }
     }
 

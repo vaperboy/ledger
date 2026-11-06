@@ -137,18 +137,19 @@ enum HireOutcomeWords {
 
 /// One line of a talk, as a speech bubble: theirs on the left, yours on the right (champagne).
 struct SpeechBubble: View {
+    @Environment(\.outsidePalette) private var P
     var text: String
     var mine: Bool
 
     var body: some View {
-        let shape = UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: mine ? 16 : 4, bottomTrailingRadius: mine ? 4 : 16, topTrailingRadius: 16, style: .continuous)
+        let big: CGFloat = Theme.Radius.large, small: CGFloat = Theme.Space.xs
+        let shape = UnevenRoundedRectangle(topLeadingRadius: big, bottomLeadingRadius: mine ? big : small, bottomTrailingRadius: mine ? small : big, topTrailingRadius: big, style: .continuous)
         HStack(spacing: 0) {
             if mine { Spacer(minLength: 44) }
-            Text(text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineSpacing(2)
+            Text(text.tidyMoney).textStyle(.body).lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 12).padding(.vertical, 10)
-                .background(shape.fill(mine ? Theme.goldSelected : Theme.surface))
-                .overlay(shape.strokeBorder(mine ? Theme.gold : Theme.border, lineWidth: 1))
+                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
+                .background(shape.fill(mine ? P.accentWash : P.surface))
             if !mine { Spacer(minLength: 44) }
         }
     }
@@ -156,22 +157,23 @@ struct SpeechBubble: View {
 
 /// A small-caps label, a serif figure and a note under it, in a bordered card (the contract discussion uses it for a request).
 struct AskOfferCard: View {
+    @Environment(\.outsidePalette) private var P
     var label: String
     var figure: String
     var note: String
-    var noteTint: Color = Theme.ivoryMuted
+    var noteTint: Color = Theme.inkSoft
+    /// Marks the figure as the one to answer (accent wash instead of the surface tone).
     var outlined = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label).capsLabel(Theme.gold)
-            Text(figure).font(.serifTitle(24)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
-            Text(note).font(.system(size: 11.5)).foregroundStyle(noteTint).lineLimit(2)
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(label).textStyle(.label)
+            Text(figure).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+            Text(note.tidyText).textStyle(.caption, tint: noteTint).lineLimit(2)
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(outlined ? Theme.gold : Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(outlined ? P.accentWash : P.surface))
     }
 }
 
@@ -179,6 +181,7 @@ struct AskOfferCard: View {
 /// "Talk terms", which opens the two-page flow. Their own ask is never shown here; they name it in the salary talk.
 struct CandidateHireRow<Extra: View>: View {
     @Environment(\.openHire) private var openHire
+    @Environment(\.outsidePalette) private var P
     var person: Person
     var currency: Currency
     var subtitle: String
@@ -189,34 +192,22 @@ struct CandidateHireRow<Extra: View>: View {
     @ViewBuilder var extra: () -> Extra
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
                 ThumbnailView(kind: .person, key: roleKey, size: 36, initials: person.name, face: person.faceKey)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(person.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Text(subtitle).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(person.name.tidyText).textStyle(.headline)
+                    Text(subtitle.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    Text("Going rate " + currency.tidyShort(market) + " a month").textStyle(.caption, tint: P.inkFaint)
                 }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(currency.tidyShort(market)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory)
-                    Text("market pay a month").font(.system(size: 10.5)).foregroundStyle(Theme.ivoryFaint)
-                }
+                Spacer(minLength: Theme.Space.s)
+                Button { Haptics.tap(); openHire(request) } label: { Text("Talk terms") }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
+                    .accessibilityIdentifier("hire-talk-terms")
             }
             extra()
-            Button { Haptics.tap(); openHire(request) } label: {
-                HStack {
-                    Text("Talk terms").font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory)
-                    Spacer(minLength: 6)
-                    GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.gold)
-                }
-                .padding(.horizontal, 14).padding(.vertical, 9)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.gold, lineWidth: 1))
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("hire-talk-terms")
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Space.s)
     }
 }
 
@@ -259,12 +250,12 @@ struct CandidateHireList<Row: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(title).capsLabel(Theme.ivoryFaint)
+                Text(title).capsLabel(Theme.inkFaint)
                 Spacer()
-                if !people.isEmpty { Text("\(people.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                if !people.isEmpty { Text("\(people.count)").textStyle(.caption, tint: Theme.inkFaint, numeric: true) }
             }
             if people.isEmpty {
-                Text(emptyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.top, 6).fixedSize(horizontal: false, vertical: true)
+                EmptyState(glyph: Glyph.people, title: emptyText, centered: false).padding(.top, Theme.Space.s)
             }
             ForEach(Array(people.enumerated()), id: \.element.id) { n, p in
                 if n > 0 { Hairline() }
@@ -284,5 +275,24 @@ enum CandidateClaims {
         parts.append(GameEngine.cvImpression(claimed: p.claimedSkill, experience: years))
         if !extra.isEmpty { parts.append(extra) }
         return parts.joined(separator: " \u{00B7} ")
+    }
+}
+
+/// A filter or choice chip of the hiring screens: drawn 34 pt high inside a 44 pt hit area, the selected one on the accent wash.
+struct HireChip: View {
+    @Environment(\.outsidePalette) private var P
+    var title: String
+    var on: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title.tidyText).textStyle(.body, tint: on ? P.ink : P.inkSoft, weight: on ? .semibold : .regular).lineLimit(1)
+                .padding(.horizontal, Theme.Space.m).frame(minHeight: 34)
+                .background(Capsule().fill(on ? P.accentWash : P.inset))
+                .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
     }
 }

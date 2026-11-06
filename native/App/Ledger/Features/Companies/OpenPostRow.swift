@@ -10,6 +10,7 @@ import Simulation
 /// The owner can always hire into any post, whatever the boss above is doing; the boss's own hires and requests reach the Inbox.
 struct OpenPostRow: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     var engine: GameEngine
     var vacancy: TeamOverview.Vacancy
     var first: Bool
@@ -20,28 +21,28 @@ struct OpenPostRow: View {
         let cur: Currency = engine.homeCurrency
         let route: VacancyRoute? = engine.vacancyRoute(vacancy)
         let hirerLine: String = engine.vacancyHirerLine(vacancy)
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             header
             if !hirerLine.isEmpty {
-                Text(hirerLine).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(hirerLine.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             if let route {
                 actions(route, cur)
             }
         }
-        .padding(.horizontal, 10).padding(.vertical, 9)
-        .overlay(alignment: .top) { if !first { Rectangle().fill(Theme.divider).frame(height: 1) } }
+        .padding(.vertical, Theme.Space.m)
+        .overlay(alignment: .top) { if !first { Hairline() } }
         .confirmAction($pending)
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(vacancy.title).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(vacancy.detail).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .center, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(vacancy.title.tidyText).textStyle(.headline).lineLimit(1)
+                Text(vacancy.detail.tidyText).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 6)
-            Text(vacancy.needed ? "Needed now" : "Open").font(.system(size: 12, weight: .medium)).foregroundStyle(vacancy.needed ? Theme.loss : Theme.gold)
+            Spacer(minLength: Theme.Space.s)
+            AcctPill(text: vacancy.needed ? "Needed now" : "Open", tone: vacancy.needed ? .bad : .neutral)
         }
     }
 
@@ -49,7 +50,8 @@ struct OpenPostRow: View {
         let fee: String = cur.tidyShort(route.searchFee)
         let people: [Person] = candidates.compactMap { (id: Int) -> Person? in engine.state.people[id] }.filter { (p: Person) -> Bool in p.employerID == 0 }
         if candidates.isEmpty {
-            QuietButton(title: (vacancy.hirerName == nil ? "Find candidates" : "Search yourself") + " · \(fee)…", fullWidth: true) { askToSearch(route, cur) }
+            Button((vacancy.hirerName == nil ? "Find candidates" : "Search yourself") + " · \(fee)…") { Haptics.tap(); askToSearch(route, cur) }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.accent))
         } else {
             CandidateHireList(people: people, emptyText: "Everyone on the list has taken another job. Search again.") { (p: Person) in
                 let request = HireRequest(post: route.post, companyID: route.companyID, chainID: route.chainID, city: route.city, personID: p.id, roleTitle: route.roleTitle,
@@ -68,6 +70,7 @@ struct OpenPostRow: View {
             if let list = store.act({ $0.searchVacancy(v) }) ?? nil, !list.isEmpty {
                 candidates = list.map { (p: Person) -> Int in p.id }
                 Haptics.success()
+                store.show("\(list.count) \(list.count == 1 ? "candidate" : "candidates") found. Search paid: \(fee).", tone: "good")
             } else {
                 Haptics.warning()
                 store.show("The search found no one, or the cash is not there for \(fee).", tone: "warn")

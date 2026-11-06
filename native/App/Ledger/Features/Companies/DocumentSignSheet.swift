@@ -86,20 +86,20 @@ struct CompanyLicences: View {
     private func statusText(_ f: DocumentForm) -> (String, Color) {
         switch f.status {
         case "ok": return ("Held", Theme.gain)
-        case "applied": return ("Under review" + (f.answerWeek.map { " \u{00B7} answer in week \($0)" } ?? ""), Theme.caution)
+        case "applied": return ("Under review" + (f.answerWeek.map { " \u{00B7} answer in week \($0)" } ?? ""), Theme.warn)
         case "rejected": return ("Refused: apply again", Theme.loss)
         case "lapsed": return ("Lapsed: apply again", Theme.loss)
-        default: return ("Not applied", Theme.ivoryMuted)
+        default: return ("Not applied", Theme.inkSoft)
         }
     }
 
     private func card(_ l: LicenceLine) -> some View {
         let s = statusText(l.form)
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 Text(l.form.name).popupText(.rowValue)
-                Spacer(minLength: 8)
-                Text(s.0).font(.system(size: 12)).foregroundStyle(s.1)
+                Spacer(minLength: Theme.Space.s)
+                Text(s.0).textStyle(.caption, tint: s.1)
             }
             Text("Unlocks: " + l.unlocks.joined(separator: ", ")).popupText(.subtitle)
             Text((l.form.fee > 0 ? "Fee " + store.short(l.form.fee, in: company) : "Free") + " \u{00B7} review about \(max(1, l.form.weeks)) week\(l.form.weeks == 1 ? "" : "s")")
@@ -110,8 +110,7 @@ struct CompanyLicences: View {
                 Button("Add the product in How you sell") { store.openCompany(company.id, section: .salesMarket) }.buttonStyle(QuietButtonStyle())
             }
         }
-        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .padding(Theme.Space.l).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
     }
 }

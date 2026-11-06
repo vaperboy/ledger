@@ -5,19 +5,19 @@ import Employees
 import Businesses
 import Simulation
 
-/// "Hire the <role>": pick the role (the trade's own jobs and the recommended extras, or any role in words), then how to search (a job ad or an
-/// agency), then read the people who answer. Applicants arrive over time as inbox messages; this page lists them as they come. A tap on "Talk terms"
-/// pushes `HireOnePage` (no sheet rises from the bottom). Fees, applicants and what happens are the engine's (`jobAdFee`, `postJobAd`,
-/// `agencyFee`, `engageAgency`, `applicants`).
+/// Hire workers: pick the role (the trade's own jobs and the recommended extras, or any role in words), then how to look (a job ad or an
+/// agency), with the one action pinned at the bottom; then read the people who answer, in the same `ApplicantRow` as the Applicants page.
+/// Applicants arrive over time as inbox messages. "Talk terms" pushes `HireOnePage`. Fees, applicants and what happens are the engine's
+/// (`jobAdFee`, `postJobAd`, `agencyFee`, `engageAgency`, `applicants`).
 struct HireWorkersView: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     var companyID: Int
     /// The role to start on, when a link asks for one.
     var startRole: String? = nil
     @State private var roleID = ""
     @State private var custom = ""
     @State private var method = Method.ad
-    @State private var confirmedForm = false
     @State private var pending: PendingAction?
     @State private var talk: WorkerRef?
     @State private var openID: Int?
@@ -30,7 +30,7 @@ struct HireWorkersView: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             screen(e, co)
         } else {
-            Text("This company is not available.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding().appScreen(title: "Hire", tab: store.tab)
+            EmptyState(title: "This company is not available.").appScreen(title: "Hire", tab: store.tab)
         }
     }
 
@@ -48,124 +48,109 @@ struct HireWorkersView: View {
         let roles: [RoleOption] = e.recommendedRoles(companyID: companyID)
         let chosen: (id: String, name: String)? = chosenRole(roles)
         let cur: Currency = e.currency(for: co)
-        var title = "Hire the worker"
-        if let c = chosen { title = "Hire the " + c.name.lowercased() }
         return ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 placesNote(e, role: chosen?.id)
                 roleSection(roles)
-                if let chosen { searchSection(e, co, cur, chosen) }
+                searchSection(e, cur)
                 runningSection(e, co)
                 applicantsSection(e, co, cur, roles)
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) { actionBar(e, co, cur, chosen) }
         .confirmAction($pending)
         .navigationDestination(item: $talk) { (w: WorkerRef) -> HireOnePageHost in HireOnePageHost(companyID: companyID, personID: w.id) }
-        .appScreen(title: title, subtitle: co.name, tab: store.tab)
+        .appScreen(title: "Hire workers", subtitle: co.name, tab: store.tab)
     }
 
     @ViewBuilder private func placesNote(_ e: GameEngine, role: String?) -> some View {
         if let why = e.hireBlock(companyID: companyID, role: role) {
-            Text(why).font(.system(size: 12.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
-            if e.roomListing(companyID: companyID) != nil {
-                Button("Move to bigger premises") { _ = store.act { $0.moveForRoom(companyID: companyID) } }.buttonStyle(GreyOutlineButtonStyle())
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text(why.tidyText).textStyle(.body, tint: P.warn).fixedSize(horizontal: false, vertical: true)
+                if e.roomListing(companyID: companyID) != nil {
+                    Button("Move to bigger premises") { moveForRoom() }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                }
             }
         } else if let w = e.workplaces(companyID: companyID), let free = w.free {
-            Text(free == 1 ? "1 free place" : "\(free) free places").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+            Text(free == 1 ? "1 free place" : "\(free) free places").textStyle(.caption)
         }
     }
 
+    private func moveForRoom() {
+        let cid = companyID
+        switch store.act({ $0.moveForRoom(companyID: cid) }) {
+        case .ok?: Haptics.success(); store.show("Moved to bigger premises. There is room to hire.", tone: "good")
+        case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash to move to bigger premises.", tone: "warn")
+        case .bad?: Haptics.warning(); store.show("No bigger premises could be taken now.", tone: "warn")
+        case nil: break
+        }
+    }
+
+    /// The roles as chips; the chosen one's effect shows under them. Any other role can be typed.
     private func roleSection(_ roles: [RoleOption]) -> some View {
         let active: String = roleID.isEmpty ? (startRole ?? "") : roleID
         let typing: Bool = !custom.trimmingCharacters(in: .whitespaces).isEmpty
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Which role").capsLabel()
-            ForEach(roles) { (r: RoleOption) -> AnyView in
-                AnyView(roleRow(r, selected: !typing && r.id == active))
-            }
-            TextField("Another role, in words", text: $custom).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                .textInputAutocapitalization(.sentences).autocorrectionDisabled()
-                .padding(.horizontal, 12).padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(typing ? Theme.gold : Theme.border, lineWidth: 1))
-        }
-    }
-
-    private func roleRow(_ r: RoleOption, selected: Bool) -> some View {
-        Button { Haptics.choose(); roleID = r.id; custom = "" } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(r.name).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
-                    if !r.effect.isEmpty { Text(r.effect).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+        let picked: RoleOption? = typing ? nil : roles.first { (r: RoleOption) -> Bool in r.id == active }
+        return LedgerSection("Which role", rule: false) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                WrapRow(spacing: Theme.Space.xs) {
+                    ForEach(roles) { (r: RoleOption) in
+                        HireChip(title: r.filled ? r.name + " \u{2713}" : r.name, on: !typing && r.id == active) { Haptics.choose(); roleID = r.id; custom = "" }
+                    }
                 }
-                Spacer(minLength: 6)
-                if r.filled { Text("Filled").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
+                if let picked {
+                    let filled: String = picked.filled ? "Filled already. " : ""
+                    if !(filled + picked.effect).isEmpty { Text((filled + picked.effect).tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
+                }
+                LedgerField(placeholder: "Another role, in words", text: $custom)
             }
-            .padding(.horizontal, 14).padding(.vertical, 9)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(selected ? Theme.goldSelected : Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(selected ? Theme.gold : Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-    }
-
-    // MARK: How to search
-
-    private func searchSection(_ e: GameEngine, _ co: Company, _ cur: Currency, _ chosen: (id: String, name: String)) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("How to look").capsLabel()
-            SegmentedPill(items: Method.allCases, title: { (m: Method) -> String in m.rawValue }, selection: $method)
-            if method == .ad { adBlock(e, cur, chosen) } else { agencyBlock(e, cur, chosen) }
         }
     }
 
-    private func adBlock(_ e: GameEngine, _ cur: Currency, _ chosen: (id: String, name: String)) -> some View {
-        let fee: Double = e.jobAdFee(companyID: companyID, role: chosen.id)
-        let form: (companyName: String, orgNumber: String)? = e.jobAdForm(companyID: companyID)
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("The ad runs four weeks. People answer a few at a time, and each reply comes as a message.")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            if let form {
-                field("Company name", form.companyName)
-                field("Organisation number", form.orgNumber)
-                Toggle("These details are right", isOn: $confirmedForm).font(.system(size: 13)).foregroundStyle(Theme.ivory).tint(Theme.gold)
-            }
-            QuietButton(title: "Post the ad \u{00B7} " + cur.tidyShort(fee), fullWidth: true) { askAd(chosen, fee, cur) }
-                .opacity(form != nil && confirmedForm ? 1 : 0.4).disabled(!(form != nil && confirmedForm))
-                .accessibilityIdentifier("hire-post-ad")
-        }
-    }
+    // MARK: How to look
 
-    private func field(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-            Spacer(minLength: 8)
-            Text(value).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-        }
-        .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surfaceTable))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-    }
-
-    private func agencyBlock(_ e: GameEngine, _ cur: Currency, _ chosen: (id: String, name: String)) -> some View {
-        let fee: Double = e.agencyFee(companyID: companyID, role: chosen.id)
+    private func searchSection(_ e: GameEngine, _ cur: Currency) -> some View {
         let share: Int = Int((Agency.salaryShare * 100).rounded())
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("Three suggestions now and better ones over the next weeks. Costs far more than an ad, and \(share) percent of the hired person's salary for \(Agency.months) months.")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            QuietButton(title: "Engage the agency \u{00B7} " + cur.tidyShort(fee), fullWidth: true) { askAgency(chosen, fee, cur) }
-                .accessibilityIdentifier("hire-engage-agency")
+        let words: String = method == .ad
+            ? "The ad runs four weeks. People answer a few at a time, and each reply comes as a message."
+            : "Three suggestions now and better ones over the next weeks. Costs far more than an ad, and \(share) percent of the hired person's salary for \(Agency.months) months."
+        return LedgerSection("How to look") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SegmentedPill(items: Method.allCases, title: { (m: Method) -> String in m.rawValue }, selection: $method)
+                Text(words).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
-    private func askAd(_ chosen: (id: String, name: String), _ fee: Double, _ cur: Currency) {
+    /// The one action of the page, pinned under the scroll: post the ad or engage the agency, with the reason when it cannot be done yet.
+    private func actionBar(_ e: GameEngine, _ co: Company, _ cur: Currency, _ chosen: (id: String, name: String)?) -> some View {
+        let role: String = chosen?.id ?? ""
+        let fee: Double = role.isEmpty ? 0 : (method == .ad ? e.jobAdFee(companyID: companyID, role: role) : e.agencyFee(companyID: companyID, role: role))
+        let form: (companyName: String, orgNumber: String)? = e.jobAdForm(companyID: companyID)
+        var why: String? = nil
+        if chosen == nil { why = "Pick a role first." } else if method == .ad && form == nil { why = "This company cannot advertise now." }
+        let title: String = (method == .ad ? "Post the ad" : "Engage the agency") + (role.isEmpty ? "" : " \u{00B7} " + cur.tidyShort(fee))
+        return PrimaryAction(title: title, blockedReason: why, identifier: method == .ad ? "hire-post-ad" : "hire-engage-agency") {
+            guard let chosen else { return }
+            if method == .ad { askAd(chosen, fee, cur, form) } else { askAgency(chosen, fee, cur) }
+        }
+        .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.m)
+        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+        .background(P.page)
+        .overlay(alignment: .top) { Hairline() }
+    }
+
+    /// The ad's company details are shown in the confirmation instead of a separate tick box.
+    private func askAd(_ chosen: (id: String, name: String), _ fee: Double, _ cur: Currency, _ form: (companyName: String, orgNumber: String)?) {
         let cid = companyID, role = chosen.id, name = chosen.name.lowercased()
-        pending = PendingAction(title: "Post a job ad for a \(name)?", message: "Cost: \(cur.tidyShort(fee)), paid now. Benefit: applicants answer over four weeks. Risk: none may suit.",
+        let who: String = form.map { (f: (companyName: String, orgNumber: String)) -> String in
+            " The ad names " + f.companyName + (f.orgNumber.isEmpty ? "." : ", organisation number " + f.orgNumber + ".")
+        } ?? ""
+        pending = PendingAction(title: "Post a job ad for a \(name)?", message: "Cost: \(cur.tidyShort(fee)), paid now. Benefit: applicants answer over four weeks. Risk: none may suit." + who,
                                 button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur) {
             let r: JobAds.PostResult? = store.act { $0.postJobAd(companyID: cid, role: role) }
             switch r {
@@ -213,12 +198,12 @@ struct HireWorkersView: View {
     @ViewBuilder private func runningSection(_ e: GameEngine, _ co: Company) -> some View {
         let lines: [RunLine] = runLines(e, co)
         if !lines.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(lines) { (l: RunLine) -> AnyView in
-                    AnyView(HStack(spacing: 8) {
-                        Image(systemName: "clock").font(.system(size: 12)).foregroundStyle(Theme.gold)
-                        Text(l.text).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    })
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                ForEach(lines) { (l: RunLine) in
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        LedgerGlyph(glyph: Glyph.clock, size: Theme.Icon.small, tint: P.accent)
+                        Text(l.text.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
@@ -230,43 +215,29 @@ struct HireWorkersView: View {
         roles.first(where: { (o: RoleOption) -> Bool in o.id == id })?.name ?? (id.prefix(1).uppercased() + id.dropFirst())
     }
 
-    @ViewBuilder private func applicantsSection(_ e: GameEngine, _ co: Company, _ cur: Currency, _ roles: [RoleOption]) -> some View {
+    /// This company's applicants in the shared `ApplicantRow`; the Applicants page has the filters and every company.
+    private func applicantsSection(_ e: GameEngine, _ co: Company, _ cur: Currency, _ roles: [RoleOption]) -> some View {
         let list: [Applicant] = e.applicants(companyID: companyID)
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Applicants").capsLabel()
-                Spacer(minLength: 6)
-                if !list.isEmpty { Text("\(list.count)").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
-                Button { Haptics.tap(); store.openApplicants(companyID: companyID, role: nil) } label: {
-                    Text("Open page \u{203A}").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold).frame(minHeight: 32).contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-            }
+        return LedgerSection(title: list.isEmpty ? "Applicants" : "Applicants \u{00B7} \(list.count)", trailing: {
+            Button("All applicants") { Haptics.tap(); store.openApplicants(companyID: companyID, role: nil) }
+                .buttonStyle(TertiaryButtonStyle(size: .compact))
+        }) {
             if list.isEmpty {
-                Text("No one yet. Post an ad or engage an agency; answers arrive here and in your inbox.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-            }
-            ForEach(list) { (a: Applicant) -> AnyView in
-                AnyView(HiringApplicantCard(applicant: a, roleName: roleName(a.role, roles), currency: cur, companyID: companyID, open: openID == a.personID,
-                                            trialCost: a.marketYearly / 12 / 4,
-                                            onTap: { openID = openID == a.personID ? nil : a.personID },
-                                            onTrial: { askTrial(a, a.marketYearly / 12 / 4, cur) },
-                                            onTalk: { talk = WorkerRef(id: a.personID) }))
+                EmptyState(glyph: Glyph.inbox, title: "No one yet", message: "Post an ad or engage an agency; answers arrive here and in your inbox.", centered: false)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(list.enumerated()), id: \.element.personID) { n, a in
+                        if n > 0 { Hairline() }
+                        ApplicantRow(applicant: a, roleName: roleName(a.role, roles), currency: cur,
+                                     ask: e.applicantAskPreview(personID: a.personID, companyID: companyID),
+                                     open: openID == a.personID, talkIdentifier: "hire-talk-terms",
+                                     onTap: { Motion.animate(Motion.quickAnimation) { openID = openID == a.personID ? nil : a.personID } },
+                                     onTrial: { pending = ApplicantTrial.ask(store, a, companyID: companyID, cur) },
+                                     onTalk: { talk = WorkerRef(id: a.personID) })
+                    }
+                }
             }
         }
-    }
-
-    private func askTrial(_ a: Applicant, _ cost: Double, _ cur: Currency) {
-        let cid = companyID, pid = a.personID
-        pending = PendingAction(
-            title: "Pay for a trial week with \(a.name)?",
-            message: "Cost: \(cur.tidyShort(cost)) paid now, whatever you decide. Benefit: you see how their work really goes. Risk: one week shows only part of the picture, and they may take another job. It does not hire them.",
-            button: "Pay \(cur.tidyShort(cost))", amount: cost, currency: cur) {
-                if let seen = store.act({ $0.startTrialWeek(personID: pid, companyID: cid) }) ?? nil {
-                    Haptics.success(); store.show(seen.first?.text ?? "The trial week is done.", tone: "n")
-                } else {
-                    Haptics.warning(); store.show("Could not arrange a trial week: it was done already, or the company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")
-                }
-            }
     }
 }
 
@@ -282,8 +253,8 @@ struct HireOnePageHost: View {
             let title: String = named ?? String(p.role.prefix(1).uppercased() + p.role.dropFirst())
             HireOnePage(request: HireRequest(post: .worker(role: p.role), companyID: companyID, personID: personID, roleTitle: title))
         } else {
-            Text("This person is no longer on the market.").font(.bodyText).foregroundStyle(Theme.ivoryMuted).padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).ledgerBackground()
+            EmptyState(glyph: Glyph.person, title: "This person is no longer on the market.")
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top).ledgerBackground()
         }
     }
 }
