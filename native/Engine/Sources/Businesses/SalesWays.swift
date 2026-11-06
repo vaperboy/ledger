@@ -141,6 +141,11 @@ public enum SalesWays {
             if delivery > 0, let dk = IntercompanySupply.deliveryKind {
                 Payments.companyPays(&s, companyID: id, amount: brought * delivery, category: dk.category)
                 s.companies[i].set("dlvRev", brought)
+                // With its own courier the company runs the delivery itself, so the fee the customer pays for it is its revenue.
+                let fee = brought * (pl.options["dfee"] ?? 0)
+                if fee > 0, IntercompanySupply.hasOwnDelivery(s, buyer: id) {
+                    Payments.companyReceives(&s, companyID: id, amount: fee, category: "rev", label: "Delivery fees from customers")
+                }
             }
         } else if s.companies[i].raw["dlvRev"] != nil {
             s.companies[i].raw.removeValue(forKey: "dlvRev")

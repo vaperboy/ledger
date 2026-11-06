@@ -124,6 +124,12 @@ public enum IntercompanySupply {
         balance.salesWays[tradeID]?.first { $0.kind == "platform" && ($0.options["deliv"] ?? 0) > 0 }
     }
 
+    /// True when the buyer's delivery is supplied by one of your own live courier companies.
+    public static func hasOwnDelivery(_ s: GameState, buyer: Int) -> Bool {
+        guard let k = deliveryKind, let l = rawLinks(s).first(where: { $0["b"].int == buyer && $0["k"].string == k.id }) else { return false }
+        return isLive(s.company(l["s"].int))
+    }
+
     /// Share of the add-on's orders that actually reach the customer. An outside courier delivers its reliability (`rel` in the add-on's data).
     /// One of your own couriers delivers the share it had capacity for last week; what it could not carry goes to an outside courier.
     /// Demand only grows by this share of the add-on's lift, so a delivery that is not supplied brings no customers.

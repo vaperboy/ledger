@@ -155,6 +155,11 @@ struct CarPriceSheet: View {
                 VStack(alignment: .leading, spacing: 8) {
                     LedgerSlider(value: $price, in: (car.cost * 0.8)...(car.listPrice * 1.15), step: max(1, (car.listPrice / 400).rounded()),
                                  valueText: cur.tidyShort(price)) { editing in if !editing { commit() } }
+                    TypedPriceField(price: price, range: (car.cost * 0.8)...(car.listPrice * 1.15), cur: cur, unit: "per car",
+                                    hint: { (v: Double) -> String? in
+                        let d: Double = v - car.cost
+                        return (d >= 0 ? "Profit if it sells at this price: " : "Loss if it sells at this price: ") + usedCarMoney(d, cur)
+                    }, onSet: { (v: Double) in price = v; commit() })
                     FlatRow(label: profit >= 0 ? "Profit if it sells" : "Loss if it sells", value: usedCarMoney(profit, cur) + "  (" + String(format: "%.1f", abs(pct)) + " percent)",
                             sub: profit >= 0 ? "Dearer cars sell more slowly." : "Below what the car cost you. Cheaper cars sell sooner.",
                             tint: profit >= 0 ? Theme.gain : Theme.loss, rule: false)
