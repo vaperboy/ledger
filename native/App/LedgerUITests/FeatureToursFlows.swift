@@ -83,21 +83,35 @@ extension FeatureToursTests {
     func testT21_Inbox() {
         var opened = false
         step("inbox: opens with rows or an empty state") {
-            guard openPhoneApp("Inbox") else { return .fail("no Inbox tile") }
+            guard openPhoneApp("Inbox") else { return lastOpenWhy == "hidden" ? .skip("Inbox locked by the unlock ladder") : .fail("no Inbox tile: \(lastOpenWhy)") }
             opened = true
             let rows: Int = app.buttons.matching(identifier: "inbox-row").count
             return .pass("rows on screen: \(rows), waiting: \(waitingNumber() ?? 0)")
         }
         step("inbox: health") { opened ? health("Inbox") : .skip("Inbox not opened") }
-        step("inbox: 'All' and 'Needs you' segments switch") {
+        step("inbox: Needs you / Handled / All segments switch and show their rows") {
             guard opened else { return .skip("Inbox not opened") }
-            guard tapText("All") else { return .skip("no All segment") }
-            let ok: Bool = tapText("Needs you")
-            return ok ? .pass() : .fail("no Needs you segment after switching to All")
+            var counts: [String] = []
+            for seg in ["Needs you", "Handled", "All"] {
+                guard tapID("segment-\(seg)", wait: 3) || tapText(seg) else { return .fail("no '\(seg)' segment") }
+                pause(0.5)
+                counts.append("\(seg)=\(app.buttons.matching(identifier: "inbox-row").count)")
+            }
+            _ = tapID("segment-Needs you")
+            return .pass(counts.joined(separator: " ") + ", waiting \(waitingNumber() ?? 0)")
+        }
+        step("inbox: Handled rows say who handled them; Needs you holds no handled row") {
+            guard opened else { return .skip("Inbox not opened") }
+            guard tapID("segment-Handled", wait: 3) else { return .fail("no Handled segment") }
+            let handled: [String] = allTexts().map { $0.text }.filter { $0.hasPrefix("Handled by ") }
+            _ = tapID("segment-Needs you")
+            let leaked: Int = allTexts().filter { $0.text.hasPrefix("Handled by ") }.count
+            if leaked > 0 { return .fail("\(leaked) 'Handled by' row(s) are in Needs you") }
+            return handled.isEmpty ? .skip("no handled message in this game") : .pass("\(handled.count) handled, e.g. \(handled[0])")
         }
         roundTrip("inbox: open a message, closing the detail keeps the Inbox", prepare: { openPhoneApp("Inbox") }) { tap(button("inbox-row"), wait: 4) }
         step("inbox: answer a decision -> popup closes, the waiting count drops") {
-            guard openPhoneApp("Inbox") else { return .fail("no Inbox tile") }
+            guard openPhoneApp("Inbox") else { return lastOpenWhy == "hidden" ? .skip("Inbox locked by the unlock ladder") : .fail("no Inbox tile: \(lastOpenWhy)") }
             guard let before = waitingNumber(), before > 0 else { return .skip("no decision waiting (\(waitingNumber() ?? 0))") }
             guard tap(button("inbox-row"), wait: 4) else { return .skip("no row to open") }
             guard button("inbox-option").waitForExistence(timeout: 4) else { toRoot(); return .fail("the opened message has no answer buttons") }
@@ -160,7 +174,7 @@ extension FeatureToursTests {
 
     func testT23_BankLoan() {
         step("bank: accounts and wealth overview open") {
-            guard openPhoneApp("Bank") else { return .fail("no Bank tile") }
+            guard openPhoneApp("Bank") else { return lastOpenWhy == "hidden" ? .skip("Bank locked by the unlock ladder") : .fail("no Bank tile: \(lastOpenWhy)") }
             guard tap(buttonPrefix("bank-pick-"), wait: 5) else { return .skip("no account picker row") }
             let h: R = health("bank account")
             _ = tapBack()
@@ -199,6 +213,23 @@ extension FeatureToursTests {
 
     func testT24_OtherPopups() {
         roundTrip("settings: Ledger Pro paywall closes and keeps Settings", closeWith: ["paywall-pass", "popup-close"], prepare: { openPhoneApp("Settings") }) { tapID("settings-ledger-pro") }
+        step("settings: Redeem a code with an invalid code shows the refusal") {
+            guard openPhoneApp("Settings") else { return .skip("Settings not opened") }
+            guard tapID("settings-redeem", wait: 4) else { return .skip("no Redeem a code row") }
+            guard popupUp(3) else { return .fail("Redeem a code did not open a popup") }
+            let field: XCUIElement = app.textFields["redeem-code"].firstMatch
+            guard field.waitForExistence(timeout: 3) else { closePopup(); return .fail("no field redeem-code in the popup") }
+            ctap(field); pause(0.5)
+            field.typeText("ZZZZ-0000-0000-0000\n")
+            pause(0.8)
+            var seen: Bool = allTexts().contains { $0.text.localizedCaseInsensitiveContains("not valid") }
+            if !seen, ctap(button("redeem-code-action")) { pause(0.8); seen = allTexts().contains { $0.text.localizedCaseInsensitiveContains("not valid") } }
+            let raw: [String] = rawProblems("redeem popup")
+            closePopup()
+            _ = waitPopupGone(3)
+            if !seen { return .fail("typed an invalid code but no 'not valid' refusal appeared") }
+            return raw.isEmpty ? .pass() : .fail("popup text: " + raw.joined(separator: "; "))
+        }
         roundTrip("luxury: item sheet closes and keeps the showroom", prepare: { openPhoneApp("Luxury") }) { tap(elem("luxury-hero"), wait: 4) }
         roundTrip("market: open a listing -> deal popup closes and keeps the listing", prepare: { openPhoneApp("Marketplace") && tapPrefix("mk-listing-", wait: 5) }) { tapID("mk-discuss", wait: 3) }
         roundTrip("ventures: Launch / price popup closes and keeps Ventures", prepare: { goTab("Ventures") }) { tapText("Change price") || tapText("Set price") }

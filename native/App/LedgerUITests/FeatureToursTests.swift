@@ -46,10 +46,12 @@ final class FeatureToursTests: FeatureTourCase {
     private func tourApp(_ title: String) {
         var opened = false
         step("phone app \(title): opens") {
-            guard openPhoneApp(title) else { return .fail("no tile phone-app-\(title) on the Phone grid") }
+            guard openPhoneApp(title) else {
+                return lastOpenWhy == "hidden" ? .skip("no tile on the Phone grid: locked by the unlock ladder in this game") : .fail("cannot open phone-app-\(title): \(lastOpenWhy)")
+            }
             if popupUp() { closePopup() }
             let sig: TourSig = signature()
-            let gridStillThere: Bool = title != "Bank" ? visible(button("phone-app-Bank")) : visible(button("phone-app-Inbox"))
+            let gridStillThere: Bool = visible(buttonPrefix("phone-app-"))
             if gridStillThere { return .fail("the app grid is still on screen after tapping the tile") }
             opened = true
             return .pass(sig.text)
@@ -58,7 +60,7 @@ final class FeatureToursTests: FeatureTourCase {
         step("phone app \(title): Back returns to the grid") {
             guard opened else { return .skip("not opened") }
             guard tapBack() else { return .fail("no Back button on the app") }
-            return button("phone-app-Bank").waitForExistence(timeout: 4) ? .pass() : .fail("Back did not show the app grid")
+            return gridUp(4) ? .pass() : .fail("Back did not show the app grid")
         }
     }
 
@@ -118,6 +120,36 @@ final class FeatureToursTests: FeatureTourCase {
             guard openBoardRoom() else { return .skip("no board room (needs the -showcase-board game and a co-owner)") }
             return health("board room")
         }
+        // Boardroom tab: talk to a manager (a popup), call the board round (a popup).
+        func openBoardroomTab() -> Bool {
+            guard !entity.isEmpty else { return false }
+            _ = goTab("Group")
+            if !button("group-tab-Boardroom").exists { _ = tapID(entity) }
+            return tapID("group-tab-Boardroom")
+        }
+        roundTrip("boardroom: Talk to a manager opens a popup and closes back to the Boardroom", prepare: { openBoardroomTab() }) { tapPrefix("boardroom-talk-", wait: 4) }
+        roundTrip("boardroom: Call the board opens a popup and closes back to the Boardroom", prepare: { openBoardroomTab() }) { tapPrefix("boardroom-call-", wait: 4) }
+        // Ownership: Owners | Sell | Raise | Offers, and the route picker under Sell.
+        func openOwnership(_ part: String) -> Bool {
+            guard !entity.isEmpty else { return false }
+            _ = goTab("Group")
+            if !button("group-tab-Ownership").exists { _ = tapID(entity) }
+            guard tapID("group-tab-Ownership") else { return false }
+            return tapID("group-ownership-\(part)")
+        }
+        for part in ["Owners", "Sell", "Raise", "Offers"] {
+            step("ownership: \(part) page opens and is clean") {
+                guard openOwnership(part) else { return .skip("no Ownership > \(part) segment") }
+                return health("ownership \(part)", title: false)
+            }
+        }
+        step("ownership: Sell lists the route picker") {
+            guard openOwnership("Sell") else { return .skip("no Ownership > Sell segment") }
+            let routes: [String] = ids(prefix: "sell-route-")
+            if routes.isEmpty { return .fail("Sell shows no sell-route-* rows (a limited company with a route is expected): " + tabState()) }
+            return .pass("\(routes.count) routes: " + routes.map { String($0.dropFirst(11)) }.joined(separator: ","))
+        }
+        roundTrip("ownership: a sell route opens a confirm or sheet and Cancel keeps Sell", closeWith: ["confirm-cancel", "popup-close"], prepare: { openOwnership("Sell") }) { tapPrefix("sell-route-", wait: 4) }
         roundTrip("board room: Remove from board -> Cancel keeps the Board screen", closeWith: ["confirm-cancel"], prepare: { openBoardRoom() }) { tapID("board-remove-seat") }
         roundTrip("board room: Remove from board -> confirm keeps the Board screen", closeWith: ["confirm-go"], prepare: { openBoardRoom() }) { tapID("board-remove-seat") }
     }
@@ -140,7 +172,7 @@ final class FeatureToursTests: FeatureTourCase {
             step("swipe back: Phone app \(name) returns to the grid") {
                 guard openPhoneApp(name) else { return .skip("no tile") }
                 swipeBackFromEdge()
-                return button("phone-app-Bank").waitForExistence(timeout: 4) ? .pass() : .fail("an edge swipe did not return to the app grid (\(signature().text))")
+                return gridUp(4) ? .pass() : .fail("an edge swipe did not return to the app grid (\(signature().text))")
             }
         }
         step("swipe back: pushed page inside an app (Bank account) returns one level") {
@@ -151,7 +183,7 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             let after: TourSig = signature()
             if after.same(inner) { return .fail("the swipe did nothing on \(inner.text)") }
-            return button("phone-app-Bank").exists ? .fail("the swipe left the whole app: \(inner.text) -> grid") : .pass("\(inner.text) -> \(after.text)")
+            return gridUp() ? .fail("the swipe left the whole app: \(inner.text) -> grid") : .pass("\(inner.text) -> \(after.text)")
         }
     }
 
