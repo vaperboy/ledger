@@ -74,7 +74,7 @@ struct RequirementGuide: View {
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             ThinProgress(fraction: r.ok ? 1 : fraction, tint: r.ok ? Theme.gain : Theme.gold)
             Text(r.ok ? "The pilot has proved itself." : "A year of trading and four profitable quarters. Keep this company running well.")
-                .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
         }
     }
 

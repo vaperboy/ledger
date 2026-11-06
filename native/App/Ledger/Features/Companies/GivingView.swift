@@ -25,7 +25,7 @@ struct GivingView: View {
                         CardSection(title: "Gifts", trailing: { cityPicker(places, current: place) }) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text("Standing in \(place.name): \(Words.level(place.standing, scale: .quality).lowercased()). It fades slowly; more standing brings a little more demand to your companies there.")
-                                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, Theme.Space.s)
+                                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, Theme.Space.s)
                                 ForEach(Array(e.giftOptions.enumerated()), id: \.element.id) { n, g in
                                     if n > 0 { CardLine() }
                                     giftRow(e, g, place)
@@ -131,7 +131,7 @@ struct GivingView: View {
                 let steps = [1.0, 5, 20, 50].map { e.homeCurrency.scaledPrice($0 * 1e6) }.map { ($0 / 1000).rounded() * 1000 }
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Put money in once and it gives about 4% of the endowment every year, for good. Your name goes on it, your legacy and your image grow, and the money is gone from your cash for good.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     Picker("Endowment", selection: $endowment) {
                         ForEach(Array(steps.enumerated()), id: \.offset) { n, v in Text(cur.tidyShort(v)).tag(n) }
                     }.pickerStyle(.segmented)

@@ -47,7 +47,7 @@ private struct JobList: View {
                 if board.jobs.isEmpty && board.queuedJobs.isEmpty {
                     Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
                         Text(board.hoursPerWeek > 0 ? "Nothing booked yet. Requests come in through the week; marketing and a good name bring more." : "The firm cannot take work yet: check staff and equipment under Operations.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
+                            .textStyle(.caption, tint: Theme.inkFaint)
                     }
                 }
                 VStack(spacing: Theme.Space.m) {
@@ -58,7 +58,7 @@ private struct JobList: View {
                     }
                 }
                 Text(terms)
-                    .font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
             tenders
         }
@@ -250,7 +250,7 @@ private struct DevelopmentList: View {
                 if showStart { Card(padding: Theme.Space.l, radius: Theme.Radius.card) { startSheet } }
                 if active.isEmpty && !showStart {
                     Text("No project yet. Buy land and wait for zoning (about six months, and it can be refused), build (about 16 months), then sell the units. The first income arrives roughly two years after you start, so keep cash for the wait.")
-                        .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 VStack(spacing: Theme.Space.m) {
                     ForEach(active, id: \.id) { (p: ProjectBoard.DevelopmentRow) in projectRow(p) }

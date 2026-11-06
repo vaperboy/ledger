@@ -37,10 +37,10 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func owners(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
         if list.isEmpty {
-            Text("You own this outright. Turn it into a limited company to bring in owners.").textStyle(.caption, tint: Theme.inkSoft)
+            EmptyState(glyph: Glyph.person, title: "You own this outright", message: "Turn it into a limited company to bring in owners.", centered: false)
         }
         ForEach(list) { (c: Company) in
-            if list.count > 1 { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
+            if list.count > 1 { Text(c.name.uppercased()).capsLabel() }
             CompanyOwnershipSection(engine: engine, company: c, mode: .owners)
         }
     }
@@ -50,7 +50,7 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func sell(_ cos: [Company]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             ForEach(cos) { (c: Company) in
-                if cos.count > 1 { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
+                if cos.count > 1 { Text(c.name.uppercased()).capsLabel() }
                 CompanySaleSection(engine: engine, company: c, onGoRaise: { part = .raise })
                 if c.form == .limited && c.type != "hold" { CompanyOwnershipSection(engine: engine, company: c, mode: .shares) }
             }
@@ -62,10 +62,10 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func raise(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
         if list.isEmpty {
-            Text("Only a limited company or a holding can raise money from investors.").textStyle(.caption, tint: Theme.inkSoft)
+            EmptyState(glyph: Glyph.lock, title: "Nothing to raise here", message: "Only a limited company or a holding can raise money from investors.", centered: false)
         }
         ForEach(list) { (c: Company) in
-            if list.count > 1 { Text(c.name.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold) }
+            if list.count > 1 { Text(c.name.uppercased()).capsLabel() }
             CompanyOwnershipSection(engine: engine, company: c, mode: .raise)
         }
     }

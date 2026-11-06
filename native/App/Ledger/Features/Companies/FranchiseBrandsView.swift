@@ -235,7 +235,7 @@ struct BrandMeetingView: View {
             }
             if signable, let t = result?.terms {
                 Text("Entry fee \(cur.tidyShort(t.fee)), royalty \(Currency.percent(t.royalty, decimals: 1)) plus \(Currency.percent(t.marketing, decimals: 0)) marketing\(cover(t)).")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).padding(.horizontal, Theme.Space.xxs)
+                    .textStyle(.caption, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.xxs)
             }
         }
     }

@@ -73,7 +73,7 @@ struct GroupEntityManagement: View {
                 Text(count).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if let line {
                     Text("Complaints: \(line.complaints) \u{00B7} Payroll: \(line.payroll) \u{00B7} Re-hiring: \(line.rehire)")
-                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     Text("Highest rank here: \(line.top)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 if stakes > 0 {
@@ -105,7 +105,7 @@ struct GroupEntityManagement: View {
             Text(gm.reason).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             if let above = asst.needsConfirmationFrom {
                 Text(above == .ceo ? "Assistant manager: needs confirmation from the CEO" : "Assistant manager: needs your confirmation")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

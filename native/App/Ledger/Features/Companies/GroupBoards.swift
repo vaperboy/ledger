@@ -326,7 +326,7 @@ struct BoardView: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             SegmentedPill(items: [false, true], title: { (own: Bool) -> String in own ? "Your people" : "Search" }, selection: $ownTab)
             Text(ownTab ? "Employees and managers keep their job. One from the board's own company sits for half the fee." : "Add to the board (a search costs a fee)")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                .textStyle(.caption, tint: Theme.inkSoft)
             WrapRow {
                 Group {
                     ForEach(engine.seatRoles) { r in
@@ -432,7 +432,7 @@ struct BoardView: View {
                     SegmentedPill(items: [false, true], title: { $0 ? "Quarterly" : "Every 4 weeks" }, selection: freqBinding)
                 }
                 Text(regular ? "The board meets on a schedule and puts its own items on the agenda." : "The board meets only when you call it or something needs it.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                    .textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }
