@@ -95,12 +95,13 @@ struct CompaniesView: View {
             let shown: [(co: Company, h: CompanyHealth)] = (showAll || regular) ? rows : Array(rows.prefix(Self.previewCount))
             LedgerSection(title: "Companies · \(rows.count)", trailing: { sortMenu }) {
                 companyRows(e, rows: shown)
+                    .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("home-companies-box")
                 if shown.count < rows.count {
                     Button("Show all \(rows.count) companies") { Haptics.tap(); Motion.animate(Motion.quick(reduceMotion)) { showAll = true } }
                         .buttonStyle(TertiaryButtonStyle(size: .compact))
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .accessibilityIdentifier("home-show-all-companies")
+                        .accessibilityIdentifier("show-all-companies")
                 }
             }
         }
