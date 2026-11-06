@@ -1,4 +1,6 @@
 # What's new
+- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed
+- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)
 - Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device
 - Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap
 - Notices: minor "cannot / not enough" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette
