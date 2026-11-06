@@ -3,8 +3,8 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Projects tab (new look): header, then underline tabs. Running (cards), Timeline (weeks chart), Bids and offers (open tenders and
-/// things to start), Finished, Ventures. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
+/// The Ventures tab: header with the running figures, then `SectionTabs` Running (a `SegmentedPill` for In progress, Timeline, Bids and
+/// offers), Ideas and startups, Done. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
 /// (see `ProjectsTabs.swift`). Every company's own Projects section stays reachable from the cards, tender details and the company list.
 struct ProjectsView: View {
     /// The three segments of the merged Ventures screen. Running also holds the Timeline and the Bids and offers lists (`RunPart`).
@@ -46,10 +46,12 @@ struct ProjectsView: View {
 
     @ViewBuilder private func pageContent(_ e: GameEngine, _ rows: ProjectRows, _ lines: [ProjectTimeline], _ running: [ProjectTimeline]) -> some View {
         header(e, running)
-        ProjectUnderlineTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part, count: { $0 == .running ? running.count : 0 })
+        SectionTabs(items: Part.allCases, title: { $0.rawValue }, selection: $part)
+            // The page already has its margin: the row runs to the page edges instead of indenting twice.
+            .padding(.horizontal, -Theme.Space.margin)
         switch part {
         case .running:
-            ProjectUnderlineTabs(items: RunPart.allCases, title: { $0.rawValue }, selection: $runPart, sub: true)
+            SegmentedPill(items: RunPart.allCases, title: { $0.rawValue }, selection: $runPart)
             runContent(e, rows, lines, running)
         case .ideas: VenturesFeedApp(embedded: true)
         case .finished: ProjectsFinishedTab(engine: e, rows: rows)
@@ -70,28 +72,18 @@ struct ProjectsView: View {
             guard let co = e.state.company(l.companyID) else { return acc }
             return acc + l.value * e.currency(for: co).rate / max(home.rate, 0.000001)
         }
-        let sub = running.isEmpty ? "Nothing running" : "\(running.count) running · \(store.short(committed)) committed"
-        return AppHeader(title: "Ventures", subtitle: sub) {
-            SmallOutlineButton(title: "New project") { part = .running; runPart = .bids }
+        // Portfolio first: what is running and the value committed to it, then the one action.
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            AppHeader(title: "Ventures") {
+                Button("New project") { Haptics.tap(); part = .running; runPart = .bids }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityLabel("New project")
+            }
+            FigureRow(items: [
+                KeyFigures.Item(label: "Running", value: running.isEmpty ? "None" : "\(running.count)"),
+                KeyFigures.Item(label: "Committed", value: running.isEmpty ? "None" : store.short(committed)),
+            ], columns: 2, combineCells: true)
         }
-    }
-}
-
-/// The Ventures tab rows: the house `SectionTabs` (a count after the title when there is one); `sub` is the second-level row.
-struct ProjectUnderlineTabs<T: Hashable>: View {
-    var items: [T]
-    var title: (T) -> String
-    @Binding var selection: T
-    var count: (T) -> Int = { _ in 0 }
-    var sub: Bool = false
-
-    var body: some View {
-        SectionTabs(items: items, title: { (item: T) -> String in
-            let n: Int = count(item)
-            return title(item) + (n > 0 ? " \(n)" : "")
-        }, selection: $selection, sub: sub)
-        // The page already has its margin: the row runs to the page edges instead of indenting twice.
-        .padding(.horizontal, -Theme.Space.margin)
     }
 }
 
