@@ -68,7 +68,7 @@ struct ManagementRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(name ?? "Vacant").textStyle(.headline, tint: name == nil ? Theme.inkSoft : Theme.ink).lineLimit(1)
+                Text(name ?? "Vacant").textStyle(.headline, tint: name == nil ? Theme.inkSoft : Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
                 RoleScopeBadge(role: role, scope: scope)
                 if !line.isEmpty { Text(line).textStyle(.caption, tint: lineTint).fixedSize(horizontal: false, vertical: true) }
             }

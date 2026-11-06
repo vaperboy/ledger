@@ -83,12 +83,14 @@ struct GroupEntity: Identifiable, Equatable {
 
 enum GroupEntities {
     /// The change of a sum of companies over `days`: the amounts add up, the share is against what they were worth before.
-    static func change(_ e: GameEngine, ids: [Int], values: [Int: Double], days: Int) -> (amount: Double, share: Double?)? {
+    /// `hist` is the decoded history when the caller has it (decoding it per company was the slow part of building the list).
+    static func change(_ e: GameEngine, ids: [Int], values: [Int: Double], days: Int, hist: DayHistory? = nil) -> (amount: Double, share: Double?)? {
+        let h: DayHistory = hist ?? e.dayHistory
         var amount: Double = 0
         var earlier: Double = 0
         var any = false
         for id in ids {
-            guard let c = e.companyValueChange(companyID: id, days: days) else { continue }
+            guard let c = DayHistory.change(h.perCompany[id] ?? [], days: days) else { continue }
             any = true
             amount += c.amount
             earlier += (values[id] ?? 0) - c.amount
@@ -97,10 +99,10 @@ enum GroupEntities {
         return (amount, earlier > 1 ? amount / earlier : nil)
     }
 
-    private static func make(_ e: GameEngine, id: String, companyID: Int, chainID: Int?, name: String, kind: String, isHolding: Bool, indent: Bool, ids: [Int], members: [Int], values: [Int: Double], days: Int) -> GroupEntity {
+    private static func make(_ e: GameEngine, id: String, companyID: Int, chainID: Int?, name: String, kind: String, isHolding: Bool, indent: Bool, ids: [Int], members: [Int], values: [Int: Double], days: Int, hist: DayHistory) -> GroupEntity {
         var total: Double = 0
         for i in ids { total += values[i] ?? 0 }
-        let ch = change(e, ids: ids, values: values, days: days)
+        let ch = change(e, ids: ids, values: values, days: days, hist: hist)
         return GroupEntity(id: id, companyID: companyID, chainID: chainID, name: name, kind: kind, isHolding: isHolding, indent: indent, value: total,
                            hasChange: ch != nil, changeAmount: ch?.amount ?? 0, changeShare: ch?.share, members: members)
     }
@@ -108,6 +110,7 @@ enum GroupEntities {
     /// Everything the picker lists, biggest first; a holding is followed by its companies, indented.
     static func build(_ e: GameEngine, days: Int = 30) -> [GroupEntity] {
         let st: GameState = e.state
+        let hist: DayHistory = e.dayHistory
         let live: [Company] = st.companies.filter { (c: Company) -> Bool in c.status.isLive }
         var values: [Int: Double] = [:]
         for c in live { values[c.id] = Valuation.companyValue(c, state: st, trades: e.data.catalog) }
@@ -122,12 +125,12 @@ enum GroupEntities {
             let ids: [Int] = ch.stores.filter { (s: Chains.StoreLine) -> Bool in s.status.isLive }.map { (s: Chains.StoreLine) -> Int in s.id }
             guard let first = ids.first else { continue }
             let kind: String = "Chain \u{00B7} \(ids.count) \(ids.count == 1 ? "store" : "stores")"
-            top.append(make(e, id: "ch\(ch.id)", companyID: first, chainID: ch.id, name: ch.name, kind: kind, isHolding: false, indent: false, ids: ids, members: ids, values: values, days: days))
+            top.append(make(e, id: "ch\(ch.id)", companyID: first, chainID: ch.id, name: ch.name, kind: kind, isHolding: false, indent: false, ids: ids, members: ids, values: values, days: days, hist: hist))
         }
         for c in live where c.type != "hold" && !inChain.contains(c.id) {
             let franchisee: Bool = !c.value("franchise").isNull
             let kind: String = (franchisee ? "Franchise \u{00B7} " : "") + "\(e.tradeName(c)) \u{00B7} \(e.cityName(c))"
-            let ent = make(e, id: "co\(c.id)", companyID: c.id, chainID: nil, name: c.name, kind: kind, isHolding: false, indent: false, ids: [c.id], members: [c.id], values: values, days: days)
+            let ent = make(e, id: "co\(c.id)", companyID: c.id, chainID: nil, name: c.name, kind: kind, isHolding: false, indent: false, ids: [c.id], members: [c.id], values: values, days: days, hist: hist)
             if c.holdingID != 0 && holdingIDs.contains(c.holdingID) {
                 var one = ent
                 one.indent = true
@@ -141,7 +144,7 @@ enum GroupEntities {
             let kind: String = "Holding company \u{00B7} \(subs.count) \(subs.count == 1 ? "company" : "companies")"
             var members: [Int] = [h.id]
             for s in subs { members.append(s.companyID) }
-            var ent = make(e, id: "co\(h.id)", companyID: h.id, chainID: nil, name: h.name, kind: kind, isHolding: true, indent: false, ids: [h.id], members: members, values: values, days: days)
+            var ent = make(e, id: "co\(h.id)", companyID: h.id, chainID: nil, name: h.name, kind: kind, isHolding: true, indent: false, ids: [h.id], members: members, values: values, days: days, hist: hist)
             var sum: Double = ent.value
             for s in subs { sum += s.value }
             ent.value = sum
@@ -158,6 +161,9 @@ enum GroupEntities {
         }
         return out
     }
+
+    /// `build` for the store's engine, once per engine change (the Group landing and page both read it on every render).
+    @MainActor static func cached(_ store: GameStore) -> [GroupEntity]? { store.memo("groupEntities") { build($0) } }
 
     /// The entity a request for a company lands on: its own entry, else the chain or holding it belongs to.
     static func find(_ list: [GroupEntity], companyID: Int) -> GroupEntity? {
@@ -198,7 +204,7 @@ struct GroupLanding: View {
     var onAdd: () -> Void
 
     var body: some View {
-        let list: [GroupEntity] = GroupEntities.build(engine)
+        let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             overview
             LedgerSection("Companies and chains", rule: false) {
@@ -229,9 +235,10 @@ struct GroupLanding: View {
 
     /// The group's value leads; cash sits beside it; the 90-day line and the brand line follow. No box: type carries the hierarchy.
     private var overview: some View {
-        let value: Double = engine.netWorth.companies
-        let vc = DayHistory.change(engine.dayHistory.companies, days: 30)
-        let cc = engine.groupCashChange(days: 30)
+        let value: Double = (store.netWorthNow ?? engine.netWorth).companies
+        let hist: DayHistory = store.dayHistoryNow ?? engine.dayHistory
+        let vc = DayHistory.change(hist.companies, days: 30)
+        let cc = DayHistory.change(hist.companyCash, days: 30)
         let vt = GroupFmt.change(vc?.amount ?? 0, vc?.share, has: vc != nil, store)
         let ct = GroupFmt.change(cc?.amount ?? 0, cc?.share, has: cc != nil, store)
         return VStack(alignment: .leading, spacing: Theme.Space.m) {

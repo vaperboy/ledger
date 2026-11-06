@@ -343,6 +343,7 @@ struct ShopChip: View {
             }
             .padding(.horizontal, Theme.Space.m)
             .frame(minHeight: 36)
+            .environment(\.containerInk, selected ? P.onAccent : nil)
             .background(Capsule().fill(selected ? P.accent : P.inset))
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -608,7 +609,8 @@ struct ShopCount: View {
     var body: some View {
         if count > 0 {
             Text(count > 99 ? "99+" : String(count))
-                .textStyle(.caption, tint: P.onAccent, numeric: true, weight: .semibold)
+                .textStyle(.caption, numeric: true, weight: .semibold)
+                .containerInk(P.onAccent)
                 .padding(.horizontal, Theme.Space.xs).frame(minWidth: 18, minHeight: 18)
                 .background(Capsule().fill(color))
                 .accessibilityHidden(true)

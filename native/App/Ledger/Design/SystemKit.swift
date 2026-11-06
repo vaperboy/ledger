@@ -79,7 +79,7 @@ struct LedgerRow: View {
                     }
                     if let pill { AcctPill(text: pill, tone: pillTone) }
                     if !valueNote.isEmpty {
-                        Text(valueNote.tidyText).textStyle(.caption, tint: valueNoteTint ?? P.inkFaint, numeric: true).lineLimit(1)
+                        Text(valueNote.tidyText).textStyle(.caption, tint: valueNoteTint ?? P.inkFaint, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
                     }
                 }
             }
@@ -106,7 +106,8 @@ struct LedgerRow: View {
                 .accessibilityHidden(true)
         case .initials(let letters):
             Text(letters)
-                .textStyle(.caption, tint: P.accentInk, weight: .semibold)
+                .textStyle(.caption, weight: .semibold)
+                .containerInk(P.accentInk)
                 .frame(width: 36, height: 36)
                 .background(Circle().fill(leadingTint ?? P.accent))
         case .thumb(let spec):
@@ -227,9 +228,9 @@ struct ProgressLine: View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if !label.isEmpty || !value.isEmpty {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                    Text(label.tidyText).textStyle(.caption).lineLimit(1)
+                    Text(label.tidyText).textStyle(.caption).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: Theme.Space.s)
-                    Text(value.tidyText).textStyle(.caption, tint: P.ink, numeric: true).lineLimit(1)
+                    Text(value.tidyText).textStyle(.caption, tint: P.ink, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
                 }
             }
             bar

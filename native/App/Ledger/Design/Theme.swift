@@ -240,29 +240,55 @@ extension Font {
 }
 
 /// Applies a `TextStep`: font (scaled with Dynamic Type), tracking, capitals and the step's ink from the palette.
+/// Ink order: the container's ink (`containerInk`, set by a filled button, chip or badge), then `tint`, then the step's own ink.
+/// The size comes from a table per Dynamic Type size, not a `@ScaledMetric` per Text (thousands of them re-read UIFontMetrics on every render).
 struct TextStepStyle: ViewModifier {
     var step: TextStep
     var tint: Color?
     var numeric: Bool
     var weight: Font.Weight?
-    @ScaledMetric private var size: CGFloat
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.outsidePalette) private var P
+    @Environment(\.containerInk) private var containerInk
 
     init(step: TextStep, tint: Color? = nil, numeric: Bool = false, weight: Font.Weight? = nil) {
         self.step = step
         self.tint = tint
         self.numeric = numeric
         self.weight = weight
-        self._size = ScaledMetric(wrappedValue: step.size, relativeTo: step.relativeTo)
     }
 
     func body(content: Content) -> some View {
-        let color: Color = tint.map { (c: Color) -> Color in c.inPalette(P) } ?? step.ink(P)
+        let color: Color = containerInk ?? tint.map { (c: Color) -> Color in c.inPalette(P) } ?? step.ink(P)
         return content
-            .font(step.font(size: size, numeric: numeric, weight: weight))
+            .font(step.font(size: TextStepSizes.size(step, typeSize), numeric: numeric, weight: weight))
             .tracking(step.tracking)
             .textCase(step == .label ? Text.Case.uppercase : nil)
             .foregroundStyle(color)
+    }
+}
+
+/// Scaled point sizes of the type scale, computed once per (step, Dynamic Type size) with the same curve `@ScaledMetric` uses.
+enum TextStepSizes {
+    private struct Key: Hashable { var step: TextStep; var size: DynamicTypeSize }
+    private static var table: [Key: CGFloat] = [:]
+
+    static func size(_ step: TextStep, _ typeSize: DynamicTypeSize) -> CGFloat {
+        let k = Key(step: step, size: typeSize)
+        if let v = table[k] { return v }
+        let v: CGFloat = step.scaledSize(typeSize)
+        table[k] = v
+        return v
+    }
+}
+
+private struct ContainerInkKey: EnvironmentKey { static let defaultValue: Color? = nil }
+extension EnvironmentValues {
+    /// The ink of a filled container (primary button, selected chip, badge): `.textStyle` inside uses it over its own ink and tint,
+    /// so a label never keeps the page ink (ivory) on an accent or light fill.
+    var containerInk: Color? {
+        get { self[ContainerInkKey.self] }
+        set { self[ContainerInkKey.self] = newValue }
     }
 }
 
@@ -271,6 +297,11 @@ extension View {
     /// `numeric` gives tabular digits, `weight` is for the rare emphasis inside a step.
     func textStyle(_ step: TextStep, tint: Color? = nil, numeric: Bool = false, weight: Font.Weight? = nil) -> some View {
         modifier(TextStepStyle(step: step, tint: tint, numeric: numeric, weight: weight))
+    }
+
+    /// Text inside follows `ink` (a filled container): `.textStyle` children take it, plain Text and symbols get it as foreground.
+    func containerInk(_ ink: Color) -> some View {
+        environment(\.containerInk, ink).foregroundStyle(ink)
     }
 
     /// Flat (nothing) or raised (the one soft shadow) elevation. Raised is only for what floats over the page.

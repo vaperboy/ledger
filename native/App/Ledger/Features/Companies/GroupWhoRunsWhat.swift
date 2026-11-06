@@ -9,7 +9,7 @@ struct GroupWhoRunsWhat: View {
     var engine: GameEngine
 
     var body: some View {
-        let overview: TeamOverview = engine.teamOverview()
+        let overview: TeamOverview = (store.teamOverviewNow ?? engine.teamOverview())
         let lines: [TeamOverview.CompanyLine] = overview.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
         if !lines.isEmpty {
             LedgerSection("Who runs what") {

@@ -124,14 +124,29 @@ extension GameStore {
         return hits.map { (m: Message) -> String in "m\(m.id)" }
     }
 
+    /// Markers on one screen clear at about the same moment; their marks are gathered and written in one change, because every
+    /// change of `seenMarks` re-renders all live tabs (and was saved to disk once per marker).
     func markItemSeen(_ app: PhoneApp, _ id: String) {
         let k: String = itemKey(app, id)
-        if seenMarks.texts[k] != nil { return }
-        var s: UpdateMarks = seenMarks
-        s.texts[k] = "1"
+        if seenMarks.texts[k] != nil || pendingSeen.contains(k) { return }
+        pendingSeen.append(k)
         // A document row's status is remembered for good (the visit keys above are dropped when the launcher shows).
-        if app == .accounting && id.hasPrefix("d") { s.texts["dr." + id] = "1" }
-        seenMarks = s
+        if app == .accounting && id.hasPrefix("d") { pendingSeen.append("dr." + id) }
+        guard !seenFlushScheduled else { return }
+        seenFlushScheduled = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            self?.flushSeenItems()
+        }
+    }
+
+    private func flushSeenItems() {
+        seenFlushScheduled = false
+        guard !pendingSeen.isEmpty else { return }
+        var s: UpdateMarks = seenMarks
+        for k in pendingSeen { s.texts[k] = "1" }
+        pendingSeen.removeAll()
+        Motion.animate(Motion.quickAnimation) { seenMarks = s }
         s.save("seen")
     }
 }

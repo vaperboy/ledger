@@ -53,7 +53,8 @@ struct HomeSummary<Companies: View>: View {
     /// New-player start: a bill the account cannot cover yet waits one day; nothing else happens.
     private var cashTightBanner: some View {
         Text("Cash is tight. A bill waits until tomorrow.")
-            .textStyle(.body, tint: Theme.accentInk, weight: .medium)
+            .textStyle(.body, weight: .medium)
+            .containerInk(Theme.accentInk)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
@@ -80,21 +81,21 @@ struct NetWorthCard: View {
 
     private func takeSnap() -> NetWorthSnap {
         var all: [Int: [Double]] = [:]
-        for p in PeriodPicker.periods { all[p.days] = engine.netWorthSeries(days: p.days) }
-        let hist = engine.dayHistory
+        for p in PeriodPicker.periods { all[p.days] = store.netWorthSeriesNow(days: p.days) }
+        let hist = store.dayHistoryNow ?? engine.dayHistory
         return NetWorthSnap(series: all, week: DayHistory.change(hist.netWorth, days: 7)?.amount, month: DayHistory.change(hist.netWorth, days: 30)?.amount)
     }
 
     var body: some View {
-        let nw = engine.netWorth
-        let hist = engine.dayHistory
+        let nw = store.netWorthNow ?? engine.netWorth
+        let hist = store.dayHistoryNow ?? engine.dayHistory
         let blocked: Bool = store.holdsHomeFigures
         let held: NetWorthSnap? = blocked ? snap : nil
         let week: Double? = held != nil ? held?.week : DayHistory.change(hist.netWorth, days: 7)?.amount
         let month: Double? = held != nil ? held?.month : DayHistory.change(hist.netWorth, days: 30)?.amount
         let frozenSeries: [Double]? = held?.series[days]
         let owed = nw.debt + nw.pendingTax
-        let wealth: NetWorthBreakdown = engine.netWorthBreakdown()
+        let wealth: NetWorthBreakdown = store.netWorthBreakdownNow ?? engine.netWorthBreakdown()
         let otherAssets: Double = wealth.investments + wealth.luxury + wealth.otherEstimatedHoldings
         Card(padding: Theme.Space.l, radius: Theme.Radius.large) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -116,7 +117,7 @@ struct NetWorthCard: View {
                         changeText(month, "30 days")
                     }
                 }
-                NetWorthChart(engine: engine, days: days, height: 30, frozen: frozenSeries)
+                NetWorthChart(engine: engine, days: days, height: 30, frozen: frozenSeries ?? store.netWorthSeriesNow(days: days))
                 Hairline()
                 // Four across when they fit, else two by two (larger text, small phones).
                 ViewThatFits(in: .horizontal) {
@@ -274,7 +275,7 @@ struct TopPriorities: View {
     var limit: Int = 3
 
     var body: some View {
-        let list: [Suggestion] = engine.suggestions(limit: 8).filter { $0.tone != .neutral }
+        let list: [Suggestion] = store.suggestionsNow.filter { $0.tone != .neutral }
         let shown: [Suggestion] = Array(list.prefix(limit))
         let waiting: Int = store.openDecisionCount
         LedgerSection(title: "Needs you", rule: false, trailing: { inboxLink(waiting) }) {

@@ -293,7 +293,7 @@ struct OrgCompletionCard: View {
                 }.frame(width: 34, height: 34)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(item.title).textStyle(.label)
-                    Text(item.name).textStyle(.headline).lineLimit(1)
+                    Text(item.name).textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
                     Text(item.detail).textStyle(.caption).lineLimit(2)
                 }
                 .opacity(textIn ? 1 : 0)

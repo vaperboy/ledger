@@ -38,12 +38,15 @@ struct GlyphView: View {
     var weight: CGFloat = 1.5
     var tint: Color? = nil
     @Environment(\.outsidePalette) private var palette
+    @Environment(\.containerInk) private var containerInk
 
     var body: some View {
         let line: CGFloat = size / 24 * weight
         let style = StrokeStyle(lineWidth: line, lineCap: .butt, lineJoin: .round)
+        // Same ink rules as `.textStyle`: a filled container's ink first, and game colours mapped into an outside app's palette.
+        let ink: Color = containerInk ?? (tint ?? palette.accent).inPalette(palette)
         LedgerIcon(svg: glyph)
-            .stroke(tint ?? palette.accent, style: style)
+            .stroke(ink, style: style)
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }

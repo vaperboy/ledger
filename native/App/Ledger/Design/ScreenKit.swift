@@ -44,6 +44,10 @@ struct FixedScreen<Content: View>: View {
     @ViewBuilder var content: () -> Content
     @State private var scale: CGFloat = 1
     @State private var scrolling = false
+    /// The largest scale still allowed: a scale that overflowed once is never tried again for the same height. Without it, text that
+    /// rewraps at the wider layout made the scale flip between two values for ever (a layout pass every frame).
+    @State private var ceiling: CGFloat = 1
+    @State private var lastAvail: CGFloat = 0
 
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
@@ -75,6 +79,7 @@ struct FixedScreen<Content: View>: View {
 
     private func measured(_ h: CGFloat, avail: CGFloat) {
         guard h > 1, avail > 1 else { return }
+        if abs(avail - lastAvail) > 0.5 { lastAvail = avail; ceiling = 1 }
         let needed: CGFloat = scrolling ? h + top + 12 : h
         let ideal: CGFloat = avail / needed
         if ideal < minScale {
@@ -86,7 +91,9 @@ struct FixedScreen<Content: View>: View {
             return
         }
         if scrolling { scrolling = false }
-        let q: CGFloat = (min(1, ideal) * 100).rounded(.down) / 100
+        var q: CGFloat = (min(1, ideal) * 100).rounded(.down) / 100
+        if q < scale - 0.009 { ceiling = min(ceiling, scale - 0.01) }
+        q = min(q, ceiling)
         if abs(q - scale) > 0.009 { scale = q }
     }
 }

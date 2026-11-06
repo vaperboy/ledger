@@ -28,7 +28,7 @@ struct GoalsView: View {
         }
     }
 
-    private func refresh() { daily = store.act { $0.dailyGoal() } ?? nil }
+    private func refresh() { daily = store.dailyGoal() }
 
     // MARK: Summary
 

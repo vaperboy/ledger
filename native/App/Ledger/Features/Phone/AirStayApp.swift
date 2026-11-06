@@ -156,11 +156,13 @@ struct AirStayApp: View {
     private var hero: some View {
         ShopPhoto(name: "airstay-office-2", glyph: Glyph.building, height: 120)
             .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.scrim).allowsHitTesting(false)
+                // Dark enough for white type over a bright photo (the light palette's scrim is only 35 percent).
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Color.black.opacity(0.5)).allowsHitTesting(false)
             }
             .overlay(alignment: .bottomLeading) {
                 Text("Find the perfect space for your business")
-                    .textStyle(.title, tint: P.onAccent)
+                    .textStyle(.title)
+                    .containerInk(P.onAccent)
                     .lineLimit(2).minimumScaleFactor(0.6)
                     .padding(Theme.Space.l)
             }

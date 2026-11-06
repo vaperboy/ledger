@@ -59,11 +59,11 @@ struct GroupLinkRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title).textStyle(.headline).lineLimit(1)
+                Text(title).textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
                 if !sub.isEmpty { Text(sub).textStyle(.caption, tint: subTint).lineLimit(2) }
             }
             Spacer(minLength: Theme.Space.s)
-            if !trailing.isEmpty { Text(trailing).textStyle(.headline, tint: tint, numeric: true).lineLimit(1) }
+            if !trailing.isEmpty { Text(trailing).textStyle(.headline, tint: tint, numeric: true).lineLimit(1).minimumScaleFactor(0.8) }
             LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
         }
         .padding(.vertical, Theme.Space.s).contentShape(Rectangle())

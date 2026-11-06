@@ -37,7 +37,16 @@ struct AcctTransactions: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             let fmt = BankFmt(store: store, company: co)
-            let page: TransactionPage? = e.companyTransactions(companyID: co.id, kind: m.txKind.engineKind, fromWeek: m.fromWeek(e), search: m.txSearch, user: m.user)
+            let kind: TransactionFilterKind = m.txKind.engineKind
+            let from: Int? = m.fromWeek(e)
+            let search: String = m.txSearch
+            let user: String? = m.user
+            // The ledger walk runs once per engine change and filter, not on every render of the live Phone tab.
+            let userKey: String = user.map { (u: String) -> String in "u" + u } ?? "-"
+            let key: String = "tx|\(co.id)|\(kind)|\(from ?? -1)|\(search)|" + userKey
+            let page: TransactionPage? = (store.memo(key) { (g: GameEngine) -> [TransactionPage] in
+                g.companyTransactions(companyID: co.id, kind: kind, fromWeek: from, search: search, user: user).map { [$0] } ?? []
+            } ?? []).first
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     SegmentedPill(items: AcctTxKind.allCases, title: { $0.rawValue }, selection: $m.txKind, identifier: { "acct-tx-" + $0.rawValue.lowercased() })

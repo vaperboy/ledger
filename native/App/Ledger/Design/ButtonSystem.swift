@@ -51,8 +51,11 @@ private struct LedgerButtonBody: View {
         let pressed: Bool = configuration.isPressed
         let step: TextStep = compact ? .body : .headline
         let weight: Font.Weight = tier == .primary ? .semibold : .medium
+        let fillInk: Color? = tier == .primary ? textColor : nil
         configuration.label
             .textStyle(step, tint: textColor, weight: weight)
+            // On the accent fill every Text of the label takes the fill's ink, even one styled inside the label.
+            .transformEnvironment(\.containerInk) { (ink: inout Color?) in if let fillInk { ink = fillInk } }
             .lineLimit(1).minimumScaleFactor(0.85)
             .padding(.horizontal, tier == .tertiary ? Theme.Space.s : (compact ? Theme.Space.m : Theme.Space.l))
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : 44)

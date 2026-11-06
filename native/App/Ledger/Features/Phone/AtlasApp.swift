@@ -117,7 +117,7 @@ struct AtlasApp: View {
                 RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.accent.opacity(0.85)).allowsHitTesting(false)
             }
             .overlay(alignment: .bottomLeading) {
-                Text("Protect what you\u{2019}ve built").textStyle(.title, tint: P.onAccent)
+                Text("Protect what you\u{2019}ve built").textStyle(.title).containerInk(P.onAccent)
                     .lineLimit(2).minimumScaleFactor(0.6)
                     .padding(Theme.Space.l)
             }

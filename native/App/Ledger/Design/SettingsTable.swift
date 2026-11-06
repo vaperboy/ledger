@@ -56,7 +56,7 @@ struct SettingsTableRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
                 Text(value.tidyText).textStyle(.headline, tint: valueTint, numeric: true).lineLimit(2).multilineTextAlignment(.trailing)
-                if !change.isEmpty { Text(change.tidyText).textStyle(.caption, tint: changeTint, numeric: true).lineLimit(1) }
+                if !change.isEmpty { Text(change.tidyText).textStyle(.caption, tint: changeTint, numeric: true).lineLimit(1).minimumScaleFactor(0.8) }
             }
             .frame(maxWidth: 150, alignment: .trailing)
             if !readOnly { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }

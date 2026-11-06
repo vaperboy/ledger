@@ -42,7 +42,7 @@ struct CompanyOverview: View {
 
     /// Staff matters shown under "Needs you" (paperwork, worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
     private func staffMatters(_ co: Company) -> [TeamOverview.Issue] {
-        engine.teamOverview().issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
+        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
     }
 
     // 1. Hero: cash first with how long it lasts, and the verdict in words when it adds something

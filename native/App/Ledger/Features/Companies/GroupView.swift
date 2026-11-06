@@ -53,7 +53,7 @@ struct GroupView: View {
     }
 
     @ViewBuilder private func page(_ e: GameEngine) -> some View {
-        let list: [GroupEntity] = GroupEntities.build(e)
+        let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(e)
         if let id = pickedID, let ent = list.first(where: { (g: GroupEntity) -> Bool in g.id == id }) {
             GroupEntityPage(entity: ent, section: $section, onBack: { close() })
                 .transition(.move(edge: .trailing))

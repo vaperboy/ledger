@@ -112,7 +112,7 @@ struct GroupEntityManagement: View {
     // MARK: Open posts
 
     @ViewBuilder private func openPosts(_ co: Company) -> some View {
-        let all: [TeamOverview.Vacancy] = engine.teamOverview().vacancies
+        let all: [TeamOverview.Vacancy] = (store.teamOverviewNow ?? engine.teamOverview()).vacancies
         let mine: [TeamOverview.Vacancy] = all.filter { (v: TeamOverview.Vacancy) -> Bool in
             v.companyID == co.id || (entity.chainID != nil && v.chainID == entity.chainID)
         }

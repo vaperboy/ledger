@@ -10,6 +10,8 @@ struct HomeRankStrip: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// False while Home is a live but hidden tab: the Claim pulse (a forever animation) stops then.
+    @Environment(\.markerPageActive) private var pageActive
     @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
     @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
     var engine: GameEngine
@@ -22,8 +24,8 @@ struct HomeRankStrip: View {
     @State private var claimGlow = false
 
     var body: some View {
-        let st: Career.RankStatus = engine.careerStatus
-        let goals: [Career.Goal] = engine.careerNextGoals
+        let st: Career.RankStatus = store.memo("careerStatus") { $0.careerStatus } ?? engine.careerStatus
+        let goals: [Career.Goal] = store.memo("careerGoals") { $0.careerNextGoals } ?? engine.careerNextGoals
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
         let rankIndex: Int = st.rank.index
@@ -109,6 +111,7 @@ struct HomeRankStrip: View {
         }
         .buttonStyle(PressableStyle())
         .onChange(of: claimable) { _, on in pulse(on) }
+        .onChange(of: pageActive) { _, _ in pulse(claimable) }
         .onAppear { pulse(claimable) }
         .accessibilityLabel(streak > 0 ? "\(streak) day streak. " + line : "Start a streak today. " + line)
         .accessibilityIdentifier("home-mission")
@@ -134,7 +137,7 @@ struct HomeRankStrip: View {
     // MARK: Behaviour
 
     private func refreshDaily() {
-        daily = store.act { (e: inout GameEngine) in e.dailyGoal() } ?? nil
+        daily = store.dailyGoal()
     }
 
     private func claim() {
@@ -154,7 +157,10 @@ struct HomeRankStrip: View {
     }
 
     private func pulse(_ on: Bool) {
-        guard on, !reduceMotion else { claimGlow = false; return }
+        guard on, pageActive, !reduceMotion else {
+            if claimGlow { Motion.animate(nil) { claimGlow = false } }
+            return
+        }
         Motion.animate(Motion.pulseAnimation) { claimGlow = true }
     }
 

@@ -42,7 +42,7 @@ struct BusinessMenuLabel: View {
     var body: some View {
         HStack(spacing: Theme.Space.m) {
             LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: P.accent)
-            Text(title.tidyText).textStyle(.headline).lineLimit(1)
+            Text(title.tidyText).textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
             Spacer(minLength: Theme.Space.s)
             LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(90))
         }

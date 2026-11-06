@@ -50,7 +50,9 @@ enum ArtLibrary {
         guard let file = manifest(sheet)[cell]?["file"] as? String, let root = cellsRoot else { return nil }
         let key = (sheet.rawValue + "/" + cell) as NSString
         if let hit = store.cache.object(forKey: key) { return hit }
-        guard let img = UIImage(contentsOfFile: root + "/" + file) else { return nil }
+        guard let raw = UIImage(contentsOfFile: root + "/" + file) else { return nil }
+        // Decoded once here: a file image is otherwise decoded again on the main thread each time a row scrolls back in.
+        let img: UIImage = raw.preparingForDisplay() ?? raw
         store.cache.setObject(img, forKey: key)
         return img
     }

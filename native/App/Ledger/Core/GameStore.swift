@@ -108,7 +108,28 @@ struct TransferChip: Equatable, Identifiable {
 /// Owns the running game and the save files. Views read `engine` and call the methods here; no game rules live in views.
 @MainActor
 final class GameStore: ObservableObject {
-    @Published private(set) var engine: GameEngine?
+    @Published private(set) var engine: GameEngine? { didSet { memoBox.removeAll(keepingCapacity: true) } }
+    /// Engine reads that walk the whole game (net worth, company health, badges), kept until the engine changes: every published
+    /// change re-renders all live tabs, and without this each render repeated the walks.
+    private var memoBox: [String: Any] = [:]
+    /// The value of `compute` for the current engine, computed once per engine change (nil without a game).
+    func memo<T>(_ key: String, _ compute: (GameEngine) -> T) -> T? {
+        guard let e = engine else { return nil }
+        if let v = memoBox[key] as? T { return v }
+        let v: T = compute(e)
+        memoBox[key] = v
+        return v
+    }
+    /// Cached whole-game reads for screens that render often (Home, Group, Stats).
+    var netWorthNow: NetWorth? { memo("nw") { $0.netWorth } }
+    var netWorthBreakdownNow: NetWorthBreakdown? { memo("nwb") { $0.netWorthBreakdown() } }
+    /// The recorded history, decoded from the save's JSON once per engine change.
+    var dayHistoryNow: DayHistory? { memo("hist") { $0.dayHistory } }
+    func netWorthSeriesNow(days: Int) -> [Double] { memo("nws\(days)") { $0.netWorthSeries(days: days) } ?? [] }
+    /// The engine's ranked suggestions (at most 8), as Home's Needs you and the morning briefing read them.
+    var suggestionsNow: [Suggestion] { memo("sugg8") { $0.suggestions(limit: 8) } ?? [] }
+    /// Staff issues and vacancies of the whole group (walks every company's staff).
+    var teamOverviewNow: TeamOverview? { memo("team") { $0.teamOverview() } }
     /// Notices waiting to be read, oldest first. The first one is on screen as a popup; reading it shows the next.
     @Published private(set) var notices: [Toast] = []
     /// Red alerts (a company about to be force-sold): a see-through red popup, shown before anything else, closed only by its button.
@@ -153,8 +174,11 @@ final class GameStore: ObservableObject {
     /// The one payment notice of the day (a big customer payment), shown as a self-dismissing banner.
     @Published private(set) var paymentNotice: PaymentNotice?
     /// What each Phone app has shown the player so far (badges count what is newer), and what was already announced in a banner.
-    @Published var seenMarks = UpdateMarks.load("seen")
+    @Published var seenMarks: UpdateMarks = UpdateMarks.load("seen") { didSet { memoBox["badges"] = nil } }
     var announcedMarks = UpdateMarks.load("announced")
+    /// Item marks seen in the last moment, written to `seenMarks` together (ItemMarks.swift): one publish for a screenful of markers.
+    var pendingSeen: [String] = []
+    var seenFlushScheduled = false
     /// Per Phone app (by raw value): the marks when the app was opened, and the item ids that were new then (ItemMarks.swift).
     var visitBaselines: [String: UpdateMarks] = [:]
     @Published var visitFresh: [String: Set<String>] = [:]
@@ -329,7 +353,10 @@ final class GameStore: ObservableObject {
     }
 
     /// The open Inbox item that blocks Play, if any.
-    var blockingMessageID: Int? { engine?.blockingMessage?.id }
+    var blockingMessageID: Int? {
+        let id: Int = memo("blocking") { $0.blockingMessage?.id ?? Int.min } ?? Int.min
+        return id == Int.min ? nil : id
+    }
 
     /// "Play to end of week" is offered from week 2 (the engine's week counter is 0-based).
     var canPlayWeek: Bool {
@@ -491,6 +518,19 @@ final class GameStore: ObservableObject {
         engine = e
         save()
         return r
+    }
+
+    /// Today's daily mission. The engine stores a new mission only when the date has changed; only then is the engine published and
+    /// saved (Home asks after every day, and a full save plus an app-wide re-render each time was wasted work).
+    func dailyGoal() -> PlayerGoals.DailyGoal? {
+        guard var e = engine else { return nil }
+        let before: JSONValue? = e.state.rest["dy59"]
+        let goal: PlayerGoals.DailyGoal? = e.dailyGoal()
+        if e.state.rest["dy59"] != before {
+            engine = e
+            save()
+        }
+        return goal
     }
 
     func answer(_ message: Message, option: Int) {
@@ -862,9 +902,9 @@ final class GameStore: ObservableObject {
         }
     }
 
-    var unreadCount: Int { engine?.state.inbox.filter { !$0.isRead || $0.status == "open" }.count ?? 0 }
+    var unreadCount: Int { memo("unread") { $0.state.inbox.filter { !$0.isRead || $0.status == "open" }.count } ?? 0 }
     /// Decisions waiting for an answer: the number behind the Inbox app bubble and the Decisions tab badge.
-    var openDecisionCount: Int { engine?.ownerDecisions.count ?? 0 }
+    var openDecisionCount: Int { memo("openDecisions") { $0.ownerDecisions.count } ?? 0 }
 
     // MARK: Phone alerts and bubbles
 
@@ -894,17 +934,60 @@ extension String {
     /// Money text as the player should read it: "£220 k" becomes "£220k", thousands use a comma ("£8,026", never "£8 026"), and a
     /// symbol that follows the number (kr, zł, three-letter codes) keeps a non-breaking space ("1,234\u{00A0}kr"). Safe to run on
     /// engine-written news, notes and insights, so every amount on screen looks the same.
-    var tidyMoney: String {
-        var t = self
-        // A non-breaking space between digits is a thousands separator.
-        t = t.replacingOccurrences(of: "(?<=\\d)[\u{00A0}\u{202F}\u{2009}](?=\\d)", with: ",", options: .regularExpression)
-        // Engine sentences turn that separator into a plain space ("£7 745"): a currency symbol, then 1-3 digits, a space, 3 digits.
-        t = t.replacingOccurrences(of: "(?<=[£$€¥]\\d{1,3}) (?=\\d{3}(?!\\d))", with: ",", options: .regularExpression)
-        t = t.replacingOccurrences(of: "(?<=[£$€¥]\\d{1,3},\\d{3}) (?=\\d{3}(?!\\d))", with: ",", options: .regularExpression)
-        for unit in ["k", "M", "bn"] {
-            t = t.replacingOccurrences(of: "(?<=\\d) \(unit)\\b", with: unit, options: .regularExpression)
+    var tidyMoney: String { TidyMoney.tidy(self) }
+}
+
+/// The rules behind `tidyMoney`. Every amount and engine sentence on screen passes through it on every render, so the regexes are
+/// compiled once, text no rule can touch returns at once, and results are remembered (the same strings come back render after render).
+enum TidyMoney {
+    private static let rules: [(regex: NSRegularExpression, template: String)] = {
+        var list: [(String, String)] = [
+            // A non-breaking space between digits is a thousands separator.
+            ("(?<=\\d)[\u{00A0}\u{202F}\u{2009}](?=\\d)", ","),
+            // Engine sentences turn that separator into a plain space ("£7 745"): a currency symbol, then 1-3 digits, a space, 3 digits.
+            ("(?<=[£$€¥]\\d{1,3}) (?=\\d{3}(?!\\d))", ","),
+            ("(?<=[£$€¥]\\d{1,3},\\d{3}) (?=\\d{3}(?!\\d))", ","),
+        ]
+        for unit in ["k", "M", "bn"] { list.append(("(?<=\\d) \(unit)\\b", unit)) }
+        list.append(("(?<=\\d|\\dk|\\dM|\\dbn) (?=(kr|zł|(?!CEO|CFO|COO|CTO|VAT|PAYE)[A-Z]{3})(?![A-Za-z]))", "\u{00A0}"))
+        return list.compactMap { (p: (String, String)) -> (regex: NSRegularExpression, template: String)? in
+            guard let r = try? NSRegularExpression(pattern: p.0) else { return nil }
+            return (r, p.1)
         }
-        t = t.replacingOccurrences(of: "(?<=\\d|\\dk|\\dM|\\dbn) (?=(kr|zł|(?!CEO|CFO|COO|CTO|VAT|PAYE)[A-Z]{3})(?![A-Za-z]))", with: "\u{00A0}", options: .regularExpression)
+    }()
+    private static let lock = NSLock()
+    private static var cache: [String: String] = [:]
+    private static let digits = CharacterSet.decimalDigits
+
+    static func tidy(_ s: String) -> String {
+        guard mayChange(s) else { return s }
+        lock.lock()
+        let hit: String? = cache[s]
+        lock.unlock()
+        if let hit { return hit }
+        var t: String = s
+        for rule in rules {
+            let range = NSRange(t.startIndex..<t.endIndex, in: t)
+            t = rule.regex.stringByReplacingMatches(in: t, options: [], range: range, withTemplate: rule.template)
+        }
+        lock.lock()
+        if cache.count > 4000 { cache.removeAll(keepingCapacity: true) }
+        cache[s] = t
+        lock.unlock()
         return t
+    }
+
+    /// Every rule needs a space (or a non-breaking one) right after a digit, or after a digit and "k", "M" or "bn".
+    static func mayChange(_ s: String) -> Bool {
+        var p1: Unicode.Scalar = " ", p2: Unicode.Scalar = " ", p3: Unicode.Scalar = " "
+        for c in s.unicodeScalars {
+            if c == " " || c == "\u{00A0}" || c == "\u{202F}" || c == "\u{2009}" {
+                if digits.contains(p1) { return true }
+                if (p1 == "k" || p1 == "M") && digits.contains(p2) { return true }
+                if p1 == "n" && p2 == "b" && digits.contains(p3) { return true }
+            }
+            p3 = p2; p2 = p1; p1 = c
+        }
+        return false
     }
 }

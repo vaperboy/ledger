@@ -85,6 +85,7 @@ struct LuxuryChip: View {
     private var P: OutsidePalette { .luxury }
     var body: some View {
         Text(text).textStyle(.label, tint: filled ? P.onAccent : P.ink)
+            .environment(\.containerInk, filled ? P.onAccent : nil)
             .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
             .background(Capsule().fill(filled ? P.accent : P.scrim))
     }

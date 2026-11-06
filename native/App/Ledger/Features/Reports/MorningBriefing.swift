@@ -55,7 +55,7 @@ struct DailyReportPopup: View {
 
     private var insight: BriefingInsight {
         if let e = store.engine {
-            let list: [Suggestion] = e.suggestions(limit: 8).filter { $0.tone != .neutral }
+            let list: [Suggestion] = store.suggestionsNow.filter { $0.tone != .neutral }
             if let s = list.first {
                 let label: String = s.tone == .good ? "Opportunity" : "Needs your attention"
                 let tint: Color = s.tone == .bad ? Theme.loss : s.tone == .warn ? Theme.caution : Theme.gain

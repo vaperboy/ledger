@@ -135,7 +135,7 @@ struct LockedBlock: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(spacing: Theme.Space.s) {
                     LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.small, tint: Theme.inkFaint).frame(width: 20)
-                    Text(title).textStyle(.headline, tint: Theme.inkSoft).lineLimit(1)
+                    Text(title).textStyle(.headline, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     Spacer(minLength: 0)
                 }
                 Text(reason).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)

@@ -109,7 +109,7 @@ struct CompanyOperations: View {
     // MARK: Below: paperwork and what needs you
 
     private var paperworkIssues: [TeamOverview.Issue] {
-        engine.teamOverview().issues.filter { $0.companyID == company.id && $0.kind == .paperwork }
+        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == company.id && $0.kind == .paperwork }
     }
 
     @ViewBuilder private var notes: some View {

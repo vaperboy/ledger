@@ -52,8 +52,11 @@ struct CompaniesView: View {
         NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
             Group {
                 if let e = store.engine {
-                    let cos = e.state.companies.filter { $0.type != "hold" && $0.status != .sold }
-                    let rows = cos.map { (co: $0, h: e.companyHealth($0)) }.sorted(by: order)
+                    // Health reads every company's books: once per engine change, not on every render of the always-alive Home tab.
+                    let healths: [(co: Company, h: CompanyHealth)] = store.memo("homeRows") { (g: GameEngine) -> [(co: Company, h: CompanyHealth)] in
+                        g.state.companies.filter { $0.type != "hold" && $0.status != .sold }.map { (co: $0, h: g.companyHealth($0)) }
+                    } ?? []
+                    let rows = healths.sorted(by: order)
                     homeScreen(e, rows: rows)
                     .id(store.rootToken(.company))
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }

@@ -107,13 +107,16 @@ extension GameStore {
     }
 
     /// Every launcher app with a badge above zero.
+    /// Kept until the engine or `seenMarks` changes (the tab bar, Home and the launcher read it on every render).
     var phoneBadges: [PhoneApp: Int] {
-        var out: [PhoneApp: Int] = [:]
-        for app in PhoneApp.launcher {
-            let n: Int = appBadge(app)
-            if n > 0 { out[app] = n }
-        }
-        return out
+        memo("badges") { (_: GameEngine) -> [PhoneApp: Int] in
+            var out: [PhoneApp: Int] = [:]
+            for app in PhoneApp.launcher {
+                let n: Int = appBadge(app)
+                if n > 0 { out[app] = n }
+            }
+            return out
+        } ?? [:]
     }
 
     /// The number on the Phone tab: every badge added up.
