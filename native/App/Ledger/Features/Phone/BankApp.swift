@@ -38,13 +38,14 @@ enum BankGlyph {
 
 /// The Bank app: pick an account, then manage it. It shows both screens itself so the header's round back button can go from an account
 /// to the list before it leaves the app; links from elsewhere (a company's "Open in Bank", an Inbox warning) arrive as `store.appRequest`.
+/// The first visit opens on the account chooser; after that the full list is open, with every account reachable (no log-out to swap).
 struct BankApp: View {
     private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    /// The account the player logged in as; nil shows the picker (the first page). `account` is nil on the all-accounts overview.
+    /// The first account opened; nil shows the chooser (the first page). `account` is nil on the all-accounts overview.
     @State private var session: BankAccountID?
     @State private var account: BankAccountID?
     @State private var tab: BankTab = .account
@@ -56,7 +57,7 @@ struct BankApp: View {
             } else if let account {
                 BankAccountScreen(id: account, tab: $tab)
             } else {
-                BankAccountsScreen(lockedTo: session) { id in tab = .account; account = id }
+                BankAccountsScreen { id in tab = .account; account = id }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -82,12 +83,7 @@ struct BankApp: View {
     private var header: some View {
         let t: (String, String) = titles
         let label: String = account == nil ? "Back to Phone" : "Back to accounts"
-        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label) {
-            if session != nil {
-                SmallOutlineButton(title: "Log out") { logOut() }
-                    .accessibilityIdentifier("bank-log-out")
-            }
-        }
+        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label) { EmptyView() }
     }
 
     private var titles: (String, String) {
@@ -106,10 +102,6 @@ struct BankApp: View {
         if account != nil { Motion.animate(Motion.quickAnimation) { account = nil } } else { dismiss() }
     }
 
-    private func logOut() {
-        Motion.animate(Motion.quickAnimation) { account = nil; session = nil; tab = .account }
-    }
-
     private func take() {
         guard let r = store.takeBankRequest() else { return }
         tab = r.tab
@@ -118,22 +110,19 @@ struct BankApp: View {
     }
 }
 
-/// A caps label over a card, the section style of the Bank app.
+/// A caps label over a group: the system `CardSection` under the Bank's older name.
 struct BankCard<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String = ""
     var trailing: String = ""
     @ViewBuilder var content: () -> Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if !title.isEmpty {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(title).capsLabel()
-                    Spacer(minLength: 8)
-                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint) }
-                }
-            }
-            Card(padding: 14, radius: Theme.Radius.hero) { content() }
+        if title.isEmpty {
+            Card(padding: 14) { VStack(alignment: .leading, spacing: Theme.Space.s) { content() } }
+        } else {
+            CardSection(title: title, trailing: {
+                if !trailing.isEmpty { Text(trailing.tidyText).textStyle(.caption, tint: P.inkFaint) }
+            }) { content() }
         }
     }
 }

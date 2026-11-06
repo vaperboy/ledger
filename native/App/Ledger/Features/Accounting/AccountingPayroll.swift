@@ -3,8 +3,8 @@ import GameCore
 import Countries
 import Simulation
 
-// Accounting > Payroll: Overview, Employees, Timesheets and Run payroll. Payroll administration lives here; the Bank holds the money and executes the
-// payment, and the weekly simulation books the run. Running payroll from this screen is the existing payroll action (`runPayrollFromAccounting`),
+// Accounting > Payroll: Overview, Employees, Timesheets and Run payroll. Payroll administration lives here, pay day included; the Bank holds the
+// money, executes the payment and links here, and the weekly simulation books the run. Running payroll from this screen is the existing payroll action (`runPayrollFromAccounting`),
 // never a second one, so a period cannot be paid twice, and the responsible person is derived (qualified accountant, else a suitable manager, else you).
 
 struct AcctPayroll: View {
@@ -58,7 +58,8 @@ struct AcctPayroll: View {
                            message: "Payroll starts when you hire someone or pay yourself a salary. It is run from here.")
             } else {
                 nextPayroll(o, r, fmt)
-                payday(o, fmt)
+                payday(co, o, fmt)
+                AcctPayday(engine: e, company: co)
                 who(co, o, fmt)
                 CompanyPeopleCost(engine: e, company: co)
             }
@@ -102,28 +103,33 @@ struct AcctPayroll: View {
 
     // MARK: Pay day
 
-    private func payday(_ o: PayrollOverview, _ fmt: BankFmt) -> some View {
+    /// Cash against what pay day needs. The pay date and the total are in the panel above, so they are not repeated here.
+    private func payday(_ co: Company, _ o: PayrollOverview, _ fmt: BankFmt) -> some View {
         let notCovered: Bool = o.companyCash < o.estimate
-        return VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Pay day")
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
             AcctPanel(padding: 14) {
-                FlatRow(label: "Next pay day", value: o.nextPayText, rule: false)
+                FlatRow(label: "Company cash", value: fmt.full(o.companyCash), sub: "Expected by pay day: " + fmt.full(o.estimate), tint: notCovered ? P.loss : P.ink, rule: false)
                 FlatRow(label: "Wages owed now", value: fmt.full(o.wagesOwed), sub: "Booked, not yet paid out")
-                FlatRow(label: "Expected by pay day", value: fmt.full(o.estimate))
-                FlatRow(label: "Company cash", value: fmt.full(o.companyCash), tint: notCovered ? P.loss : P.ink)
                 FlatRow(label: "Approval", value: approvalText(o), sub: approvalNote(o))
             }
-            paydayWarning(o, notCovered, fmt)
+            paydayWarning(co, o, notCovered, fmt)
         }
     }
 
-    @ViewBuilder private func paydayWarning(_ o: PayrollOverview, _ notCovered: Bool, _ fmt: BankFmt) -> some View {
-        if o.wageShortfall > 0.5 {
-            AcctNotice(glyph: Glyph.warning, title: "Wages short by \(fmt.short(o.wageShortfall))",
-                       message: "The last payroll could not be paid in full. Move money into the company in the Bank, then pay it from Run payroll.", tint: P.loss)
-        } else if notCovered {
-            AcctNotice(glyph: Glyph.warning, title: "Cash does not cover the next payroll yet",
-                       message: "Put in \(fmt.short(o.estimate - o.companyCash)) more before pay day, or part of the wages stays unpaid.", tint: P.caution)
+    @ViewBuilder private func paydayWarning(_ co: Company, _ o: PayrollOverview, _ notCovered: Bool, _ fmt: BankFmt) -> some View {
+        if o.wageShortfall > 0.5 || notCovered {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                if o.wageShortfall > 0.5 {
+                    AcctNotice(glyph: Glyph.warning, title: "Wages short by \(fmt.short(o.wageShortfall))",
+                               message: "The last payroll could not be paid in full. Move money into the company, then pay it from Run payroll.", tint: P.loss)
+                } else {
+                    AcctNotice(glyph: Glyph.warning, title: "Cash does not cover the next payroll yet",
+                               message: "Put in \(fmt.short(o.estimate - o.companyCash)) more before pay day, or part of the wages stays unpaid.", tint: P.caution)
+                }
+                Button("Move money in the Bank") { store.openBank(.company(co.id)) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("acct-payroll-move-money")
+            }
         }
     }
 
@@ -337,6 +343,8 @@ struct AcctPayroll: View {
                 if !enough {
                     Text("The account does not cover this yet. Move money in through the Bank first, or part of the wages stays unpaid.").font(.system(size: 12.5)).foregroundStyle(P.caution)
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+                    Button("Move money in the Bank") { store.openBank(.company(m.companyID)) }
+                        .buttonStyle(SecondaryButtonStyle(size: .compact)).padding(.top, Theme.Space.xs)
                 }
             }
         }
@@ -491,6 +499,69 @@ struct AcctPayrollRunDetail: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: Pay day
+
+/// The company's pay day, set here with the rest of payroll (the Bank links to it): the choices, when staff are next paid and when rent
+/// and supplier bills follow. The engine's `setPayday` applies a change now, or after this month's payroll when that is still unpaid.
+struct AcctPayday: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
+    var engine: GameEngine
+    var company: Company
+
+    var body: some View {
+        if let info = engine.paydayInfo(companyID: company.id), info.hasPayroll {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(alignment: .firstTextBaseline) {
+                    AcctLabel(text: "Pay day")
+                    Spacer(minLength: Theme.Space.s)
+                    Text(info.dayLabel).textStyle(.caption, tint: P.inkFaint)
+                }
+                AcctPanel {
+                    ForEach(Array(info.choices.enumerated()), id: \.element.id) { (n: Int, c: PaydayChoice) in
+                        VStack(spacing: 0) {
+                            if n > 0 { AcctDivider() }
+                            LedgerRow(title: c.label, subtitle: timing(c, info), pill: c.isCurrent ? "Current" : (c.isQueued ? "Queued" : nil), pillTone: .good,
+                                      chevron: false, inset: 14, identifier: "acct-payday-\(c.day)", action: { choose(c, info) })
+                        }
+                    }
+                }
+                Text(summary(info)).textStyle(.caption, tint: info.isLate ? P.loss : (info.pendingLabel != nil ? P.caution : P.inkFaint))
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.xxs)
+            }
+        }
+    }
+
+    private func summary(_ info: PaydayInfo) -> String {
+        if info.isLate { return "Wages are late, so a change waits until they are paid." }
+        if let q = info.pendingLabel { return "Changing to the \(q.lowercased()) after this month's payroll is paid. Staff need notice." }
+        return "Staff are next paid on \(info.nextPayText); rent and supplier bills follow on \(info.billText). A weekend pay day is paid the Friday before."
+    }
+
+    private func timing(_ c: PaydayChoice, _ info: PaydayInfo) -> String {
+        let gap: String = c.daysBeforeBills <= 0 ? "the same day as rent and bills" : "\(c.daysBeforeBills) days before rent and bills"
+        return (info.changesImmediately ? "First paid " : "Then paid ") + c.firstPayText + ", " + gap
+    }
+
+    private func choose(_ c: PaydayChoice, _ info: PaydayInfo) {
+        guard !c.isCurrent || info.pendingDay != nil else { return }
+        let name: String = c.label.lowercased()
+        let current: String = info.dayLabel.lowercased()
+        let nextPay: String = info.nextPayText
+        let first: String = c.firstPayText
+        let id: Int = company.id
+        let day: Int = c.day
+        switch store.act({ $0.setPayday(companyID: id, day: day) }) {
+        case .changedNow?: Haptics.success(); store.show("Pay day is now the \(name). First paid \(first).", tone: "good")
+        case .queued?: Haptics.success(); store.show("Pay day moves to the \(name) after this month's payroll (\(nextPay)).", tone: "good")
+        case .queueCleared?: Haptics.tap(); store.show("The waiting change was dropped. Pay day stays the \(current).", tone: "n")
+        case .unchanged?: store.show("That is already the pay day.", tone: "n")
+        case nil: break
+        default: Haptics.warning(); store.show("The pay day could not be changed.", tone: "warn")
         }
     }
 }
