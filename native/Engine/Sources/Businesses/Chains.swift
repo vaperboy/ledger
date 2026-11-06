@@ -154,8 +154,9 @@ public enum Chains {
                     s.note("\(s.companies[i].name) joined \(ch["name"].string) but keeps its own way of selling: \(why)", tone: "warn", companyID: companyID)
                 }
             }
-            SupplyDeals.applyChainRules(&s, d, storeID: companyID)
         }
+        // The supplier rule binds a store that is still being set up too: it has no changeover cost and nothing re-applies it at opening.
+        if let d = data { SupplyDeals.applyChainRules(&s, d, storeID: companyID) }
     }
 
     /// One store's line in a chain-wide change of a standard.

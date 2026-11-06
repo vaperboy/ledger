@@ -38,8 +38,8 @@ final class MissionsReworkTests: XCTestCase {
         var (e, _) = try setupGame(ladder: false)
         days(&e, 14)
         _ = e.celebrateDailyGoal()
-        // The 80M test funding makes net-worth milestones fire; those are the separate wealth ladder, not setup awards.
-        let setupAwards = e.pendingAwards().filter { !$0.title.contains("Net worth") && !$0.title.contains("million") }
+        // The 80M test funding makes net-worth and cash milestones fire (career goals, art "goal.career"); those are results, not setup awards.
+        let setupAwards = e.pendingAwards().filter { !$0.title.contains("Net worth") && !$0.title.contains("million") && $0.artKey != "goal.career" }
         XCTAssertLessThanOrEqual(setupAwards.count, 1, "\(setupAwards.map { $0.title })")
         let trophies = Trophies.entries(e.state).filter { $0.reachedWeek != nil }.map { $0.id }
         XCTAssertFalse(trophies.contains("cust") || trophies.contains("emp") || trophies.contains("mgr") || trophies.contains("branch"), "\(trophies)")
@@ -49,7 +49,7 @@ final class MissionsReworkTests: XCTestCase {
         var (e, _) = try setupGame(ladder: false)
         days(&e, 7)
         XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
-        XCTAssertFalse(e.pendingCelebrations.contains { $0.kind == "goal" }, "no popup for a setup step")
+        XCTAssertFalse(e.pendingCelebrations.contains { $0.kind == "goal" && $0.art != "goal.career" }, "no popup for a setup step (career cash goals are results and may fire on the test funding)")
         XCTAssertFalse(PlayerGoals.firstSteps(e.state)!.first { $0.id == "co" }!.claimed, "the checklist still lists it")
     }
 

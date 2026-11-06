@@ -88,7 +88,9 @@ final class LifeStoriesTests: XCTestCase {
         let est = try XCTUnwrap(CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: t.needsLimitedCompany ? .limited : .soleTrader,
                                                       size: CompanySetup.recommendedSize(t, city: city), state: probe, data: e.data))
         XCTAssertEqual(r.cost, est.total)
-        let least = est.documents + est.premises + est.property + est.wait + est.registration + est.shareCapital + est.abroad
+        // what must be paid to start at all: papers, the cheapest place, registration, capital, and the required kit's upfront part
+        let least = est.documents + est.premisesLeast + est.property + est.wait + est.registration + est.shareCapital + est.abroad + est.requiredEquipmentUpfront + est.requiredVehicles
+        XCTAssertEqual(least, est.minimumToOpen, accuracy: 0.01)
         XCTAssertEqual(r.shortfall, max(0, least - Payments.liquid(e.state)), accuracy: 0.01)
         // and nothing is refused: an unaffordable trade can still be registered
         var e2 = e
