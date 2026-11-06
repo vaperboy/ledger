@@ -13,10 +13,12 @@ extension GameState {
         }
     }
 
-    /// A news item, newest first, at most 60. Original: `news(txt, tone)`.
-    public mutating func news(_ text: String, tone: String = "n") {
+    /// A news item, newest first, at most 60. `companyID` (0 = none) is the company of yours the item is about, for the link in the news app.
+    public mutating func news(_ text: String, tone: String = "n", companyID: Int = 0) {
         var list = rest["news"]?.array ?? []
-        list.insert(.object(["w": .number(Double(week)), "t": .string(text), "tone": .string(tone)]), at: 0)
+        var item: [String: JSONValue] = ["w": .number(Double(week)), "t": .string(text), "tone": .string(tone)]
+        if companyID != 0 { item["co"] = .number(Double(companyID)) }
+        list.insert(.object(item), at: 0)
         if list.count > 60 { list.removeLast(list.count - 60) }
         rest["news"] = .array(list)
     }

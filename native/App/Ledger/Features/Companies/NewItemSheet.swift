@@ -31,7 +31,8 @@ struct NewItemSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(isService ? "Add a service" : "Add a product").popupText(.title)
             ForEach(list.options) { (o: NewItemOption) -> AnyView in AnyView(optionRow(o, list.hasMarketAdvisor, cur)) }
-            if list.options.isEmpty { Text("Nothing new to add right now.").popupText(.subtitle) }
+            catalogueRows(e, list)
+            if list.options.isEmpty && e.retailAddableItems(companyID: companyID).isEmpty { Text("Nothing new to add right now.").popupText(.subtitle) }
             if !list.hasMarketAdvisor { lockedLine }
             ownName
         }
@@ -106,6 +107,38 @@ struct NewItemSheet: View {
             let r = store.act { $0.addNewItem(companyID: id, optionID: oid) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show(dev ? "Started developing \(name)." : "Added \(name).", tone: "good"); onClose(); if !dev { onAdded?(name) } }
+        })
+    }
+
+    /// Items of the trade's real range this company does not sell yet (shops and garages), added at once.
+    @ViewBuilder private func catalogueRows(_ e: GameEngine, _ list: NewItemOptionList) -> some View {
+        let taken: Set<String> = Set(list.options.map { (o: NewItemOption) -> String in o.name.lowercased() })
+        let extra: [RetailItems.Def] = e.retailAddableItems(companyID: companyID)
+            .filter { (d: RetailItems.Def) -> Bool in d.isService == isService && !taken.contains(d.name.lowercased()) }
+        ForEach(extra, id: \.id) { (d: RetailItems.Def) in
+            Button { askCatalogue(d) } label: {
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(d.name).popupText(.rowValue).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        Text("From the trade's range, ready at once").popupText(.caption).lineLimit(2)
+                    }
+                    Spacer(minLength: 4)
+                }
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+        }
+    }
+
+    private func askCatalogue(_ d: RetailItems.Def) {
+        let id: Int = companyID
+        let did: String = d.id
+        let name: String = d.name
+        pending = PendingAction(title: "Add \(name)?", message: "It goes on sale at once.", button: "Add", alwaysAsk: true, run: {
+            let r = store.act { $0.addRetailItem(companyID: id, defID: did) }
+            if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+            else { Haptics.success(); store.show("Added \(name).", tone: "good"); onClose(); onAdded?(name) }
         })
     }
 

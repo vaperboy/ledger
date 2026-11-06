@@ -130,7 +130,7 @@ extension EventEngine {
         if fx["owner"].double != 0 {
             if fx["owner"].double > 0 { Payments.playerReceives(&s, fx["owner"].double, label: "Event") } else { Payments.playerPays(&s, -fx["owner"].double, label: "Event") }
         }
-        if !fx["news"].isNull { s.news("\(s.companies[i].name): \(fx["news"].string)") }
+        if !fx["news"].isNull { s.news("\(s.companies[i].name): \(fx["news"].string)", companyID: s.companies[i].id) }
         if fx["memb"].double != 0, !s.companies[i].value("fm")["memb"].isNull {
             var fm = s.companies[i].value("fm"); fm["memb"] = .number(fm["memb"].double * fx["memb"].double); s.companies[i].set("fm", fm)
         }

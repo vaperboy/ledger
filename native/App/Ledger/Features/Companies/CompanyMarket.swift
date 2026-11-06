@@ -71,11 +71,22 @@ struct CompanyMarket: View {
         switch p {
         case .overview:
             position
+            analystRow
             MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id, limit: 2))
         case .competitors: rankedRivals
         case .prices: priceRows
         case .news: MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id, limit: 12))
         case .research: Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
+        }
+    }
+
+    /// What a market analyst would give here, shown while the company has none and its trade has a market to measure.
+    @ViewBuilder private var analystRow: some View {
+        let v: MarketMap.HireVerdict = engine.marketAnalystVerdict(companyID: company.id)
+        if v.ok {
+            Card(padding: 12, radius: Theme.Radius.row) {
+                FlatRow(label: v.title, value: "", sub: v.text, rule: false)
+            }
         }
     }
 
@@ -616,6 +627,7 @@ struct MarketView: View {
                 VStack(spacing: 6) {
                     weightRow("Share of all business loans", weight.debt > 0 ? String(format: "%.2f%%", weight.loanShare * 100) : "None")
                     weightRow("Jobs you provide", "\(weight.jobs)")
+                    if let r = e.yourRanking() { weightRow("Your rank by sales in your country", "\(r.rank) of \(r.of)") }
                     weightRow("Regulator attention", weight.attention)
                     Text(note)
                         .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)

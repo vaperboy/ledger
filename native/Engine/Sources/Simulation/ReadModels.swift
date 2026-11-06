@@ -27,6 +27,8 @@ public struct NewsItem: Identifiable, Equatable, Sendable {
     public var week: Int
     public var text: String
     public var tone: String
+    /// The company of yours the item is about (0 = none).
+    public var companyID: Int = 0
 }
 
 public struct DepositInfo: Identifiable, Equatable, Sendable {
@@ -63,7 +65,7 @@ public extension GameEngine {
     }
 
     var news: [NewsItem] {
-        (state.rest["news"]?.array ?? []).enumerated().map { NewsItem(id: $0.offset, week: $0.element["w"].int, text: localized($0.element["t"].string), tone: $0.element["tone"].string) }
+        (state.rest["news"]?.array ?? []).enumerated().map { NewsItem(id: $0.offset, week: $0.element["w"].int, text: localized($0.element["t"].string), tone: $0.element["tone"].string, companyID: $0.element["co"].int) }
     }
 
     var deposits: [DepositInfo] {
