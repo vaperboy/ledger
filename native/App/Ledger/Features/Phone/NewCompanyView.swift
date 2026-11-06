@@ -5,7 +5,7 @@ import Businesses
 import Finance
 import Simulation
 
-/// New company, step 1 of 3: choose the trade. A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
+/// New company, step 1 of 3: choose the trade (step 2 is the company, step 3 the review and payment). A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
 /// `tradePickerRows` supply every figure and the reason a trade cannot be started. Holding, franchise, abroad and club moved to
 /// Group (Add to group, and Expansion on a company's page).
 struct NewCompanyView: View {
@@ -41,7 +41,7 @@ struct NewCompanyView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar(picked) }
-            .appScreen(title: "New company", subtitle: "Choose the trade", tab: .company)
+            .appScreen(title: "New company", subtitle: "Step 1 of 3 · choose the trade", tab: .company)
             .navigationDestination(isPresented: $goNext) {
                 if let id = selectedID { NewCompanySetupView(tradeID: id, cityID: city) }
             }
@@ -82,8 +82,8 @@ struct NewCompanyView: View {
 
     @ViewBuilder private func table(_ e: GameEngine, _ shown: [TradePickerRow]) -> some View {
         if shown.isEmpty {
-            Text(rows.isEmpty ? "No trades are on offer here." : "No trade in this group.")
-                .font(.system(size: 13)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading)
+            EmptyState(glyph: Glyph.market, title: rows.isEmpty ? "No trades are on offer here." : "No trade in this group.",
+                       message: rows.isEmpty ? "Try another city." : "Pick another sector above.")
         } else {
             SharpTable {
                 TableHeader(columns: columns)
@@ -131,23 +131,8 @@ struct NewCompanyView: View {
         }
     }
 
+    /// Step 1's one action; it says why it waits until a trade is picked.
     private func bottomBar(_ picked: TradePickerRow?) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Selected").font(.system(size: 10.5)).tracking(1).textCase(.uppercase).foregroundStyle(Theme.ivoryFaint)
-                if let p = picked {
-                    let from: String = p.startUpCost.map { store.money($0) } ?? ""
-                    Text("\(p.name) · from \(from)").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                } else {
-                    Text("Pick a trade above").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted)
-                }
-            }
-            Spacer(minLength: 8)
-            QuietButton(title: "Continue ›") { if picked != nil { goNext = true } }
-                .opacity(picked == nil ? 0.4 : 1).disabled(picked == nil)
-        }
-        .padding(.horizontal, 18).padding(.vertical, 10)
-        .background(Theme.page)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+        NewCompanyStepBar(title: picked.map { "Continue · \($0.name)" } ?? "Continue", blockedReason: picked == nil ? "Pick a trade above." : nil) { goNext = true }
     }
 }

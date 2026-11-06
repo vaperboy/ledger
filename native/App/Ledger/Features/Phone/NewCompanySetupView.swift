@@ -35,8 +35,8 @@ struct NewCompanyDraft: Equatable {
     }
 }
 
-/// New company, the detailed set-up behind "Choose each item yourself": the details of the company. Name, city, legal form, premises, then the exact cost today and the estimated
-/// monthly cost after opening. Nothing is paid here; "Register" goes to the review.
+/// New company, step 2 of 3 in detail (behind "Customise"): name, city, legal form, premises and each item, then the estimated
+/// monthly cost after opening. Nothing is paid here; the bar goes to the review.
 struct NewCompanyDetailedSetupView: View {
     private enum Way: String, Hashable { case rent = "Rent", buy = "Buy", home = "Home" }
     private enum FormChoice: String, Hashable { case sole = "Sole trader", limited = "Limited company" }
@@ -76,19 +76,20 @@ struct NewCompanyDetailedSetupView: View {
                     if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
                     if let monthly { monthlyCard(monthly) }
                     if !brands.isEmpty {
-                        NavigationLink { TradeDetailView(tradeID: t.id) } label: {
-                            CardRow(glyph: Glyph.market, title: "Under a franchise brand instead", subtitle: "\(brands.count) \(brands.count == 1 ? "brand is" : "brands are") looking for operators in this trade")
-                        }.buttonStyle(PressableStyle())
+                        NavigationLink { TradeDetailView(tradeID: t.id, startUnderBrand: true) } label: {
+                            LedgerRow(leading: .glyph(Glyph.market), title: "Under a franchise brand instead", subtitle: "\(brands.count) \(brands.count == 1 ? "brand is" : "brands are") looking for operators in this trade", chevron: true)
+                        }.buttonStyle(AcctPressStyle())
                     }
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) { registerBar(shown, plan) }
-            .appScreen(title: "Set up: \(t.name)", subtitle: "Step 2 of 3 · details of the company", tab: .company)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) { registerBar(plan) }
+            .appScreen(title: "Set up: \(shown)", subtitle: "Step 2 of 3 · customise", tab: .company)
             .navigationDestination(isPresented: $goReview) { NewCompanyReviewView(draft: draft) }
         } else {
-            Text("This trade is not available.").foregroundStyle(Theme.ivoryMuted).appScreen(title: "Set up", tab: .company)
+            EmptyState(title: "This trade is not available.").appScreen(title: "Set up", tab: .company)
         }
     }
 
@@ -274,24 +275,18 @@ struct NewCompanyDetailedSetupView: View {
         }
     }
 
-    private func registerBar(_ shown: String, _ plan: NewCompanyPlan?) -> some View {
-        let ok: Bool = plan != nil && (plan?.registrationShortfall ?? 0) <= 0
-        return HStack {
-            QuietButton(title: "Register \(shown) ›", fullWidth: true) { if ok { goReview = true } }
-                .opacity(ok ? 1 : 0.4).disabled(!ok)
-        }
-        .padding(.horizontal, 18).padding(.vertical, 10)
-        .background(Theme.page)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+    /// Goes to the review: nothing is paid on this step.
+    private func registerBar(_ plan: NewCompanyPlan?) -> some View {
+        let reason: String? = plan == nil ? "This company can no longer be priced."
+            : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash in your current account. Move money from savings in Bank." : nil)
+        return NewCompanyStepBar(title: "Review · \(store.money(plan?.payToday ?? 0))", blockedReason: reason, identifier: "new-company-review") { goReview = true }
     }
 }
 
-/// New company, step 3 of 3: a compact confirmation before any money moves. The engine does the registering; a refusal is shown as it is.
+/// New company, step 3 of 3: one total, what is left and the running cost, then the details and risks before any money moves.
+/// The engine does the registering; a refusal is shown as it is.
 struct NewCompanyReviewView: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var draft: NewCompanyDraft
     @State private var working = false
     @State private var refusal: String?
@@ -299,69 +294,80 @@ struct NewCompanyReviewView: View {
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[draft.tradeID], let plan = draft.plan(e) {
             let cityName: String = e.homeCountry.cities.first { $0.id == draft.cityID }?.name ?? "town"
-            let costs: StartUpCostBreakdown? = draft.costs(e)
             let monthly: MonthlyFixedCostEstimate? = draft.monthly(e)
             let company: String = draft.name.isEmpty ? t.name : draft.name
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        line("Company", company)
-                        line("Trade", "\(t.name) in \(cityName)")
-                        line("Legal form", draft.form == .limited ? "Limited company" : "Sole trader")
-                        line("Premises", premisesText(plan))
-                        line("Needed now", store.money(plan.neededNow))
-                        line("Recommended investment", store.money(plan.recommendedInvestment))
-                        line("Of which must be paid", store.money(plan.mandatoryTotal))
-                        line("Optional extras you chose", store.money(plan.optionalTotal))
-                        line("Working capital", store.money(plan.workingCapital))
-                        if plan.estimate.shareCapital > 0 { line("Share capital (locked in)", store.money(plan.estimate.shareCapital)) }
-                        line("Paid from", "Personal account")
-                        line("Left in your accounts", store.money(plan.accountsAfter))
-                        line("Your reserve", store.money(plan.personalReserve))
-                        if let monthly { line("Monthly after opening", "about " + store.money(monthly.total)) }
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                    Figure(label: "Paid today from your personal account", value: store.money(plan.payToday), note: "\(t.name) in \(cityName)", size: .display)
+                    FigureRow(items: [
+                        KeyFigures.Item(label: "Left after", value: store.money(plan.accountsAfter)),
+                        KeyFigures.Item(label: "Your reserve", value: store.money(plan.personalReserve)),
+                        KeyFigures.Item(label: "Monthly", value: monthly.map { "about " + store.money($0.total) } ?? "n/a")
+                    ])
+                    LedgerSection("The company") {
+                        VStack(spacing: 0) {
+                            line("Legal form", draft.form == .limited ? "Limited company" : "Sole trader")
+                            Hairline()
+                            line("Premises", premisesText(plan))
+                        }
                     }
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-                    if plan.shortfall > 0 {
-                        Text("The company is \(store.money(plan.shortfall)) short of that scope: set-up pays the mandatory costs first, skips what the cash cannot carry and opening waits for money.")
-                            .font(.system(size: 12.5)).foregroundStyle(Theme.caution).fixedSize(horizontal: false, vertical: true)
+                    LedgerSection("The cost") {
+                        VStack(spacing: 0) {
+                            line("Needed now", store.money(plan.neededNow))
+                            Hairline()
+                            line("Recommended investment", store.money(plan.recommendedInvestment))
+                            Hairline()
+                            line("Of which must be paid", store.money(plan.mandatoryTotal))
+                            Hairline()
+                            line("Optional extras you chose", store.money(plan.optionalTotal))
+                            Hairline()
+                            line("Working capital", store.money(plan.workingCapital))
+                            if plan.estimate.shareCapital > 0 {
+                                Hairline()
+                                line("Share capital (locked in)", store.money(plan.estimate.shareCapital))
+                            }
+                        }
                     }
-                    ForEach(Array(plan.risks.enumerated()), id: \.offset) { _, r in
-                        Text(r.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    if plan.shortfall > 0 || !plan.risks.isEmpty {
+                        LedgerSection("Risks") {
+                            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                                if plan.shortfall > 0 {
+                                    Text("The company is \(store.money(plan.shortfall)) short of that scope: set-up pays the mandatory costs first, skips what the cash cannot carry and opening waits for money.")
+                                        .textStyle(.caption, tint: Theme.warn).fixedSize(horizontal: false, vertical: true)
+                                }
+                                ForEach(Array(plan.risks.enumerated()), id: \.offset) { (_: Int, r: String) in
+                                    Text(r.tidyMoney).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
                     }
                     if let refusal {
-                        Text(refusal).font(.system(size: 13)).foregroundStyle(Theme.loss).fixedSize(horizontal: false, vertical: true)
+                        Text(refusal).textStyle(.body, tint: Theme.loss).fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("register-refusal")
                     }
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                let blocked: Bool = plan.registrationShortfall > 0 || working
-                HStack(spacing: 12) {
-                    QuietButton(title: "Back") { dismiss() }
-                    QuietButton(title: "Pay \(store.money(plan.intoCompany + plan.estimate.shareCapital + plan.estimate.registration + plan.estimate.abroad)) and register", fullWidth: true) { register(e, t, plan) }
-                        .opacity(blocked ? 0.4 : 1).disabled(blocked)
-                }
-                .padding(.horizontal, 18).padding(.vertical, 10)
-                .background(Theme.page)
-                .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+                let reason: String? = plan.registrationShortfall > 0 ? "Needs \(store.money(plan.registrationShortfall)) more cash in your current account." : (working ? "Registering…" : nil)
+                NewCompanyStepBar(title: "Pay \(store.money(plan.payToday)) and start", blockedReason: reason, identifier: "new-company-pay") { register(e) }
             }
             .appScreen(title: "Register \(company)", subtitle: "Step 3 of 3 · check and pay", tab: .company)
         } else {
-            Text("This company can no longer be priced. Go back and choose again.").foregroundStyle(Theme.ivoryMuted)
+            EmptyState(title: "This company can no longer be priced.", message: "Go back and choose again.")
                 .appScreen(title: "Register", tab: .company)
         }
     }
 
     private func line(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-            Spacer(minLength: 12)
-            Text(value.tidyText).font(.system(size: 14).monospacedDigit()).foregroundStyle(Theme.ivory).multilineTextAlignment(.trailing)
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Text(label).textStyle(.caption)
+            Spacer(minLength: Theme.Space.m)
+            Text(value.tidyText).textStyle(.body, numeric: true).multilineTextAlignment(.trailing)
         }
+        .padding(.vertical, Theme.Space.s)
+        .accessibilityElement(children: .combine)
     }
 
     private func premisesText(_ plan: NewCompanyPlan) -> String {
@@ -374,7 +380,7 @@ struct NewCompanyReviewView: View {
         }
     }
 
-    private func register(_ e: GameEngine, _ t: Trade, _ plan: NewCompanyPlan) {
+    private func register(_ e: GameEngine) {
         working = true
         refusal = registerNewCompany(store, engine: e, draft: draft)
         working = false
