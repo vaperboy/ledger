@@ -13,6 +13,10 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
     public var cost: Double?
     /// What must be paid to start at all (papers, a place, registration and capital); the rest of `cost` is the recommended investment.
     public var minimum: Double? = nil
+    /// The size the company starts at: the city's natural size when the money carries it, else the largest smaller size it does carry (never below the trade's smallest).
+    public var size: Double = 1
+    public var recommendedSize: Double = 1
+    public var isScaledDown: Bool { size < recommendedSize - 0.001 }
     public var available: Double
     /// Why the trade cannot be started at all (ban or not yet built); nil if it can.
     public var blocked: String?
@@ -31,9 +35,31 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
             let blocked = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
             guard blocked == nil else { return TradeAffordability(tradeID: t.id, cost: nil, available: available, blocked: blocked) }
             let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
-            let est = CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: form, size: CompanySetup.recommendedSize(t, city: city), countryCode: country.code, state: probe, data: data)
-            let least: Double? = est.map { $0.documents + $0.premises + $0.property + $0.wait + $0.registration + $0.shareCapital + $0.abroad }
-            return TradeAffordability(tradeID: t.id, cost: est?.total, minimum: least, available: available, blocked: est == nil ? "Cannot be priced here" : nil)
+            let rec = CompanySetup.recommendedSize(t, city: city)
+            func price(_ size: Double) -> CompanySetup.Estimate? {
+                CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: form, size: size, countryCode: country.code, state: probe, data: data)
+            }
+            // Start at the natural size if the money carries it; otherwise at the largest size (steps of 0.05) it does carry, down to the trade's smallest.
+            var size = rec
+            var est = price(rec)
+            if let full = est, full.minimumToOpen > available, t.minSize < rec - 0.001 {
+                if let small = price(t.minSize) {
+                    if small.minimumToOpen > available {
+                        size = t.minSize; est = small
+                    } else {
+                        var lo = Int((t.minSize * 20).rounded()), hi = Int((rec * 20).rounded())
+                        var best = small, bestSize = t.minSize
+                        while hi - lo > 1 {
+                            let mid = (lo + hi) / 2
+                            if let m = price(Double(mid) / 20), m.minimumToOpen <= available { lo = mid; best = m; bestSize = Double(mid) / 20 } else { hi = mid }
+                        }
+                        size = bestSize; est = best
+                    }
+                }
+            }
+            var row = TradeAffordability(tradeID: t.id, cost: est?.total, minimum: est?.minimumToOpen, available: available, blocked: est == nil ? "Cannot be priced here" : nil)
+            row.size = size; row.recommendedSize = rec
+            return row
         }
         func rank(_ r: TradeAffordability) -> Int { r.blocked != nil ? 2 : (r.isFunded ? 0 : 1) }
         let order = Dictionary(uniqueKeysWithValues: data.catalog.all.enumerated().map { ($1.id, $0) })

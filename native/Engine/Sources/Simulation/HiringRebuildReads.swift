@@ -47,7 +47,17 @@ public extension GameEngine {
     func workplaces(companyID: Int) -> WorkplaceInfo? { state.company(companyID).map { Workplaces.info($0, data: data) } }
 
     /// Why one more person cannot be hired at this company right now (nil when there is room). Hiring beyond capacity is refused with this reason.
-    func hireBlock(companyID: Int) -> String? { state.company(companyID).flatMap { Workplaces.hireBlock($0, data: data) } }
+    func hireBlock(companyID: Int, role: String? = nil) -> String? { state.company(companyID).flatMap { Workplaces.hireBlock($0, role: role, data: data) } }
+
+    /// The nearest bigger premises that seat one more person on site, for the "Move to bigger premises" offer when the places are full.
+    func roomListing(companyID: Int) -> CompanySetup.Listing? { Workplaces.roomListing(state, companyID: companyID, data: data) }
+
+    /// Move into the smallest premises with a free place (same machinery as renting a place).
+    @discardableResult
+    mutating func moveForRoom(companyID: Int) -> CompanySetup.PremisesResult {
+        guard let l = roomListing(companyID: companyID) else { return .bad }
+        return takePremises(companyID: companyID, listing: l)
+    }
 
     /// The places a rental listing holds ("N office places"), nil when the trade's premises have no limit. Read from the listing's size and the kind of place the trade moves into.
     func officeCapacity(forListing listing: CompanySetup.Listing, companyID: Int) -> Int? {

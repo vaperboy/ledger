@@ -106,13 +106,15 @@ public enum CompanySetup {
     }
 
     /// Terms of renting or buying a listing. Rent is per m² per year, adjusted for the city, the listing and inflation since the start.
-    public static func premisesTerms(_ co: Company, _ listing: Listing, data: GameData, world w: World) -> PremisesTerms? {
-        guard let bd = data.catalog[co.type], let kind0 = bd.premisesKind, case let kind = PremisesExtras.isHomeTrade(bd) ? PremisesExtras.placeKind(bd) : kind0,
-              let P = data.catalog.tables.premises[kind], let city = w.city(co) else { return nil }
+    public static func premisesTerms(_ co: Company, _ listing: Listing, data: GameData, world w: World) -> PremisesTerms? { premisesTerms(co, listing, catalog: data.catalog, world: w) }
+
+    public static func premisesTerms(_ co: Company, _ listing: Listing, catalog: TradeCatalog, world w: World) -> PremisesTerms? {
+        guard let bd = catalog[co.type], let kind0 = bd.premisesKind, case let kind = PremisesExtras.isHomeTrade(bd) ? PremisesExtras.placeKind(bd) : kind0,
+              let P = catalog.tables.premises[kind], let city = w.city(co) else { return nil }
         let m2 = listing.squareMetres
         let rent0 = P.rentPerM2Year * listing.rentFactor * city.rent * w.inflationIndex
         let rent = m2 > 0 ? w.currency(co).tidy(rent0 * m2 / 12) * 12 / m2 : w.currency(co).tidy(rent0)
-        let fit = (data.catalog.tables.fitOut[kind] ?? 0) * m2
+        let fit = (catalog.tables.fitOut[kind] ?? 0) * m2
         let price = jsRound(P.pricePerM2 * listing.rentFactor * pow(city.rent, 0.9) * m2 * w.economy.housing)
         return PremisesTerms(rentPerM2Year: rent, monthlyRent: rent * m2 / 12, deposit: rent * m2 / 12 * 3, fitOut: fit, purchasePrice: price, downPayment: price * 0.35, squareMetres: m2)
     }
@@ -372,6 +374,10 @@ public enum CompanySetup {
         public var documents = 0.0, equipment = 0.0, vehicles = 0.0, premises = 0.0, stock = 0.0, firstPayroll = 0.0, buffer = 0.0
         /// The parts of `equipment` and `vehicles` the trade cannot open without; the rest is optional.
         public var requiredEquipment = 0.0, requiredVehicles = 0.0
+        /// What the required equipment takes up front: a down payment where the piece can be financed, the full price where it cannot.
+        public var requiredEquipmentUpfront = 0.0
+        /// The cheapest rented place on offer (three months' deposit plus fit-out); the standard place priced in `premises` when the trade lists none.
+        public var premisesLeast = 0.0
         /// The first month's employer cost of the minimum viable team (the first staff line only); `firstPayroll` is the whole standard team.
         public var minimumPayroll = 0.0
         /// The part of `premises` that is fit-out (the rest is the three months' rent deposit); for the cost breakdown screens.
@@ -383,6 +389,8 @@ public enum CompanySetup {
         public var registration = 0.0, shareCapital = 0.0, abroad = 0.0
         /// Wages and rent paid while a long licence is awaited (original: `r.wait` in `setupEstimate`)
         public var wait = 0.0
+        /// What must be paid to open at all: papers, a place, registration and capital, the equipment and vehicles the trade cannot open without. Stock can be left out, a team can be hired later.
+        public var minimumToOpen: Double { documents + premisesLeast + property + wait + registration + shareCapital + abroad + requiredEquipmentUpfront + requiredVehicles }
         public var total: Double { documents + equipment + vehicles + premises + stock + firstPayroll + buffer + property + registration + abroad + wait }
         /// Money that must be in the player's account first (registration, capital) plus money to put in the company
         public var personalOutlay: Double { registration + shareCapital + abroad }
@@ -413,7 +421,11 @@ public enum CompanySetup {
                 vehicleFull += price * q
             } else {
                 r.equipment += equipmentPrice(e, company: co, w) * q
-                if e.isRequired { r.requiredEquipment += equipmentPrice(e, company: co, w) * q }
+                if e.isRequired {
+                    let unit = equipmentPrice(e, company: co, w)
+                    r.requiredEquipment += unit * q
+                    r.requiredEquipmentUpfront += EquipmentMarket.canFinance(e, tradeID: bd.id, total: unit * q, company: co, w, tables: data.catalog.tables) ? unit * q * 0.2 : unit * q
+                }
             }
         }
         if let kind = bd.premisesKind, let P = data.catalog.tables.premises[kind], bd.premisesM2 > 0 {
@@ -422,6 +434,8 @@ public enum CompanySetup {
             r.premises = rent * m2 / 12 * 3 + (data.catalog.tables.fitOut[kind] ?? 0) * m2
             r.premisesFitOut = (data.catalog.tables.fitOut[kind] ?? 0) * m2
             monthlyRent = rent * m2 / 12
+            let least = listings(for: co, bd, w).compactMap { l in premisesTerms(co, l, catalog: data.catalog, world: w).map { $0.deposit + $0.fitOut } }.min()
+            r.premisesLeast = min(r.premises, least ?? r.premises)
         }
         r.stock = bd.id == CarDealer.tradeID ? CarDealer.stockBudget(co, bd, tmp, data) : OpeningChecklist.initialStockCost(co, bd, w)
         for (i, st) in bd.standardStaff.enumerated() {
@@ -441,8 +455,8 @@ public enum CompanySetup {
         let cur = Currency(country: country, rates: w.rates)
         func round(_ v: Double) -> Double { v == 0 ? 0 : Currency.nicePrice(v / cur.rate) * cur.rate }
         r.documents = round(r.documents); r.equipment = round(r.equipment); r.vehicles = round(r.vehicles); r.premises = round(r.premises)
-        r.premisesFitOut = min(r.premises, round(r.premisesFitOut)); r.monthlyRent = round(monthlyRent)
-        r.requiredEquipment = round(r.requiredEquipment); r.requiredVehicles = round(r.requiredVehicles); r.minimumPayroll = round(r.minimumPayroll)
+        r.premisesFitOut = min(r.premises, round(r.premisesFitOut)); r.monthlyRent = round(monthlyRent); r.premisesLeast = min(r.premises, round(r.premisesLeast))
+        r.requiredEquipment = round(r.requiredEquipment); r.requiredEquipmentUpfront = round(r.requiredEquipmentUpfront); r.requiredVehicles = round(r.requiredVehicles); r.minimumPayroll = round(r.minimumPayroll)
         r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
         if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
         if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(Ambitions.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) }

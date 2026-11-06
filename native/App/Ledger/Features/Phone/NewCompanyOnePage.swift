@@ -47,14 +47,16 @@ struct NewCompanySetupView: View {
     @State private var working = false
     @State private var refusal: String?
 
-    private func draft(_ t: Trade) -> NewCompanyDraft {
+    private func draft(_ t: Trade, _ e: GameEngine) -> NewCompanyDraft {
         let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
-        return NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
+        var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
+        if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, form: form, size: s) }
+        return d
     }
 
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
-            let d: NewCompanyDraft = draft(t)
+            let d: NewCompanyDraft = draft(t, e)
             let plan: NewCompanyPlan? = d.plan(e)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {

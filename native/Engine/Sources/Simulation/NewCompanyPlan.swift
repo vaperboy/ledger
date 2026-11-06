@@ -198,7 +198,7 @@ public extension GameEngine {
             if amount > 0 { lines.append(PlanLine(id: id, title: title, amount: amount, kind: kind, note: note)) }
         }
         add("docs", "Permits and documents", est.documents, .mandatory, "Needed before it can open.")
-        add("reqEq", "Equipment the trade cannot open without", est.requiredEquipment, .mandatory, "")
+        add("reqEq", "Equipment the trade cannot open without", est.requiredEquipmentUpfront, .mandatory, "A fifth down where it can be financed.")
         add("reqVeh", "Required vehicles (down payment)", est.requiredVehicles, .mandatory, "The rest is a loan the company repays monthly.")
         if kind == .place, let o = chosenOption {
             let buying = chosen?.buy ?? false
@@ -229,7 +229,7 @@ public extension GameEngine {
         // What the company itself needs: everything except registration and abroad fees, which leave your own account.
         // the game buys and hires nothing at start, so only what the paperwork and the place need is charged; the full
         // figure (equipment, a team, a buffer) is the RECOMMENDED investment, shown but never taken unless the player puts it in.
-        let recommendedIDs: Set<String> = ["reqEq", "reqVeh", "optEq", "payroll", "buffer"]
+        let recommendedIDs: Set<String> = ["optEq", "payroll", "buffer"]
         let needed = lines.filter { $0.kind != .fee && !recommendedIDs.contains($0.id) }.reduce(0) { $0 + $1.amount }
         let wanted = needed
         let into: Double
@@ -265,10 +265,28 @@ public extension GameEngine {
         plan.workingCapital = working
         plan.personalReserve = reserve
         plan.registrationAndCapitalInCompany = est.shareCapital
+        // The money does not carry the usual place: start from the cheapest one on offer (the player can still pick another).
+        if pick == nil, kind == .place, plan.shortfall > 0, let cheap = options.min(by: { $0.rentUpfront < $1.rentUpfront }), cheap.index != standard,
+           cheap.rentUpfront < (chosenOption?.rentUpfront ?? .infinity),
+           var cheaper = newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: size, pick: .init(listingIndex: cheap.index, buy: false), countryCode: countryCode, choices: choices, withAlternatives: false),
+           cheaper.shortfall < plan.shortfall {
+            cheaper.pick = nil; cheaper.standardIndex = cheap.index
+            plan = cheaper
+        }
         if withAlternatives && (shortfall > 0 || !plan.keepsReserve) {
             plan.alternatives = setupAlternatives(plan, form: form, size: size, cityID: cityID, countryCode: countryCode, pick: pick)
         }
         return plan
+    }
+
+    /// The opening stock a first company can afford: the full standard stock when the money carries it, else half, else none (stock can be bought as sales start).
+    func suggestedChoices(tradeID: String, cityID: String, form: LegalForm, size: Double, pick: NewCompanyPlan.Pick? = nil) -> SetupChoices {
+        var c = SetupChoices()
+        for stock in [SetupChoices.Stock.full, .half, .none] {
+            c.stock = stock
+            if let p = newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: size, pick: pick, choices: c, withAlternatives: false), p.isFunded { return c }
+        }
+        return c
     }
 
     /// Money kept back from the move into the company: three monthly instalments of the player's own loans and a small float.

@@ -17,9 +17,13 @@ public enum PremisesExtras {
     public static func placeWord(_ bd: Trade) -> String { ["office": "office", "industrial": "workshop", "warehouse": "warehouse", "retail": "shop", "clinic": "clinic"][placeKind(bd)] ?? "place" }
     /// People working in the business, you included. Original: `heads`.
     public static func heads(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (co.managerID == nil && co.ownerHours > 0 ? 1 : 0) }
+    /// People who need a place at the premises: staff in on-site roles, the manager and the owner when the owner works there. Crews at customers' sites and remote staff take no place.
+    public static func onSiteHeads(_ co: Company) -> Int {
+        co.staff.filter { Workplaces.needsPlace(role: $0.role) }.count + (co.managerID != nil ? 1 : 0) + (co.managerID == nil && co.ownerHours > 0 ? 1 : 0)
+    }
     /// The size of place the company would look for. Original: `offM2`.
     public static func wantedSquareMetres(_ co: Company, _ bd: Trade) -> Double {
-        let o = max(20, (Double(max(3, heads(co) + 1)) * 9 / 5).rounded() * 5)
+        let o = max(20, (Double(max(3, onSiteHeads(co) + 1)) * 9 / 5).rounded() * 5)
         if !bd.raw["prem45"].isNull && bd.raw["prem45"][0].string != "office" {
             return max(o, (bd.raw["prem45"][1].double * max(0.3, min(1, co.size)) * 0.6 / 5).rounded() * 5)
         }
@@ -28,7 +32,7 @@ public enum PremisesExtras {
     /// Working from home (no place of its own yet). Original: `atHome`.
     public static func isAtHome(_ co: Company, _ bd: Trade) -> Bool { isHomeTrade(bd) && !(co.value("prem")["m2"].double > 0) }
     /// A team of four or more has outgrown the kitchen table.
-    public static func hasOutgrownHome(_ co: Company, _ bd: Trade) -> Bool { isAtHome(co, bd) && heads(co) >= 4 }
+    public static func hasOutgrownHome(_ co: Company, _ bd: Trade) -> Bool { isAtHome(co, bd) && onSiteHeads(co) >= 4 }
 
     /// Five places for a home trade to move into, a new list every half year. Original: `R37.homeListings`.
     static func listings(_ co: Company, _ bd: Trade, _ w: World) -> [CompanySetup.Listing] {
@@ -51,7 +55,7 @@ public enum PremisesExtras {
     public static func weekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices where s.companies[i].status == .open {
             guard let bd = data.catalog[s.companies[i].type], hasOutgrownHome(s.companies[i], bd) else { continue }
-            let k = heads(s.companies[i]) >= 6 ? 2.0 : 1.0
+            let k = onSiteHeads(s.companies[i]) >= 6 ? 2.0 : 1.0
             s.companies[i].set("mood", max(25, (s.companies[i].value("mood").isNull ? 60 : s.companies[i].num("mood")) - k))
             s.companies[i].quality = max(35, s.companies[i].quality - 0.3 * k)
         }

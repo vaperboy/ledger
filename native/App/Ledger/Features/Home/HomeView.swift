@@ -13,6 +13,7 @@ struct HomeSummary: View {
     var engine: GameEngine
     var onNewCompany: () -> Void
     var maxPriorities: Int = 3
+    @State private var showInsights = false
 
     var body: some View {
         let e = engine
@@ -25,15 +26,20 @@ struct HomeSummary: View {
             }
             if sizeClass == .regular {
                 HStack(alignment: .top, spacing: Theme.Space.l) {
-                    NetWorthCard(engine: e)
+                    VStack(spacing: 8) {
+                        NetWorthCard(engine: e)
+                        HomeRankStrip(engine: e) { showInsights = true }
+                    }
                     VStack(spacing: 8) { HomeShortcutRow(); TopPriorities(engine: e, limit: maxPriorities) }
                 }
             } else {
                 NetWorthCard(engine: e)
+                HomeRankStrip(engine: e) { showInsights = true }
                 HomeShortcutRow()
                 TopPriorities(engine: e, limit: maxPriorities)
             }
         }
+        .sheet(isPresented: $showInsights) { InsightsView(engine: e) }
     }
 
     private var playerName: String {
@@ -344,12 +350,19 @@ struct AdvanceBar: View {
     /// Week 1, day 1 of a game with the ladder: nothing has been played yet.
     private var firstDay: Bool { engine.state.week == 0 && engine.state.day == 0 && Gates.ladderOn(engine.state) }
 
+    /// A free player in weeks 9 to 12 gets one quiet line: the fast-forward becomes a Pro feature after week 12.
+    private var proTeaser: Bool {
+        let w: Int = engine.state.week + 1
+        return !ent.isPro && w >= 9 && w <= 12
+    }
+
     /// "Play to end of week": a text button under Next day from week 2; off while a blocking Inbox item is open.
     @ViewBuilder private var weekButton: some View {
         if store.canPlayWeek {
             Button { if ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { store.playToEndOfWeek() } else { ent.run(.playToEndOfWeek, "Play to end of week") {} } } label: {
                 HStack(spacing: 6) {
                     Text("Play to end of week").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                    if proTeaser { Text("Pro after week 12").font(.system(size: 10.5)).foregroundStyle(Theme.gold.opacity(0.85)).lineLimit(1) }
                     if !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { ProMark(feature: .playToEndOfWeek) }
                 }
             }
