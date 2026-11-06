@@ -177,7 +177,7 @@ public enum OwnerMeetings {
             C = [ch("easy", "A steady month", "Easier targets. Mood up."), ch("real", "Realistic targets", "Targets in line with the trend."), ch("stretch", "Stretch targets", "Harder targets. Mood down a little.")]
         case ("ceo", "review"):
             if let rep = ManagerModel.personReport(s, companyID: companyID, personID: personID, data: data) {
-                L = (rep.sections.first?.lines.prefix(4).map { "\($0.label): \($0.value)." } ?? []) + [rep.verdict]
+                L = ((rep.sections.first?.lines.prefix(4).map { "\($0.label): \($0.value)." } ?? []) + [rep.verdict]).filter { !$0.isEmpty }
             } else { L = ["It is too early to review me. Give it a few months."] }
             C = [ch("ok", "Good, keep going", "They feel trusted. Mood up."), ch("ideas", "Ask for their ideas", "They bring proposals to your Inbox."), ch("bar", "Set a higher bar", "Stretch targets this month. Mood down a little.")]
         case ("ceo", "advice"):

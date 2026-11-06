@@ -466,7 +466,7 @@ public enum CompanySale {
               SaleListings.routeProblem(s, companyID: companyID, route: "mbo", pct: 100) ?? blocked),
             r("merger", "Merge with a rival", "Swap the company for a stake in the merged business.",
               co.status == .open ? (blocked ?? (mergeCandidates(s, companyID: companyID).isEmpty ? "No independent rival here is big enough to merge with." : nil)) : "The company must be open."),
-            r("group", "Sell to a rival group", "Approach a group directly for a quick deal.", co.status.isLive && co.type != "hold" ? (blocked ?? (hasGroup ? nil : "No group is active in this country.")) : "This company cannot be sold."),
+            r("group", "Sell to a rival group", "Approach a group directly for a quick deal.", co.status.isLive && co.type != "hold" ? (blocked ?? (SaleListings.isListed(s, companyID: companyID) ? "It is already listed: withdraw the listing first." : (hasGroup ? nil : "No group is active in this country."))) : "This company cannot be sold."),
             r("stake", "Sell a stake", "Keep control and sell 10, 25, 34 or 49% of your shares.", SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: 10) ?? blocked),
             r("ipo", "Go public", "List a holding on the exchange.", ipoProblem(s, companyID: companyID, data: data, context: fc)),
             r("franchise", "Master franchise", "Sell the franchise rights of a country.", co.value("fr")["on"].bool ? nil : "Set up franchising for this company first."),

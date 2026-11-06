@@ -105,6 +105,15 @@ final class SaleRoutesTests: XCTestCase {
         XCTAssertEqual(e.saleRoutes(companyID: id).map { $0.id }, ["private", "broker", "auction", "mbo", "merger", "group", "stake", "ipo", "franchise"])
     }
 
+    func testAListedCompanyShowsTheGroupRouteAsShut() throws {
+        var (e, id) = try shop(seed: 27)
+        XCTAssertTrue(e.startSale(companyID: id, route: "private"))
+        let r = try XCTUnwrap(e.saleRoutes(companyID: id).first { $0.id == "group" })
+        XCTAssertFalse(r.available)
+        XCTAssertTrue(r.why.contains("listed"))
+        XCTAssertNil(e.sellToGroup(companyID: id, groupID: "any"))
+    }
+
     func testTheBoardsSellPointUsesTheSameListing() throws {
         var (e, id) = try shop(seed: 27)
         let d0 = e.data; e.update { s, _, _ in _ = ManagerModel.doEmergency(&s, companyID: id, code: "sell", data: d0) }

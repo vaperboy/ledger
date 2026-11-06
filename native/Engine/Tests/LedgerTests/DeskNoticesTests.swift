@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+@testable import Businesses
 @testable import Simulation
 
 /// Notices carry a severity and an audience; routine matters go to the desk that answers for them and only serious ones reach the owner.
@@ -66,5 +67,22 @@ final class DeskNoticesTests: XCTestCase {
         let co = e.state.company(a)!
         XCTAssertNotNil(Delegation.desk("finance", in: co, state: e.state, data: e.data))
         XCTAssertNil(Delegation.desk("owner", in: co, state: e.state, data: e.data))
+    }
+
+    /// A notice addressed to a desk must name who handles it; with nobody at the desk it is the owner's own notice.
+    func testApplicantNoticeIsAddressedToTheHrDeskOnlyWhenSomebodyIsThere() throws {
+        var (e, a, _) = try game()
+        e.update { s, d, _ in JobAds.arrive(&s, companyIndex: s.companyIndex(a)!, role: "waiter", agency: false, boost: 0, data: d) }
+        var m = try XCTUnwrap(e.state.inbox.first { $0.title.hasSuffix("applied for Waiter / server") || $0.title.contains("applied for") })
+        XCTAssertTrue(m.isOwnerAddressed, "nobody answers for hr, so the owner has it")
+        XCTAssertTrue(m.handledBy.isEmpty)
+        XCTAssertEqual(m.value("data")["kind"].string, "applicant", "the applicant link survives")
+        e.update { s, d, _ in
+            if let i = s.companyIndex(a) { s.companies[i].managerID = s.people.keys.sorted().first }
+            _ = d
+        }
+        e.update { s, d, _ in JobAds.arrive(&s, companyIndex: s.companyIndex(a)!, role: "waiter", agency: false, boost: 0, data: d) }
+        m = try XCTUnwrap(e.state.inbox.first { $0.title.contains("applied for") })
+        if !m.isOwnerAddressed { XCTAssertFalse(m.handledBy.isEmpty, "a desk notice shows who handled it") }
     }
 }

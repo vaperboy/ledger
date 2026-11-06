@@ -346,7 +346,10 @@ public enum ManagerTargets {
         }
         if let first = years.first {
             let body = years.map { "\($0.name): sales \(cur.display($0.rev)) of \(cur.display($0.budget.0)), profit \(cur.display($0.profit)) of \(cur.display($0.budget.1))" + ($0.bonus > 0 ? ", year-end bonus \(cur.display($0.bonus))" : "") }.joined(separator: " · ") + "."
-            s.addMessage(kind: "info", from: "Your accountant", title: "The year \(first.yr) against the budgets", body: body, tone: years.allSatisfy { $0.okR && $0.okP } ? "good" : "n", status: "done", sev: 1, aud: "finance")
+            // Shown as handled by the first company's finance desk; with nobody there it is the owner's own notice.
+            var desk: Desk?
+            for ci in live where desk == nil { desk = Delegation.desk("finance", in: s.companies[ci], state: s, data: data) }
+            s.addMessage(kind: "info", from: "Your accountant", title: "The year \(first.yr) against the budgets", body: body, tone: years.allSatisfy { $0.okR && $0.okP } ? "good" : "n", status: "done", sev: 1, aud: desk == nil ? "owner" : "finance", handledBy: desk?.label)
         }
         if !asks.isEmpty {
             let body = asks.compactMap { id in s.company(id).map { "\($0.name): sales \(cur.display(record($0)["y"]["rev"].double)), profit \(cur.display(record($0)["y"]["profit"].double))" } }.joined(separator: " · ") + ". Their drafts, from last year and what they think they can do."

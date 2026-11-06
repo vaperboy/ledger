@@ -292,7 +292,7 @@ public enum SupplyTerms {
     }
 
     /// An outside supplier's invoice went late for the first time.
-    static func lateEvent(_ s: inout GameState, _ inv: Invoice, buyerIndex bi: Int) {
+    static func lateEvent(_ s: inout GameState, _ inv: Invoice, buyerIndex bi: Int, data: GameData) {
         let t = tables
         let co = s.companies[bi]
         var detail = ""
@@ -315,8 +315,7 @@ public enum SupplyTerms {
             }
         }
         refreshCut(&s, bi)
-        s.addMessage(from: co.name, title: "Late payment: \(inv.providerName)", body: "An invoice to \(inv.providerName) was not paid when due because the account of \(co.name) could not cover it. It now carries late interest." + detail,
-                     companyID: co.id, tone: "bad", sev: 2, aud: "finance")
+        s.addDeskNotice("finance", company: co, data: data, title: "Late payment: \(inv.providerName)", body: "An invoice to \(inv.providerName) was not paid when due because the account of \(co.name) could not cover it. It now carries late interest." + detail, sev: 2)
     }
 
     // MARK: Weekly
@@ -350,13 +349,12 @@ public enum SupplyTerms {
                     let policy = s.economy.policyRate
                     let rate = lateAnnualRate(country: context.country(of: co, s), policyRate: policy) / 52
                     let interest = jsRound(amount * rate)
-                    if j["l"].int == 0 { lateEvent(&s, Invoice(j), buyerIndex: bi) }
+                    if j["l"].int == 0 { lateEvent(&s, Invoice(j), buyerIndex: bi, data: data) }
                     j["l"] = .number(Double(j["l"].int + 1))
                     if pid != 0, supplierLive, j["l"].int == tables.ownFlagAfter, let sp = s.company(pid) {
                         // No cut-off between your own companies, but the group is told: the supplier has been waiting for its money.
-                        s.addMessage(from: co.name, title: "\(co.name) is short-paying \(sp.name)",
-                                     body: "\(co.name) has owed \(sp.name), another company of yours, for \(tables.ownFlagAfter) weeks. \(sp.name) now keeps back part of its capacity for the group until it is paid. Move cash between the companies or settle weekly.",
-                                     companyID: co.id, tone: "bad", sev: 2, aud: "finance")
+                        s.addDeskNotice("finance", company: co, data: data, title: "\(co.name) is short-paying \(sp.name)",
+                                     body: "\(co.name) has owed \(sp.name), another company of yours, for \(tables.ownFlagAfter) weeks. \(sp.name) now keeps back part of its capacity for the group until it is paid. Move cash between the companies or settle weekly.", sev: 2)
                     }
                     if interest > 0 {
                         j["a"] = .number(amount + interest)

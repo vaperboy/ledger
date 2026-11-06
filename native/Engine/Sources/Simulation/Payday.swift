@@ -575,7 +575,7 @@ public enum Payday {
                     s.companies[i].set("pr29", cfg.json)
                     s.addMessage(from: s.people[s.companies[i].managerID ?? 0]?.name ?? "Manager", title: "Payroll late at \(s.companies[i].name)",
                                  body: "Sorry, I missed a step in the payroll software. Wages go out \(d == 1 ? "tomorrow" : "in two days"). The staff are not happy.",
-                                 companyID: s.companies[i].id, tone: "bad", sev: 1, aud: "finance")
+                                 companyID: s.companies[i].id, tone: "bad", sev: 1, aud: "finance", handledBy: "\(s.people[s.companies[i].managerID ?? 0]?.name ?? "The manager"), manager")
                 } else {
                     let r = runPayroll(&s, i, how: md == .inHouse ? .inHouse : md, today: t, data: data, context: context)
                     paidToday.append((s.companies[i].name, r.paid))

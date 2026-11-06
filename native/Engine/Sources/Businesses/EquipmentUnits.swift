@@ -255,9 +255,9 @@ public enum EquipmentUnits {
         if !reports.isEmpty && open {
             let co = s.companies[i]
             let mgrName = co.managerID.flatMap { s.people[$0]?.name }
-            s.addMessage(kind: "info", from: mgrName ?? "Workshop", title: reports.count > 1 ? "\(reports.count) breakdowns at \(co.name)" : "Breakdown at \(co.name)",
-                         body: reports.joined(separator: " "), companyID: co.id, tone: "bad", status: "done", sev: 1, aud: "ops",
-                         handledBy: mgrName.map { "\($0), manager" })
+            // Addressed to the ops desk only when somebody sits there; with nobody it is the owner's own notice.
+            s.addDeskNotice("ops", company: co, data: data, from: mgrName ?? "Workshop", title: reports.count > 1 ? "\(reports.count) breakdowns at \(co.name)" : "Breakdown at \(co.name)",
+                            body: reports.joined(separator: " "), tone: "bad", sev: 1)
         }
     }
 
