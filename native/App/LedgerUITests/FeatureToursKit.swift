@@ -101,7 +101,7 @@ class FeatureTourCase: XCTestCase {
     static let popupIDs: [String] = ["popup-backdrop", "popup-close", "confirm-go", "confirm-cancel", "report-continue", "report-open", "celebration-dismiss",
                                      "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "unlock-go", "ambition-later",
                                      "conversion-keep", "paywall-buy", "paywall-pass"]
-    static let closeIDs: [String] = ["popup-close", "confirm-cancel", "report-continue", "celebration-dismiss", "alert-continue", "error-ok",
+    static let closeIDs: [String] = ["popup-close", "confirm-cancel", "report-continue", "celebration-dismiss", "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok",
                                      "notice-ok", "unlock-skip", "ambition-later", "conversion-keep", "paywall-pass"]
 
     override func setUp() {
