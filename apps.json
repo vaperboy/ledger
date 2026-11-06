@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.78",
+          "buildVersion": "78",
+          "date": "2026-11-06T16:33:39Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v78/Ledger-unsigned.ipa",
+          "size": 29480463,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed\n- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)\n- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device\n- Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap\n- Notices: minor \"cannot / not enough\" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette\n- Balance: managers can approve more space; nightclub wages sane; salmon farms no longer run dry before the first harvest; dealer customer loans approve far more often\n- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; she"
+        },
+        {
           "version": "1.0.77",
           "buildVersion": "77",
           "date": "2026-11-06T13:26:38Z",
@@ -187,22 +196,13 @@
           "size": 28789599,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Profit today now counts what you did since the last day, e.g. opening a new store in a chain\n- Car dealership: stock budget in the start-up plan, no stockless day trade\n- Popups: one overlay host and one text rule set; tall popups step back inside\n\n# Missing / coming next\n- Own-delivery fee, typed prices per trade, chain/franchise steps, more photos\n- Not yet tested on device: expect rough edges"
-        },
-        {
-          "version": "1.0.58",
-          "buildVersion": "58",
-          "date": "2026-11-04T22:24:29Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v58/Ledger-unsigned.ipa",
-          "size": 28790588,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Popups: one overlay host for every popup, one text and layout rule set; tall popups step back inside before closing\n- Sheets turned into popups (car order, price, brand contract); no page pops back when a popup opens\n- Balance fixes for security, driving school, physio, dental, law; real items in every trade\n\n# Missing / coming next\n- Own-delivery fee, typed prices per trade, chain/franchise steps, more photos\n- Not yet tested on device: expect rough edges"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.77",
-      "versionDate": "2026-11-06T13:26:38Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v77/Ledger-unsigned.ipa",
-      "size": 29296349
+      "version": "1.0.78",
+      "versionDate": "2026-11-06T16:33:39Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v78/Ledger-unsigned.ipa",
+      "size": 29480463
     }
   ]
 }
