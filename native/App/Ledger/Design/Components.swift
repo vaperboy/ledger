@@ -220,13 +220,27 @@ struct LedgerScreen: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.tabBarClearance, 0)
-            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: tabBarClearance) }
+            .safeAreaInset(edge: .bottom, spacing: 0) { bottomFade }
             .toolbarBackground(palette.ground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(palette.isLight ? .light : .dark, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
                 Color.clear.frame(height: 0).background(palette.ground.ignoresSafeArea(edges: .top))
             }
+    }
+
+    /// The room kept for the floating tab bar: the page colour fades in behind the bar, so rows scrolling under it soften instead of
+    /// showing through the gap and the home indicator.
+    @ViewBuilder private var bottomFade: some View {
+        if tabBarClearance > 0 {
+            LinearGradient(stops: [.init(color: palette.ground.opacity(0), location: 0), .init(color: palette.ground.opacity(0.92), location: 0.55),
+                                   .init(color: palette.ground, location: 1)], startPoint: .top, endPoint: .bottom)
+                .frame(height: tabBarClearance)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+        } else {
+            Color.clear.frame(height: 0)
+        }
     }
 }
 extension View {
@@ -420,19 +434,20 @@ struct SectionTabs<T: Hashable>: View {
     private func cell(_ text: String, count: Int, on: Bool, more: Bool, tight: Bool) -> some View {
         HStack(spacing: Theme.Space.xs) {
             Text(sub ? text.uppercased() : text)
-                .textStyle(sub ? .label : .body, tint: on ? palette.accent : palette.inkFaint, weight: on || sub ? .semibold : .regular)
+                .textStyle(sub ? .label : .body, tint: on ? (sub ? palette.accent : palette.ink) : palette.inkFaint, weight: on || sub ? .semibold : .medium)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .fixedSize(horizontal: !tight, vertical: false)
             if more { Image(systemName: "chevron.down").font(TextStep.label.fixedFont) }
             if count > 0 { countView(count) }
         }
-        .foregroundStyle(on ? palette.accent : palette.inkFaint)
+        .foregroundStyle(on ? (sub ? palette.accent : palette.ink) : palette.inkFaint)
         .padding(.horizontal, tight ? Theme.Space.xxs : Theme.Space.s)
         .frame(maxWidth: .infinity, minHeight: sub ? 34 : 44)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(sub && on ? palette.inset : Color.clear))
+        .background(Capsule(style: .continuous).fill(sub && on ? palette.inset : Color.clear))
         .contentShape(Rectangle())
-        .overlay(alignment: .bottom) { if on && !sub { Rectangle().fill(palette.accent).frame(height: 1.5) } }
+        // The chosen tab: bright label over a short champagne bar with round ends.
+        .overlay(alignment: .bottom) { if on && !sub { Capsule().fill(palette.accent).frame(height: 2.5).padding(.horizontal, Theme.Space.m) } }
     }
 }
 

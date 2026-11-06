@@ -50,7 +50,7 @@ struct GameShell: View {
     }
 }
 
-/// iPhone: the floating pill tab bar (Ventures, Group, Home, Custom, Phone) over the pages. The system tab bar is hidden; the pages stay
+/// iPhone: the floating glass tab bar (Ventures, Group, Home, Custom, Phone) over the pages. The system tab bar is hidden; the pages stay
 /// alive in a sliding `TabPager`, so each tab keeps its navigation stack and scroll position. The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
@@ -77,6 +77,8 @@ struct PhoneShell: View {
             }, onLongPress: { raw in
                 if raw == AppTab.custom.rawValue { store.customPickerOpen = true }
             })
+            // The bar stays at the bottom edge while typing (the keyboard covers it) instead of riding up over the form.
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .onChange(of: store.tab) { _, _ in Haptics.tap() }
     }

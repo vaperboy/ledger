@@ -164,12 +164,8 @@ struct NotificationBannerLayer: View {
 
     private func confirmPopup(_ c: BannerConfirm) -> some View {
         GamePopup(title: "Take me to \(c.place)?", showsClose: false, onClose: { queue.confirm = nil }) {
-            HStack(spacing: 10) {
-                Spacer(minLength: 0)
-                QuietButton(title: "Not now") { queue.confirm = nil }
-                Button("Go there") { Haptics.tap(); queue.confirm = nil; c.go() }
-                    .buttonStyle(ImportantButtonStyle()).accessibilityIdentifier("banner-go")
-            }
+            PopupFooter(cancel: "Not now", action: "Go there", onCancel: { queue.confirm = nil },
+                        onAction: { queue.confirm = nil; c.go() }, cancelID: "banner-later", actionID: "banner-go")
         }
     }
 
@@ -214,29 +210,32 @@ private struct BannerCard: View {
     var onClose: () -> Void
     @State private var drag: CGFloat = 0
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous) }
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 26, style: .continuous) }
 
-    /// The compact line of a toast: a small accent glyph and the sentence.
+    /// A toast: a glass capsule hugging one short sentence, centred under the status bar, like the system's own.
     private var toastLine: some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
             LedgerGlyph(glyph: item.glyph, size: Theme.Icon.small, tint: item.tint)
-            Text(item.title).textStyle(.headline)
-                .lineLimit(3).multilineTextAlignment(.leading)
-            Spacer(minLength: 0)
+            Text(item.title).textStyle(.body, weight: .semibold)
+                .lineLimit(2).multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.leading, 14).padding(.trailing, 18).padding(.vertical, 11)
+        .liquidGlassCapsule(tint: item.tone == "n" ? nil : item.tint)
+        .frame(maxWidth: 420)
     }
 
+    /// A banner: the app's icon, its name and "now", the title and up to two lines, on a glass card like a system notification.
     private var full: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: item.tint)
-                .frame(width: Theme.Icon.large, height: 38)
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                HStack {
-                    Text(item.source).textCase(.uppercase).textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
-                    Spacer(minLength: 0)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            AppIconTile(glyph: item.glyph, size: 38, tint: item.isAlert ? Theme.alert : nil)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(item.source).textStyle(.caption, tint: Theme.inkFaint, weight: .medium).lineLimit(1)
+                    Spacer(minLength: Theme.Space.s)
                     Text("now").textStyle(.caption, tint: Theme.inkFaint)
                 }
-                Text(item.title).textStyle(.headline)
+                Text(item.title).textStyle(.body, weight: .semibold)
                     .lineLimit(2).multilineTextAlignment(.leading)
                 if !item.body.isEmpty {
                     Text(item.body).textStyle(.body, tint: Theme.inkSoft)
@@ -244,19 +243,15 @@ private struct BannerCard: View {
                 }
             }
         }
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .frame(maxWidth: 460, alignment: .leading)
+        .modifier(LiquidGlass(shape: shape, tint: item.isAlert ? Theme.alert : nil))
+        .overlay { if item.isAlert { shape.strokeBorder(Theme.alert.opacity(0.55), lineWidth: 1) } }
     }
 
     var body: some View {
         Group { if item.compact { toastLine } else { full } }
-        .padding(.horizontal, 14).padding(.vertical, item.compact ? 10 : 12)
-        .frame(maxWidth: 460, alignment: .leading)
-        .background(ZStack {
-            shape.fill(Theme.surfaceRaised)
-            if item.isAlert { shape.fill(Theme.alert.opacity(0.10)) }
-        })
-        .overlay(shape.strokeBorder(item.isAlert ? item.tint.opacity(0.55) : Theme.line, lineWidth: item.isAlert ? 1 : 0.5))
         .environment(\.colorScheme, .dark)
-        .elevation(.raised)
         .padding(.horizontal, 12).padding(.top, 6)
         .offset(y: drag)
         .contentShape(Rectangle())

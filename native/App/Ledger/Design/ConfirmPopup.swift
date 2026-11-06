@@ -29,20 +29,23 @@ struct ConfirmPopup: View {
         return action.button.contains(money) ? action.button : action.button + " · " + money
     }
 
+    /// The amount leads as the big figure (a spend reads as one number), then what it does, what can go wrong, and the two buttons.
     var body: some View {
-        GamePopup(title: action.title, showsClose: false, onClose: onCancel) {
+        GamePopup(title: action.title, showsClose: false, variant: variant, onClose: onCancel) {
             PopupBody {
                 if let amount = action.amount, let currency = action.currency {
-                    PopupRow(label: "Cost", value: currency.tidyShort(amount), variant: variant)
+                    VStack(alignment: .leading, spacing: PopupSpace.tight) {
+                        Text(currency.tidyShort(amount)).popupText(.hero)
+                            .accessibilityLabel("Cost \(currency.tidyShort(amount))")
+                        Text("Cost").popupText(.caption)
+                    }
                 }
                 if !effect.isEmpty {
-                    VStack(alignment: .leading, spacing: PopupSpace.tight) {
-                        Text("Effect").popupText(.rowLabel)
-                        Text(effect).popupText(.body)
-                    }
+                    Text(effect).popupText(.body)
                 }
                 if !riskText.isEmpty { InlineMessage(text: riskText, isError: action.destructive) }
                 PopupFooter(action: actionLabel, tone: variant.footerTone, onCancel: onCancel, onAction: onConfirm)
+                    .padding(.top, PopupSpace.row)
             }
         }
     }

@@ -1,13 +1,13 @@
 import SwiftUI
 
 // The three buttons of the game. Every older style below maps onto one of them.
-//   Primary   : `PrimaryButtonStyle`, solid accent, accent ink. One per screen or popup (Next Day, Continue, Claim, Execute).
-//   Secondary : `SecondaryButtonStyle`, a quiet outline with ink text; `tint` colours the text (accent = recommended, loss = irreversible).
+//   Primary   : `PrimaryButtonStyle`, a solid accent capsule, accent ink. One per screen or popup (Next Day, Continue, Claim, Execute).
+//   Secondary : `SecondaryButtonStyle`, a quiet capsule on a soft ink fill; `tint` colours text and fill (accent = recommended, loss = irreversible).
 //   Tertiary  : `TertiaryButtonStyle`, text only (Cancel, See all, links).
-//   Sizes     : `.regular` is 44 pt high; `.compact` draws 32 pt but keeps a 44 pt hit area. Disabled buttons look disabled themselves.
+//   Sizes     : `.regular` is 48 pt high; `.compact` draws 32 pt but keeps a 44 pt hit area. Disabled buttons look disabled themselves.
 //   Blocked   : `PrimaryAction` shows the reason under a disabled primary button instead of fading it silently.
 
-/// Height of a button: regular (44 pt) or compact (32 pt drawn inside a 44 pt hit area).
+/// Height of a button: regular (48 pt) or compact (32 pt drawn inside a 44 pt hit area).
 enum LedgerButtonSize { case regular, compact }
 
 /// The one body behind the three button styles.
@@ -35,19 +35,18 @@ private struct LedgerButtonBody: View {
     }
 
     private var fillColor: Color {
-        guard tier == .primary else { return Color.clear }
-        return enabled ? (tint ?? P.accent) : P.inset
-    }
-
-    private var edgeColor: Color {
-        guard tier == .secondary else { return Color.clear }
-        if !enabled || passive { return P.line }
-        if let t = tint, t == P.loss { return P.loss.opacity(0.6) }
-        return P.lineStrong
+        switch tier {
+        case .primary: return enabled ? (tint ?? P.accent) : P.inset
+        case .secondary:
+            guard enabled && !passive else { return P.inset }
+            if let t = tint { return t.inPalette(P).opacity(0.14) }
+            return P.ink.opacity(P.isLight ? 0.07 : 0.09)
+        case .tertiary: return Color.clear
+        }
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+        let shape = Capsule(style: .continuous)
         let pressed: Bool = configuration.isPressed
         let step: TextStep = compact ? .body : .headline
         let weight: Font.Weight = tier == .primary ? .semibold : .medium
@@ -58,9 +57,8 @@ private struct LedgerButtonBody: View {
             .transformEnvironment(\.containerInk) { (ink: inout Color?) in if let fillInk { ink = fillInk } }
             .lineLimit(1).minimumScaleFactor(0.85)
             .padding(.horizontal, tier == .tertiary ? Theme.Space.s : (compact ? Theme.Space.m : Theme.Space.l))
-            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : 44)
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : 48)
             .background(shape.fill(fillColor))
-            .overlay(shape.strokeBorder(edgeColor, lineWidth: 1))
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
             .opacity(pressed ? 0.72 : 1)
@@ -151,12 +149,12 @@ struct FoilButtonStyle: ButtonStyle {
     }
 }
 
-/// The footer of a popup card: Cancel on the left, the action on the right, a hairline between them.
+/// The footer of a popup card: Cancel on the left as the quiet capsule, the action on the right as the one filled capsule.
 struct PopupFooter: View {
     @Environment(\.outsidePalette) private var P
     var cancel = "Cancel"
     var action: String
-    /// Red for an irreversible action, gold foil for a spend.
+    /// Red for an irreversible action, gold for a spend.
     var tone: Tone = .normal
     var onCancel: () -> Void
     var onAction: () -> Void
@@ -169,47 +167,36 @@ struct PopupFooter: View {
 
     enum Tone { case normal, expensive, destructive }
 
-    /// Both buttons are the same neutral outline; a passive label such as Not now / Skip is grayed.
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Space.s) {
             PopupOptionButton(title: cancel, identifier: cancelID, action: onCancel)
                 .disabled(!cancelEnabled)
-            actionButton.disabled(!actionEnabled)
+            Button(action: { Haptics.play(tone == .destructive ? PopupCue.warning : PopupCue.tap); onAction() }) { Text(action) }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true, tint: tone == .destructive ? P.loss : nil))
+                .accessibilityIdentifier(actionID)
+                .disabled(!actionEnabled)
         }
-        .padding(.top, 4)
-    }
-
-    @ViewBuilder private var actionButton: some View {
-        Group {
-            switch tone {
-            case .expensive:
-                Button(action: { Haptics.play(.tap); onAction() }) { Text(action) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.accent)).accessibilityIdentifier(actionID)
-            case .destructive:
-                Button(action: { Haptics.play(.warning); onAction() }) { Text(action) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.loss)).accessibilityIdentifier(actionID)
-            case .normal:
-                PopupOptionButton(title: action, identifier: actionID, action: onAction)
-            }
-        }
+        .padding(.top, Theme.Space.xs)
     }
 }
 
-/// The pinned action row of a popup: a hairline, then the buttons on the card colour, full width. `.popupFooter { }` draws its content in this
-/// bar under the scrolling body; build the content with `PopupFooter`, `PopupOptionButton` or a single highlighted button.
+/// The pinned action row of a popup: the buttons on the card colour, full width, clear of the card's rounded bottom. `.popupFooter { }`
+/// draws its content in this bar under the scrolling body; build the content with `PopupFooter`, `PopupOptionButton` or a single highlighted button.
 struct PopupActionBar<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(spacing: 0) {
-            Hairline()
-            VStack(spacing: PopupSpace.row) { content() }
-                .padding(.horizontal, PopupSpace.card)
-                .padding(.top, PopupSpace.block).padding(.bottom, PopupSpace.block)
-        }
-        .frame(maxWidth: .infinity)
-        .background(P.surfaceRaised)
+        VStack(spacing: PopupSpace.row) { content() }
+            .padding(.horizontal, PopupMetrics.inset)
+            .padding(.top, PopupSpace.block).padding(.bottom, PopupMetrics.inset)
+            .frame(maxWidth: .infinity)
+            .background(P.surfaceRaised)
+            // Scrolling content fades out above the buttons instead of running into them.
+            .background(alignment: .top) {
+                LinearGradient(colors: [P.surfaceRaised.opacity(0), P.surfaceRaised], startPoint: .top, endPoint: .bottom)
+                    .frame(height: Theme.Space.l).offset(y: -Theme.Space.l).allowsHitTesting(false)
+            }
     }
 }
 

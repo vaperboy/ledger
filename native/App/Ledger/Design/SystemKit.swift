@@ -267,13 +267,16 @@ struct EmptyState: View {
 
     var body: some View {
         if centered {
-            VStack(spacing: Theme.Space.s) {
-                LedgerGlyph(glyph: glyph, size: Theme.Icon.large, tint: tint ?? P.inkFaint)
+            VStack(spacing: Theme.Space.m) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.large, tint: tint ?? P.inkSoft)
+                    .frame(width: 64, height: 64)
+                    .background(Circle().fill(P.inset))
                 words(.center)
-                actionButton
+                actionButton.padding(.top, Theme.Space.xs)
             }
+            .frame(maxWidth: 320)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, Theme.Space.xl)
+            .padding(.vertical, Theme.Space.xxl)
         } else {
             HStack(alignment: .top, spacing: Theme.Space.m) {
                 LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: tint ?? P.inkFaint)
@@ -287,8 +290,8 @@ struct EmptyState: View {
     }
 
     private func words(_ align: TextAlignment) -> some View {
-        VStack(alignment: align == .center ? .center : .leading, spacing: Theme.Space.xxs) {
-            Text(title.tidyText).textStyle(.headline).multilineTextAlignment(align).fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: align == .center ? .center : .leading, spacing: Theme.Space.xs) {
+            Text(title.tidyText).textStyle(align == .center ? TextStep.figure : TextStep.headline).multilineTextAlignment(align).fixedSize(horizontal: false, vertical: true)
             if !message.isEmpty {
                 Text(message.tidyText).textStyle(.caption).multilineTextAlignment(align).fixedSize(horizontal: false, vertical: true)
             }
@@ -385,8 +388,8 @@ struct ChartFrame<Plot: View>: View {
 
 // MARK: Segments
 
-/// The one segmented control look: an inset track, the chosen option on a lighter fill, no borders. `SegmentedPill` and
-/// `SegmentedChoice` draw through it.
+/// The one segmented control look: a capsule track on a soft inset, the chosen option on a lighter capsule that slides between
+/// options, no borders. `SegmentedPill` and `SegmentedChoice` draw through it.
 struct SegmentTrack<T: Hashable>: View {
     var items: [T]
     var title: (T) -> String
@@ -394,12 +397,12 @@ struct SegmentTrack<T: Hashable>: View {
     var identifier: (T) -> String
     var badges: ((T) -> Bool)? = nil
     @Environment(\.outsidePalette) private var P
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var thumb
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
-        let inner = RoundedRectangle(cornerRadius: Theme.Radius.small - 2, style: .continuous)
-        let chosen: Color = P.isLight ? P.card : P.ink.opacity(0.12)
-        HStack(spacing: Theme.Space.xxs) {
+        let chosen: Color = P.isLight ? P.card : P.ink.opacity(0.14)
+        HStack(spacing: 0) {
             ForEach(items, id: \.self) { (item: T) in
                 let on: Bool = selection == item
                 Button {
@@ -407,11 +410,17 @@ struct SegmentTrack<T: Hashable>: View {
                     Haptics.choose()
                 } label: {
                     Text(title(item))
-                        .textStyle(.body, tint: on ? P.ink : P.inkSoft, weight: on ? .medium : .regular)
+                        .textStyle(.body, tint: on ? P.ink : P.inkSoft, weight: on ? .semibold : .medium)
                         .lineLimit(1).minimumScaleFactor(0.8)
-                        .padding(.horizontal, Theme.Space.xs)
-                        .frame(maxWidth: .infinity, minHeight: 32)
-                        .background(inner.fill(on ? chosen : Color.clear))
+                        .padding(.horizontal, Theme.Space.s)
+                        .frame(maxWidth: .infinity, minHeight: 34)
+                        .background {
+                            if on {
+                                Capsule(style: .continuous).fill(chosen)
+                                    .shadow(color: Color.black.opacity(P.isLight ? 0.10 : 0.25), radius: 3, y: 1)
+                                    .matchedGeometryEffect(id: "thumb", in: thumb)
+                            }
+                        }
                         .contentShape(Rectangle())
                         .flagMarker(!on && (badges?(item) ?? false), alignment: .topTrailing)
                 }
@@ -420,7 +429,9 @@ struct SegmentTrack<T: Hashable>: View {
                 .modifier(OptionalIdentifier(identifier: identifier(item)))
             }
         }
-        .padding(Theme.Space.xxs)
-        .background(shape.fill(P.inset))
+        .padding(3)
+        .background(Capsule(style: .continuous).fill(P.inset))
+        // Only the thumb and the labels animate; the page that reads the selection changes at once.
+        .animation(Motion.move(reduceMotion), value: selection)
     }
 }

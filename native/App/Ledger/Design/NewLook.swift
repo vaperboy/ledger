@@ -290,7 +290,7 @@ struct AppIconTile: View {
 
 // MARK: Headers
 
-/// The back button: an unoutlined chevron in a 44 pt target. Every screen outside Home has one. It pops the current screen.
+/// The back button: a chevron on a small round inset fill (36 pt drawn, 44 pt target). Every screen outside Home has one. It pops the current screen.
 struct RoundBackButton: View {
     var label = "Back"
     var action: () -> Void
@@ -301,7 +301,9 @@ struct RoundBackButton: View {
             Haptics.tap()
             action()
         } label: {
-            LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: palette.ink)
+            LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.small + 2, tint: palette.ink)
+                .frame(width: 36, height: 36)
+                .background(Circle().fill(palette.ink.opacity(palette.isLight ? 0.07 : 0.09)))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -311,8 +313,9 @@ struct RoundBackButton: View {
     }
 }
 
-/// A screen header: optional round back button, serif title (26 pt) and a grey subtitle (12.5 pt), with room for a trailing control.
-/// Use it as the first element of every screen except Home, or through `.appScreen(title:subtitle:)`.
+/// A screen header. With `onBack` (a pushed screen) it is the calm inline bar: round back at the left, the serif title and its grey
+/// subtitle centred, the trailing control at the right. Without it (a tab root) it is the large serif title at the left with the
+/// subtitle under it and the trailing control beside it. Use it as the first element of a screen, or through `.appScreen(title:subtitle:)`.
 struct AppHeader<Trailing: View>: View {
     var title: String
     var subtitle: String = ""
@@ -322,12 +325,42 @@ struct AppHeader<Trailing: View>: View {
     @Environment(\.outsidePalette) private var palette
 
     var body: some View {
-        HStack(spacing: Theme.Space.s) {
-            if let onBack { RoundBackButton(label: backLabel, action: onBack).padding(.leading, -Theme.Space.m) }
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+        if let onBack { inline(onBack) } else { large }
+    }
+
+    /// Pushed screen: the sides share the width equally so the title stays centred whatever the trailing control is.
+    private func inline(_ onBack: @escaping () -> Void) -> some View {
+        HStack(spacing: Theme.Space.xs) {
+            RoundBackButton(label: backLabel, action: onBack)
+                .padding(.leading, -Theme.Space.xs)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 1) {
+                Text(title).textStyle(.figure, weight: .semibold).lineLimit(1).minimumScaleFactor(0.75)
                 if !subtitle.isEmpty {
-                    Text(subtitle.tidyText).textStyle(.caption).lineLimit(2)
+                    Text(subtitle.tidyText).textStyle(.caption, tint: palette.inkFaint).lineLimit(1)
+                }
+            }
+            .multilineTextAlignment(.center)
+            .layoutPriority(1)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            // The clear spacer keeps this side in the layout when there is no trailing control.
+            ZStack(alignment: .trailing) {
+                Color.clear.frame(width: 1, height: 1)
+                trailing()
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .frame(minHeight: 44)
+    }
+
+    /// Tab root: the large title, left-aligned.
+    private var large: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.title, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
+                if !subtitle.isEmpty {
+                    Text(subtitle.tidyText).textStyle(.caption, tint: palette.inkFaint).lineLimit(2)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -388,10 +421,16 @@ struct AppScreen<Trailing: View>: ViewModifier {
             .ledgerBackground()
             .safeAreaInset(edge: .top, spacing: 0) {
                 // On the ivory Bank the header is the forest-green band with ivory text; everywhere else it is the page colour.
+                let ground: Color = palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground
                 AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
-                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
-                    .background((palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top))
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
+                    .background(ground.ignoresSafeArea(edges: .top))
+                    // Content scrolling up fades under the header instead of meeting a hard edge.
+                    .background(alignment: .bottom) {
+                        LinearGradient(colors: [ground, ground.opacity(0)], startPoint: .top, endPoint: .bottom)
+                            .frame(height: palette == OutsidePalette.bank ? 0 : Theme.Space.m).offset(y: Theme.Space.m).allowsHitTesting(false)
+                    }
             }
     }
 }
@@ -712,7 +751,7 @@ struct PillTabItem: Identifiable, Equatable {
     var changeable: Bool = false
 }
 
-/// The floating tab bar: a 66 pt bordered capsule over the page, the selected tab washed in a champagne pill, red bubbles for counts.
+/// The floating tab bar: a glass capsule over the page, the selected tab in champagne on a soft lens that slides between tabs.
 /// Overlay it at the bottom of the shell and set `tabBarClearance` so every `ledgerBackground()` screen keeps its content clear of it. Each item is a button with the identifier `tab-<title>`.
 struct PillTabBar: View {
     var items: [PillTabItem]
@@ -722,54 +761,66 @@ struct PillTabBar: View {
     /// Called with the item's id when a `changeable` item is long-pressed.
     var onLongPress: (String) -> Void = { _ in }
     @State private var longPressed: String?
+    @Namespace private var lens
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
     static let height: CGFloat = 66 + 8
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(items) { item in
-                let on = item.id == selection
-                let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
-                Button {
-                    if longPressed == item.id { longPressed = nil; return }
-                    if on { onReselect(item.id) } else { selection = item.id }
-                } label: {
-                    VStack(spacing: 3) {
-                        LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? Theme.accent : Theme.inkSoft)
-                        Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? Theme.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
-                    }
-                    .id(item.glyph + item.title)
-                    .transition(.opacity)
-                    .animation(Motion.quickAnimation, value: item.title)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(on ? Theme.goldWash : Color.clear))
-                    .overlay(alignment: .topTrailing) { RedBubble(count: item.badge, size: .small).padding(.trailing, 14).offset(y: -4) }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
-                    longPressed = item.id
-                    Haptics.tap()
-                    onLongPress(item.id)
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 400_000_000)
-                        longPressed = nil
-                    }
-                }, including: item.changeable ? .all : .subviews)
-                .animation(Motion.quickAnimation, value: on)
-                .accessibilityLabel(item.title)
-                .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
-                .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
-                .accessibilityIdentifier("tab-\(item.title)")
-                .accessibilityAddTraits(traits)
+            ForEach(items) { (item: PillTabItem) in
+                tab(item)
             }
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 5)
         .frame(height: PillTabBar.height - 8)
-        .background(Capsule().fill(Theme.surfaceRaised))
-        .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 0.5))
-        .elevation(.raised)
-        .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
+        .liquidGlassCapsule()
+        .padding(.horizontal, Theme.Space.m).padding(.bottom, Theme.Space.s)
+        .animation(Motion.move(reduceMotion), value: selection)
+    }
+
+    private func tab(_ item: PillTabItem) -> some View {
+        let on: Bool = item.id == selection
+        let ink: Color = on ? Theme.accent : Theme.inkSoft
+        let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
+        return Button {
+            if longPressed == item.id { longPressed = nil; return }
+            if on { onReselect(item.id) } else { selection = item.id }
+        } label: {
+            VStack(spacing: 3) {
+                LedgerGlyph(glyph: item.glyph, size: 22, tint: ink)
+                    .overlay(alignment: .topTrailing) { RedBubble(count: item.badge, size: .small).offset(x: 11, y: -7) }
+                Text(item.title).font(.system(size: 10.5, weight: on ? .semibold : .medium)).foregroundStyle(ink)
+                    .lineLimit(1).minimumScaleFactor(0.75)
+            }
+            .id(item.glyph + item.title)
+            .transition(.opacity)
+            .animation(Motion.quickAnimation, value: item.title)
+            .padding(.horizontal, 2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                if on {
+                    Capsule().fill(Theme.ink.opacity(0.09))
+                        .matchedGeometryEffect(id: "lens", in: lens)
+                }
+            }
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+            longPressed = item.id
+            Haptics.tap()
+            onLongPress(item.id)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                longPressed = nil
+            }
+        }, including: item.changeable ? .all : .subviews)
+        .accessibilityLabel(item.title)
+        .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
+        .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
+        .accessibilityIdentifier("tab-\(item.title)")
+        .accessibilityAddTraits(traits)
     }
 }

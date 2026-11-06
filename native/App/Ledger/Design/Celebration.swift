@@ -130,14 +130,11 @@ struct RewardFigure: View {
     }
 }
 
-/// The Claim button of a celebration card: the sole-action champagne button with a gentle breathing pulse while it waits to be
-/// pressed, and a success haptic when it is. No pulse under Reduce Motion.
+/// The Claim button of a celebration card: the sole-action champagne capsule, with a success haptic when it is pressed.
 struct ClaimButton: View {
     var title: String = "Claim"
     var identifier: String = "claim"
     var action: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var breathe = false
 
     var body: some View {
         Button {
@@ -148,8 +145,5 @@ struct ClaimButton: View {
         }
         .buttonStyle(PopupPrimaryButtonStyle())
         .accessibilityIdentifier(identifier)
-        .scaleEffect(breathe && !reduceMotion ? 1.03 : 1)
-        .animation(reduceMotion ? nil : Motion.pulseAnimation, value: breathe)
-        .onAppear { breathe = true }
     }
 }

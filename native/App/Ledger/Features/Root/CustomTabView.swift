@@ -49,32 +49,42 @@ struct CustomTabView: View {
     }
 }
 
-/// The Custom tab before a destination is picked: a clean empty state with the same picker as the long-press one.
+/// The Custom tab before a destination is picked: a short invitation, then the same picker as the long-press one, as a page.
 struct CustomTabEmpty: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
-        ScrollView {
+        ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Make this tab yours").textStyle(.display).fixedSize(horizontal: false, vertical: true)
+                Text("Pin the app or company you open most. Long-press the tab to change it.").textStyle(.body, tint: P.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
             CustomTabPicker(pickingFirst: true)
         }
-        .background(P.ground.ignoresSafeArea())
+        .ledgerBackground()
+        .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("custom-empty")
     }
 }
 
-/// The compact popup that changes the Custom tab: a grid of destinations with their icons, and "A company" for a second step that lists
-/// the player's companies.
+/// The picker that changes the Custom tab (a popup from a long press, or the empty tab's page): the apps as a grid of icons, and
+/// "A company's page" for a second step that lists the player's companies.
 struct CustomTabPicker: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     @State private var choosingCompany = false
-    /// True on the empty Custom tab, where the picker is the whole page and the first line says "Pick a tab".
+    /// True on the empty Custom tab, where the picker is the whole page under its own invitation.
     var pickingFirst = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(choosingCompany ? "The tab shows this company's page." : "Choose what this tab opens.").popupText(.subtitle)
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if !pickingFirst || choosingCompany {
+                Text(choosingCompany ? "The tab shows this company's page." : "Choose what this tab opens.").popupText(.subtitle)
+            }
             if choosingCompany { companyList } else { appGrid }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,26 +93,38 @@ struct CustomTabPicker: View {
     }
 
     private var appGrid: some View {
-        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.xs, alignment: .top), count: 4)
         let apps: [PhoneApp] = CustomTabTarget.apps
-        return VStack(alignment: .leading, spacing: 10) {
-            LazyVGrid(columns: columns, spacing: 12) {
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if pickingFirst { Text("Apps").textStyle(.label, tint: P.inkFaint) }
+            LazyVGrid(columns: columns, spacing: Theme.Space.l) {
                 ForEach(apps) { (app: PhoneApp) in
                     appCell(app)
                 }
             }
-            if hasCompanies { companyEntry }
+            if hasCompanies {
+                if pickingFirst { Text("Or a company").textStyle(.label, tint: P.inkFaint).padding(.top, Theme.Space.s) }
+                companyEntry
+            }
         }
     }
 
+    /// One app: its Phone icon and name; the current choice carries a champagne ring.
     private func appCell(_ app: PhoneApp) -> some View {
         let on: Bool = store.customTarget == CustomTabTarget.app(app)
+        let tile: CGFloat = pickingFirst ? 58 : 50
         return Button {
             Haptics.tap()
             store.chooseCustom(.app(app))
         } label: {
-            VStack(spacing: 5) {
-                IconCircle(glyph: app.glyph, size: 40, tint: on ? Theme.gold : nil)
+            VStack(spacing: Theme.Space.xs) {
+                AppIconTile(glyph: app.glyph, size: tile, tint: app.tint)
+                    .overlay {
+                        if on {
+                            RoundedRectangle(cornerRadius: Theme.Radius.appIcon * tile / 62 + 3, style: .continuous)
+                                .strokeBorder(Theme.accent, lineWidth: 1.5).padding(-3)
+                        }
+                    }
                 Text(app.title).textStyle(.caption, tint: on ? Theme.accent : P.ink).lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
@@ -110,25 +132,13 @@ struct CustomTabPicker: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(app.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
         .accessibilityIdentifier("custom-pick-\(app.title)")
     }
 
     private var companyEntry: some View {
-        Button {
-            Haptics.tap()
-            choosingCompany = true
-        } label: {
-            HStack(spacing: 10) {
-                IconCircle(glyph: Glyph.home, size: 32)
-                Text("A company's page").popupText(.button)
-                Spacer(minLength: 8)
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: P.inkFaint)
-            }
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("custom-pick-company")
+        LedgerRow(leading: .glyph(Glyph.home), title: "A company's page", subtitle: "Any company you own, at its overview",
+                  identifier: "custom-pick-company", action: { choosingCompany = true })
     }
 
     private var hasCompanies: Bool { !companyChoices.isEmpty }
@@ -147,23 +157,13 @@ struct CustomTabPicker: View {
     private var companyList: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(companyChoices) { (c: Choice) in
-                Button {
-                    Haptics.tap()
-                    store.chooseCustom(.company(c.id))
-                } label: {
-                    HStack(spacing: 10) {
-                        IconCircle(glyph: Glyph.home, size: 32)
-                        Text(c.name).popupText(.body).lineLimit(1)
-                        Spacer(minLength: 8)
-                        if store.customTarget == CustomTabTarget.company(c.id) { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.gold) }
-                    }
-                    .padding(.vertical, 7)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
+                let on: Bool = store.customTarget == CustomTabTarget.company(c.id)
+                LedgerRow(leading: .glyph(Glyph.home), title: c.name, value: on ? "Pinned" : "", valueTint: Theme.accent,
+                          chevron: !on, action: { store.chooseCustom(.company(c.id)) })
+                Hairline()
             }
-            Button("Back to the apps") { choosingCompany = false }
-                .buttonStyle(QuietButtonStyle()).padding(.top, 8)
+            Button("Back to the apps") { Haptics.tap(); choosingCompany = false }
+                .buttonStyle(TertiaryButtonStyle()).padding(.top, Theme.Space.s)
         }
     }
 }

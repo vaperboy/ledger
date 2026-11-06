@@ -31,15 +31,23 @@ private struct CenterSheetFooterKey: PreferenceKey {
 /// `.fitBleed`: like `.fit` without the 16pt content padding (full-bleed photos). `.tall`: a fixed 80% of the screen, only for multi-step flows with their own pages: wrap them in `PopupStack` (Design/PopupStack.swift), where `popupClose` steps back one page and closes only at the root.
 enum CenterSheetSize { case fit, fitBleed, tall }
 
-/// One size/spacing set for every centred popup (CenterSheetFrame and GamePopup), so all cards share width, margin, header and room.
+/// One size/spacing set for every popup (CenterSheetFrame and GamePopup), so all cards share width, margin, header and room.
+/// On a phone (compact width) a popup is a floating sheet docked near the bottom edge; on a wide screen it is a centred card.
 enum PopupMetrics {
     static let maxWidth: CGFloat = 560
     static let margin: CGFloat = 22
-    static let header: CGFloat = 44
+    static let header: CGFloat = 52
     static let roomFraction: CGFloat = 0.8
+    /// Gap between a docked sheet and the screen's sides and bottom.
+    static let dockMargin: CGFloat = 8
+    /// Corner radius of a docked sheet, close to the phone's own corners at that gap.
+    static let dockRadius: CGFloat = 34
+    /// Side and bottom padding of the content and the footer inside a card.
+    static let inset: CGFloat = 20
 }
 
-/// The fixed 44pt header row of every popup: optional title left (serif 16), the x right (44pt target), thin divider under a title.
+/// The header row of every popup: optional serif title left, the close button right (a small x on a round soft fill, 44pt target).
+/// No rule under it: space alone separates the title from the content.
 struct PopupHeaderRow: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -47,36 +55,39 @@ struct PopupHeaderRow: View {
     var onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Text(title).popupText(.title).lineLimit(2).minimumScaleFactor(0.85)
-                    .multilineTextAlignment(.leading).padding(.leading, 16)
-                Spacer(minLength: 8)
-                if showsClose { closeButton }
-            }
-            .frame(height: PopupMetrics.header)
-            if !title.isEmpty { Hairline() }
+        HStack(spacing: 8) {
+            Text(title).popupText(.title).lineLimit(2).minimumScaleFactor(0.85)
+                .multilineTextAlignment(.leading).padding(.leading, PopupMetrics.inset)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            if showsClose { closeButton }
         }
+        .padding(.top, 6)
+        .frame(minHeight: PopupMetrics.header)
     }
 
     private var closeButton: some View {
         Button { onClose() } label: {
-            LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkSoft)
+            LedgerGlyph(glyph: Glyph.close, size: 12, tint: P.inkSoft)
+                .frame(width: 30, height: 30)
+                .background(Circle().fill(P.ink.opacity(P.isLight ? 0.07 : 0.09)))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle()).accessibilityLabel("Close").accessibilityIdentifier("popup-close")
-        .padding(.trailing, 6)
+        .padding(.trailing, 8)
     }
 }
 
-/// The centred popup card: dimmed backdrop, rounded themed card with a fixed 44pt header row the frame draws (optional title left, x right).
+/// The popup card: dimmed backdrop, rounded themed card with a header row the frame draws (optional title left, x right). On a phone it is
+/// a floating sheet docked near the bottom (thumb reach, rises from below, swipes down to close); on a wide screen a centred card.
 /// Content never draws its own close button. The card picks one of five size classes (`PopupSizeClass`, rules in `PopupSizing`) from the
 /// height of its content: width, backdrop and entrance follow the class, and the card springs to its new size when the content changes.
 /// Arrives with a fade, a scale from the class's start scale and a short rise; a tall or full card swipes down to close.
 struct CenterSheetFrame<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var sizeClass
     var onClose: () -> Void
     var title: String = ""
     var size: CenterSheetSize = .fit
@@ -95,10 +106,15 @@ struct CenterSheetFrame<Content: View>: View {
     @State private var drag: CGFloat = 0
     @State private var keyboardUp = false
 
+    /// A phone: the card docks at the bottom as a sheet.
+    private var docked: Bool { sizeClass != .regular }
+
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
             layout(screen: geo.size)
         }
+        // Docked, the sheet reaches into the home-indicator area like a system sheet (the keyboard still pushes it up).
+        .ignoresSafeArea(.container, edges: docked ? Edge.Set.bottom : Edge.Set())
         .toggleStyle(LedgerToggleStyle())
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetTitleKey.self) { contentTitle = $0 }
@@ -116,21 +132,22 @@ struct CenterSheetFrame<Content: View>: View {
     private func layout(screen: CGSize) -> some View {
         let cls: PopupSizeClass = size == .tall ? .full : measuredClass
         let dim: Double = PopupSizing.dim(of: cls) * PopupSizing.dragDimFactor(offset: drag)
-        let rise: CGFloat = PopupSizing.entryRise(of: cls, reduceMotion: reduceMotion)
-        let startScale: CGFloat = PopupSizing.entryScale(of: cls, reduceMotion: reduceMotion)
-        return ZStack {
+        let rise: CGFloat = docked ? (reduceMotion ? 0 : 90) : PopupSizing.entryRise(of: cls, reduceMotion: reduceMotion)
+        let startScale: CGFloat = docked ? 1 : PopupSizing.entryScale(of: cls, reduceMotion: reduceMotion)
+        return ZStack(alignment: docked ? .bottom : .center) {
             Color.black.opacity(shown ? dim : 0).ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { backdropTap() }
                 .accessibilityIdentifier("popup-backdrop")
             card(screen: screen, cls: cls)
-                .frame(maxWidth: PopupSizing.maxWidth(of: cls))
-                .padding(.horizontal, PopupMetrics.margin)
+                .frame(maxWidth: docked ? 640 : PopupSizing.maxWidth(of: cls))
+                .padding(.horizontal, docked ? PopupMetrics.dockMargin : PopupMetrics.margin)
+                .padding(.bottom, docked ? PopupMetrics.dockMargin : 0)
                 .scaleEffect(shown ? 1 : startScale)
                 .offset(y: (shown ? 0 : rise) + drag)
                 .opacity(shown ? 1 : 0)
         }
-        .frame(width: screen.width, height: screen.height)
+        .frame(width: screen.width, height: screen.height, alignment: docked ? .bottom : .center)
         .animation(Motion.size(reduceMotion), value: cls)
     }
 
@@ -145,10 +162,10 @@ struct CenterSheetFrame<Content: View>: View {
 
     private func card(screen: CGSize, cls: PopupSizeClass) -> some View {
         let room: CGFloat = PopupSizing.room(screenHeight: screen.height)
-        let head: CGFloat = shownTitle.isEmpty ? PopupMetrics.header : PopupMetrics.header + 0.5
-        let swipe: Bool = cls.isSwipeable && !locked && backdropCloses
+        let head: CGFloat = PopupMetrics.header
+        let swipe: Bool = (cls.isSwipeable || docked) && !locked && backdropCloses
         let fixedHeight: CGFloat? = size == .tall ? PopupSizing.fullHeight(screenHeight: screen.height) : nil
-        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: PopupRadius.card, style: .continuous)
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: docked ? PopupMetrics.dockRadius : PopupRadius.card + 8, style: .continuous)
         let mask: GestureMask = swipe ? GestureMask.all : GestureMask.subviews
         return VStack(spacing: 0) {
             headerRow
@@ -188,7 +205,7 @@ struct CenterSheetFrame<Content: View>: View {
 
     @ViewBuilder private func grabber(_ visible: Bool) -> some View {
         if visible {
-            Capsule().fill(P.lineStrong).frame(width: 36, height: 4).padding(.top, 5).allowsHitTesting(false)
+            Capsule().fill(P.inkFaint.opacity(0.45)).frame(width: 36, height: 5).padding(.top, 6).allowsHitTesting(false)
         }
     }
 
@@ -203,7 +220,10 @@ struct CenterSheetFrame<Content: View>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             FitScroll(maxHeight: room, onMeasure: { (h: CGFloat) in measure(h + head, screenHeight: screenHeight) }) {
-                content().padding(size == .fitBleed ? 0 : 16)
+                content()
+                    .padding(.horizontal, size == .fitBleed ? 0 : PopupMetrics.inset)
+                    .padding(.top, size == .fitBleed ? 0 : Theme.Space.xs)
+                    .padding(.bottom, size == .fitBleed ? 0 : PopupMetrics.inset)
             }
         }
     }
