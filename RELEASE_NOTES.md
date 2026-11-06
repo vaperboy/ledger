@@ -1,4 +1,5 @@
 # What's new
+- Speed: screens redraw much faster (money text, Home, Group, Phone badges and Accounting lists no longer redo whole-game work on every redraw); text on filled buttons, chips and photo banners always uses the fill's readable ink
 - Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale
 - Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring without the extra toggle; Group pages, Treasury, sale routes and Boardroom calmer; new-company flow reviews the cost before paying; Bank flatter, payroll lives in Accounting
 - Look: new design system: one type scale that follows your text size, one spacing and corner set, unboxed sections and rows, three button styles with full-size tap areas, buttons say why they are disabled, no gradients or glows
