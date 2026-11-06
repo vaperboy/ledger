@@ -54,17 +54,17 @@ struct LuxuryView: View {
             tabButton(.showroom, "Showroom", Glyph.luxury)
             tabButton(.vault, "My Vault", Glyph.bank)
         }
-        .padding(.top, 8).padding(.bottom, 4)
-        .background(P.ground.opacity(0.96).ignoresSafeArea(edges: .bottom))
-        .overlay(alignment: .top) { Rectangle().fill(P.line).frame(height: 1) }
+        .padding(.top, Theme.Space.xs)
+        .background(P.page.ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Hairline() }
     }
 
     private func tabButton(_ t: Tab, _ name: String, _ glyph: String) -> some View {
         let on: Bool = tab == t
-        return Button { tab = t } label: {
-            VStack(spacing: 4) {
-                GlyphView(glyph: glyph, size: 20, weight: 1.5, tint: on ? P.accent : P.inkFaint)
-                Text(name).font(.system(size: 11, weight: on ? .semibold : .regular)).foregroundStyle(on ? P.accent : P.inkFaint)
+        return Button { Haptics.choose(); tab = t } label: {
+            VStack(spacing: Theme.Space.xxs) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: on ? P.accent : P.inkFaint)
+                Text(name).textStyle(.caption, tint: on ? P.accent : P.inkFaint, weight: on ? .semibold : .regular)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
@@ -86,41 +86,22 @@ struct LuxuryHeader: View {
 
     var body: some View {
         if let e = store.engine {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(alignment: .center, spacing: Theme.Space.s) {
                     OutsideBack()
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 6) {
-                            GlyphView(glyph: Glyph.luxury, size: 12, weight: 1.4, tint: P.accent)
-                            Text("PRIVATE SALES").font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(2.4).foregroundStyle(P.accent)
-                        }
-                        Text("Private sales").font(.serifTitle(26)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
-                    }
+                    Text("Private sales").textStyle(.title).accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
                 }
-                figures(e)
+                FigureRow(items: [
+                    KeyFigures.Item(label: "Liquid cash", value: store.short(max(0, e.state.cash)), tint: P.gain),
+                    KeyFigures.Item(label: "Net worth", value: store.short(e.netWorth.total))
+                ], columns: 2, combineCells: true)
+                .padding(.horizontal, Theme.Space.xs)
             }
-            .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 10)
+            .padding(.leading, Theme.Space.s).padding(.trailing, Theme.Space.page)
+            .padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.m)
+            .overlay(alignment: .bottom) { Hairline() }
         }
-    }
-
-    private func figures(_ e: GameEngine) -> some View {
-        HStack(spacing: 0) {
-            cell("LIQUID CASH", store.short(max(0, e.state.cash)), P.gain)
-            Rectangle().fill(P.line).frame(width: 1, height: 30)
-            cell("NET WORTH", store.short(e.netWorth.total), P.ink).padding(.leading, 14)
-        }
-        .padding(.vertical, 10).padding(.horizontal, 14)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-    }
-
-    private func cell(_ label: String, _ value: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.system(size: 9.5, weight: .semibold, design: .monospaced)).tracking(1.4).foregroundStyle(P.inkFaint)
-            Text(value).font(.system(size: 17, weight: .semibold, design: .monospaced)).foregroundStyle(tint).minimumScaleFactor(0.7).lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

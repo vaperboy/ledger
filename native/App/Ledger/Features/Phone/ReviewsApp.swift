@@ -10,16 +10,19 @@ extension Glyph {
 
 /// A rating as five star glyphs and "4.2 / 5". The wording comes from `StandingWords`, so every screen writes a rating the same way.
 struct StarRatingView: View {
+    @Environment(\.outsidePalette) private var P
+    /// Scales the star glyphs with Dynamic Type.
+    @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
     var rating: Double
     var size: CGFloat = 15
     /// Hide the number (a rating that is not shown yet).
     var showsNumber = true
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(StandingWords.starGlyphs(rating)).font(.system(size: size)).foregroundStyle(Theme.gold)
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            Text(StandingWords.starGlyphs(rating)).font(.system(size: size * scale)).foregroundStyle(P.accent)
             if showsNumber {
-                Text(String(format: "%.1f / 5", rating)).font(.system(size: size - 1.5).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                Text(String(format: "%.1f / 5", rating)).textStyle(size >= 18 ? .headline : .caption, tint: P.inkSoft, numeric: true)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -82,14 +85,9 @@ struct ReviewsApp: View {
                     }
                 }
             } else {
-                ScrollView {
-                    Card(padding: 14, radius: Theme.Radius.card) {
-                        Text("Reviews arrive once a business is open and customers come.").font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
-                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
-                }
-                .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
+                EmptyState(glyph: Glyph.reviewStar, title: "No reviews yet", message: "Reviews arrive once a business is open and customers come.")
+                    .padding(.horizontal, Theme.Space.page)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .accessibilityIdentifier("reviews-app")
@@ -97,10 +95,10 @@ struct ReviewsApp: View {
 
     private func sidePage(_ e: GameEngine, _ co: Company, _ sd: Side) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 if sd == .yours { yours(e, co) } else { rivals(e, co) }
             }
-            .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.xs).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -118,16 +116,7 @@ struct ReviewsApp: View {
                 }
             }
         } label: {
-            HStack(spacing: 10) {
-                IconCircle(glyph: Glyph.reviewStar, size: 30)
-                Text(chosen.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Spacer(minLength: 8)
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-            }
-            .padding(.horizontal, 12).frame(minHeight: 48)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
+            BusinessMenuLabel(glyph: Glyph.reviewStar, title: chosen.name)
         }
         .accessibilityLabel("Business: \(chosen.name)")
         .accessibilityIdentifier("reviews-business-picker")
@@ -148,52 +137,44 @@ struct ReviewsApp: View {
         yourHero(r)
         if r.count > 0 {
             starsGiven(r)
-            LazyVStack(alignment: .leading, spacing: 10) {
-                ForEach(r.lines) { (line: ReviewLine) in
-                    EntityCard { reviewCard(line) }
-                        .newMarker(.reviews, ReviewsApp.lineKey(e, co, line), style: .dot, alignment: .topTrailing)
+            LedgerSection("What customers say") {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(r.lines.enumerated()), id: \.element.id) { (n: Int, line: ReviewLine) in
+                        if n > 0 { Hairline() }
+                        reviewCard(line)
+                            .padding(.vertical, Theme.Space.m)
+                            .newMarker(.reviews, ReviewsApp.lineKey(e, co, line), style: .dot, alignment: .topTrailing)
+                    }
                 }
             }
         } else {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                Text("No reviews yet.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-            }
+            EmptyState(glyph: Glyph.reviewStar, title: "No reviews yet", message: "Customers write once they have bought.", centered: false)
         }
     }
 
+    /// The rating as the screen's one big figure, its word, and how many reviews it rests on.
     private func yourHero(_ r: ReviewSummary) -> some View {
-        Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 6) {
-                if r.enough {
-                    StarRatingView(rating: r.rating, size: 22)
-                    Text(r.word).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.gold)
-                } else {
-                    Text("No rating yet").font(.serifTitle(24)).foregroundStyle(Theme.ivoryMuted)
-                }
-                Text(r.count == 1 ? "1 review" : "\(r.count) reviews").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            if r.enough {
+                Text(String(format: "%.1f", r.rating)).textStyle(.display)
+                StarRatingView(rating: r.rating, size: 18, showsNumber: false)
+                Text(r.word).textStyle(.body, tint: Theme.accent, weight: .medium)
+            } else {
+                Text("No rating yet").textStyle(.title, tint: Theme.inkSoft)
             }
+            Text(r.count == 1 ? "1 review" : "\(r.count) reviews").textStyle(.caption, tint: Theme.inkFaint)
         }
+        .accessibilityElement(children: .combine)
     }
 
-    /// How many reviews gave each number of stars, five to one, as thin bars.
+    /// How many reviews gave each number of stars, five to one, as progress lines.
     private func starsGiven(_ r: ReviewSummary) -> some View {
         let top: Double = Double(max(1, r.histogram.max() ?? 1))
-        return Card(padding: 14, radius: Theme.Radius.card) {
-            VStack(spacing: 7) {
-                ForEach([5, 4, 3, 2, 1], id: \.self) { (stars: Int) in
-                    let n: Int = r.histogram.indices.contains(stars - 1) ? r.histogram[stars - 1] : 0
-                    HStack(spacing: 10) {
-                        Text("\(stars)\u{2605}").font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).frame(width: 30, alignment: .leading)
-                        GeometryReader { g in
-                            Capsule().fill(Theme.hairline)
-                                .overlay(alignment: .leading) {
-                                    Capsule().fill(stars >= 4 ? Theme.gain : (stars == 3 ? Theme.gold : Theme.loss))
-                                        .frame(width: n == 0 ? 0 : max(3, g.size.width * CGFloat(Double(n) / top)))
-                                }
-                        }.frame(height: 5)
-                        Text("\(n)").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivory).frame(width: 36, alignment: .trailing)
-                    }
-                }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            ForEach([5, 4, 3, 2, 1], id: \.self) { (stars: Int) in
+                let n: Int = r.histogram.indices.contains(stars - 1) ? r.histogram[stars - 1] : 0
+                ProgressLine(fraction: Double(n) / top, tint: stars >= 4 ? Theme.gain : (stars == 3 ? Theme.accent : Theme.loss),
+                             label: "\(stars)\u{2605}", value: "\(n)")
             }
         }
     }
@@ -201,16 +182,18 @@ struct ReviewsApp: View {
     private func reviewCard(_ line: ReviewLine) -> some View {
         let when: String = line.weeksAgo == 0 ? "This week" : "\(line.weeksAgo) wk ago"
         let who: String = (line.flag.isEmpty ? "" : line.flag + " ") + "\(line.who), \(line.age)"
-        return VStack(alignment: .leading, spacing: 3) {
-            HStack {
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(alignment: .firstTextBaseline) {
                 Text(String(repeating: "\u{2605}", count: line.stars) + String(repeating: "\u{2606}", count: max(0, 5 - line.stars)))
-                    .font(.system(size: 12)).foregroundStyle(Theme.gold)
+                    .textStyle(.caption, tint: Theme.accent)
+                    .accessibilityLabel("\(line.stars) of 5 stars")
                 Spacer()
-                Text(when).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+                Text(when).textStyle(.caption, tint: Theme.inkFaint)
             }
-            Text(line.text.tidyMoney).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
-            Text(who).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
+            Text(line.text.tidyMoney).textStyle(.body).fixedSize(horizontal: false, vertical: true)
+            Text(who).textStyle(.caption, tint: Theme.inkFaint)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Your rivals
@@ -218,16 +201,16 @@ struct ReviewsApp: View {
     @ViewBuilder private func rivals(_ e: GameEngine, _ co: Company) -> some View {
         let group: ReviewGroup? = e.reviewBoard().first { (g: ReviewGroup) -> Bool in g.rows.contains { $0.companyID == co.id } }
         if let group {
-            Text(group.title.tidyText).capsLabel()
-            VStack(spacing: 10) {
-                ForEach(group.rows) { (row: ReviewRow) in
-                    boardRow(e, co, row)
+            LedgerSection(group.title.tidyText) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(group.rows.enumerated()), id: \.element.id) { (n: Int, row: ReviewRow) in
+                        if n > 0 { Hairline() }
+                        boardRow(e, co, row)
+                    }
                 }
             }
         } else {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                Text("Rivals appear once the business has opened.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryFaint)
-            }
+            EmptyState(glyph: Glyph.reviewStar, title: "No rivals yet", message: "Rivals appear once the business has opened.", centered: false)
         }
     }
 
@@ -235,37 +218,34 @@ struct ReviewsApp: View {
         let shown: Bool = row.count >= Reviews.minimumShown
         let rank: String = row.rank.map { "Rated \($0) of \(row.of ?? $0)" } ?? "No rating yet"
         let open: Bool = row.rivalID != nil && openRival == row.rivalID
-        return EntityCard {
-            VStack(alignment: .leading, spacing: 8) {
-                Button {
-                    Haptics.tap()
-                    if let rid = row.rivalID { openRival = (openRival == rid) ? nil : rid }
-                } label: {
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row.name + (row.mine ? " (yours)" : "")).font(.system(size: 14, weight: .medium)).foregroundStyle(row.mine ? Theme.gold : Theme.ivory).lineLimit(1)
-                            Text("\(rank) \u{00B7} \(row.count) reviews").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-                        }
-                        Spacer(minLength: 8)
-                        if shown { StarRatingView(rating: row.rating, size: 13, showsNumber: false) } else { Text("\u{2013}").foregroundStyle(Theme.ivoryFaint) }
-                        if row.rivalID != nil { MoreChevron().rotationEffect(.degrees(open ? 90 : 0)) }
+        let rating: String = shown ? String(format: " \u{00B7} %.1f / 5", row.rating) : ""
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button {
+                Haptics.tap()
+                if let rid = row.rivalID { openRival = (openRival == rid) ? nil : rid }
+            } label: {
+                HStack(alignment: .center, spacing: Theme.Space.m) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(row.name + (row.mine ? " (yours)" : "")).textStyle(.headline, tint: row.mine ? Theme.accent : nil).lineLimit(1)
+                        Text("\(rank) \u{00B7} \(row.count) reviews" + rating).textStyle(.caption, tint: Theme.inkFaint)
                     }
-                    .contentShape(Rectangle())
+                    Spacer(minLength: Theme.Space.s)
+                    if shown { StarRatingView(rating: row.rating, size: 13, showsNumber: false) } else { Text("\u{2013}").textStyle(.body, tint: Theme.inkFaint) }
+                    if row.rivalID != nil { MoreChevron().rotationEffect(.degrees(open ? 90 : 0)) }
                 }
-                .buttonStyle(PressableStyle())
-                .disabled(row.rivalID == nil)
-                if shown {
-                    Text(String(format: "%.1f / 5", row.rating)).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
-                }
-                if open, let rid = row.rivalID, let d = e.rivalDetail(companyID: co.id, rivalID: rid) {
-                    CardLine()
-                    Text("Typical comments").capsLabel(Theme.ivoryFaint)
-                    ForEach(d.reviews) { (line: ReviewLine) in
-                        CardLine()
-                        reviewCard(line)
-                    }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .disabled(row.rivalID == nil)
+            if open, let rid = row.rivalID, let d = e.rivalDetail(companyID: co.id, rivalID: rid) {
+                Text("Typical comments").capsLabel(Theme.inkFaint)
+                ForEach(d.reviews) { (line: ReviewLine) in
+                    Hairline()
+                    reviewCard(line)
                 }
             }
         }
+        .padding(.vertical, Theme.Space.s)
     }
 }

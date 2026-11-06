@@ -43,7 +43,7 @@ struct TechProProduct: View {
             content(e, co, need)
         } else {
             ShopEmptyNote(text: "This product is not sold to this company.", buttonTitle: "Back to the suppliers", action: onBack)
-                .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(Theme.Space.page).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -53,14 +53,13 @@ struct TechProProduct: View {
         let own: Bool = offerKey == "u" || offerKey == "own" || offerKey == "co"
         let modes: [Mode] = [.new] + (need.canLease && !own ? [Mode.lease] : [])
         let current: Mode = modes.contains(mode) ? mode : .new
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 16) {
+        return ShopPage {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
                 hero(e, need)
                 header(co, need, cur, title: title(e, need))
-                if modes.count > 1 { modePicker(modes, current, one: one, subscription: need.subscription) }
-                options(e, co, need, current, cur, one: one)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            if modes.count > 1 { modePicker(modes, current, one: one, subscription: need.subscription) }
+            options(e, co, need, current, cur, one: one)
         }
         .confirmAction($pendingOwn)
     }
@@ -87,7 +86,7 @@ struct TechProProduct: View {
         } else if offerKey.hasPrefix("n"), let n = Int(offerRest) {
             item = ArtLibrary.itemKey(group: group, familyKey: equipmentID, seed: equipmentID + "#" + String(n)) ?? ""
         }
-        return ShopPhoto(name: photo, glyph: need.isVehicle ? Glyph.vehicle : TechCategory.of(need).glyph, height: 170, cornerRadius: 16, item: item)
+        return ShopPhoto(name: photo, glyph: need.isVehicle ? Glyph.vehicle : TechCategory.of(need).glyph, height: 170, item: item)
     }
 
     @ViewBuilder private func options(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ current: Mode, _ cur: Currency, one: Bool) -> some View {
@@ -108,23 +107,20 @@ struct TechProProduct: View {
 
     @ViewBuilder private func brandOption(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ o: EquipmentMarket.Offer, _ mode: Mode, _ cur: Currency, one: Bool) -> some View {
         if need.subscription && mode == .new {
-            Text("Sold only as a subscription. Plans are priced by users: you have \(EquipmentMarket.users(co)).")
-                .font(.system(size: 13.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-            providerCard(e, o, cur)
+            ShopSection(note: "Sold only as a subscription. Plans are priced by users: you have \(EquipmentMarket.users(co)).") {
+                providerCard(e, o, cur)
+            }
         } else {
             let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
             let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
             let perf: Int = Int(((o.performance - 1) * 100).rounded())
-            Card(padding: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ShopFact(label: "Seller", value: o.seller)
-                    ShopFact(label: "Class", value: o.className)
-                    ShopFact(label: "Rating", value: stars(o.rating, o.reviews))
-                    ShopFact(label: "Output", value: (o.performance >= 1 ? "+" : "") + "\(perf)%")
-                    ShopFact(label: "Reliability", value: reliabilityWord(o.reliability))
-                    if sale.isOn { ShopFact(label: sale.label, value: "-\(sale.percentOff)%", tint: P.loss) }
-                    ShopFact(label: "Price each", value: cur.tidyShort(p), strong: true)
-                }
+            let base: [(label: String, value: String)] = [
+                (label: "Seller", value: o.seller), (label: "Class", value: o.className), (label: "Rating", value: stars(o.rating, o.reviews)),
+                (label: "Output", value: (o.performance >= 1 ? "+" : "") + "\(perf)%"), (label: "Reliability", value: reliabilityWord(o.reliability))
+            ]
+            let facts: [(label: String, value: String)] = base + (sale.isOn ? [(label: sale.label, value: "-\(sale.percentOff)%")] : [])
+            ShopSection(title: "About this offer") {
+                ShopFacts(facts: facts, total: (label: "Price each", value: cur.tidyShort(p)), tints: sale.isOn ? [facts.count - 1: P.loss] : [:])
             }
             brandAdd(e, need, o, mode == .lease, cur, one: one)
         }
@@ -134,14 +130,12 @@ struct TechProProduct: View {
         if let o = e.vehicleOffers(companyID: companyID, equipmentID: equipmentID).first(where: { (x: EquipmentMarket.VehicleOffer) -> Bool in x.id == offerRest }) {
             let price: Double = e.vehiclePrice(modelID: o.modelID, factor: o.priceFactor)
             let sale: StoreDeals.Deal = e.vehicleDeal(modelID: o.modelID, factor: o.priceFactor)
-            Card(padding: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ShopFact(label: "Model", value: o.modelName)
-                    ShopFact(label: "Rating", value: stars(o.rating, o.reviews))
-                    ShopFact(label: "Reliability", value: reliabilityWord(o.reliability))
-                    if sale.isOn { ShopFact(label: sale.label, value: "-\(sale.percentOff)%", tint: P.loss) }
-                    ShopFact(label: "Price new", value: cur.tidyShort(price), strong: true)
-                }
+            let base: [(label: String, value: String)] = [
+                (label: "Model", value: o.modelName), (label: "Rating", value: stars(o.rating, o.reviews)), (label: "Reliability", value: reliabilityWord(o.reliability))
+            ]
+            let facts: [(label: String, value: String)] = base + (sale.isOn ? [(label: sale.label, value: "-\(sale.percentOff)%")] : [])
+            ShopSection(title: "About this offer") {
+                ShopFacts(facts: facts, total: (label: "Price new", value: cur.tidyShort(price)), tints: sale.isOn ? [facts.count - 1: P.loss] : [:])
             }
             vehicleAdd(e, o, mode == .lease, cur)
         } else {
@@ -154,31 +148,20 @@ struct TechProProduct: View {
     private func header(_ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency, title: String) -> some View {
         let have: Int = Int((need.have + need.leased).rounded())
         let sub: String = EquipmentMarket.kindName(need.kind) + " \u{00B7} lasts about \(Int(need.lifeYears)) years" + (need.warrantyYears > 0 ? " \u{00B7} warranty \(Int(need.warrantyYears)) yr new" : "")
-        return VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
-            Text(sub).font(.system(size: 13)).foregroundStyle(P.inkFaint)
-            if need.dealPercent > 0 {
-                Text("\(need.dealLabel): up to \(need.dealPercent)% off, prices below already include it")
-                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Color.white)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(Capsule().fill(P.loss))
-            }
-            Card(padding: 12) {
-                HStack(spacing: 0) {
-                    stat("You have", "\(have)")
-                    stat("Needed", need.need > 0 ? "\(Int(need.need))" : "\u{2013}")
-                    stat("Cash", store.short(co.cash, in: co))
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                ShopPageTitle(title: title, subtitle: sub)
+                if need.dealPercent > 0 {
+                    Text("\(need.dealLabel): up to \(need.dealPercent)% off, prices below already include it")
+                        .textStyle(.caption, tint: P.loss, weight: .semibold).fixedSize(horizontal: false, vertical: true)
                 }
             }
+            FigureRow(items: [
+                KeyFigures.Item(label: "You have", value: "\(have)"),
+                KeyFigures.Item(label: "Needed", value: need.need > 0 ? "\(Int(need.need))" : "\u{2013}"),
+                KeyFigures.Item(label: "Cash", value: store.short(co.cash, in: co))
+            ], columns: 3, combineCells: true)
         }
-    }
-
-    private func stat(_ label: String, _ value: String) -> some View {
-        VStack(spacing: 2) {
-            Text(value).font(.system(size: 16, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink).lineLimit(1).minimumScaleFactor(0.7)
-            Text(label).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private func modeTitle(_ m: Mode, one: Bool, subscription: Bool) -> String {
@@ -218,9 +201,9 @@ struct TechProProduct: View {
         let line = StoreOrders.Line(kind: .new, equipmentID: equipmentID, quantity: q, offerIndex: sel.index, payment: pay)
         let label: String = lease ? "Lease, 3 years, service included" : (useFinance ? "Down payment now, loan for the rest" : "Total")
         let value: String = lease ? cur.tidyShort(EquipmentMarket.leaseMonthly(price: total)) + "/mo" : (useFinance ? cur.tidyShort(total * 0.2) : cur.tidyShort(total))
-        return Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 12) {
-                if !one { stepper(q) }
+        return ShopSection(title: lease ? "Lease it" : "Buy it") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                if !one { ShopQuantity(value: q, range: 1...50) { (v: Int) in quantity = v } }
                 if canFin { payChoice() }
                 ShopFact(label: label, value: value, strong: true)
                 addButton(e, line, lease ? "Add lease to basket" : "Add to basket")
@@ -230,45 +213,20 @@ struct TechProProduct: View {
 
     private func addButton(_ e: GameEngine, _ line: StoreOrders.Line, _ title: String) -> some View {
         let ok: Bool = e.storeQuote(companyID: companyID, lines: [line], delivery: .standard) != nil
-        return VStack(alignment: .leading, spacing: 6) {
-            Button(title) {
-                Haptics.success()
-                onAdd(line)
-                selected = nil
-                quantity = 0
-            }
-            .buttonStyle(ShopFilledButtonStyle())
-            .disabled(!ok)
-            .accessibilityIdentifier("tp-add")
-            if !ok { Text("This is not on offer right now.").font(.system(size: 12.5)).foregroundStyle(P.caution) }
+        return PrimaryAction(title: title, blockedReason: ok ? nil : "This is not on offer right now.", identifier: "tp-add") {
+            Haptics.success()
+            onAdd(line)
+            selected = nil
+            quantity = 0
         }
     }
 
     private func payChoice() -> some View {
-        HStack {
-            Text("How to pay").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-            Spacer()
+        HStack(spacing: Theme.Space.m) {
+            Text("How to pay").textStyle(.body, tint: P.inkSoft)
+            Spacer(minLength: Theme.Space.s)
             SegmentedChoice(items: [false, true], title: { (f: Bool) -> String in f ? "Finance" : "Cash" }, selection: $finance)
-                .frame(maxWidth: 190)
-        }
-    }
-
-    private func stepper(_ q: Int) -> some View {
-        HStack {
-            Text("Quantity").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-            Spacer()
-            HStack(spacing: 0) {
-                Button { quantity = max(1, q - 1); Haptics.choose() } label: {
-                    GlyphView(glyph: Glyph.minus, size: 14, weight: 2, tint: P.accent).frame(width: 42, height: 34)
-                }
-                .disabled(q <= 1)
-                Text("\(q)").font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink).frame(minWidth: 30)
-                Button { quantity = min(50, q + 1); Haptics.choose() } label: {
-                    GlyphView(glyph: Glyph.hire, size: 14, weight: 2, tint: P.accent).frame(width: 42, height: 34)
-                }
-                .disabled(q >= 50)
-            }
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+                .frame(maxWidth: 200)
         }
     }
 
@@ -276,16 +234,13 @@ struct TechProProduct: View {
 
     @ViewBuilder private func companyListings(_ e: GameEngine, _ cur: Currency) -> some View {
         let list: [OwnListing] = e.ownCompanyListings(forBuyer: companyID).filter { (l: OwnListing) -> Bool in l.equipmentID == equipmentID }
-        VStack(alignment: .leading, spacing: 8) {
-            ShopHeading(text: "Sold by your companies", trailing: "\(list.count)")
-            Text("You pay the selling company; the profit is its, so it stays in your group.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
-            if list.isEmpty { Text("None of your companies offers this now.").font(.system(size: 14)).foregroundStyle(P.inkSoft) }
-            ForEach(list) { (l: OwnListing) -> CompanyListingRow in CompanyListingRow(listing: l, cur: cur, qty: ownQty) { confirmBuy(l, cur) } }
-            HStack(spacing: 12) {
-                Button("\u{2212}") { ownQty = max(1, ownQty - 1) }.buttonStyle(QuietButtonStyle())
-                Text("Quantity \(ownQty)").font(.system(size: 14, weight: .semibold)).foregroundStyle(P.ink)
-                Button("+") { ownQty = min(99, ownQty + 1) }.buttonStyle(QuietButtonStyle())
+        ShopSection(title: "Sold by your companies", trailing: "\(list.count)", note: "You pay the selling company; the profit is its, so it stays in your group.") {
+            if list.isEmpty { ShopEmptyNote(text: "None of your companies offers this now.", buttonTitle: "Back to the suppliers", action: onBack) }
+            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, l: OwnListing) in
+                if n > 0 { Hairline() }
+                CompanyListingRow(listing: l, cur: cur, qty: ownQty) { confirmBuy(l, cur) }
             }
+            if !list.isEmpty { ShopQuantity(value: ownQty, range: 1...99) { (v: Int) in ownQty = v } }
         }
     }
 
@@ -307,28 +262,29 @@ struct TechProProduct: View {
     /// It is taken at once (no delivery): it is a licence inside the group.
     @ViewBuilder private func ownSoftware(_ e: GameEngine, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
         let list: [SoftwareProducts.Offer] = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)
-        VStack(alignment: .leading, spacing: 8) {
-            ShopHeading(text: "From your own companies", trailing: "\(list.count)")
+        ShopSection(title: "From your own companies", trailing: "\(list.count)") {
             if list.isEmpty { ShopEmptyNote(text: "None of your companies builds this now.", buttonTitle: "Back to the suppliers", action: onBack) }
-            ForEach(list) { (o: SoftwareProducts.Offer) in ownRow(e, o, cur) }
+            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, o: SoftwareProducts.Offer) in
+                if n > 0 { Hairline() }
+                ownRow(e, o, cur)
+            }
         }
     }
 
     private func ownRow(_ e: GameEngine, _ o: SoftwareProducts.Offer, _ cur: Currency) -> some View {
         let producer: String = e.state.company(o.producerID)?.name ?? "your company"
         let price: String = o.cost == 0 ? "free" : cur.tidyShort(o.cost) + (o.monthly ? "/mo" : "")
-        return Card(padding: 12) {
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(o.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                    Text("Built by \(producer) \u{00B7} \(o.modelName.lowercased())" + (o.tested ? " \u{00B7} test version: less reliable" : ""))
-                        .font(.system(size: 12.5)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 8)
-                Text(price).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
-                Button("Use it") { confirmOwn(o, producer, cur) }.buttonStyle(QuietButtonStyle())
+        return HStack(alignment: .center, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(o.name).textStyle(.headline)
+                Text("Built by \(producer) \u{00B7} \(o.modelName.lowercased())" + (o.tested ? " \u{00B7} test version: less reliable" : ""))
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: Theme.Space.s)
+            Text(price).textStyle(.headline, numeric: true)
+            Button("Use it") { confirmOwn(o, producer, cur) }.buttonStyle(SecondaryButtonStyle(size: .compact))
         }
+        .padding(.vertical, Theme.Space.xs)
     }
 
     private func confirmOwn(_ o: SoftwareProducts.Offer, _ producer: String, _ cur: Currency) {
@@ -355,14 +311,15 @@ struct TechProProduct: View {
 
     private func providerCard(_ e: GameEngine, _ o: EquipmentMarket.Offer, _ cur: Currency) -> some View {
         let list: [EquipmentMarket.Plan] = e.subscriptionPlans(companyID: companyID, equipmentID: equipmentID, offer: o)
-        return Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text(o.name).font(.system(size: 16, weight: .semibold)).foregroundStyle(P.ink)
-                    Spacer(minLength: 8)
-                    Text(stars(o.rating, o.reviews)).font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
-                }
-                ForEach(list, id: \.index) { (p: EquipmentMarket.Plan) in planRow(e, o, p, cur) }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(o.name).textStyle(.headline)
+                Spacer(minLength: Theme.Space.s)
+                Text(stars(o.rating, o.reviews)).textStyle(.caption, tint: P.inkFaint)
+            }
+            ForEach(list, id: \.index) { (p: EquipmentMarket.Plan) in
+                Hairline()
+                planRow(e, o, p, cur)
             }
         }
     }
@@ -371,18 +328,18 @@ struct TechProProduct: View {
         let line = StoreOrders.Line(kind: .plan, equipmentID: equipmentID, offerIndex: o.index, plan: p.index)
         let ok: Bool = e.storeQuote(companyID: companyID, lines: [line], delivery: .standard) != nil
         let users: String = p.maxUsers > 1_000_000 ? "any number of users" : "up to \(p.maxUsers) users"
-        return HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(p.name + (p.recommended ? " \u{00B7} fits your team" : "")).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink)
-                Text(users).font(.system(size: 12)).foregroundStyle(P.inkFaint)
+        return HStack(alignment: .center, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(p.name + (p.recommended ? " \u{00B7} fits your team" : "")).textStyle(.headline)
+                Text(ok ? users : users + " \u{00B7} not on offer now").textStyle(.caption)
             }
-            Spacer(minLength: 8)
-            Text(cur.tidyShort(p.monthlyFee) + "/mo").font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+            Spacer(minLength: Theme.Space.s)
+            Text(cur.tidyShort(p.monthlyFee) + "/mo").textStyle(.headline, numeric: true)
             Button("Add") {
                 Haptics.success()
                 onAdd(line)
             }
-            .buttonStyle(QuietButtonStyle())
+            .buttonStyle(SecondaryButtonStyle(size: .compact))
             .disabled(!ok)
         }
     }
@@ -390,15 +347,9 @@ struct TechProProduct: View {
     // MARK: Used
 
     @ViewBuilder private func used(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Used items are in Marketplace: second-hand goods from private sellers, with a price you can talk down.")
-                .font(.system(size: 13.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-            Button("Open Marketplace") {
-                Haptics.tap()
-                store.openApp(.marketplace)
-            }
-            .buttonStyle(QuietButtonStyle())
-            .accessibilityIdentifier("tp-open-marketplace")
+        ShopNote(title: "Bought used", text: "Used items are in Marketplace: second-hand goods from private sellers, with a price you can talk down.",
+                 actionTitle: "Open Marketplace", identifier: "tp-open-marketplace") {
+            store.openApp(.marketplace)
         }
     }
 
@@ -410,8 +361,8 @@ struct TechProProduct: View {
         let line = StoreOrders.Line(kind: .vehicle, equipmentID: equipmentID, vehicleOfferID: sel.id, payment: pay)
         let label: String = lease ? "Lease, 3 years" : (finance ? "Down payment now, loan for the rest" : "Total")
         let value: String = lease ? cur.tidyShort(EquipmentMarket.vehicleLeaseMonthly(price: price)) + "/mo" : cur.tidyShort(finance ? price * 0.2 : price)
-        return Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 12) {
+        return ShopSection(title: lease ? "Lease it" : "Buy it") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if !lease { payChoice() }
                 ShopFact(label: label, value: value, strong: true)
                 addButton(e, line, lease ? "Add lease to basket" : "Add to basket")
@@ -429,16 +380,15 @@ private struct CompanyListingRow: View {
     var buy: () -> Void
 
     var body: some View {
-        Card(padding: 12) {
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(listing.itemName).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                    Text("Sold by \(listing.sellerName)").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
-                }
-                Spacer(minLength: 8)
-                Text(cur.tidyShort(listing.price)).font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
-                Button("Buy") { buy() }.buttonStyle(QuietButtonStyle())
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(listing.itemName).textStyle(.headline)
+                Text("Sold by \(listing.sellerName)").textStyle(.caption)
             }
+            Spacer(minLength: Theme.Space.s)
+            Text(cur.tidyShort(listing.price)).textStyle(.headline, numeric: true)
+            Button("Buy") { buy() }.buttonStyle(SecondaryButtonStyle(size: .compact))
         }
+        .padding(.vertical, Theme.Space.xs)
     }
 }

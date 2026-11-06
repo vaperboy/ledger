@@ -47,27 +47,34 @@ struct MarketplaceApp: View {
 
     @ViewBuilder private var header: some View {
         if openID == nil, let e = store.engine, let co = current(e) {
-            VStack(spacing: 8) {
-                HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(spacing: Theme.Space.s) {
                     companyMenu(e, co)
-                    Spacer(minLength: 8)
+                    Spacer(minLength: Theme.Space.s)
                     sortMenu
                 }
-                filterChips
+                ShopChipRow {
+                    ForEach(Filter.allCases, id: \.self) { (f: Filter) in
+                        ShopChip(title: f.rawValue, selected: filter == f) { filter = f }
+                            .accessibilityIdentifier("mk-filter-\(f.rawValue)")
+                    }
+                }
                 lotLine(e, co)
             }
-            .padding(.horizontal, 16).padding(.vertical, 8)
+            .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.xs)
+            .frame(maxWidth: ShopMetrics.maxWidth)
             .frame(maxWidth: .infinity)
-            .background(P.ground)
+            .background(P.page)
+            .environment(\.outsidePalette, P)
         }
     }
 
     /// A used car dealer buys cars only with a free lot space: the spaces are shown above the listings.
     @ViewBuilder private func lotLine(_ e: GameEngine, _ co: Company) -> some View {
         if co.type == UsedCarDealer.tradeID, let lot = e.usedCarLot(companyID: co.id) {
-            HStack(spacing: 6) {
-                Text("Lot").font(.system(size: 12)).foregroundStyle(P.inkFaint)
-                Text("\(lot.used) of \(lot.spaces) spaces used, \(lot.free) free").font(.system(size: 13, weight: .semibold)).foregroundStyle(lot.free == 0 ? P.caution : P.ink)
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                Text("Lot").textStyle(.caption, tint: P.inkFaint)
+                Text("\(lot.used) of \(lot.spaces) spaces used, \(lot.free) free").textStyle(.caption, tint: lot.free == 0 ? P.caution : P.ink, weight: .semibold)
                 Spacer(minLength: 0)
             }
             .accessibilityIdentifier("mk-lot-line")
@@ -81,11 +88,13 @@ struct MarketplaceApp: View {
                 Button(c.name) { companyID = c.id }
             }
         } label: {
-            HStack(spacing: 6) {
-                Text("Buying for").font(.system(size: 12)).foregroundStyle(P.inkFaint)
-                Text(co.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(P.ink).lineLimit(1)
-                if all.count > 1 { Text("\u{25BE}").font(.system(size: 12)).foregroundStyle(P.inkFaint) }
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                Text("Buying for").textStyle(.caption, tint: P.inkFaint)
+                Text(co.name).textStyle(.body, weight: .semibold).lineLimit(1)
+                if all.count > 1 { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(90)) }
             }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .disabled(all.count < 2)
         .accessibilityIdentifier("mk-company")
@@ -97,24 +106,14 @@ struct MarketplaceApp: View {
                 Button(s.rawValue) { sort = s }
             }
         } label: {
-            HStack(spacing: 4) {
-                Text(sort.rawValue).font(.system(size: 13, weight: .semibold)).foregroundStyle(P.accent).lineLimit(1)
-                Text("\u{25BE}").font(.system(size: 12)).foregroundStyle(P.accent)
+            HStack(spacing: Theme.Space.xs) {
+                Text(sort.rawValue).textStyle(.body, tint: P.accent, weight: .semibold).lineLimit(1)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.accent).rotationEffect(.degrees(90))
             }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .accessibilityIdentifier("mk-sort")
-    }
-
-    private var filterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(Filter.allCases, id: \.self) { (f: Filter) in
-                    ShopChip(title: f.rawValue, selected: filter == f) { filter = f }
-                        .accessibilityIdentifier("mk-filter-\(f.rawValue)")
-                }
-            }
-        }
-        .scrollBounceBehavior(.basedOnSize)
     }
 
     // MARK: Data
@@ -163,20 +162,19 @@ struct MarketplaceApp: View {
                 gridPage(visible(all), cur, co)
             }
         } else {
-            ShopEmptyNote(text: "Nothing to buy for. Start a company first.")
-                .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            ShopEmptyNote(text: "Nothing to buy for. Start a company first.", glyph: Glyph.marketplace)
+                .padding(Theme.Space.page).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
     private func gridPage(_ list: [MarketListing], _ cur: Currency, _ co: Company) -> some View {
-        let cols: [GridItem] = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 12) {
-                ShopHeading(text: "For sale", trailing: list.count == 1 ? "1 listing" : "\(list.count) listings")
+        ShopPage(spacing: Theme.Space.m) {
+            ShopSection(title: "For sale", trailing: list.count == 1 ? "1 listing" : "\(list.count) listings") {
                 if list.isEmpty {
-                    ShopEmptyNote(text: "Nothing matches. New listings appear as the days go by.")
+                    ShopEmptyNote(text: "Nothing matches. New listings appear as the days go by.", glyph: Glyph.marketplace,
+                                  buttonTitle: filter == .all ? nil : "Show all listings") { filter = .all }
                 }
-                LazyVGrid(columns: cols, spacing: 12) {
+                ShopGrid {
                     ForEach(list, id: \.id) { (l: MarketListing) in
                         Button {
                             Haptics.tap()
@@ -190,13 +188,12 @@ struct MarketplaceApp: View {
                     }
                 }
             }
-            .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 20)
         }
         .accessibilityIdentifier("mk-grid")
     }
 }
 
-/// One listing in the grid: picture, title, a line of blurb, the city and the asking price.
+/// One listing in the grid: the shop product card with the blurb, the city and the asking price in the price colour.
 struct MarketplaceTile: View {
     @Environment(\.outsidePalette) private var P
     var listing: MarketListing
@@ -205,20 +202,7 @@ struct MarketplaceTile: View {
 
     var body: some View {
         let key: String = ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? ""
-        return VStack(alignment: .leading, spacing: 5) {
-            ShopPhoto(name: "", glyph: Glyph.marketplace, height: 96, item: key)
-            Text(listing.title).font(.system(size: 15, weight: .bold)).foregroundStyle(P.ink).multilineTextAlignment(.leading).lineLimit(2)
-            Text(listing.blurb).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).multilineTextAlignment(.leading).lineLimit(2)
-            Text(listing.city).font(.system(size: 12)).foregroundStyle(P.inkFaint).lineLimit(1)
-            Text(price).font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(P.accent2).lineLimit(1).minimumScaleFactor(0.7)
-            if refused {
-                Text("Not selling to you").font(.system(size: 12, weight: .semibold)).foregroundStyle(P.caution)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-        .contentShape(Rectangle())
+        return ShopProductCard(glyph: Glyph.marketplace, item: key, title: listing.title, lines: [listing.blurb, listing.city],
+                               price: price, priceTint: P.accent2, note: refused ? "Not selling to you" : "", noteTint: P.caution)
     }
 }

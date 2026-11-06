@@ -21,17 +21,17 @@ struct LuxuryShowroom: View {
         if let e = store.engine {
             let flagship: Luxury.Item? = items.max { $0.price < $1.price }
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     pills
                     if let f = flagship { LuxuryHero(item: f, owned: owned(e, f.id)) { onOpen(f.id) } }
                     feedHeader
-                    LazyVStack(spacing: 16) {
+                    LazyVStack(spacing: Theme.Space.l) {
                         ForEach(items.filter { $0.id != flagship?.id }, id: \.id) { (it: Luxury.Item) in
                             LuxuryCard(item: it, owned: owned(e, it.id)) { onOpen(it.id) }
                         }
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 24)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -42,39 +42,24 @@ struct LuxuryShowroom: View {
 
     private var pills: some View {
         let ids: [String] = ["all"] + Luxury.categories.map { $0.id }
-        return WrapRow(spacing: 8) { ForEach(ids, id: \.self) { pill($0) } }
-    }
-
-    private func pill(_ id: String) -> some View {
-        let on: Bool = category == id
-        let name: String = id == "all" ? "All" : (Luxury.categories.first { $0.id == id }?.name ?? id)
-        return Button { category = id } label: {
-            Text(name).font(.system(size: 13, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? P.onAccent : P.inkSoft)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(Capsule().fill(on ? P.accent : P.card))
-                .overlay(Capsule().strokeBorder(on ? Color.clear : P.line, lineWidth: 1))
+        return WrapRow(spacing: Theme.Space.s) {
+            ForEach(ids, id: \.self) { (id: String) in
+                ShopChip(title: id == "all" ? "All" : (Luxury.categories.first { $0.id == id }?.name ?? id), selected: category == id) { category = id }
+            }
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private var feedHeader: some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Curated acquisitions").font(.serifTitle(22)).foregroundStyle(P.ink)
-                Text("\(items.count) pieces").font(.system(size: 12)).foregroundStyle(P.inkFaint)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Curated acquisitions").textStyle(.figure)
+                Text("\(items.count) pieces").textStyle(.caption, tint: P.inkFaint)
             }
-            Spacer(minLength: 8)
-            Button { highFirst.toggle() } label: {
-                Text(highFirst ? "Price: high to low" : "Price: low to high")
-                    .font(.system(size: 11.5, weight: .medium, design: .monospaced)).foregroundStyle(P.accent)
-                    .padding(.horizontal, 10).padding(.vertical, 7)
-                    .overlay(Capsule().strokeBorder(P.lineStrong, lineWidth: 1))
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("Sort")
-            .accessibilityValue(highFirst ? "Price high to low" : "Price low to high")
+            Spacer(minLength: Theme.Space.s)
+            Button(highFirst ? "Price: high to low" : "Price: low to high") { Haptics.choose(); highFirst.toggle() }
+                .buttonStyle(TertiaryButtonStyle(size: .compact))
+                .accessibilityLabel("Sort")
+                .accessibilityValue(highFirst ? "Price high to low" : "Price low to high")
         }
     }
 }
@@ -86,22 +71,22 @@ struct LuxuryPriceLine: View {
     private var P: OutsidePalette { .luxury }
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(store.short(item.price)).font(.system(size: 19, weight: .semibold, design: .monospaced)).foregroundStyle(P.accent)
-            Spacer(minLength: 8)
-            Text(store.short(item.monthlyUpkeep) + " / month upkeep").font(.system(size: 11.5, design: .monospaced)).foregroundStyle(P.loss)
+            Text(store.short(item.price)).textStyle(.figure, tint: P.accent)
+            Spacer(minLength: Theme.Space.s)
+            Text(store.short(item.monthlyUpkeep) + " / month upkeep").textStyle(.caption, tint: P.loss, numeric: true)
         }
     }
 }
 
+/// A word on a picture (Flagship, Owned, the category): small caps on a flat scrim, or on the accent when `filled`.
 struct LuxuryChip: View {
     var text: String
     var filled = false
     private var P: OutsidePalette { .luxury }
     var body: some View {
-        Text(text.uppercased()).font(.system(size: 9.5, weight: .bold, design: .monospaced)).tracking(1)
-            .foregroundStyle(filled ? P.onAccent : P.ink)
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(Capsule().fill(filled ? P.accent : Color.black.opacity(0.55)))
+        Text(text).textStyle(.label, tint: filled ? P.onAccent : P.ink)
+            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
+            .background(Capsule().fill(filled ? P.accent : P.scrim))
     }
 }
 
@@ -115,22 +100,19 @@ struct LuxuryHero: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 LuxuryPhoto(itemID: item.id, height: 224)
-                    .overlay(alignment: .topLeading) { LuxuryChip(text: "Flagship", filled: true).padding(10) }
-                    .overlay(alignment: .topTrailing) { if owned { LuxuryChip(text: "In your vault").padding(10) } }
-                    .overlay(alignment: .bottom) { LinearGradient(colors: [.clear, P.card], startPoint: .top, endPoint: .bottom).frame(height: 70) }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(LuxuryFacts.categoryName(item).uppercased()).font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1.6).foregroundStyle(P.accent)
-                    Text(item.name).font(.serifTitle(24)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
+                    .overlay(alignment: .topLeading) { LuxuryChip(text: "Flagship", filled: true).padding(Theme.Space.s) }
+                    .overlay(alignment: .topTrailing) { if owned { LuxuryChip(text: "In your vault").padding(Theme.Space.s) } }
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text(LuxuryFacts.categoryName(item)).textStyle(.label)
+                    Text(item.name).textStyle(.title).multilineTextAlignment(.leading)
                     LuxuryPriceLine(item: item)
-                    Text(owned ? "Inspect" : "View details").font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
-                        .frame(maxWidth: .infinity, minHeight: 42)
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+                    Text(owned ? "Inspect" : "View details").textStyle(.headline, tint: P.accent)
+                        .frame(minHeight: 44)
                 }
-                .padding(14)
+                .padding(Theme.Space.l)
             }
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(P.card))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+            .background(P.surface)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("luxury-hero")
@@ -148,28 +130,26 @@ struct LuxuryCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 LuxuryPhoto(itemID: item.id, height: 176)
-                    .overlay(alignment: .topLeading) { LuxuryChip(text: LuxuryFacts.categoryName(item)).padding(10) }
-                    .overlay(alignment: .topTrailing) { if owned { LuxuryChip(text: "Owned", filled: true).padding(10) } }
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(item.name).font(.serifTitle(20)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
+                    .overlay(alignment: .topLeading) { LuxuryChip(text: LuxuryFacts.categoryName(item)).padding(Theme.Space.s) }
+                    .overlay(alignment: .topTrailing) { if owned { LuxuryChip(text: "Owned", filled: true).padding(Theme.Space.s) } }
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text(item.name).textStyle(.figure).multilineTextAlignment(.leading)
                     specs
                     LuxuryPriceLine(item: item)
                 }
-                .padding(14)
+                .padding(Theme.Space.l)
             }
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(P.card))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+            .background(P.surface)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(item.name + (owned ? ", owned" : ""))
     }
 
     private var specs: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(item.detail).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).multilineTextAlignment(.leading)
-            Text(item.trend + " · " + LuxuryFacts.percent(item.growth) + " a year").font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(item.growth >= 0 ? P.gain : P.inkFaint)
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(item.detail).textStyle(.caption).multilineTextAlignment(.leading)
+            Text(item.trend + " · " + LuxuryFacts.percent(item.growth) + " a year").textStyle(.caption, tint: item.growth >= 0 ? P.gain : P.inkFaint, numeric: true)
         }
     }
 }

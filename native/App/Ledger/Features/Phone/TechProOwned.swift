@@ -15,13 +15,10 @@ struct TechProOwnedView: View {
     @State private var pending: PendingAction?
 
     var body: some View {
-        ShopScroll {
-            VStack(alignment: .leading, spacing: 14) {
-                if let e = store.engine, let co = e.state.company(companyID) {
-                    content(e, co)
-                }
+        ShopPage {
+            if let e = store.engine, let co = e.state.company(companyID) {
+                content(e, co)
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
         }
         .confirmAction($pending)
         .accessibilityIdentifier("tp-owned")
@@ -30,61 +27,52 @@ struct TechProOwnedView: View {
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         let list: [EquipmentMarket.Owned] = e.ownedEquipment(companyID: companyID)
         let cur: Currency = e.currency(for: co)
-        missingCard(e)
-        ShopHeading(text: "My items", trailing: list.isEmpty ? "" : "\(list.count)")
-        if list.isEmpty {
-            Text("Nothing bought yet. Browse the store and add items to your basket.").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-        }
-        ForEach(list) { (o: EquipmentMarket.Owned) in itemCard(e, o, cur) }
-        if let h = e.equipmentHealth(companyID: companyID) {
-            Card(padding: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Condition").font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                    Text("Equipment health, as far as you can tell: \(Int((h * 100).rounded()))%").font(.system(size: 13)).foregroundStyle(P.inkSoft)
-                    Text("Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days.")
-                        .font(.system(size: 12)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-                }
+        missingSection(e)
+        ShopSection(title: "My items", trailing: list.isEmpty ? "" : "\(list.count)") {
+            if list.isEmpty {
+                ShopEmptyNote(text: "Nothing bought yet. Browse the store and add items to your basket.", glyph: Glyph.cart)
             }
+            ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, o: EquipmentMarket.Owned) in
+                if n > 0 { Hairline() }
+                itemBlock(e, o, cur)
+            }
+        }
+        if let h = e.equipmentHealth(companyID: companyID) {
+            ShopNote(title: "Condition \u{00B7} \(Int((h * 100).rounded()))%",
+                     text: "Equipment health, as far as you can tell. Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days.")
         }
     }
 
     /// What the business still needs to run properly (the engine's own needs list): each row opens the item in the store.
-    @ViewBuilder private func missingCard(_ e: GameEngine) -> some View {
+    @ViewBuilder private func missingSection(_ e: GameEngine) -> some View {
         let missing: [EquipmentMarket.Need] = e.equipmentNeeds(companyID: companyID).filter { (n: EquipmentMarket.Need) -> Bool in n.need > 0 && n.have + n.leased < n.need }
         if !missing.isEmpty {
-            ShopHeading(text: "Missing", trailing: "\(missing.count)")
-            ForEach(missing) { (n: EquipmentMarket.Need) in
-                Button { onBuy(n.equipmentID) } label: {
-                    Card(padding: 12) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(n.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(P.ink)
-                                Text("\(Int((n.have + n.leased).rounded())) of \(Int(n.need))" + (n.required ? " \u{00B7} required" : "")).font(.system(size: 12.5)).foregroundStyle(n.required ? P.loss : P.inkFaint)
-                            }
-                            Spacer(minLength: 8)
-                            Text("Shop").font(.system(size: 13, weight: .semibold)).foregroundStyle(P.accent)
-                        }
+            ShopSection(title: "Missing", trailing: "\(missing.count)") {
+                VStack(spacing: 0) {
+                    ForEach(Array(missing.enumerated()), id: \.element.id) { (i: Int, n: EquipmentMarket.Need) in
+                        if i > 0 { Hairline() }
+                        LedgerRow(title: n.name, subtitle: "\(Int((n.have + n.leased).rounded())) of \(Int(n.need))", value: "Shop", valueTint: P.accent,
+                                  pill: n.required ? "Required" : nil, pillTone: .bad) { onBuy(n.equipmentID) }
                     }
-                }.buttonStyle(PressableStyle())
+                }
             }
         }
     }
 
-    private func itemCard(_ e: GameEngine, _ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
-        Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    itemThumb(o)
-                    Text(o.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                    Spacer(minLength: 0)
-                }
-                planLine(o, cur)
-                ForEach(o.units) { (u: EquipmentMarket.UnitRow) in unitRow(o, u) }
-                ForEach(o.vehicles) { (v: EquipmentMarket.VehicleRow) in vehicleRow(v, cur) }
-                leaseLine(o, cur)
-                actions(e, o, cur)
+    private func itemBlock(_ e: GameEngine, _ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(spacing: Theme.Space.m) {
+                itemThumb(o)
+                Text(o.name).textStyle(.headline)
+                Spacer(minLength: 0)
             }
+            planLine(o, cur)
+            ForEach(o.units) { (u: EquipmentMarket.UnitRow) in unitRow(o, u) }
+            ForEach(o.vehicles) { (v: EquipmentMarket.VehicleRow) in vehicleRow(v, cur) }
+            leaseLine(o, cur)
+            actions(e, o, cur)
         }
+        .padding(.vertical, Theme.Space.s)
     }
 
     /// The item's picture from the items sheet; nothing is shown while the family has no art.
@@ -94,44 +82,49 @@ struct TechProOwnedView: View {
         let key: String = ArtLibrary.itemKey(group: group, familyKey: o.equipmentID, seed: o.equipmentID) ?? ""
         if let ui = ArtLibrary.image(.items, key) {
             Image(uiImage: ui).resizable().scaledToFill().frame(width: 48, height: 48).clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)).accessibilityHidden(true)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)).accessibilityHidden(true)
         }
         #endif
     }
 
     @ViewBuilder private func planLine(_ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
         if let s = o.subscription {
-            Text(s + " \u{00B7} " + cur.tidyShort(o.subscriptionMonthly) + "/mo").font(.system(size: 13)).foregroundStyle(P.inkSoft)
+            Text(s + " \u{00B7} " + cur.tidyShort(o.subscriptionMonthly) + "/mo").textStyle(.body, tint: P.inkSoft)
         } else if let l = o.licence {
-            Text(l + (o.outdated ? " \u{00B7} outdated" : " \u{00B7} current")).font(.system(size: 13)).foregroundStyle(o.outdated ? P.caution : P.inkSoft)
+            Text(l + (o.outdated ? " \u{00B7} outdated" : " \u{00B7} current")).textStyle(.body, tint: o.outdated ? P.caution : P.inkSoft)
         }
     }
 
     private func tint(_ c: Double) -> Color { c >= 0.8 ? P.gain : c >= 0.48 ? P.inkSoft : P.loss }
 
+    /// A destructive word button (Sell, Return, End lease) at the full 44 pt target.
+    private func dangerButton(_ title: String, _ run: @escaping () -> Void) -> some View {
+        Button(title, action: run).buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.loss))
+    }
+
     private func unitRow(_ o: EquipmentMarket.Owned, _ u: EquipmentMarket.UnitRow) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(u.name + (u.year > 0 ? " \u{00B7} \(u.year)" : "")).font(.system(size: 13.5)).foregroundStyle(P.ink)
+        HStack(alignment: .center, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(u.name + (u.year > 0 ? " \u{00B7} \(u.year)" : "")).textStyle(.body)
                 Text((u.boughtUsed ? "Bought used \u{00B7} " : "") + u.warranty + (u.daysInRepair > 0 ? " \u{00B7} in repair \(u.daysInRepair) days" : ""))
-                    .font(.system(size: 11.5)).foregroundStyle(u.daysInRepair > 0 ? P.loss : P.inkFaint)
+                    .textStyle(.caption, tint: u.daysInRepair > 0 ? P.loss : P.inkFaint)
             }
-            Spacer(minLength: 8)
-            Text(u.wear).font(.system(size: 12.5)).foregroundStyle(tint(u.seenCondition))
-            Button("Sell") { sellUnit(o, u) }.font(.system(size: 13, weight: .semibold)).foregroundStyle(P.loss).buttonStyle(PressableStyle())
+            Spacer(minLength: Theme.Space.s)
+            Text(u.wear).textStyle(.caption, tint: tint(u.seenCondition))
+            dangerButton("Sell") { sellUnit(o, u) }
         }
     }
 
     private func vehicleRow(_ v: EquipmentMarket.VehicleRow, _ cur: Currency) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(v.name).font(.system(size: 13.5)).foregroundStyle(P.ink)
-                Text(vehicleLine(v, cur)).font(.system(size: 11.5)).foregroundStyle(v.daysInRepair > 0 ? P.loss : P.inkFaint)
+        HStack(alignment: .center, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(v.name).textStyle(.body)
+                Text(vehicleLine(v, cur)).textStyle(.caption, tint: v.daysInRepair > 0 ? P.loss : P.inkFaint)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 8)
-            Text(v.wear).font(.system(size: 12.5)).foregroundStyle(tint(v.seenCondition))
-            Button(v.mode == "lease" ? "Return" : "Sell") { sellVehicle(v) }.font(.system(size: 13, weight: .semibold)).foregroundStyle(P.loss).buttonStyle(PressableStyle())
+            Spacer(minLength: Theme.Space.s)
+            Text(v.wear).textStyle(.caption, tint: tint(v.seenCondition))
+            dangerButton(v.mode == "lease" ? "Return" : "Sell") { sellVehicle(v) }
         }
     }
 
@@ -147,26 +140,24 @@ struct TechProOwnedView: View {
 
     @ViewBuilder private func leaseLine(_ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
         if o.leasedCount > 0 {
-            HStack {
-                Text("\(Int(o.leasedCount)) on lease \u{00B7} " + cur.tidyShort(o.leaseMonthly) + "/mo").font(.system(size: 13)).foregroundStyle(P.inkSoft)
-                Spacer(minLength: 8)
-                Button("End lease") { endLease(o, cur) }.font(.system(size: 13, weight: .semibold)).foregroundStyle(P.loss).buttonStyle(PressableStyle())
+            HStack(spacing: Theme.Space.s) {
+                Text("\(Int(o.leasedCount)) on lease \u{00B7} " + cur.tidyShort(o.leaseMonthly) + "/mo").textStyle(.body, tint: P.inkSoft)
+                Spacer(minLength: Theme.Space.s)
+                dangerButton("End lease") { endLease(o, cur) }
             }
         }
     }
 
     private func actions(_ e: GameEngine, _ o: EquipmentMarket.Owned, _ cur: Currency) -> some View {
-        HStack(spacing: 16) {
-            Button(o.subscription != nil ? "Plans" : "Buy more") { onBuy(o.equipmentID) }.foregroundStyle(P.accent)
+        WrapRow(spacing: Theme.Space.s) {
+            Button(o.subscription != nil ? "Plans" : "Buy more") { onBuy(o.equipmentID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
             if o.subscription != nil {
-                Button("Cancel plan") { cancelPlan(o) }.foregroundStyle(P.loss)
+                dangerButton("Cancel plan") { cancelPlan(o) }
             } else if o.licence == nil && o.count > 0 && o.kind != "veh" {
-                Button("Service all \u{00B7} " + cur.tidyShort(o.serviceCost)) { service(o) }.foregroundStyle(P.inkSoft)
-                Button("Sell all") { sellAll(o) }.foregroundStyle(P.loss)
+                Button("Service all \u{00B7} " + cur.tidyShort(o.serviceCost)) { service(o) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                dangerButton("Sell all") { sellAll(o) }
             }
-            Spacer(minLength: 0)
         }
-        .font(.system(size: 13.5, weight: .semibold)).buttonStyle(PressableStyle())
     }
 
     // MARK: Actions

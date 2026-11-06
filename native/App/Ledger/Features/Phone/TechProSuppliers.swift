@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-/// The card every TechPro grid shares: a rounded picture panel with the glyph, a bold title, a red "from <price>" line with the discount share
-/// and a small label (Upgrade, Buy, Owned, or a rating). The caller wraps it in a button.
+/// The card every TechPro grid shares: the shop product card with the "from <price>" line (red with its discount on a sale) and a
+/// small label (Upgrade, Buy, Owned, or a rating). The caller wraps it in a button.
 struct TechTile: View {
     @Environment(\.outsidePalette) private var P
     var photo: String = ""
@@ -19,20 +19,8 @@ struct TechTile: View {
     var item: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ShopPhoto(name: photo, glyph: glyph, height: 96, item: item)
-            Text(title).font(.system(size: 15, weight: .bold)).foregroundStyle(P.ink).multilineTextAlignment(.leading).lineLimit(2)
-            HStack(spacing: 6) {
-                Text(from).font(.system(size: 13).monospacedDigit()).foregroundStyle(deal > 0 ? P.loss : P.inkSoft).lineLimit(1).minimumScaleFactor(0.7)
-                if deal > 0 { Text("-\(deal)%").font(.system(size: 12, weight: .bold)).foregroundStyle(P.loss) }
-            }
-            Text(label).font(.system(size: 12, weight: .semibold)).foregroundStyle(tint).lineLimit(2).multilineTextAlignment(.leading)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-        .contentShape(Rectangle())
+        ShopProductCard(photo: photo, glyph: glyph, item: item, title: title, price: from, priceTint: deal > 0 ? P.loss : P.inkSoft, deal: deal,
+                        note: label, noteTint: tint)
     }
 }
 
@@ -75,41 +63,28 @@ struct TechProSuppliers: View {
             content(e, co, need)
         } else {
             ShopEmptyNote(text: "This product is not sold to this company.", buttonTitle: "Back to the store", action: onBack)
-                .padding(16).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(Theme.Space.page).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
     private func content(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need) -> some View {
         let cur: Currency = e.currency(for: co)
         let rows: [Row] = sorted(rowsFor(e, need, cur))
-        let cols: [GridItem] = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(need.name).font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink).accessibilityAddTraits(.isHeader)
-                    Text(EquipmentMarket.kindName(need.kind) + " \u{00B7} choose a supplier").font(.system(size: 13)).foregroundStyle(P.inkFaint)
-                }
-                orderChips
-                ShopHeading(text: "Suppliers", trailing: rows.count == 1 ? "1 supplier" : "\(rows.count) suppliers")
-                if rows.isEmpty { ShopEmptyNote(text: "Nothing on offer right now. New offers appear as the weeks go by.", buttonTitle: "Back", action: onBack) }
-                LazyVGrid(columns: cols, spacing: 12) {
-                    ForEach(rows) { (r: Row) in box(r) }
-                }
-            }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
-        }
-        .accessibilityIdentifier("tp-suppliers")
-    }
-
-    private var orderChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+        return ShopPage(spacing: Theme.Space.m) {
+            ShopPageTitle(title: need.name, subtitle: EquipmentMarket.kindName(need.kind) + " \u{00B7} choose a supplier")
+            ShopChipRow {
                 ForEach(Order.allCases, id: \.self) { (o: Order) in
                     ShopChip(title: o.rawValue, selected: order == o) { order = o }.accessibilityIdentifier("tp-supsort-\(o.rawValue)")
                 }
             }
+            ShopSection(title: "Suppliers", trailing: rows.count == 1 ? "1 supplier" : "\(rows.count) suppliers") {
+                if rows.isEmpty { ShopEmptyNote(text: "Nothing on offer right now. New offers appear as the weeks go by.", buttonTitle: "Back", action: onBack) }
+                ShopGrid {
+                    ForEach(rows) { (r: Row) in box(r) }
+                }
+            }
         }
-        .scrollBounceBehavior(.basedOnSize)
+        .accessibilityIdentifier("tp-suppliers")
     }
 
     private func box(_ r: Row) -> some View {

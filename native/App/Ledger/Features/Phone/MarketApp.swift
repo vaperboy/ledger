@@ -30,11 +30,11 @@ struct MarketApp: View {
     private func page(_ e: GameEngine) -> some View {
         let companies: [Company] = Self.companies(e)
         let chosen: Company? = companies.first { $0.id == companyID }
-        let header = VStack(alignment: .leading, spacing: 10) {
+        let header = VStack(alignment: .leading, spacing: Theme.Space.m) {
             selector(companies, chosen)
             SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part, badges: { (p: MarketPart) -> Bool in tabHasNew(e, p) })
         }
-        .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 4)
+        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.xs)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
         return VStack(spacing: 0) {
             header
@@ -59,9 +59,9 @@ struct MarketApp: View {
     /// Short segments fit one screen (compacted when needed); the long lists scroll.
     @ViewBuilder private func partPage(_ e: GameEngine, _ chosen: Company?, _ p: MarketPart) -> some View {
         if p == .overview || p == .research || p == .prices {
-            FixedScreen(spacing: 10, top: 4, overflowScrolls: true) { content(e, chosen, p) }
+            FixedScreen(spacing: Theme.Space.m, top: Theme.Space.xs, overflowScrolls: true) { content(e, chosen, p) }
         } else {
-            ScrollScreen(spacing: 10, top: 4) { content(e, chosen, p) }
+            ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.xs) { content(e, chosen, p) }
         }
     }
 
@@ -96,16 +96,7 @@ struct MarketApp: View {
                 }
             }
         } label: {
-            HStack(spacing: 10) {
-                IconCircle(glyph: Glyph.market, size: 30)
-                Text(current).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Spacer(minLength: 8)
-                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
-            }
-            .padding(.horizontal, 12).frame(minHeight: 48)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-            .contentShape(Rectangle())
+            BusinessMenuLabel(glyph: Glyph.market, title: current)
         }
         .accessibilityLabel("Business: \(current)")
         .accessibilityIdentifier("market-business-picker")
@@ -118,5 +109,24 @@ struct MarketApp: View {
         guard let id = store.takeMarketRequest() else { return }
         companyID = id
         if news { part = .news }
+    }
+}
+
+/// The label of a business picker menu (Market, Reviews): the app's glyph, the business chosen and a down chevron, on a flat tile.
+struct BusinessMenuLabel: View {
+    @Environment(\.outsidePalette) private var P
+    var glyph: String
+    var title: String
+
+    var body: some View {
+        HStack(spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: P.accent)
+            Text(title.tidyText).textStyle(.headline).lineLimit(1)
+            Spacer(minLength: Theme.Space.s)
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(90))
+        }
+        .padding(.horizontal, Theme.Space.m).frame(minHeight: 44)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.surface))
+        .contentShape(Rectangle())
     }
 }

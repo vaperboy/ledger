@@ -10,18 +10,20 @@ struct LuxuryGateView: View {
     var body: some View {
         if let e = store.engine {
             VStack(spacing: 0) {
-                HStack { OutsideBack(); Spacer() }.padding(.horizontal, 18).padding(.top, 8)
-                Spacer(minLength: 20)
-                VStack(spacing: 18) {
-                    GlyphView(glyph: Glyph.luxury, size: 44, weight: 1.3, tint: P.accent)
-                    Text("PRIVATE SALES").font(.system(size: 11, weight: .semibold, design: .monospaced)).tracking(3).foregroundStyle(P.accent)
-                    Text("By application only").font(.serifTitle(30)).foregroundStyle(P.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-                    Text(message(e)).font(.system(size: 14)).foregroundStyle(P.inkSoft).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                HStack { OutsideBack(); Spacer() }.padding(.horizontal, Theme.Space.s).padding(.top, Theme.Space.xs)
+                Spacer(minLength: Theme.Space.l)
+                VStack(spacing: Theme.Space.l) {
+                    LedgerGlyph(glyph: Glyph.luxury, size: Theme.Icon.large, tint: P.accent)
+                    VStack(spacing: Theme.Space.xs) {
+                        Text("Private sales").textStyle(.label)
+                        Text("By application only").textStyle(.title).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                    }
+                    Text(message(e)).textStyle(.body, tint: P.inkSoft).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                     button(e)
                 }
-                .padding(.horizontal, 28)
-                .frame(maxWidth: 480)
-                Spacer(minLength: 40)
+                .padding(.horizontal, Theme.Space.xl)
+                .frame(maxWidth: ShopMetrics.maxWidth)
+                Spacer(minLength: Theme.Space.xxl)
             }
             .frame(maxWidth: .infinity)
         }
@@ -36,20 +38,16 @@ struct LuxuryGateView: View {
 
     @ViewBuilder private func button(_ e: GameEngine) -> some View {
         if e.luxuryGateCanApply {
-            Button(action: apply) {
-                Text(e.luxuryGate == .notApplied ? "Apply for access" : "Apply again")
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(P.onAccent)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(P.accent))
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("luxury-apply")
+            Button(e.luxuryGate == .notApplied ? "Apply for access" : "Apply again", action: apply)
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("luxury-apply")
         } else {
-            Text("You may apply again later.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
+            Text("You may apply again later.").textStyle(.caption, tint: P.inkFaint)
         }
     }
 
     private func apply() {
+        Haptics.tap()
         _ = store.act { $0.applyForLuxuryAccess() }
     }
 }

@@ -49,7 +49,9 @@ struct AtlasApp: View {
                 case .activated: activatedView(e, co)
                 }
             } else {
-                Text("Start a company to insure it.").font(.system(size: 15)).foregroundStyle(P.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity)
+                EmptyState(glyph: Glyph.atlas, title: "Nothing to insure", message: "Start a company to insure it.")
+                    .padding(.horizontal, Theme.Space.page)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
             Color.clear
@@ -90,61 +92,39 @@ struct AtlasApp: View {
 
     private func homeView(_ e: GameEngine, _ co: Company) -> some View {
         let o: CoverageOverview? = e.coverageOverview(companyID: co.id)
-        return ShopScroll {
-            VStack(alignment: .leading, spacing: 16) {
-                hero
-                companyCard(e, co)
+        let live: Int = e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }.count
+        return ShopPage {
+            hero
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                ShopCompanyBar(caption: "Insured company", name: co.name, detail: "\(e.tradeName(co)) \u{00B7} \(e.cityName(co))",
+                               canChange: live > 1, open: $choosing, identifier: "atlas-change")
+                    .newGroupMarker(.atlas, store.messageItemIDs(.atlas, companyID: co.id), style: .capsule, alignment: .topTrailing)
                 if choosing { companyPicker(e) }
-                if let o {
-                    coverageCard(co, o)
-                    policiesSection(e, co, o)
-                    banner(o)
-                    homeButtons(e, co, o)
-                    AtlasAccountantSection(companyID: co.id)
-                }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            if let o {
+                coverageSection(co, o)
+                policiesSection(e, co, o)
+                AtlasAccountantSection(companyID: co.id)
+            }
         }
         .accessibilityIdentifier("atlas-home")
     }
 
+    /// The insurer's welcome: an office photo under the brand colour, and the line it is about.
     private var hero: some View {
-        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
-        return ZStack(alignment: .bottomLeading) {
-            ShopPhoto(name: "airstay-office-3", glyph: Glyph.building, height: 120, cornerRadius: 16)
-            shape.fill(LinearGradient(colors: [P.accent.opacity(0.92), P.accent.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Protect what you\u{2019}ve built").font(.system(size: 26, weight: .bold)).foregroundStyle(Color.white)
+        ShopPhoto(name: "airstay-office-3", glyph: Glyph.building, height: 120)
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.accent.opacity(0.85)).allowsHitTesting(false)
             }
-            .padding(16).frame(maxWidth: 260, alignment: .leading)
-        }
-        .frame(height: 120)
-        .clipShape(shape)
-    }
-
-    private func companyCard(_ e: GameEngine, _ co: Company) -> some View {
-        let renewals: [String] = store.messageItemIDs(.atlas, companyID: co.id)
-        return Card(padding: 12) {
-            HStack(spacing: 12) {
-                GlyphView(glyph: Glyph.atlas, size: 22, weight: 1.6, tint: P.accent)
-                    .frame(width: 42, height: 42).background(Circle().fill(P.accent.opacity(0.1)))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Insured company").font(.system(size: 12)).foregroundStyle(P.inkFaint)
-                    Text(co.name).font(.system(size: 16, weight: .semibold)).foregroundStyle(P.ink).lineLimit(1)
-                    Text("\(e.tradeName(co)) \u{00B7} \(e.cityName(co))").font(.system(size: 12.5)).foregroundStyle(P.inkFaint).lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                if e.state.companies.filter({ (c: Company) -> Bool in c.status.isLive }).count > 1 {
-                    Button(choosing ? "Close" : "Change") { choosing.toggle() }.buttonStyle(QuietButtonStyle())
-                        .accessibilityIdentifier("atlas-change")
-                }
+            .overlay(alignment: .bottomLeading) {
+                Text("Protect what you\u{2019}ve built").textStyle(.title, tint: P.onAccent)
+                    .lineLimit(2).minimumScaleFactor(0.6)
+                    .padding(Theme.Space.l)
             }
-            .newGroupMarker(.atlas, renewals, style: .capsule, alignment: .topTrailing)
-        }
     }
 
     private func companyPicker(_ e: GameEngine) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Space.s) {
             ForEach(e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }, id: \.id) { (c: Company) in
                 ShopChoiceRow(title: c.name, subtitle: "\(e.tradeName(c)) \u{00B7} \(e.cityName(c))", selected: c.id == companyID, identifier: "atlas-company-\(c.id)") {
                     companyID = c.id
@@ -155,17 +135,21 @@ struct AtlasApp: View {
         }
     }
 
-    private func coverageCard(_ co: Company, _ o: CoverageOverview) -> some View {
+    /// The yearly cost of cover, whether everything is on, and the one way to add cover.
+    private func coverageSection(_ co: Company, _ o: CoverageOverview) -> some View {
         let yearly: Double = o.weeklyPremiums * 52
-        return Card(padding: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("What cover costs").font(.system(size: 15, weight: .semibold)).foregroundStyle(P.inkSoft)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(money(yearly, co)).font(.system(size: 32, weight: .bold).monospacedDigit()).foregroundStyle(P.ink)
-                    Text("/ year").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-                }
-                Text("\(o.activeCount) of \(o.policies.count) policies in force \u{00B7} insured with Atlas")
-                    .font(.system(size: 13)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+        let off: Int = o.policies.count - o.activeCount
+        let next: InsurancePolicyRow? = o.policies.first { (p: InsurancePolicyRow) -> Bool in !p.isOn }
+        let note: String = off == 0 && !o.policies.isEmpty
+            ? "All \(o.policies.count) policies are on, paid every week from the company account."
+            : "\(o.activeCount) of \(o.policies.count) policies in force \u{00B7} insured with Atlas"
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Figure(label: "What cover costs a year", value: money(yearly, co), note: note, size: .display)
+            if off > 0 {
+                InlineMessage(text: "\(off) \(off == 1 ? "cover is" : "covers are") not on. Anything uninsured comes out of company cash.", isError: false)
+            }
+            PrimaryAction(title: "Get a quote", blockedReason: next == nil ? "Every cover is already on." : nil, identifier: "atlas-get-quote") {
+                if let next { quote(next.id) }
             }
         }
     }
@@ -173,12 +157,22 @@ struct AtlasApp: View {
     private func policiesSection(_ e: GameEngine, _ co: Company, _ o: CoverageOverview) -> some View {
         let on: [InsurancePolicyRow] = o.policies.filter { (p: InsurancePolicyRow) -> Bool in p.isOn }
         let off: [InsurancePolicyRow] = o.policies.filter { (p: InsurancePolicyRow) -> Bool in !p.isOn }
-        return VStack(alignment: .leading, spacing: 12) {
-            ShopHeading(text: "Your policies", trailing: on.isEmpty ? "" : "\(on.count)")
-            if on.isEmpty { Text("No policy is on yet.").font(.system(size: 14)).foregroundStyle(P.inkSoft) }
-            ForEach(on) { (p: InsurancePolicyRow) in policyRow(e, co, p, isOn: true) }
-            if !off.isEmpty { ShopHeading(text: "Available cover", trailing: "\(off.count)") }
-            ForEach(off) { (p: InsurancePolicyRow) in policyRow(e, co, p, isOn: false) }
+        return VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            ShopSection(title: "Your policies", trailing: on.isEmpty ? "" : "\(on.count)") {
+                if on.isEmpty { EmptyState(glyph: Glyph.opsShield, title: "No policy is on yet", message: "Choose a cover below.", centered: false) }
+                ForEach(Array(on.enumerated()), id: \.element.id) { (n: Int, p: InsurancePolicyRow) in
+                    if n > 0 { Hairline() }
+                    policyRow(e, co, p, isOn: true)
+                }
+            }
+            if !off.isEmpty {
+                ShopSection(title: "Available cover", trailing: "\(off.count)") {
+                    ForEach(Array(off.enumerated()), id: \.element.id) { (n: Int, p: InsurancePolicyRow) in
+                        if n > 0 { Hairline() }
+                        policyRow(e, co, p, isOn: false)
+                    }
+                }
+            }
         }
     }
 
@@ -188,13 +182,13 @@ struct AtlasApp: View {
         #if canImport(UIKit)
         if let ui = ArtLibrary.image(.items, key) {
             Image(uiImage: ui).resizable().scaledToFill().frame(width: size, height: size).clipped()
-                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)).accessibilityHidden(true)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)).accessibilityHidden(true)
         } else {
-            GlyphView(glyph: Glyph.opsShield, size: glyphSize, weight: 1.6, tint: tint)
+            LedgerGlyph(glyph: Glyph.opsShield, size: glyphSize, tint: tint)
                 .frame(width: size, height: size).background(Circle().fill(tint.opacity(0.12)))
         }
         #else
-        GlyphView(glyph: Glyph.opsShield, size: glyphSize, weight: 1.6, tint: tint)
+        LedgerGlyph(glyph: Glyph.opsShield, size: glyphSize, tint: tint)
             .frame(width: size, height: size).background(Circle().fill(tint.opacity(0.12)))
         #endif
     }
@@ -202,25 +196,25 @@ struct AtlasApp: View {
     private func policyRow(_ e: GameEngine, _ co: Company, _ p: InsurancePolicyRow, isOn: Bool) -> some View {
         let number: String = e.policyRecord(companyID: co.id, product: p.id)?.number ?? ""
         let sub: String = isOn ? (number.isEmpty ? "In force" : "In force \u{00B7} " + number) : "Not covered"
-        let content = Card(padding: 12) {
-            HStack(spacing: 12) {
-                policyIcon(p, size: 44, glyphSize: 22, tint: isOn ? P.gain : P.accent)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(p.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
-                    Text(sub).font(.system(size: 12.5)).foregroundStyle(isOn ? P.gain : P.inkFaint).multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(money(p.weeklyPremium * 52, co) + " / year").font(.system(size: 14, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
-                    if isOn {
-                        Button("Cancel policy") { askToCancel(co, p) }
-                            .buttonStyle(QuietButtonStyle())
-                            .accessibilityIdentifier("atlas-cancel-\(p.id)")
-                    }
-                }
-                if !isOn { GlyphView(glyph: Glyph.chevron, size: 14, weight: 1.8, tint: P.inkDim) }
+        let content = HStack(spacing: Theme.Space.m) {
+            policyIcon(p, size: 40, glyphSize: Theme.Icon.medium, tint: isOn ? P.gain : P.accent)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(p.name).textStyle(.headline).multilineTextAlignment(.leading)
+                Text(sub).textStyle(.caption, tint: isOn ? P.gain : P.inkFaint).multilineTextAlignment(.leading)
             }
+            Spacer(minLength: Theme.Space.s)
+            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                Text(money(p.weeklyPremium * 52, co) + " / year").textStyle(.headline, numeric: true)
+                if isOn {
+                    Button("Cancel policy") { askToCancel(co, p) }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.loss))
+                        .accessibilityIdentifier("atlas-cancel-\(p.id)")
+                }
+            }
+            if !isOn { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkDim) }
         }
+        .padding(.vertical, Theme.Space.s)
+        .contentShape(Rectangle())
         return Group {
             if isOn {
                 content
@@ -249,37 +243,6 @@ struct AtlasApp: View {
         }
     }
 
-    private func banner(_ o: CoverageOverview) -> some View {
-        let allOn: Bool = o.activeCount == o.policies.count && !o.policies.isEmpty
-        let title: String = (allOn ? "All policies are on" : "\(o.policies.count - o.activeCount) \(o.policies.count - o.activeCount == 1 ? "cover is" : "covers are") not on")
-        let note: String = (allOn ? "Premiums are paid every week from the company account." : "Anything uninsured comes out of company cash.")
-        let tint: Color = !allOn ? P.caution : P.gain
-        return HStack(spacing: 12) {
-            GlyphView(glyph: allOn ? Glyph.check : Glyph.warning, size: 22, weight: 1.8, tint: tint)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
-                Text(note).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(tint.opacity(0.12)))
-    }
-
-    private func homeButtons(_ e: GameEngine, _ co: Company, _ o: CoverageOverview) -> some View {
-        let next: InsurancePolicyRow? = o.policies.first { (p: InsurancePolicyRow) -> Bool in !p.isOn }
-        return VStack(spacing: 10) {
-            Button("Get a quote") {
-                if let next { quote(next.id) }
-            }
-            .buttonStyle(ShopFilledButtonStyle())
-            .disabled(next == nil)
-            .accessibilityIdentifier("atlas-get-quote")
-
-        }
-    }
-
     private func quote(_ id: String) {
         policyID = id
         if receiptID == 0 { receiptID = companyID }
@@ -290,85 +253,56 @@ struct AtlasApp: View {
 
     private func checkoutView(_ e: GameEngine, _ co: Company) -> some View {
         guard let o = e.coverageOverview(companyID: co.id), let p = o.policies.first(where: { (x: InsurancePolicyRow) -> Bool in x.id == policyID }) else {
-            return AnyView(Text("This cover is not on offer.").font(.system(size: 15)).foregroundStyle(P.inkSoft).frame(maxWidth: .infinity, maxHeight: .infinity))
+            return AnyView(ShopEmptyNote(text: "This cover is not on offer.", glyph: Glyph.opsShield, buttonTitle: "Back to My Insurance") { step = .home }
+                .padding(Theme.Space.page).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
         }
         let cur: Currency = e.currency(for: co)
         let companies: [Company] = e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }
-        return AnyView(ShopScroll {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Checkout").font(.system(size: 24, weight: .bold)).foregroundStyle(P.ink)
-                    Text("Review your details and confirm").font(.system(size: 14)).foregroundStyle(P.inkSoft)
-                }
-                policyCard(co, p)
-                periodCard(e)
-                includesCard(co, o, p, cur)
-                paymentCard(co, companies)
-                confirmBlock(e, co, o, p, cur)
+        return AnyView(ShopPage {
+            ShopPageTitle(title: "Checkout", subtitle: "Review your details and confirm")
+            policyHeader(co, p)
+            periodSection(e)
+            includesSection(co, o, p, cur)
+            ShopSection(title: "Payment method") {
+                ShopChoiceRow(title: "Company account", subtitle: "\(co.name) \u{00B7} balance \(money(co.cash, co)). This account pays.", selected: true, identifier: "atlas-account") { }
             }
-            .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 20)
+            ShopReceiptPicker(companies: companies, selection: $receiptID, idPrefix: "atlas")
+            VStack(spacing: Theme.Space.xs) {
+                PrimaryAction(title: "Confirm purchase", identifier: "atlas-confirm") { askToBuy(e, co, p, cur) }
+                Text("Your information stays in your company records.").textStyle(.caption, tint: P.inkFaint).frame(maxWidth: .infinity)
+            }
         })
     }
 
-    private func policyCard(_ co: Company, _ p: InsurancePolicyRow) -> some View {
-        Card(padding: 14) {
-            HStack(spacing: 14) {
-                policyIcon(p, size: 58, glyphSize: 30, tint: P.accent)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(p.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink)
-                    Text("Annual premium").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
-                    Text(money(p.weeklyPremium * 52, co) + " / year").font(.system(size: 20, weight: .bold).monospacedDigit()).foregroundStyle(P.ink)
-                }
+    private func policyHeader(_ co: Company, _ p: InsurancePolicyRow) -> some View {
+        HStack(spacing: Theme.Space.m) {
+            policyIcon(p, size: 56, glyphSize: Theme.Icon.large, tint: P.accent)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(p.name).textStyle(.headline)
+                Figure(label: "", value: money(p.weeklyPremium * 52, co) + " / year", note: "Annual premium")
             }
         }
     }
 
-    private func periodCard(_ e: GameEngine) -> some View {
+    private func periodSection(_ e: GameEngine) -> some View {
         let today: String = GameCalendar.dateString(week: e.state.week, dayOffset: e.state.day)
-        return Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Coverage period").font(.system(size: 13, weight: .semibold)).foregroundStyle(P.inkFaint)
-                Text("From \(today), until you switch it off").font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink)
-                Text("The premium is paid every week.").font(.system(size: 12.5)).foregroundStyle(P.inkFaint)
-            }
+        return ShopSection(title: "Coverage period", note: "The premium is paid every week.") {
+            Text("From \(today), until you switch it off").textStyle(.body, weight: .medium)
         }
     }
 
-    private func includesCard(_ co: Company, _ o: CoverageOverview, _ p: InsurancePolicyRow, _ cur: Currency) -> some View {
-        Card(padding: 14) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Coverage includes").font(.system(size: 13, weight: .semibold)).foregroundStyle(P.inkFaint)
-                includeLine(p.blurb.tidyMoney)
-                includeLine("A covered loss is paid after a deductible of about \(cur.tidyShort(cur.scaledPrice(10000))).")
-                includeLine("Insurer: Atlas Insurance")
-            }
+    private func includesSection(_ co: Company, _ o: CoverageOverview, _ p: InsurancePolicyRow, _ cur: Currency) -> some View {
+        ShopSection(title: "Coverage includes") {
+            includeLine(p.blurb.tidyMoney)
+            includeLine("A covered loss is paid after a deductible of about \(cur.tidyShort(cur.scaledPrice(10000))).")
+            includeLine("Insurer: Atlas Insurance")
         }
     }
 
     private func includeLine(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            GlyphView(glyph: Glyph.check, size: 16, weight: 2, tint: P.gain).padding(.top, 2)
-            Text(text).font(.system(size: 14)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private func paymentCard(_ co: Company, _ companies: [Company]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ShopHeading(text: "Payment method")
-            ShopChoiceRow(title: "Company account", subtitle: "\(co.name) \u{00B7} balance \(money(co.cash, co)). This account pays.", selected: true, identifier: "atlas-account") { }
-            ShopHeading(text: "Receipt goes to")
-            ForEach(companies, id: \.id) { (c: Company) in
-                ShopChoiceRow(title: c.name, subtitle: "Accounting records", selected: receiptID == c.id, identifier: "atlas-receipt-\(c.id)") { receiptID = c.id }
-            }
-        }
-    }
-
-    private func confirmBlock(_ e: GameEngine, _ co: Company, _ o: CoverageOverview, _ p: InsurancePolicyRow, _ cur: Currency) -> some View {
-        VStack(spacing: 8) {
-            Button("Confirm purchase") { askToBuy(e, co, p, cur) }
-                .buttonStyle(ShopFilledButtonStyle())
-                .accessibilityIdentifier("atlas-confirm")
-            Text("Your information stays in your company records.").font(.system(size: 12)).foregroundStyle(P.inkFaint).frame(maxWidth: .infinity)
+        HStack(alignment: .top, spacing: Theme.Space.s) {
+            LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: P.gain).padding(.top, Theme.Space.xxs)
+            Text(text).textStyle(.body).fixedSize(horizontal: false, vertical: true)
         }
     }
 

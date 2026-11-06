@@ -17,10 +17,9 @@ struct AtlasAccountantSection: View {
             let cur: Currency = e.currency(for: co)
             let choices: [AdviserOption] = e.adviserChoices(companyID: companyID, kind: .accountant)
             let now: AdviserOption? = choices.first { (a: AdviserOption) -> Bool in a.isCurrent }
-            VStack(alignment: .leading, spacing: 12) {
-                ShopHeading(text: "Your accountant", trailing: now.map { (a: AdviserOption) -> String in cur.tidyShort(a.monthlyFee) + " a month" } ?? "None")
-                Text("The accountant keeps the books and runs payroll. Their fee is paid each month from company cash.")
-                    .font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            ShopSection(title: "Your accountant", trailing: now.map { (a: AdviserOption) -> String in cur.tidyShort(a.monthlyFee) + " a month" } ?? "None",
+                        note: "The accountant keeps the books and runs payroll. Their fee is paid each month from company cash.") {
+                if choices.isEmpty { LoadingState(text: "Finding accountants") }
                 ForEach(choices) { (a: AdviserOption) in
                     ShopChoiceRow(title: a.name, subtitle: subtitle(a, cur), trailing: "\u{2605} " + String(format: "%.1f", a.rating), selected: a.isCurrent,
                                   identifier: "atlas-accountant-\(a.id)") { ask(a, now, cur) }
