@@ -35,6 +35,7 @@ jobs:
         working-directory: native/App
         run: xcodegen generate
       - name: Run the feature tours on iPhone 16 Pro
+        timeout-minutes: 78
         working-directory: native/App
         env:
           ONLY: ${{ inputs.only }}
@@ -84,6 +85,12 @@ jobs:
             tail -n 30 "$RUNNER_TEMP/tours.log"
             exit 1
           fi
+      - name: Print the result file (also after a timeout)
+        if: always()
+        run: |
+          F="$RUNNER_TEMP/tour/result.txt"
+          echo "steps recorded: $(grep -cE '^\[(PASS|FAIL|SKIP)\]' "$F" 2>/dev/null)"
+          if grep -q "=== END TOUR RESULT ===" "$F" 2>/dev/null; then sed -n '/=== TOUR RESULT ===/,/=== END TOUR RESULT ===/p' "$F"; else grep -E "^\[(FAIL|SKIP|NOTE)\]" "$F" 2>/dev/null | cut -c1-300 | head -300; fi
       - name: Upload the result
         if: always()
         uses: actions/upload-artifact@v4

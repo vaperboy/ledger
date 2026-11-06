@@ -92,6 +92,9 @@ class FeatureTourCase: XCTestCase {
     let log = TourLogStore.shared
     /// The screen just before the last tap of `driveUntilPopup` (the screen a popup belongs to).
     var lastBefore: TourSig?
+    /// Time caps: one test method may spend 4 minutes, the whole run 62 minutes (CI limit 90); later steps are recorded as SKIP at once.
+    static let runStart: Date = Date()
+    var testDeadline: Date = Date().addingTimeInterval(240)
 
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
@@ -104,6 +107,7 @@ class FeatureTourCase: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = true
+        testDeadline = Date().addingTimeInterval(240)
         app = XCUIApplication()
         app.launchArguments = ["-showcase", "-showcase-rich", "-showcase-board"]
         app.launch()
@@ -126,6 +130,10 @@ class FeatureTourCase: XCTestCase {
     // MARK: Steps
 
     func step(_ name: String, _ body: () -> R) {
+        if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 62 * 60 {
+            log.record(.skip, name, "time cap reached (4 min per test / 62 min total)")
+            return
+        }
         switch body() {
         case .pass(let m): log.record(.pass, name, m)
         case .fail(let m): log.record(.fail, name, m)
