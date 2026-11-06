@@ -99,7 +99,7 @@ class FeatureTourCase: XCTestCase {
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
     static let popupIDs: [String] = ["popup-backdrop", "popup-close", "confirm-go", "confirm-cancel", "report-continue", "report-open", "celebration-dismiss",
-                                     "celebration-claim", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "unlock-go", "ambition-later",
+                                     "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "unlock-go", "ambition-later",
                                      "conversion-keep", "paywall-buy", "paywall-pass"]
     static let closeIDs: [String] = ["popup-close", "confirm-cancel", "report-continue", "celebration-dismiss", "alert-continue", "error-ok",
                                      "notice-ok", "unlock-skip", "ambition-later", "conversion-keep", "paywall-pass"]
@@ -238,19 +238,20 @@ class FeatureTourCase: XCTestCase {
 
     /// Closes the popup on top with its own button (`prefer` first), else by tapping the dimmed area above the card.
     func closePopup(prefer: [String] = []) {
-        for id in prefer + Self.closeIDs {
-            let b: XCUIElement = button(id)
-            if ctap(b) { pause(0.6); return }
+        let ids: [String] = prefer + Self.closeIDs
+        func tapFirst() -> Bool {
+            for id in prefer where ctap(button(id)) { return true }
+            // One query for all close ids (tap order = tree order).
+            let q: XCUIElementQuery = app.buttons.matching(NSPredicate(format: "identifier IN %@", ids))
+            return ctap(q.firstMatch)
         }
+        if tapFirst() { pause(0.6); return }
         // The card can be taller than the screen (the week report keeps Continue at the end of its scrolling content): scroll inside it.
-        for _ in 0..<6 {
+        for _ in 0..<3 {
             let from: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
             let to: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
             from.press(forDuration: 0.1, thenDragTo: to)
-            for id in prefer + Self.closeIDs {
-                let b: XCUIElement = button(id)
-                if ctap(b) { pause(0.6); return }
-            }
+            if tapFirst() { pause(0.6); return }
         }
         popupDiag("no close button tappable after scrolling")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
