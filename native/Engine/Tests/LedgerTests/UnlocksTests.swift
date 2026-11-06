@@ -61,6 +61,25 @@ final class UnlocksTests: XCTestCase {
         XCTAssertFalse(e.pendingUnlocks().contains { $0.id == first.id && $0.companyID == id }, "announced again")
     }
 
+    func testPlayerLevelUnlocksFollowThePlayerToANewCompany() throws {
+        var e = try ChainsTests.engine()
+        let a = ChainsTests.start(&e, "cafe")
+        Self.opened(&e, a, weeksAgo: 0)
+        ChainsTests.play(&e, days: 14)
+        for u in e.pendingUnlocks() { e.markUnlockShown(id: u.id, companyID: u.companyID) }
+        Self.opened(&e, a, weeksAgo: 60)
+        ChainsTests.play(&e, days: 7)
+        for u in e.pendingUnlocks() { e.markUnlockShown(id: u.id, companyID: u.companyID) }
+        let b = ChainsTests.start(&e, "bakery")
+        Self.opened(&e, b, weeksAgo: 0)
+        let items = e.unlockState(companyID: b)
+        for k in ["chain", "research"] {
+            XCTAssertTrue(try XCTUnwrap(items.first { $0.id == k }).unlocked, "\(k) should follow the player")
+        }
+        ChainsTests.play(&e, days: 14)
+        XCTAssertFalse(e.pendingUnlocks().contains { $0.companyID == b && ["chain", "franchise", "abroad", "research"].contains($0.id) }, "announced again for the new company")
+    }
+
     func testOldSaveIsSeededSilently() throws {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")

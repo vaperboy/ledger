@@ -36,6 +36,17 @@ public enum Unlocks {
         var silent: Bool
         var target: String
     }
+    /// Unlocks that belong to the player, not to one company: once any company has earned one, every company of theirs has it, and it is
+    /// announced only once. (Board and dividends depend on the company's own legal form and profit, so they stay per company.)
+    static let playerLevel: Set<String> = ["chain", "franchise", "abroad", "research"]
+
+    /// True when any company of the player has already recorded this unlock.
+    static func playerHas(_ s: GameState, _ id: String) -> Bool {
+        guard case .some(let t) = s.rest[key] else { return false }
+        for cid in t.object.keys where !t[cid][id].isNull { return true }
+        return false
+    }
+
     static let defs: [Def] = [
         Def(id: "board", title: "Board", hidden: true, silent: false, target: "board"),
         Def(id: "chain", title: "Chain", hidden: false, silent: false, target: "expansion"),
@@ -132,7 +143,7 @@ public enum Unlocks {
         var out: [UnlockItem] = []
         for d in defs {
             let c = check(d, s, co, context: context)
-            let ok: Bool = c.ok || (co.type == "hold" && d.id != "board")
+            let ok: Bool = c.ok || (co.type == "hold" && d.id != "board") || (playerLevel.contains(d.id) && playerHas(s, d.id))
             out.append(UnlockItem(id: d.id, companyID: companyID, title: d.title, unlocked: ok, reason: ok ? "Open" : c.reason,
                                   since: record(s, companyID, d.id)?["w"].int, hiddenUntilUnlocked: d.hidden, silent: d.silent, target: d.target))
         }
@@ -171,7 +182,7 @@ public enum Unlocks {
         let ids: [Int] = s.companies.filter { (c: Company) -> Bool in (first ? c.status.isLive : (c.status == .open || c.status == .closed)) && c.type != "hold" }.map { (c: Company) -> Int in c.id }
         for id in ids {
             for it in state(s, companyID: id, context: context) where it.unlocked && !hasRecord(s, id, it.id) {
-                put(&s, id, it.id, week: s.week, shown: first || it.silent)
+                put(&s, id, it.id, week: s.week, shown: first || it.silent || (playerLevel.contains(it.id) && playerHas(s, it.id)))
             }
         }
     }
