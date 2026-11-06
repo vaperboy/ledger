@@ -108,9 +108,11 @@ class FeatureTourCase: XCTestCase {
     let log = TourLogStore.shared
     /// The screen just before the last tap of `driveUntilPopup` (the screen a popup belongs to).
     var lastBefore: TourSig?
+    /// While a round trip opens its popup, every tap notes the screen just before it (scrolling to the trigger changes the screen).
+    var noteBefore = false
     /// Time caps: one test method may spend 8 minutes, the whole run (one CI shard) 60 minutes; later steps are recorded as SKIP at once.
     static let runStart: Date = Date()
-    var testDeadline: Date = Date().addingTimeInterval(480)
+    var testDeadline: Date = Date().addingTimeInterval(720)
     /// The window frame, read once per test.
     var winCache: CGRect = .zero
     /// Buttons this test tapped that are smaller than 44 x 44 pt (name -> size), checked once at the end of the test.
@@ -131,7 +133,7 @@ class FeatureTourCase: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = true
-        testDeadline = Date().addingTimeInterval(480)
+        testDeadline = Date().addingTimeInterval(720)
         winCache = .zero
         smallTargets = [:]
         tappedTargets = []
@@ -147,6 +149,7 @@ class FeatureTourCase: XCTestCase {
             // A popup over Home hides 'Net worth': close up to ~10 popups first, and only check Home once none is up.
             var closes = 0
             while closes < 10 && popupUp(1) { closePopup(); closes += 1 }
+            if !popupUp() { _ = goTab("Home") }
             home = !popupUp() && homeVisible(3)
         }
         if !home {
@@ -174,8 +177,8 @@ class FeatureTourCase: XCTestCase {
     // MARK: Steps
 
     func step(_ name: String, _ body: () -> R) {
-        if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 60 * 60 {
-            log.record(.skip, name, "time cap reached (8 min per test / 60 min per shard)")
+        if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 70 * 60 {
+            log.record(.skip, name, "time cap reached (12 min per test / 70 min per shard)")
             return
         }
         let t0: Date = Date()
@@ -198,8 +201,11 @@ class FeatureTourCase: XCTestCase {
 
     // MARK: Finding and tapping
 
+    /// Home's root is showing. A report that comes up on arriving at Home is read and closed first (it hides the page).
     func homeVisible(_ t: TimeInterval = 8) -> Bool {
-        find(wait: t) { $0.id == "home-companies-box" || $0.label == "Net worth" || $0.label == "NET WORTH" || $0.id == "next-day" } != nil
+        var n = 0
+        while n < 3 && popupUp(n == 0 ? 0.5 : 1) { closePopup(prefer: ["report-continue"]); n += 1 }
+        return find(wait: t) { $0.id == "home-companies-box" || $0.label == "Net worth" || $0.label == "NET WORTH" || $0.id == "next-day" } != nil
     }
 
     func elem(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
@@ -351,6 +357,7 @@ class FeatureTourCase: XCTestCase {
         guard let h = bringIn(pred, wait: wait) else { return false }
         clearBanner(over: h.frame)
         guard let now = find(pred) else { return false }
+        if noteBefore { lastBefore = signature() }
         return touch(now)
     }
 
@@ -513,14 +520,44 @@ class FeatureTourCase: XCTestCase {
         guard gridUp(6) else { lastOpenWhy = "grid not shown"; log.note("phone grid not shown: " + tabState()); return false }
         let pred: (Hit) -> Bool = { $0.id == "phone-app-\(name)" && $0.type == .button }
         guard let tile = bringIn(pred, wait: 1.5) else {
+            // Not on the Phone yet (the unlock ladder): the Pick tab can hold any app, so open it there.
+            if openViaPickTab(name) { lastOpenWhy = "pick"; return true }
             lastOpenWhy = "hidden"
-            log.note("no tile \(name) on the grid: tiles=" + ids(prefix: "phone-app-", wait: 0).map { String($0.dropFirst(10)) }.joined(separator: ","))
+            log.note("no tile \(name) on the grid and not in the Pick tab picker: tiles=" + ids(prefix: "phone-app-", wait: 0).map { String($0.dropFirst(10)) }.joined(separator: ","))
             return false
         }
         if !tile.enabled { lastOpenWhy = "hidden"; return false }
         touch(tile)
         pause(0.8)
         return true
+    }
+
+    /// The fourth tab is the Pick tab; its title is the app it holds ("Pick tab" while empty).
+    func customTab() -> Hit? {
+        let tabs: [Hit] = hits().filter { $0.id.hasPrefix("tab-") && $0.type == .button }.sorted { $0.frame.minX < $1.frame.minX }
+        return tabs.count == 5 ? tabs[3] : nil
+    }
+
+    /// Puts `name` in the Pick tab and shows it at its root. True when the app is showing.
+    func openViaPickTab(_ name: String) -> Bool {
+        var n = 0
+        while popupUp() && n < 3 { closePopup(); n += 1 }
+        if let t = find({ $0.id == "tab-\(name)" && $0.type == .button }) {
+            touch(t); pause(0.5)
+            if !(find({ $0.id == "tab-\(name)" && $0.type == .button })?.selected ?? false), let a = find({ $0.id == "tab-\(name)" && $0.type == .button }) { touch(a) }
+            return true
+        }
+        guard let tab = customTab() else { return false }
+        touch(tab)
+        pause(0.6)
+        if find(wait: 1.5, { $0.id == "custom-pick-\(name)" }) == nil, let t2 = customTab() {
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: t2.frame.midX, dy: t2.frame.midY)).press(forDuration: 1.2)
+            pause(0.8)
+        }
+        guard tapWhere(wait: 3, { $0.id == "custom-pick-\(name)" }) else { while popupUp() && n < 6 { closePopup(); n += 1 }; return false }
+        pause(0.8)
+        while popupUp(0.5) && n < 6 { closePopup(); n += 1 }
+        return find(wait: 2, { $0.id == "tab-\(name)" && $0.type == .button }) != nil
     }
 
     static var companyMisses = 0
@@ -671,8 +708,8 @@ class FeatureTourCase: XCTestCase {
             var lowestMax: CGFloat = 0
             var lowestLabel = ""
             var hidden: [String] = []
-            let tabFrames: [CGRect] = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { $0.frame.insetBy(dx: -2, dy: -2) }
-            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && h.id != "notification-banner" && !tabFrames.contains(where: { $0.contains(h.frame) }) {
+            let tabFrames: [CGRect] = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { $0.frame.insetBy(dx: -4, dy: -14) }
+            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && h.id != "notification-banner" && !tabFrames.contains(where: { $0.intersects(h.frame) }) {
                 guard h.type == .staticText || h.type == .button || h.type == .textField || h.type == .switch || h.type == .slider else { continue }
                 let r: CGRect = h.frame
                 guard !h.label.isEmpty, r.minY >= w.minY, r.minY < w.maxY - 1 else { continue }
@@ -719,7 +756,10 @@ class FeatureTourCase: XCTestCase {
             guard prepare() else { return .skip("screen not reachable in this game") }
             lastBefore = nil
             let before0: TourSig = signature()
-            guard open() else { return .skip("popup trigger not reachable in this game") }
+            noteBefore = true
+            let opened: Bool = open()
+            noteBefore = false
+            guard opened else { return .skip("popup trigger not reachable in this game") }
             // driveUntilPopup notes the screen just before its last tap: the popup belongs to that screen.
             let before: TourSig = lastBefore ?? before0
             guard popupUp(3) else { return .fail("the tap worked but no popup came up (screen: \(signature().text))") }

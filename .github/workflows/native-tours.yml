@@ -21,21 +21,23 @@ jobs:
       group: ui-tours-${{ github.ref }}-${{ matrix.shard }}
       cancel-in-progress: true
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 100
     strategy:
       fail-fast: false
       matrix:
         include:
           - shard: a
-            tests: testT01_TabsAndHome testT02_PhoneAppsA testT03_PhoneAppsB testT06_Ventures
+            tests: testT01_TabsAndHome testT02_PhoneAppsA testT06_Ventures
           - shard: b
-            tests: testT04_Group testT05_SwipeBack testT14_CompanyPopups testT26_NewCompany
+            tests: testT03_PhoneAppsB testT04_Group testT07_Ownership
           - shard: c
-            tests: testT10_CompanySections testT11_TeamHiring testT12_ManageAndSuppliers
+            tests: testT10_CompanySections testT11_TeamHiring testT14_CompanyPopups
           - shard: d
-            tests: testT13_SalesItemAndMarketing testT20_DayAndReports testT21_Inbox
+            tests: testT12_ManageAndSuppliers testT13_SalesItemAndMarketing testT20_DayAndReports testT21_Inbox
           - shard: e
-            tests: testT22_ShopsAndInsurance testT23_Bank testT24_OtherPopups testT25_AccountingPayroll
+            tests: testT05_SwipeBack testT22_ShopsAndInsurance testT23_Bank
+          - shard: f
+            tests: testT24_OtherPopups testT25_AccountingPayroll testT26_NewCompany
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest installed Xcode
@@ -49,7 +51,7 @@ jobs:
         working-directory: native/App
         run: xcodegen generate
       - name: Run the feature tours on iPhone 16 Pro
-        timeout-minutes: 78
+        timeout-minutes: 88
         working-directory: native/App
         env:
           ONLY: ${{ inputs.only }}

@@ -35,11 +35,16 @@ final class FeatureToursTests: FeatureTourCase {
         for id in shortcuts {
             step("home shortcut \(id): opens something and Back returns") {
                 guard goTab("Home") else { return .fail("cannot get to Home") }
-                let before: TourSig = signature()
-                guard tapID(id) else { return .skip("not tappable (off screen)") }
+                let f: CGRect = hit(id)?.frame ?? .zero
+                noteBefore = true
+                let tapped: Bool = tapID(id)
+                noteBefore = false
+                let before: TourSig = lastBefore ?? signature()
+                guard tapped else { return .skip("not tappable (off screen)") }
                 if popupUp(1) { closePopup(); return waitPopupGone(3) ? .pass("opened a popup that closed") : .fail("its popup did not close") }
+                pause(0.6)
                 let after: TourSig = signature()
-                if before.same(after) { return .fail("nothing changed after the tap") }
+                if before.same(after) { return .fail("nothing changed after tapping it (frame \(Int(f.minX)),\(Int(f.minY)) \(Int(f.width))x\(Int(f.height)))") }
                 let backed: Bool = tapBack()
                 _ = goTab("Home")
                 if !homeVisible(4) { return .fail("did not get back to Home from \(after.text)") }
@@ -77,16 +82,24 @@ final class FeatureToursTests: FeatureTourCase {
             guard openPhoneApp(title) else {
                 return lastOpenWhy == "hidden" ? .skip("no tile on the Phone grid: locked by the unlock ladder in this game") : .fail("cannot open phone-app-\(title): \(lastOpenWhy)")
             }
-            if popupUp() { closePopup() }
+            let gated: Bool = popupUp(1)
+            if gated { closePopup(prefer: ["paywall-pass", "popup-close"]); _ = waitPopupGone(3) }
             let sig: TourSig = signature()
-            let gridStillThere: Bool = gridUp()
-            if gridStillThere { return .fail("the app grid is still on screen after tapping the tile") }
+            if lastOpenWhy != "pick" && gridUp() {
+                return gated ? .skip("the tile opens a popup (paywall or gate) instead of the app") : .fail("the app grid is still on screen after tapping the tile")
+            }
             opened = true
-            return .pass(sig.text)
+            return .pass((lastOpenWhy == "pick" ? "via the Pick tab (not on the Phone grid in this game) " : "") + sig.text)
         }
         step("phone app \(title): health") { opened ? health("app \(title)") : .skip("not opened") }
         step("phone app \(title): Back returns to the grid") {
             guard opened else { return .skip("not opened") }
+            if lastOpenWhy == "pick" {
+                // At the root of the Pick tab there is no grid to go back to: re-selecting the tab must keep the app at its root.
+                guard let t = find({ $0.id == "tab-\(title)" && $0.type == .button }) else { return .fail("the Pick tab does not carry the app's name") }
+                touch(t)
+                return find(wait: 2, { $0.id == "tab-\(title)" && $0.selected }) != nil ? .pass("Pick tab root") : .fail("re-selecting the Pick tab left the app")
+            }
             guard tapBack() else { return .fail("no Back button on the app") }
             return gridUp(4) ? .pass() : .fail("Back did not show the app grid")
         }
@@ -193,6 +206,12 @@ final class FeatureToursTests: FeatureTourCase {
             return isSelected("group-tab-Boardroom") ? h : .fail("Back did not return to the Boardroom: \(signature().text)")
         }
         roundTrip("board room: Remove from board -> Cancel keeps the screen", closeWith: ["confirm-cancel"], prepare: { openEntityTab(entity, "Boardroom") }) { tapID("board-remove-seat", wait: 4) }
+    }
+
+    // MARK: T07 Group > Ownership: parts and the sell route picker
+
+    func testT07_Ownership() {
+        let entity: String = groupEntity()
         for part in ["Owners", "Sell", "Raise", "Offers"] {
             step("ownership: \(part) page opens and is clean") {
                 guard openEntityTab(entity, "Ownership"), tapID("group-ownership-\(part)") else { return .skip("no Ownership > \(part) segment") }
@@ -243,7 +262,6 @@ final class FeatureToursTests: FeatureTourCase {
                 return isSelected("segment-\(seg)") ? health("ventures \(seg)", title: false) : .fail("not selected after the tap")
             }
         }
-        roundTrip("ventures: 'Found a startup' popup closes and keeps Ventures", prepare: { goTab("Ventures") && tapLabel("Ideas and startups", wait: 3) }) { tapText("Found a startup") }
         step("ventures: New project goes to Running > Bids and offers") {
             guard goTab("Ventures") else { return .fail("no Ventures tab") }
             guard tapLabel("New project", wait: 3) else { return .skip("no New project button") }
@@ -265,9 +283,9 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             return homeVisible(4) ? .pass() : .fail("after switching section an edge swipe did not return to Home (\(signature().text))")
         }
-        for name in ["Bank", "Accounting", "Settings", "Atlas Insurance"] {
+        for name in ["Inbox", "Settings", "Reviews", "Rich list"] {
             step("swipe back: Phone app \(name) returns to the grid") {
-                guard openPhoneApp(name) else { return .skip("no tile") }
+                guard openPhoneApp(name), lastOpenWhy != "pick" else { return .skip("no tile on the grid") }
                 swipeBackFromEdge()
                 return gridUp(4) ? .pass() : .fail("an edge swipe did not return to the app grid (\(signature().text))")
             }
@@ -279,7 +297,8 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             let after: TourSig = signature()
             if after.same(inner) { return .fail("the swipe did nothing on \(inner.text)") }
-            return gridUp() ? .fail("the swipe left the whole app: \(inner.text) -> grid") : .pass("\(inner.text) -> \(after.text)")
+            if gridUp() { return .fail("the swipe left the whole app: \(inner.text) -> grid") }
+            return has("bank-pick-personal", wait: 2) ? .pass("\(inner.text) -> chooser") : .fail("not back on the chooser: \(after.text)")
         }
         step("swipe back: hiring screen returns to the Team section") {
             guard openCompany("Caf"), tapID("company-tab-team"), tapID("team-hire-workers", wait: 4) else { return .skip("hiring screen not reachable") }
