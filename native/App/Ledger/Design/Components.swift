@@ -382,7 +382,7 @@ struct SectionTabs<T: Hashable>: View {
 
     private func cell(_ text: String, count: Int, on: Bool, more: Bool, tight: Bool) -> some View {
         HStack(spacing: 3) {
-            Text(text)
+            Text(sub ? text.uppercased() : text)
                 .textStyle(sub ? .label : .body, tint: on ? palette.accent : palette.inkFaint, weight: on || sub ? .semibold : .regular)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)

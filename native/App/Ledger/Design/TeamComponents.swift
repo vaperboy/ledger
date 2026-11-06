@@ -68,15 +68,15 @@ struct ManagementRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(name ?? "Vacant").font(.system(size: 13.5, weight: .medium)).foregroundStyle(name == nil ? Theme.ivoryMuted : Theme.ivory).lineLimit(1)
+                Text(name ?? "Vacant").textStyle(.headline, tint: name == nil ? Theme.inkSoft : Theme.ink).lineLimit(1)
                 RoleScopeBadge(role: role, scope: scope)
-                if !line.isEmpty { Text(line).font(.system(size: 11)).foregroundStyle(lineTint).fixedSize(horizontal: false, vertical: true) }
+                if !line.isEmpty { Text(line).textStyle(.caption, tint: lineTint).fixedSize(horizontal: false, vertical: true) }
             }
-            Spacer(minLength: 8)
-            if let wage { Text(wage).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivory) }
-            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).accessibilityHidden(true)
+            Spacer(minLength: Theme.Space.s)
+            if let wage { Text(wage).textStyle(.headline, numeric: true) }
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint).accessibilityHidden(true)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Space.s)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens this post")

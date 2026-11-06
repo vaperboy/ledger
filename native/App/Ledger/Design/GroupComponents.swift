@@ -55,16 +55,17 @@ struct GroupLinkRow: View {
     var tint: Color = Theme.ivory
     var subTint: Color = Theme.ivoryFaint
 
+    /// The `LedgerRow` look (its texts stay separate accessibility elements, as before).
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).lineLimit(1)
-                if !sub.isEmpty { Text(sub).font(.system(size: 11)).foregroundStyle(subTint).lineLimit(2) }
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.headline).lineLimit(1)
+                if !sub.isEmpty { Text(sub).textStyle(.caption, tint: subTint).lineLimit(2) }
             }
-            Spacer(minLength: 8)
-            if !trailing.isEmpty { Text(trailing).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint).lineLimit(1) }
-            Image(systemName: "chevron.right").font(.system(size: 11)).foregroundStyle(Theme.gold.opacity(0.85))
+            Spacer(minLength: Theme.Space.s)
+            if !trailing.isEmpty { Text(trailing).textStyle(.headline, tint: tint, numeric: true).lineLimit(1) }
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
         }
-        .padding(.vertical, 9).contentShape(Rectangle())
+        .padding(.vertical, Theme.Space.s).contentShape(Rectangle())
     }
 }

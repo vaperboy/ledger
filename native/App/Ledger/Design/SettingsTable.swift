@@ -47,51 +47,51 @@ struct SettingsTableRow: View {
     }
 
     private var overviewRow: some View {
-        HStack(spacing: 10) {
-            if let thumb { ThumbnailView(thumb, size: 34) } else { IconCircle(glyph: glyph ?? Glyph.settings, size: 34) }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title.tidyText).font(.system(size: 14)).foregroundStyle(Theme.ivory).lineLimit(2)
-                if !note.isEmpty { Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
+        HStack(spacing: Theme.Space.m) {
+            if let thumb { ThumbnailView(thumb, size: 34) } else { LedgerGlyph(glyph: glyph ?? Glyph.settings, size: Theme.Icon.medium, tint: Theme.accent) }
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title.tidyText).textStyle(.headline).lineLimit(2)
+                if !note.isEmpty { Text(note.tidyText).textStyle(.caption).lineLimit(2) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(value.tidyText).font(.system(size: 14).monospacedDigit()).foregroundStyle(valueTint).lineLimit(2).multilineTextAlignment(.trailing)
-                if !change.isEmpty { Text(change.tidyText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(changeTint).lineLimit(1) }
+            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                Text(value.tidyText).textStyle(.headline, tint: valueTint, numeric: true).lineLimit(2).multilineTextAlignment(.trailing)
+                if !change.isEmpty { Text(change.tidyText).textStyle(.caption, tint: changeTint, numeric: true).lineLimit(1) }
             }
             .frame(maxWidth: 150, alignment: .trailing)
-            if !readOnly { GlyphView(glyph: Glyph.chevron, size: 12, weight: 1.8, tint: Theme.ivoryFaint) }
+            if !readOnly { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
         }
-        .padding(.vertical, 9)
-        .overlay(alignment: .top) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
+        .padding(.vertical, Theme.Space.m)
+        .overlay(alignment: .top) { Hairline() }
         .contentShape(Rectangle())
     }
 
     private var plainRow: some View {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2)
-                    if !note.isEmpty { Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2) }
+                    Text(title.tidyText).textStyle(.headline).lineLimit(2)
+                    if !note.isEmpty { Text(note.tidyText).textStyle(.caption).lineLimit(2) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(value.tidyText).font(.system(size: 13).monospacedDigit()).foregroundStyle(valueTint)
+                Text(value.tidyText).textStyle(.body, tint: valueTint, numeric: true)
                     .lineLimit(2).multilineTextAlignment(.trailing).minimumScaleFactor(0.8)
                     .frame(maxWidth: 150, alignment: .trailing)
-                if !readOnly { GlyphView(glyph: opens.glyph, size: opens == .sheet ? 14 : 12, weight: 1.8, tint: Theme.ivoryDim) }
+                if !readOnly { LedgerGlyph(glyph: opens.glyph, size: Theme.Icon.small, tint: Theme.inkFaint) }
             }
-            .padding(.horizontal, 12).padding(.vertical, 11)
-            .overlay(alignment: .bottom) { Rectangle().fill(Theme.tableLine).frame(height: 1) }
+            .padding(.horizontal, 12).padding(.vertical, Theme.Space.m)
+            .overlay(alignment: .bottom) { Hairline() }
             .contentShape(Rectangle())
     }
 }
 
-/// The settings list of the overview-table look: one bordered card with a caps label and rows made with `SettingsTableRow(glyph:)`.
+/// The settings list of the overview-table look: one surface group (no border) with a caps label and rows made with `SettingsTableRow(glyph:)`.
 struct OverviewSettingsCard<Content: View>: View {
     var heading: String
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text(heading.uppercased()).capsLabel()
                 VStack(spacing: 0, content: content)
             }
@@ -99,7 +99,7 @@ struct OverviewSettingsCard<Content: View>: View {
     }
 }
 
-/// The sharp box around settings rows with its caps header.
+/// The table around settings rows with its caps header (a surface group, flat inside another group).
 struct SettingsTable<Content: View>: View {
     var heading: String = "Setting"
     @ViewBuilder var content: () -> Content

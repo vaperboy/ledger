@@ -15,13 +15,13 @@ extension Glyph {
 private struct OverviewCaps: View {
     var text: String
     var body: some View {
-        Text(text.uppercased()).font(.system(size: 10.5, weight: .medium)).tracking(1.4).foregroundStyle(Theme.gold).lineLimit(1).minimumScaleFactor(0.8)
+        Text(text.uppercased()).textStyle(.label).lineLimit(1).minimumScaleFactor(0.8)
     }
 }
 
 // MARK: Figure card
 
-/// One hero figure: a small label, a big serif value and a grey or coloured line under it (the change against before).
+/// One hero figure on a surface tile: a caps label, the display-size serif value and a grey or coloured line under it (the change against before).
 struct OverviewFigureCard: View {
     var label: String
     var value: String
@@ -35,10 +35,10 @@ struct OverviewFigureCard: View {
 
     var body: some View {
         Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 12.5)).foregroundStyle(Theme.gold).lineLimit(1)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(label).textStyle(.label).lineLimit(1).minimumScaleFactor(0.8)
                 figureText
-                Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(noteTint).lineLimit(2)
+                Text(note.tidyText).textStyle(.caption, tint: noteTint).lineLimit(2)
             }
         }
         .accessibilityElement(children: .combine)
@@ -46,9 +46,9 @@ struct OverviewFigureCard: View {
 
     @ViewBuilder private var figureText: some View {
         if let live, let countFormat {
-            CountedFigure(value: live, format: countFormat, tint: valueTint).font(.serifTitle(30)).lineLimit(1).minimumScaleFactor(0.6)
+            CountedFigure(value: live, format: countFormat, tint: valueTint).font(TextStep.display.fixedFont).lineLimit(1).minimumScaleFactor(0.6)
         } else {
-            Text(value).font(.serifTitle(30)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
+            Text(value).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
         }
     }
 }
@@ -95,41 +95,41 @@ struct OverviewRow: View {
 
     @ViewBuilder private var valueView: some View {
         if let live = row.live, let text = row.liveText {
-            CountedFigure(value: live, format: text, tint: row.valueTint).font(.system(size: 14).monospacedDigit())
+            CountedFigure(value: live, format: text, tint: row.valueTint).font(TextStep.headline.font(size: TextStep.headline.size, numeric: true, weight: nil))
         } else {
-            Text(row.value.tidyText).font(.system(size: 14).monospacedDigit()).foregroundStyle(row.valueTint)
+            Text(row.value.tidyText).textStyle(.headline, tint: row.valueTint, numeric: true)
         }
     }
 
     private var label: some View {
-        HStack(spacing: 10) {
-            IconCircle(glyph: row.glyph, size: 34)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(row.title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(2).multilineTextAlignment(.leading)
+        HStack(spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: row.glyph, size: Theme.Icon.medium, tint: Theme.accent)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(row.title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
                 if !row.subtitle.isEmpty {
-                    Text(row.subtitle.tidyText).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(row.subtitle.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 1) {
+            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
                 if !row.value.isEmpty {
                     valueView
                         .lineLimit(2).multilineTextAlignment(.trailing).minimumScaleFactor(0.8)
                 }
                 if !row.note.isEmpty {
-                    Text(row.note.tidyText).font(.system(size: 11.5)).foregroundStyle(row.noteTint).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(row.note.tidyText).textStyle(.caption, tint: row.noteTint, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
                 }
             }
             .frame(maxWidth: 150, alignment: .trailing)
-            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, Theme.Space.m)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }
 
-/// The overview table: one bordered card with a caps heading (and anything at its right, such as a period menu), the rows, and an
+/// The overview table: one surface group (no border) with a caps heading (and anything at its right, such as a period menu), the rows, and an
 /// optional "View all" link under them that opens the same table in full.
 struct OverviewTable<Trailing: View>: View {
     var title: String
@@ -149,7 +149,7 @@ struct OverviewTable<Trailing: View>: View {
                 }
                 .padding(.top, 12).padding(.bottom, 4)
                 if rows.isEmpty && !emptyText.isEmpty {
-                    Text(emptyText).font(.system(size: 13)).foregroundStyle(Theme.ivoryMuted).padding(.vertical, 8)
+                    Text(emptyText).textStyle(.body, tint: Theme.inkSoft).padding(.vertical, Theme.Space.s)
                 }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
                     if i > 0 { CardLine() }
@@ -159,9 +159,8 @@ struct OverviewTable<Trailing: View>: View {
                     CardLine()
                     HStack {
                         Spacer()
-                        Button { Haptics.tap(); footerAction() } label: {
-                            Text(footer).font(.system(size: 12.5)).foregroundStyle(Theme.gold).frame(minHeight: 36)
-                        }.buttonStyle(PressableStyle())
+                        Button { Haptics.tap(); footerAction() } label: { Text(footer) }
+                            .buttonStyle(TertiaryButtonStyle(size: .compact))
                     }
                 } else {
                     Spacer().frame(height: 6)
