@@ -1,4 +1,5 @@
 # What's new
+- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full
 - Week report: Continue and Full report stay pinned at the bottom of the card
 - Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play
 - Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels
