@@ -18,61 +18,54 @@ struct CompanyPayroll: View {
         let o = engine.financeOverview(companyID: company.id)
         let due = o.upcoming.filter { $0.id == "pay\(company.id)" || $0.id == "bills\(company.id)" }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Button { Haptics.tap(); store.openAccounting(companyID: company.id, payroll: true) } label: {
-                CardRow(glyph: Glyph.accounting, title: "Run payroll in Accounting", subtitle: company.name)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("bills-open-accounting-payroll")
-            if let info = engine.paydayInfo(companyID: company.id) {
-                paydaySection(info)
-            }
-            TeamGroup("What falls due") {
-                if due.isEmpty {
-                    Card(padding: 14, radius: Theme.Radius.row) {
-                        Text("Nothing is waiting: no wages are owed and no rent or supplier bills have built up this month.")
-                            .font(.bodyText).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            LedgerRow(leading: .glyph(Glyph.accounting), title: "Run payroll in Accounting", subtitle: "Timesheets, payslips and the run",
+                      identifier: "bills-open-accounting-payroll") { store.openAccounting(companyID: company.id, payroll: true) }
+            LedgerSection("What falls due") {
+                VStack(alignment: .leading, spacing: 0) {
+                    if due.isEmpty {
+                        EmptyState(glyph: Glyph.check, title: "Nothing is waiting", message: "No wages are owed and no rent or supplier bills have built up this month.", centered: false)
+                    } else {
+                        ForEach(Array(due.enumerated()), id: \.element.id) { n, u in
+                            if n > 0 { Hairline() }
+                            LedgerRow(leading: .glyph(Glyph.reports), title: u.title, subtitle: u.detail, value: cur.tidyShort(u.amount), valueNote: u.dateText)
+                        }
                     }
-                } else {
-                    ForEach(due) { u in
-                        CardRow(glyph: Glyph.reports, title: u.title, subtitle: u.detail + (u.dateText.isEmpty ? "" : " · " + u.dateText), value: cur.tidyShort(u.amount), chevron: false)
-                    }
+                    Text("Wages build up week by week and leave on pay day. Rent and supplier bills leave on the last day of the month. Both come from company cash; if it runs short, wages are late and the bills carry interest.")
+                        .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
                 }
-                Text("Wages build up week by week and leave on pay day. Rent and supplier bills leave on the last day of the month. Both come from company cash; if it runs short, wages are late and the bills carry interest.")
-                    .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
+            }
+            if let info = engine.paydayInfo(companyID: company.id) {
+                paydaySection(info, datesShown: due.contains { $0.id == "pay\(company.id)" && !$0.dateText.isEmpty })
             }
         }
         .confirmAction($pending)
     }
 
-    @ViewBuilder private func paydaySection(_ info: PaydayInfo) -> some View {
-        TeamGroup(title: "Pay day", trailing: {
-            Text(info.dayLabel).font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
-        }) {
+    /// The pay-day choice. The next dates are said here only when "What falls due" above does not already show them.
+    @ViewBuilder private func paydaySection(_ info: PaydayInfo, datesShown: Bool) -> some View {
+        LedgerSection("Pay day") {
             if !info.hasPayroll {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    Text("No one is on the payroll yet, so there is nothing to pay. Pay day matters once you hire someone.")
-                        .font(.system(size: 13)).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
-                }
+                EmptyState(glyph: Glyph.calendar, title: "No one is on the payroll yet", message: "Pay day matters once you hire someone.", centered: false)
             } else {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    if !datesShown {
                         Text("Staff are next paid on \(info.nextPayText). Rent and supplier bills follow on \(info.billText).")
-                            .font(.system(size: 13.5)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
-                        if let q = info.pendingLabel {
-                            Text("Changing to the \(q.lowercased()) after this month's payroll is paid. Staff need notice.")
-                                .font(.system(size: 12)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true)
-                        }
-                        if info.isLate {
-                            Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").font(.system(size: 12.5, weight: .medium)).foregroundStyle(P.loss)
-                        }
+                            .textStyle(.body).fixedSize(horizontal: false, vertical: true)
                     }
+                    if let q = info.pendingLabel {
+                        Text("Changing to the \(q.lowercased()) after this month's payroll is paid. Staff need notice.")
+                            .textStyle(.caption, tint: P.warn).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if info.isLate {
+                        Label("Wages are late, so a change waits until they are paid.", systemImage: "exclamationmark.triangle.fill").textStyle(.body, tint: P.loss, weight: .medium)
+                    }
+                    ForEach(info.choices) { c in
+                        let tag: String = c.isCurrent ? "Current" : (c.isQueued ? "Queued" : "")
+                        ChoiceCard(title: c.label, subtitle: timing(c, info), trailing: tag, selected: c.isCurrent || c.isQueued) { choose(c, info) }
+                    }
+                    Text("A weekend pay day is paid the Friday before. Early in the month last month's takings are in; the last day stacks wages and rent on one day.")
+                        .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                ForEach(info.choices) { c in
-                    let tag: String = c.isCurrent ? "Current" : (c.isQueued ? "Queued" : "")
-                    ChoiceCard(title: c.label, subtitle: timing(c, info), trailing: tag, selected: c.isCurrent || c.isQueued) { choose(c, info) }
-                }
-                Text("A weekend pay day is paid the Friday before. Early in the month last month's takings are in; the last day stacks wages and rent on one day.")
-                    .font(.caption2).foregroundStyle(P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
