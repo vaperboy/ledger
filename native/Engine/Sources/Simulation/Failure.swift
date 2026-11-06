@@ -63,7 +63,7 @@ public enum Failure {
             ? "About \(cur.display(personalHit)) lands on you personally (\(co.form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
             : "As a limited company, your loss is limited to what you put in. "
         s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why + liability + "Credit score hit.", companyID: co.id, tone: "bad")
-        s.news("\(co.name) files for bankruptcy.", tone: "bad")
+        s.news("\(co.name) files for bankruptcy.", tone: "bad", companyID: co.id)
         HoldingModel.holdingFailed(&s, holdingID: co.id)
     }
 

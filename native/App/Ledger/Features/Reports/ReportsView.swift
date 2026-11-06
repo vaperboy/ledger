@@ -329,6 +329,10 @@ struct ReportsPage: View {
                     }
                     CardLine()
                     ReportLine(label: "Your account at end", value: f.short(g.accountEnd), strong: true, live: g.accountEnd, liveText: f.short)
+                    if g.savingsStart != 0 || g.savingsEnd != 0 {
+                        CardLine()
+                        ReportLine(label: "Savings, start to end", value: f.short(g.savingsStart) + " to " + f.short(g.savingsEnd), tint: Theme.change(g.savingsEnd - g.savingsStart))
+                    }
                     CardLine().padding(.vertical, 6)
                 }
                 ReportLine(label: companyID == nil ? "Company cash at start" : "Cash at start", value: f.short(g.companyCashStart), live: g.companyCashStart, liveText: f.short)
@@ -363,11 +367,40 @@ struct ReportsPage: View {
                 if companyID == nil {
                     CardLine()
                     ReportLine(label: "Decisions answered", value: "\(g.decisionsAnswered)")
+                } else {
+                    companyPeople(r)
                 }
                 if g.breakdowns + g.complaints + g.fineCount > 0 {
                     CardLine()
                     ReportLine(label: "Breakdowns / complaints / fines", value: "\(g.breakdowns) / \(g.complaints) / \(g.fineCount)", tint: Theme.caution)
                 }
+            }
+        }
+    }
+
+    /// What only a company's own report has: its quality, staff at the end and the change in the value of your share.
+    @ViewBuilder private func companyPeople(_ r: PeriodReport) -> some View {
+        if let id = companyID, let c = r.company(id) {
+            let f = format
+            VStack(spacing: 0) {
+                CardLine()
+                ReportLine(label: "Quality", value: Words.move(c.qualityStart, c.qualityEnd, scale: .quality), tint: Theme.change(c.qualityEnd - c.qualityStart))
+                CardLine()
+                ReportLine(label: "Staff at the end", value: "\(c.staffEnd)")
+                CardLine()
+                ReportLine(label: "Value of your share", value: f.signed(c.valueChange), tint: Theme.change(c.valueChange))
+            }
+        }
+    }
+
+    /// Tax passed between this company and the rest of the group (group relief): this year so far and last year.
+    @ViewBuilder private func groupTaxRows(_ f: ReportFormat) -> some View {
+        if let id = companyID, let gt = engine.groupTaxContribution(companyID: id) {
+            VStack(spacing: 0) {
+                CardLine()
+                ReportLine(label: "Group tax this year: out / in", value: f.short(gt.thisYear.out) + " / " + f.short(gt.thisYear.in))
+                CardLine()
+                ReportLine(label: "Group tax last year: out / in", value: f.short(gt.lastYear.out) + " / " + f.short(gt.lastYear.in))
             }
         }
     }
@@ -380,6 +413,7 @@ struct ReportsPage: View {
                 ReportLine(label: "Tax paid in cash", value: f.short(g.taxPaid))
                 CardLine()
                 ReportLine(label: "Corporate tax charged", value: f.short(g.pnl.tax))
+                groupTaxRows(f)
                 if companyID == nil {
                     CardLine()
                     ReportLine(label: "Dividends received", value: f.short(g.dividendsReceived))
@@ -388,7 +422,11 @@ struct ReportsPage: View {
                     CardLine()
                     ReportLine(label: "Salary and drawings", value: f.short(g.ownerPay))
                     CardLine()
-                    ReportLine(label: "Income tax estimate, \(engine.yearInProgress.year) so far", value: f.short(engine.yearInProgress.personalTaxEstimate))
+                    VStack(spacing: 0) {
+                        ReportLine(label: "Income tax estimate, \(engine.yearInProgress.year) so far", value: f.short(engine.yearInProgress.personalTaxEstimate))
+                        CardLine()
+                        ReportLine(label: "Income tax already withheld", value: f.short(engine.yearInProgress.taxWithheld))
+                    }
                     CardLine()
                     ReportLine(label: "Wealth change", value: f.signed(r.netWorthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? ""),
                                tint: Theme.change(r.netWorthChange), strong: true)

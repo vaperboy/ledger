@@ -296,6 +296,7 @@ struct AirStayApp: View {
                 }
                 factsCard(e, o, t)
                 aboutCard(e, o)
+                ownSpaceLine(e, o)
                 if o.canBuy, let t { buyLine(e, o, t) }
             }
             .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 24)
@@ -338,6 +339,20 @@ struct AirStayApp: View {
             ShopHeading(text: "About this place")
             Text((note.isEmpty ? "" : note + " ") + "A place in the centre costs more and draws more passing trade; one out of town is cheap but quiet. Moving gives the old deposit back.")
                 .font(.system(size: 14)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Room of this size free in a commercial building of yours in the same city (a franchise unit can start there, rent staying in the group).
+    @ViewBuilder private func ownSpaceLine(_ e: GameEngine, _ o: PlaceMarket.Offer) -> some View {
+        let free: [PremisesExtras.FreeSpace] = e.freeSpaceInYourBuildings(cityID: o.cityID, squareMetres: o.listing.squareMetres)
+        if let f = free.first {
+            Card(padding: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Space in your own building").font(.system(size: 15, weight: .semibold)).foregroundStyle(P.ink)
+                    Text("\(f.name) has \(Int(f.freeSquareMetres)) m² free. A franchise unit can start there, and the rent stays in your group.")
+                        .font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
     }
 

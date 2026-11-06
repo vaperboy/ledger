@@ -147,7 +147,7 @@ public enum SoftwareProducts {
             guard let j = s.companyIndex(co.id) else { continue }
             s.companies[j].set("swp", sw)
             if out.revenue > 0 { Payments.companyReceives(&s, companyID: co.id, amount: jsRound(out.revenue), category: "rev", label: "Software sales") }
-            for n in out.notes { if n.news { s.news(n.text, tone: "good") } else { s.note(n.text, tone: "good", companyID: co.id) } }
+            for n in out.notes { if n.news { s.news(n.text, tone: "good", companyID: co.id) } else { s.note(n.text, tone: "good", companyID: co.id) } }
         }
     }
 

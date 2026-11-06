@@ -18,6 +18,7 @@ struct AchievementsView: View {
                         .init(label: "Awards won", value: "\(Awards.wonCount(e.state))"),
                         .init(label: "Latest", value: got.max { ($0.reachedWeek ?? 0) < ($1.reachedWeek ?? 0) }?.name ?? "None yet")
                     ], columns: 2)
+                    streakCard(e.milestoneProgress)
                     ForEach(Trophies.groups, id: \.id) { g in
                         let list = entries.filter { $0.group == g.id }
                         if !list.isEmpty {
@@ -40,6 +41,16 @@ struct AchievementsView: View {
             .scrollIndicators(.hidden)
             .ledgerBackground()
         }
+    }
+
+    /// Runs of weeks in which net worth rose, and the biggest single week.
+    private func streakCard(_ m: MilestoneProgress) -> some View {
+        let items: [FigureCard.Item] = [
+            .init(label: "Weeks in a row now", value: "\(m.profitStreak)"),
+            .init(label: "Best run", value: "\(m.bestStreak)"),
+            .init(label: "Best week", value: m.bestWeek > 0 ? store.short(m.bestWeek) : "None yet")
+        ]
+        return FigureCard(items: items, columns: 3)
     }
 
     /// A shelf of medallions for one group: won trophies in champagne first, then the empty slots.

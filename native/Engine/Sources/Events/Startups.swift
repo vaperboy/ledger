@@ -425,7 +425,7 @@ public enum Startups {
             if co.status == .bust {
                 f["st"] = "failed"; f["val"] = 0
                 Funding.bump(&s, "fails")
-                s.news("Startup \(co.name) shuts down.", tone: "n")
+                s.news("Startup \(co.name) shuts down.", tone: "n", companyID: co.id)
                 list[k] = f; continue
             }
             if co.status == .sold {

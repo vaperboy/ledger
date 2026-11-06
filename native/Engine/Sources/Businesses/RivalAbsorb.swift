@@ -99,7 +99,7 @@ public enum RivalAbsorb {
                 fine = Rivals.roundTo(max(cur.scaledPrice(100000), s.companies[ci].lastWeekRevenue * 52 * 0.03), 1000)
                 Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Competition authority: closing \(r.name)")
                 s.companies[ci].reputation = max(0, s.companies[ci].reputation - 4)
-                s.news("The competition authority fines \(co.name) for buying and closing \(r.name).", tone: "bad")
+                s.news("The competition authority fines \(co.name) for buying and closing \(r.name).", tone: "bad", companyID: co.id)
             }
         }
         let share = MarketMap.market(of: s.companies[ci], s, data: data).map { MarketMap.truth(s, $0, data: data).share } ?? 0

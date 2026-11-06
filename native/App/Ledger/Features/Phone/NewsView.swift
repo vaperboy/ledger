@@ -167,7 +167,28 @@ struct NewsView: View {
         }
     }
 
+    /// A story about one of your companies links to it.
+    @ViewBuilder private func companyLink(_ n: NewsItem) -> some View {
+        if n.companyID != 0, let name = store.engine?.state.company(n.companyID)?.name {
+            Button { Haptics.tap(); store.openCompany(n.companyID) } label: {
+                HStack(spacing: 4) {
+                    Text("Open " + name).font(.system(size: 12, weight: .semibold))
+                    GlyphView(glyph: Glyph.chevron, size: 10, weight: 2, tint: P.accent)
+                }
+                .foregroundStyle(P.accent).padding(.vertical, 2).contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+        }
+    }
+
     private func story(_ n: NewsItem) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            storyText(n)
+            companyLink(n)
+        }
+    }
+
+    private func storyText(_ n: NewsItem) -> some View {
         let k = kicker(n.tone)
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
@@ -188,14 +209,17 @@ struct NewsView: View {
             sectionLabel("Earlier")
             ForEach(Array(items.enumerated()), id: \.offset) { i, n in
                 if i > 0 { Rectangle().fill(P.hairline).frame(height: 1) }
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(GameCalendar.dateString(week: n.week)).font(.system(size: 11).monospacedDigit()).foregroundStyle(P.inkFaint).frame(width: 74, alignment: .leading)
-                    Text(n.text).font(.system(size: 13.5, design: .serif)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(GameCalendar.dateString(week: n.week)).font(.system(size: 11).monospacedDigit()).foregroundStyle(P.inkFaint).frame(width: 74, alignment: .leading)
+                        Text(n.text).font(.system(size: 13.5, design: .serif)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .newMarker(.news, "n" + UpdateFeed.newsKey(n), style: .dot, important: n.tone == "bad", alignment: .topTrailing)
+                    .accessibilityElement(children: .combine)
+                    companyLink(n).padding(.leading, 86)
                 }
                 .padding(.vertical, 9)
-                .newMarker(.news, "n" + UpdateFeed.newsKey(n), style: .dot, important: n.tone == "bad", alignment: .topTrailing)
-                .accessibilityElement(children: .combine)
             }
         }
     }

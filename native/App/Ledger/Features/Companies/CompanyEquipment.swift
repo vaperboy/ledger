@@ -290,9 +290,53 @@ struct CompanyEquipmentScreen: View {
             }
         }
         perkCars(owned, cur)
+        garageRepair(e, owned, cur)
         runningCosts(e, cur)
         Text("Cash keeps you debt-free but drains the account. Finance builds ownership over four to five years. Leasing is a low monthly cost with service included, but you own nothing at the end.")
             .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+    }
+
+    /// A worn or broken vehicle can go to a garage of yours: the quote shows price, VAT and weeks before anything is paid.
+    @ViewBuilder private func garageRepair(_ e: GameEngine, _ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
+        let garages: [Int] = e.carRepairGarages(for: companyID)
+        let worn: [EquipmentMarket.VehicleRow] = owned.flatMap { (o: EquipmentMarket.Owned) -> [EquipmentMarket.VehicleRow] in o.vehicles }
+            .filter { (v: EquipmentMarket.VehicleRow) -> Bool in v.seenCondition < 0.8 || v.daysInRepair > 0 }
+        if let gid = garages.first, !worn.isEmpty {
+            CardSection("Repair at your garage") {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(worn.enumerated()), id: \.element.id) { i, v in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(v.name).font(.system(size: 13.5)).foregroundStyle(Theme.ivory)
+                            Spacer(minLength: 8)
+                            Menu {
+                                ForEach(CarRepairJobs.kinds) { (k: RepairKind) in
+                                    Button(k.name) { askGarage(e, gid, k, v.name, cur) }
+                                }
+                            } label: { Text("Repair").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }
+                        }.padding(.vertical, 8).overlay(alignment: .top) { if i > 0 { CardLine() } }
+                    }
+                    Text((e.state.company(gid)?.name ?? "Your garage") + " does the job at its own price, with VAT.")
+                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private func askGarage(_ e: GameEngine, _ garageID: Int, _ kind: RepairKind, _ vehicle: String, _ cur: Currency) {
+        guard let q = e.carRepairQuote(garageID: garageID, kind: kind.id) else {
+            store.show("The garage has no room for this job now.", tone: "warn"); return
+        }
+        let cid: Int = companyID
+        let weeks: String = "\(q.weeks) " + (q.weeks == 1 ? "week" : "weeks")
+        let msg: String = q.garageName + " charges " + cur.tidyShort(q.price) + " plus " + cur.tidyShort(q.vat) + " VAT for " + kind.name.lowercased() + ", back in about " + weeks + "."
+        asking = PendingAction(title: "Repair " + vehicle + "?", message: msg, button: "Order", amount: q.total, currency: cur) {
+            let r: RepairResult? = store.act { (g: inout GameEngine) -> RepairResult in g.orderCarRepair(garageID: garageID, dealerID: cid, kind: kind.id, ref: vehicle) }
+            switch r {
+            case .ordered(let o)?: store.show("Ordered for " + cur.tidyShort(o.price + o.vat) + ", back in \(o.weeks) " + (o.weeks == 1 ? "week" : "weeks") + ".", tone: "good")
+            case .refused(let why)?: store.show(why, tone: "warn")
+            case nil: break
+            }
+        }
     }
 
     @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
