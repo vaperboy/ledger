@@ -38,6 +38,25 @@ public struct Balance: Sendable {
     public var salesWays: [String: [SalesWay]]
     /// Which trades sell to the better-off, and how hard a place's income spread bites (`Resources/market_classes.json`, `CityMarket`).
     public var cityMarket: CityMarketTables
+    /// What a skilled owner gains over a passive one (`mastery` in balance.json): see `Mastery`.
+    public var mastery: Mastery
+
+    /// Knobs that decide how far skill pays. Each is 'no effect' at the neutral value.
+    public struct Mastery: Sendable {
+        /// Multiplier on the awareness a business has without advertising (1 = as before; lower = passive owners are less known)
+        public var organicScale = 1.0
+        /// How much a known, well-regarded business shrugs off rivals: share of the rival drag removed at awareness 100 and reputation 100
+        public var rivalMoat = 0.0
+        /// Reach multiplier per doubling of outlets (was 0.03)
+        public var chainReach = 0.03
+        /// Share of the two outlets' overlap that counts when they are in one city (1 = as before)
+        public var overlapScale = 1.0
+        init(json j: JSONValue) {
+            func n(_ k: String, _ d: Double) -> Double { j[k].isNull ? d : j[k].double }
+            organicScale = n("organicScale", organicScale); rivalMoat = n("rivalMoat", rivalMoat); chainReach = n("chainReach", chainReach)
+            overlapScale = n("overlapScale", overlapScale)
+        }
+    }
 
     /// One way a trade sells. `kind`: contract, offer, referral, platform, members, peak, emergency, upsell.
     public struct SalesWay: Sendable {
@@ -51,6 +70,7 @@ public struct Balance: Sendable {
 
     public init(json j: JSONValue, weatherJSON: JSONValue, waysJSON: JSONValue, marketJSON: JSONValue = .null) {
         cityMarket = CityMarketTables(json: marketJSON)
+        mastery = Mastery(json: j["mastery"])
         weather = WeatherTables(json: weatherJSON)
         salesWays = waysJSON["W"].object.mapValues { list in
             list.array.map { w in
