@@ -14,7 +14,9 @@ public enum Competition {
         let ratio = 1 + dv * min(1, abs(dv) / 0.06)
         // A market whose last rival has gone and not yet been replaced has nobody to take customers (see `Rivals.vacant`).
         let n = Rivals.vacant(m, week: w.week) ? 0 : m["n"].double
-        var mult = 1 - min(0.3 + CityMarket.rivalCapBoost(co, w), 0.035 * n) * (0.7 + 0.5 * m["str"].double)
+        // A name people know and trust is not easily taken from you (`Balance.Mastery.rivalMoat`).
+        let moat = w.balance.mastery.rivalMoat * clamp((co.awareness - 30) / 70, 0, 1) * clamp((co.reputation - 40) / 60, 0, 1)
+        var mult = 1 - min(0.3 + CityMarket.rivalCapBoost(co, w), 0.035 * n) * (0.7 + 0.5 * m["str"].double) * (1 - moat)
         mult *= Rivals.strengthFactor(m, week: w.week)
         mult *= ratio > 1 ? exp(-0.9 * (ratio - 1)) : exp(0.35 * (1 - ratio))
         mult *= cheapRivalFactor(co, m, w)
@@ -40,7 +42,7 @@ public enum Competition {
     /// How much two of your outlets in the same city fish in the same pond. Original: `cityOverlap`, `ownOverlap`.
     static func overlap(_ a: Company, _ b: Company, _ w: World) -> Double {
         let pop = w.city(a)?.population ?? 100
-        var ov = clamp(0.25 * (300 / (pop == 0 ? 100 : pop)).squareRoot(), 0.12, 0.8)
+        var ov = clamp(0.25 * (300 / (pop == 0 ? 100 : pop)).squareRoot(), 0.12, 0.8) * w.balance.mastery.overlapScale
         let tiers = w.catalog.tables.raw["PL_TIERS"].array.map { $0[0].string }
         func tier(_ c: Company) -> Int {
             let n = c.value("prem")["lname"]
@@ -83,6 +85,6 @@ public enum Competition {
 
     /// Chain reach multiplier on demand: many outlets build a known brand. Original: `reachOf(co).mult`.
     public static func chainReachFactor(_ co: Company, _ w: World) -> Double {
-        1 + 0.03 * log2(Double(chainOutlets(co, w)))
+        1 + w.balance.mastery.chainReach * log2(Double(chainOutlets(co, w)))
     }
 }

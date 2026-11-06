@@ -55,6 +55,30 @@ public struct MarketingChannel: Sendable {
     }
 }
 
+/// How a campaign pays. Awareness from advertising is added on top of what people already know (organic), with diminishing returns
+/// up to the city's ceiling, so a small budget always helps a little and a big one never wastes everything. All in `RET`.
+public struct MarketingReturn: Sendable {
+    /// Multiplier on the weekly awareness a campaign buys
+    public var gain = 1.0
+    /// Stacked on the organic name (true) or only above it (false: the original max-like behaviour)
+    public var additive = true
+    /// Weeks a brand-new campaign gets extra pull (people notice something new), and by how much
+    public var launchWeeks = 4.0
+    public var launchBoost = 0.35
+    /// How much better (+) or worse (-) the local channels do in a big city against a village, per unit of city size
+    public var cityLocalPenalty = 0.25
+    public var cityOnlineBonus = 0.15
+    /// Share of the ad-lifted customers that stay as repeat business, i.e. how much of a customer's later purchases an ad is credited with in the payback figure
+    public var lifetimeFactor = 1.0
+    init(json j: JSONValue) {
+        func n(_ k: String, _ d: Double) -> Double { j[k].isNull ? d : j[k].double }
+        gain = n("gain", gain); additive = j["additive"].isNull ? additive : j["additive"].bool
+        launchWeeks = n("launchWeeks", launchWeeks); launchBoost = n("launchBoost", launchBoost)
+        cityLocalPenalty = n("cityLocalPenalty", cityLocalPenalty); cityOnlineBonus = n("cityOnlineBonus", cityOnlineBonus)
+        lifetimeFactor = n("lifetimeFactor", lifetimeFactor)
+    }
+}
+
 public struct MarketingTables: Sendable {
     public var channels: [String: MarketingChannel]
     public var insuranceProducts: [String: [JSONValue]]
@@ -65,8 +89,11 @@ public struct MarketingTables: Sendable {
     /// Channels that can make a trade go viral. Original: `VH_FAM`, `VH_TYPE`.
     public var viralByFamily: [String: [String]]
     public var viralByTrade: [String: [String]]
+    /// The return curve of a campaign (`RET`): how its awareness stacks on the name a business already has.
+    public var ret: MarketingReturn
 
     public init(json j: JSONValue) {
+        ret = MarketingReturn(json: j["RET"])
         channels = j["CH"].object.mapValues { c in
             MarketingChannel(id: "", name: c["n"].string, efficiency: c["eff"].double, scale: c["sc"].double, localShare: c["loc"].double,
                              businessShare: c["b2b"].double, minimumWeeks: c["mw"].int, note: c["note"].string,
@@ -152,6 +179,29 @@ public enum Marketing {
         return base
     }
 
+    /// What one campaign buys per week before chance: budget with diminishing returns x how well the channel fits this trade, its audience and
+    /// the city. The weekly turn and `estimate` both use it, so the figure shown to the player is the one the game plays.
+    static func strength(_ co: Company, _ bd: Trade, _ w: World, channel c: MarketingChannel, budget: Double, since: Double, tables: MarketingTables) -> Double {
+        let scale = max(0.5, bd.normalDemand * bd.ticket / 8000)
+        let aud = bd.audience
+        let fit = (1 - aud) * (c.localShare == 0 ? 0.5 : c.localShare) + aud * (c.businessShare == 0 ? 0.5 : c.businessShare)
+        let sc = c.scale(in: w.currency(co)) * max(0.4, min(8, scale * 0.9))
+        var eff = c.efficiency * (1 - exp(-budget / sc)) * (0.45 + fit)
+        if c.isNational { eff *= nationalFit(co, w) }
+        eff *= channelAffinity(bd, c.id, tables.affinityByFamily, tables.affinityByTrade)
+        if c.isSlow { eff *= clamp((Double(w.week) - since) / 26, 0.2, 1.4) }
+        if c.isLoyalty { eff *= 0.6 + co.awareness / 100 }
+        return eff * campaignFactor(c, since: since, week: w.week, cityTerm: CityMarket.sizeTerm(w.city(co)?.population ?? 150), tables.ret)
+    }
+
+    /// A new campaign gets a little extra pull while it is new; local channels reach fewer of a big city's people, online ones more.
+    static func campaignFactor(_ c: MarketingChannel, since: Double, week: Int, cityTerm: Double, _ r: MarketingReturn) -> Double {
+        let age = Double(week) - since
+        let launch = r.launchWeeks > 0 ? 1 + r.launchBoost * max(0, 1 - age / r.launchWeeks) : 1
+        let city = 1 - r.cityLocalPenalty * cityTerm * c.localShare + r.cityOnlineBonus * cityTerm * (1 - c.localShare)
+        return launch * max(0.4, city)
+    }
+
     static func channelAffinity(_ bd: Trade, _ k: String, _ fam: [String: [String: Double]], _ type: [String: [String: Double]]) -> Double {
         (fam[bd.family]?[k] ?? 1) * (type[bd.id]?[k] ?? 1)
     }
@@ -191,23 +241,14 @@ public enum Marketing {
         if paused && s.week % 4 == 0 {
             s.note("\(co.name): campaigns are paused this week, the company does not have the cash to pay for them and keep its reserve.", tone: "warn", companyID: co.id)
         }
-        let scale = max(0.5, bd.normalDemand * bd.ticket / 8000)
-        let fam = tables.affinityByFamily, type = tables.affinityByTrade
         for (k, m) in co.value("mkt").object.sorted(by: { $0.key < $1.key }) {
             guard !paused, let c = tables.channels[k] else { continue }
-            let aud = bd.audience
-            let fit = (1 - aud) * (c.localShare == 0 ? 0.5 : c.localShare) + aud * (c.businessShare == 0 ? 0.5 : c.businessShare)
-            let sc = c.scale(in: w.currency(co)) * max(0.4, min(8, scale * 0.9))
-            var eff = c.efficiency * (1 - exp(-m["b"].double / sc)) * (0.45 + fit)
+            var eff = strength(co, bd, w, channel: c, budget: m["b"].double, since: m["since"].double, tables: tables)
             if c.isHighVariance {
                 if c.isPrimeTime { eff *= s.random.chance(0.18) ? 1.7 : (s.random.chance(0.6) ? 0.55 : 0.9) }
                 else { eff *= s.random.chance(0.12) ? 3.0 : (s.random.chance(0.55) ? 0.35 : 0.9) }
             }
-            if c.isNational { eff *= nationalFit(co, w) }
-            eff *= channelAffinity(bd, k, fam, type)
             if c.isPrimeTime { primeTimeActive = true }
-            if c.isSlow { eff *= clamp((Double(s.week) - m["since"].double) / 26, 0.2, 1.4) }
-            if c.isLoyalty { eff *= 0.6 + co.awareness / 100 }
             let agency = s.companies.contains { $0.type == "mktg" && $0.status == .open && $0.id != co.id }
             gain += eff * (agency ? 1.1 : 1)
             spend += m["b"].double
@@ -225,7 +266,28 @@ public enum Marketing {
         if co.value("tm")["mkt"].double > 0 { gain *= 1 + 0.14 * co.value("tm")["mkt"].double }   // a marketing manager (ManagerTeam)
         gain *= RoleEffects.awarenessFactor(co)                                                    // a marketing responsible / receptionist (HiringRebuild)
         if co.flag("brdMkt") { gain *= 1.05 }                                                      // a marketing adviser on the board (ManagerBoards)
-        co.awareness = clamp(co.awareness * decay(co) + gain, 0, CityMarket.awarenessCeiling(co, bd, w))
+        gain *= tables.ret.gain
+        let ceiling = CityMarket.awarenessCeiling(co, bd, w)
+        if tables.ret.additive {
+            // What advertising buys stacks on the name the business already has (organic + one-off boosts), flattening towards the city's ceiling.
+            let d = decay(co)
+            var base = max(0, co.awareness - co.num("adOn"))
+            if co.status == .open {
+                let a = organicAwareness(co, bd, w) * w.balance.mastery.organicScale
+                let faded = base * d
+                base = a > faded ? clamp(faded / max(0.5, d) + (a - faded) * 0.035, 0, a + 0.5) : faded
+            } else { base *= d }
+            let acc = max(0, co.num("adAcc") * d + gain)
+            let room = max(1, ceiling - base)
+            let on = min(room, room * (1 - exp(-acc / room)))
+            co.set("adAcc", acc); co.set("adOn", on)
+            co.awareness = clamp(base + on, 0, ceiling)
+            spill(&s, from: co, gain: gain)
+            s.companies[i] = co
+            viralRoll(&s, companyIndex: i, bd, w, primeTimeActive: primeTimeActive, tables: tables)
+            return
+        }
+        co.awareness = clamp(co.awareness * decay(co) + gain, 0, ceiling)
         spill(&s, from: co, gain: gain)
         s.companies[i] = co
         viralRoll(&s, companyIndex: i, bd, w, primeTimeActive: primeTimeActive, tables: tables)
@@ -236,6 +298,73 @@ public enum Marketing {
             if a > co.awareness { co.awareness = clamp(co.awareness / max(0.5, decay(co)) + (a - co.awareness) * 0.035, 0, a + 0.5) }
             s.companies[i] = co
         }
+    }
+
+    // MARK: What a campaign is worth
+
+    /// What a weekly budget on one channel is expected to do, for the planner to show before the player commits. Expected values
+    /// (chance channels at their average), at the company's last week of trading, in the company's money.
+    public struct Estimate: Equatable, Sendable {
+        public var weeklyBudget: Double
+        /// Awareness the business settles at without this campaign and with it (0 to 100)
+        public var awarenessWithout: Double
+        public var awarenessWith: Double
+        /// Customers wanted per week when the name has settled, against without the campaign (0.25 = a quarter more)
+        public var demandLift: Double
+        /// Extra gross profit per week once settled, after what the premises and staff can serve
+        public var weeklyExtraProfit: Double
+        /// Settled weekly profit from the campaign minus its budget
+        public var netPerWeek: Double
+        /// Weeks until the campaign has earned back everything spent on it (the name builds slowly), nil when it never does
+        public var paybackWeeks: Int?
+        /// The business has no room for more customers: the extra demand is turned away
+        public var atCapacity: Bool
+    }
+
+    /// The expected return of putting `weeklyBudget` into `channel` (replacing what is there now). nil for an unknown channel.
+    public static func estimate(_ co: Company, channel: String, weeklyBudget: Double, state s: GameState, data: GameData, tables: MarketingTables) -> Estimate? {
+        guard let c = tables.channels[channel], let bd = data.catalog[co.type] else { return nil }
+        let w = World(state: s, data: data)
+        let mkt = co.value("mkt")
+        func expected(_ ch: MarketingChannel) -> Double { ch.isPrimeTime ? 0.872 : ch.isHighVariance ? 0.886 : 1 }
+        var others = 0.0
+        for (k, m) in mkt.object where k != channel {
+            guard let oc = tables.channels[k] else { continue }
+            others += strength(co, bd, w, channel: oc, budget: m["b"].double, since: m["since"].double, tables: tables) * expected(oc)
+        }
+        let since = mkt[channel]["since"].isNull ? Double(w.week) - 99 : mkt[channel]["since"].double
+        let mine = weeklyBudget > 0 ? strength(co, bd, w, channel: c, budget: weeklyBudget, since: since, tables: tables) * expected(c) : 0
+        let d = decay(co)
+        let organic = organicAwareness(co, bd, w) * w.balance.mastery.organicScale
+        let ceiling = CityMarket.awarenessCeiling(co, bd, w)
+        func settled(_ gain: Double) -> Double {
+            let room = max(1, ceiling - organic)
+            let acc = gain * tables.ret.gain / max(0.02, 1 - d)
+            return min(ceiling, organic + room * (1 - exp(-acc / room)))
+        }
+        let without = settled(others), with = settled(others + mine)
+        var a = co, b = co
+        a.awareness = without; b.awareness = with
+        let ratio = DemandModel.awarenessFactor(b) / max(0.01, DemandModel.awarenessFactor(a))
+        let lw = co.value("lastW")
+        let units = lw["units"].double, rev = lw["rev"].double, cap = lw["cap"].double, wanted = max(units, lw["D"].double)
+        let perUnit = units > 0 ? rev / units : 0
+        let margin = rev > 0 ? clamp(1 - lw["cogs"].double / rev, 0.05, 1) : 0.5
+        let have = cap > 0 ? min(wanted, cap) : units
+        let more = cap > 0 ? min(wanted * ratio, cap) : units * ratio
+        let extra = max(0, more - have) * perUnit * margin * tables.ret.lifetimeFactor
+        let net = extra - weeklyBudget
+        var pay: Int? = nil
+        if weeklyBudget <= 0 { pay = 0 }
+        else if extra > weeklyBudget {
+            var cum = 0.0
+            for t in 1...520 {
+                cum += extra * (1 - pow(d, Double(t))) - weeklyBudget
+                if cum >= 0 { pay = t; break }
+            }
+        }
+        return Estimate(weeklyBudget: weeklyBudget, awarenessWithout: without, awarenessWith: with, demandLift: ratio - 1, weeklyExtraProfit: extra, netPerWeek: net,
+                        paybackWeeks: pay, atCapacity: cap > 0 && wanted >= cap * 0.98)
     }
 
     public static func removing(_ v: JSONValue, _ key: String) -> JSONValue {
