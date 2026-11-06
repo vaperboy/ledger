@@ -53,6 +53,37 @@ struct FranchisesView: View {
 }
 
 /// One franchise brand: its terms, and the next step with it (apply, meet them, or start under the agreed deal).
+/// The steps into a brand, each with where it stands: done, now, waiting or blocked.
+struct FranchiseStepsList: View {
+    var steps: [FranchiseBrands.Step]
+
+    private func mark(_ s: FranchiseBrands.StepState) -> (String, Color) {
+        switch s {
+        case .done: return ("\u{2713}", Theme.gain)
+        case .current: return ("\u{25B6}\u{FE0E}", Theme.gold)
+        case .waiting: return ("\u{2026}", Theme.caution)
+        case .blocked: return ("\u{2715}", Theme.loss)
+        case .todo: return ("\u{25CB}", Theme.ivoryFaint)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(steps) { (st: FranchiseBrands.Step) in
+                let m = mark(st.state)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(m.0).font(.system(size: 12, weight: .semibold)).foregroundStyle(m.1).frame(width: 16)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(st.title).font(.system(size: 13, weight: .medium)).foregroundStyle(st.state == .todo ? Theme.ivoryMuted : Theme.ivory)
+                        Text(st.detail.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier("franchise-steps")
+    }
+}
+
 struct FranchiseBrandRow: View {
     @EnvironmentObject var store: GameStore
     var brand: FranchiseBrands.Brand
@@ -128,6 +159,7 @@ struct FranchiseBrandRow: View {
                     Spacer(minLength: 0)
                 }
                 FigureStrip(items: figures, columns: 3)
+                FranchiseStepsList(steps: e.franchiseeSteps(b))
                 next(e, b, cur)
             }
         }
@@ -161,6 +193,7 @@ struct BrandMeetingView: View {
                     } else {
                         talk(e, b)
                     }
+                    FranchiseStepsList(steps: e.franchiseeSteps(b))
                     facts(e, b)
                 }
                 .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 20)

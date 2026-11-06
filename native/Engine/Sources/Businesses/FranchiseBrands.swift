@@ -279,6 +279,55 @@ public enum FranchiseBrands {
         ]
     }
 
+    public enum StepState: String, Equatable, Sendable { case done, current, waiting, blocked, todo }
+
+    public struct Step: Equatable, Identifiable, Sendable {
+        public var id: String { key }
+        public var key: String
+        public var title: String
+        public var detail: String
+        public var state: StepState
+    }
+
+    /// The road from first look to an open unit, in order: eligibility, entry fee and financing, the brand's approval (it may invite you to
+    /// talk terms and counter your ask), and opening the unit. Worked out from the application record and the companies, nothing is saved.
+    public static func steps(_ b: Brand, _ s: GameState, _ w: World, country cc: String) -> [Step] {
+        let a = application(s, b.id)
+        let st = a["st"].string
+        let sx = status(b, s, w)
+        let applied = ["pending", "invited", "agreed"].contains(st)
+        let opened = s.companies.contains { $0.status.isLive && $0.value("franchise")["brandId"].string == b.id }
+        let entry = fee(b, w, country: cc)
+        let canPay = s.cash >= entry
+
+        var eligibility = Step(key: "eligibility", title: "Eligibility", detail: "Open to new franchisees", state: .done)
+        if !sx.ok { eligibility.state = .blocked; eligibility.detail = sx.why }
+        else if b.openness == "exp" {
+            let n = experience(s, b.tradeID)
+            eligibility.detail = n > 0 ? "Prefers proven operators; you have run \(n) in this trade" : "Prefers proven operators; you have none yet, so your hand is weaker"
+        }
+
+        var money = Step(key: "fee", title: "Entry fee and financing", detail: "Entry fee about \(Int(entry.rounded())), paid when you start: your cash or a loan", state: canPay ? .done : .current)
+        if !canPay { money.detail += ". Your cash is short" }
+        if opened { money.state = .done }
+
+        var approval = Step(key: "approval", title: "Approval and terms", detail: "Send your application", state: sx.ok ? .current : .todo)
+        switch st {
+        case "pending": approval.state = .waiting; approval.detail = "The brand is reviewing your application"
+        case "invited": approval.state = .current; approval.detail = "Invited: meet them to agree the terms. They may counter your ask"
+        case "agreed": approval.state = .done; approval.detail = "Terms agreed and signed"
+        case "refused": approval.state = .blocked; approval.detail = "Turned down for now; try again later"
+        default: break
+        }
+        if opened { approval.state = .done }
+
+        var opening = Step(key: "opening", title: "Opening the unit", detail: "After the terms are signed", state: .todo)
+        if opened { opening.state = .done; opening.detail = "Your unit is open" }
+        else if st == "agreed" { opening.state = .current; opening.detail = canPay ? "Start the unit with this deal" : "Start the unit once the entry fee is covered" }
+        if !applied && !opened && !sx.ok { opening.state = .blocked }
+        return [eligibility, money, approval, opening]
+    }
+
     /// Your bargaining power. Original: `fbPower`.
     static func power(_ b: Brand, _ ask: Ask?, _ s: GameState, _ w: World, country cc: String) -> Double {
         let exp = Double(experience(s, b.tradeID))
