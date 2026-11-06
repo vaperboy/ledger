@@ -7,16 +7,16 @@ import Businesses
 import Events
 import Simulation
 
-/// The parts of a company's Finances tab: Summary, Ownership and Settings. Every payment, loan and money move is in the Bank
+/// The parts of a company's Finances tab: Summary and Settings. Ownership, dividends and selling are in the Group tab. Every payment, loan and money move is in the Bank
 /// app, on this company's account ("Open in Bank").
 enum CompanyMoneyPart: String, CaseIterable, Hashable {
-    case summary = "Summary", owners = "Ownership", settings = "Settings"
+    case summary = "Summary", settings = "Settings"
     /// The tab row.
-    static let tabs: [CompanyMoneyPart] = [.summary, .owners, .settings]
+    static let tabs: [CompanyMoneyPart] = [.summary, .settings]
 }
 
-/// One company's Finances tab: a read-only, scannable view of the money, with the company decisions (dividends, shares, selling,
-/// settings) kept here and every payment handled in the Bank app.
+/// One company's Finances tab: a read-only, scannable view of the money, with the company's settings kept here, ownership and selling in
+/// the Group tab and every payment handled in the Bank app.
 struct CompanyMoney: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -34,7 +34,7 @@ struct CompanyMoney: View {
     }
 }
 
-/// The full-screen page a row of the Finances table opens: Ownership or the company's own settings.
+/// The full-screen page a row of the Finances table opens: the company's own settings.
 struct MoneyPageDestination: View {
     @EnvironmentObject var store: GameStore
     var part: CompanyMoneyPart
@@ -51,7 +51,6 @@ struct MoneyPageDestination: View {
     @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
         switch part {
         case .summary: EmptyView()
-        case .owners: CompanyOwnerMoney(engine: e, company: co)
         case .settings: CompanySettings(engine: e, company: co)
         }
     }
@@ -113,7 +112,7 @@ struct CompanyMoneySummary: View {
 
     // MARK: Table of settings
 
-    /// One row per area of the company's money; each opens a full page (the decisions there are big: dividends, selling, closing).
+    /// One row per area of the company's money; each opens a full page (the decisions there are big: closing, winding up).
     private func settingsTable(_ cur: Currency) -> some View {
         let canSell = CompanySale.canSell(engine.state, companyID: company.id)
         let whole: Double = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
@@ -121,7 +120,7 @@ struct CompanyMoneySummary: View {
         let form: String = company.form == .limited ? "Limited company" : "Sole trader"
         let closed: Bool = company.status == .closed
         return SharpTable {
-            SettingsTableRow(title: "Ownership", note: "Dividends, owners, shares, selling", value: share) { part = .owners }
+            SettingsTableRow(title: "Ownership", note: "Owners, selling and shares are in the Group tab", value: share) { store.openGroupEntity(companyID: company.id, section: "ownership") }
             SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
             SettingsTableRow(title: "Statements", note: "Balance sheet and cash flow, in Accounting", value: "Open") { store.openAccountingReports(companyID: company.id) }
         }
@@ -160,56 +159,6 @@ struct CompanyPaymentStress: View {
         HStack(alignment: .top, spacing: 9) {
             Image(systemName: tint == Theme.ivoryMuted ? "info.circle" : "exclamationmark.triangle.fill").font(.system(size: 12)).foregroundStyle(tint).padding(.top, 2)
             Text(text).font(.system(size: 13.5, weight: tint == Theme.ivoryMuted ? .regular : .medium)).foregroundStyle(tint == Theme.ivoryMuted ? Theme.ivoryMuted : Theme.ivory).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-
-// MARK: Ownership (company decisions)
-
-/// Company decisions: dividend, owners and shares, going public, buy-back, selling. Payments are in the Bank app.
-struct CompanyOwnerMoney: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    @State private var amount = 0.0
-    @State private var pending: PendingAction?
-
-    var body: some View {
-        let cur = engine.currency(for: company)
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if company.form == .limited {
-                CardSection(title: "Pay a dividend", trailing: {
-                    Text("Company cash " + cur.tidyShort(company.cash)).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
-                }) {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        AmountField(title: "Amount", currency: cur, amount: $amount)
-                        Button("Pay a dividend…") { confirmDividend(cur) }.buttonStyle(QuietButtonStyle())
-                        Text("Most you can pay out now: \(cur.tidyDisplay(engine.maximumDividend(companyID: company.id))). Dividends come from retained profit and are taxed on your return.")
-                            .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            CompanyOwnershipSection(engine: engine, company: company)
-            CompanySaleSection(engine: engine, company: company)
-        }
-        .confirmAction($pending)
-    }
-
-    private func confirmDividend(_ cur: Currency) {
-        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        let amt = amount
-        let after: Double = max(0, company.cash - amt)
-        let most: Double = engine.maximumDividend(companyID: company.id)
-        let message: String = "The cash leaves the company for good: \(cur.tidyDisplay(after)) stays in it. Dividend tax is due on your personal return; co-owners get their share. Most you can pay now: \(cur.tidyDisplay(most))."
-        pending = PendingAction(title: "Pay \(cur.tidyDisplay(amt)) as a dividend?", message: message, button: "Pay dividend", destructive: true) {
-            switch store.act({ $0.payDividend(companyID: company.id, amount: amt) }) {
-            case .ok?: Haptics.success(); amount = 0; store.show("Dividend of \(cur.tidyDisplay(amt)) paid.", tone: "good")
-            case .noRetainedProfit?: Haptics.warning(); store.show("There are no retained profits to pay out.", tone: "warn")
-            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
-            case nil: break
-            default: Haptics.warning(); store.show("A dividend of that size is not possible now.", tone: "warn")
-            }
         }
     }
 }

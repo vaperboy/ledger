@@ -182,8 +182,13 @@ extension ManagerModel {
             return .ok("\(co.name) is listed with a broker. Offers will reach you.", followUp: nil, check: nil)
         case "fireceo":
             guard co.managerID != nil else { return .refused("\(co.name) has no manager to dismiss.") }
-            dismissForBoard(&s, companyID: cid, data: data)
-            return .ok("The manager of \(co.name) was dismissed.", followUp: "Appoint a new manager for \(co.name) (Team).", check: "mgr")
+            // With co-owners this is a vote by shares (you decide alone above half); a failed vote closes the point.
+            switch proposeCEOChange(&s, companyID: cid, data: data) {
+            case .dismissed: return .ok("The manager of \(co.name) was dismissed.", followUp: "Appoint a new manager for \(co.name) (Team).", check: "mgr")
+            case .voteFailed(let pct): return .ok("The co-owners voted it down: \(pct)% of the shares were for it.", followUp: nil, check: nil)
+            case .blocked(let w): return .ok("Replacing the manager was put to the owners lately. Try again in \(w) \(w == 1 ? "week" : "weeks").", followUp: nil, check: nil)
+            case .refused(let why): return .refused(why)
+            }
         case "marketing":
             guard co.managerID != nil, let m = marketing else {
                 return .ok("Marketing at \(co.name) is yours to raise.", followUp: "Raise the marketing budget at \(co.name) (Sales and Market).", check: nil)

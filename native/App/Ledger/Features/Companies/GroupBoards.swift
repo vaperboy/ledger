@@ -95,8 +95,8 @@ struct BoardView: View {
 
     @ViewBuilder private func ownersLink(_ companies: [Company]) -> some View {
         if key.hasPrefix("co:"), let co = companies.first {
-            NavigationLink(value: CompanyRoute.companyAt(co.id, .finances)) {
-                CardRow(glyph: Glyph.reports, title: "Owners and shares of \(co.name)", subtitle: "Who owns what, dividends and buy-backs, in the company's Finances.")
+            Button { Haptics.tap(); store.openGroupEntity(companyID: co.id, section: "ownership") } label: {
+                CardRow(glyph: Glyph.reports, title: "Owners and shares of \(co.name)", subtitle: "Who owns what, selling and raising money, in Group \u{203A} Ownership.")
             }.buttonStyle(PressableStyle())
         }
     }

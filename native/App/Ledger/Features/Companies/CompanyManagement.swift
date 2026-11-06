@@ -388,10 +388,7 @@ struct ManagerSheet: View {
         CardSection("Talk and pay") {
             VStack(alignment: .leading, spacing: 12) {
                 WrapRow {
-                    Button("Meet") {
-                        let ok = store.act { $0.meetManager(companyID: co.id) } ?? false
-                        store.show(ok ? "You met. Their news is in the Inbox." : "You met recently. Give it a few weeks.", tone: ok ? "good" : "n")
-                    }.buttonStyle(QuietButtonStyle())
+                    Button("Talk in the Boardroom") { store.openGroupEntity(companyID: co.id, section: "boardroom") }.buttonStyle(QuietButtonStyle())
                     Menu {
                         ForEach(Array(ManagerModel.askOptions.enumerated()), id: \.offset) { _, o in
                             Button(o.label) {
@@ -414,14 +411,33 @@ struct ManagerSheet: View {
                     IconCircle(glyph: Glyph.exit, size: 34, tint: Theme.loss)
                     Text("Replace the manager").popupText(.title)
                 }
-                Text("Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.")
+                let alone: Bool = store.engine?.boardIsAdvisory(companyID: co.id) ?? true
+                Text(alone ? "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new."
+                     : "Somebody else owns part of \(co.name), so replacing the manager is a vote by shares. If it passes, notice and severance are paid and you run it yourself until you hire someone new.")
                     .popupText(.caption)
-                QuietButton(title: "Replace…", tint: Theme.loss) {
-                    pending = PendingAction(title: "Dismiss \(m.name)?",
-                                            message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
-                                            button: "Dismiss", destructive: true) {
-                        let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
-                        store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
+                if alone {
+                    QuietButton(title: "Replace…", tint: Theme.loss) {
+                        pending = PendingAction(title: "Dismiss \(m.name)?",
+                                                message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
+                                                button: "Dismiss", destructive: true) {
+                            let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
+                            store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
+                        }
+                    }
+                } else {
+                    QuietButton(title: "Propose it to the owners…", tint: Theme.loss) {
+                        pending = PendingAction(title: "Put replacing \(m.name) to the vote?",
+                                                message: "The co-owners vote by their shares. If it fails, \(m.name) learns you tried and you cannot ask again for eight weeks.",
+                                                button: "Put it to the vote", destructive: true) {
+                            let r: ManagerModel.CEOChange? = store.act { $0.proposeCEOChange(companyID: co.id) }
+                            switch r {
+                            case .dismissed?: Haptics.warning(); store.show("\(m.name) has gone. You run \(co.name) yourself again.", tone: "n")
+                            case .voteFailed(let p)?: Haptics.warning(); store.show("The co-owners voted it down: \(p)% of the shares were for it.", tone: "warn")
+                            case .blocked(let w)?: store.show("You asked recently. Try again in \(w) \(w == 1 ? "week" : "weeks").", tone: "warn")
+                            case .refused(let why)?: store.show(why, tone: "warn")
+                            case nil: break
+                            }
+                        }
                     }
                 }
             }

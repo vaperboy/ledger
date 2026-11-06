@@ -140,7 +140,7 @@ extension EventEngine {
         if fx["ill"].double != 0, let bd = data.catalog[s.companies[i].type] { SpecialFamilies.applyEventEffect(&s, companyIndex: i, bd, fx: fx) }
         if fx["sell"].bool {
             s.addMessage(from: s.companies[i].name, title: "You may consider selling \(s.companies[i].name).",
-                         body: "Selling is under the company's Ownership and value section.", companyID: id)
+                         body: "Selling is in the Group tab, under Ownership and then Sell.", companyID: id)
         }
         Aftermath.afterEffects(&s, i, event: e, fx: fx, data: data)
     }
