@@ -548,16 +548,9 @@ final class GameStore: ObservableObject {
     /// An answer to an open decision has an effect at once, so it is told at once, in a popup (what was chosen and what it does).
     func announceAnswer(label: String, effects: [String], ok: Bool, messageTitle: String = "", companyID: Int = 0) {
         guard ok else { Haptics.warning(); tell("Not applied", "That answer could not be applied: the message is no longer open.", tone: "warn"); return }
+        // A successful answer is a minor result: one toast, no popup to dismiss.
         Haptics.success()
-        var rows: [String] = effects
-        var who = ""
-        if companyID != 0, let e = engine, let co = e.state.company(companyID) {
-            who = co.name
-            rows.append("\(co.name) now has \(short(co.cash, in: co)) in its account")
-        }
-        let t = Toast(title: label, text: effects.joined(separator: "\n"), tone: "good", style: "answered", subtitle: ([messageTitle, who].filter { !$0.isEmpty }).joined(separator: " \u{00B7} "), rows: rows)
-        if notices.last?.title == t.title && notices.last?.subtitle == t.subtitle { return }
-        notices.append(t)
+        show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
     }
 
     /// The popup on screen has been read: the next notice (if any) shows.

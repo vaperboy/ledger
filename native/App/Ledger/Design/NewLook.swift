@@ -351,22 +351,13 @@ struct HomeHeader: View {
 
     var body: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Ledger").font(.serifTitle(14)).foregroundStyle(Theme.gold)
-                Text("Hello, \(name)").font(.serifTitle(25)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.7)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(dateText).textStyle(.label, tint: Theme.inkFaint)
+                Text("Hello, \(name)").textStyle(.title).lineLimit(1).minimumScaleFactor(0.8)
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 6) {
-                HStack(spacing: 4) {
-                    if streak >= 3 {
-                        Image(systemName: "flame.fill").font(.system(size: 11)).foregroundStyle(Theme.gold).accessibilityHidden(true)
-                        Text("\(streak)").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.gold)
-                    }
-                    Text(dateText).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                }
-                .accessibilityElement(children: .combine)
-                SmallOutlineButton(title: "New company", action: onNewCompany)
-            }
+            Spacer(minLength: Theme.Space.s)
+            Button("New company", action: onNewCompany)
+                .buttonStyle(SecondaryButtonStyle(size: .compact))
         }
     }
 }
