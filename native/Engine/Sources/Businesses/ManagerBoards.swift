@@ -232,17 +232,38 @@ extension ManagerModel {
         public var pushedThroughAlone: Bool
         public var active: Bool
     }
+    /// A co-owner's view of replacing the CEO, by what they want from the company, and what they say about it.
+    static func ceoOpinion(_ co: Company, holder h: JSONValue) -> (yes: Bool, why: String) {
+        let hist = co.monthlyHistory
+        let p3 = hist.suffix(3).reduce(0) { $0 + $1.profit }
+        let r3 = hist.suffix(3).reduce(0) { $0 + $1.revenue }
+        let rPrev = hist.count >= 6 ? hist.dropLast(3).suffix(3).reduce(0) { $0 + $1.revenue } : r3
+        let falling = r3 < rPrev * 0.97
+        switch h["k27"].string {
+        case "div": return p3 <= 0 ? (true, "No profit, no dividend. Time for someone else.") : (false, "It pays. I want the dividends to keep coming.")
+        case "growth": return falling || p3 < 0 ? (true, "We are not growing. I want a leader who is.") : (false, "Sales are growing. Do not break it.")
+        case "exit": return p3 < 0 ? (true, "A weak result hurts the price I get. Replace them.") : (false, "Leave it alone until I sell.")
+        default: return p3 < 0 && hist.suffix(3).allSatisfy({ $0.profit < 0 }) ? (true, "Three losing months. I do not like it, but it has to change.") : (false, "I do not like change. Give them time.")
+        }
+    }
     static func ownerVote(_ s: GameState, kind: String, co: Company, holder h: JSONValue) -> Bool {
+        if kind == "ceo" {
+            let base = ceoOpinion(co, holder: h).yes
+            return HashedRandom.first("ov13:\(h["name"].string):\(kind):\(s.week)") < 0.9 ? base : !base
+        }
         let p3 = co.monthlyHistory.suffix(3).reduce(0) { $0 + $1.profit }
         let base = kind == "sell" || kind == "close" ? p3 < 0 : p3 > 0
         return HashedRandom.first("ov13:\(h["name"].string):\(kind):\(s.week)") < 0.85 ? base : !base
     }
     /// What the board and the owners say to a sale (`sell`), a closing (`close`) or a big loan (`loan`). More than half of the shares wins.
     /// Original: `voteOn` and `voteSheetX`.
-    public static func boardVote(_ s: GameState, kind: String, companyID: Int, amount: Double = 0) -> BoardVote {
-        guard let co = s.company(companyID) else { return BoardVote(advice: [], board: [], owners: [], percentYes: 100, passes: true, decidingOwner: nil, pushedThroughAlone: false, active: false) }
+    public static func boardVote(_ s: GameState, kind: String, companyID: Int, amount: Double = 0, advisory: Bool = false) -> BoardVote {
+        let none = BoardVote(advice: [], board: [], owners: [], percentYes: 100, passes: true, decidingOwner: nil, pushedThroughAlone: false, active: false)
+        guard let co = s.company(companyID) else { return none }
         let key = boardKey(s, co)
-        guard boardActive(s, key: key) else { return BoardVote(advice: [], board: [], owners: [], percentYes: 100, passes: true, decidingOwner: nil, pushedThroughAlone: false, active: false) }
+        // A sole owner has no binding board; `advisory` still asks the managers, and the owner decides alone.
+        guard boardActive(s, key: key) || advisory else { return none }
+        let active = boardActive(s, key: key)
         let hist = co.monthlyHistory
         let h3 = hist.suffix(3), p3 = h3.reduce(0) { $0 + $1.profit }, r3 = h3.reduce(0) { $0 + $1.revenue }
         let yp = max(1, hist.suffix(12).reduce(0) { $0 + $1.profit })
@@ -252,24 +273,71 @@ extension ManagerModel {
             switch kind {
             case "sell": yes = p3 < 0 || (r3 > 0 && p3 / r3 < 0.02); why = yes ? (p3 < 0 ? "It lost money over three months." : "It barely makes money.") : "It made money over three months. Keep it."
             case "close": yes = p3 < 0; why = yes ? "Losses over three months." : "It is profitable. Sell it rather than close it."
+            case "ceo": yes = p3 < 0; why = yes ? "It lost money over three months. A new leader may turn it." : "It made money over three months. Give them time."
             default: let ratio = (debt + amount) / yp; yes = ratio < 3; why = yes ? "Debt stays at \(String(format: "%.1f", ratio)) years of profit." : "Debt would be \(Int(ratio)) times a year of profit."
             }
             let q = leadership(v.personID.flatMap { s.people[$0] })
             if HashedRandom.first("vo13:\(v.id):\(kind):\(s.week)") < 0.12 * (1 - q) { yes.toggle(); why = yes ? "The risk is worth taking." : "Too early to decide." }
             return VoteLine(id: v.id, name: v.name, title: v.title, yes: yes, reason: why, percent: v.percent, isYou: false)
         }
-        let all = voters(s, key: key).filter { $0.type != "owner" }.map(line)
-        let advice = all.filter { l in voters(s, key: key).first { $0.id == l.id }?.votes == false }
-        let board = all.filter { l in voters(s, key: key).first { $0.id == l.id }?.votes == true }
+        // The CEO does not vote on their own removal. In advisory mode the department heads speak too.
+        let ceoID = co.managerID
+        var table = voters(s, key: key).filter { $0.type != "owner" && !(kind == "ceo" && $0.personID != nil && $0.personID == ceoID) }
+        if !active {
+            for c in OwnerMeetings.counterparts(s, companyID: companyID) where c.position != "ceo" && !table.contains(where: { $0.personID == c.id }) {
+                table.append(Voter(id: "p\(c.id)", personID: c.id, name: c.name, title: c.title, type: c.position, votes: false, percent: 0))
+            }
+        }
+        let all = table.map(line)
+        let advice = all.filter { l in !active || table.first { $0.id == l.id }?.votes != true }
+        let board = all.filter { l in active && table.first { $0.id == l.id }?.votes == true }
         var owners = [VoteLine(id: "you", name: "\(s.player.name) (you)", title: "Owner", yes: true, reason: "", percent: co.ownership, isYou: true)]
         for x in holders(s, key: key) where x.co.id == co.id {
-            owners.append(VoteLine(id: x.h["name"].string, name: x.h["name"].string, title: "Co-owner", yes: ownerVote(s, kind: kind, co: co, holder: x.h), reason: "", percent: x.h["pct"].double, isYou: false))
+            owners.append(VoteLine(id: x.h["name"].string, name: x.h["name"].string, title: "Co-owner", yes: ownerVote(s, kind: kind, co: co, holder: x.h),
+                                   reason: kind == "ceo" ? ceoOpinion(co, holder: x.h).why : "", percent: x.h["pct"].double, isYou: false))
         }
         let yesPct = owners.filter { $0.yes }.reduce(0) { $0 + $1.percent }
         let big = owners.first { $0.percent >= 51 }
         let pass = big.map { $0.yes } ?? (yesPct > 50)
         let lonely = pass && owners.count > 1 && owners.filter { !$0.isYou }.allSatisfy { !$0.yes }
-        return BoardVote(advice: advice, board: board, owners: owners, percentYes: yesPct, passes: pass, decidingOwner: big?.name, pushedThroughAlone: lonely, active: true)
+        return BoardVote(advice: advice, board: board, owners: owners, percentYes: yesPct, passes: pass, decidingOwner: big?.name, pushedThroughAlone: lonely, active: active)
+    }
+
+    // MARK: Replacing the CEO
+
+    public enum CEOChange: Equatable, Sendable {
+        case dismissed
+        case voteFailed(percentYes: Int)
+        case blocked(weeks: Int)
+        case refused(String)
+    }
+    /// Propose replacing the manager (CEO) of a company. A sole owner, or an owner with more than half of the shares, decides alone. With
+    /// co-owners it is a vote by shares: they weigh the results against what they want from the company. A failed vote shakes the CEO's
+    /// trust in you and the co-owners who backed them, and the proposal cannot be made again for eight weeks.
+    public static func proposeCEOChange(_ s: inout GameState, companyID: Int, data: GameData) -> CEOChange {
+        guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil, s.companies[ci].status.isLive else { return .refused("There is nobody to replace.") }
+        let co = s.companies[ci]
+        if !co.value("ceoBlk").isNull, co.int("ceoBlk") > s.week { return .blocked(weeks: co.int("ceoBlk") - s.week) }
+        let vote = boardVote(s, kind: "ceo", companyID: companyID, advisory: true)
+        func moveHolders(_ names: Set<String>, _ delta: Double) {
+            var list = s.companies[ci].value("holders").array
+            for k in list.indices where names.contains(list[k]["name"].string) { list[k]["sat"] = .number(clamp((list[k]["sat"].isNull ? 60 : list[k]["sat"].double) + delta, 0, 100)) }
+            s.companies[ci].set("holders", .array(list))
+        }
+        let yes = Set(vote.owners.filter { !$0.isYou && $0.yes }.map { $0.name }), no = Set(vote.owners.filter { !$0.isYou && !$0.yes }.map { $0.name })
+        if vote.active && !vote.passes {
+            s.companies[ci].set("ceoBlk", s.week + 8)
+            s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 8))
+            moveHolders(no, 3)
+            s.note("The co-owners of \(co.name) voted against replacing the CEO. The CEO knows you tried.", tone: "n", companyID: companyID)
+            return .voteFailed(percentYes: Int(jsRound(vote.percentYes)))
+        }
+        dismissForBoard(&s, companyID: companyID, data: data)
+        if vote.active {
+            if vote.pushedThroughAlone { recordPushedThrough(&s, companyID: companyID) }
+            else { moveHolders(yes, 4); moveHolders(no, -3) }
+        }
+        return .dismissed
     }
     /// You go ahead against everyone else: the owners and the board lose some morale. Original: `ui.b13cont`.
     public static func recordPushedThrough(_ s: inout GameState, companyID: Int) {

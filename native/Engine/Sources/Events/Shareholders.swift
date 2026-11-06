@@ -13,7 +13,9 @@ import Businesses
 /// (week until which the other owners block big moves), `dm27` (next demand not before), `dq27` = { w, paid, pr } (the last quarter).
 /// The inbox action of a demand is "own27" (data: { co, kind, amt, hn }).
 ///
-/// Not ported: the yearly review of the manager, and the "replace the manager" demand (it needs the manager hiring of the original's `replaceMgr`).
+/// A holder who backs growth or dividends and sees three losing months asks you to replace the manager (kind "mgr"): agreeing runs the
+/// co-owners' vote (`ManagerModel.proposeCEOChange`); refusing against a controlling outside owner means the manager goes anyway.
+/// Not ported: the yearly review of the manager.
 public enum Shareholders {
     public static let action = "own27"
     public static let policies = ["none", "low", "mid", "high"]
@@ -172,7 +174,13 @@ public enum Shareholders {
             : " They hold \(Int(o.rounded()))%. If you refuse, they may sell their stake to someone else."
         let name = unhappy["name"].string
         var title = "", body = "", opts: [String] = [], kind = "", amt = 0.0
-        if k == "div" {
+        let hist3 = co.monthlyHistory.suffix(3)
+        let lostThree = co.managerID != nil && hist3.count == 3 && hist3.allSatisfy { $0.profit < 0 }
+        if lostThree && (k == "div" || k == "growth") && HashedRandom.first("mgr27:\(name):\(s.week)") < 0.5 {
+            title = "\(name) wants a new manager at \(co.name)"
+            body = "Three months of losses in a row. They want \(s.people[co.managerID ?? 0]?.name ?? "the manager") replaced."
+            opts = ["Replace the manager", "Give them three more months", "Refuse"]; kind = "mgr"
+        } else if k == "div" {
             amt = (pr * 0.5 / 1000).rounded() * 1000
             title = "\(name) wants a dividend from \(co.name)"; body = "They want \(cur.display(amt)) paid out (half of last year's profit) and a policy of regular dividends."
             opts = ["Pay it, and set 50% as policy", "Pay half now", "Refuse: the money stays in the company"]; kind = "div"
@@ -237,6 +245,15 @@ public enum Shareholders {
             }
             if idx == 1 { bump(&s, i, s.random.chance(0.6) ? 8 : -2); s.companies[i].set("dm27", s.week + 26); return }
             refused(&s, i, d, data: data, context: fc)
+        case "mgr":
+            if idx == 0 {
+                let r = ManagerModel.proposeCEOChange(&s, companyID: id, data: data)
+                if r == .dismissed { bump(&s, i, 12); s.note("The manager of \(co.name) was replaced, as the owners asked.", tone: "n", companyID: id) }
+                else { bump(&s, i, 3) }
+                return
+            }
+            if idx == 1 { bump(&s, i, 3); s.companies[i].set("dm27", s.week + 13); return }
+            refused(&s, i, d, data: data, context: fc)
         case "rofr":
             let hn = d["hn"].string
             if idx == 0 {
@@ -280,6 +297,7 @@ public enum Shareholders {
                 _ = Payments.companyPays(&s, companyID: co.id, amount: d["amt"].double, category: "mkt", label: "Marketing push forced by the owners")
                 s.companies[i].awareness = min(100, s.companies[i].awareness + 8)
             case "exit": sellOut(&s, i, why: "The majority owners voted to sell", data: data, context: fc)
+            case "mgr": _ = ManagerModel.fire(&s, companyID: co.id, data: data)
             default: break
             }
             return
