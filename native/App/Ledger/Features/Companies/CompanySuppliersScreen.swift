@@ -22,8 +22,7 @@ struct CompanySuppliersScreen: View {
         if CompanySourcing.isAvailable(engine: e, company: co) {
             CompanySourcing(engine: e, company: co)
         } else {
-            Text("No suppliers yet. They show here once the business is open.")
-                .textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, alignment: .leading)
+            EmptyState(glyph: Glyph.suppliers, title: "No suppliers yet", message: "They show here once the business is open.")
         }
     }
 
@@ -31,13 +30,13 @@ struct CompanySuppliersScreen: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             ScrollView {
                 suppliersBody(e, co)
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
                     .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
             .appScreen(title: "Suppliers", subtitle: co.name, tab: .company)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 }

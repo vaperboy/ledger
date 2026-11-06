@@ -21,7 +21,7 @@ struct NewItemSheet: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             content(e, co)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted)
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists")
         }
     }
 

@@ -14,7 +14,7 @@ struct OpsPageDestination: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             page(e, co)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
@@ -35,11 +35,9 @@ struct OpsPageDestination: View {
             SettingsPage(title: "Properties", subtitle: co.name) { CompanyProperties(engine: e, company: co) }
         } else {
             // Premises are rented and bought in AirStay (Phone).
-            VStack(spacing: Theme.Space.m) {
-                Text("Places to rent and buy are in AirStay.").font(.bodyText).foregroundStyle(Theme.ivoryMuted)
-                Button("Open AirStay") { store.openAirStay(companyID: co.id) }.buttonStyle(QuietButtonStyle())
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.airStay, title: "Premises are in AirStay", message: "Places to rent and buy are in AirStay.",
+                       actionTitle: "Open AirStay", action: { store.openAirStay(companyID: co.id) })
+                .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 }

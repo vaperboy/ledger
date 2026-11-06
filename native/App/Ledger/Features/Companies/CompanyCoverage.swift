@@ -35,7 +35,7 @@ struct CompanyCoverageScreen: View {
             .confirmAction($pending)
             .task { store.act { $0.prepareAdvisers(companyID: companyID) } }
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 

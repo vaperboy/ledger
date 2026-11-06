@@ -28,7 +28,7 @@ struct CompanySectionScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .appScreen(title: section.rawValue, subtitle: co.name)
         } else {
-            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+            EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
