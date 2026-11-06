@@ -45,7 +45,7 @@ struct SettingsView: View {
             store.saved(policyChange(from: old, to: v))
         }
         .confirmAction($pending)
-        .sheet(isPresented: $showWardrobe) { WardrobeView() }
+        .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
         .centerSheet(isPresented: $showPaste) {
             VStack(spacing: Theme.Space.m) {

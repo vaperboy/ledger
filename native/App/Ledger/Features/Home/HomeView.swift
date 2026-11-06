@@ -39,7 +39,7 @@ struct HomeSummary: View {
                 TopPriorities(engine: e, limit: maxPriorities)
             }
         }
-        .sheet(isPresented: $showInsights) { InsightsView(engine: e) }
+        .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall) { InsightsView(engine: e) }
     }
 
     private var playerName: String {

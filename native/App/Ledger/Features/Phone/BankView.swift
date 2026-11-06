@@ -21,7 +21,7 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .sheet(isPresented: $applying) { BankLoanApplyFlow(account: account).popupHost().presentationDragIndicator(.visible) }
+            .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(account: account) }
         }
     }
 

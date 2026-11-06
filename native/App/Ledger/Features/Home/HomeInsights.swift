@@ -7,7 +7,7 @@ import Simulation
 struct InsightsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.popupClose) private var popupClose
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
     var engine: GameEngine
@@ -17,7 +17,6 @@ struct InsightsView: View {
         let pro: Bool = ent.isPro
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: pro).accent
         return VStack(spacing: 0) {
-            header
             ZStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
@@ -34,29 +33,17 @@ struct InsightsView: View {
                 if !pro { lockCard }
             }
         }
-        .ledgerBackground()
         .onAppear { Motion.animate(Motion.reveal(reduceMotion)) { drawn = 1 } }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Insights").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-            Spacer()
-            Button { dismiss() } label: {
-                Text("Done").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold).frame(minWidth: 44, minHeight: 44)
-            }.buttonStyle(PressableStyle())
-        }
-        .padding(.horizontal, 18).padding(.top, 8)
     }
 
     private var lockCard: some View {
         VStack(spacing: 10) {
             Image(systemName: "lock.fill").font(.system(size: 22)).foregroundStyle(Theme.gold)
-            Text("See where your money is going").font(.serifTitle(19)).foregroundStyle(Theme.ivory).multilineTextAlignment(.center)
+            Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
             Text("Net worth over time, which company is pulling ahead, and how many days of cash you have left.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.center)
+                .popupText(.caption).multilineTextAlignment(.center)
             QuietButton(title: "Unlock with Ledger Pro") {
-                dismiss()
+                popupClose?()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { ent.paywall = PaywallRequest(title: "Insights") }
             }
         }
@@ -109,7 +96,7 @@ struct InsightsView: View {
             VStack(alignment: .leading, spacing: 9) {
                 Text("Company value, last 30 days").capsLabel()
                 if list.isEmpty {
-                    Text("Play a few more days and your companies appear here.").font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                    Text("Play a few more days and your companies appear here.").popupText(.subtitle)
                 }
                 ForEach(list) { (m: CompanyMove) in
                     moveRow(m, top: top, accent: accent)
@@ -122,7 +109,7 @@ struct InsightsView: View {
         let frac: Double = min(1, abs(m.amount) / top) * drawn
         return VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(m.name).font(.system(size: 12.5)).foregroundStyle(Theme.ivory).lineLimit(1)
+                Text(m.name).popupText(.body).lineLimit(1)
                 Spacer()
                 Text((m.amount >= 0 ? "+" : "−") + store.short(abs(m.amount))).font(.system(size: 12, weight: .medium).monospacedDigit())
                     .foregroundStyle(Theme.change(m.amount))
@@ -143,8 +130,8 @@ struct InsightsView: View {
         return Card(padding: 14) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Cash runway").capsLabel()
-                Text(headline).font(.serifTitle(22)).foregroundStyle(days != nil && (days ?? 0) < 30 ? Theme.caution : Theme.ivory)
-                Text(sub).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(headline).popupText(.figure).foregroundStyle(days != nil && (days ?? 0) < 30 ? Theme.caution : Theme.ivory)
+                Text(sub).popupText(.caption).fixedSize(horizontal: false, vertical: true)
                 InsightLine(values: recent, tint: accent, drawn: drawn).frame(height: 60)
             }
         }

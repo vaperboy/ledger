@@ -71,7 +71,7 @@ struct CountUpPercent: View, Animatable {
 struct WardrobeView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.popupClose) private var popupClose
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(CosmeticKeys.badge) private var savedBadge: String = Cosmetics.defaultBadgeID
     @AppStorage(CosmeticKeys.theme) private var savedTheme: String = Cosmetics.defaultThemeID
@@ -86,36 +86,23 @@ struct WardrobeView: View {
         let themeOK: Bool = Cosmetics.isThemeUnlocked(previewTheme, pro: pro)
         let accent: Color = Cosmetics.theme(previewTheme).accent
         return VStack(spacing: 0) {
-            header
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     preview(accent: accent)
                     themeSection(pro: pro)
                     badgeSection(pro: pro)
                     Text("Badges you earn in your career are yours to wear for ever. Extra badges and colours come with Ledger Pro. Looks only: nothing here changes your game.")
-                        .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+                        .popupText(.caption)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
             if !(badgeOK && themeOK) { unlockBar }
         }
-        .ledgerBackground()
         .onAppear {
             previewBadge = Cosmetics.resolvedBadge(savedBadge, earned: earned, pro: pro).id
             previewTheme = Cosmetics.resolvedTheme(savedTheme, pro: pro).id
         }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Wardrobe").font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-            Spacer()
-            Button { dismiss() } label: {
-                Text("Done").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold).frame(minWidth: 44, minHeight: 44)
-            }.buttonStyle(PressableStyle())
-        }
-        .padding(.horizontal, 18).padding(.top, 8)
     }
 
     private func preview(accent: Color) -> some View {
@@ -131,11 +118,11 @@ struct WardrobeView: View {
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Preview").capsLabel()
-                    Text(rank).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
+                    Text(rank).popupText(.figure)
                     HStack(spacing: 6) {
                         Capsule().fill(accent).frame(width: 26, height: 4)
                         Text(Cosmetics.theme(previewTheme).title + " · " + badge.title)
-                            .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                            .popupText(.caption)
                     }
                 }
                 Spacer(minLength: 0)
@@ -222,12 +209,12 @@ struct WardrobeView: View {
         return VStack(spacing: 6) {
             if lockedByPro {
                 QuietButton(title: "Unlock with Ledger Pro", fullWidth: true) {
-                    dismiss()
+                    popupClose?()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { ent.paywall = PaywallRequest(title: "Wardrobe") }
                 }
             } else {
                 Text("This badge is won in your career. Keep playing to earn it.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted)
+                    .popupText(.caption)
             }
         }
         .padding(.horizontal, 18).padding(.vertical, 10)

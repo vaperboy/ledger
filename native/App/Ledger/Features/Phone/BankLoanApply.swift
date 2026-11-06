@@ -47,7 +47,6 @@ struct BankLoanApplyFlow: View {
                 .scrollIndicators(.hidden).noSidewaysDrag()
                 .scrollDismissesKeyboard(.interactively)
             }
-            .ledgerBackground()
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
             .swipeBackEnabled(canStep: { approved == nil && step > 1 }, step: { back() })
@@ -146,7 +145,7 @@ private struct StepDots: View {
                 }
             }
             if step >= 1 && step <= labels.count {
-                Text(labels[step - 1]).font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                Text(labels[step - 1]).popupText(.caption)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -179,8 +178,8 @@ private struct LoanStepOffer: View {
         HStack(alignment: .top, spacing: 10) {
             GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: P.caution)
             VStack(alignment: .leading, spacing: 2) {
-                Text("The bank would not lend now").font(.system(size: 13.5, weight: .medium)).foregroundStyle(P.ink)
-                Text((a.refusal ?? "The bank would not lend to you at the moment.").tidyText).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Text("The bank would not lend now").popupText(.button)
+                Text((a.refusal ?? "The bank would not lend to you at the moment.").tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -192,7 +191,7 @@ private struct LoanStepOffer: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("CONDITIONS").capsLabel()
             ForEach(Array(a.conditions.enumerated()), id: \.offset) { _, c in
-                Text(c.tidyText).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Text(c.tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.horizontal, 2)
@@ -213,7 +212,7 @@ private struct LoanOfferPanel: View {
         let instalment: String = example.map { cur.tidyDisplay($0.monthlyPayment) } ?? "\u{2013}"
         let instalmentNote: String = example.map { "over \($0.termMonths) months" } ?? ""
         VStack(alignment: .leading, spacing: 0) {
-            Text("Maximum approved amount").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+            Text("Maximum approved amount").popupText(.subtitle)
             Text(cur.tidyDisplay(a.maximum)).font(.hero(36)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
                 .accessibilityIdentifier("bank-loan-maximum")
             FlatRow(label: "Interest rate", value: Currency.percent(a.yearlyRate, decimals: 2) + " a year", rule: true)
@@ -247,7 +246,7 @@ private struct LoanStepChoose: View {
             if a.payoutAccounts.count > 1 { payoutCard }
             figures
             if !valid, let r = q.refusal {
-                Text(r.tidyText).font(.system(size: 12.5)).foregroundStyle(P.caution).fixedSize(horizontal: false, vertical: true)
+                Text(r.tidyText).popupText(.risk).fixedSize(horizontal: false, vertical: true)
             }
             QuietButton(title: "Continue", fullWidth: true, action: next)
                 .disabled(!valid).opacity(valid ? 1 : 0.4)
@@ -282,7 +281,7 @@ private struct LoanStepChoose: View {
                             Text("\(q.maxTermMonths)").font(.system(size: 10.5)).foregroundStyle(P.inkFaint)
                         }
                     }
-                    Text("\(q.termMonths)").font(.system(size: 22, design: .serif).monospacedDigit()).foregroundStyle(P.ink)
+                    Text("\(q.termMonths)").popupText(.figure)
                         .frame(width: 64, height: 46)
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
                 }
@@ -323,16 +322,16 @@ private struct LoanAmountPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Choose amount").font(.system(size: 12.5)).foregroundStyle(P.inkSoft)
+            Text("Choose amount").popupText(.subtitle)
             Text(cur.tidyDisplay(amount)).font(.hero(34)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
                 .accessibilityIdentifier("bank-loan-amount")
             if maximum > minimum {
                 LedgerSlider(value: slider, in: minimum...maximum).tint(P.accent)
                     .accessibilityIdentifier("bank-loan-slider")
                 HStack {
-                    Text(cur.tidyShort(minimum)).font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                    Text(cur.tidyShort(minimum)).popupText(.caption)
                     Spacer()
-                    Text(cur.tidyShort(maximum)).font(.system(size: 11)).foregroundStyle(P.inkFaint)
+                    Text(cur.tidyShort(maximum)).popupText(.caption)
                 }
             }
             HStack(spacing: 8) {
@@ -341,7 +340,7 @@ private struct LoanAmountPanel: View {
                 chip("75%", 0.75)
                 chip("Maximum", 1)
             }
-            Text("The bank approved up to " + cur.tidyDisplay(maximum) + ". You can borrow less.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+            Text("The bank approved up to " + cur.tidyDisplay(maximum) + ". You can borrow less.").popupText(.caption)
         }
     }
 
@@ -382,7 +381,7 @@ private struct LoanStepPapers: View {
         Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("YOUR PAPERS").capsLabel()
-                Text("Full name").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                Text("Full name").popupText(.caption)
                 TextField("Full name", text: $name)
                     .textContentType(.name).autocorrectionDisabled()
                     .font(.system(size: 15)).foregroundStyle(P.ink)
@@ -390,14 +389,14 @@ private struct LoanStepPapers: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
                 if q.needsIncomeProof { proofChoices }
                 if q.needsCompanyPapers { paperChoices }
-                Text("The bank checks these against its records and may turn the application down.").font(.system(size: 11.5)).foregroundStyle(P.inkFaint)
+                Text("The bank checks these against its records and may turn the application down.").popupText(.caption)
             }
         }
     }
 
     private var proofChoices: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Proof of income").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.top, 4)
+            Text("Proof of income").popupText(.caption).padding(.top, 4)
             ForEach(LoanDocuments.IncomeProof.allCases, id: \.rawValue) { p in
                 ChoiceCard(title: Self.label(p), selected: proof == p) { proof = p }
             }
@@ -406,7 +405,7 @@ private struct LoanStepPapers: View {
 
     private var paperChoices: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Company papers").font(.system(size: 11.5)).foregroundStyle(P.inkFaint).padding(.top, 4)
+            Text("Company papers").popupText(.caption).padding(.top, 4)
             ForEach(LoanDocuments.CompanyPapers.allCases, id: \.rawValue) { p in
                 ChoiceCard(title: Self.label(p), selected: papers == p) { papers = p }
             }
@@ -419,8 +418,8 @@ private struct LoanStepPapers: View {
                 Text("LOAN AGREEMENT").capsLabel()
                 ForEach(clauses) { c in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(c.title).font(.system(size: 13, weight: .medium)).foregroundStyle(P.ink)
-                        Text(c.body.tidyText).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                        Text(c.title).popupText(.button)
+                        Text(c.body.tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -459,7 +458,7 @@ private struct LoanAgreeBox: View {
                 }
                 .frame(width: 22, height: 22)
                 Text("I agree to the loan terms.")
-                    .font(.system(size: 13)).foregroundStyle(P.inkSoft).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    .popupText(.rowLabel).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
             }
             .contentShape(Rectangle())
         }
@@ -501,7 +500,7 @@ private struct LoanStepSummary: View {
                 DisclosureGroup("More options", isExpanded: $moreOpen) {
                     LoanStepPapers(q: q, cur: cur, clauses: clauses, name: $name, proof: $proof, papers: $papers).padding(.top, 8)
                 }
-                .font(.system(size: 13.5)).foregroundStyle(P.inkSoft)
+                .popupText(.rowLabel)
                 .onChange(of: refusal) { _, why in if why != nil { moreOpen = true } }
                 QuietButton(title: "Take the loan", fullWidth: true, action: onApply)
                     .disabled(!agreed).opacity(agreed ? 1 : 0.4)
@@ -516,7 +515,7 @@ private struct LoanStepSummary: View {
     private var approvedBanner: some View {
         HStack(spacing: 10) {
             GlyphView(glyph: "M5 12 L10 17 L19 7", size: 18, weight: 2, tint: P.gain)
-            Text("Approved. \(cur.tidyDisplay(q.disbursal)) has been paid into \(payIntoName).").font(.system(size: 13)).foregroundStyle(P.ink)
+            Text("Approved. \(cur.tidyDisplay(q.disbursal)) has been paid into \(payIntoName).").popupText(.body)
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.gain.opacity(0.10)))
@@ -527,8 +526,8 @@ private struct LoanStepSummary: View {
         HStack(alignment: .top, spacing: 10) {
             GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: P.caution)
             VStack(alignment: .leading, spacing: 2) {
-                Text("The bank turned the application down").font(.system(size: 13, weight: .medium)).foregroundStyle(P.ink)
-                Text(why.tidyText).font(.system(size: 12.5)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Text("The bank turned the application down").popupText(.button)
+                Text(why.tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
