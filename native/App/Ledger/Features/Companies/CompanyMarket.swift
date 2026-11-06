@@ -293,45 +293,6 @@ struct CompanyMarket: View {
         .frame(height: CGFloat(bars.count) * 30 + 8)
         .animation(Motion.revealAnimation, value: bars.map { $0.percent })
     }
-
-    // MARK: Rivals
-
-    private var rivals: some View {
-        let rows: [RivalRow] = engine.rivalRows(company).sorted { ($0.share?.center ?? -1) > ($1.share?.center ?? -1) }
-        let cols: [TableColumn] = [TableColumn(title: "Rival"), TableColumn(title: "Share", width: 78), TableColumn(title: "Price", width: 60)]
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Named rivals").capsLabel()
-                Spacer()
-                Text("\(rows.count) near you").font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint)
-            }.padding(.horizontal, 2)
-            if rows.isEmpty {
-                Card(padding: 12, radius: Theme.Radius.row) {
-                    Text("Rivals appear once the business has opened.").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
-                }
-            } else {
-                SharpTable {
-                    TableHeader(columns: cols)
-                    ForEach(rows, id: \.id) { (r: RivalRow) in rivalRow(r, cols) }
-                }
-            }
-        }
-    }
-
-    private func rivalRow(_ r: RivalRow, _ cols: [TableColumn]) -> some View {
-        let name: String = r.rival.name + (r.rival.forSale ? " · for sale" : "")
-        let discountText: String = r.rival.discountPercent.map { " · \($0)% off" } ?? ""
-        let marketingText: String = r.rival.marketing ? " · marketing" : ""
-        let note: String = "\(r.sizeWord)\(discountText)\(marketingText)"
-        let shareText: String = r.share.map { MarketMap.text($0) } ?? r.feel
-        let same: Bool = abs(r.priceGap) < 0.03
-        let gapPct: Int = Int((abs(r.priceGap) * 100).rounded())
-        let gapText: String = same ? "Same" : (r.priceGap > 0 ? "+" : "-") + "\(gapPct)%"
-        let gapTint: Color = r.priceGap < -0.03 ? Theme.caution : Theme.ivoryMuted
-        let logo = ThumbSpec(kind: .logo, key: "rival|co\(company.id)|\(r.rival.id)", glyph: Glyph.person, initials: r.rival.name, shape: .square)
-        return TableRow(columns: cols, title: name, note: note, values: [shareText, gapText], valueTints: [Theme.ivory, gapTint], thumb: logo) { rival = r.id }
-            .orgEdge(rivalFlash[r.id], radius: Theme.Radius.table)
-    }
 }
 
 // MARK: One rival

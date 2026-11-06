@@ -4,6 +4,37 @@ import Countries
 import Businesses
 import Simulation
 
+/// Board seat rules shared by the board room and the entity page, so both ask and answer in the same words.
+extension GameStore {
+    /// The confirmation for taking a holder off a board. Own staff keep their job; an outside holder is paid their notice; without a
+    /// majority it is refused (shown as a toast, nil returned).
+    func removeSeatPrompt(key: String, personID: Int, name: String) -> PendingAction? {
+        guard let engine else { return nil }
+        let terms: SeatRemovalTerms = engine.seatRemovalTerms(key: key, personID: personID)
+        if !terms.allowed { show(terms.reason, tone: "warn"); return nil }
+        let cost: String = terms.cost > 0 ? " Notice pay: \(short(terms.cost))." : ""
+        return PendingAction(title: "Remove \(name) from the board?", message: terms.summary + cost, button: "Remove from board", destructive: true, alwaysAsk: true) { [weak self] in
+            guard let self else { return }
+            let result: SettingResult? = self.act { $0.removeSeatHolder(key: key, personID: personID) }
+            _ = self.settle(result, "\(name) is off the board.")
+        }
+    }
+
+    /// Offers a seat and words the outcome; `joined` is true when the person now sits.
+    func fillSeatOutcome(key: String, person: Person, fee: Double) -> (text: String, joined: Bool) {
+        let name: String = person.name
+        let pid: Int = person.id
+        let res: ManagerModel.SeatResult? = act { $0.fillSeat(key: key, personID: pid, monthlyFee: fee) }
+        switch res {
+        case .ok?: return ("\(name) joins the board.", true)
+        case .full?: return ("That seat is full.", false)
+        case .refused?: return ("\(name) wants more.", false)
+        case .votedDown(let n)?: return ("The owners voted \(name) down (\(n)% behind them).", false)
+        default: return ("\(name) is not available.", false)
+        }
+    }
+}
+
 /// One board as a row: whose board, seats, and what waits for a decision (a red count).
 struct BoardLinkRow: View {
     var engine: GameEngine
@@ -277,14 +308,7 @@ struct BoardView: View {
             Spacer(minLength: 8)
             if let pid = v.personID, seats.contains(where: { $0.id == pid }) {
                 Button("Remove from board") {
-                    let terms: SeatRemovalTerms? = store.engine?.seatRemovalTerms(key: key, personID: pid)
-                    if let terms, !terms.allowed { store.show(terms.reason, tone: "warn"); return }
-                    let cost: String = (terms?.cost ?? 0) > 0 ? " Notice pay: \(store.short(terms?.cost ?? 0))." : ""
-                    let name: String = v.name
-                    pending = PendingAction(title: "Remove \(name) from the board?", message: (terms?.summary ?? "") + cost, button: "Remove from board", destructive: true, alwaysAsk: true) {
-                        let result: SettingResult? = store.act { $0.removeSeatHolder(key: key, personID: pid) }
-                        _ = store.settle(result, "\(name) is off the board.")
-                    }
+                    if let ask = store.removeSeatPrompt(key: key, personID: pid, name: v.name) { pending = ask }
                 }.buttonStyle(TinyButtonStyle(tint: Theme.loss)).lineLimit(1).minimumScaleFactor(0.8)
             }
         }
@@ -382,14 +406,9 @@ struct BoardView: View {
     }
 
     private func seat(_ p: Person, fee: Double) {
-        let r = store.act { $0.fillSeat(key: key, personID: p.id, monthlyFee: fee) }
-        switch r {
-        case .ok?: message = "\(p.name) joins the board."; candidates = []; Haptics.success()
-        case .full?: message = "That seat is full."
-        case .refused?: message = "\(p.name) wants more."
-        case .votedDown(let n)?: message = "The owners voted \(p.name) down (\(n)% behind them)."
-        default: message = "\(p.name) is not available."
-        }
+        let r = store.fillSeatOutcome(key: key, person: p, fee: fee)
+        message = r.text
+        if r.joined { candidates = []; Haptics.success() }
     }
 
     // MARK: How often it meets

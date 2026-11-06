@@ -47,7 +47,7 @@ public enum ManagerHiring {
         guard let co = s.company(companyID), co.status == .open else { return .no("The company is not open.") }
         guard Delegation.hasManager(co) || HierarchyHiring.staffBoss(s, co, data: data) != nil else { return .no("Without a manager nobody hires: the owner decides.") }
         if Appointments.classify(role) == .assistant { return .no(Appointments.authority(s, companyID: companyID, role: role, data: data).reason + " Use a proposal (Appointments.propose).") }
-        if let why = Workplaces.hireBlock(co, data: data) { return .no(why) }
+        if let why = Workplaces.hireBlock(co, role: role, data: data) { return .no(why) }
         let heads = co.staff.filter { $0.role == role && !$0.flag("seas") }
         if heads.count < target { return .replace }
         let leavers = heads.compactMap { m in leaverReason(s, co, m, data: data).map { (m, $0) } }

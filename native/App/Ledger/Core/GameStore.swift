@@ -858,7 +858,7 @@ final class GameStore: ObservableObject {
         Haptics.tap()
         switch action {
         case .openMessage(let id): openMessage(id)
-        case .openCompany(let id): openCompany(id)
+        case .openCompany(let id, let key): openCompany(id, section: key.flatMap { CompanySection(key: $0) })
         case .openLoans: openBank(.personal, tab: .loans)
         case .openInvest: openBank(.investments, tab: .deposits)
         case .openTax: openBank(.personal, tab: .bills)

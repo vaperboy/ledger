@@ -9,7 +9,8 @@ import Businesses
 public struct Suggestion: Identifiable, Equatable, Sendable {
     public enum Action: Equatable, Sendable {
         case openMessage(Int)
-        case openCompany(Int)
+        /// The section is the app's company section key ("finances", "setup", ...); nil opens the company hub.
+        case openCompany(Int, section: String? = nil)
         case openLoans
         case openInvest
         case openTax
@@ -46,10 +47,10 @@ public extension GameEngine {
         for co in s.liveCompanies {
             if co.cash < 0 {
                 out.append(Suggestion(id: "negcash\(co.id)", symbol: "banknote", title: "\(co.name) is out of cash",
-                                      detail: "It cannot pay its bills. Put money in or it will fall behind.", tone: .bad, action: .openCompany(co.id), actionLabel: "Open"))
+                                      detail: "It cannot pay its bills. Put money in or it will fall behind.", tone: .bad, action: .openCompany(co.id, section: "finances"), actionLabel: "Open"))
             } else if co.status == .setup {
                 out.append(Suggestion(id: "setup\(co.id)", symbol: "checklist", title: "Finish setting up \(co.name)",
-                                      detail: "It cannot trade until documents, premises and equipment are in place.", tone: .warn, action: .openCompany(co.id), actionLabel: "Continue"))
+                                      detail: "It cannot trade until documents, premises and equipment are in place.", tone: .warn, action: .openCompany(co.id, section: "setup"), actionLabel: "Continue"))
             }
         }
         let est = PersonalFinance.taxEstimate(s, context: context)

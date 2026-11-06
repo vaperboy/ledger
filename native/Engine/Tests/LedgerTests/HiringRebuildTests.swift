@@ -69,6 +69,10 @@ final class HiringRebuildTests: XCTestCase {
         XCTAssertNil(e.hireBlock(companyID: id, role: "cleaner"))
         XCTAssertNil(e.hireBlock(companyID: id, role: "dev"))
         XCTAssertNotNil(e.hireBlock(companyID: id, role: "recept"))
+        // the manager's own rule reads the same block: a full office stops a desk role, not a remote one
+        let desk = ManagerHiring.verdict(e.state, companyID: id, role: "recept", target: 9, data: e.data)
+        if case .no(let why) = desk { XCTAssertFalse(why.isEmpty) }
+        if case .no(let why) = ManagerHiring.verdict(e.state, companyID: id, role: "dev", target: 9, data: e.data) { XCTAssertFalse(why.contains("No free desk")) }
         // a listing reads its places for the screen
         let listing = CompanySetup.Listing(index: 0, name: "x", squareMetres: 45, rentFactor: 1, location: 1, landlord: "y")
         XCTAssertEqual(e.officeCapacity(forListing: listing, companyID: id), 5)

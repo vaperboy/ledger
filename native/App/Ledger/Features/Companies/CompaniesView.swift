@@ -300,9 +300,15 @@ struct CompanyRow: View {
     var engine: GameEngine
     var company: Company
     var health: CompanyHealth
+    @Environment(Entitlements.self) private var ent
+    @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
+    @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
 
     var body: some View {
         let co = company, h = health
+        // The player's worn badge marks their own companies, in the theme accent.
+        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
+        let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
         HStack(spacing: 10) {
@@ -311,6 +317,7 @@ struct CompanyRow: View {
                 HStack(spacing: 5) {
                     if urgent { GlyphView(glyph: Glyph.warning, size: 12, weight: 1.9, tint: Theme.loss).accessibilityLabel("Needs attention") }
                     Text(co.name).font(.system(size: 13.5, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
+                    CosmeticBadgeView(badge: badge, tint: accent, size: 16)
                 }
                 Text(subtitle(co)).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
             }

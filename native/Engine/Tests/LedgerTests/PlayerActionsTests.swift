@@ -9,6 +9,14 @@ import Events
 
 /// Every player action goes through one function on the engine; these check they change the game and keep the books.
 final class PlayerActionsTests: XCTestCase {
+    func testSuggestionsOpenTheSectionThatNeedsThePlayer() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 12_000_000) else { return XCTFail("could not start") }
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .setup } }
+        XCTAssertTrue(e.suggestions(limit: 20).contains { $0.action == .openCompany(id, section: "setup") })
+    }
+
     func testStartCompanySetPricesCampaignAndHire() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }

@@ -273,7 +273,7 @@ extension ManagerModel {
         switch dp.kind {
         case "hire":
             // a growth hire (the work is there): only a manager's, and only into a free place (ManagerHiring)
-            if Workplaces.hireBlock(co, data: data) != nil || !Delegation.hasManager(co) { return }
+            if Workplaces.hireBlock(co, role: dp.role, data: data) != nil || !Delegation.hasManager(co) { return }
             let cands = Hiring.search(role: dp.role, company: co, mode: .ads, faces: false, state: &s, data: data)
             guard !cands.isEmpty else { return }
             if let c = AutoHire.hireWorker(role: dp.role, companyID: co.id, candidates: cands, hirer: AutoHire.hirer(person: n), state: &s, data: data) {

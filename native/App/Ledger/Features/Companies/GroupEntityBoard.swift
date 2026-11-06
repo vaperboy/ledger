@@ -137,19 +137,8 @@ struct GroupEntityBoard: View {
         }
     }
 
-    /// The question says what it means first: own staff keep their job; an outside holder is paid their notice; without a majority it is refused.
     private func askToRemove(_ v: ManagerModel.Voter, pid: Int, key: String) {
-        let terms: SeatRemovalTerms = engine.seatRemovalTerms(key: key, personID: pid)
-        if !terms.allowed {
-            store.show(terms.reason, tone: "warn")
-            return
-        }
-        let cost: String = terms.cost > 0 ? " Notice pay: \(store.short(terms.cost))." : ""
-        let name: String = v.name
-        pending = PendingAction(title: "Remove \(name) from the board?", message: terms.summary + cost, button: "Remove from board", destructive: true, alwaysAsk: true) {
-            let result: SettingResult? = store.act { $0.removeSeatHolder(key: key, personID: pid) }
-            _ = store.settle(result, "\(name) is off the board.")
-        }
+        if let ask = store.removeSeatPrompt(key: key, personID: pid, name: v.name) { pending = ask }
     }
 
     private func roomLink(_ key: String) -> some View {
@@ -214,17 +203,9 @@ struct SeatPickerSheet: View {
     }
 
     private func seat(_ p: Person, _ fee: Double) {
-        let k: String = key
-        let pid: Int = p.id
-        let name: String = p.name
-        let res = store.act { $0.fillSeat(key: k, personID: pid, monthlyFee: fee) }
-        switch res {
-        case .ok?: store.show("\(name) joins the board.", tone: "good"); Haptics.success(); dismiss()
-        case .full?: store.show("That seat is full.", tone: "warn")
-        case .refused?: store.show("\(name) wants more.", tone: "warn")
-        case .votedDown(let n)?: store.show("The owners voted \(name) down (\(n)% behind them).", tone: "warn")
-        default: store.show("\(name) is not available.", tone: "warn")
-        }
+        let r = store.fillSeatOutcome(key: key, person: p, fee: fee)
+        store.show(r.text, tone: r.joined ? "good" : "warn")
+        if r.joined { Haptics.success(); dismiss() }
         refresh += 1
     }
 }
