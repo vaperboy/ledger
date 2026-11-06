@@ -116,6 +116,9 @@ class FeatureTourCase: XCTestCase {
     /// Buttons this test tapped that are smaller than 44 x 44 pt (name -> size), checked once at the end of the test.
     var smallTargets: [String: String] = [:]
     var tappedTargets: Set<String> = []
+    /// Text in the accessibility tree with a zero-size frame (laid out but invisible), seen by any snapshot of this test.
+    var zeroTexts: Set<String> = []
+    static var zeroReported: Set<String> = []
 
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
@@ -178,6 +181,12 @@ class FeatureTourCase: XCTestCase {
         let t0: Date = Date()
         let r: R = body()
         let took: String = " [\(Int(Date().timeIntervalSince(t0)))s]"
+        // The screen the step ended on, kept in the result bundle (the workflow exports them as tour-shots).
+        let shot: XCTAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        let tour: String = String(self.name.split(separator: " ").last?.dropLast() ?? "tour")
+        shot.name = "\(tour)-\(name)"
+        shot.lifetime = .keepAlways
+        add(shot)
         switch r {
         case .pass(let m): log.record(.pass, name, m + took)
         case .fail(let m): log.record(.fail, name, m + took)
@@ -233,6 +242,7 @@ class FeatureTourCase: XCTestCase {
             if n.elementType == .scrollView || n.elementType == .collectionView || n.elementType == .table {
                 if n.children.contains(where: { (c: XCUIElementSnapshot) -> Bool in c.frame.maxX > f.maxX + 2 || c.frame.minX < f.minX - 2 }) { h = true }
             }
+            if n.elementType == .staticText, !n.label.isEmpty, f.isNull || f.width < 1 || f.height < 1 { zeroTexts.insert(String(n.label.prefix(40))) }
             if !f.isNull, !f.isInfinite, f.width >= 1, f.height >= 1, f.maxX > w.minX + 1, f.minX < w.maxX - 1, f.maxY > w.minY, f.minY < w.maxY {
                 out.append(Hit(id: n.identifier, label: n.label, value: (n.value as? String) ?? "", frame: f, type: n.elementType,
                                selected: n.isSelected, enabled: n.isEnabled, hScroll: h))
@@ -683,6 +693,11 @@ class FeatureTourCase: XCTestCase {
         var problems: [String] = rawProblems(screen)
         if title && !hasTitle() { problems.append("empty header title") }
         if clip, let c = clipProblem() { problems.append(c) }
+        let fresh: [String] = zeroTexts.subtracting(Self.zeroReported).sorted()
+        if !fresh.isEmpty {
+            Self.zeroReported.formUnion(fresh)
+            log.note("\(screen): \(fresh.count) text(s) with a zero-size frame (invisible): \(fresh.prefix(5))")
+        }
         return problems.isEmpty ? .pass() : .fail(problems.prefix(4).joined(separator: "; "))
     }
 
