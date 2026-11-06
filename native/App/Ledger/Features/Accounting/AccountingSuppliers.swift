@@ -17,7 +17,7 @@ struct AcctSuppliers: View {
             let fmt = BankFmt(store: store, company: co)
             let records: [SupplierRecord]? = e.supplierRecords(companyID: co.id, search: m.supplierSearch, user: m.user)
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     AcctSearchField(text: $m.supplierSearch, prompt: "Search suppliers", identifier: "acct-supplier-search")
                     if let records {
                         list(records, fmt)
@@ -36,7 +36,7 @@ struct AcctSuppliers: View {
 
     @ViewBuilder private func list(_ records: [SupplierRecord], _ fmt: BankFmt) -> some View {
         if records.isEmpty {
-            AcctNotice(glyph: Glyph.projects, title: m.supplierSearch.isEmpty ? "No supplier records yet" : "No supplier matches",
+            AcctNotice(glyph: Glyph.suppliers, title: m.supplierSearch.isEmpty ? "No supplier records yet" : "No supplier matches",
                        message: m.supplierSearch.isEmpty ? "A supplier appears here once you have bought from them or chosen them to supply goods or repairs." : "Try another name.")
         } else {
             AcctPanel {
@@ -57,14 +57,18 @@ struct AcctSuppliers: View {
         if s.isCurrentRepairSupplier { sub += " \u{00B7} repairs" }
         let value: String = s.openInvoices > 0.5 ? fmt.short(s.openInvoices) : ""
         let note: String = s.openInvoices > 0.5 ? "open invoices" : (s.purchasesTotal > 0.5 ? fmt.short(s.purchasesTotal) + " bought" : "")
-        return AcctRow(initials: AcctRow.initials(s.name), title: s.name, subtitle: sub, value: value, valueTint: P.caution, valueNote: note, identifier: "acct-supplier-row") { m.push(.supplier(s.id)) }
+        return SupplierRow(name: s.name, detail: sub, value: value, valueTint: P.caution, valueNote: note,
+                           current: s.isCurrentGoodsSupplier || s.isCurrentRepairSupplier, identifier: "acct-supplier-row") { m.push(.supplier(s.id)) }
     }
 
+    /// Records only: choosing or switching a supplier happens on the company's Suppliers screen, which this links to.
     private func addBlock(_ co: Company) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AcctNotice(glyph: Glyph.info, title: "Suppliers are added by buying or choosing them",
-                       message: "Adding a supplier here would not be a record, it would change what \(co.name) buys. That decision stays in the company's purchasing, where its cost is shown first. Nothing on this screen buys anything.")
-            AcctSecondaryButton(title: "Open purchasing", identifier: "acct-supplier-purchasing") { store.openCompany(co.id, section: .operations) }
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("Records only. To choose or switch a supplier, compare them in \(co.name)'s Suppliers.")
+                .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
+            AcctSecondaryButton(title: "Compare suppliers", identifier: "acct-supplier-purchasing") {
+                store.openCompany(co.id, section: .operations, part: OpsPart.suppliers.rawValue)
+            }
         }
     }
 }

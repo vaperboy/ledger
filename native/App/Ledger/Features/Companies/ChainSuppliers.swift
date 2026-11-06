@@ -60,27 +60,11 @@ struct ChainSupplyOverview: View {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     Text("The usual provider of each input across the stores, and the stores that differ. Set a chain rule to make one provider the choice for every store the chain governs; without a rule each store chooses its own. A board agreement can set goods for every company.")
                         .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    ForEach(rules) { rule in
-                        EntityCard { ruleBlock(rule) }
-                    }
-                    ForEach(active) { (r: Row) in
-                        EntityCard {
-                        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                            HStack(alignment: .firstTextBaseline) {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(r.title.tidyMoney).textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
-                                    Text(r.usual).textStyle(.body, tint: Theme.ink)
-                                }
-                                Spacer(minLength: 8)
-                                Text("\(r.usualCount) of \(r.byStore.count) stores").textStyle(.caption, tint: Theme.inkSoft, numeric: true)
-                            }
-                            ForEach(Array(r.exceptions.prefix(8)), id: \.storeID) { x in
-                                NavigationLink(value: CompanyRoute.companyAt(x.storeID, .operations)) {
-                                    GroupLinkRow(title: x.store, sub: "Exception: \(x.provider)", subTint: Theme.caution)
-                                }.buttonStyle(PressableStyle())
-                            }
-                            if r.exceptions.count > 8 { Text("and \(r.exceptions.count - 8) more stores differ").textStyle(.caption, tint: Theme.inkFaint) }
-                        }
+                    ForEach(rules) { rule in ruleBlock(rule) }
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(active.enumerated()), id: \.element.id) { n, r in
+                            if n > 0 || !rules.isEmpty { Hairline() }
+                            inputRow(r)
                         }
                     }
                     setRuleMenu(all)
@@ -95,15 +79,28 @@ struct ChainSupplyOverview: View {
                         let sub: String = "\(kindName) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered"
                         let yearly: String = currency.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr"
                         NavigationLink(value: CompanyRoute.companyAt(l.buyerID, .operations)) {
-                            EntityCard {
-                                GroupLinkRow(title: "\(supplier) → \(buyer)", sub: sub, trailing: yearly, subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
-                            }
+                            GroupLinkRow(title: "\(supplier) → \(buyer)", sub: sub, trailing: yearly, subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)
                         }.buttonStyle(PressableStyle())
+                        .overlay(alignment: .top) { Hairline() }
                     }
                 }
             }
             .confirmAction($pending)
         }
+    }
+
+    /// One input: the usual provider as the shared `SupplierRow` (how many stores use it on the right), then the stores that differ.
+    private func inputRow(_ r: Row) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            SupplierRow(name: r.usual, detail: r.title.tidyMoney, value: "\(r.usualCount) of \(r.byStore.count)", valueNote: "stores")
+            ForEach(Array(r.exceptions.prefix(8)), id: \.storeID) { x in
+                NavigationLink(value: CompanyRoute.companyAt(x.storeID, .operations)) {
+                    GroupLinkRow(title: x.store, sub: "Exception: \(x.provider)", subTint: Theme.caution)
+                }.buttonStyle(PressableStyle())
+            }
+            if r.exceptions.count > 8 { Text("and \(r.exceptions.count - 8) more stores differ").textStyle(.caption, tint: Theme.inkFaint) }
+        }
+        .padding(.bottom, r.exceptions.isEmpty ? 0 : Theme.Space.s)
     }
 
     // MARK: Chain rule
@@ -122,7 +119,7 @@ struct ChainSupplyOverview: View {
                 Chip(text: "Mandatory", tint: Theme.gold)
             }
             Text("\(following) of \(rule.plan.lines.count) stores follow it" + (kept.isEmpty ? "" : "; \(kept.count) keep their own") + (free.isEmpty ? "" : "; \(free.count) franchised decide themselves") + ".")
-                .font(.system(size: 11)).foregroundStyle(kept.isEmpty ? Theme.ivoryFaint : Theme.caution)
+                .textStyle(.caption, tint: kept.isEmpty ? Theme.inkFaint : Theme.caution).fixedSize(horizontal: false, vertical: true)
             ForEach(kept.prefix(8)) { l in
                 NavigationLink(value: CompanyRoute.companyAt(l.storeID, .operations)) {
                     GroupLinkRow(title: l.storeName, sub: "Keeps its own, locked by the rule: \(l.reason ?? "")", subTint: Theme.caution)

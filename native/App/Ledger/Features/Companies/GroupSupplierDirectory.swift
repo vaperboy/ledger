@@ -7,7 +7,7 @@ import Simulation
 
 /// Every supplier that any live company of the group uses now, once each (a supplier used by several companies is one row), biggest
 /// spend first. Read from the same data as each company's Suppliers section (`supplierInputs`): the provider in use per input.
-/// A row: name, what it supplies, the companies that use it as chips, relationship badge, rating. A tap opens its profile in a centred
+/// A row (`SupplierRow`): name, what it supplies and for which companies, relationship badge, rating. A tap opens its profile in a centred
 /// popup with one line per fact and a button to the Suppliers section of one of the companies. Your own companies that supply others
 /// are marked "Own company". Scrolls vertically only (it owns its scroll area: embed it in a page that does not scroll).
 struct GroupSupplierDirectory: View {
@@ -43,10 +43,16 @@ struct GroupSupplierDirectory: View {
             let entries: [Entry] = Self.entries(e)
             ScrollScreen {
                 if entries.isEmpty {
-                    Text("No company of the group uses a named supplier yet.").textStyle(.body, tint: Theme.inkFaint)
+                    EmptyState(glyph: Glyph.suppliers, title: "No named suppliers yet",
+                               message: "A supplier shows here once a company of the group buys from one.")
                 } else {
                     Text("\(entries.count) \(entries.count == 1 ? "supplier" : "suppliers") across the group").capsLabel(Theme.ivoryFaint)
-                    ForEach(entries) { (en: Entry) in row(en, e) }
+                    VStack(spacing: 0) {
+                        ForEach(Array(entries.enumerated()), id: \.element.id) { n, en in
+                            if n > 0 { Hairline() }
+                            row(en, e)
+                        }
+                    }
                 }
             }
             .centerSheet(item: $picked) { (p: DirectoryPick) in profile(p.id) }
@@ -102,39 +108,16 @@ struct GroupSupplierDirectory: View {
 
     // MARK: Rows
 
+    /// The shared `SupplierRow`: name, what it supplies and to which companies, rating; own companies carry a green badge.
     private func row(_ en: Entry, _ e: GameEngine) -> some View {
         let first: SupplierOption = en.uses[0].option
-        let what: String = Self.whatText(en)
+        let users: String = en.companyIDs.map { companyName($0, e) }.joined(separator: ", ")
         let stars: String = Self.starText(first.reliability)
-        return Button {
-            Haptics.tap()
+        let detail: String = [Self.whatText(en) + " for " + users, stars].filter { !$0.isEmpty }.joined(separator: "  ")
+        let own: Bool = en.ownCompanyID != nil
+        return SupplierRow(name: en.name, detail: detail, badge: Self.badge(first, own: own), badgeTone: own ? .good : .neutral) {
             picked = DirectoryPick(id: en.id)
-        } label: {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(spacing: Theme.Space.s) {
-                    Text(en.name).textStyle(.body, tint: Theme.ink, weight: .medium)
-                        .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
-                    Spacer(minLength: Theme.Space.s)
-                    if !stars.isEmpty { Text(stars).textStyle(.caption, tint: Theme.accent) }
-                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
-                }
-                HStack(spacing: Theme.Space.s) {
-                    Chip(text: Self.badge(first, own: en.ownCompanyID != nil), tint: en.ownCompanyID != nil ? Theme.gain : Theme.ivoryMuted)
-                    Text(what).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
-                }
-                WrapRow(spacing: Theme.Space.xs) {
-                    ForEach(en.companyIDs, id: \.self) { (id: Int) in
-                        Text(companyName(id, e)).textStyle(.caption, tint: Theme.inkSoft)
-                            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
-                            .background(Capsule().fill(Theme.surfaceTable))
-                    }
-                }
-            }
-            .padding(Theme.Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
-            .contentShape(Rectangle())
-        }.buttonStyle(PressableStyle())
+        }
     }
 
     private func companyName(_ id: Int, _ e: GameEngine) -> String {
@@ -203,10 +186,11 @@ struct GroupSupplierDirectory: View {
         VStack(spacing: Theme.Space.s) {
             ForEach(en.companyIDs, id: \.self) { (id: Int) in
                 let name: String = en.uses.first(where: { $0.companyID == id })?.companyName ?? "company"
-                SmallOutlineButton(title: "Open in \(name)") {
+                Button("Open in \(name)") {
+                    Haptics.tap()
                     picked = nil
                     store.openCompany(id, section: .operations, part: OpsPart.suppliers.rawValue)
-                }
+                }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             }
         }
     }
