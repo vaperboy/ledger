@@ -133,6 +133,8 @@ public enum Dismissal {
         book(&s, payer: .company(companyID), notice: q.notice, severance: q.severance, fine: q.fine, labels: .manager)
         ManagerModel.stepDown(&s, ci)
         GrowthPaths.installSuccessor(&s, companyID: companyID, data: data)   // the named successor steps up (GrowthPaths.swift)
+        // The owner let the manager go on purpose, so the weekly check must not report "the manager has left" as an emergency next week.
+        if reason != .resignation { s.companies[ci].set("mgr12", s.companies[ci].managerID.map { .number(Double($0)) } ?? .null) }
         return q
     }
 

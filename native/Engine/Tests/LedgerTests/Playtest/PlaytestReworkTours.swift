@@ -249,7 +249,8 @@ final class PlaytestReworkTours: XCTestCase {
         ex(e.state.cash + (e.state.company(id)?.cash ?? 0) <= cash0 + 1, "dismissal does not create money")
         let r2 = e.proposeCEOChange(companyID: id)
         if case .refused = r2 {} else { ex(false, "a second proposal with nobody to replace is refused (\(r2))") }
-        run(&e, weeks: 8)
+        let told = run(&e, weeks: 8)
+        ex(!told.contains { $0.title.contains("manager has left") }, "after the owner replaces the CEO on purpose there is no \"manager has left\" emergency")
         // hire a new one, propose again
         hireManager(&e, id)
         run(&e, weeks: 4)

@@ -154,4 +154,13 @@ final class OwnerMeetingsTests: XCTestCase {
         XCTAssertNotEqual(e.state.company(id)?.managerID, mgr0, "the co-owners carried the vote: \(e.ceoVote(companyID: id).percentYes)")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    /// The weekly check remembers the manager in post (`mgr12`) and raises "the manager has left" when it finds the post empty. A change the owner
+    /// made on purpose must clear that memory, or the next week brings an emergency about something the owner just did.
+    func testReplacingTheCeoClearsTheManagerHasLeftMemory() throws {
+        var (e, id, mgr) = try setup(seed: 61)
+        e.update { s, _, _ in s.companies[s.companyIndex(id)!].set("mgr12", .number(Double(mgr))) }
+        XCTAssertEqual(e.proposeCEOChange(companyID: id), .dismissed)
+        XCTAssertTrue(e.state.company(id)!.value("mgr12").isNull)
+    }
 }

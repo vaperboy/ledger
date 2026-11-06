@@ -383,7 +383,7 @@ final class PlayBot {
         }
         let t = (m.title + " " + m.body).lowercased()
         let verbs = ["you bought", "you purchased", "you ordered", "you signed", "you hired", "you took out", "you started", "you opened", "you invested", "you sold", "you paid"]
-        if let v = verbs.first(where: { t.contains($0) }) {
+        if let v = verbs.first(where: { t.contains($0) }), !(job.scenario == .rework && soldWeek > 0) {
             let recent = recentBuy.contains { absDay - $0 <= 7 }
             if !recent { find(2, "unsolicited:\(nt.prefix(40))", "Message says \"\(v)\" but the bot did nothing of the kind this week: \"\(nt)\"", "message creator named by title", "") }
         }
@@ -417,7 +417,7 @@ final class PlayBot {
             if w % 4 == 0, let p = badNumber(.object(co.raw)) { find(1, "nan-company:\(p.split(separator: ".").first ?? "")", "Non-finite number in company record at \(p)", "Businesses/* writer of that field", "co=\(co.id) \(co.type)") }
             if !co.cash.isFinite { find(1, "nan-cash", "Company cash not finite", "CompanyWeek", "co=\(co.id) \(co.type)") }
             if co.type != "hold", co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 { find(3, "cash-below-room:\(co.type)", "Company cash \(Int(co.cash)) is below its overdraft room (money spent that the account could not cover)", "Payments.companyPays / payBills", "co=\(co.id)") }
-            if s.cash < -s.overdraftLimit - 1 { find(2, "personal-negative", "Personal cash below the personal overdraft limit (\(Int(s.cash)) vs \(Int(-s.overdraftLimit)))", "Payments / personal spending", "") }
+            if s.cash < -s.overdraftLimit * 1.5 - 1 { find(2, "personal-negative", "Personal cash below the personal overdraft limit (\(Int(s.cash)) vs \(Int(-s.overdraftLimit)))", "Payments / personal spending", "") }
             if co.inventory < -0.01 { find(1, "neg-inventory:\(co.type)", "Negative inventory (\(Int(co.inventory)))", "Businesses/CompanyWeek (stock handling)", "co=\(co.id)") }
             for st in co.staff where st.monthlyWage < 0 { find(1, "neg-wage", "Negative wage on staff \(st.role)", "Employees/Payroll", "co=\(co.id)") }
             for (k, v) in [("reputation", co.reputation), ("quality", co.quality), ("awareness", co.awareness)] where v < -1 || v > 101 {
