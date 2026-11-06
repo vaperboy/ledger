@@ -17,7 +17,7 @@ final class FeatureToursTests: FeatureTourCase {
             let title: String = String(id.dropFirst(4))
             step("tab \(title): opens and is selected") {
                 guard goTab(title) else { return .fail("the tab button is not there") }
-                return button(id).isSelected ? .pass() : .fail("tapped but the tab is not marked selected")
+                return button(id).isSelected ? .pass() : .fail("tapped but the tab is not marked selected: " + tabState())
             }
             step("tab \(title): health") { health("tab \(title)", title: false) }
         }
@@ -49,7 +49,7 @@ final class FeatureToursTests: FeatureTourCase {
             guard openPhoneApp(title) else { return .fail("no tile phone-app-\(title) on the Phone grid") }
             if popupUp() { closePopup() }
             let sig: TourSig = signature()
-            let gridStillThere: Bool = title != "Bank" ? button("phone-app-Bank").isHittable : button("phone-app-Inbox").isHittable
+            let gridStillThere: Bool = title != "Bank" ? visible(button("phone-app-Bank")) : visible(button("phone-app-Inbox"))
             if gridStillThere { return .fail("the app grid is still on screen after tapping the tile") }
             opened = true
             return .pass(sig.text)

@@ -92,18 +92,22 @@ class FeatureTourCase: XCTestCase {
     let log = TourLogStore.shared
     /// The screen just before the last tap of `driveUntilPopup` (the screen a popup belongs to).
     var lastBefore: TourSig?
+    /// Time caps: one test method may spend 5 minutes, the whole run 62 minutes (CI limit 90); later steps are recorded as SKIP at once.
+    static let runStart: Date = Date()
+    var testDeadline: Date = Date().addingTimeInterval(300)
 
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
     static let popupIDs: [String] = ["popup-backdrop", "popup-close", "confirm-go", "confirm-cancel", "report-continue", "report-open", "celebration-dismiss",
-                                     "celebration-claim", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "unlock-go", "ambition-later",
+                                     "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "unlock-go", "ambition-later",
                                      "conversion-keep", "paywall-buy", "paywall-pass"]
-    static let closeIDs: [String] = ["popup-close", "confirm-cancel", "report-continue", "celebration-dismiss", "alert-continue", "error-ok",
+    static let closeIDs: [String] = ["popup-close", "confirm-cancel", "report-continue", "celebration-dismiss", "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok",
                                      "notice-ok", "unlock-skip", "ambition-later", "conversion-keep", "paywall-pass"]
 
     override func setUp() {
         super.setUp()
         continueAfterFailure = true
+        testDeadline = Date().addingTimeInterval(300)
         app = XCUIApplication()
         app.launchArguments = ["-showcase", "-showcase-rich", "-showcase-board"]
         app.launch()
@@ -112,8 +116,8 @@ class FeatureTourCase: XCTestCase {
         var home = false
         while Date() < end && !home {
             let later: XCUIElement = app.buttons["ambition-later"].firstMatch
-            if later.exists { later.tap(); pause(1) }
-            home = homeVisible(2)
+            if later.exists { ctap(later); pause(1) } else if popupUp() { closePopup() }
+            home = homeVisible(2) && !popupUp()
         }
         if !home { log.record(.fail, "launch: Home summary visible", "no 'Net worth' text 30 s after launch") }
     }
@@ -126,10 +130,17 @@ class FeatureTourCase: XCTestCase {
     // MARK: Steps
 
     func step(_ name: String, _ body: () -> R) {
-        switch body() {
-        case .pass(let m): log.record(.pass, name, m)
-        case .fail(let m): log.record(.fail, name, m)
-        case .skip(let m): log.record(.skip, name, m)
+        if Date() > testDeadline || Date().timeIntervalSince(Self.runStart) > 62 * 60 {
+            log.record(.skip, name, "time cap reached (5 min per test / 62 min total)")
+            return
+        }
+        let t0: Date = Date()
+        let r: R = body()
+        let took: String = " [\(Int(Date().timeIntervalSince(t0)))s]"
+        switch r {
+        case .pass(let m): log.record(.pass, name, m + took)
+        case .fail(let m): log.record(.fail, name, m + took)
+        case .skip(let m): log.record(.skip, name, m + took)
         }
     }
 
@@ -146,18 +157,35 @@ class FeatureTourCase: XCTestCase {
     func buttonContaining(_ text: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch }
     func buttonPrefix(_ idPrefix: String) -> XCUIElement { app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", idPrefix)).firstMatch }
 
-    /// Scrolls (up, then down) until the element can be tapped.
+    /// On screen: exists with a non-empty frame inside the window (isHittable is avoided: overlay/tab-bar elements trigger AX scroll failures).
+    func visible(_ e: XCUIElement) -> Bool {
+        guard e.exists else { return false }
+        let f: CGRect = e.frame
+        let w: CGRect = app.windows.firstMatch.frame
+        if f.isEmpty || f.width < 1 || f.height < 1 || f.isNull || f.isInfinite { return false }
+        return w.isEmpty ? true : w.intersects(f)
+    }
+
+    /// Taps by coordinate (never e.tap(): its AX scroll-to-visible fails on floating tab bar buttons). Never throws or aborts the flow.
+    @discardableResult
+    func ctap(_ e: XCUIElement) -> Bool {
+        guard visible(e) else { return false }
+        e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        return true
+    }
+
+    /// Scrolls (up, then down) until the element is on screen.
     func reveal(_ e: XCUIElement) -> Bool {
-        if e.exists && e.isHittable { return true }
-        for _ in 0..<4 { app.swipeUp(); if e.exists && e.isHittable { return true } }
-        for _ in 0..<8 { app.swipeDown(); if e.exists && e.isHittable { return true } }
+        if visible(e) { return true }
+        for _ in 0..<4 { app.swipeUp(); if visible(e) { return true } }
+        for _ in 0..<8 { app.swipeDown(); if visible(e) { return true } }
         return false
     }
 
     @discardableResult
     func tap(_ e: XCUIElement, wait: TimeInterval = 3) -> Bool {
         guard e.waitForExistence(timeout: wait), reveal(e) else { return false }
-        e.tap()
+        guard ctap(e) else { return false }
         pause(0.7)
         return true
     }
@@ -180,7 +208,24 @@ class FeatureTourCase: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", Self.popupIDs)).firstMatch
     }
 
-    func popupUp(_ wait: TimeInterval = 0) -> Bool { wait > 0 ? popupElement.waitForExistence(timeout: wait) : popupElement.exists }
+    /// Cheap check: one button query, plus the backdrop.
+    func popupUp(_ wait: TimeInterval = 0) -> Bool {
+        let b: XCUIElement = app.buttons.matching(NSPredicate(format: "identifier IN %@", Self.popupIDs)).firstMatch
+        if wait > 0 { return b.waitForExistence(timeout: wait) || popupElement.exists }
+        return b.exists || app.otherElements["popup-backdrop"].exists
+    }
+
+    var diagCount = 0
+    /// Diagnostic (max 8 per run): which popup ids are on screen with their frames.
+    func popupDiag(_ why: String) {
+        guard diagCount < 8 else { return }
+        diagCount += 1
+        let found: [String] = Self.popupIDs.compactMap { (id: String) -> String? in
+            let e: XCUIElement = elem(id)
+            return e.exists ? "\(id)@\(Int(e.frame.minX)),\(Int(e.frame.minY)),\(Int(e.frame.width))x\(Int(e.frame.height))" : nil
+        }
+        log.note("popup diag (\(why)): " + found.joined(separator: " "))
+    }
 
     func waitPopupGone(_ t: TimeInterval = 3) -> Bool {
         let end: Date = Date().addingTimeInterval(t)
@@ -193,10 +238,22 @@ class FeatureTourCase: XCTestCase {
 
     /// Closes the popup on top with its own button (`prefer` first), else by tapping the dimmed area above the card.
     func closePopup(prefer: [String] = []) {
-        for id in prefer + Self.closeIDs {
-            let b: XCUIElement = button(id)
-            if b.exists && b.isHittable { b.tap(); pause(0.6); return }
+        let ids: [String] = prefer + Self.closeIDs
+        func tapFirst() -> Bool {
+            for id in prefer where ctap(button(id)) { return true }
+            // One query for all close ids (tap order = tree order).
+            let q: XCUIElementQuery = app.buttons.matching(NSPredicate(format: "identifier IN %@", ids))
+            return ctap(q.firstMatch)
         }
+        if tapFirst() { pause(0.6); return }
+        // The card can be taller than the screen (the week report keeps Continue at the end of its scrolling content): scroll inside it.
+        for _ in 0..<3 {
+            let from: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+            let to: XCUICoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
+            from.press(forDuration: 0.1, thenDragTo: to)
+            if tapFirst() { pause(0.6); return }
+        }
+        popupDiag("no close button tappable after scrolling")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
         pause(0.6)
     }
@@ -205,11 +262,11 @@ class FeatureTourCase: XCTestCase {
 
     func tapBack() -> Bool {
         let round: XCUIElement = button("back-button")
-        if round.exists && round.isHittable { round.tap(); pause(0.8); return true }
+        if ctap(round) { pause(0.8); return true }
         let bars: XCUIElementQuery = app.navigationBars
         for i in 0..<bars.count {
             let b: XCUIElement = bars.element(boundBy: i).buttons.element(boundBy: 0)
-            if b.exists && b.isHittable { b.tap(); pause(0.8); return true }
+            if ctap(b) { pause(0.8); return true }
         }
         return false
     }
@@ -222,6 +279,14 @@ class FeatureTourCase: XCTestCase {
         }
     }
 
+    /// Diagnostic: every tab button with its selected flag and frame, and the first button ids on screen.
+    func tabState() -> String {
+        let tabs: String = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'")).allElementsBoundByIndex
+            .map { "\($0.identifier)\($0.isSelected ? "*" : "")@\(Int($0.frame.minX)),\(Int($0.frame.minY))" }.joined(separator: " ")
+        let others: [String] = app.buttons.allElementsBoundByIndex.prefix(40).map { $0.identifier }.filter { !$0.hasPrefix("tab-") && !$0.isEmpty }
+        return "tabs: \(tabs); buttons: \(others.prefix(25).joined(separator: ","))"
+    }
+
     func tabIDs() -> [String] { ids(prefix: "tab-") }
 
     @discardableResult
@@ -229,7 +294,7 @@ class FeatureTourCase: XCTestCase {
         toRoot()
         let p: XCUIElement = button("tab-\(title)")
         guard p.waitForExistence(timeout: 4) else { return false }
-        p.tap()
+        guard ctap(p) else { return false }
         pause(0.9)
         return true
     }
@@ -239,7 +304,7 @@ class FeatureTourCase: XCTestCase {
     func openPhoneApp(_ name: String) -> Bool {
         guard goTab("Phone") else { return false }
         let tile: XCUIElement = button("phone-app-\(name)")
-        guard tap(tile, wait: 5) else { return false }
+        guard tap(tile, wait: 5) else { log.note("no tile \(name): " + tabState()); return false }
         pause(0.6)
         return true
     }
@@ -351,7 +416,7 @@ class FeatureTourCase: XCTestCase {
         guard win.height > 0 else { return nil }
         var barTop: CGFloat = win.maxY
         let bar: XCUIElement = button("tab-Home")
-        if bar.exists && bar.isHittable { barTop = bar.frame.minY }
+        if visible(bar) { barTop = bar.frame.minY }
         var last = ""
         var swipes = 0
         var verdict: String? = nil
@@ -440,7 +505,7 @@ class FeatureTourCase: XCTestCase {
         for s in steps {
             if popupUp() { return true }
             let e: XCUIElement = s.hasPrefix("prefix:") ? buttonPrefix(String(s.dropFirst(7))) : button(s)
-            if e.waitForExistence(timeout: 2), reveal(e) { lastBefore = signature(); e.tap(); pause(0.8) }
+            if e.waitForExistence(timeout: 2), reveal(e) { lastBefore = signature(); ctap(e); pause(0.8) }
         }
         return popupUp(2)
     }
