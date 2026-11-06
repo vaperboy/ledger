@@ -16,14 +16,14 @@ struct FlatRow: View {
         VStack(spacing: 0) {
             if rule { Hairline() }
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(label.tidyText).font(.system(size: 13.5)).foregroundStyle(palette.ink)
-                    if !sub.isEmpty { Text(sub.tidyText).font(.system(size: 11)).foregroundStyle(palette.inkFaint).fixedSize(horizontal: false, vertical: true) }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(label.tidyText).textStyle(.body, tint: palette.ink)
+                    if !sub.isEmpty { Text(sub.tidyText).textStyle(.caption, tint: palette.inkFaint).fixedSize(horizontal: false, vertical: true) }
                 }
-                Spacer(minLength: 8)
-                Text(value.tidyText).font(.system(size: 13.5).monospacedDigit()).foregroundStyle(tint ?? palette.ink).multilineTextAlignment(.trailing)
+                Spacer(minLength: Theme.Space.s)
+                Text(value.tidyText).textStyle(.body, tint: tint ?? palette.ink, numeric: true).multilineTextAlignment(.trailing)
             }
-            .padding(.vertical, 9)
+            .padding(.vertical, Theme.Space.s)
         }
     }
 }

@@ -17,46 +17,13 @@ func itemProfitReading(_ lp: ItemModels.LiveProfit, _ cur: Currency) -> (text: S
     switch lp.outcome {
     case .profit: return ("profit " + itemAmount(lp.amount, cur), Theme.gain)
     case .loss: return ("loss " + itemAmount(lp.amount, cur), Theme.loss)
-    case .breakEven: return ("break-even", Theme.ivoryMuted)
+    case .breakEven: return ("break-even", Theme.inkSoft)
     }
 }
 
 // MARK: List
 
-/// One item as a bordered card, like a person in the Team list (`PersonCard`): thumbnail or glyph, name, status line, price with the live profit or loss, chevron.
-struct ItemListRow: View {
-    var name: String
-    var status: String
-    var statusTint: Color = Theme.ivoryMuted
-    var price: String
-    var reading: String
-    var readingTint: Color
-    var isService: Bool
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ThumbnailView(kind: .trade, key: name, size: 42, glyph: isService ? Glyph.opsWrench : Glyph.opsBox)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(status).font(.system(size: 12.5)).foregroundStyle(statusTint).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 1) {
-                Text(price).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(Theme.ivory)
-                Text(reading).font(.system(size: 10.5).monospacedDigit()).foregroundStyle(readingTint)
-            }
-            GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// The items of a company laid out like the staff list: caption "ITEMS" with a count and the weekly sales at the right, one card per item.
+/// The items of a company: a titled list with the count and weekly sales at the right, one row per item (price, live profit or loss).
 struct ItemsList: View {
     var engine: GameEngine
     var company: Company
@@ -69,27 +36,36 @@ struct ItemsList: View {
         let cur: Currency = engine.currency(for: company)
         let total: Double = items.reduce(0) { (a: Double, i: SalesItem) -> Double in a + i.weeklyRevenue }
         let noun: String = service ? "service" : "product"
-        return TeamGroup(title: "Items", trailing: {
-            Text("\(items.count) \(items.count == 1 ? "item" : "items") \u{00B7} \(cur.tidyShort(total)) a week").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+        return LedgerSection(title: "Items", rule: false, trailing: {
+            Text("\(items.count) \(items.count == 1 ? "item" : "items") \u{00B7} \(cur.tidyShort(total)) a week").textStyle(.caption)
         }) {
-            if items.isEmpty { Text("Nothing is on sale yet.").font(.bodyText).foregroundStyle(Theme.ivoryMuted) }
-            ForEach(items) { (it: SalesItem) -> AnyView in AnyView(row(it, cur)) }
+            VStack(spacing: 0) {
+                if items.isEmpty {
+                    EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Nothing is on sale yet",
+                               message: company.status == .open ? "Add a \(noun) to start selling." : "", centered: false)
+                }
+                ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
+                    if i > 0 { Hairline() }
+                    row(it, cur)
+                }
+            }
             if company.status == .open {
-                TeamAction(title: "Add \(noun)") { onAdd() }.accessibilityIdentifier("sales-add-item")
+                Button("Add \(noun)") { Haptics.tap(); onAdd() }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("sales-add-item")
             }
         }
     }
 
     private func row(_ it: SalesItem, _ cur: Currency) -> some View {
         let page: ItemPageData? = engine.itemPage(companyID: company.id, itemID: it.id)
-        let reading: (text: String, tint: Color) = page.map { (p: ItemPageData) in itemProfitReading(p.live, cur) } ?? ("", Theme.ivoryMuted)
+        let reading: (text: String, tint: Color) = page.map { (p: ItemPageData) in itemProfitReading(p.live, cur) } ?? ("", Theme.inkSoft)
         let word: String = page?.statusWord ?? "On sale"
         let off: String = it.discountPercent > 0 ? " \u{00B7} \(Int(it.discountPercent))% off" : ""
         let id: String = it.id
-        return Button { Haptics.tap(); onOpen(id) } label: {
-            ItemListRow(name: it.name, status: word + off, price: itemAmount(it.price, cur), reading: reading.text, readingTint: reading.tint, isService: it.isService)
-        }
-        .buttonStyle(PressableStyle())
+        return LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: it.name, glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox)),
+                         title: it.name, subtitle: word + off, value: itemAmount(it.price, cur),
+                         valueNote: reading.text, valueNoteTint: reading.tint, lineLimit: 1) { onOpen(id) }
     }
 }
 
@@ -112,7 +88,7 @@ struct ProfitBand: View {
                     Rectangle().fill(Theme.loss.opacity(0.45)).frame(width: x)
                     Rectangle().fill(Theme.gain.opacity(0.45))
                 }
-                Rectangle().fill(Theme.ivory).frame(width: 1.5).offset(x: max(0, x - 0.75))
+                Rectangle().fill(Theme.ink).frame(width: 1.5).offset(x: max(0, x - 0.75))
                 Circle().fill(price >= cost ? Theme.gain : Theme.loss).frame(width: 8, height: 8).offset(x: max(0, p - 4))
             }
             .clipShape(Capsule())
@@ -124,14 +100,17 @@ struct ProfitBand: View {
 
 // MARK: Page
 
-/// One item as a scroll of blocks, like a staff member's page (`StaffProfileView`): Overview, Price, Sales and demand, Supply, Plans and promises,
-/// History, Documents, Actions. A block with nothing to show is left out; an old titles-only item has no Supply, History or Documents.
+/// One item as a scroll of sections: Price (the one place the price shows), Promotion, Sales and demand, Supply, Plans and promises,
+/// History, Documents, Actions. A section with nothing to show is left out; an old titles-only item has no Supply, History or Documents.
 struct ItemPageView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     var itemID: String
     @State private var draftPrice: Double?
     @State private var weeks = 4
+    /// The discount being chosen; nil until the player picks one (then the live discount shows).
+    @State private var draftPercent: Int?
+    @Environment(\.outsidePalette) private var P
 
     private static let listingTrades: Set<String> = ["webdev", "gamestudio", "startup", "mktg", "furniture", "factory", "hardware", "electrician", "plumber", "handy"]
 
@@ -143,9 +122,9 @@ struct ItemPageView: View {
             let pg: ItemPageData = draftPrice == nil ? base : (e.itemPage(companyID: companyID, itemID: itemID, price: price) ?? base)
             let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    overview(pg, cur)
-                    priceBlock(pg, co, cur, price)
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                    priceBlock(pg, co, cur, price, f)
+                    promotionBlock(co, pg.item)
                     demandBlock(pg, f, cur)
                     supplyBlock(pg, cur)
                     TradeItemBlocks(e: e, companyID: companyID, itemID: itemID, price: price, cur: cur)
@@ -155,115 +134,93 @@ struct ItemPageView: View {
                     actionsBlock(pg, cur)
                     soldBlock(e, co)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .appScreen(title: base.item.name, subtitle: base.modelLabel, tab: .company)
+            .scrollDismissesKeyboard(.interactively)
+            .appScreen(title: base.item.name, subtitle: base.modelLabel + " \u{00B7} " + base.statusWord, tab: .company)
         } else {
-            Text("This item no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
-        }
-    }
-
-    // MARK: Overview
-
-    private func overview(_ p: ItemPageData, _ cur: Currency) -> some View {
-        let reading = itemProfitReading(p.live, cur)
-        var figures: [KeyFigures.Item] = [
-            .init(label: "Cost", value: itemAmount(p.unitCost, cur), sub: p.record == nil ? "typical for the trade" : "a unit"),
-            .init(label: "Price", value: itemAmount(p.item.price, cur), sub: p.item.discountPercent > 0 ? "\(Int(p.item.discountPercent))% off now" : "before discount"),
-            .init(label: "Margin now", value: reading.text, tint: reading.tint),
-        ]
-        if let r = p.record, r.model.holdsStock {
-            figures.append(.init(label: "In stock", value: "\(r.stock)", sub: r.onOrder > 0 ? "\(r.onOrder) on order" : ""))
-        }
-        figures.append(.init(label: "Sold a week", value: String(format: "%.0f", p.item.weeklyUnits)))
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                ThumbnailView(kind: .trade, key: p.item.name, size: 48, glyph: p.item.isService ? Glyph.opsWrench : Glyph.opsBox)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 5) {
-                        TeamBadge(text: p.modelLabel, tint: Theme.gold)
-                        TeamBadge(text: p.statusWord)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            Card(padding: 14, radius: Theme.Radius.hero) { KeyFigures(items: figures) }
+            EmptyState(glyph: Glyph.opsBox, title: "This item no longer exists")
+                .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 
     // MARK: Price
 
-    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double) -> some View {
+    /// The margin is the lead figure; the price itself shows once, in the typed field under the slider (as a figure when it cannot move).
+    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast) -> some View {
         let lo: Double = p.item.marketPrice * SalesItems.ratioRange.lowerBound
         let hi: Double = p.item.marketPrice * SalesItems.ratioRange.upperBound
         let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
         let reading = itemProfitReading(p.live, cur)
-        let word: String = p.live.word
-        return TeamGroup("Price") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        let margin: String = p.live.outcome == .breakEven ? p.live.word : p.live.word + " " + itemAmount(p.live.amount, cur) + " each"
+        var facts: [String] = ["cost " + itemAmount(p.unitCost, cur) + (p.record == nil ? " (typical)" : ""),
+                               "market " + itemAmount(p.item.marketPrice, cur),
+                               String(format: "about %.0f sold a week", f.units)]
+        return LedgerSection("Price", rule: false) {
+            Figure(label: "Margin", value: margin, note: facts.joined(separator: " \u{00B7} "), tint: reading.tint, size: .figure)
+            if hi > lo {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(itemAmount(price, cur)).font(.system(size: 22, weight: .semibold).monospacedDigit()).foregroundStyle(Theme.gold)
-                        Spacer()
-                        Text(p.live.outcome == .breakEven ? word : word + " " + itemAmount(p.live.amount, cur))
-                            .font(.system(size: 15, weight: .semibold).monospacedDigit()).foregroundStyle(reading.tint)
-                    }
-                    if hi > lo {
-                        LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
-                            if !editing { commitPrice(draftPrice ?? p.item.price) }
-                        })
-                        .tint(Theme.gold)
-                        .accessibilityIdentifier("sales-item-price")
-                        ProfitBand(lo: lo, hi: hi, cost: p.unitCost, price: price)
-                        TypedPriceField(price: price, range: lo...hi, cur: cur, unit: p.item.isService ? "per service" : "each",
-                                        hint: { (v: Double) -> String? in
-                            let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
-                            return lp.outcome == .breakEven ? "At this price you break even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
-                        }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
-                    }
-                    Text("Cost \(itemAmount(p.unitCost, cur)). Market price \(itemAmount(p.item.marketPrice, cur)). Red is a loss, green a profit; you can go from 30% to 300% of the market price.")
-                        .font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                    discountControls(co, p.item)
-                    listToggle(co, p.item)
+                    LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
+                        if !editing { commitPrice(draftPrice ?? p.item.price) }
+                    })
+                    .tint(P.accent)
+                    .accessibilityIdentifier("sales-item-price")
+                    ProfitBand(lo: lo, hi: hi, cost: p.unitCost, price: price)
                 }
+                TypedPriceField(price: price, range: lo...hi, cur: cur, unit: p.item.isService ? "per service" : "each",
+                                hint: { (v: Double) -> String? in
+                    let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
+                    return lp.outcome == .breakEven ? "At this price you break even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
+                }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
+            } else {
+                Figure(label: "Price", value: itemAmount(price, cur), size: .inline)
             }
+            listToggle(co, p.item)
         }
     }
 
     private func commitPrice(_ price: Double) {
         let id: Int = companyID
         let item: String = itemID
+        let cur: Currency? = store.engine.flatMap { (e: GameEngine) in e.state.company(id).map { e.currency(for: $0) } }
         let r = store.act { $0.setItemPrice(companyID: id, itemID: item, price: price) }
         draftPrice = nil
         if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else if r?.didChange == true, let cur { store.saved("price " + itemAmount(price, cur)) }
     }
 
-    @ViewBuilder private func discountControls(_ co: Company, _ it: SalesItem) -> some View {
+    // MARK: Promotion
+
+    /// Pick a discount and a length, then one button starts, changes or ends it: nothing reaches the engine before the tap.
+    @ViewBuilder private func promotionBlock(_ co: Company, _ it: SalesItem) -> some View {
         let options: [Int] = PriceMoves.discountOptions(co.type)
         if !options.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("DISCOUNT").capsLabel()
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], spacing: 8) {
-                    ForEach([0] + options, id: \.self) { (pc: Int) in chip(pc, it) }
+            let live: Int = Int(it.discountPercent)
+            let chosen: Int = draftPercent ?? live
+            let pick = Binding<Int>(get: { chosen }, set: { (v: Int) in Haptics.choose(); draftPercent = v })
+            let changed: Bool = chosen != live || (chosen > 0 && weeks != it.discountWeeksLeft)
+            let title: String = chosen == 0 ? "End promotion" : (live > 0 ? "Change promotion" : "Start promotion")
+            let blocked: String? = chosen == 0 && live == 0 ? "Pick a discount to start a promotion." : nil
+            LedgerSection(title: "Promotion", trailing: {
+                if live > 0 {
+                    Text("\(live)% off \u{00B7} \(it.discountWeeksLeft.weeksText) left").textStyle(.caption, tint: P.gain)
                 }
-                Stepper("For \(weeks.weeksText)", value: $weeks, in: 1...26).font(.system(size: 14)).foregroundStyle(Theme.ivory)
-                    .onChange(of: weeks) { _, _ in if it.discountPercent > 0 { commitDiscount(it.discountPercent) } }
+            }) {
+                SegmentedPill(items: [0] + options, title: { (pc: Int) -> String in pc == 0 ? "None" : "\(pc)%" }, selection: pick)
+                if chosen > 0 {
+                    Stepper(value: $weeks, in: 1...26) {
+                        Text("For \(weeks.weeksText)").textStyle(.body, tint: P.ink)
+                    }
+                    .frame(minHeight: 44)
+                }
+                if changed || live == 0 {
+                    PrimaryAction(title: title, blockedReason: blocked) { commitDiscount(Double(chosen)) }
+                }
             }
+            .onAppear { if live > 0 { weeks = max(1, it.discountWeeksLeft) } }
         }
-    }
-
-    private func chip(_ pc: Int, _ it: SalesItem) -> some View {
-        let on: Bool = Int(it.discountPercent) == pc
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-        return Button { Haptics.choose(); commitDiscount(Double(pc)) } label: {
-            Text(pc == 0 ? "None" : "\(pc)%").font(.system(size: 14, weight: .medium)).foregroundStyle(on ? Theme.gold : Theme.ivory)
-                .frame(maxWidth: .infinity).padding(.vertical, 9)
-                .background(shape.fill(on ? Theme.goldSelected : Theme.surface))
-                .overlay(shape.strokeBorder(on ? Theme.gold : Theme.border, lineWidth: 1))
-        }
-        .buttonStyle(PressableStyle())
     }
 
     private func commitDiscount(_ percent: Double) {
@@ -271,16 +228,24 @@ struct ItemPageView: View {
         let item: String = itemID
         let w: Int = weeks
         let r = store.act { $0.setItemDiscount(companyID: id, itemID: item, percent: percent, weeks: w) }
-        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn"); return }
+        guard r?.didChange == true else { return }
+        draftPercent = nil
+        Haptics.success()
+        store.show(percent > 0 ? "Promotion: \(Int(percent))% off for \(w.weeksText)" : "Promotion ended")
     }
 
     @ViewBuilder private func listToggle(_ co: Company, _ it: SalesItem) -> some View {
         if Self.listingTrades.contains(co.type) || it.listedForGroup {
             let on = Binding<Bool>(get: { it.listedForGroup }, set: { (v: Bool) in setListed(v) })
-            VStack(alignment: .leading, spacing: 4) {
-                Toggle("List for my other companies", isOn: on).tint(Theme.gold).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory)
-                Text("Your other companies in this country can buy it in TechPro. The profit stays with this company.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            Toggle(isOn: on) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text("List for my other companies").textStyle(.headline)
+                    Text("Your other companies in this country can buy it in TechPro. The profit stays with this company.").textStyle(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            .tint(P.accent)
         }
     }
 
@@ -289,6 +254,7 @@ struct ItemPageView: View {
         let item: String = itemID
         let r = store.act { $0.setItemListedForGroup(companyID: id, itemID: item, listed: v) }
         if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else if r?.didChange == true { store.saved(v ? "listed for your companies" : "no longer listed") }
     }
 
     // MARK: Sales and demand
@@ -296,15 +262,12 @@ struct ItemPageView: View {
     private func demandBlock(_ p: ItemPageData, _ f: ItemForecast, _ cur: Currency) -> some View {
         let profit: String = (f.profitChange >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(f.profitChange)) + " a week"
         let chance: String = String(format: "%.0f%%", p.saleProbability * 100)
-        return TeamGroup("Sales and demand") {
-            Card(padding: 14, radius: Theme.Radius.row) {
-                VStack(spacing: 0) {
-                    FlatRow(label: "Units a week", value: String(format: "%.0f", f.units), rule: false)
-                    FlatRow(label: "Revenue", value: cur.tidyShort(f.revenue) + " a week")
-                    FlatRow(label: "Profit change", value: profit, tint: f.profitChange >= 0 ? Theme.gain : Theme.loss)
-                    FlatRow(label: "Demand against market price", value: String(format: "%+.0f%%", f.demandChange * 100), tint: f.demandChange >= 0 ? Theme.gain : Theme.loss)
-                    FlatRow(label: "Chance an interested buyer buys this week", value: chance, sub: "Fair value \(itemAmount(p.fairValue, cur))")
-                }
+        return LedgerSection("Sales and demand") {
+            VStack(spacing: 0) {
+                FlatRow(label: "Revenue", value: cur.tidyShort(f.revenue) + " a week", rule: false)
+                FlatRow(label: "Profit change", value: profit, tint: f.profitChange >= 0 ? P.gain : P.loss)
+                FlatRow(label: "Demand against market price", value: String(format: "%+.0f%%", f.demandChange * 100), tint: f.demandChange >= 0 ? P.gain : P.loss)
+                FlatRow(label: "Chance an interested buyer buys this week", value: chance, sub: "Fair value \(itemAmount(p.fairValue, cur))")
             }
         }
     }
@@ -313,28 +276,28 @@ struct ItemPageView: View {
 
     @ViewBuilder private func supplyBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
         if let r = p.record {
-            TeamGroup("Supply") {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        VStack(spacing: 0) {
-                            if let s = p.supply {
-                                FlatRow(label: "Comes from", value: s.vendorName, sub: s.relationshipWord, rule: false)
-                                FlatRow(label: "You pay", value: itemAmount(s.buyPrice, cur), sub: s.discount > 0 ? "\(Int((s.discount * 100).rounded()))% off for the relationship" : "")
-                            } else {
-                                FlatRow(label: "Comes from", value: "No supplier chosen", rule: false)
-                            }
-                            if r.leadDays > 0 { FlatRow(label: "Lead time", value: "\(r.leadDays) days") }
-                            if r.model.holdsStock {
-                                FlatRow(label: "In stock", value: "\(r.stock)", sub: r.onOrder > 0 ? "\(r.onOrder) on order" : "")
-                            }
-                            if r.capacity > 0 { FlatRow(label: "Capacity", value: String(format: "%.0f a week", r.capacity)) }
-                        }
-                        if !p.offers.isEmpty {
-                            WrapRow {
-                                ForEach(p.offers.prefix(4), id: \.vendorID) { (o: ItemModels.SupplyLine) in
-                                    TeamAction(title: o.vendorName, tint: o.vendorID == r.supplierID ? Theme.gain : Theme.gold) { choose(o.vendorID) }
-                                }
-                            }
+            LedgerSection("Supply") {
+                VStack(spacing: 0) {
+                    if let s = p.supply {
+                        FlatRow(label: "Comes from", value: s.vendorName, sub: s.relationshipWord, rule: false)
+                        FlatRow(label: "You pay", value: itemAmount(s.buyPrice, cur), sub: s.discount > 0 ? "\(Int((s.discount * 100).rounded()))% off for the relationship" : "")
+                    } else {
+                        FlatRow(label: "Comes from", value: "No supplier chosen", rule: false)
+                    }
+                    if r.leadDays > 0 { FlatRow(label: "Lead time", value: "\(r.leadDays) days") }
+                    if r.model.holdsStock {
+                        FlatRow(label: "In stock", value: "\(r.stock)", sub: r.onOrder > 0 ? "\(r.onOrder) on order" : "")
+                    }
+                    if r.capacity > 0 { FlatRow(label: "Capacity", value: String(format: "%.0f a week", r.capacity)) }
+                }
+                if !p.offers.isEmpty {
+                    Text("Switch supplier").textStyle(.label)
+                    WrapRow {
+                        ForEach(p.offers.prefix(4), id: \.vendorID) { (o: ItemModels.SupplyLine) in
+                            let current: Bool = o.vendorID == r.supplierID
+                            Button(o.vendorName) { Haptics.tap(); choose(o.vendorID, o.vendorName) }
+                                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: current ? P.gain : P.accent))
+                                .disabled(current)
                         }
                     }
                 }
@@ -342,29 +305,26 @@ struct ItemPageView: View {
         }
     }
 
-    private func choose(_ vendorID: String) {
+    private func choose(_ vendorID: String, _ name: String) {
         let id: Int = companyID
         let item: String = itemID
         let r = store.act { $0.setItemSupplier(companyID: id, itemID: item, vendorID: vendorID) }
         if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else if r?.didChange == true { store.saved("supplied by " + name) }
     }
 
     // MARK: Plans and promises
 
+    /// Reservations and plans; a running discount shows under Promotion.
     @ViewBuilder private func plansBlock(_ p: ItemPageData) -> some View {
         let plans: [ItemModels.Plan] = p.record?.plans ?? []
         let reserved: Int = p.record?.reserved ?? 0
-        if p.item.discountPercent > 0 || !plans.isEmpty || reserved > 0 {
-            TeamGroup("Plans and promises") {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        if p.item.discountPercent > 0 {
-                            Text("\(Int(p.item.discountPercent))% off for \(p.item.discountWeeksLeft.weeksText) more.").font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                        }
-                        if reserved > 0 { Text("\(reserved) reserved for customers.").font(.system(size: 13)).foregroundStyle(Theme.ivory) }
-                        ForEach(Array(plans.enumerated()), id: \.offset) { pair in
-                            Text(pair.element.text).font(.system(size: 13)).foregroundStyle(Theme.ivory)
-                        }
+        if !plans.isEmpty || reserved > 0 {
+            LedgerSection("Plans and promises") {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    if reserved > 0 { Text("\(reserved) reserved for customers.").textStyle(.body, tint: P.ink) }
+                    ForEach(Array(plans.enumerated()), id: \.offset) { pair in
+                        Text(pair.element.text).textStyle(.body, tint: P.ink).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -377,17 +337,15 @@ struct ItemPageView: View {
         let weeksList: [ItemModels.Week] = Array((p.record?.history ?? []).suffix(8).reversed())
         if !weeksList.isEmpty {
             let total: Double = (p.record?.history ?? []).reduce(0) { (a: Double, w: ItemModels.Week) -> Double in a + w.profit }
-            TeamGroup(title: "History", trailing: {
-                Text("last \(weeksList.count) weeks").font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint)
+            LedgerSection(title: "History", trailing: {
+                Text("last \(weeksList.count) weeks").textStyle(.caption)
             }) {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(weeksList.enumerated()), id: \.offset) { pair in
-                            FlatRow(label: "Week \(pair.element.week)", value: String(format: "%.0f sold", pair.element.units),
-                                    sub: (pair.element.profit >= 0 ? "profit " : "loss ") + itemAmount(pair.element.profit, cur), tint: nil, rule: pair.offset > 0)
-                        }
-                        FlatRow(label: "Profit or loss so far", value: (total >= 0 ? "profit " : "loss ") + itemAmount(total, cur), tint: total >= 0 ? Theme.gain : Theme.loss)
+                VStack(spacing: 0) {
+                    ForEach(Array(weeksList.enumerated()), id: \.offset) { pair in
+                        FlatRow(label: "Week \(pair.element.week)", value: String(format: "%.0f sold", pair.element.units),
+                                sub: (pair.element.profit >= 0 ? "profit " : "loss ") + itemAmount(pair.element.profit, cur), tint: nil, rule: pair.offset > 0)
                     }
+                    FlatRow(label: "Profit or loss so far", value: (total >= 0 ? "profit " : "loss ") + itemAmount(total, cur), tint: total >= 0 ? P.gain : P.loss)
                 }
             }
         }
@@ -397,13 +355,11 @@ struct ItemPageView: View {
 
     @ViewBuilder private func documentsBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
         if let r = p.record {
-            TeamGroup("Documents") {
-                Card(padding: 14, radius: Theme.Radius.row) {
-                    VStack(spacing: 0) {
-                        FlatRow(label: "Kind", value: r.model.label, rule: false)
-                        FlatRow(label: "Cost basis", value: itemAmount(r.cost, cur), sub: r.prep > 0 ? "plus \(itemAmount(r.prep, cur)) preparation" : "")
-                        if let s = p.supply { FlatRow(label: "Supplier terms", value: s.vendorName, sub: s.leadDays > 0 ? "delivers in \(s.leadDays) days" : "") }
-                    }
+            LedgerSection("Documents") {
+                VStack(spacing: 0) {
+                    FlatRow(label: "Kind", value: r.model.label, rule: false)
+                    FlatRow(label: "Cost basis", value: itemAmount(r.cost, cur), sub: r.prep > 0 ? "plus \(itemAmount(r.prep, cur)) preparation" : "")
+                    if let s = p.supply { FlatRow(label: "Supplier terms", value: s.vendorName, sub: s.leadDays > 0 ? "delivers in \(s.leadDays) days" : "") }
                 }
             }
         }
@@ -411,17 +367,25 @@ struct ItemPageView: View {
 
     // MARK: Actions
 
-    private func actionsBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
+    /// Quick prices; a discount is started or ended under Promotion.
+    @ViewBuilder private func actionsBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
         let cost: Double = p.unitCost
         let fair: Double = p.fairValue
         let lo: Double = p.item.marketPrice * SalesItems.ratioRange.lowerBound
         let hi: Double = p.item.marketPrice * SalesItems.ratioRange.upperBound
-        return TeamGroup("What you can do") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        let atCost: Bool = cost >= lo && cost <= hi
+        let atFair: Bool = fair >= lo && fair <= hi
+        if atCost || atFair {
+            LedgerSection("Quick prices") {
                 WrapRow {
-                    if cost >= lo && cost <= hi { TeamAction(title: "Price at cost") { commitPrice(cost) } }
-                    if fair >= lo && fair <= hi { TeamAction(title: "Price at fair value") { commitPrice(fair) } }
-                    if p.item.discountPercent > 0 { TeamAction(title: "End discount", tint: Theme.loss) { commitDiscount(0) } }
+                    if atCost {
+                        Button("Price at cost \u{00B7} \(itemAmount(cost, cur))") { Haptics.tap(); commitPrice(cost) }
+                            .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    }
+                    if atFair {
+                        Button("Price at fair value \u{00B7} \(itemAmount(fair, cur))") { Haptics.tap(); commitPrice(fair) }
+                            .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    }
                 }
             }
         }
@@ -434,8 +398,8 @@ struct ItemPageView: View {
         let hasKnobs: Bool = !(trade?.knobs.isEmpty ?? true)
         let hasWays: Bool = e.waysToSell(companyID: co.id).contains { $0.canSwitch }
         if hasKnobs || hasWays {
-            TeamGroup("How it is sold") {
-                Text("These choices apply to the whole company, not only this item.").font(.caption).foregroundStyle(Theme.ivoryMuted)
+            LedgerSection("How it is sold") {
+                Text("These choices apply to the whole company, not only this item.").textStyle(.caption)
                 HowYouSellSheet(companyID: co.id, embedded: true)
             }
         }
