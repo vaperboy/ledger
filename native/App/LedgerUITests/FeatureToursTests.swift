@@ -118,6 +118,36 @@ final class FeatureToursTests: FeatureTourCase {
             guard openBoardRoom() else { return .skip("no board room (needs the -showcase-board game and a co-owner)") }
             return health("board room")
         }
+        // Boardroom tab: talk to a manager (a popup), call the board round (a popup).
+        func openBoardroomTab() -> Bool {
+            guard !entity.isEmpty else { return false }
+            _ = goTab("Group")
+            if !button("group-tab-Boardroom").exists { _ = tapID(entity) }
+            return tapID("group-tab-Boardroom")
+        }
+        roundTrip("boardroom: Talk to a manager opens a popup and closes back to the Boardroom", prepare: { openBoardroomTab() }) { tapPrefix("boardroom-talk-", wait: 4) }
+        roundTrip("boardroom: Call the board opens a popup and closes back to the Boardroom", prepare: { openBoardroomTab() }) { tapPrefix("boardroom-call-", wait: 4) }
+        // Ownership: Owners | Sell | Raise | Offers, and the route picker under Sell.
+        func openOwnership(_ part: String) -> Bool {
+            guard !entity.isEmpty else { return false }
+            _ = goTab("Group")
+            if !button("group-tab-Ownership").exists { _ = tapID(entity) }
+            guard tapID("group-tab-Ownership") else { return false }
+            return tapID("group-ownership-\(part)")
+        }
+        for part in ["Owners", "Sell", "Raise", "Offers"] {
+            step("ownership: \(part) page opens and is clean") {
+                guard openOwnership(part) else { return .skip("no Ownership > \(part) segment") }
+                return health("ownership \(part)", title: false)
+            }
+        }
+        step("ownership: Sell lists the route picker") {
+            guard openOwnership("Sell") else { return .skip("no Ownership > Sell segment") }
+            let routes: [String] = ids(prefix: "sell-route-")
+            if routes.isEmpty { return .fail("Sell shows no sell-route-* rows (a limited company with a route is expected): " + tabState()) }
+            return .pass("\(routes.count) routes: " + routes.map { String($0.dropFirst(11)) }.joined(separator: ","))
+        }
+        roundTrip("ownership: a sell route opens a confirm or sheet and Cancel keeps Sell", closeWith: ["confirm-cancel", "popup-close"], prepare: { openOwnership("Sell") }) { tapPrefix("sell-route-", wait: 4) }
         roundTrip("board room: Remove from board -> Cancel keeps the Board screen", closeWith: ["confirm-cancel"], prepare: { openBoardRoom() }) { tapID("board-remove-seat") }
         roundTrip("board room: Remove from board -> confirm keeps the Board screen", closeWith: ["confirm-go"], prepare: { openBoardRoom() }) { tapID("board-remove-seat") }
     }

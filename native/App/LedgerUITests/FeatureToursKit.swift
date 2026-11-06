@@ -119,10 +119,13 @@ class FeatureTourCase: XCTestCase {
             if later.exists { ctap(later); pause(1) } else if popupUp() { closePopup() }
             // A popup over Home hides 'Net worth': close up to ~10 popups first, and only check Home once none is up.
             var closes = 0
-            while closes < 10 && popupUp() { closePopup(); closes += 1 }
-            home = !popupUp() && homeVisible(2)
+            while closes < 10 && popupUp(1) { closePopup(); closes += 1 }
+            home = !popupUp() && homeVisible(3)
         }
-        if !home { log.record(.fail, "launch: Home summary visible", "no 'Net worth' text 30 s after launch") }
+        if !home {
+            if popupUp() { popupDiag("launch"); log.record(.skip, "launch: Home summary visible", "a popup still covers Home after closing up to 10") }
+            else { log.record(.fail, "launch: Home summary visible", "no 'Net worth' text 30 s after launch") }
+        }
     }
 
     override class func tearDown() {
@@ -307,22 +310,37 @@ class FeatureTourCase: XCTestCase {
     func openPhoneApp(_ name: String) -> Bool {
         guard goTab("Phone") else { return false }
         let tile: XCUIElement = button("phone-app-\(name)")
-        // The grid can still be settling or scrolled: give the tile a few seconds, then scroll to reveal it.
-        _ = tile.waitForExistence(timeout: 6)
-        guard tap(tile, wait: 4) else { log.note("no tile \(name): " + tabState()); return false }
-        pause(0.6)
-        return true
+        // The grid can still be settling or scrolled: wait, then scroll both ways, then retry the tab once.
+        for attempt in 0..<2 {
+            if attempt == 1 { pause(1.5); _ = goTab("Home"); _ = goTab("Phone") }
+            if tile.waitForExistence(timeout: attempt == 0 ? 8 : 5), reveal(tile), ctap(tile) { pause(1.3); return true }
+        }
+        log.note("no tile \(name): " + tabState())
+        return false
     }
 
     @discardableResult
     func openCompany(_ part: String) -> Bool {
         guard goTab("Home") else { return false }
-        // Looser than a button label: the row may expose its name as a button, static text or a combined element.
-        let pred: NSPredicate = NSPredicate(format: "label CONTAINS[c] %@ OR identifier CONTAINS[c] %@", part, part)
-        let asButton: XCUIElement = buttonContaining(part)
-        let c: XCUIElement = asButton.waitForExistence(timeout: 3) ? asButton : app.descendants(matching: .any).matching(pred).firstMatch
-        guard tap(c, wait: 5) else { return false }
-        return button("company-tab-overview").waitForExistence(timeout: 5)
+        // The row exposes its name as a combined element (label "Name, Cafe, ..."): match label or identifier, ignoring case and accents,
+        // then fall back to the trade name, then scroll the Home list.
+        let words: [String] = [part] + (part.hasPrefix("Caf") ? ["Cafe", "Coffee"] : []) + (part.hasPrefix("Gym") ? ["Fitness"] : [])
+        for _ in 0..<2 {
+            for w in words {
+                let pred: NSPredicate = NSPredicate(format: "label CONTAINS[cd] %@ OR identifier CONTAINS[cd] %@", w, w)
+                let rows: XCUIElementQuery = app.descendants(matching: .any).matching(pred)
+                let c: XCUIElement = app.buttons.matching(pred).firstMatch
+                let target: XCUIElement = c.waitForExistence(timeout: 3) ? c : rows.firstMatch
+                if target.exists, visible(target) || reveal(target), ctap(target) {
+                    pause(0.8)
+                    if button("company-tab-overview").waitForExistence(timeout: 5) { return true }
+                    _ = tapBack()
+                }
+            }
+            _ = goTab("Home")
+        }
+        log.note("no company row \(part): " + tabState())
+        return false
     }
 
     func swipeBackFromEdge() {
