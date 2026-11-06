@@ -32,7 +32,7 @@ struct GroupEntityBoard: View {
                 }
             }
             if !active {
-                Text("A full board forms once you register a chain or somebody else owns part of this company. Until then you decide alone.")
+                Text("Nobody else owns part of this company, so there are no seats to fill and no binding votes. A full board forms once you register a chain or a co-owner joins; until then your managers advise and you decide.")
                     .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
         }

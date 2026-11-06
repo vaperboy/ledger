@@ -102,7 +102,7 @@ final class MainScreensTests: TourCase {
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         if entity.waitForExistence(timeout: 3), entity.isHittable {
             entity.tap(); sleep(1); shot("47-group-entity")
-            for name in ["Management", "Board", "Money", "Expansion", "Deals"] {
+            for name in ["Management", "Boardroom", "Money", "Expansion", "Ownership"] {
                 let tab = app.buttons["group-tab-\(name)"]
                 if tab.waitForExistence(timeout: 2), tab.isHittable { tab.tap(); sleep(1); shot("48-group-\(name.lowercased())") } else { note("no \(name) tab on the entity page") }
             }
@@ -147,7 +147,7 @@ final class BoardTourTests: TourCase {
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         guard entity.waitForExistence(timeout: 2), entity.isHittable else { note("no entity in the Group picker"); return }
         entity.tap(); sleep(1)
-        let board = app.buttons["group-tab-Board"]
+        let board = app.buttons["group-tab-Boardroom"]
         guard board.waitForExistence(timeout: 2), board.isHittable else { note("no Board tab on the entity page"); return }
         board.tap(); sleep(1); shot("61-group-board-decision")
         let open = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Board room")).firstMatch

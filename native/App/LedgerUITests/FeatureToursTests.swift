@@ -83,7 +83,7 @@ final class FeatureToursTests: FeatureTourCase {
         step("group tab: opens") { goTab("Group") ? .pass(signature().text) : .fail("no Group tab") }
         step("group tab: health") { health("Group", title: false) }
         let entity: String = ids(prefix: "group-entity-").first ?? ""
-        for name in ["Management", "Board", "Money", "Expansion", "Deals"] {
+        for name in ["Management", "Boardroom", "Money", "Expansion", "Ownership"] {
             step("group entity page: \(name) tab") {
                 guard !entity.isEmpty else { return .skip("no entity in the Group picker") }
                 _ = goTab("Group")
@@ -110,8 +110,8 @@ final class FeatureToursTests: FeatureTourCase {
         func openBoardRoom() -> Bool {
             guard !entity.isEmpty else { return false }
             _ = goTab("Group")
-            if !button("group-tab-Board").exists { _ = tapID(entity) }
-            guard tapID("group-tab-Board") else { return false }
+            if !button("group-tab-Boardroom").exists { _ = tapID(entity) }
+            guard tapID("group-tab-Boardroom") else { return false }
             return tapID("group-board-room") || tapText("Board room")
         }
         step("board room: opens") {

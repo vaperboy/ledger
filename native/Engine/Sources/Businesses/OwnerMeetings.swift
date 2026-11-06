@@ -66,7 +66,8 @@ public enum OwnerMeetings {
     public static let topicTable: [String: [(String, String, String)]] = [
         "ceo": [("results", "Go through the results", "Last month and the trend"), ("forecast", "Ask for a forecast", "Where this is heading"),
                 ("explain", "Question a decision", "What they did lately and why"), ("challenge", "Challenge the result", "Push back"),
-                ("expect", "Set expectations", "Targets for this month"), ("advice", "Give strategic direction", "Where you want it to go")],
+                ("expect", "Set expectations", "Targets for this month"), ("review", "Progress review", "How they have done since they started"),
+                ("advice", "Give strategic direction", "Where you want it to go")],
         "fin": [("update", "Financial update", "Cash, debt and profit"), ("forecast", "Cash forecast", "The next three months"), ("margin", "Explain the margin", "Where the money goes")],
         "sales": [("pipeline", "Sales report", "Customers and demand"), ("pricing", "Price or volume?", "What to chase")],
         "hr": [("people", "People report", "Staff, notice and mood")],
@@ -174,6 +175,11 @@ public enum OwnerMeetings {
         case ("ceo", "expect"):
             L = ["What do you expect this month? I will plan for it and you can judge me on it at month end."]
             C = [ch("easy", "A steady month", "Easier targets. Mood up."), ch("real", "Realistic targets", "Targets in line with the trend."), ch("stretch", "Stretch targets", "Harder targets. Mood down a little.")]
+        case ("ceo", "review"):
+            if let rep = ManagerModel.personReport(s, companyID: companyID, personID: personID, data: data) {
+                L = (rep.sections.first?.lines.prefix(4).map { "\($0.label): \($0.value)." } ?? []) + [rep.verdict]
+            } else { L = ["It is too early to review me. Give it a few months."] }
+            C = [ch("ok", "Good, keep going", "They feel trusted. Mood up."), ch("ideas", "Ask for their ideas", "They bring proposals to your Inbox."), ch("bar", "Set a higher bar", "Stretch targets this month. Mood down a little.")]
         case ("ceo", "advice"):
             let now = directive(co).map { " Today I lean toward: \(directiveLabel($0).lowercased())." } ?? ""
             L = ["Tell me where you want this to go and I will decide the small things myself.\(now)"]
@@ -251,7 +257,11 @@ public enum OwnerMeetings {
             if risk { ManagerModel.resign(&s, companyIndex: ci, why: "after the final warning I do not see a future here"); resigned = true; text = "\(sc.speaker) resigns after the warning." }
             else { text = "\(sc.speaker) takes the warning. Mood is down hard." }
             tone = "bad"
-        case ("ceo", "expect", "easy"), ("ceo", "expect", "real"), ("ceo", "expect", "stretch"):
+        case ("ceo", "review", "ok"): bump(3); text = "\(sc.speaker) feels trusted. Mood is up."; tone = "good"
+        case ("ceo", "review", "ideas"):
+            if let n = ManagerModel.meetForProposals(&s, companyID: companyID, data: data) { text = "\(sc.speaker) brought \(n) \(n == 1 ? "idea" : "ideas") to your Inbox, each with its cost and what it should bring."; tone = "good" }
+            else { text = "\(sc.speaker) has nothing to put forward now." }
+        case ("ceo", "expect", "easy"), ("ceo", "expect", "real"), ("ceo", "expect", "stretch"), ("ceo", "review", "bar"):
             let mode = choice == "easy" ? 0 : choice == "real" ? 1 : 2
             if ManagerTargets.eligible(s.companies[ci], data: data), ManagerTargets.setTargets(&s, ci, month: ManagerTargets.mi(s), mode: mode, data: data) {
                 bump(mode == 0 ? 2 : mode == 2 ? -2 : 0)
