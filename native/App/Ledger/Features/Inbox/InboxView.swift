@@ -440,7 +440,7 @@ struct MessageCard: View {
         if opts.isEmpty {
             Text("Nothing to choose here. This is dealt with in the company it concerns.").popupText(.caption)
         }
-        VStack(spacing: 8) {
+        VStack(spacing: Theme.Space.s) {
             ForEach(opts, id: \.offset) { idx, opt in
                 optionButton(idx, opt)
             }
@@ -455,11 +455,10 @@ struct MessageCard: View {
                 Text(text(opt["l"].string)).popupText(.button)
                 if !effect.isEmpty { Text(effect + ".").popupText(.caption).multilineTextAlignment(.leading) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 10).padding(.leading, 12).padding(.trailing, 32)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(idx == 0 ? P.accentSelected : P.cardDeep))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(idx == 0 ? P.accent : P.line, lineWidth: 1))
-            .overlay(alignment: .trailing) { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim).padding(.trailing, 12) }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.vertical, Theme.Space.s).padding(.leading, Theme.Space.m).padding(.trailing, Theme.Space.xxl)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(idx == 0 ? P.accentWash : P.inset))
+            .overlay(alignment: .trailing) { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).padding(.trailing, Theme.Space.m) }
             .contentShape(Rectangle())
         }.buttonStyle(PressableStyle()).accessibilityIdentifier("inbox-option")
     }
