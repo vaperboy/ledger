@@ -54,7 +54,7 @@ struct CarStockCard: View {
             }
             if row.status == .inStock { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
@@ -177,6 +177,7 @@ struct CarPriceSheet: View {
 /// Order cars from the current supplier: the distributor's whole range, or only the contract brand's.
 struct CarOrderSheet: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     var companyID: Int
 
     var body: some View {
@@ -214,10 +215,10 @@ struct CarOrderSheet: View {
                 Text("you pay").popupText(.caption)
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.cardDeep))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.line, lineWidth: 1))
         .contentShape(Rectangle())
     }
 

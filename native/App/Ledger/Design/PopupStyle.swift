@@ -17,6 +17,8 @@ enum PopupRole {
     case caption
     /// A key amount or number: 22 serif, monospaced digits.
     case figure
+    /// The one big amount a step is about (a loan maximum or chosen amount): 34 serif, one line.
+    case hero
     /// Left side of a row: 13 soft.
     case rowLabel
     /// Right side of a row: 13.5 medium, monospaced digits.
@@ -97,6 +99,8 @@ private struct PopupTextStyle: ViewModifier {
         case .figure:
             content.font(.system(size: variant.figureSize, weight: .medium, design: .serif).monospacedDigit())
                 .foregroundStyle(variant == .reward ? Theme.gold : ink)
+        case .hero:
+            content.font(.hero(34)).foregroundStyle(ink).minimumScaleFactor(0.6).lineLimit(1)
         case .rowLabel:
             content.font(.system(size: 13)).foregroundStyle(soft)
         case .rowValue:

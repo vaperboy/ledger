@@ -360,6 +360,7 @@ private struct FoundedCard: View {
 /// Found a startup: sector, product, how customers pay, who builds it, how much seed money; the plan (runway, time to a product) before deciding.
 private struct FoundStartupSheet: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
@@ -379,7 +380,7 @@ private struct FoundStartupSheet: View {
                     let model = sec.models.first { $0.id == modelID } ?? sec.models[0]
                     let whoNow = who == "self" && !sec.canBuildYourself ? "c2" : who
                     let plan = e.startupPlan(sector: sec.id, who: whoNow, seedMultiple: seed)
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    VStack(alignment: .leading, spacing: PopupSpace.card) {
                         CardSection("Sector") {
                             Picker("Sector", selection: $sectorID) { ForEach(StartupProducts.sectors) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                             Text("Capital need \(sec.capitalNeed) of 4 · built by \(sec.builders)" + (sec.canBuildYourself ? " · you can build it yourself" : "")).popupText(.caption)
@@ -395,11 +396,11 @@ private struct FoundStartupSheet: View {
                         }
                         if let p = plan {
                             FigureCard(items: [
-                                .init(label: "Seed money", value: cur.tidyShort(p.seed), tint: Payments.liquid(e.state) < p.seed ? Theme.loss : Theme.ivory, sub: "from your cash"),
+                                .init(label: "Seed money", value: cur.tidyShort(p.seed), tint: Payments.liquid(e.state) < p.seed ? P.loss : P.ink, sub: "from your cash"),
                                 .init(label: "Builders", value: p.builders == 0 ? "You" : "\(p.builders)", sub: p.builders == 0 ? "your free hours" : "\(cur.tidyShort(p.buildersMonthly)) a month"),
                                 .init(label: "Runway", value: "\(p.runwayWeeks) wk"),
-                                .init(label: "Test version", value: p.weeksToTest.map { "\($0) wk" } ?? "Never", tint: p.weeksToTest == nil ? Theme.loss : Theme.ivory),
-                                .init(label: "On sale", value: p.weeksToSell.map { "\($0) wk" } ?? "Never", tint: p.weeksToSell == nil ? Theme.loss : Theme.ivory),
+                                .init(label: "Test version", value: p.weeksToTest.map { "\($0) wk" } ?? "Never", tint: p.weeksToTest == nil ? P.loss : P.ink),
+                                .init(label: "On sale", value: p.weeksToSell.map { "\($0) wk" } ?? "Never", tint: p.weeksToSell == nil ? P.loss : P.ink),
                                 .init(label: "Investors", value: Funding.interestWord(p.interest).word),
                             ])
                             Text("Risk: most startups fail and the seed money is lost. Each round brings money in but makes your share smaller. If the runway ends before the product sells, raise a round or put money in.")
@@ -804,7 +805,7 @@ private struct StartupLaunchSheet: View {
         let funnel: StartupModel.Funnel? = engine.startupLaunchPreview(startupID: f.id, price: price)
         VStack(spacing: 0) {
             Group {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: PopupSpace.card) {
                     CardSection("Price per customer") {
                         SegmentedPill(items: Array(steps.indices), title: { "\(Int((steps[$0] * 100).rounded()))%" }, selection: $priceStep)
                         Text("\(cur.tidyDisplay(price)) for each customer. 100% is the usual price in this sector; cheaper brings more customers, dearer fewer.").popupText(.caption)

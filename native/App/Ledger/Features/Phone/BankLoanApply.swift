@@ -213,7 +213,7 @@ private struct LoanOfferPanel: View {
         let instalmentNote: String = example.map { "over \($0.termMonths) months" } ?? ""
         VStack(alignment: .leading, spacing: 0) {
             Text("Maximum approved amount").popupText(.subtitle)
-            Text(cur.tidyDisplay(a.maximum)).font(.hero(36)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+            Text(cur.tidyDisplay(a.maximum)).popupText(.hero)
                 .accessibilityIdentifier("bank-loan-maximum")
             FlatRow(label: "Interest rate", value: Currency.percent(a.yearlyRate, decimals: 2) + " a year", rule: true)
             FlatRow(label: "Repayment period", value: period)
@@ -323,7 +323,7 @@ private struct LoanAmountPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Choose amount").popupText(.subtitle)
-            Text(cur.tidyDisplay(amount)).font(.hero(34)).foregroundStyle(P.ink).minimumScaleFactor(0.6).lineLimit(1)
+            Text(cur.tidyDisplay(amount)).popupText(.hero)
                 .accessibilityIdentifier("bank-loan-amount")
             if maximum > minimum {
                 LedgerSlider(value: slider, in: minimum...maximum).tint(P.accent)
