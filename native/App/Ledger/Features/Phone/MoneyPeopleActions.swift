@@ -287,7 +287,7 @@ struct HoldingFinanceManagerCard: View {
         } else if room == .ok {
             Text("Wage about \(cur.tidyShort(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             if found.isEmpty {
-                HStack(spacing: 8) {
+                VStack(spacing: Theme.Space.s) {
                     QuietButton(title: "Ask around, free", fullWidth: true) { search(.network) }
                     QuietButton(title: "Job ad, \(cur.tidyShort(cur.scaledPrice(1500)))", fullWidth: true) { search(.ad) }
                     QuietButton(title: "Agency, \(cur.tidyShort(cur.scaledPrice(12000)))", fullWidth: true) { search(.agency) }

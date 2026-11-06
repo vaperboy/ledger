@@ -35,7 +35,7 @@ struct BankLoanApplyFlow: View {
             let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: account.companyID)
             VStack(spacing: 0) {
                 AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: "Back") {
-                    SmallOutlineButton(title: "Done") { dismiss() }
+                    Button("Done") { dismiss() }.buttonStyle(SecondaryButtonStyle(size: .compact))
                 }
                 .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 StepDots(step: step, count: Self.stepCount, labels: ["Offer", "Choose", "Confirm"]).padding(.bottom, 8)

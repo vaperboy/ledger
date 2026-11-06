@@ -62,7 +62,7 @@ struct BankStatementsTab: View {
                     .init(label: "Closing", value: fmt.short(s.closing), tint: s.closing < 0 ? P.loss : P.ink),
                 ], ruled: false)
                 if s.lines.isEmpty {
-                    Text("The account keeps no movements for this period any more.").font(.caption2).foregroundStyle(P.inkFaint)
+                    EmptyState(glyph: BankGlyph.transfer, title: "No movements kept for this period.", centered: false)
                 }
                 ForEach(Array(s.lines.prefix(60).enumerated()), id: \.element.id) { n, t in
                     if n > 0 { Hairline() }
@@ -85,7 +85,7 @@ struct BankStatementsTab: View {
             BankCard(title: "Where the money goes", trailing: yearlyCosts ? "This year" : "This month") {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     SegmentedChoice(items: [false, true], title: { $0 ? "This year" : "This month" }, selection: $yearlyCosts)
-                    if lines.isEmpty { Text("No costs booked yet.").textStyle(.body, tint: P.inkSoft) }
+                    if lines.isEmpty { EmptyState(glyph: BankGlyph.bill, title: "No costs booked yet.", centered: false) }
                     else { donut(lines, total, fmt) }
                 }
             }

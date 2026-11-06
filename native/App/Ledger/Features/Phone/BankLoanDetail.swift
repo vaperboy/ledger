@@ -150,7 +150,7 @@ struct LoanDetailSheet: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text("REPAYMENT SCHEDULE").capsLabel()
             if rows.isEmpty {
-                Text("Nothing is left to schedule.").popupText(.subtitle)
+                EmptyState(glyph: Glyph.check, title: "Nothing is left to schedule.", centered: false)
             } else {
                 SharpTable {
                     TableHeader(columns: columns)

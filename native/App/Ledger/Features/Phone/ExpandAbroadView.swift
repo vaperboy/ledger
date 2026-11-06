@@ -51,7 +51,7 @@ struct AbroadOptionsView: View {
 
     @ViewBuilder private func countryTable(_ e: GameEngine, _ options: [Abroad.Option], _ have: Set<String>, _ liquid: Double) -> some View {
         if options.isEmpty {
-            NoteCard(text: "This trade cannot be opened in any other country.")
+            EmptyState(glyph: Glyph.world, title: "This trade cannot be opened in any other country.", centered: false)
         } else {
             SharpTable {
                 TableHeader(columns: columns)

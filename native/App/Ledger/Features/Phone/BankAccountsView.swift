@@ -33,7 +33,7 @@ struct BankAccountsScreen: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("YOUR COMPANIES").capsLabel()
                         if companies.isEmpty {
-                            Text("You have no company yet. Its account appears here once it exists.").textStyle(.caption, tint: P.inkFaint)
+                            EmptyState(glyph: BankGlyph.company, title: "No company yet", message: "Its account appears here once it exists.", centered: false)
                         }
                         ForEach(companies) { r in row(r, e) }
                     }

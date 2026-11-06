@@ -98,7 +98,7 @@ struct TrophiesPreview: View {
                 }.buttonStyle(PressableStyle())
             }) {
                 if got.isEmpty {
-                    Text("Firsts and milestones show up here: the first customer, the first employee, the first million.").textStyle(.body, tint: Theme.inkSoft)
+                    EmptyState(glyph: Glyph.goals, title: "No trophies yet", message: "Firsts and milestones show up here: the first customer, the first employee, the first million.", centered: false)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(got.prefix(3).enumerated()), id: \.element.id) { i, t in

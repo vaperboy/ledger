@@ -82,7 +82,7 @@ struct BankPersonalLoans: View {
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
         BankCard(title: "Your loans") {
             VStack(alignment: .leading, spacing: 0) {
-                if loans.isEmpty { Text("You owe nothing personally.").textStyle(.body, tint: P.inkSoft) }
+                if loans.isEmpty { EmptyState(glyph: Glyph.check, title: "You owe nothing personally.", centered: false) }
                 ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                     if n > 0 { Hairline() }
                     Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(PressableStyle())
@@ -140,9 +140,9 @@ struct RepayPersonalLoanSheet: View {
                             Text("left to pay · \(cur.tidyShort(l.monthlyPayment)) a month" + (p?.monthsLeft.map { " · \($0) months to go" } ?? "")).popupText(.caption)
                         }
                         HStack {
-                            Button("One instalment") { amount = min(l.balance, l.monthlyPayment) }.buttonStyle(SmallOutlineButtonStyle())
-                            Button("Half") { amount = (l.balance / 2).rounded() }.buttonStyle(SmallOutlineButtonStyle())
-                            Button("All") { amount = l.balance }.buttonStyle(SmallOutlineButtonStyle())
+                            Button("One instalment") { amount = min(l.balance, l.monthlyPayment) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                            Button("Half") { amount = (l.balance / 2).rounded() }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                            Button("All") { amount = l.balance }.buttonStyle(SecondaryButtonStyle(size: .compact))
                         }
                         AmountField(title: "Pay back", currency: cur, amount: $amount)
                         KeyFigures(items: [

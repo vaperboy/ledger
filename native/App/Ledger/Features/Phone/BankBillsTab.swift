@@ -49,16 +49,16 @@ struct BankBillsList: View {
         switch u.kind {
         case .payroll:
             if alerts.contains(where: { $0.companyID == u.companyID }) {
-                SmallOutlineButton(title: "Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }
+                Button("Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }.buttonStyle(SecondaryButtonStyle(size: .compact))
             } else {
                 Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
             }
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
-                SmallOutlineButton(title: "Pay now") { BankPay.instalment(store, loanID: loanID) }
+                Button("Pay now") { BankPay.instalment(store, loanID: loanID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
             }
         case .bills, .tax, .invoice:
-            SmallOutlineButton(title: "Pay now") { BankPay.early(store, u) }
+            Button("Pay now") { BankPay.early(store, u) }.buttonStyle(SecondaryButtonStyle(size: .compact))
         }
     }
 }

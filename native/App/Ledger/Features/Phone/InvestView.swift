@@ -52,7 +52,7 @@ struct InvestContent: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).capsLabel().padding(.horizontal, 2)
             if rows.isEmpty {
-                Text(empty).textStyle(.caption, tint: Theme.inkFaint)
+                EmptyState(glyph: Glyph.invest, title: empty, centered: false)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { n, q in

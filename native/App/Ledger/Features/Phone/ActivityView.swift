@@ -33,7 +33,7 @@ struct ActivityView: View {
             let lines: [StatementLine] = Array(e.state.statement.prefix(shown))
             PhonePageScroll(spacing: 14) {
                 if lines.isEmpty {
-                    NoteCard(text: "Nothing has moved yet. Salary, dividends, loans and purchases from your own account are listed here as they happen.", glyph: Glyph.list)
+                    EmptyState(glyph: Glyph.list, title: "Nothing has moved yet", message: "Salary, dividends, loans and purchases from your own account are listed here as they happen.")
                 } else {
                     summary(lines, total: e.state.statement.count)
                     feed(lines)
