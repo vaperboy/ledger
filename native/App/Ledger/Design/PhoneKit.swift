@@ -49,8 +49,8 @@ extension EnvironmentValues {
     }
 }
 
-/// A titled block: the small champagne label above (with an optional note or link at the right), the content inside a bordered card.
-/// Rows inside separate themselves with `CardLine()`.
+/// A titled group: the caps label above (with an optional note or link at the right), the content on one surface group with no
+/// border. Cards inside draw flat. Rows inside separate themselves with `CardLine()` (a hairline).
 struct CardSection<Content: View, Trailing: View>: View {
     var title: String
     var rule = true
@@ -58,13 +58,13 @@ struct CardSection<Content: View, Trailing: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title.tidyText).capsLabel()
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
                 trailing()
             }
-            .padding(.horizontal, 2)
+            .padding(.horizontal, Theme.Space.xxs)
             Card(padding: 14) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) { content() }
                     .environment(\.insideCard, true)
@@ -80,10 +80,9 @@ extension CardSection where Trailing == EmptyView {
     }
 }
 
-/// The line between two rows inside a card.
+/// The line between two rows inside a card: the one hairline.
 struct CardLine: View {
-    @Environment(\.outsidePalette) private var palette
-    var body: some View { Rectangle().fill(palette.divider).frame(height: 1) }
+    var body: some View { Hairline() }
 }
 
 /// Key figures in a bordered card, cells separated by vertical lines; a second row follows the first when there are more than `columns`.
@@ -140,7 +139,7 @@ struct HeroFigure: View {
     }
 }
 
-/// An empty or explanatory state in a card (never a bare grey line).
+/// An explanatory note on a surface tile (flat inside a group): a faint glyph and a line of text.
 struct NoteCard: View {
     var text: String
     var glyph: String = Glyph.info
@@ -149,58 +148,42 @@ struct NoteCard: View {
 
     var body: some View {
         Card(padding: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                GlyphView(glyph: glyph, size: 18, weight: 1.5, tint: palette.inkFaint)
-                Text(text.tidyText).font(.system(size: 13.5)).foregroundStyle(tint ?? palette.inkSoft).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: palette.inkFaint)
+                Text(text.tidyText).textStyle(.body, tint: tint ?? palette.inkSoft).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
         }
     }
 }
 
-/// A row inside a card: a small round icon, a title with a grey line, a figure with a grey line under it, optional chevron.
+/// A row inside a card: `LedgerRow` in its compact density (glyph, title and grey line, a value with a grey line, optional chevron).
 struct RowLine: View {
     var glyph: String
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
     var title: String
     var subtitle: String = ""
     var trailing: String = ""
     var trailingSub: String = ""
-    var trailingTint: Color = Theme.ivory
+    var trailingTint: Color = Theme.ink
     var chevron = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            IconCircle(glyph: glyph, size: 34, tint: tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title.tidyText).font(.system(size: 14.5)).foregroundStyle(Theme.ivory).lineLimit(3).multilineTextAlignment(.leading)
-                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(3).multilineTextAlignment(.leading) }
-            }
-            Spacer(minLength: 8)
-            if !trailing.isEmpty || !trailingSub.isEmpty {
-                VStack(alignment: .trailing, spacing: 2) {
-                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(trailingTint) }
-                    if !trailingSub.isEmpty { Text(trailingSub.tidyText).font(.system(size: 11)).foregroundStyle(Theme.ivoryFaint) }
-                }
-            }
-            if chevron { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
-        }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
+        LedgerRow(leading: .glyph(glyph), leadingTint: tint, title: title, subtitle: subtitle, value: trailing, valueTint: trailingTint,
+                  valueNote: trailingSub, chevron: chevron, density: .compact, lineLimit: 3)
     }
 }
 
-/// A quiet link: champagne text and a chevron, 44 pt tall.
+/// A quiet link: accent text and a chevron, 44 pt tall (the tertiary button's look).
 struct LinkLabel: View {
     var text: String
     @Environment(\.outsidePalette) private var palette
     var body: some View {
-        HStack(spacing: 4) {
-            Text(text).font(.system(size: 12.5, weight: .medium))
-            GlyphView(glyph: Glyph.chevron, size: 11, weight: 2, tint: palette.accent)
+        HStack(spacing: Theme.Space.xs) {
+            Text(text).textStyle(.body, tint: palette.accent, weight: .medium)
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: palette.accent)
         }
-        .foregroundStyle(palette.accent).frame(minHeight: 44).contentShape(Rectangle())
+        .frame(minHeight: 44).contentShape(Rectangle())
     }
 }
 

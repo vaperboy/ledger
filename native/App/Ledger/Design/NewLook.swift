@@ -246,7 +246,8 @@ struct RedBubble: View {
     }
 }
 
-/// A round outlined icon holder (accounts, rows, hire options). 40 pt by default, the glyph in champagne.
+/// The icon holder of rows and options: an unoutlined glyph at one of the three icon sizes, centred in a `size` square so layouts
+/// keep their measure. Champagne by default.
 struct IconCircle: View {
     var glyph: String
     var size: CGFloat = 40
@@ -254,9 +255,15 @@ struct IconCircle: View {
     @Environment(\.outsidePalette) private var palette
 
     var body: some View {
-        GlyphView(glyph: glyph, size: size * 0.5, weight: 1.5, tint: tint ?? palette.accent)
+        LedgerGlyph(glyph: glyph, size: IconCircle.glyphSize(size), tint: tint ?? palette.accent)
             .frame(width: size, height: size)
-            .overlay(Circle().strokeBorder(palette.lineStrong, lineWidth: 1))
+    }
+
+    /// The icon size for a holder: small under 36 pt, large over 48 pt, medium between.
+    static func glyphSize(_ holder: CGFloat) -> CGFloat {
+        if holder < 36 { return Theme.Icon.small }
+        if holder > 48 { return Theme.Icon.large }
+        return Theme.Icon.medium
     }
 }
 
@@ -280,7 +287,7 @@ struct AppIconTile: View {
 
 // MARK: Headers
 
-/// The round bordered back button (40 pt). Every screen outside Home has one. It pops the current screen.
+/// The back button: an unoutlined chevron in a 44 pt target. Every screen outside Home has one. It pops the current screen.
 struct RoundBackButton: View {
     var label = "Back"
     var action: () -> Void
@@ -291,10 +298,9 @@ struct RoundBackButton: View {
             Haptics.tap()
             action()
         } label: {
-            GlyphView(glyph: Glyph.back, size: 16, weight: 2, tint: palette.ink)
-                .frame(width: 40, height: 40)
-                .overlay(Circle().strokeBorder(palette.lineStrong, lineWidth: 1))
-                .contentShape(Circle())
+            LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: palette.ink)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(label)
@@ -313,12 +319,12 @@ struct AppHeader<Trailing: View>: View {
     @Environment(\.outsidePalette) private var palette
 
     var body: some View {
-        HStack(spacing: 12) {
-            if let onBack { RoundBackButton(label: backLabel, action: onBack) }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.serifTitle(26)).foregroundStyle(palette.ink).lineLimit(1).minimumScaleFactor(0.7)
+        HStack(spacing: Theme.Space.s) {
+            if let onBack { RoundBackButton(label: backLabel, action: onBack).padding(.leading, -Theme.Space.m) }
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
                 if !subtitle.isEmpty {
-                    Text(subtitle.tidyText).font(.system(size: 12.5)).foregroundStyle(palette.inkSoft).lineLimit(2)
+                    Text(subtitle.tidyText).textStyle(.caption).lineLimit(2)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -390,7 +396,7 @@ struct AppScreen<Trailing: View>: ViewModifier {
                 // On the ivory Bank the header is the forest-green band with ivory text; everywhere else it is the page colour.
                 AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
-                    .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 10)
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
                     .background((palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top))
             }
     }
@@ -413,8 +419,8 @@ struct ReturnLine: View {
                     Text("Back to \(store.title(for: r.from))").font(.system(size: 13, weight: .medium))
                     Spacer()
                 }
-                .foregroundStyle(Theme.gold)
-                .padding(.horizontal, 18).padding(.vertical, 8)
+                .foregroundStyle(Theme.accent)
+                .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
             }
             .buttonStyle(PressableStyle())
             .accessibilityIdentifier("return-bar")
@@ -471,44 +477,24 @@ struct StatStrip: View {
     }
 }
 
-/// A tappable row card: round icon, title and a grey line, a figure, a chevron, and an optional red bubble (the Bank account rows).
+/// A row on its own surface tile (flat inside a group): `LedgerRow` with a glyph or picture, a value, a chevron and an optional red count.
 struct CardRow: View {
-    @Environment(\.outsidePalette) private var P
+    @Environment(\.insideCard) private var insideCard
     var glyph: String
     var title: String
     var subtitle: String = ""
     var value: String = ""
-    var valueTint: Color = Theme.ivory
+    var valueTint: Color = Theme.ink
     var badge: Int = 0
     var chevron = true
-    /// A picture slot in place of the icon circle (company rows and the like); same 40 pt, so the row does not change height.
+    /// A picture slot in place of the icon (company rows and the like).
     var thumb: ThumbSpec? = nil
 
     var body: some View {
-        HStack(spacing: 12) {
-            leading
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title.tidyText).font(.system(size: 15, weight: .medium)).foregroundStyle(P.ink).lineLimit(2)
-                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(P.inkSoft).lineLimit(2) }
-            }
-            Spacer(minLength: 8)
-            RedBubble(count: badge)
-            if !value.isEmpty { Text(value.tidyText).font(.system(size: 15, weight: .medium).monospacedDigit()).foregroundStyle(valueTint.inPalette(P)) }
-            if chevron { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: P.inkDim) }
-        }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder private var leading: some View {
-        if let thumb {
-            ThumbnailView(thumb, size: 40)
-        } else {
-            IconCircle(glyph: glyph)
+        let lead: LedgerRow.Leading = thumb.map { LedgerRow.Leading.thumb($0) } ?? LedgerRow.Leading.glyph(glyph)
+        Card(padding: 0) {
+            LedgerRow(leading: lead, title: title, subtitle: subtitle, value: value, valueTint: valueTint, badge: badge,
+                      chevron: chevron, inset: insideCard ? 0 : 14)
         }
     }
 }
@@ -526,14 +512,13 @@ struct ActionTile: View {
             Haptics.tap()
             action()
         } label: {
-            VStack(spacing: 4) {
-                GlyphView(glyph: glyph, size: 17, weight: 1.7)
-                Text(title).font(.system(size: 11)).foregroundStyle(P.ink).lineLimit(1)
+            VStack(spacing: Theme.Space.xs) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: P.accent)
+                Text(title).textStyle(.caption, tint: P.ink).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.card))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+            .padding(.vertical, Theme.Space.s)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.card))
             .overlay(alignment: .topTrailing) { RedBubble(count: badge, size: .small).offset(x: 4, y: -5) }
             .contentShape(Rectangle())
         }
@@ -565,17 +550,16 @@ struct ChoiceCard: View {
                     if selected { Circle().fill(P.accent).frame(width: 10, height: 10) }
                 }
                 if let thumb { ThumbnailView(thumb, size: 36) }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title.tidyText).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
-                    if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(P.inkSoft).multilineTextAlignment(.leading) }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(title.tidyText).textStyle(.headline).multilineTextAlignment(.leading)
+                    if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption).multilineTextAlignment(.leading) }
                 }
-                Spacer(minLength: 8)
-                if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 13.5, weight: .medium).monospacedDigit()).foregroundStyle(P.ink) }
+                Spacer(minLength: Theme.Space.s)
+                if !trailing.isEmpty { Text(trailing.tidyText).textStyle(.headline, numeric: true) }
             }
-            .padding(.horizontal, 14).padding(.vertical, 12)
+            .padding(.horizontal, 14).padding(.vertical, Theme.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(selected ? P.accentSelected : P.card))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(selected ? P.accent : P.line, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(selected ? P.accentWash : P.card))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -635,13 +619,16 @@ struct TableColumn: Identifiable {
 /// The sharp trade table: a bordered 8 pt box holding a `TableHeader` and `TableRow`s (the trade picker; any comparison list).
 struct SharpTable<Content: View>: View {
     @Environment(\.outsidePalette) private var P
+    @Environment(\.insideCard) private var insideCard
     @ViewBuilder var content: () -> Content
 
+    /// On its own the table sits on a surface tile; inside a group it is flat. No outline either way.
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
         VStack(spacing: 0, content: content)
-            .background(P.cardDeep)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+            .environment(\.insideCard, true)
+            .background(insideCard ? Color.clear : P.card)
+            .clipShape(shape)
     }
 }
 
@@ -657,15 +644,14 @@ struct TableHeader: View {
                 let grow: CGFloat? = fixed == nil ? CGFloat.infinity : nil
                 let align: Alignment = i == 0 ? .leading : .trailing
                 Text(c.title)
-                    .font(.system(size: 10, weight: .regular)).tracking(1.2).textCase(.uppercase)
-                    .foregroundStyle(P.inkFaint)
+                    .textStyle(.label, tint: P.inkFaint)
                     .lineLimit(1)
                     .frame(width: fixed, alignment: align)
                     .frame(maxWidth: grow, alignment: align)
             }
         }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .overlay(alignment: .bottom) { Rectangle().fill(P.line).frame(height: 1) }
+        .padding(.horizontal, 12).padding(.vertical, Theme.Space.s)
+        .overlay(alignment: .bottom) { Hairline() }
     }
 }
 
@@ -687,22 +673,22 @@ struct TableRow: View {
         let row = HStack(spacing: 6) {
             if let thumb { ThumbnailView(thumb, size: 30).padding(.trailing, 4) }
             VStack(alignment: .leading, spacing: 1) {
-                Text(title.tidyText).font(.system(size: 14, weight: .medium)).foregroundStyle(P.ink).lineLimit(2)
-                if !note.isEmpty { Text(note.tidyText).font(.system(size: 11.5)).foregroundStyle(P.inkFaint).lineLimit(2) }
+                Text(title.tidyText).textStyle(.body, weight: .medium).lineLimit(2)
+                if !note.isEmpty { Text(note.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(2) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             ForEach(Array(values.enumerated()), id: \.offset) { i, v in
                 let colIndex: Int = i + 1
                 let w: CGFloat? = colIndex < columns.count ? columns[colIndex].width : nil
                 let tint: Color = (i < valueTints.count ? valueTints[i] : (i == 0 ? P.ink : P.inkSoft)).inPalette(P)
-                Text(v.tidyText).font(.system(size: 13).monospacedDigit()).foregroundStyle(tint)
+                Text(v.tidyText).textStyle(.body, tint: tint, numeric: true)
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .frame(width: w, alignment: .trailing)
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 10)
-        .background(selected ? P.accentSelected : Color.clear)
-        .overlay(alignment: .bottom) { Rectangle().fill((P.isLight ? P.hairline : Theme.tableLine)).frame(height: 1) }
+        .background(selected ? P.accentWash : Color.clear)
+        .overlay(alignment: .bottom) { Hairline() }
         .contentShape(Rectangle())
         if let action {
             Button { Haptics.tap(); action() } label: { row }
@@ -787,8 +773,8 @@ struct PillTabBar: View {
                     if on { onReselect(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
-                        GlyphView(glyph: item.glyph, size: 22, weight: 1.5, tint: on ? Theme.gold : Theme.ivoryMuted)
-                        Text(item.title).font(.system(size: 10.5)).foregroundStyle(on ? Theme.gold : Theme.ivoryMuted).lineLimit(1).minimumScaleFactor(0.8)
+                        LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? Theme.accent : Theme.inkSoft)
+                        Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? Theme.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .id(item.glyph + item.title)
                     .transition(.opacity)
@@ -819,9 +805,9 @@ struct PillTabBar: View {
         }
         .padding(.horizontal, 6)
         .frame(height: PillTabBar.height - 8)
-        .background(Capsule().fill(Theme.surfaceTable))
-        .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.35), radius: 10, y: 4)
-        .padding(.horizontal, 14).padding(.bottom, 8)
+        .background(Capsule().fill(Theme.surfaceRaised))
+        .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 0.5))
+        .elevation(.raised)
+        .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
     }
 }

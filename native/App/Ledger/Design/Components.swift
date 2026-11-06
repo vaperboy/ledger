@@ -2,9 +2,9 @@ import SwiftUI
 import Countries
 import enum Events.ConfirmRule
 
-/// The house container (new look): a bordered card on the #151617 surface. Radius per mockup: `Theme.Radius.hero` (16) for the big
-/// summary boxes, `.card` (14, the default) for standard cards, `.row` (12) for compact row cards, `.table` (8) for sharp boxes.
-/// `rule` is kept so older call sites compile; it no longer draws anything. `padding: 0` for content that pads itself.
+/// The surface primitive: a group or tile on the surface tone, no border. Inside another card or a section's group it draws flat
+/// (just its content), and in a popup it is a flat group under a hairline, so a box never sits inside a box. An explicit `fill` or
+/// `stroke` (a selected or warning state) is always drawn. `rule` is kept so older call sites compile. `padding: 0` for content that pads itself.
 struct Card<Content: View>: View {
     var padding: CGFloat = 14
     var rule = true
@@ -14,20 +14,27 @@ struct Card<Content: View>: View {
     @ViewBuilder var content: () -> Content
     @Environment(\.outsidePalette) private var palette
     @Environment(\.insidePopup) private var insidePopup
+    @Environment(\.insideCard) private var insideCard
+
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        if insidePopup && fill == nil && stroke == nil {
-            // In a popup a plain card is a flat group under a hairline, not a box inside the popup's own card.
+        let plain: Bool = fill == nil && stroke == nil
+        if plain && insideCard {
             content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if plain && insidePopup {
+            content()
+                .environment(\.insideCard, true)
                 .padding(.vertical, padding * 0.6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .top) { Rectangle().fill(palette.line).frame(height: 1) }
+                .overlay(alignment: .top) { Hairline() }
         } else {
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
             content()
+                .environment(\.insideCard, true)
                 .padding(padding)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(shape.fill(fill ?? palette.card))
-                .overlay(shape.strokeBorder(stroke ?? palette.line, lineWidth: 1))
+                .overlay { if let stroke { shape.strokeBorder(stroke, lineWidth: 1) } }
         }
     }
 }
@@ -72,35 +79,19 @@ struct IconBadge: View {
     }
 }
 
-/// A list row: glyph, title and subtitle, a figure and a small line under it, optional chevron.
+/// A list row with an SF symbol in front: `LedgerRow` in its compact density.
 struct ListRow: View {
-    @Environment(\.outsidePalette) private var P
     var symbol: String
-    var tint: Color = Theme.gold
+    var tint: Color = Theme.accent
     var title: String
     var subtitle: String = ""
     var trailing: String = ""
     var trailingSub: String = ""
-    var trailingTint: Color = Theme.ivory
+    var trailingTint: Color = Theme.ink
     var chevron = false
     var body: some View {
-        HStack(spacing: Theme.Space.m) {
-            IconBadge(symbol: symbol, tint: tint.inPalette(P))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title.tidyText).font(.system(size: 14.5)).foregroundStyle(P.ink).lineLimit(2)
-                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.caption).foregroundStyle(P.inkFaint).lineLimit(2) }
-            }
-            Spacer(minLength: 8)
-            if !trailing.isEmpty || !trailingSub.isEmpty {
-                VStack(alignment: .trailing, spacing: 2) {
-                    if !trailing.isEmpty { Text(trailing.tidyText).font(.system(size: 14.5).monospacedDigit()).foregroundStyle(trailingTint.inPalette(P)) }
-                    if !trailingSub.isEmpty { Text(trailingSub.tidyText).font(.caption2).foregroundStyle(P.inkFaint) }
-                }
-            }
-            if chevron { Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(P.inkFaint) }
-        }
-        .padding(.vertical, 7)
-        .accessibilityElement(children: .combine)
+        LedgerRow(leading: .symbol(symbol), leadingTint: tint, title: title, subtitle: subtitle, value: trailing, valueTint: trailingTint,
+                  valueNote: trailingSub, chevron: chevron, density: .compact)
     }
 }
 
@@ -262,10 +253,10 @@ struct ValueRow: View {
     var value: String
     var tint: Color = Theme.ivory
     var body: some View {
-        HStack {
-            Text(label).font(.system(size: 14)).foregroundStyle(P.inkSoft)
-            Spacer()
-            Text(value).font(.system(size: 14).monospacedDigit()).foregroundStyle(tint.inPalette(P))
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            Text(label).textStyle(.body, tint: P.inkSoft)
+            Spacer(minLength: Theme.Space.s)
+            Text(value).textStyle(.body, tint: tint, numeric: true)
         }
     }
 }

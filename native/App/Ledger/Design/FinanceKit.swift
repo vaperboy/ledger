@@ -28,30 +28,30 @@ struct AcctHeader: View {
     var onBack: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.s) {
             Button {
                 Haptics.tap()
                 onBack()
             } label: {
-                GlyphView(glyph: Glyph.back, size: 16, weight: 2, tint: FinanceColor.ivoryText)
-                    .frame(width: 40, height: 40)
-                    .overlay(Circle().strokeBorder(FinanceColor.ivoryText.opacity(0.45), lineWidth: 1))
-                    .contentShape(Circle())
+                LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: FinanceColor.ivoryText)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
             .accessibilityLabel(backLabel)
             .accessibilityIdentifier("back-button")
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.serifTitle(24)).foregroundStyle(FinanceColor.ivoryText).lineLimit(1).minimumScaleFactor(0.7)
+            .padding(.leading, -Theme.Space.m)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.title, tint: FinanceColor.ivoryText).lineLimit(1).minimumScaleFactor(0.7)
                 if !subtitle.isEmpty {
-                    Text(subtitle.tidyText).font(.system(size: 12.5)).foregroundStyle(FinanceColor.ivoryText.opacity(0.72)).lineLimit(2)
+                    Text(subtitle.tidyText).textStyle(.caption, tint: FinanceColor.ivoryText.opacity(0.72)).lineLimit(2)
                 }
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
         }
-        .padding(.horizontal, 18).padding(.top, 6).padding(.bottom, 14)
+        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -63,7 +63,7 @@ struct AcctPressStyle: ButtonStyle {
     @Environment(\.outsidePalette) private var P
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(configuration.isPressed ? P.cardDeep : Color.clear)
+            .background(configuration.isPressed ? P.inset : Color.clear)
             .opacity(configuration.isPressed ? 0.88 : 1)
             .animation(Motion.tapAnimation, value: configuration.isPressed)
     }
@@ -80,7 +80,7 @@ struct AcctButtonPressStyle: ButtonStyle {
 
 // MARK: Containers
 
-/// A bordered ivory panel. Rows go inside, separated with `AcctDivider`.
+/// A surface group with no padding of its own (flat inside another group). Rows go inside, separated with `AcctDivider`.
 struct AcctPanel<Content: View>: View {
     var padding: CGFloat = 0
     @ViewBuilder var content: () -> Content
@@ -92,8 +92,7 @@ struct AcctPanel<Content: View>: View {
 }
 
 struct AcctDivider: View {
-    @Environment(\.outsidePalette) private var P
-    var body: some View { Rectangle().fill(P.divider).frame(height: 1) }
+    var body: some View { Hairline() }
 }
 
 /// A small label over a block (champagne caps).
@@ -105,7 +104,8 @@ struct AcctLabel: View {
     }
 }
 
-/// One row of a list. With an `action` the whole row is the button and shows a chevron; without one it is plain information.
+/// One row of a list: `LedgerRow` with a 14 pt inset (the panel has no padding). With an `action` the whole row is the button and shows
+/// a chevron; without one it is plain information. The identifier is the title unless one is given.
 struct AcctRow: View {
     @Environment(\.outsidePalette) private var P
     var glyph: String? = nil
@@ -122,55 +122,15 @@ struct AcctRow: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        if let action {
-            Button {
-                Haptics.tap()
-                action()
-            } label: { row(chevron: true) }
-                .buttonStyle(AcctPressStyle())
-                .accessibilityIdentifier(identifier.isEmpty ? title : identifier)
-        } else {
-            row(chevron: false)
-                .accessibilityIdentifier(identifier.isEmpty ? title : identifier)
-        }
+        LedgerRow(leading: leading, leadingTint: glyph != nil ? P.accent2 : nil, title: title, subtitle: subtitle, value: value,
+                  valueTint: valueTint, valueNote: valueNote, valueNoteTint: valueNoteTint, pill: pill, pillTone: pillTone,
+                  inset: 14, identifier: identifier.isEmpty ? title : identifier, action: action)
     }
 
-    private func row(chevron: Bool) -> some View {
-        HStack(spacing: 12) {
-            leading
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title.tidyText).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink).lineLimit(2)
-                if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(P.inkFaint).lineLimit(2) }
-            }
-            Spacer(minLength: 8)
-            if !value.isEmpty || !valueNote.isEmpty || pill != nil {
-                VStack(alignment: .trailing, spacing: 3) {
-                    if !value.isEmpty {
-                        Text(value.tidyText).font(.system(size: 14.5, weight: .medium).monospacedDigit()).foregroundStyle(valueTint ?? P.ink).lineLimit(1).minimumScaleFactor(0.7)
-                    }
-                    if let pill { AcctPill(text: pill, tone: pillTone) }
-                    if !valueNote.isEmpty {
-                        Text(valueNote.tidyText).font(.system(size: 11.5).monospacedDigit()).foregroundStyle(valueNoteTint ?? P.inkFaint).lineLimit(1)
-                    }
-                }
-            }
-            if chevron { GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.inkDim) }
-        }
-        .padding(.horizontal, 14).padding(.vertical, 11)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder private var leading: some View {
-        if let glyph {
-            IconCircle(glyph: glyph, size: 38, tint: P.accent2)
-        } else if let initials {
-            Text(initials)
-                .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(P.onAccent)
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(P.accent))
-        }
+    private var leading: LedgerRow.Leading {
+        if let glyph { return .glyph(glyph) }
+        if let initials { return .initials(initials) }
+        return .empty
     }
 
     /// Two letters for a name ("Nordic Wholesale" gives "NW").
@@ -200,8 +160,8 @@ struct AcctPill: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold)).foregroundStyle(tint).lineLimit(1)
-            .padding(.horizontal, 8).padding(.vertical, 2)
+            .textStyle(.label, tint: tint).lineLimit(1)
+            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
             .background(Capsule().fill(tint.opacity(0.14)))
     }
 }
@@ -259,16 +219,7 @@ struct AcctNotice: View {
     var tint: Color? = nil
     var body: some View {
         AcctPanel(padding: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                GlyphView(glyph: glyph, size: 20, weight: 1.6, tint: tint ?? P.inkFaint)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title.tidyText).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)
-                    if !message.isEmpty {
-                        Text(message.tidyText).font(.system(size: 13)).foregroundStyle(P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
+            EmptyState(glyph: glyph, title: title, message: message, tint: tint, centered: false)
         }
         .accessibilityElement(children: .combine)
     }
@@ -294,21 +245,20 @@ struct AcctSearchField: View {
     var identifier: String = "acct-search"
     var body: some View {
         HStack(spacing: 8) {
-            GlyphView(glyph: Glyph.search, size: 16, weight: 1.6, tint: P.inkFaint)
+            LedgerGlyph(glyph: Glyph.search, size: Theme.Icon.small, tint: P.inkFaint)
             TextField(prompt, text: $text)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.done)
-                .font(.system(size: 14.5)).foregroundStyle(P.ink)
+                .textStyle(.body)
                 .accessibilityIdentifier(identifier)
             if !text.isEmpty {
-                Button { text = "" } label: { GlyphView(glyph: Glyph.close, size: 14, weight: 1.8, tint: P.inkFaint).frame(width: 28, height: 28) }
+                Button { text = "" } label: { LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 44, height: 44) }
                     .buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 12).frame(minHeight: 44)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+        .padding(.leading, Theme.Space.m).padding(.trailing, text.isEmpty ? Theme.Space.m : 0).frame(minHeight: 44)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
     }
 }
 
@@ -330,16 +280,15 @@ struct AcctChoice: View {
                     Circle().strokeBorder(selected ? P.accent : P.lineStrong, lineWidth: 1.5).frame(width: 20, height: 20)
                     if selected { Circle().fill(P.accent).frame(width: 10, height: 10) }
                 }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title.tidyText).font(.system(size: 14.5, weight: .medium)).foregroundStyle(P.ink).multilineTextAlignment(.leading)
-                    if !subtitle.isEmpty { Text(subtitle.tidyText).font(.system(size: 12)).foregroundStyle(P.inkFaint).multilineTextAlignment(.leading) }
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(title.tidyText).textStyle(.headline).multilineTextAlignment(.leading)
+                    if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption, tint: P.inkFaint).multilineTextAlignment(.leading) }
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
             }
-            .padding(.horizontal, 14).padding(.vertical, 12)
+            .padding(.horizontal, 14).padding(.vertical, Theme.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(selected ? P.accentSelected : P.card))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(selected ? P.accent : P.line, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(selected ? P.accentWash : P.card))
             .contentShape(Rectangle())
         }
         .buttonStyle(AcctButtonPressStyle())
@@ -366,7 +315,6 @@ struct IvoryPanel<Content: View>: View {
             .environment(\.outsidePalette, .accounting)
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(OutsidePalette.accounting.card))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(OutsidePalette.accounting.line, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(OutsidePalette.accounting.card))
     }
 }

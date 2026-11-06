@@ -4,34 +4,31 @@ import SwiftUI
 // Built on the new-look pieces in NewLook.swift: a header strip per page, labelled blocks in bordered cards, entity cards, stat strips,
 // tiny outlined buttons and a chevron on every row that opens something.
 
-/// The header strip of a More page: icon circle, title and one line saying what the page is.
+/// The intro of a More page: an unoutlined icon (or a picture), the title and one line saying what the page is. No box.
 struct MoreHeader: View {
     var glyph: String
     var title: String
-    /// A picture in place of the icon circle (a rival's logo); same 38 pt.
+    /// A picture in place of the icon (a rival's logo); same 38 pt.
     var thumb: ThumbSpec? = nil
     var blurb: String
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.m) {
             if let thumb { ThumbnailView(thumb, size: 38) } else { IconCircle(glyph: glyph, size: 38) }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.serifTitle(18)).foregroundStyle(Theme.ivory).lineLimit(1).minimumScaleFactor(0.8)
-                Text(blurb.tidyText).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).lineLimit(2)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(title).textStyle(.figure).lineLimit(1).minimumScaleFactor(0.8)
+                Text(blurb.tidyText).textStyle(.caption).lineLimit(2)
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12).padding(.vertical, 10)
+        .padding(.vertical, Theme.Space.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(shape.fill(Theme.surfaceTable))
-        .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// A labelled block: small-caps label (and a note or control at the right), then the content in a bordered card.
+/// A labelled block: caps label (and a note or control at the right), then the content on one surface group (cards inside draw flat).
 /// Pass `card: false` when the content is made of its own `EntityCard`s.
 struct MoreBlock<Content: View, Trailing: View>: View {
     var title: String
@@ -40,13 +37,13 @@ struct MoreBlock<Content: View, Trailing: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title).capsLabel()
-                Spacer(minLength: 8)
+                Spacer(minLength: Theme.Space.s)
                 trailing()
             }
-            .padding(.horizontal, 2)
+            .padding(.horizontal, Theme.Space.xxs)
             if card {
                 Card(padding: 14, radius: Theme.Radius.card, content: content)
             } else {
@@ -63,7 +60,7 @@ extension MoreBlock where Trailing == EmptyView {
     }
 }
 
-/// A bordered card for one independent entity (a chain store, a rival, a key account, a stadium, a field).
+/// A surface tile for one independent entity (flat inside a group) (a chain store, a rival, a key account, a stadium, a field).
 struct EntityCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
@@ -74,7 +71,7 @@ struct EntityCard<Content: View>: View {
 
 /// The cue at the right of a row that opens something.
 struct MoreChevron: View {
-    var body: some View { GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim) }
+    var body: some View { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
 }
 
 /// Figures in a strip separated by hairlines, up to `columns` to a line (the shape of `KeyFigures`, in the new look).
