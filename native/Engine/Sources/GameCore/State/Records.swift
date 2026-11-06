@@ -132,6 +132,8 @@ public struct Message: JSONRecord, Identifiable {
     /// A red alert (a company about to be force-sold): the app shows it as a see-through red popup that only its button closes.
     /// Who handled it when a hired rank took the decision for the owner ("Mia, manager"); empty when the owner answered or it is still open.
     public var handledBy: String { get { str("by") } set { set("by", newValue) } }
+    /// The Phone app (`PhoneApp` raw value) a message with no company opens: atlas, bank, accounting, weather. Empty when it has none. Absent in older saves.
+    public var appLink: String { get { str("ap") } set { set("ap", newValue) } }
     public var isAlert: Bool { get { flag("alert") } set { set("alert", newValue) } }
     public var options: [JSONValue] { value("opts").array }
     /// A structured document (a report, a disclosure result) carried by the message, kind "doc". Absent in older saves. The plain `body` stays as the fallback summary.

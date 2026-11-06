@@ -157,7 +157,15 @@ public enum Career {
         public var horizon: Horizon
         public var progress: Double
         public var done: Bool
+        /// Where the goal is worked on (a `GameStore.openLadderLink` key); empty when it has no single place.
+        public var link: String { Career.links[id] ?? "" }
     }
+
+    static let links: [String: String] = [
+        "k1": "sales", "k2": "money", "k3": "sales", "k4": "hire", "k5": "sales", "k6": "money", "k7": "money", "k8": "newCompany",
+        "k9": "money", "k10": "achievements", "k11": "newCompany", "k12": "company", "k13": "company", "k14": "money", "k15": "company",
+        "k16": "achievements", "k17": "company", "k18": "money", "k19": "money", "k20": "achievements", "k21": "marketing",
+        "k22": "sales", "k23": "sales", "k24": "sales", "k25": "hire", "k26": "money"]
 
     static func facts(_ s: GameState, data: GameData, currency cur: Currency) -> Facts {
         let got = Trophies.entries(s).filter { $0.reachedWeek != nil }.map { $0.id }

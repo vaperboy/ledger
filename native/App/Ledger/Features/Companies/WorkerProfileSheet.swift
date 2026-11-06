@@ -155,6 +155,7 @@ struct WorkerProfileSheet: View {
                 WrapRow {
                     TeamAction(title: "Keep it now") { keep(x) }
                     if x.patienceLeft > 0 { TeamAction(title: "Ask to wait", tint: Theme.ivoryMuted) { wait(x) } }
+                    if atRisk(x) { TeamAction(title: "Ask for 4 more weeks", tint: Theme.ivoryMuted) { moreTime(x) } }
                 }
             }
         }
@@ -213,6 +214,24 @@ struct WorkerProfileSheet: View {
         let r: PromiseReminders.Outcome? = store.act { $0.keepPromise(employeeID: eid, promiseID: pid) }
         if case .notPossible(let why)? = r { Haptics.warning(); store.show(why.isEmpty ? "That cannot be done now." : why, tone: "warn") }
         else { Haptics.success(); store.show("Promise kept.", tone: "good") }
+    }
+
+    /// A promise that is due or falls due within four weeks and has not been moved yet (the engine moves a date once).
+    private func atRisk(_ x: WorkerPromise) -> Bool {
+        guard x.waits == 0, let week = store.engine?.state.week else { return false }
+        return x.status == "Due" || x.dueWeek - week <= 4
+    }
+
+    /// Asks for a new date. They may say no; the message is the engine's own answer.
+    private func moreTime(_ x: WorkerPromise) {
+        let eid = employeeID, pid = x.id
+        let r: StaffPromises.RenegotiateResult? = store.act { $0.renegotiatePromise(personID: eid, promiseID: pid, newDueInWeeks: 4) }
+        switch r {
+        case .agreed(let said)?: Haptics.tap(); store.show(said, tone: "n")
+        case .refused(let said)?: Haptics.warning(); store.show(said, tone: "warn")
+        case .notPossible(let why)?: Haptics.warning(); store.show(why.isEmpty ? "That cannot be moved." : why, tone: "warn")
+        case nil: Haptics.warning(); store.show("That cannot be moved.", tone: "warn")
+        }
     }
 
     private func wait(_ x: WorkerPromise) {

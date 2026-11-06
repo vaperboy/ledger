@@ -22,6 +22,7 @@ struct GroupEntityManagement: View {
         VStack(alignment: .leading, spacing: 12) {
             if members.count > 1 { picker(members, selected: co?.id ?? chosen) }
             if let co {
+                header(co)
                 people(co)
                 approvalNote(co)
                 ApplicantsLinkRow(engine: engine, companyID: co.id)
@@ -55,6 +56,32 @@ struct GroupEntityManagement: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
+    }
+
+    // MARK: Header
+
+    /// Across the group: how many managers, how many companies you still run yourself, the group office; for this company: who takes
+    /// the complaints, payroll and re-hiring and who decides first. Under it, what your stakes in other groups are worth.
+    private func header(_ co: Company) -> some View {
+        let gm: GroupManagement = engine.groupManagement()
+        let line: DelegationLine? = engine.delegationLines().first { (d: DelegationLine) -> Bool in d.id == co.id }
+        let stakes: Double = GroupStakes.stakesValue(engine.state)
+        let office: String = gm.groupOfficeEstablished ? "Group office set up" : "No group office"
+        let count: String = "\(gm.managerCount) manager\(gm.managerCount == 1 ? "" : "s") \u{00B7} you run \(gm.runByYou.count) yourself \u{00B7} " + office
+        return Card(padding: 12, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(count).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                if let line {
+                    Text("Complaints: \(line.complaints) \u{00B7} Payroll: \(line.payroll) \u{00B7} Re-hiring: \(line.rehire)")
+                        .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Text("Highest rank here: \(line.top)").font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                }
+                if stakes > 0 {
+                    Text("Stakes in other groups: " + store.short(stakes)).font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: People

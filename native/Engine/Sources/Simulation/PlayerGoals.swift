@@ -22,6 +22,8 @@ public enum PlayerGoals {
         public var reward: Double
         /// Days in a row including today once claimed.
         public var streak: Int
+        /// Where today's goal is done (a `GameStore.openLadderLink` key).
+        public var link: String { ["start": "newCompany", "weeks": "inbox", "hire": "hire", "cmp": "customers", "grow": "money"][id] ?? "" }
     }
 
     static let dailyIDs: [(id: String, title: String)] = [

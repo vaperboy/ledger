@@ -466,6 +466,7 @@ struct ManagerCandidateChecks: View {
     var companyID: Int
     var currency: Currency
     @State private var trialSeen: [String] = []
+    @State private var said: [String: Double] = [:]
 
     /// How a checked skill compares with what the CV claimed, in words.
     private func comparison(_ key: String) -> String {
@@ -476,26 +477,47 @@ struct ManagerCandidateChecks: View {
         return "as the CV says"
     }
 
+    /// What the candidate said when asked about a skill (this session's answer, else the one on record); nil when not asked yet.
+    private func answer(_ key: String) -> Double? {
+        if let v = said[key] { return v }
+        let recorded = person.value("q")[key]
+        return recorded.isNull ? nil : recorded.double
+    }
+
+    /// Three questions per candidate.
+    private var questionsLeft: Int { max(0, 3 - ManagerModel.skillKeys.filter { answer($0.key) != nil }.count) }
+
+    private func words(_ v: Double) -> String { v >= 80 ? "very strong" : v >= 65 ? "strong" : v >= 50 ? "solid" : v >= 35 ? "modest" : "weak" }
+
+    private func ask(_ key: String, _ label: String) {
+        let r: Double? = store.act { $0.interviewManager(personID: person.id, skill: key) } ?? nil
+        if let r { said[key] = r; Haptics.tap() } else { Haptics.warning(); store.show("No questions left for this candidate.", tone: "warn") }
+    }
+
     private var seenLines: [String] {
         let kept: [String] = person.value("trialObs").array.map { $0.string }
         return trialSeen.isEmpty ? kept : trialSeen
     }
 
     var body: some View {
-        let q = person.value("q")
         let checked = person.flag("ref")
         let fee = currency.scaledPrice(2500)
         VStack(alignment: .leading, spacing: 4) {
             if !person.str("resume").isEmpty { Text(person.str("resume")).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-            if checked {
-                ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
-                    if !q[k.key].isNull { Text("\(k.label): \(comparison(k.key))").font(.system(size: 11.5)).foregroundStyle(Theme.ivory) }
+            ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
+                if let v = answer(k.key) {
+                    Text("\(k.label): " + (checked ? comparison(k.key) : "says they are \(words(v))")).font(.system(size: 11.5)).foregroundStyle(Theme.ivory)
                 }
             }
             ForEach(seenLines, id: \.self) { line in
                 Text(line).font(.system(size: 11.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
             }
             WrapRow {
+                ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
+                    if answer(k.key) == nil && questionsLeft > 0 {
+                        Button("Ask: \(k.label)") { ask(k.key, k.label) }.buttonStyle(QuietButtonStyle())
+                    }
+                }
                 if seenLines.isEmpty {
                     Button("Trial week") {
                         let r: [WorkLog.Observation]? = store.act { $0.startTrialWeek(personID: person.id, companyID: companyID) } ?? nil

@@ -25,7 +25,7 @@ extension GameState {
     @discardableResult
     public mutating func addMessage(kind: String = "info", from: String, title: String, body: String, companyID: Int = 0,
                                     tone: String = "n", status: String = "done", options: [JSONValue] = [], action: String? = nil,
-                                    data: JSONValue = .null, expiresWeek: Int? = nil) -> Int {
+                                    data: JSONValue = .null, expiresWeek: Int? = nil, app: String? = nil) -> Int {
         var m = Message(raw: [:])
         m.id = makeID()
         m.kind = kind
@@ -41,8 +41,23 @@ extension GameState {
         if let a = action { m.actionID = a }
         if !data.isNull { m.set("data", data) }
         m.expiresWeek = expiresWeek
+        // A message about no company opens the app of its sender (insurer, bank, tax office ...) unless the caller names one.
+        let link: String = app ?? (companyID == 0 ? Self.senderApp(from) : "")
+        if !link.isEmpty { m.appLink = link }
         inbox.insert(m, at: 0)
         return m.id
+    }
+
+    /// The Phone app a company-less sender belongs to; empty for a sender with no app.
+    static func senderApp(_ from: String) -> String {
+        switch from {
+        case "Your insurer": return "atlas"
+        case "Your bank", "Bank": return "bank"
+        case "The tax office", "Your accountant": return "accounting"
+        case "Weather service": return "weather"
+        case "Supplier": return "techPro"
+        default: return ""
+        }
     }
 
     /// Does the player's head office employ this role? Original: `hasHQ(role)`.
