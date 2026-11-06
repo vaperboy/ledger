@@ -4,7 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// A label and a figure on one line with a hairline above: the flat row used by the sections of energy, fish, holding and club.
+/// A label and a figure on one line with a hairline above: the flat label-value row used across the app (text in `.textStyle`).
 struct FlatRow: View {
     var label: String
     var value: String
@@ -71,12 +71,12 @@ struct CompanyEnergy: View {
             MoreBlock("Build more") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     HStack {
-                        Text("\(Int(megawatts)) MW").font(.system(size: 15, weight: .medium).monospacedDigit())
+                        Text("\(Int(megawatts)) MW").textStyle(.headline, numeric: true)
                         Spacer()
                         StepperPill(value: $megawatts, range: 1...100, step: 5)
                     }
                     Text("About \(cur.tidyShort(perMW * megawatts)) now (\(cur.tidyShort(perMW)) per MW). New capacity takes \(buildWeeks) weeks to build and only then produces. Output follows the weather and the season.")
-                        .font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     Button("Order \(Int(megawatts)) MW…") {
                         let mw = megawatts
                         pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order", amount: perMW * mw, currency: cur) {
@@ -160,7 +160,7 @@ struct CompanyEnergy: View {
                 VStack(spacing: 10) {
                     if fields.isEmpty {
                         Card(padding: 12, radius: Theme.Radius.row) {
-                            Text("No fields yet. Buy a stake in a producing field for income right away, or drill.").font(.caption).foregroundStyle(Theme.ivoryFaint)
+                            Text("No fields yet. Buy a stake in a producing field for income right away, or drill.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     ForEach(fields, id: \.id) { (f: EnergyModel.FieldInfo) in fieldCard(f) }
@@ -220,7 +220,7 @@ struct CompanySalmon: View {
                         .init(label: "Price a kilo", value: cur.tidyShort(engine.salmonPricePerKilo())),
                     ])
                     if cohorts.isEmpty {
-                        Text("No fish in the pens. A new cohort is stocked when the cash allows.").font(.caption).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)
+                        Text("No fish in the pens. A new cohort is stocked when the cash allows.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
                     }
                     ForEach(cohorts) { c in
                         EntityCard {
@@ -232,16 +232,16 @@ struct CompanySalmon: View {
                                 }
                                 RateBar(label: "Ready to harvest", fraction: c.readyShare, tint: c.readyShare >= 0.95 ? Theme.gain : Theme.gold)
                             }
-                        }.padding(.top, 8)
+                        }.padding(.top, Theme.Space.s)
                     }
-                    Text("Fish grow for about 18 months, then are sold at the market price. Lice, storms and algae can cost a cohort.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 8)
+                    Text("Fish grow for about 18 months, then are sold at the market price. Lice, storms and algae can cost a cohort.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
                 }
             }
             MoreBlock("Routine") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) }; store.saved(v ? "new fish are stocked automatically" : "automatic stocking is off") })).tint(Theme.gold)
                     Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) }; store.saved(v ? "ripe fish are harvested" : "harvesting is off") })).tint(Theme.gold)
-                    Text("A new cohort needs cash for the young fish (a few million) and then feed every week for over a year before anything is sold.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    Text("A new cohort needs cash for the young fish (a few million) and then feed every week for over a year before anything is sold.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

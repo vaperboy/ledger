@@ -14,9 +14,10 @@ struct AccountantChoiceList: View {
     var onPick: (AccountantOffer) -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
+        // The fee is the figure compared down the list, so it sits on the right; rating and error rate are the line under the name.
+        VStack(spacing: Theme.Space.s) {
             ForEach(offers) { (o: AccountantOffer) in
-                ShopChoiceRow(title: o.name, subtitle: subtitle(o), trailing: "\u{2605} " + String(format: "%.1f", o.rating), selected: o.id == chosenID,
+                ShopChoiceRow(title: o.name, subtitle: subtitle(o), trailing: currency.tidyShort(o.monthlyFee) + "/mo", selected: o.id == chosenID,
                               identifier: "accountant-\(o.id)") { onPick(o) }
             }
         }
@@ -24,7 +25,7 @@ struct AccountantChoiceList: View {
 
     private func subtitle(_ o: AccountantOffer) -> String {
         let wrong: String = String(format: "%.0f", o.errorRate * 100)
-        return currency.tidyShort(o.monthlyFee) + " a month \u{00B7} books wrong " + wrong + "% of the time"
+        return "\u{2605} " + String(format: "%.1f", o.rating) + " \u{00B7} books wrong " + wrong + "% of the time"
     }
 }
 
@@ -41,7 +42,7 @@ struct AccountantStep: View {
         if let e = store.engine {
             let offers: [AccountantOffer] = e.accountantOffers(countryCode: countryCode)
             let chosen: Int? = accountantID ?? offers.first { (o: AccountantOffer) -> Bool in o.isDefault }?.id
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Accountant").capsLabel()
                 Text("A limited company keeps its books with one. The fee is paid each month and you can change it later in Atlas.")
                     .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
