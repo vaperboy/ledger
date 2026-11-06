@@ -61,6 +61,12 @@ extension StrategicDecisions {
         } else { s.note("The takeover attempt on \(h.name) failed.", tone: "good") }
     }
 
+    /// The owner's own merger with a rival of the market (the same merger as the rival's proposal, started by you).
+    static func mergeRival(_ s: inout GameState, companyIndex i: Int, rivalID: Int, rivalName: String, owner: String, pct: Double, data: GameData, context fc: FinanceContext, currency cur: Currency) {
+        let x = X(i: i, d: .object(["r": .number(Double(rivalID)), "n": .string(rivalName), "o": .string(owner)]), data: data, fc: fc, cur: cur)
+        mergeIn(&s, x, pct: pct)
+    }
+
     static func mergeIn(_ s: inout GameState, _ x: X, pct: Double) {
         let co = s.companies[x.i], key = marketKey(co), rid = x.d["r"].int
         guard var mk = s.rest["mk"], let r = mk[key]["riv"].array.first(where: { $0["id"].int == rid }) else { return }
