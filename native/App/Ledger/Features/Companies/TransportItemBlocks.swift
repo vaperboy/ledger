@@ -29,8 +29,8 @@ struct TransportItemBlock: View {
         let u = info.economics
         let seasonText: String = String(format: "%+.0f%% against an average month", (u.seasonIndex - 1) * 100)
         let lead: String = info.leadDays == 0 ? "on demand" : "\(info.leadDays) days"
-        return TeamGroup("How it runs") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection("How it runs") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: "Capacity it uses", value: String(format: "%.1f vehicles, bays or aircraft", u.units), sub: info.note, rule: false)
                     FlatRow(label: "Sold last week", value: String(format: "%.0f of %.0f", u.rented, u.capacity), sub: "per " + u.per)
@@ -47,8 +47,8 @@ struct TransportItemBlock: View {
     private func costs(_ info: TransportItems.Info, _ cur: Currency) -> some View {
         let u = info.economics
         let profitText: String = (u.weeklyProfit >= 0 ? "profit " : "loss ") + itemAmount(u.weeklyProfit, cur) + " a week"
-        return TeamGroup("What it costs") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection("What it costs") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: "Cost of one " + u.per, value: itemAmount(u.costPerPeriod, cur), sub: "at the last quarter's load factor", rule: false)
                     FlatRow(label: "Price that breaks even", value: itemAmount(u.breakEvenRate, cur), sub: "per " + u.per)

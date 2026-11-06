@@ -22,8 +22,8 @@ struct ProfessionalServiceBlock: View {
             let eco: ProfessionalServices.Economics = draftRate.flatMap { (r: Double) -> ProfessionalServices.Economics? in
                 ProfessionalServices.economics(e.state, companyID: companyID, itemID: itemID, price: r * per, data: e.data)
             } ?? base
-            TeamGroup(base.isGoods ? "Goods" : "Service") {
-                Card(padding: 14, radius: Theme.Radius.row) {
+            LedgerSection(base.isGoods ? "Goods" : "Service") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text(eco.text).font(.caption).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
                         KeyFigures(items: figures(eco, cur))

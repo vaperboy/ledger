@@ -21,8 +21,8 @@ struct FoodRecipeBlock: View {
 
     private var recipeGroup: some View {
         let sub: String = card.supplierDiscount > 0 ? "after \(pct(card.supplierDiscount)) off from \(card.supplierName ?? "your supplier")" : (card.supplierName ?? "no supplier chosen")
-        return TeamGroup(card.boughtIn ? "Bought in" : "Recipe, cost of one unit") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection(card.boughtIn ? "Bought in" : "Recipe, cost of one unit") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     ForEach(card.lines.indices, id: \.self) { (k: Int) in
                         FlatRow(label: card.lines[k].name, value: itemAmount(card.lines[k].cost * (1 - card.supplierDiscount), cur), sub: card.lines[k].qty, rule: k > 0)
@@ -38,8 +38,8 @@ struct FoodRecipeBlock: View {
 
     private var productionGroup: some View {
         let over: Bool = card.capacityUse > 1
-        return TeamGroup("Production") {
-            Card(padding: 14, radius: Theme.Radius.row) {
+        return LedgerSection("Production") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(spacing: 0) {
                     FlatRow(label: "Batch", value: "\(card.batch)", sub: String(format: "%.0f a shift", card.perShift), rule: false)
                     FlatRow(label: "Work in a unit", value: String(format: "%.1f minutes", card.labourMinutes))
@@ -53,8 +53,8 @@ struct FoodRecipeBlock: View {
 
     @ViewBuilder private var documentGroup: some View {
         if !card.allergens.isEmpty {
-            TeamGroup("Allergen sheet") {
-                Card(padding: 14, radius: Theme.Radius.row) {
+            LedgerSection("Allergen sheet") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     FlatRow(label: card.recipeName, value: card.allergens, rule: false)
                 }
             }
