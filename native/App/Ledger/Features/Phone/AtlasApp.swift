@@ -118,7 +118,7 @@ struct AtlasApp: View {
             }
             .overlay(alignment: .bottomLeading) {
                 Text("Protect what you\u{2019}ve built").textStyle(.title, tint: P.onAccent)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2).minimumScaleFactor(0.6)
                     .padding(Theme.Space.l)
             }
     }

@@ -113,6 +113,7 @@ struct TechProApp: View {
         ShopTabs(items: TpTab.allCases, title: { (t: TpTab) -> String in t.title }, selection: tabSelection,
                  identifier: { (t: TpTab) -> String in "tp-tab-\(t.title)" },
                  badges: { (t: TpTab) -> Bool in t == .orders && !store.messageItemIDs(.techPro, companyID: nil).isEmpty })
+            .environment(\.outsidePalette, P)
     }
 
     private var band: some View {

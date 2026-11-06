@@ -161,7 +161,7 @@ struct AirStayApp: View {
             .overlay(alignment: .bottomLeading) {
                 Text("Find the perfect space for your business")
                     .textStyle(.title, tint: P.onAccent)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2).minimumScaleFactor(0.6)
                     .padding(Theme.Space.l)
             }
     }

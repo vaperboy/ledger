@@ -144,11 +144,11 @@ struct LuxuryInspectSheet: View {
                 }
             }
             if !uses.isEmpty && p.use != "museum" {
-                Text("Use").capsLabel(P.inkFaint).padding(.top, 8)
+                Text("Use").capsLabel(P.inkFaint).padding(.top, Theme.Space.s)
                 SegmentedPill(items: [""] + uses.map { $0.id }, title: { id in id.isEmpty ? "Keep it" : uses.first { $0.id == id }?.name ?? id },
                             selection: Binding(get: { p.use }, set: { v in
                                 if store.act({ $0.setLuxuryUse(pieceID: p.id, use: v.isEmpty ? nil : v) }) != nil { store.saved(v.isEmpty ? "\(p.item.name) is kept for yourself." : "\(p.item.name): \(uses.first { $0.id == v }?.name.lowercased() ?? v).") } }))
-                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).popupText(.caption).padding(.top, 4) }
+                if let u = uses.first(where: { $0.id == p.use }) { Text(u.detail.tidyMoney).popupText(.caption).padding(.top, Theme.Space.xs) }
             }
             if p.item.id == "e5" {
                 let open = (e.state.rest["lux"]?.array.first { $0["id"].int == p.id }?["mode"].string ?? "open") != "private"

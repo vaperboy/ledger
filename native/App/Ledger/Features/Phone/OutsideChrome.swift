@@ -23,7 +23,7 @@ extension View {
     func outsideScreen(_ palette: OutsidePalette) -> some View { modifier(OutsideScreen(palette: palette)) }
 }
 
-/// The round back button (40 pt, grey outline) for an outside app's own masthead.
+/// The back button (44 pt target, in the app's ink) for an outside app's own masthead.
 struct OutsideBack: View {
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose

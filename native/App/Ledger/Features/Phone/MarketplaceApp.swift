@@ -65,6 +65,7 @@ struct MarketplaceApp: View {
             .frame(maxWidth: ShopMetrics.maxWidth)
             .frame(maxWidth: .infinity)
             .background(P.page)
+            .environment(\.outsidePalette, P)
         }
     }
 
