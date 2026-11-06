@@ -27,10 +27,9 @@ struct WeekReportShell<More: View>: View {
     // MARK: Body
 
     var body: some View {
-        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, onClose: { }) {
+        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, footer: AnyView(footer), onClose: { }) {
             pageContent
                 .frame(maxWidth: .infinity, alignment: .leading)
-            footer
         }
         .task { await start() }
     }

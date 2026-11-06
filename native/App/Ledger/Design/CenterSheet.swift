@@ -12,6 +12,12 @@ private struct CenterSheetTitleKey: PreferenceKey {
     static func reduce(value: inout String, nextValue: () -> String) { if value.isEmpty { value = nextValue() } }
 }
 
+/// Height of a popup's pinned footer, so the scrolling body gets the room that is left.
+private struct CenterSheetFooterHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 /// How a centred popup is sized. The five size classes (toast, compact, standard, tall, full) are defined in `PopupSizing.swift`; the frame
 /// picks one from the content for `.fit` and `.fitBleed`, and `.tall` is always the full class.
 /// `.fit` (default): exactly as high as its content, at most 80% of the screen, scrolling only when taller.
@@ -73,7 +79,10 @@ struct CenterSheetFrame<Content: View>: View {
     /// False: a tap outside never closes this card (the daily report), whatever the content says.
     var backdropCloses: Bool = true
     var variant: PopupVariant = .standard
+    /// Optional footer pinned below the scrolling body (always visible, inside the card); none by default.
+    var pinnedFooter: AnyView? = nil
     @ViewBuilder var content: () -> Content
+    @State private var footerHeight: CGFloat = 0
     @State private var shown = false
     @State private var locked = false
     @State private var contentTitle = ""
@@ -87,6 +96,7 @@ struct CenterSheetFrame<Content: View>: View {
         .toggleStyle(LedgerToggleStyle())
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetTitleKey.self) { contentTitle = $0 }
+        .onPreferenceChange(CenterSheetFooterHeightKey.self) { footerHeight = $0 }
         .onAppear {
             Haptics.play(variant.appearCue)
             Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
@@ -127,7 +137,8 @@ struct CenterSheetFrame<Content: View>: View {
             headerRow
                 .contentShape(Rectangle())
                 .gesture(dismissDrag, including: mask)
-            inner(room: room - head, head: head, screenHeight: screen.height)
+            inner(room: room - head - footerHeight, head: head + footerHeight, screenHeight: screen.height)
+            pinnedFooterView
         }
         .foregroundStyle(P.ink)
         .environment(\.colorScheme, P.isLight ? .light : .dark)
@@ -137,6 +148,14 @@ struct CenterSheetFrame<Content: View>: View {
         .overlay(shape.strokeBorder(P.lineStrong, lineWidth: 1))
         .overlay(alignment: .top) { grabber(swipe) }
         .overlay { celebration }
+    }
+
+    @ViewBuilder private var pinnedFooterView: some View {
+        if let footer = pinnedFooter {
+            footer.background(GeometryReader { (g: GeometryProxy) in
+                Color.clear.preference(key: CenterSheetFooterHeightKey.self, value: g.size.height)
+            })
+        }
     }
 
     /// The title shown in the header: the `title:` argument, else the one the content set with `.centerSheetTitle`.

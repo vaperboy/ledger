@@ -117,7 +117,10 @@ class FeatureTourCase: XCTestCase {
         while Date() < end && !home {
             let later: XCUIElement = app.buttons["ambition-later"].firstMatch
             if later.exists { ctap(later); pause(1) } else if popupUp() { closePopup() }
-            home = homeVisible(2) && !popupUp()
+            // A popup over Home hides 'Net worth': close up to ~10 popups first, and only check Home once none is up.
+            var closes = 0
+            while closes < 10 && popupUp() { closePopup(); closes += 1 }
+            home = !popupUp() && homeVisible(2)
         }
         if !home { log.record(.fail, "launch: Home summary visible", "no 'Net worth' text 30 s after launch") }
     }
@@ -304,7 +307,9 @@ class FeatureTourCase: XCTestCase {
     func openPhoneApp(_ name: String) -> Bool {
         guard goTab("Phone") else { return false }
         let tile: XCUIElement = button("phone-app-\(name)")
-        guard tap(tile, wait: 5) else { log.note("no tile \(name): " + tabState()); return false }
+        // The grid can still be settling or scrolled: give the tile a few seconds, then scroll to reveal it.
+        _ = tile.waitForExistence(timeout: 6)
+        guard tap(tile, wait: 4) else { log.note("no tile \(name): " + tabState()); return false }
         pause(0.6)
         return true
     }
@@ -312,7 +317,10 @@ class FeatureTourCase: XCTestCase {
     @discardableResult
     func openCompany(_ part: String) -> Bool {
         guard goTab("Home") else { return false }
-        let c: XCUIElement = buttonContaining(part)
+        // Looser than a button label: the row may expose its name as a button, static text or a combined element.
+        let pred: NSPredicate = NSPredicate(format: "label CONTAINS[c] %@ OR identifier CONTAINS[c] %@", part, part)
+        let asButton: XCUIElement = buttonContaining(part)
+        let c: XCUIElement = asButton.waitForExistence(timeout: 3) ? asButton : app.descendants(matching: .any).matching(pred).firstMatch
         guard tap(c, wait: 5) else { return false }
         return button("company-tab-overview").waitForExistence(timeout: 5)
     }

@@ -12,11 +12,13 @@ struct GamePopup<Content: View>: View {
     /// False: only the popup's own button closes it (the daily report, so a player cannot tap through it).
     var dismissOnBackdrop = true
     var variant: PopupVariant = .standard
+    /// Optional footer pinned below the scrolling content (always visible); none by default.
+    var footer: AnyView? = nil
     var onClose: () -> Void
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        CenterSheetFrame(onClose: onClose, title: title, size: .fit, showsClose: showsClose, backdropCloses: dismissOnBackdrop, variant: variant) {
+        CenterSheetFrame(onClose: onClose, title: title, size: .fit, showsClose: showsClose, backdropCloses: dismissOnBackdrop, variant: variant, pinnedFooter: footer) {
             VStack(alignment: .leading, spacing: PopupSpace.block) { content() }
         }
     }
