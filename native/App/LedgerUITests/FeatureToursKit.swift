@@ -116,8 +116,8 @@ class FeatureTourCase: XCTestCase {
         var home = false
         while Date() < end && !home {
             let later: XCUIElement = app.buttons["ambition-later"].firstMatch
-            if later.exists { ctap(later); pause(1) }
-            home = homeVisible(2)
+            if later.exists { ctap(later); pause(1) } else if popupUp() { closePopup() }
+            home = homeVisible(2) && !popupUp()
         }
         if !home { log.record(.fail, "launch: Home summary visible", "no 'Net worth' text 30 s after launch") }
     }
@@ -208,7 +208,24 @@ class FeatureTourCase: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN %@", Self.popupIDs)).firstMatch
     }
 
-    func popupUp(_ wait: TimeInterval = 0) -> Bool { wait > 0 ? popupElement.waitForExistence(timeout: wait) : popupElement.exists }
+    /// Cheap check: one button query, plus the backdrop.
+    func popupUp(_ wait: TimeInterval = 0) -> Bool {
+        let b: XCUIElement = app.buttons.matching(NSPredicate(format: "identifier IN %@", Self.popupIDs)).firstMatch
+        if wait > 0 { return b.waitForExistence(timeout: wait) || popupElement.exists }
+        return b.exists || app.otherElements["popup-backdrop"].exists
+    }
+
+    var diagCount = 0
+    /// Diagnostic (max 8 per run): which popup ids are on screen with their frames.
+    func popupDiag(_ why: String) {
+        guard diagCount < 8 else { return }
+        diagCount += 1
+        let found: [String] = Self.popupIDs.compactMap { (id: String) -> String? in
+            let e: XCUIElement = elem(id)
+            return e.exists ? "\(id)@\(Int(e.frame.minX)),\(Int(e.frame.minY)),\(Int(e.frame.width))x\(Int(e.frame.height))" : nil
+        }
+        log.note("popup diag (\(why)): " + found.joined(separator: " "))
+    }
 
     func waitPopupGone(_ t: TimeInterval = 3) -> Bool {
         let end: Date = Date().addingTimeInterval(t)
@@ -225,6 +242,7 @@ class FeatureTourCase: XCTestCase {
             let b: XCUIElement = button(id)
             if ctap(b) { pause(0.6); return }
         }
+        popupDiag("no close button tappable")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
         pause(0.6)
     }
