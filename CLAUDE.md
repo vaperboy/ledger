@@ -3,11 +3,10 @@
 - Architecture: engine (pure Swift, double-entry ledger, all rules) + thin SwiftUI views over `GameStore`.
 
 # Working rules
-- Token rules: small edits only, never rewrite whole files. Grep before reading; do not re-read files already seen. Short answers, verified results only, no intros or summaries.
-- No unverified claims: say a thing works only after a test or CI run showed it.
+- Short answers, verified results only. Say a thing works only after a test or CI run showed it.
 - Comments say what and why in one or two lines. No request, brief, stage or process references in code.
-- Delete nothing without explicit owner approval.
-- Agents: max two, local commits only, never push; the lead integrates once per milestone.
+- Rewrite whole screens and files when a redesign calls for it; remove UI that a redesign replaces.
+- Agents: as many as useful, each on its own files, local commits only; the lead integrates and pushes.
 
 # Build and test (no Mac here: CI is the compiler)
 - The app compiles only on macOS CI. Push to `native-swiftui`; CI runs engine-tests and app-build. Read only whether app-build failed, then its `error:` lines: `gh api repos/vaperboy/ledger/actions/jobs/<id>/logs | grep "error:"`. If a build fails, show only the `error:` lines.
