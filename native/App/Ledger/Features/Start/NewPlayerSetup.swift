@@ -4,7 +4,8 @@ import Countries
 import Finance
 import Simulation
 
-/// The new-player setup: three steps, one screen each. Country (largest first), trade (twelve starters, or all of them), company name.
+/// The new-player setup: three steps, one screen each. Country (largest first), trade (the in-game picker's table: twelve starters, or
+/// all of them), company name.
 /// Nothing is created until `begin` is called from the last step; the start screen decides whether replacing a saved game needs asking first.
 struct NewPlayerSetup: View {
     enum Step { case country, trade, name }
@@ -105,15 +106,12 @@ struct NewPlayerSetup: View {
 
     private var tradeStep: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if loading && allTrades.isEmpty { ProgressView().frame(maxWidth: .infinity).padding(.top, 40) }
-                if showAll { allList } else { grid }
-                if !allTrades.isEmpty {
-                    Button { Haptics.tap(); showAll.toggle() } label: {
-                        Text(showAll ? "Show fewer" : "All \(allTrades.count) trades").textStyle(.body, tint: Theme.accent, weight: .medium)
-                            .frame(maxWidth: .infinity).padding(.vertical, 8)
-                    }
-                    .buttonStyle(PressableStyle())
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                if loading && allTrades.isEmpty { LoadingState(text: "Pricing the trades", rows: 6) }
+                if !allTrades.isEmpty { tradeTable }
+                if allTrades.count > starters.count {
+                    Button(showAll ? "Show fewer" : "All \(allTrades.count) trades") { Haptics.tap(); showAll.toggle() }
+                        .buttonStyle(TertiaryButtonStyle(fullWidth: true))
                 }
             }
         }
@@ -130,47 +128,24 @@ struct NewPlayerSetup: View {
         loading = false
     }
 
-    private var grid: some View {
-        let columns: [GridItem] = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
-        return LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(starters) { (t: StarterTrade) in tile(t) }
+    /// The in-game trade picker's table (`SharpTable`, trade and start-up cost): the twelve starters first, all trades on request.
+    private var tradeTable: some View {
+        let rest: [StarterTrade] = allTrades.filter { !GameEngine.starterTradeIDs.contains($0.id) }
+        let shown: [StarterTrade] = showAll ? starters + rest : starters
+        return SharpTable {
+            TableHeader(columns: Self.tradeColumns)
+            ForEach(shown) { (t: StarterTrade) in
+                TableRow(columns: Self.tradeColumns, title: t.name, note: t.line.tidyMoney, values: [costText(t)],
+                         valueTints: [t.startUpCost == nil ? Theme.inkFaint : Theme.ink]) { pick(t) }
+            }
         }
     }
 
-    private func tile(_ t: StarterTrade) -> some View {
-        Button { pick(t) } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                ThumbnailView(kind: .logo, key: "trade|" + t.id, size: 40)
-                Text(t.name).textStyle(.headline).lineLimit(1)
-                Text(t.line.tidyMoney).textStyle(.caption).multilineTextAlignment(.leading)
-                    .lineLimit(3).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, minHeight: 130, alignment: .topLeading)
-            .padding(Theme.Space.m)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-    }
+    private static let tradeColumns: [TableColumn] = [TableColumn(title: "Trade"), TableColumn(title: "Start-up", width: 84)]
 
-    private var allList: some View {
-        VStack(spacing: 0) {
-            ForEach(allTrades) { (t: StarterTrade) in
-                Button { pick(t) } label: {
-                    HStack(spacing: 10) {
-                        Text(t.name).textStyle(.headline)
-                        Spacer(minLength: 8)
-                        if let cost = t.startUpCost, let cur = currency {
-                            Text(cur.tidyShort(cost)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
-                        }
-                    }
-                    .padding(.vertical, 10).contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                Hairline()
-            }
-        }
+    private func costText(_ t: StarterTrade) -> String {
+        guard let cost = t.startUpCost, let cur = currency else { return "n/a" }
+        return cur.tidyShort(cost)
     }
 
     private func pick(_ t: StarterTrade) {
