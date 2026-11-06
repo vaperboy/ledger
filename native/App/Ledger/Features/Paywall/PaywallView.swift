@@ -14,7 +14,7 @@ struct PaywallView: View {
             header
             options
             buyButton
-            if let note = ent.message { Text(note).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted) }
+            if let note = ent.message { Text(note).textStyle(.caption) }
             passLink
             footer
         }
@@ -25,10 +25,10 @@ struct PaywallView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if !request.lead.isEmpty { Text(request.lead).font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true) }
-            Text(request.title).font(.system(size: 20, weight: .semibold, design: .serif)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+            if !request.lead.isEmpty { Text(request.lead).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
+            Text(request.title).textStyle(.figure, weight: .semibold).fixedSize(horizontal: false, vertical: true)
             Text("No purchase changes a number in the game. Pro unlocks more of it and removes ads.")
-                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -47,10 +47,10 @@ struct PaywallView: View {
     private var ownedRow: some View {
         HStack(spacing: 8) {
             GlyphView(glyph: Glyph.check, size: 14, weight: 1.8, tint: Theme.gain)
-            Text("Ledger Pro: Owned").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.ivory)
+            Text("Ledger Pro: Owned").textStyle(.body, weight: .medium)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 4).frame(minHeight: 36)
+        .padding(.horizontal, Theme.Space.xs).frame(minHeight: 44)
     }
 
     private func planCard(_ p: LedgerProduct, title: String, badge: String, detail: String) -> some View {
@@ -58,13 +58,13 @@ struct PaywallView: View {
         return Button { choice = p } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory)
-                    if !badge.isEmpty { Text(badge).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.gain) }
+                    Text(title).textStyle(.headline, weight: .semibold)
+                    if !badge.isEmpty { Text(badge).textStyle(.caption, tint: Theme.gain, weight: .semibold) }
                     Spacer(minLength: 8)
-                    Text(priceLine(p)).font(.system(size: 14).monospacedDigit()).foregroundStyle(on ? Theme.gold : Theme.ivoryMuted)
+                    Text(priceLine(p)).textStyle(.body, tint: on ? Theme.accent : Theme.inkSoft, numeric: true)
                 }
-                Text(detail).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                if p.isPlus && ent.trialEligible { Text("7 days free, then \(ent.price(p))").font(.system(size: 12)).foregroundStyle(Theme.gold) }
+                Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                if p.isPlus && ent.trialEligible { Text("7 days free, then \(ent.price(p))").textStyle(.caption, tint: Theme.accent) }
             }
             .padding(12).frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(on ? Theme.goldSelected : Theme.surface))
@@ -116,7 +116,7 @@ struct PaywallView: View {
             if !ent.ownsPro {
                 Button { Task { await ent.purchase(.founder) } } label: {
                     Text("Founder's Edition: Pro, your name in the Rich List, a gold icon and future packs. \(ent.price(.founder))")
-                        .font(.system(size: 12.5)).multilineTextAlignment(.leading)
+                        .textStyle(.caption).multilineTextAlignment(.leading).lineLimit(4).fixedSize(horizontal: false, vertical: true)
                 }
                 .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
                 .disabled(ent.price(.founder).isEmpty)
@@ -125,10 +125,10 @@ struct PaywallView: View {
                 Button { Task { await ent.restore() } } label: { Text("Restore purchases") }
                     .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
                     .accessibilityIdentifier("paywall-restore")
-                Link("Terms", destination: LedgerLinks.terms).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
-                Link("Privacy", destination: LedgerLinks.privacy).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Link("Terms", destination: LedgerLinks.terms).textStyle(.caption)
+                Link("Privacy", destination: LedgerLinks.privacy).textStyle(.caption)
             }
-            Text("Plus renews until cancelled. Manage it in your App Store account settings.").font(.system(size: 11)).foregroundStyle(Theme.ivoryDim)
+            Text("Plus renews until cancelled. Manage it in your App Store account settings.").textStyle(.caption, tint: Theme.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

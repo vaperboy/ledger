@@ -87,7 +87,7 @@ struct StartView: View {
     @ViewBuilder private var primaryButtons: some View {
         if store.hasSavedGame && store.loadProblem == nil {
             Button { Haptics.tap(); settingUp = true } label: {
-                Text("New game").font(.system(size: 14)).foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, minHeight: 36)
+                Text("New game").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(PressableStyle())
         } else {
@@ -108,7 +108,7 @@ struct StartView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.playerName).font(.serifTitle(24)).foregroundStyle(Theme.ivory)
                             Text("\(country.map { "\($0.flag) \($0.name)" } ?? s.countryCode) · \(GameCalendar.dateString(week: s.week))")
-                                .font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                                .textStyle(.caption)
                         }
                     }
                     FigureCard(items: [
@@ -118,7 +118,7 @@ struct StartView: View {
                     ]).environment(\.insideCard, true)
                 } else {
                     // The save opens (from the copy kept before the last one) but its summary could not be read.
-                    Text("A saved game is waiting.").font(.system(size: 13.5)).foregroundStyle(Theme.ivoryMuted)
+                    Text("A saved game is waiting.").textStyle(.body, tint: Theme.inkSoft)
                 }
                 QuietButton(title: "Continue", fullWidth: true) { store.loadCurrent() }
             }
@@ -130,11 +130,11 @@ struct StartView: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(spacing: 10) {
                     IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.caution)
-                    Text("Your save could not be opened").font(.system(size: 14.5, weight: .medium)).foregroundStyle(Theme.ivory)
+                    Text("Your save could not be opened").textStyle(.body, weight: .medium)
                 }
-                Text(problem).font(.system(size: 13.5)).foregroundStyle(Theme.ivory).fixedSize(horizontal: false, vertical: true)
+                Text(problem).textStyle(.body).fixedSize(horizontal: false, vertical: true)
                 Text("The file stays on this device untouched until you start or import another game, which replaces it.")
-                    .font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 QuietButton(title: "Try again") { store.loadCurrent(); summary = store.currentSaveSummary() }
             }
         }

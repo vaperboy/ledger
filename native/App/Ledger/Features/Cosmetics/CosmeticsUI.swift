@@ -190,7 +190,7 @@ struct WardrobeView: View {
         } label: {
             VStack(spacing: 5) {
                 CosmeticBadgeView(badge: b, tint: open ? accent : Theme.ivoryDim, size: 36)
-                Text(note).font(.system(size: 10.5)).foregroundStyle(open ? Theme.ivoryMuted : Theme.ivoryFaint).lineLimit(1)
+                Text(note).textStyle(.caption, tint: open ? Theme.inkSoft : Theme.inkFaint).lineLimit(1)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 9)
             .background(shape.fill(on ? Theme.goldSelected : Theme.surface))

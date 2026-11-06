@@ -103,7 +103,7 @@ struct CustomTabPicker: View {
         } label: {
             VStack(spacing: 5) {
                 IconCircle(glyph: app.glyph, size: 40, tint: on ? Theme.gold : nil)
-                Text(app.title).font(.system(size: 10.5)).foregroundStyle(on ? Theme.gold : P.ink).lineLimit(1).minimumScaleFactor(0.7)
+                Text(app.title).textStyle(.caption, tint: on ? Theme.accent : P.ink).lineLimit(1).minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())

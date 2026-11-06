@@ -10,7 +10,7 @@ struct ProMark: View {
         if !ent.isUnlocked(feature) {
             HStack(spacing: 4) {
                 GlyphView(glyph: Glyph.lock, size: 11, weight: 1.6, tint: Theme.gold)
-                Text("Ledger Pro").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.gold)
+                Text("Ledger Pro").textStyle(.caption, tint: Theme.accent, weight: .medium)
             }
             .accessibilityElement(children: .combine)
         }

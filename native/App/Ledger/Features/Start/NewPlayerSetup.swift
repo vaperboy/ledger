@@ -24,6 +24,8 @@ struct NewPlayerSetup: View {
     @State private var showAll = false
     @State private var picked: StarterTrade?
     @State private var startCash: Double?
+    /// Narrows the long country list by name.
+    @State private var countryQuery = ""
     @FocusState private var nameFocused: Bool
     private static let sizeOrder: [Country] = GameEngine.countriesBySize()
     private var countries: [Country] { Self.sizeOrder }
@@ -49,7 +51,8 @@ struct NewPlayerSetup: View {
 
     private var header: some View {
         let title: String = step == .country ? "Where do you live?" : step == .trade ? "What do you open?" : "Name your company"
-        return AppHeader(title: title, onBack: { goBack() })
+        let number: Int = step == .country ? 1 : step == .trade ? 2 : 3
+        return AppHeader(title: title, subtitle: "Step \(number) of 3", onBack: { goBack() })
             .padding(.top, 24)
     }
 
@@ -64,23 +67,30 @@ struct NewPlayerSetup: View {
     // MARK: Step 1, country
 
     private var countryStep: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(countries) { (c: Country) in
-                    Button { chooseCountry(c) } label: {
-                        HStack(spacing: 12) {
-                            Text(c.flag).font(.system(size: 26))
-                            Text(c.name).font(.system(size: 16)).foregroundStyle(Theme.ivory)
-                            Spacer(minLength: 8)
+        let q: String = countryQuery.trimmingCharacters(in: .whitespaces).lowercased()
+        let shown: [Country] = q.isEmpty ? countries : countries.filter { (c: Country) -> Bool in c.name.lowercased().contains(q) }
+        return VStack(spacing: Theme.Space.s) {
+            LedgerField(placeholder: "Search countries", text: $countryQuery, identifier: "country-search")
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if shown.isEmpty { EmptyState(glyph: Glyph.world, title: "No country matches \u{201C}\(countryQuery)\u{201D}") }
+                    ForEach(shown) { (c: Country) in
+                        Button { chooseCountry(c) } label: {
+                            HStack(spacing: Theme.Space.m) {
+                                Text(c.flag).font(.title)
+                                Text(c.name).textStyle(.headline)
+                                Spacer(minLength: Theme.Space.s)
+                            }
+                            .padding(.vertical, Theme.Space.s).frame(minHeight: 44).contentShape(Rectangle())
                         }
-                        .padding(.vertical, 10).contentShape(Rectangle())
+                        .buttonStyle(PressableStyle())
+                        Hairline()
                     }
-                    .buttonStyle(PressableStyle())
-                    Hairline()
                 }
             }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollIndicators(.hidden)
     }
 
     private func chooseCountry(_ c: Country) {
@@ -100,7 +110,7 @@ struct NewPlayerSetup: View {
                 if showAll { allList } else { grid }
                 if !allTrades.isEmpty {
                     Button { Haptics.tap(); showAll.toggle() } label: {
-                        Text(showAll ? "Show fewer" : "All \(allTrades.count) trades").font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.gold)
+                        Text(showAll ? "Show fewer" : "All \(allTrades.count) trades").textStyle(.body, tint: Theme.accent, weight: .medium)
                             .frame(maxWidth: .infinity).padding(.vertical, 8)
                     }
                     .buttonStyle(PressableStyle())
@@ -131,14 +141,14 @@ struct NewPlayerSetup: View {
         Button { pick(t) } label: {
             VStack(alignment: .leading, spacing: 6) {
                 ThumbnailView(kind: .logo, key: "trade|" + t.id, size: 40)
-                Text(t.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Theme.ivory).lineLimit(1)
-                Text(t.line.tidyMoney).font(.system(size: 12)).foregroundStyle(Theme.ivoryMuted).multilineTextAlignment(.leading)
+                Text(t.name).textStyle(.headline).lineLimit(1)
+                Text(t.line.tidyMoney).textStyle(.caption).multilineTextAlignment(.leading)
                     .lineLimit(3).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, minHeight: 130, alignment: .topLeading)
-            .padding(12)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
+            .padding(Theme.Space.m)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -149,10 +159,10 @@ struct NewPlayerSetup: View {
             ForEach(allTrades) { (t: StarterTrade) in
                 Button { pick(t) } label: {
                     HStack(spacing: 10) {
-                        Text(t.name).font(.system(size: 15)).foregroundStyle(Theme.ivory)
+                        Text(t.name).textStyle(.headline)
                         Spacer(minLength: 8)
                         if let cost = t.startUpCost, let cur = currency {
-                            Text(cur.tidyShort(cost)).font(.system(size: 13).monospacedDigit()).foregroundStyle(Theme.ivoryMuted)
+                            Text(cur.tidyShort(cost)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
                         }
                     }
                     .padding(.vertical, 10).contentShape(Rectangle())
@@ -208,15 +218,15 @@ struct NewPlayerSetup: View {
                 .focused($nameFocused)
                 .submitLabel(.go)
                 .onSubmit { start() }
-                .font(.system(size: 20))
-                .padding(.vertical, 10)
+                .textStyle(.figure)
+                .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
             TextField("Your name (optional)", text: $playerName)
                 .textInputAutocapitalization(.words)
                 .submitLabel(.go)
                 .onSubmit { start() }
-                .font(.system(size: 20))
-                .padding(.vertical, 10)
+                .textStyle(.figure)
+                .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
             QuietButton(title: "Start", fullWidth: true) { start() }
             Spacer(minLength: 0)

@@ -218,7 +218,7 @@ struct DailyReportPopup: View {
                     store.dismissDailySheet()
                     store.go(popup: action)
                 } label: {
-                    Text(title + " ›").popupText(.effect).frame(minHeight: 32).contentShape(Rectangle())
+                    Text(title + " ›").popupText(.effect).frame(minHeight: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("daily-insight-action")
             }

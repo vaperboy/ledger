@@ -29,7 +29,7 @@ struct GameOverView: View {
                 QuietButton(title: "Back to the start screen", fullWidth: true) { store.quitToMenu() }
                     .padding(.top, 6)
                 Text("This run stays saved. Starting a new game from the start screen replaces it.")
-                    .font(.system(size: 11.5)).foregroundStyle(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .center).multilineTextAlignment(.center)
+                    .textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, alignment: .center).multilineTextAlignment(.center)
             }
             .padding(.horizontal, 18).padding(.bottom, 20)
             .frame(maxWidth: 560)
@@ -44,9 +44,9 @@ struct GameOverView: View {
         let weeks = max(1, endWeek + 1)
         return CardSection("The run") {
             HStack {
-                Text(GameCalendar.dateString(week: 0)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text(GameCalendar.dateString(week: 0)).textStyle(.caption)
                 Spacer()
-                Text(GameCalendar.dateString(week: endWeek)).font(.system(size: 12.5)).foregroundStyle(Theme.ivoryMuted)
+                Text(GameCalendar.dateString(week: endWeek)).textStyle(.caption)
             }
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.divider).frame(height: 3)

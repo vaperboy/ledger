@@ -95,9 +95,9 @@ struct SidebarShell: View {
                 if let e = store.engine {
                     Section {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(e.state.player.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ivory).lineLimit(1)
+                            Text(e.state.player.name).textStyle(.headline, weight: .semibold).lineLimit(1)
                             Text("\(e.homeCountry.flag) \(GameCalendar.dateString(week: e.state.week, dayOffset: e.state.day)) · week \(e.state.week + 1)")
-                                .font(.system(size: 12)).foregroundStyle(Theme.ivoryFaint).lineLimit(1)
+                                .textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                         }
                         .padding(.vertical, 2)
                         .accessibilityElement(children: .combine)
