@@ -78,22 +78,8 @@ enum HoldingRules {
 /// The small (i) that explains the holding company in a popover.
 struct HoldingInfoButton: View {
     @EnvironmentObject var store: GameStore
-    @State private var open = false
 
     var body: some View {
-        Button { Haptics.tap(); open.toggle() } label: {
-            Text("i").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.ivoryMuted)
-                .frame(width: 22, height: 22)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
-                .frame(width: 40, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel("What is a holding company")
-        .accessibilityIdentifier("holding-info")
-        .centerSheet(isPresented: $open, title: "Holding company", size: .fit) {
-            Text(HoldingRules.text(store.engine)).popupText(.subtitle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        InfoSheetButton(title: "Holding company", text: HoldingRules.text(store.engine), label: "What is a holding company", identifier: "holding-info")
     }
 }

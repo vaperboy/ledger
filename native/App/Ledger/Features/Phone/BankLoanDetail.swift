@@ -53,18 +53,19 @@ struct LoanDetailSheet: View {
     @ViewBuilder private func content(_ e: GameEngine, _ rec: LoanRecord) -> some View {
         let cur: Currency = currency(e, rec)
         VStack(alignment: .leading, spacing: 14) {
-            IvoryPanel { LoanSummaryPanel(rec: rec, cur: cur) }
+            LoanSummaryPanel(rec: rec, cur: cur)
             termsCard(rec, cur)
-            actions(e, rec, cur)
+            scheduleToggle
             if showSchedule { scheduleCard(e, rec, cur) }
             guarantee(e, rec)
         }
+        .popupFooter { actions(e, rec, cur) }
     }
 
     private func termsCard(_ rec: LoanRecord, _ cur: Currency) -> some View {
         let period: String = "\(rec.termMonths) months (\(rec.monthsLeft) left)"
         let payout: String = rec.payoutAccount == "savings" ? "Savings" : (rec.companyID == 0 ? "Current account" : "Company account")
-        return BankCard(title: rec.number) {
+        return PopupSection(title: rec.number) {
             VStack(spacing: 0) {
                 FlatRow(label: "Interest rate", value: Currency.percent(rec.yearlyRate, decimals: 2) + " a year", rule: false)
                 FlatRow(label: "Repayment period", value: period)
@@ -81,21 +82,24 @@ struct LoanDetailSheet: View {
 
     // MARK: Actions
 
+    /// The money actions stay pinned under the scrolling detail.
     private func actions(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if rec.thisMonthSettled {
-                Text("This month's instalment is paid. It is not taken again on the due date.").popupText(.subtitle)
-            } else {
-                QuietButton(title: "Pay this month's instalment now", fullWidth: true) { confirmInstalment(e, rec, cur) }
-                    .accessibilityIdentifier("loan-pay-instalment")
+        VStack(spacing: 10) {
+            if !rec.thisMonthSettled {
+                PopupOptionButton(title: "Pay this month's instalment now", identifier: "loan-pay-instalment") { confirmInstalment(e, rec, cur) }
             }
-            QuietButton(title: "Pay off early", fullWidth: true) { confirmPayoff(e, rec, cur) }
-                .accessibilityIdentifier("loan-payoff")
-            QuietButton(title: "Pay back part", fullWidth: true) { partial = true }
-                .accessibilityIdentifier("loan-pay-part")
-            QuietButton(title: showSchedule ? "Hide schedule" : "View schedule", fullWidth: true) { Motion.animate(Motion.quickAnimation) { showSchedule.toggle() } }
-                .accessibilityIdentifier("loan-schedule")
+            HStack(spacing: 10) {
+                PopupOptionButton(title: "Pay off early", identifier: "loan-payoff") { confirmPayoff(e, rec, cur) }
+                PopupOptionButton(title: "Pay back part", identifier: "loan-pay-part") { partial = true }
+            }
         }
+    }
+
+    @ViewBuilder private var scheduleToggle: some View {
+        if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }), let rec = record(e, l), rec.thisMonthSettled {
+            Text("This month's instalment is paid. It is not taken again on the due date.").popupText(.subtitle)
+        }
+        PopupOptionButton(title: showSchedule ? "Hide schedule" : "View schedule", identifier: "loan-schedule") { Motion.animate(Motion.quickAnimation) { showSchedule.toggle() } }
     }
 
     private func confirmInstalment(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) {
@@ -163,8 +167,9 @@ struct LoanDetailSheet: View {
 
     @ViewBuilder private func guarantee(_ e: GameEngine, _ rec: LoanRecord) -> some View {
         if rec.personallyGuaranteed, let t = e.guaranteeTerms(loanID: rec.id) {
-            BankCard(title: "Personal guarantee", trailing: t.guaranteed ? "you guarantee it" : "released") {
+            PopupSection(title: "Personal guarantee") {
                 VStack(alignment: .leading, spacing: 10) {
+                    Text(t.guaranteed ? "You guarantee it." : "Released.").popupText(.caption)
                     Text("You guaranteed this loan personally. The guarantee stays with you, also after a company becomes a limited company, until the bank agrees to release it for a higher margin.")
                         .popupText(.subtitle)
                     if let why = t.unavailable {
@@ -193,8 +198,7 @@ struct LoanDetailSheet: View {
         if let c = t.counter {
             Text("The bank's standing counter: " + Currency.percent(c, decimals: 2) + " a year extra.").popupText(.caption)
         }
-        QuietButton(title: "Ask the bank to release it", fullWidth: true) { confirmOffer(t) }
-            .accessibilityIdentifier("loan-guarantee-offer")
+        PopupOptionButton(title: "Ask the bank to release it", identifier: "loan-guarantee-offer") { confirmOffer(t) }
     }
 
     private func confirmOffer(_ t: LoanGuarantee.Terms) {

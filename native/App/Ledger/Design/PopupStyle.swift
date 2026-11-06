@@ -78,6 +78,29 @@ enum PopupSpace {
     static let card: CGFloat = 16
 }
 
+private struct InsidePopupKey: EnvironmentKey { static let defaultValue: Bool = false }
+
+extension EnvironmentValues {
+    /// True inside a popup card: a `Card` there draws flat (padding and a hairline, no fill or border) so it never forms a box inside the box.
+    var insidePopup: Bool {
+        get { self[InsidePopupKey.self] }
+        set { self[InsidePopupKey.self] = newValue }
+    }
+}
+
+/// One corner-radius set for everything inside a popup: the card, a control (button, field), and an inner block (signature box, photo).
+enum PopupRadius {
+    static let card: CGFloat = Theme.Radius.hero
+    static let control: CGFloat = Theme.Radius.table
+    static let inner: CGFloat = Theme.Radius.row
+}
+
+/// The champagne gold of an action that is meant to stand out, readable on the dark card and on a light outside palette.
+enum PopupInk {
+    /// Dark ink on a gold fill.
+    static let onGold = Color(red: 0.09, green: 0.075, blue: 0.055)
+}
+
 private struct PopupTextStyle: ViewModifier {
     @Environment(\.outsidePalette) private var P
     var role: PopupRole
@@ -134,8 +157,8 @@ private struct PopupFieldStyle: ViewModifier {
             .foregroundStyle(P.ink)
             .padding(.horizontal, PopupSpace.block)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(P.cardDeep))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).fill(P.cardDeep))
+            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(P.line, lineWidth: 1))
     }
 }
 
@@ -170,4 +193,21 @@ struct PopupBody<Content: View>: View {
 extension HireFeedback {
     /// The popup role of a negotiation answer: an agreement is an effect line, any other answer (a no, a counter, gone) a caution line.
     var popupRole: PopupRole { isHired ? .effect : .risk }
+}
+
+/// A flat group inside a popup: an optional small heading, then rows separated by hairlines. No fill, no border, so it never forms a card
+/// inside the popup card. Put each row as a direct child; the hairline is drawn between them.
+struct PopupSection<Content: View>: View {
+    @Environment(\.outsidePalette) private var P
+    var title: String = ""
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PopupSpace.row) {
+            if !title.isEmpty { Text(title).popupText(.caption).textCase(.uppercase) }
+            VStack(alignment: .leading, spacing: PopupSpace.row) { content() }
+                .padding(.top, PopupSpace.row)
+                .overlay(alignment: .top) { Rectangle().fill(P.line).frame(height: 1) }
+        }
+    }
 }

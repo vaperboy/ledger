@@ -6,10 +6,13 @@ struct InfoSheetButton: View {
     @Environment(\.outsidePalette) private var P
     var title: String
     var text: String
+    /// VoiceOver label and UI-test id; the label defaults to "About <title>".
+    var label: String = ""
+    var identifier: String = ""
     @State private var open = false
 
     var body: some View {
-        Button { open = true } label: {
+        Button { Haptics.tap(); open = true } label: {
             Text("i").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(P.inkSoft)
                 .frame(width: 17, height: 17)
                 .overlay(Circle().strokeBorder(P.inkSoft, lineWidth: 1))
@@ -17,7 +20,8 @@ struct InfoSheetButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
-        .accessibilityLabel("About " + title)
+        .accessibilityLabel(label.isEmpty ? "About " + title : label)
+        .accessibilityIdentifier(identifier)
         .centerSheet(isPresented: $open, title: title, size: .fit) {
             Text(text).popupText(.subtitle)
                 .frame(maxWidth: .infinity, alignment: .leading)

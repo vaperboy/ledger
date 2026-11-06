@@ -9,7 +9,7 @@ struct SignaturePad: View {
     @Binding var strokes: [[CGPoint]]
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.94))
+            RoundedRectangle(cornerRadius: PopupRadius.inner, style: .continuous).fill(Color.white.opacity(0.94))
             Canvas { ctx, _ in
                 for s in strokes where s.count > 1 {
                     var p = Path(); p.addLines(s)
@@ -34,40 +34,16 @@ struct DocumentSignSheet: View {
     var companyID: Int
     var documentID: String
     var onClose: () -> Void
-    @State private var agreed = false
-    @State private var strokes: [[CGPoint]] = []
 
     var body: some View {
         Group {
             if let f = form, let co = store.engine?.state.company(companyID) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("To: " + f.issuer.tidyText).popupText(.subtitle)
-                    if !f.note.isEmpty { Text(f.note).popupText(.body) }
-                    HStack {
-                        Text("Fee").popupText(.subtitle)
-                        Spacer(minLength: 8)
-                        Text(f.fee > 0 ? store.short(f.fee, in: co) : "Free").popupText(.rowValue)
-                    }
-                    HStack {
-                        Text("Answer expected").popupText(.subtitle)
-                        Spacer(minLength: 8)
-                        Text("in about \(max(1, f.weeks)) week\(f.weeks == 1 ? "" : "s")").popupText(.rowValue)
-                    }
-                    Button { Haptics.choose(); agreed.toggle() } label: {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: agreed ? "checkmark.square.fill" : "square").foregroundStyle(agreed ? Theme.gold : Theme.ivoryFaint).font(.system(size: 20)).accessibilityHidden(true)
-                            Text("I confirm that the details are true and I accept the terms of this application.").popupText(.body).multilineTextAlignment(.leading)
-                        }
-                    }.buttonStyle(PressableStyle()).accessibilityValue(agreed ? "Checked" : "Unchecked")
-                    SignaturePad(strokes: $strokes)
-                    HStack {
-                        Button("Clear") { strokes = [] }.buttonStyle(QuietButtonStyle()).disabled(strokes.isEmpty)
-                        Spacer(minLength: 8)
-                        Button(f.status == "rejected" ? "Sign and apply again" : "Sign and send") { send(f, co) }
-                            .buttonStyle(ImportantButtonStyle()).disabled(!agreed || strokes.isEmpty)
-                    }
-                    Text("The authority reviews it and answers by message. It can refuse; you may then apply again at once.").popupText(.caption)
-                }
+                SignPopup(title: f.name, to: f.issuer.tidyText, note: f.note,
+                          fee: f.fee > 0 ? store.short(f.fee, in: co) : "Free",
+                          wait: "in about \(max(1, f.weeks)) week\(f.weeks == 1 ? "" : "s")",
+                          button: f.status == "rejected" ? "Sign and apply again" : "Sign and send",
+                          caption: "The authority reviews it and answers by message. It can refuse; you may then apply again at once.",
+                          closesFirst: false, onSend: { send(f, co) }, onClose: onClose)
             }
         }
         .centerSheetTitle(form?.name ?? "Application")

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The three popup categories of the UI quality spec:
 /// 1. Short note behind an (i): `InfoPopoverButton` / `InfoSheetButton`, a compact centred popup (no system popover).
@@ -47,6 +48,7 @@ struct FitScroll<Content: View>: View {
                 )
         }
         .scrollBounceBehavior(.basedOnSize)
+        .scrollDismissesKeyboard(.interactively)
         .frame(height: height)
         .animation(armed ? Motion.size(reduceMotion) : nil, value: height)
         .opacity(reported || forceShow ? 1 : 0)
@@ -66,19 +68,31 @@ struct FitScroll<Content: View>: View {
 
 // MARK: Popup buttons
 
+/// A small press-in with a spring, so a popup button answers the finger at once (none under Reduce Motion).
+struct PopupPressFeedback: ViewModifier {
+    var pressed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(pressed && !reduceMotion ? 0.98 : 1)
+            .animation(Motion.tap(reduceMotion), value: pressed)
+    }
+}
+
 /// The filled button of a popup with a SOLE action (Continue, OK, Claim): champagne, full width. Never used beside other options.
 struct PopupPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14.5, weight: .semibold))
             .lineLimit(1).minimumScaleFactor(0.85)
-            .foregroundStyle(Color(red: 0.09, green: 0.075, blue: 0.055))
+            .foregroundStyle(PopupInk.onGold)
             .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, 14)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous)
                 .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .top, endPoint: .bottom)))
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.8 : 1)
+            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
     }
 }
 
@@ -96,9 +110,10 @@ struct PopupQuietButtonStyle: ButtonStyle {
             .foregroundStyle(ink)
             .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, 14)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(edge, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(edge, lineWidth: 1))
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.7 : 1)
+            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
     }
 }
 
@@ -124,6 +139,60 @@ struct PopupOptionButton: View {
             Button(action: go) { Text(title) }.buttonStyle(PopupPrimaryButtonStyle()).accessibilityIdentifier(identifier)
         } else {
             Button(action: go) { Text(title) }.buttonStyle(PopupQuietButtonStyle(passive: PopupOptionButton.isPassive(title))).accessibilityIdentifier(identifier)
+        }
+    }
+}
+
+/// The one text input of a popup: the `popupField` chrome with an optional prefix (a currency mark) and suffix (a unit), an optional action
+/// button inside the field (Set, Done) that also puts the keyboard away, and a validation or hint line below. The action row sits in the
+/// field itself, so a decimal pad (which has no return key) can always be closed, also inside a popup overlay where a keyboard toolbar does not show.
+struct PopupTextInput: View {
+    @Environment(\.outsidePalette) private var P
+    var placeholder: String
+    @Binding var text: String
+    var prefix: String? = nil
+    var suffix: String? = nil
+    var keyboard: UIKeyboardType = .default
+    /// Title of the in-field button; a decimal pad shows "Done" while focused when none is given.
+    var actionTitle: String? = nil
+    var actionEnabled = true
+    var identifier = ""
+    var hint: String? = nil
+    var message: String? = nil
+    var onFocusChange: (Bool) -> Void = { _ in }
+    var onSubmit: () -> Void = {}
+    var onAction: () -> Void = {}
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PopupSpace.tight) {
+            HStack(spacing: 8) {
+                if let p = prefix { Text(p).popupText(.rowLabel) }
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboard).focused($focused)
+                    .font(.system(size: 16, weight: .semibold).monospacedDigit()).foregroundStyle(P.ink)
+                    .accessibilityIdentifier(identifier)
+                    .onSubmit { focused = false; onSubmit() }
+                if let u = suffix { Text(u).popupText(.caption) }
+                accessory
+            }
+            .padding(.horizontal, PopupSpace.block).frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).fill(P.cardDeep))
+            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(focused ? P.accent : P.line, lineWidth: 1))
+            if let h = hint { Text(h).popupText(.caption) }
+            if let m = message { Text(m).popupText(.risk) }
+        }
+        .onChange(of: focused) { _, f in onFocusChange(f) }
+    }
+
+    @ViewBuilder private var accessory: some View {
+        if let t = actionTitle {
+            Button(t) { Haptics.play(.tap); focused = false; onAction() }
+                .font(.system(size: 14, weight: .semibold)).foregroundStyle(actionEnabled ? P.accent : P.inkFaint)
+                .disabled(!actionEnabled).accessibilityIdentifier(identifier + "-action")
+        } else if focused && keyboard == .decimalPad {
+            Button("Done") { focused = false }
+                .font(.system(size: 14, weight: .semibold)).foregroundStyle(P.accent)
         }
     }
 }

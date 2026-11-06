@@ -384,9 +384,7 @@ private struct LoanStepPapers: View {
                 Text("Full name").popupText(.caption)
                 TextField("Full name", text: $name)
                     .textContentType(.name).autocorrectionDisabled()
-                    .font(.system(size: 15)).foregroundStyle(P.ink)
-                    .padding(.horizontal, 12).padding(.vertical, 11)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+                    .popupField()
                 if q.needsIncomeProof { proofChoices }
                 if q.needsCompanyPapers { paperChoices }
                 Text("The bank checks these against its records and may turn the application down.").popupText(.caption)

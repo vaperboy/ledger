@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A content view can call `.centerSheetLocked()` so a tap outside the popup does not close it (only its own buttons do).
 private struct CenterSheetLockKey: PreferenceKey {
@@ -16,6 +17,12 @@ private struct CenterSheetTitleKey: PreferenceKey {
 private struct CenterSheetFooterHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// The action row a content view hands to the frame with `.popupFooter { }`; the frame pins it under the scrolling body.
+private struct CenterSheetFooterKey: PreferenceKey {
+    static var defaultValue: AnyView? = nil
+    static func reduce(value: inout AnyView?, nextValue: () -> AnyView?) { if let n = nextValue() { value = n } }
 }
 
 /// How a centred popup is sized. The five size classes (toast, compact, standard, tall, full) are defined in `PopupSizing.swift`; the frame
@@ -88,6 +95,7 @@ struct CenterSheetFrame<Content: View>: View {
     @State private var contentTitle = ""
     @State private var measuredClass: PopupSizeClass = .standard
     @State private var drag: CGFloat = 0
+    @State private var keyboardUp = false
 
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
@@ -97,6 +105,8 @@ struct CenterSheetFrame<Content: View>: View {
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetTitleKey.self) { contentTitle = $0 }
         .onPreferenceChange(CenterSheetFooterHeightKey.self) { footerHeight = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { (_: Notification) in keyboardUp = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { (_: Notification) in keyboardUp = false }
         .onAppear {
             Haptics.play(variant.appearCue)
             Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
@@ -113,7 +123,7 @@ struct CenterSheetFrame<Content: View>: View {
         return ZStack {
             Color.black.opacity(shown ? dim : 0).ignoresSafeArea()
                 .contentShape(Rectangle())
-                .onTapGesture { if !locked && backdropCloses { onClose() } }
+                .onTapGesture { backdropTap() }
                 .accessibilityIdentifier("popup-backdrop")
             card(screen: screen, cls: cls)
                 .frame(maxWidth: PopupSizing.maxWidth(of: cls))
@@ -126,23 +136,34 @@ struct CenterSheetFrame<Content: View>: View {
         .animation(Motion.size(reduceMotion), value: cls)
     }
 
+    /// A tap outside first puts the keyboard away (a typed value is never thrown out by that tap); only a tap with no keyboard closes.
+    private func backdropTap() {
+        if keyboardUp {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            return
+        }
+        if !locked && backdropCloses { onClose() }
+    }
+
     private func card(screen: CGSize, cls: PopupSizeClass) -> some View {
         let room: CGFloat = PopupSizing.room(screenHeight: screen.height)
         let head: CGFloat = shownTitle.isEmpty ? PopupMetrics.header : PopupMetrics.header + 1
         let swipe: Bool = cls.isSwipeable && !locked && backdropCloses
         let fixedHeight: CGFloat? = size == .tall ? PopupSizing.fullHeight(screenHeight: screen.height) : nil
-        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous)
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: PopupRadius.card, style: .continuous)
         let mask: GestureMask = swipe ? GestureMask.all : GestureMask.subviews
         return VStack(spacing: 0) {
             headerRow
                 .contentShape(Rectangle())
                 .gesture(dismissDrag, including: mask)
             inner(room: room - head - footerHeight, head: head + footerHeight, screenHeight: screen.height)
-            pinnedFooterView
+            Color.clear.frame(height: footerHeight)
         }
         .foregroundStyle(P.ink)
+        .environment(\.insidePopup, true)
         .environment(\.colorScheme, P.isLight ? .light : .dark)
         .frame(height: fixedHeight)
+        .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
         .background(shape.fill(P.card))
         .clipShape(shape)
         .overlay(shape.strokeBorder(P.lineStrong, lineWidth: 1))
@@ -150,9 +171,10 @@ struct CenterSheetFrame<Content: View>: View {
         .overlay { celebration }
     }
 
-    @ViewBuilder private var pinnedFooterView: some View {
-        if let footer = pinnedFooter {
-            footer.background(GeometryReader { (g: GeometryProxy) in
+    /// The footer sits over the bottom of the card (the body above it has been given its height), measured so the body keeps the room that is left.
+    @ViewBuilder private func footerLayer(_ fromContent: AnyView?) -> some View {
+        if let footer = pinnedFooter ?? fromContent {
+            footer.frame(maxWidth: .infinity).background(GeometryReader { (g: GeometryProxy) in
                 Color.clear.preference(key: CenterSheetFooterHeightKey.self, value: g.size.height)
             })
         }
@@ -260,6 +282,11 @@ extension View {
     /// Inside a centred popup: puts this title in the frame's header row.
     func centerSheetTitle(_ title: String) -> some View {
         preference(key: CenterSheetTitleKey.self, value: title)
+    }
+
+    /// Inside a centred popup: pins this action row (a `PopupActionBar`) under the scrolling body, so the buttons never scroll away.
+    func popupFooter<F: View>(@ViewBuilder _ footer: () -> F) -> some View {
+        preference(key: CenterSheetFooterKey.self, value: AnyView(PopupActionBar { footer() }))
     }
 
     /// Inside a centred popup: a tap outside the card does not close it.

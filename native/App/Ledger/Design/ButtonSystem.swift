@@ -9,7 +9,7 @@ import SwiftUI
 //   Sole action       : `PopupPrimaryButtonStyle` / `PopupOptionButton(highlighted: true)`; on a celebration card `ClaimButton` (Celebration.swift), the same button with a pulse.
 //   Haptics           : every popup button plays a soft tap, a destructive footer a warning, a claim a success (`Haptics.play`).
 
-private let goldInk = Color(red: 0.09, green: 0.075, blue: 0.055)
+private let goldInk = PopupInk.onGold
 
 /// Cancel, Decline: text only, no box.
 struct PlainTextButtonStyle: ButtonStyle {
@@ -33,10 +33,11 @@ struct ImportantButtonStyle: ButtonStyle {
             .lineLimit(1)
             .foregroundStyle(goldInk)
             .padding(.horizontal, 18).frame(minHeight: 40)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous)
                 .fill(LinearGradient(colors: [Theme.gold, Theme.goldDeep], startPoint: .top, endPoint: .bottom)))
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.8 : 1)
+            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
     }
 }
 
@@ -50,10 +51,11 @@ struct FoilButtonStyle: ButtonStyle {
             .lineLimit(1).minimumScaleFactor(0.85)
             .foregroundStyle(c)
             .padding(.horizontal, 16).frame(minHeight: 40)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(c.opacity(0.12)))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(c.opacity(0.85), lineWidth: 1.2))
+            .background(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).fill(c.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: PopupRadius.control, style: .continuous).strokeBorder(c.opacity(0.85), lineWidth: 1.2))
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.75 : 1)
+            .modifier(PopupPressFeedback(pressed: configuration.isPressed))
     }
 }
 
@@ -66,25 +68,56 @@ struct PopupFooter: View {
     var tone: Tone = .normal
     var onCancel: () -> Void
     var onAction: () -> Void
+    /// Greys out and blocks the left or right button (a Clear with nothing to clear, a Send until the form is complete).
+    var cancelEnabled = true
+    var actionEnabled = true
+    /// Accessibility ids of the two buttons (UI tests find them by id).
+    var cancelID = "confirm-cancel"
+    var actionID = "confirm-go"
 
     enum Tone { case normal, expensive, destructive }
 
     /// Both buttons are the same neutral outline; a passive label such as Not now / Skip is grayed.
     var body: some View {
         HStack(spacing: 10) {
-            PopupOptionButton(title: cancel, identifier: "confirm-cancel", action: onCancel)
+            PopupOptionButton(title: cancel, identifier: cancelID, action: onCancel)
+                .disabled(!cancelEnabled).opacity(cancelEnabled ? 1 : 0.4)
+            actionButton.disabled(!actionEnabled).opacity(actionEnabled ? 1 : 0.4)
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder private var actionButton: some View {
+        Group {
             switch tone {
             case .expensive:
                 Button(action: { Haptics.play(.tap); onAction() }) { Text(action) }
-                    .buttonStyle(FoilButtonStyle()).accessibilityIdentifier("confirm-go")
+                    .buttonStyle(FoilButtonStyle()).accessibilityIdentifier(actionID)
             case .destructive:
                 Button(action: { Haptics.play(.warning); onAction() }) { Text(action) }
-                    .buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier("confirm-go")
+                    .buttonStyle(FoilButtonStyle(tint: P.loss)).accessibilityIdentifier(actionID)
             case .normal:
-                PopupOptionButton(title: action, identifier: "confirm-go", action: onAction)
+                PopupOptionButton(title: action, identifier: actionID, action: onAction)
             }
         }
-        .padding(.top, 4)
+    }
+}
+
+/// The pinned action row of a popup: a hairline, then the buttons on the card colour, full width. `.popupFooter { }` draws its content in this
+/// bar under the scrolling body; build the content with `PopupFooter`, `PopupOptionButton` or a single highlighted button.
+struct PopupActionBar<Content: View>: View {
+    @Environment(\.outsidePalette) private var P
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(P.line).frame(height: 1)
+            VStack(spacing: PopupSpace.row) { content() }
+                .padding(.horizontal, PopupSpace.card)
+                .padding(.top, PopupSpace.block).padding(.bottom, PopupSpace.block)
+        }
+        .frame(maxWidth: .infinity)
+        .background(P.card)
     }
 }
 

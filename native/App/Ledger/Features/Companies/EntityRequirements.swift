@@ -138,7 +138,7 @@ struct RequirementGuide: View {
 
     @ViewBuilder private func paper(_ key: String, _ cur: Currency) -> some View {
         let isMark: Bool = key == "trademark"
-        PaperSignSheet(title: isMark ? "Trademark registration" : "Franchise documents",
+        SignPopup(title: isMark ? "Trademark registration" : "Franchise documents",
                        to: isMark ? "The intellectual property office" : "The franchise register",
                        note: isMark ? "Registers the brand name of \(company.name) as a trademark. It is reviewed and can be refused."
                                     : "A lawyer writes the franchise agreement and the disclosure document for \(company.name). They are reviewed before you can sell units.",
