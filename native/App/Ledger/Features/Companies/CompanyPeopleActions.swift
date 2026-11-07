@@ -20,9 +20,9 @@ private struct PurposeHeader: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            LedgerGlyph(glyph: glyph, size: Theme.Icon.large, tint: tint)
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: tint)
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title).textStyle(.figure)
+                Text(title).textStyle(.headline)
                 if !note.isEmpty { Text(note).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 0)
@@ -54,6 +54,17 @@ private struct ConsequenceNote: View {
              + Text(text).font(.system(size: 11.5)).foregroundColor(Theme.ivoryMuted))
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+/// One part of the Goals page straight on the page: a hairline above it and room around it, no box.
+private struct GoalsBlock<Content: View>: View {
+    @ViewBuilder var content: () -> Content
+    var body: some View {
+        content()
+            .padding(.vertical, Theme.Space.l)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -100,7 +111,7 @@ struct CompanyTargetsCard: View {
 
     // This month: one bar per target.
     private func monthCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
-        Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
+        GoalsBlock {
             VStack(alignment: .leading, spacing: 12) {
                 PurposeHeader(glyph: Glyph.goals, title: "This month", note: "Where each target stands")
                 if st.standing.isEmpty {
@@ -133,7 +144,7 @@ struct CompanyTargetsCard: View {
     // The year's budget.
     @ViewBuilder private func budgetCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if let b = st.budget {
-            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
+            GoalsBlock {
                 VStack(alignment: .leading, spacing: 12) {
                     PurposeHeader(glyph: Glyph.reports, title: "Budget \(b.year)", note: b.by.isEmpty ? "The year's aim" : "Drafted by \(b.by)")
                     RateBar(label: "Sales", fraction: share(b.doneRev, b.rev))
@@ -168,7 +179,7 @@ struct CompanyTargetsCard: View {
     // Past months: three pips each, filled for every target met.
     @ViewBuilder private func historyCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if !st.log.isEmpty {
-            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
+            GoalsBlock {
                 VStack(alignment: .leading, spacing: 10) {
                     PurposeHeader(glyph: Glyph.calendar, title: "Last months", note: "Targets met each month, oldest first")
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 10) {
@@ -197,7 +208,7 @@ struct CompanyTargetsCard: View {
     // Setting the month's targets.
     @ViewBuilder private func setterCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if st.canSet, let pv = engine.targetPreview(companyID: company.id, mode: mode) {
-            Card(padding: Theme.Space.l, radius: Theme.Radius.medium) {
+            GoalsBlock {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     PurposeHeader(glyph: Glyph.arrowOut, title: "Set this month's targets", note: "How hard to push")
                     modeChoices
@@ -375,7 +386,7 @@ struct SuccessorSection: View {
         let feeAmount: Double = ManagerModel.searchFee(currency: cur)
         let fee: String = cur.tidyShort(feeAmount)
         pending = PendingAction(title: "Start the search?", message: "Three people from the trade and one generalist. The list stays for about six months.", button: "Pay \(fee) and search",
-                                amount: feeAmount, currency: cur, risk: "None may suit, and the fee is not refunded.") {
+                                amount: feeAmount, currency: cur, risk: "None may suit, and the fee is not refunded.", tone: .info, icon: "magnifyingglass") {
             if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found. Search paid: \(fee).", tone: "good") }
             else { Haptics.warning(); store.show("The search found no one, or the company cannot pay \(fee).", tone: "warn") }
         }

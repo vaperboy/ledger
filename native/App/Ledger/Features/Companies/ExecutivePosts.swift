@@ -45,16 +45,16 @@ struct ExecutivePosts: View {
     var body: some View {
         let cur = engine.homeCurrency
         let list = posts
-        CardSection(chainID == nil ? "Group management" : "Chain management") {
+        TeamBlock(chainID == nil ? "Group management" : "Chain management") {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, p in
-                    if n > 0 { CardLine() }
+                    if n > 0 { PersonRowRule() }
                     row(p, cur)
                 }
                 if chainID != nil { addRegional(cur) }
                 if chainID == nil, !engine.groupManagingDirector.isNull {
                     let big = engine.state.rest["group"]?["big"].double ?? 0
-                    CardLine()
+                    Hairline()
                     Menu("Deals above \(big > 0 ? cur.tidyShort(big) : "any size") always come to you") {
                         ForEach([0.0, 250_000, 1_000_000, 5_000_000, 20_000_000], id: \.self) { v in
                             let amt = cur.scaledPrice(v)
@@ -68,7 +68,7 @@ struct ExecutivePosts: View {
     }
 
     private func askToRelease(_ r: Post) {
-        pending = PendingAction(title: "Let \(r.level.title.lowercased()) go?", message: "Severance of about a month's pay plus costs is paid now.", button: "Let go", destructive: true) {
+        pending = PendingAction(title: "Let \(r.level.title.lowercased()) go?", message: "Severance of about a month's pay plus costs is paid now.", button: "Let go", destructive: true, tone: .danger, icon: "person.fill.xmark") {
             let ok = store.act { $0.releaseExecutive(r.level, chainID: chainID, regionalID: r.regionalID) } ?? false
             Haptics.warning()
             store.show(ok ? "Let go. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn")
@@ -89,20 +89,18 @@ struct ExecutivePosts: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 if let person {
-                    ThumbnailView(kind: .person, key: "executive", size: 34, initials: person.name, face: person.faceKey)
+                    ThumbnailView(kind: .person, key: "executive", size: ThinPersonRow.portrait, initials: person.name, face: person.faceKey)
                 } else {
-                    IconCircle(glyph: Glyph.hire, size: 34)
+                    TeamInitials(name: nil, size: ThinPersonRow.portrait)
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    HStack(spacing: Theme.Space.s) {
-                        Text(person?.name ?? "Vacant").textStyle(.headline)
-                        RoleScopeBadge(role: p.level == .md ? "Group managing director" : p.level.title, scope: p.scope)
-                    }
+                    Text(person?.name ?? "Vacant").textStyle(.headline, tint: person == nil ? Theme.inkSoft : Theme.ink)
+                    Text(((p.level == .md ? "Group managing director" : p.level.title) + " \u{00B7} " + p.scope).tidyText).textStyle(.caption, tint: Theme.inkSoft)
                     Text((person == nil ? "Would be employed by " : "Employed by ") + employer).textStyle(.caption, tint: Theme.inkFaint)
                     if person == nil { Text(p.level.text.tidyMoney).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true) }
                 }
                 Spacer(minLength: Theme.Space.s)
-                if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).textStyle(.body, tint: Theme.ink, numeric: true) }
+                if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).textStyle(.headline, tint: Theme.ink, numeric: true) }
             }
             if person != nil {
                 let lvl = Int(p.rec["lvl"].double)
@@ -113,19 +111,20 @@ struct ExecutivePosts: View {
                                     setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
                     Spacer(minLength: 0)
                     GroupRewardMenu(engine: engine, personID: p.rec["npc"].int, name: person?.name ?? "them")
-                    Button("Let go") { askToRelease(p) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
-                }.buttonStyle(QuietButtonStyle())
+                    Button("Let go") { askToRelease(p) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
+                }.buttonStyle(TertiaryButtonStyle(size: .compact))
             } else {
                 searchButton(p, cur)
             }
-        }.padding(.vertical, Theme.Space.s)
+        }.padding(.vertical, Theme.Space.m)
     }
 
     @ViewBuilder private func searchButton(_ p: Post, _ cur: Currency) -> some View {
         Button("Executive search · \(cur.tidyShort(ManagerModel.searchFee(currency: cur)))") {
             if let list = store.act({ $0.searchExecutive(p.level) }) ?? nil { searching = p.id; candidates = list.map { $0.id }; Haptics.tap() }
             else { store.show("Not enough cash for the search.", tone: "warn") }
-        }.buttonStyle(QuietButtonStyle())
+        }
+        .buttonStyle(TertiaryButtonStyle(size: .compact)).padding(.leading, -Theme.Space.s)
         if searching == p.id { candidateList(p, cur) }
     }
 
@@ -146,7 +145,7 @@ struct ExecutivePosts: View {
             })
             let open = Set(engine.state.companies.filter { $0.status.isLive && !$0.value("chain").isNull && $0.value("chain").int == cid }.map { $0.cityID }).subtracting(have).sorted()
             if !open.isEmpty {
-                CardLine()
+                Hairline()
                 Menu("Add a regional manager…") {
                     ForEach(open, id: \.self) { city in
                         Button(cityLabel(city)) { regionCity = city; startRegionSearch(cur) }

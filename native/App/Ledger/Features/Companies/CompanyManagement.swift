@@ -35,7 +35,7 @@ struct CompanyManagement: View {
 
     var body: some View {
         thinList
-        .centerSheet(item: $sheet) { s in
+        .centerSheet(item: $sheet, category: .detail, tone: .info) { s in
             Group {
                 switch s {
                 case .manager: ManagerSheet(companyID: company.id, candidates: $managerCands)
@@ -66,8 +66,13 @@ struct CompanyManagement: View {
         let cur: Currency = engine.currency(for: company)
         let nodes = thinNodes(cur)
         let rows: [OrgNode] = nodes.shown + (showVacant ? nodes.hidden : [])
-        VStack(spacing: 6) {
-            ForEach(rows) { (node: OrgNode) -> AnyView in AnyView(thinRow(node)) }
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, node: OrgNode) -> AnyView in
+                AnyView(VStack(spacing: 0) {
+                    if n > 0 { PersonRowRule() }
+                    thinRow(node)
+                })
+            }
             if !nodes.hidden.isEmpty {
                 Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showVacant.toggle() } } label: {
                     Text(showVacant ? "Hide other posts" : "Other posts (\(nodes.hidden.count) open) \u{203A}")
@@ -89,7 +94,9 @@ struct CompanyManagement: View {
         } else if let target = node.sheet {
             Button { Haptics.tap(); sheet = target } label: {
                 ThinPersonRow(name: r.name, title: r.role, note: open ? "" : (tinted ? r.line : ""), noteTint: r.lineTint, wage: r.wage, cue: open ? "Appoint" : nil, chevron: !open, roleKey: r.role, face: r.face)
-            }.buttonStyle(PressableStyle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("mgmt-row-" + node.id)
         } else {
             ThinPersonRow(name: r.name, title: r.role, chevron: false, roleKey: r.role, face: r.face)
         }
@@ -102,7 +109,6 @@ struct CompanyManagement: View {
                 Text(works ? "Works here" : "Not here").textStyle(.caption, tint: works ? Theme.ink : Theme.inkSoft, weight: .medium)
             }
             .padding(.horizontal, Theme.Space.s).frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
@@ -248,7 +254,7 @@ struct ManagerSheet: View {
         let mgrNote: String = "\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job"
         PersonCard(name: m.name, role: mgrRole, scope: "store", note: mgrNote, wage: cur.tidyShort(co.managerMonthlyWage), chevron: false, roleKey: "manager", face: m.faceKey)
         if !notice.isNull {
-            CardSection("Leaving") {
+            TeamBlock("Leaving") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("\(m.name.split(separator: " ").first.map(String.init) ?? "The manager") leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Hire a successor before then and they will hand over.")
                         .popupText(.risk)
@@ -272,7 +278,7 @@ struct ManagerSheet: View {
 
     @ViewBuilder private func performance(_ e: GameEngine, _ co: Company, _ m: Person, _ months: Int) -> some View {
         let bd = e.tradeInfo(companyID: co.id)
-        CardSection("Performance") {
+        TeamBlock("Performance") {
             VStack(alignment: .leading, spacing: 10) {
                 if let vc = e.managerVoiceCard(companyID: co.id) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -303,7 +309,7 @@ struct ManagerSheet: View {
     @ViewBuilder private func authority(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         let auth = co.value("auth")
         let lvl = Int(auth["lvl"].double)
-        CardSection("Decides") {
+        TeamBlock("Decides") {
             VStack(alignment: .leading, spacing: 10) {
                 AuthorityLevelPicker(level: lvl) { v in
                     store.settle(store.act { $0.setManagerAuthority(companyID: co.id, level: v) }, "\(m.name) now \(GameEngine.authorityText(level: v)).", same: "\(m.name) already works that way.")
@@ -332,7 +338,7 @@ struct ManagerSheet: View {
     @ViewBuilder private func duties(_ e: GameEngine, _ co: Company) -> some View {
         let list = e.managerDuties(companyID: co.id)
         if !list.isEmpty {
-            CardSection("Duties") {
+            TeamBlock("Duties") {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(list) { d in
                         Button {
@@ -374,7 +380,7 @@ struct ManagerSheet: View {
 
     @ViewBuilder private func profitShare(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
         if let pv = e.managerProfitBonusPreview(companyID: co.id, share: co.managerProfitBonus) {
-            CardSection(title: "Profit share", trailing: {
+            TeamBlock(title: "Profit share", trailing: {
                 Text(pv.current > 0 ? "\(Int((pv.current * 100).rounded()))% of profit" : "none").popupText(.caption)
             }) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -384,17 +390,17 @@ struct ManagerSheet: View {
                     if pv.current > 0 { FlatRow(label: "At this share it costs about", value: "\(cur.tidyShort(pv.monthlyCost)) a month") }
                     if pv.lastPaid > 0 { FlatRow(label: "Bonus paid last month", value: cur.tidyShort(pv.lastPaid)) }
                     Button(pv.current > 0 ? "Change the share…" : "Offer a profit share…") { discussing = .bonus }
-                        .buttonStyle(QuietButtonStyle())
+                        .buttonStyle(TertiaryButtonStyle(size: .compact))
                 }
             }
         }
     }
 
     @ViewBuilder private func talks(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        CardSection("Talk and pay") {
+        TeamBlock("Talk and pay") {
             VStack(alignment: .leading, spacing: 12) {
                 WrapRow {
-                    Button("Talk in the Boardroom") { store.openGroupEntity(companyID: co.id, section: "boardroom") }.buttonStyle(QuietButtonStyle())
+                    Button("Talk in the Boardroom") { store.openGroupEntity(companyID: co.id, section: "boardroom") }.buttonStyle(TertiaryButtonStyle(size: .compact))
                     Menu {
                         ForEach(Array(ManagerModel.askOptions.enumerated()), id: \.offset) { _, o in
                             Button(o.label) {
@@ -405,7 +411,7 @@ struct ManagerSheet: View {
                     } label: { Text("Ask for\u{2026}") }
                     .menuStyle(.button)
                     .buttonStyle(SecondaryButtonStyle(tint: Theme.accent))
-                    Button("Contract discussion…") { discussing = nil; discussingOpen = true }.buttonStyle(QuietButtonStyle())
+                    Button("Contract discussion…") { discussing = nil; discussingOpen = true }.buttonStyle(TertiaryButtonStyle(size: .compact))
                 }
             }
         }
@@ -427,7 +433,7 @@ struct ManagerSheet: View {
                     QuietButton(title: "Replace…", tint: Theme.loss) {
                         pending = PendingAction(title: "Dismiss \(m.name)?",
                                                 message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
-                                                button: "Dismiss", destructive: true) {
+                                                button: "Dismiss", destructive: true, tone: .danger, icon: "person.fill.xmark") {
                             let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
                             store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
                         }
@@ -436,7 +442,7 @@ struct ManagerSheet: View {
                     QuietButton(title: "Propose it to the owners…", tint: Theme.loss) {
                         pending = PendingAction(title: "Put replacing \(m.name) to the vote?",
                                                 message: "The co-owners vote by their shares. If it fails, \(m.name) learns you tried and you cannot ask again for eight weeks.",
-                                                button: "Put it to the vote", destructive: true) {
+                                                button: "Put it to the vote", tone: .warning, icon: "hand.raised") {
                             let r: ManagerModel.CEOChange? = store.act { $0.proposeCEOChange(companyID: co.id) }
                             switch r {
                             case .dismissed?: Haptics.warning(); store.show("\(m.name) has gone. You run \(co.name) yourself again.", tone: "n")
@@ -466,11 +472,11 @@ struct ManagerSheet: View {
         Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
             pending = PendingAction(title: "Pay for an executive search?",
                                     message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist you can interview and check. Risk: none may suit.",
-                                    button: "Search for \(cur.tidyShort(fee))", amount: fee, currency: cur) {
+                                    button: "Search for \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "magnifyingglass") {
                 if let list = store.act({ $0.searchManagers(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) candidates found. Search paid: \(cur.tidyShort(fee)).", tone: "n") }
                 else { Haptics.warning(); store.show("Not enough cash for the search (\(cur.tidyShort(fee))).", tone: "warn") }
             }
-        }.buttonStyle(QuietButtonStyle())
+        }.buttonStyle(TertiaryButtonStyle(size: .compact))
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
             let request = HireRequest(post: .manager, companyID: co.id, personID: p.id, roleTitle: title, onHired: { candidates = [] })
@@ -539,7 +545,7 @@ struct ManagerCandidateChecks: View {
             WrapRow {
                 ForEach(Array(ManagerModel.skillKeys.enumerated()), id: \.offset) { _, k in
                     if answer(k.key) == nil && questionsLeft > 0 {
-                        Button("Ask: \(k.label)") { ask(k.key, k.label) }.buttonStyle(QuietButtonStyle())
+                        Button("Ask: \(k.label)") { ask(k.key, k.label) }.buttonStyle(TertiaryButtonStyle(size: .compact))
                     }
                 }
                 if seenLines.isEmpty {
@@ -547,14 +553,14 @@ struct ManagerCandidateChecks: View {
                         let r: [WorkLog.Observation]? = store.act { $0.startTrialWeek(personID: person.id, companyID: companyID) } ?? nil
                         if let r { trialSeen = r.map { $0.text }; Haptics.success(); store.show("The trial week is done: see how their work went.", tone: "n") }
                         else { Haptics.warning(); store.show("Could not arrange a trial week: it was done already, or the company lacks the cash for a week's wage.", tone: "warn") }
-                    }.buttonStyle(QuietButtonStyle())
+                    }.buttonStyle(TertiaryButtonStyle(size: .compact))
                 }
                 if !checked {
                     Button("References \u{00B7} \(currency.tidyShort(fee))") {
                         let ok = store.act { $0.checkManagerReferences(personID: person.id, companyID: companyID) } ?? false
                         if !ok { Haptics.warning() }
                         store.show(ok ? "References are in: you can see whether the CV holds. Paid \(currency.tidyShort(fee))." : "Not enough cash for the reference check (\(currency.tidyShort(fee))).", tone: ok ? "n" : "warn")
-                    }.buttonStyle(QuietButtonStyle())
+                    }.buttonStyle(TertiaryButtonStyle(size: .compact))
                 } else {
                     Text("References checked").textStyle(.caption, tint: Theme.gain)
                 }
@@ -641,7 +647,7 @@ struct AssistantSheet: View {
                     .popupText(.caption)
                 QuietButton(title: "Let \(first) go…", tint: Theme.loss) {
                     pending = PendingAction(title: "Let \(n.name) go?", message: "About one month of pay (\(cur.tidyShort(a["wage"].double))) as notice. Their jobs go back to \(co.managerID == nil ? "you" : "the manager").",
-                                            button: "Let go", destructive: true) {
+                                            button: "Let go", destructive: true, tone: .danger, icon: "person.fill.xmark") {
                         store.act { $0.dismissAssistant(companyID: co.id) }
                         let gone = store.engine?.state.company(co.id)?.value("asst")["npc"].int ?? 0 == 0
                         store.show(gone ? "\(n.name) has left." : "They are still here.", tone: gone ? "n" : "warn"); Haptics.warning()
@@ -660,11 +666,11 @@ struct AssistantSheet: View {
         Text("Works alongside the team and takes up to two jobs off \(co.managerID == nil ? "your" : "the manager's") plate: complaints, paperwork, equipment. Paid more than a worker, less than a manager. They advise; you decide.")
             .popupText(.caption)
         Button(candidates.isEmpty ? "Job ad · \(cur.tidyShort(fee))" : "New job ad · \(cur.tidyShort(fee))") {
-            pending = PendingAction(title: "Place a job ad?", message: "Cost: \(cur.tidyShort(fee)). Benefit: a shortlist of applicants. Risk: none may suit.", button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur) {
+            pending = PendingAction(title: "Place a job ad?", message: "Cost: \(cur.tidyShort(fee)). Benefit: a shortlist of applicants. Risk: none may suit.", button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "megaphone") {
                 if let list = store.act({ $0.searchAssistants(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) applicants. Job ad paid: \(cur.tidyShort(fee)).", tone: "n") }
                 else { Haptics.warning(); store.show("Not enough cash for the job ad (\(cur.tidyShort(fee))).", tone: "warn") }
             }
-        }.buttonStyle(QuietButtonStyle())
+        }.buttonStyle(TertiaryButtonStyle(size: .compact))
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
         let auth: AppointmentAuthority = e.appointmentAuthority(companyID: co.id, role: "assistant manager")
         if let above = auth.needsConfirmationFrom {
@@ -701,7 +707,7 @@ struct AssistantSheet: View {
                 let ok: Bool = store.act { $0.proposeAssistantManager(companyID: cid, personID: pid, monthlyWage: wage) } ?? false
                 if ok { Haptics.tap(); candidates = []; store.show("Proposal sent to \(who)", tone: "good") }
                 else { Haptics.warning(); store.show("A proposal for this post is already open, or the person is not free.", tone: "warn") }
-            }.buttonStyle(QuietButtonStyle())
+            }.buttonStyle(TertiaryButtonStyle(size: .compact))
         }
     }
 }

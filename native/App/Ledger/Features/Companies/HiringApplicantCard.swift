@@ -15,9 +15,9 @@ enum PatienceWords {
     }
 }
 
-/// THE applicant row, the same on the Applicants page and the hire page: portrait, name, age, role and experience, what they are likely
-/// to ask against the going rate, and "Talk terms". A tap on the row opens the CV, the first impression, references, trial notes and the
-/// paid trial week. Only what the player can see before an interview is shown, in words: never a skill figure.
+/// THE applicant row, the same on the Applicants page and the hire page: portrait, name, age, role and experience, and what they are likely
+/// to ask as the row's value. A tap on the row opens the terms talk; the chevron at the right opens the CV, the first impression,
+/// references, trial notes and the paid trial week. Only what the player can see before an interview is shown, in words: never a skill figure.
 struct ApplicantRow: View {
     @Environment(\.outsidePalette) private var P
     var applicant: Applicant
@@ -42,42 +42,54 @@ struct ApplicantRow: View {
         return "\(n) \(n == 1 ? "year" : "years")"
     }
 
-    /// Likely ask in words against the going rate, else the going rate.
-    private var wageLine: String {
-        guard let ask, ask.market > 0 else { return "Going rate " + currency.tidyShort(applicant.marketMonthly) + " a month" }
+    /// Likely ask in words against the going rate, else the going rate (the figure itself is the row's value).
+    private var wageWords: String {
+        guard let ask, ask.market > 0 else { return "going rate" }
         let ratio: Double = ask.ask / ask.market
-        var words = "asks well above the going rate"
-        if ratio < 0.95 { words = "asks below the going rate" } else if ratio <= 1.05 { words = "asks about the going rate" } else if ratio <= 1.2 { words = "asks a little above the going rate" }
-        return "Likely " + words + ": " + currency.tidyShort(ask.ask) + " against " + currency.tidyShort(ask.market) + " a month"
+        if ratio < 0.95 { return "below the rate" }
+        if ratio <= 1.05 { return "about the rate" }
+        if ratio <= 1.2 { return "a bit above" }
+        return "well above"
     }
+
+    private var wageFigure: Double { ask.map { $0.ask } ?? applicant.marketMonthly }
 
     var body: some View {
         let a = applicant
         let at: String = companyName.isEmpty ? "" : " \u{00B7} " + companyName
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(alignment: .center, spacing: Theme.Space.m) {
-                Button { Haptics.tap(); onTap() } label: {
+            HStack(alignment: .center, spacing: Theme.Space.xs) {
+                Button { Haptics.tap(); onTalk() } label: {
                     HStack(alignment: .center, spacing: Theme.Space.m) {
-                        ThumbnailView(kind: .person, key: a.role, size: 40, initials: a.name, face: a.faceKey)
+                        ThumbnailView(kind: .person, key: a.role, size: ThinPersonRow.portrait, initials: a.name, face: a.faceKey)
                         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                             Text(a.name.tidyText).textStyle(.headline).lineLimit(1)
                             Text("\(a.age) \u{00B7} \(roleName) \u{00B7} \(experienceLine)\(at)".tidyText).textStyle(.caption).lineLimit(2)
-                            Text(wageLine.tidyText).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                         }
-                        Spacer(minLength: 0)
+                        Spacer(minLength: Theme.Space.s)
+                        VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                            Text(currency.tidyShort(wageFigure)).textStyle(.headline, numeric: true).lineLimit(1)
+                            Text(wageWords).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
+                        }
+                        .frame(maxWidth: 120, alignment: .trailing)
                     }
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 60)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
-                .accessibilityHint(open ? "Hides the CV" : "Shows the CV and the trial week")
-                Button { Haptics.tap(); onTalk() } label: { Text("Talk terms") }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
-                    .accessibilityIdentifier(talkIdentifier)
+                .accessibilityHint("Opens the terms talk")
+                .accessibilityIdentifier(talkIdentifier)
+                Button { Haptics.tap(); onTap() } label: {
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
+                        .rotationEffect(.degrees(open ? -90 : 90))
+                        .frame(width: 32, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel(open ? "Hide the CV" : "Show the CV and the trial week")
             }
             if open { details(a) }
         }
-        .padding(.vertical, Theme.Space.s)
+        .padding(.vertical, Theme.Space.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
     }
@@ -101,11 +113,12 @@ struct ApplicantRow: View {
                 Text(line.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             if a.trialObservations.isEmpty {
-                Button { Haptics.tap(); onTrial() } label: { Text("Trial week \u{00B7} \(currency.tidyShort(Self.trialCost(a)))") }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                Button { Haptics.tap(); onTrial() } label: { Text("Pay for a trial week \u{00B7} \(currency.tidyShort(Self.trialCost(a)))") }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact)).padding(.leading, -Theme.Space.s)
             }
         }
-        .padding(.leading, 40 + Theme.Space.m)
+        .padding(.leading, ThinPersonRow.portrait + Theme.Space.m)
+        .padding(.bottom, Theme.Space.s)
     }
 }
 
@@ -118,7 +131,7 @@ enum ApplicantTrial {
         return PendingAction(
             title: "Pay for a trial week with \(a.name)?",
             message: "Cost: \(cur.tidyShort(cost)) paid now, whatever you decide. Benefit: you see how their work really goes. Risk: one week shows only part of the picture, and they may take another job. It does not hire them.",
-            button: "Pay \(cur.tidyShort(cost))", amount: cost, currency: cur) {
+            button: "Pay \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .info, icon: "calendar") {
                 if let seen = store.act({ $0.startTrialWeek(personID: pid, companyID: companyID) }) ?? nil {
                     Haptics.success(); store.show(seen.first?.text ?? "The trial week is done.", tone: "n")
                 } else {
