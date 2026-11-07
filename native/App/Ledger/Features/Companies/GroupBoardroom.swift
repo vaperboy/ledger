@@ -34,10 +34,10 @@ struct GroupBoardroom: View {
             GroupEntityBoard(engine: engine, entity: entity)
         }
         .confirmAction($pending)
-        .centerSheet(item: $talk) { (t: TalkRef) in
+        .centerSheet(item: $talk, category: .medium, tone: .info) { (t: TalkRef) in
             OwnerTalkSheet(companyID: t.companyID, personID: t.personID) { (id: Int) in proposeReplace(id) }.environmentObject(store)
         }
-        .centerSheet(item: $round) { (r: RoundRef) in
+        .centerSheet(item: $round, category: .medium, tone: .info) { (r: RoundRef) in
             BoardRoundSheet(companyID: r.companyID).environmentObject(store)
         }
     }
@@ -49,23 +49,30 @@ struct GroupBoardroom: View {
         let advisory: Bool = engine.boardIsAdvisory(companyID: c.id)
         let dir: String? = engine.companyDirective(companyID: c.id)
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if showName { Text(c.name).capsLabel() }
-            Text(advisory ? "You own it alone, so the board advises and you decide. Votes bind once a co-owner joins." : "Co-owners vote by their shares. Ask the board before a big move.")
-                .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-            if let dir { Chip(text: "Direction: " + OwnerMeetings.directiveLabel(dir), tint: Theme.accent) }
+            if showName { Text(c.name).textStyle(.label, tint: Theme.inkFaint) }
+            // The state of the board leads: who decides, then the direction it was given.
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(advisory ? "You decide, the board advises" : "Co-owners vote by their shares").textStyle(.figure)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(advisory ? "Votes bind once a co-owner joins." : "Ask the board before a big move.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                if let dir { Text("Direction: " + OwnerMeetings.directiveLabel(dir)).textStyle(.caption, tint: Theme.ink).padding(.top, Theme.Space.xxs) }
+            }
+            .accessibilityElement(children: .combine)
             // The people come first: a talk is the main thing to do here; the board round follows as one row.
+            Text("Talk to").textStyle(.label, tint: Theme.inkFaint).padding(.top, Theme.Space.s)
             if people.isEmpty {
                 EmptyState(glyph: Glyph.person, title: "Nobody runs \(c.name) but you", message: "Appoint a manager or department heads under Management to talk with them.", centered: false)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(people.enumerated()), id: \.element.id) { (n: Int, p: OwnerMeetings.Counterpart) in
-                        if n > 0 { Hairline() }
+                        if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
                         personRow(c, p)
                     }
                 }
             }
             VStack(spacing: 0) {
-                Hairline()
+                Hairline().padding(.leading, 28 + Theme.Space.m)
                 LedgerRow(leading: .glyph(Glyph.achievements), title: "Call the board", subtitle: "Everyone reports from their seat; ask what they think of a big move",
                           identifier: "boardroom-call-\(c.id)", action: { round = RoundRef(companyID: c.id) })
             }
@@ -78,7 +85,7 @@ struct GroupBoardroom: View {
         return Button { Haptics.tap(); talk = TalkRef(companyID: cid, personID: pid) } label: {
             HStack(spacing: Theme.Space.m) {
                 if let person = engine.state.people[pid] {
-                    ThumbnailView(kind: .person, key: person.role, size: 32, initials: p.name, face: person.faceKey)
+                    ThumbnailView(kind: .person, key: person.role, size: 40, initials: p.name, face: person.faceKey)
                 }
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(p.name).textStyle(.headline).lineLimit(1)
@@ -88,8 +95,8 @@ struct GroupBoardroom: View {
                 Text("Talk").textStyle(.body, tint: Theme.accent, weight: .medium)
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
-            .padding(.vertical, Theme.Space.m)
-            .frame(minHeight: 44)
+            .padding(.vertical, Theme.Space.s)
+            .frame(minHeight: 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -163,12 +170,14 @@ struct OwnerTalkSheet: View {
         let isCEO: Bool = e.state.company(companyID)?.managerID == personID
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("What do you want to talk about?").popupText(.subtitle)
-            ForEach(topics) { (t: OwnerMeetings.Topic) in
-                ChoiceCard(title: t.label, subtitle: t.waitWeeks > 0 ? "You talked about this lately. Again in \(t.waitWeeks) \(t.waitWeeks == 1 ? "week" : "weeks")." : t.hint, selected: false) { topic = t.id }
-                    .disabled(t.waitWeeks > 0)
-            }
-            if isCEO {
-                ChoiceCard(title: "Replace them as CEO", subtitle: "See what the board and co-owners think first", selected: false) { voting = true }
+            VStack(spacing: 0) {
+                ForEach(topics) { (t: OwnerMeetings.Topic) in
+                    PopupChoiceRow(title: t.label, subtitle: t.waitWeeks > 0 ? "You talked about this lately. Again in \(t.waitWeeks) \(t.waitWeeks == 1 ? "week" : "weeks")." : t.hint,
+                                   enabled: t.waitWeeks == 0) { topic = t.id }
+                }
+                if isCEO {
+                    PopupChoiceRow(title: "Replace them as CEO", subtitle: "See what the board and co-owners think first") { voting = true }
+                }
             }
         }
     }
@@ -178,8 +187,10 @@ struct OwnerTalkSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             DialogueQuote(speaker: sc.speaker, lines: sc.lines)
             Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
-            ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
-                ChoiceCard(title: c.label, subtitle: c.preview, selected: false) { choose(sc.topic, c.id) }
+            VStack(spacing: 0) {
+                ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
+                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(sc.topic, c.id) }
+                }
             }
             Button("Back") { Haptics.tap(); topic = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
         }
@@ -245,9 +256,11 @@ struct BoardRoundSheet: View {
                             DialogueQuote(speaker: "\(l.name) \u{00B7} \(l.title)", lines: [l.text])
                         }
                         Text("Ask the board").popupText(.subtitle).padding(.top, Theme.Space.xs)
-                        ChoiceCard(title: "Should we sell it?", subtitle: "Each seat gives an opinion", selected: false) { kind = "sell" }
-                        ChoiceCard(title: "Should we close it?", subtitle: "Each seat gives an opinion", selected: false) { kind = "close" }
-                        ChoiceCard(title: "Should we replace the CEO?", subtitle: "Managers advise; co-owners vote by shares", selected: false) { kind = "ceo" }
+                        VStack(spacing: 0) {
+                            PopupChoiceRow(title: "Should we sell it?", subtitle: "Each seat gives an opinion", identifier: "board-ask-sell") { kind = "sell" }
+                            PopupChoiceRow(title: "Should we close it?", subtitle: "Each seat gives an opinion", identifier: "board-ask-close") { kind = "close" }
+                            PopupChoiceRow(title: "Should we replace the CEO?", subtitle: "Managers advise; co-owners vote by shares", identifier: "board-ask-ceo") { kind = "ceo" }
+                        }
                     }
                 }
             }
@@ -302,5 +315,35 @@ struct DialogueQuote: View {
             .overlay(alignment: .leading) { Rectangle().fill(Theme.accent.opacity(0.5)).frame(width: 1.5) }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// One option of a popup that leads on (a topic, an answer, a question to the board): a plain row with a chevron and a hairline above.
+struct PopupChoiceRow: View {
+    var title: String
+    var subtitle: String = ""
+    var enabled: Bool = true
+    var identifier: String = ""
+    var action: () -> Void
+
+    var body: some View {
+        Button { Haptics.tap(); action() } label: {
+            HStack(spacing: Theme.Space.s) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(title).popupText(.button).fixedSize(horizontal: false, vertical: true)
+                    if !subtitle.isEmpty { Text(subtitle).popupText(.caption).fixedSize(horizontal: false, vertical: true) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
+            }
+            .padding(.vertical, Theme.Space.s)
+            .frame(minHeight: 52)
+            .contentShape(Rectangle())
+            .opacity(enabled ? 1 : 0.45)
+        }
+        .buttonStyle(PressableStyle())
+        .disabled(!enabled)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.divider).frame(height: 0.5) }
+        .modifier(OptionalIdentifier(identifier: identifier))
     }
 }

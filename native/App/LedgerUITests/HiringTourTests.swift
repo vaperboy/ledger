@@ -43,7 +43,7 @@ final class HiringTourTests: CompanyBatchTourCase {
         guard openFirstCompany() else { return false }
         guard tapID("company-tab-team") else { return false }
         app.swipeUp(); sleep(1)
-        let person = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'a month' AND label CONTAINS[c] 'company'")).firstMatch
+        let person = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'team-worker-'")).firstMatch
         guard person.waitForExistence(timeout: 5), person.isHittable else { note("no staff member on the Team section"); return false }
         person.tap(); sleep(1)
         return true

@@ -20,9 +20,14 @@ struct CompanySaleSection: View {
             let cur = engine.currency(for: company)
             let value = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
             let listing = CompanySale.listing(engine.state, companyID: company.id)
-            CardSection(title: "Sell the company", trailing: {
-                Text("Worth about " + cur.tidyShort(value * company.ownership / 100)).textStyle(.caption, tint: Theme.inkFaint)
-            }) {
+            // What your part would fetch leads; the routes (or the listing in progress) follow.
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text("Your part is worth about").textStyle(.label, tint: Theme.inkFaint)
+                    Text(cur.tidyShort(value * company.ownership / 100)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+                    Text("\(Int(company.ownership.rounded()))% of \(company.name)").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
                 if let l = listing {
                     listed(l, cur)
                 } else {

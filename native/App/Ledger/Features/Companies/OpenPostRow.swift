@@ -51,7 +51,7 @@ struct OpenPostRow: View {
         let people: [Person] = candidates.compactMap { (id: Int) -> Person? in engine.state.people[id] }.filter { (p: Person) -> Bool in p.employerID == 0 }
         if candidates.isEmpty {
             Button((vacancy.hirerName == nil ? "Find candidates" : "Search yourself") + " · \(fee)…") { Haptics.tap(); askToSearch(route, cur) }
-                .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.accent))
+                .buttonStyle(TertiaryButtonStyle(size: .compact)).padding(.leading, -Theme.Space.s)
         } else {
             CandidateHireList(people: people, emptyText: "Everyone on the list has taken another job. Search again.") { (p: Person) in
                 let request = HireRequest(post: route.post, companyID: route.companyID, chainID: route.chainID, city: route.city, personID: p.id, roleTitle: route.roleTitle,
@@ -66,7 +66,7 @@ struct OpenPostRow: View {
         let fee: String = cur.tidyShort(route.searchFee)
         let v: TeamOverview.Vacancy = vacancy
         pending = PendingAction(title: "Start the search?", message: "Candidates for the post of \(route.roleTitle.lowercased()). The list stays until someone is hired.",
-                                button: "Pay \(fee) and search", amount: route.searchFee, currency: cur, risk: "None may suit, and the fee is not refunded.") {
+                                button: "Pay \(fee) and search", amount: route.searchFee, currency: cur, risk: "None may suit, and the fee is not refunded.", tone: .info, icon: "magnifyingglass") {
             if let list = store.act({ $0.searchVacancy(v) }) ?? nil, !list.isEmpty {
                 candidates = list.map { (p: Person) -> Int in p.id }
                 Haptics.success()

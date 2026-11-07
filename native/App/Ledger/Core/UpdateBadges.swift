@@ -185,7 +185,7 @@ extension GameStore {
     }
 
     private func isOpen(_ app: PhoneApp) -> Bool {
-        guard tab == .phone, case .app(let a)? = phonePath.last else { return false }
+        guard case .app(let a)? = path(for: tab).last else { return false }
         return a == app
     }
 

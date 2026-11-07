@@ -34,10 +34,10 @@ struct LuxuryView: View {
             content
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
-        .centerSheet(item: Binding(get: { itemSheet.map { LuxuryID(id: $0) } }, set: { itemSheet = $0?.id }), size: .fitBleed) { (s: LuxuryID) in
+        .centerSheet(item: Binding(get: { itemSheet.map { LuxuryID(id: $0) } }, set: { itemSheet = $0?.id }), size: .fitBleed, category: .medium, tone: .prestige) { (s: LuxuryID) in
             LuxuryItemSheet(itemID: s.id) { itemSheet = nil; tab = .vault }
         }
-        .centerSheet(item: Binding(get: { inspected.map { LuxuryPieceID(id: $0) } }, set: { inspected = $0?.id }), size: .fitBleed) { (s: LuxuryPieceID) in
+        .centerSheet(item: Binding(get: { inspected.map { LuxuryPieceID(id: $0) } }, set: { inspected = $0?.id }), size: .fitBleed, category: .medium, tone: .prestige) { (s: LuxuryPieceID) in
             LuxuryInspectSheet(pieceID: s.id)
         }
     }
@@ -79,27 +79,23 @@ struct LuxuryView: View {
 struct LuxuryID: Identifiable { let id: String }
 struct LuxuryPieceID: Identifiable { let id: Int }
 
-/// The masthead shown on both tabs: back button, title, and the two figures that matter before buying.
+/// The masthead shown on both tabs: back button, the house name, and the cash that can be spent.
 struct LuxuryHeader: View {
     @EnvironmentObject var store: GameStore
     private var P: OutsidePalette { .luxury }
 
     var body: some View {
         if let e = store.engine {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                HStack(alignment: .center, spacing: Theme.Space.s) {
-                    OutsideBack()
-                    Text("Private sales").textStyle(.title).accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: 0)
+            VStack(spacing: Theme.Space.xxs) {
+                ZStack {
+                    HStack { OutsideBack(); Spacer(minLength: 0) }
+                    Text("PRIVATE SALES").font(.system(size: 15, weight: .medium, design: .serif)).tracking(4).foregroundStyle(P.ink)
+                        .accessibilityAddTraits(.isHeader)
                 }
-                FigureRow(items: [
-                    KeyFigures.Item(label: "Liquid cash", value: store.short(max(0, e.state.cash)), tint: P.gain),
-                    KeyFigures.Item(label: "Net worth", value: store.short(e.netWorth.total))
-                ], columns: 2, combineCells: true)
-                .padding(.horizontal, Theme.Space.xs)
+                Text("Cash available " + store.short(max(0, e.state.cash))).textStyle(.caption, tint: P.inkFaint, numeric: true)
             }
-            .padding(.leading, Theme.Space.s).padding(.trailing, Theme.Space.page)
-            .padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.m)
+            .padding(.horizontal, Theme.Space.s)
+            .padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
             .overlay(alignment: .bottom) { Hairline() }
         }
     }

@@ -8,13 +8,10 @@ import Simulation
 /// A holding company's own section: what it is worth, the companies under it, the index fund, and moving money.
 struct CompanyHolding: View {
     private func figureItems(_ o: HoldingModel.Consolidated, _ cur: Currency) -> [KeyFigures.Item] {
-        let profitTint: Color = o.profitTTM < 0 ? Theme.loss : Theme.ivory
         return [
-            .init(label: "Holding value", value: cur.tidyShort(o.holdingValue)),
             .init(label: "Companies", value: cur.tidyShort(o.companiesValue), sub: "your share"),
             .init(label: "Index fund", value: cur.tidyShort(o.indexFund)),
             .init(label: "Revenue 12 mo", value: cur.tidyShort(o.revenueTTM), sub: "your share"),
-            .init(label: "Profit 12 mo", value: cur.tidyShort(o.profitTTM), tint: profitTint, sub: "your share"),
             .init(label: "Cash in group", value: cur.tidyShort(o.cashInGroup)),
         ]
     }
@@ -29,39 +26,44 @@ struct CompanyHolding: View {
         let cur = engine.currency(for: company)
         let o = engine.holdingOverview(companyID: company.id)
         let free = engine.companiesForHolding
-        return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreHeader(glyph: Glyph.group, title: "Holding", blurb: "")
+        return VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            if let o {
+                // The holding's value is the hero; the consolidated figures follow in one strip.
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text("Holding value").textStyle(.label, tint: Theme.inkFaint)
+                    Text(cur.tidyShort(o.holdingValue)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+                    Text("Profit \(cur.tidyShort(o.profitTTM)) over 12 months, your share").textStyle(.caption, tint: o.profitTTM < 0 ? Theme.loss : Theme.inkSoft).lineLimit(2)
+                }
+                .accessibilityElement(children: .combine)
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    FigureRow(items: figureItems(o, cur), columns: 2, combineCells: true)
+                    if o.groupCovered > 0 {
+                        Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").textStyle(.caption, tint: Theme.gain)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
             // The holding's own management (its managing director): the holding has no staff list, so its roster lives here.
             CompanyTeamRoster(engine: engine, company: company)
             if let o {
-                MoreBlock("Consolidated") {
-                    VStack(alignment: .leading, spacing: 0) {
-                        FigureStrip(items: figureItems(o, cur))
-                        if o.groupCovered > 0 {
-                            Text("Tax group: profits cover \(cur.tidyShort(o.groupCovered)) of sister companies' losses this year.").textStyle(.caption, tint: Theme.gain).padding(.top, Theme.Space.s)
-                        }
-                    }
-                }
                 MoreBlock(title: "Companies held", card: false, trailing: { Text("\(o.subsidiaries.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
-                    VStack(spacing: Theme.Space.m) {
+                    VStack(spacing: 0) {
                         if o.subsidiaries.isEmpty {
                             EmptyState(glyph: Glyph.group, title: "No companies under this holding yet", message: "Dividends from companies under it are taxed far lower.", centered: false)
                         }
-                        ForEach(o.subsidiaries, id: \.id) { k in heldCard(k, cur) }
+                        ForEach(Array(o.subsidiaries.enumerated()), id: \.element.id) { (n: Int, k: HoldingModel.Subsidiary) in
+                            if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
+                            heldCard(k, cur)
+                        }
                     }
                 }
                 if !free.isEmpty {
                     MoreBlock("Put a company under it", card: false) {
-                        VStack(spacing: Theme.Space.m) {
-                            ForEach(free, id: \.id) { c in
-                                EntityCard {
-                                    HStack(spacing: Theme.Space.m) {
-                                        ThumbnailView(kind: .trade, key: c.type, size: 34, glyph: Glyph.home)
-                                        Text(c.name).textStyle(.body, tint: Theme.ink, weight: .medium)
-                                        Spacer()
-                                        Button("Add…") { askAdd(c.id, c.name) }.buttonStyle(TinyButtonStyle())
-                                    }
-                                }
+                        VStack(spacing: 0) {
+                            ForEach(Array(free.enumerated()), id: \.element.id) { (n: Int, c: Company) in
+                                if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
+                                LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: c.type, glyph: Glyph.home)), title: c.name,
+                                          subtitle: "Move it under this holding", identifier: "holding-add-\(c.id)", action: { askAdd(c.id, c.name) })
                             }
                             Text("Only limited companies can be held. Owning 90% or more in the same country puts them in one tax group.").textStyle(.caption, tint: Theme.inkFaint)
                         }
@@ -74,7 +76,7 @@ struct CompanyHolding: View {
                         Button("Put money in") {
                             if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
                             else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
-                        }.buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: Theme.accent))
+                        }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
                         LedgerRow(leading: .glyph(Glyph.bank), title: "Treasury and dividends", subtitle: "The index fund and paying yourself, in Group under Money",
                                   action: { store.openGroupEntity(companyID: company.id, section: "money") })
                         Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself.")
@@ -85,29 +87,28 @@ struct CompanyHolding: View {
                 Text("This holding company has no figures yet.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
+        // The holding's blocks sit on the page with no surface of their own.
+        .environment(\.insideCard, true)
         .confirmAction($pending)
     }
 
+    /// One company under the holding: its share of the value at the right; the row's menu opens it or releases it.
     private func heldCard(_ k: HoldingModel.Subsidiary, _ cur: Currency) -> some View {
-        let tax: String = k.inTaxGroup ? " · tax group" : ""
-        let line: String = "\(Int(k.ownership.rounded()))% · profit \(cur.tidyShort(k.profitTTM)) · cash \(cur.tidyShort(k.cash))\(tax)"
-        return EntityCard {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(alignment: .top, spacing: Theme.Space.m) {
-                    ThumbnailView(kind: .trade, key: k.trade, size: 34, glyph: Glyph.home)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(k.name).textStyle(.body, tint: Theme.ink, weight: .medium)
-                        Text(line).textStyle(.caption, tint: Theme.inkFaint)
-                    }
-                    Spacer(minLength: 8)
-                    Text(cur.tidyShort(k.share)).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium)
-                }
-                HStack {
-                    Button("Release…") { askRelease(k.id, k.name) }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted))
-                    Spacer()
-                }
-            }
+        let tax: String = k.inTaxGroup ? " \u{00B7} tax group" : ""
+        let line: String = "\(Int(k.ownership.rounded()))% \u{00B7} profit \(cur.tidyShort(k.profitTTM)) a year\(tax)"
+        let id: Int = k.id
+        let name: String = k.name
+        return Menu {
+            Button("Open \(name)") { store.openCompany(id) }
+            Button("Release from the holding\u{2026}", role: .destructive) { askRelease(id, name) }
+        } label: {
+            LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: k.trade, glyph: Glyph.home)), title: name, subtitle: line,
+                      value: cur.tidyShort(k.share), valueNote: "cash " + cur.tidyShort(k.cash), chevron: true)
+                .contentShape(Rectangle())
         }
+        .menuStyle(.button)
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("holding-held-\(id)")
     }
 
     private func askRelease(_ id: Int, _ name: String) {

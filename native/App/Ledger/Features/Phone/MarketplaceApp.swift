@@ -45,14 +45,10 @@ struct MarketplaceApp: View {
         if openID != nil { openID = nil } else { dismiss() }
     }
 
+    /// The filters stay pinned under the bar while the listings scroll.
     @ViewBuilder private var header: some View {
         if openID == nil, let e = store.engine, let co = current(e) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                HStack(spacing: Theme.Space.s) {
-                    companyMenu(e, co)
-                    Spacer(minLength: Theme.Space.s)
-                    sortMenu
-                }
                 ShopChipRow {
                     ForEach(Filter.allCases, id: \.self) { (f: Filter) in
                         ShopChip(title: f.rawValue, selected: filter == f) { filter = f }
@@ -61,10 +57,11 @@ struct MarketplaceApp: View {
                 }
                 lotLine(e, co)
             }
-            .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.xs)
+            .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xs)
             .frame(maxWidth: ShopMetrics.maxWidth)
             .frame(maxWidth: .infinity)
             .background(P.page)
+            .overlay(alignment: .bottom) { Hairline() }
             .environment(\.outsidePalette, P)
         }
     }
@@ -82,36 +79,20 @@ struct MarketplaceApp: View {
     }
 
     private func companyMenu(_ e: GameEngine, _ co: Company) -> some View {
-        let all: [Company] = shoppers(e)
-        return Menu {
-            ForEach(all, id: \.id) { (c: Company) in
-                Button(c.name) { companyID = c.id }
-            }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
-                Text("Buying for").textStyle(.caption, tint: P.inkFaint)
-                Text(co.name).textStyle(.body, weight: .semibold).lineLimit(1)
-                if all.count > 1 { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(90)) }
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .disabled(all.count < 2)
-        .accessibilityIdentifier("mk-company")
+        ShopCompanyMenu(caption: "Buying for", choices: shoppers(e).map { (c: Company) -> ShopCompanyMenu.Choice in
+            ShopCompanyMenu.Choice(id: c.id, name: c.name, detail: "")
+        }, selected: co.id, identifier: "mk-company", idPrefix: "mk-company") { (id: Int) in companyID = id }
     }
 
     private var sortMenu: some View {
         Menu {
             ForEach(Sort.allCases, id: \.self) { (s: Sort) in
-                Button(s.rawValue) { sort = s }
+                Button { Haptics.choose(); sort = s } label: {
+                    if s == sort { Label(s.rawValue, systemImage: "checkmark") } else { Text(s.rawValue) }
+                }
             }
         } label: {
-            HStack(spacing: Theme.Space.xs) {
-                Text(sort.rawValue).textStyle(.body, tint: P.accent, weight: .semibold).lineLimit(1)
-                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.accent).rotationEffect(.degrees(90))
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            ShopMenuLabel(text: sort.rawValue)
         }
         .accessibilityIdentifier("mk-sort")
     }
@@ -159,7 +140,7 @@ struct MarketplaceApp: View {
                                        onRefused: { (rid: String) in _ = refusedIDs.insert(rid) }, onBought: { openID = nil })
                     .id(l.id + String(co.id))
             } else {
-                gridPage(visible(all), cur, co)
+                gridPage(e, visible(all), cur, co)
             }
         } else {
             ShopEmptyNote(text: "Nothing to buy for. Start a company first.", glyph: Glyph.marketplace)
@@ -167,25 +148,32 @@ struct MarketplaceApp: View {
         }
     }
 
-    private func gridPage(_ list: [MarketListing], _ cur: Currency, _ co: Company) -> some View {
-        ShopPage(spacing: Theme.Space.m) {
-            ShopSection(title: "For sale", trailing: list.count == 1 ? "1 listing" : "\(list.count) listings") {
-                if list.isEmpty {
-                    ShopEmptyNote(text: "Nothing matches. New listings appear as the days go by.", glyph: Glyph.marketplace,
-                                  buttonTitle: filter == .all ? nil : "Show all listings") { filter = .all }
+    private func gridPage(_ e: GameEngine, _ list: [MarketListing], _ cur: Currency, _ co: Company) -> some View {
+        ShopPage(spacing: Theme.Space.l) {
+            companyMenu(e, co)
+            HStack(alignment: .center, spacing: Theme.Space.s) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(list.count == 1 ? "1 listing" : "\(list.count) listings").textStyle(.title)
+                    Text(filter == .all ? "Near you, from private sellers" : filter.rawValue).textStyle(.caption)
                 }
-                ShopGrid {
-                    ForEach(list, id: \.id) { (l: MarketListing) in
-                        Button {
-                            Haptics.tap()
-                            openID = l.id
-                        } label: {
-                            MarketplaceTile(listing: l, price: cur.tidyShort(l.askingPrice), refused: refusedIDs.contains(l.id))
-                                .newMarker(.marketplace, "l" + l.id, style: .capsule, alignment: .topLeading)
-                        }
-                        .buttonStyle(PressableStyle())
-                        .accessibilityIdentifier("mk-listing-\(l.id)")
+                Spacer(minLength: Theme.Space.s)
+                sortMenu
+            }
+            if list.isEmpty {
+                ShopEmptyNote(text: "Nothing matches. New listings appear as the days go by.", glyph: Glyph.marketplace,
+                              buttonTitle: filter == .all ? nil : "Show all listings") { filter = .all }
+            }
+            ShopGrid {
+                ForEach(list, id: \.id) { (l: MarketListing) in
+                    Button {
+                        Haptics.tap()
+                        openID = l.id
+                    } label: {
+                        MarketplaceTile(listing: l, price: cur.tidyShort(l.askingPrice), refused: refusedIDs.contains(l.id))
+                            .newMarker(.marketplace, "l" + l.id, style: .capsule, alignment: .topLeading)
                     }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("mk-listing-\(l.id)")
                 }
             }
         }
@@ -193,7 +181,7 @@ struct MarketplaceApp: View {
     }
 }
 
-/// One listing in the grid: the shop product card with the blurb, the city and the asking price in the price colour.
+/// One listing in the grid, classifieds style: the photo, the price in bold, the title and the city.
 struct MarketplaceTile: View {
     @Environment(\.outsidePalette) private var P
     var listing: MarketListing
@@ -202,7 +190,15 @@ struct MarketplaceTile: View {
 
     var body: some View {
         let key: String = ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? ""
-        return ShopProductCard(glyph: Glyph.marketplace, item: key, title: listing.title, lines: [listing.blurb, listing.city],
-                               price: price, priceTint: P.accent2, note: refused ? "Not selling to you" : "", noteTint: P.caution)
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            ShopPhoto(name: "", glyph: Glyph.marketplace, height: 150, cornerRadius: Theme.Radius.medium, item: key)
+                .padding(.bottom, Theme.Space.s)
+            Text(price.tidyText).textStyle(.figure, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
+            Text(listing.title.tidyText).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
+            Text(listing.city.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
+            if refused { Text("Not selling to you").textStyle(.caption, tint: P.caution, weight: .medium) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
     }
 }

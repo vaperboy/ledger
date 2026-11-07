@@ -68,17 +68,21 @@ struct ContractDiscussionView: View {
         let m = co.staff.first { $0.id == personID }
         let pay = isManager ? co.managerMonthlyWage : (m?.monthlyWage ?? 0)
         let role = isManager ? "Manager" : (m.map { $0.role.prefix(1).uppercased() + $0.role.dropFirst() } ?? "")
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 12) {
+        let hours: String = m?.weeklyHours.map { "\(Int($0.rounded())) h a week \u{00B7} " } ?? ""
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            HStack(spacing: Theme.Space.m) {
                 ThumbnailView(kind: .person, key: isManager ? "manager" : (m?.role ?? "helper"), size: 44, initials: n.name, face: n.faceKey)
-                Text(n.name).popupText(.figure)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(n.name.tidyText).textStyle(.headline).lineLimit(1)
+                    Text("\(role) at \(co.name)".tidyText).textStyle(.caption).lineLimit(2)
+                }
+                Spacer(minLength: 0)
             }
-            Text("\(role) at \(co.name) · \(cur.tidyShort(pay)) a month" + (m?.weeklyHours.map { " · \(Int($0.rounded())) h a week" } ?? ""))
-                .popupText(.caption)
-            if let h = e.contractHandler(companyID: companyID), !isManager {
-                Text("\(h.name) may handle these within \(cur.tidyShort(h.payLimit)) a month of extra pay and promotions (\(h.level >= 2 ? "full control" : "within limits")). Above that it comes to you.")
-                    .popupText(.caption)
-            }
+            .accessibilityElement(children: .combine)
+            TeamHero(label: "Pay now", value: cur.tidyShort(pay), unit: "a month",
+                     context: hours + (e.contractHandler(companyID: companyID).flatMap { (h) -> String? in
+                        isManager ? nil : "\(h.name) may settle up to \(cur.tidyShort(h.payLimit)) a month (\(h.level >= 2 ? "full control" : "within limits")); above that it comes to you."
+                     } ?? "Every change is agreed here."))
         }
     }
 
@@ -86,17 +90,17 @@ struct ContractDiscussionView: View {
     @ViewBuilder private func open(_ e: GameEngine, _ co: Company, _ n: Person, _ talk: ContractTalk.Talk, _ cur: Currency) -> some View {
         if talk.isRequest {
             let pv = e.contractPreview(companyID: companyID, personID: personID, proposal: talk.proposal, asRequest: true)
-            LedgerSection("\(first(n)) asks") {
+            TeamBlock("Their request") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(talk.reason.isEmpty ? "A request about \(talk.proposal.topic.title.lowercased())." : talk.reason).popupText(.body)
-                    AskOfferCard(label: "\(first(n).uppercased()) ASKS", figure: requestFigure(talk, cur), note: talk.proposal.topic.title, outlined: true)
+                    AskOfferCard(label: talk.proposal.topic.title, figure: requestFigure(talk, cur), note: "What \(first(n)) asks for", outlined: true)
                     if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").popupText(.risk) }
                     consequenceLines(pv, cur)
                     partWay(talk, cur)
                     WrapRow {
-                        Button("Agree") { answer(.accept, e, n, cur, pv) }.buttonStyle(QuietButtonStyle())
-                        if talk.delayUntil == 0 { Button("Delay \(ContractTalk.delayWeeks) weeks") { answer(.delay, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted)) }
-                        Button("Decline") { answer(.decline, e, n, cur, pv) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                        Button("Agree") { answer(.accept, e, n, cur, pv) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: Theme.accent))
+                        if talk.delayUntil == 0 { Button("Delay \(ContractTalk.delayWeeks) weeks") { answer(.delay, e, n, cur, pv) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft)) }
+                        Button("Decline") { answer(.decline, e, n, cur, pv) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
                     }
                     promiseMaker(e, label: "Promise instead") { draft in
                         show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) })
@@ -104,12 +108,12 @@ struct ContractDiscussionView: View {
                     if e.contractHandler(companyID: companyID) != nil {
                         Button("Leave it to the manager") {
                             show(store.act { $0.contractLeaveToManager(companyID: companyID, personID: personID) })
-                        }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                        }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft))
                     }
                 }
             }
         } else if talk.proposal.amount > 0 {
-            LedgerSection("\(first(n))'s last word") {
+            TeamBlock("\(first(n))'s last word") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).popupText(.body)
                     partWay(talk, cur)
@@ -117,7 +121,7 @@ struct ContractDiscussionView: View {
                         _ = store.act { $0.contractWithdraw(personID: personID) }
                         reply = ""
                         store.show("Talk dropped. Nothing changes for \(first(n)).", tone: "n")
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft))
                 }
             }
         }
@@ -132,14 +136,15 @@ struct ContractDiscussionView: View {
             WrapRow {
                 ForEach([0.25, 0.5, 0.75], id: \.self) { share in
                     let v = from + (p.amount - from) * share
-                    Button(p.topic == .payRise ? "+\(String(format: "%.1f", v * 100))%" : p.topic == .hours ? "\(Int(v.rounded())) h" : cur.tidyShort(cur.roundedStep(v, about: 500))) {
+                    HireChip(title: p.topic == .payRise ? "+\(String(format: "%.1f", v * 100))%" : p.topic == .hours ? "\(Int(v.rounded())) h" : cur.tidyShort(cur.roundedStep(v, about: 500)), on: false) {
+                        Haptics.choose()
                         topic = p.topic
                         switch p.topic {
                         case .payRise: percent = max(0.005, (v * 200).rounded() / 200)
                         case .promotion: pay = cur.roundedStep(v, about: 500)
                         default: hours = max(5, v.rounded()); choice = "hours"
                         }
-                    }.buttonStyle(QuietButtonStyle(tint: Theme.ivoryMuted))
+                    }
                 }
             }
             Text("Or set an exact figure below with the stepper or the field.").popupText(.caption)
@@ -161,13 +166,13 @@ struct ContractDiscussionView: View {
 
     private func topics(_ e: GameEngine) -> some View {
         let list = e.contractTopics(companyID: companyID, personID: personID)
-        return LedgerSection("Discuss") {
+        return TeamBlock("Discuss") {
             VStack(alignment: .leading, spacing: 8) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 8)], alignment: .leading, spacing: 8) {
+                WrapRow(spacing: Theme.Space.xs) {
                     ForEach(list) { t in
-                        Button(t.topic.title) { topic = t.topic }
-                            .buttonStyle(QuietButtonStyle(tint: !t.available ? Theme.ivoryFaint : topic == t.topic ? Theme.gold : Theme.ivoryMuted))
+                        HireChip(title: t.topic.title, on: topic == t.topic) { Haptics.choose(); topic = t.topic }
                             .disabled(!t.available)
+                            .opacity(t.available ? 1 : 0.45)
                     }
                 }
                 if let t = list.first(where: { $0.topic == topic }), !t.available { Text(t.why.tidyMoney).popupText(.risk) }
@@ -178,7 +183,7 @@ struct ContractDiscussionView: View {
     @ViewBuilder private func editor(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         let options = e.contractChoices(companyID: companyID, personID: personID, topic: topic)
         let isManager = co.managerID == personID
-        LedgerSection(topic.title) {
+        TeamBlock(topic.title) {
             VStack(alignment: .leading, spacing: 10) {
                 switch topic {
                 case .payRise:
@@ -216,7 +221,7 @@ struct ContractDiscussionView: View {
                     Text("Extra weeks of notice on top of the law, owed both ways: they work them if they resign, you pay them if you let them go without cause.").popupText(.caption)
                     WrapRow {
                         ForEach([0] + ContractTalk.noticeExtraChoices, id: \.self) { w in
-                            Button(w == 0 ? "Law only" : "+\(w) wk") { weeks = w }.buttonStyle(QuietButtonStyle(tint: weeks == w ? Theme.gold : Theme.ivoryMuted))
+                            HireChip(title: w == 0 ? "Law only" : "+\(w) wk", on: weeks == w) { Haptics.choose(); weeks = w }
                         }
                     }
                 case .move:
@@ -229,7 +234,7 @@ struct ContractDiscussionView: View {
     private func steps(_ values: [Double], current: Double, _ set: @escaping (Double) -> Void) -> some View {
         WrapRow {
             ForEach(values, id: \.self) { v in
-                Button("\(Int((v * 100).rounded()))%") { set(v) }.buttonStyle(QuietButtonStyle(tint: abs(current - v) < 0.0001 ? Theme.gold : Theme.ivoryMuted))
+                HireChip(title: "\(Int((v * 100).rounded()))%", on: abs(current - v) < 0.0001) { Haptics.choose(); set(v) }
             }
         }
     }
@@ -275,7 +280,7 @@ struct ContractDiscussionView: View {
 
     @ViewBuilder private func preview(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
         let pv = e.contractPreview(companyID: companyID, personID: personID, proposal: currentProposal(e))
-        LedgerSection("What it means") { consequenceLines(pv, cur) }
+        TeamBlock("What it means") { consequenceLines(pv, cur) }
     }
 
     @ViewBuilder private func consequenceLines(_ c: ContractTalk.Consequences, _ cur: Currency) -> some View {
@@ -345,7 +350,7 @@ struct ContractDiscussionView: View {
                     pending = PendingAction(
                         title: answering ? "Answer \(first(n)) with this?" : "Put this to \(first(n))?",
                         message: summary(pv, cur),
-                        button: answering ? "Send answer" : "Put it to \(first(n))") {
+                        button: answering ? "Send answer" : "Put it to \(first(n))", tone: .info, icon: "doc.text") {
                             if answering { show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .counter(counterValue(p))) }) }
                             else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }) }
                         }
@@ -375,7 +380,7 @@ struct ContractDiscussionView: View {
     private func answer(_ d: ContractTalk.Decision, _ e: GameEngine, _ n: Person, _ cur: Currency, _ pv: ContractTalk.Consequences) {
         let (title, button): (String, String) = d == .accept ? ("Agree to \(first(n))'s request?", "Agree") : d == .delay ? ("Delay your answer?", "Delay") : ("Decline \(first(n))'s request?", "Decline")
         pending = PendingAction(title: title, message: d == .decline ? summary(pv, cur) + " They feel turned down." : d == .delay ? "You have \(ContractTalk.delayWeeks) weeks to answer. If the answer does not come, it counts as a decline. " + summary(pv, cur) : summary(pv, cur),
-                                button: button, destructive: d == .decline) {
+                                button: button, tone: d == .decline ? .warning : .info, icon: "doc.text") {
             show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: d) })
         }
     }
@@ -402,8 +407,7 @@ struct ContractDiscussionView: View {
         VStack(alignment: .leading, spacing: 8) {
             WrapRow {
                 ForEach([20.0, 50.0, 80.0, 100.0], id: \.self) { v in
-                    Button("\(Int(v)) percent") { workPercent = v }
-                        .buttonStyle(QuietButtonStyle(tint: abs(workPercent - v) < 0.0001 ? Theme.gold : Theme.ivoryMuted))
+                    HireChip(title: "\(Int(v)) percent", on: abs(workPercent - v) < 0.0001) { Haptics.choose(); workPercent = v }
                 }
             }
             Stepper("Other: \(HireWords.percentText(workPercent))", value: $workPercent, in: 10...100, step: 5).popupText(.body)
@@ -413,7 +417,7 @@ struct ContractDiscussionView: View {
 
     @ViewBuilder private func contractCard(_ e: GameEngine, _ cur: Currency) -> some View {
         if let c = e.employmentContract(companyID: companyID, personID: personID) {
-            LedgerSection("Current contract") {
+            TeamBlock("Current contract") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "Type", value: c.typeLabel, sub: c.payBasisLabel, rule: false)
                     FlatRow(label: "Working", value: HireWords.percentText(c.workingPercent), sub: HireWords.hours(c.contractedHoursPerWeek))
@@ -442,7 +446,7 @@ struct ContractDiscussionView: View {
 
     /// A promise made here goes to Company > Team > Promises, where its date, status and consequences are kept.
     @ViewBuilder private func promiseSection(_ e: GameEngine, _ co: Company, _ n: Person) -> some View {
-        LedgerSection("Promise") {
+        TeamBlock("Promise") {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Instead of deciding now, promise \(first(n)) something by a date. It is kept in the Promises list.").popupText(.caption)
                 promiseMaker(e, label: "Make a promise") { draft in
@@ -454,7 +458,7 @@ struct ContractDiscussionView: View {
 
     @ViewBuilder private func historySection(_ e: GameEngine) -> some View {
         let entries: [ContractHistory.Entry] = Array(e.contractHistory(companyID: companyID, personID: personID).reversed())
-        LedgerSection("Contract history") {
+        TeamBlock("Contract history") {
             VStack(alignment: .leading, spacing: 0) {
                 if entries.isEmpty { Text("No changes yet.").popupText(.caption) }
                 ForEach(Array(entries.enumerated()), id: \.element.id) { i, h in

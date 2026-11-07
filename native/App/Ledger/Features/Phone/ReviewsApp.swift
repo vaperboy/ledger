@@ -74,7 +74,7 @@ struct ReviewsApp: View {
         return Group {
             if let co = chosen {
                 VStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
                         selector(companies, co)
                         SegmentedPill(items: Side.allCases, title: { $0.rawValue }, selection: $side, identifier: { "reviews-side-" + $0.rawValue.lowercased() })
                     }
@@ -116,7 +116,7 @@ struct ReviewsApp: View {
                 }
             }
         } label: {
-            BusinessMenuLabel(glyph: Glyph.reviewStar, title: chosen.name)
+            BusinessPickerLabel(caption: "Business", title: chosen.name)
         }
         .accessibilityLabel("Business: \(chosen.name)")
         .accessibilityIdentifier("reviews-business-picker")
@@ -152,17 +152,20 @@ struct ReviewsApp: View {
         }
     }
 
-    /// The rating as the screen's one big figure, its word, and how many reviews it rests on.
+    /// The rating as the screen's one big figure, its stars and word, and how many reviews it rests on.
     private func yourHero(_ r: ReviewSummary) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if r.enough {
-                Text(String(format: "%.1f", r.rating)).textStyle(.display)
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                    Text(String(format: "%.1f", r.rating)).font(.system(size: 44, weight: .medium, design: .serif).monospacedDigit()).foregroundStyle(Theme.ink)
+                    Text("out of 5").textStyle(.caption, tint: Theme.inkFaint)
+                }
                 StarRatingView(rating: r.rating, size: 18, showsNumber: false)
-                Text(r.word).textStyle(.body, tint: Theme.accent, weight: .medium)
+                Text(r.word + " \u{00B7} " + (r.count == 1 ? "1 review" : "\(r.count) reviews")).textStyle(.body, tint: Theme.inkSoft)
             } else {
-                Text("No rating yet").textStyle(.title, tint: Theme.inkSoft)
+                Text("No rating yet").textStyle(.display, tint: Theme.inkSoft)
+                Text(r.count == 1 ? "1 review so far" : "\(r.count) reviews so far").textStyle(.caption, tint: Theme.inkFaint)
             }
-            Text(r.count == 1 ? "1 review" : "\(r.count) reviews").textStyle(.caption, tint: Theme.inkFaint)
         }
         .accessibilityElement(children: .combine)
     }
@@ -247,5 +250,25 @@ struct ReviewsApp: View {
             }
         }
         .padding(.vertical, Theme.Space.s)
+    }
+}
+
+/// The business picker of Market and Reviews: a small caption over the business name and a chevron, straight on the page.
+struct BusinessPickerLabel: View {
+    @Environment(\.outsidePalette) private var P
+    var caption: String
+    var title: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(caption.tidyText).capsLabel(P.inkFaint)
+            HStack(spacing: Theme.Space.xs) {
+                Text(title.tidyText).textStyle(.figure).lineLimit(1).minimumScaleFactor(0.7)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(90))
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
     }
 }

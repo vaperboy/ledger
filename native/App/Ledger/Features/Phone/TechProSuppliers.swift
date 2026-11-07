@@ -70,29 +70,63 @@ struct TechProSuppliers: View {
     private func content(_ e: GameEngine, _ co: Company, _ need: EquipmentMarket.Need) -> some View {
         let cur: Currency = e.currency(for: co)
         let rows: [Row] = sorted(rowsFor(e, need, cur))
-        return ShopPage(spacing: Theme.Space.m) {
-            ShopPageTitle(title: need.name, subtitle: EquipmentMarket.kindName(need.kind) + " \u{00B7} choose a supplier")
-            ShopChipRow {
-                ForEach(Order.allCases, id: \.self) { (o: Order) in
-                    ShopChip(title: o.rawValue, selected: order == o) { order = o }.accessibilityIdentifier("tp-supsort-\(o.rawValue)")
+        let priced: [Double] = rows.filter { (r: Row) -> Bool in r.key != "mk" && r.price > 0 }.map { (r: Row) -> Double in r.price }
+        let count: String = rows.count == 1 ? "1 supplier" : "\(rows.count) suppliers"
+        let low: String = priced.min().map { (v: Double) -> String in " \u{00B7} from " + cur.tidyShort(v) + (need.subscription ? "/mo" : "") } ?? ""
+        return ShopPage {
+            ShopHero(label: EquipmentMarket.kindName(need.kind), value: need.name, note: count + low)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: Theme.Space.s) {
+                    ShopHeading(text: "Choose a supplier")
+                    Spacer(minLength: Theme.Space.s)
+                    sortMenu
                 }
-            }
-            ShopSection(title: "Suppliers", trailing: rows.count == 1 ? "1 supplier" : "\(rows.count) suppliers") {
                 if rows.isEmpty { ShopEmptyNote(text: "Nothing on offer right now. New offers appear as the weeks go by.", buttonTitle: "Back", action: onBack) }
-                ShopGrid {
-                    ForEach(rows) { (r: Row) in box(r) }
+                ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: Row) in
+                    if n > 0 { Hairline().padding(.leading, 68) }
+                    box(r)
                 }
             }
         }
         .accessibilityIdentifier("tp-suppliers")
     }
 
+    private var sortMenu: some View {
+        Menu {
+            ForEach(Order.allCases, id: \.self) { (o: Order) in
+                Button { Haptics.choose(); order = o } label: {
+                    if o == order { Label(o.rawValue, systemImage: "checkmark") } else { Text(o.rawValue) }
+                }
+                .accessibilityIdentifier("tp-supsort-\(o.rawValue)")
+            }
+        } label: {
+            ShopMenuLabel(text: order.rawValue)
+        }
+        .accessibilityLabel("Sort: \(order.rawValue)")
+    }
+
+    /// One supplier: its picture, name and rating, the price on the right.
     private func box(_ r: Row) -> some View {
         Button {
             Haptics.tap()
             onPick(r.key)
         } label: {
-            TechTile(photo: r.photo, glyph: r.glyph, title: r.title, from: r.from, deal: r.deal, label: r.sub, tint: P.inkFaint, item: r.item)
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                ShopThumb(photo: r.photo, glyph: r.glyph, item: r.item, size: 56)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(r.title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(r.sub.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    if r.key != "mk" { Text(r.from.tidyText).textStyle(.headline, tint: r.deal > 0 ? P.loss : nil, numeric: true).lineLimit(1).minimumScaleFactor(0.7) }
+                    if r.deal > 0 { Text("-\(r.deal)%").textStyle(.caption, tint: P.loss, weight: .semibold) }
+                }
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
+            }
+            .padding(.vertical, Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("tp-supplier-\(r.key)")
@@ -150,8 +184,8 @@ struct TechProSuppliers: View {
             }
         }
         if need.canUsed {
-            out.append(Row(key: "mk", title: "Used items are in Marketplace", photo: "", glyph: Glyph.marketplace, price: 0, from: "Second-hand, from private sellers", deal: 0,
-                           sub: "Open Marketplace", rating: 0))
+            out.append(Row(key: "mk", title: "Buy it used on Marketplace", photo: "", glyph: Glyph.marketplace, price: 0, from: "", deal: 0,
+                           sub: "Second-hand, from private sellers", rating: 0))
         }
         if need.kind == "soft" {
             let own: [SoftwareProducts.Offer] = e.ownSoftwareOffers(buyerID: companyID, equipmentName: need.name)

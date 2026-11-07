@@ -60,6 +60,7 @@ struct ReportsPage: View {
     var active: Bool
     @Binding var chosen: [String: Int]
     @Binding var opened: ReportDest?
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
 
     private var format: ReportFormat {
         if let id = companyID, let co = engine.state.company(id) {
@@ -86,10 +87,9 @@ struct ReportsPage: View {
                     SettingsPage(title: d.title, subtitle: r.title, tab: companyID == nil ? .phone : .company) { detail(d, r, all) }
                 }
             } else {
-                CardSection("No report yet") {
-                    Text("A report is written each time a week, month or year ends. The first one arrives after your first full week.")
-                        .textStyle(.body, tint: Theme.inkSoft)
-                }
+                EmptyState(glyph: Glyph.reports, title: "No report yet",
+                           message: "A report is written each time a week, month or year ends. The first one arrives after your first full week.")
+                    .padding(.top, Theme.Space.xxl)
             }
         }
     }
@@ -114,7 +114,7 @@ struct ReportsPage: View {
     }
 
     private func summaryPage(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             hero(r).staggerReveal(0)
             ReportChartCard(reports: Array(all.filter { $0.id <= r.id }.suffix(12)), selectedID: r.id, kind: kind, format: format).drawsItself(duration: 0.7).staggerReveal(1)
             story(r).staggerReveal(2)
@@ -125,54 +125,59 @@ struct ReportsPage: View {
 
     // MARK: Period picker
 
+    /// The period as a title between two plain arrows: earlier on the left, later on the right.
     private func picker(_ r: PeriodReport, _ all: [PeriodReport]) -> some View {
         let i = all.firstIndex(where: { $0.id == r.id }) ?? 0
-        return Card(padding: 8, radius: Theme.Radius.row) {
-            HStack(spacing: 12) {
-                stepButton(glyph: Glyph.back, enabled: i > 0, label: "Earlier report") { chosen[kind.rawValue] = all[i - 1].id }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(r.title.tidyMoney).font(.serifTitle(22)).foregroundStyle(Theme.ivory)
-                    Text(r.range).textStyle(.caption, tint: Theme.inkFaint)
-                }
-                Spacer(minLength: 8)
-                stepButton(glyph: Glyph.chevron, enabled: i < all.count - 1, label: "Later report") { chosen[kind.rawValue] = all[i + 1].id }
+        return HStack(spacing: Theme.Space.s) {
+            stepButton(glyph: Glyph.back, enabled: i > 0, label: "Earlier report") { chosen[kind.rawValue] = all[i - 1].id }
+            VStack(spacing: Theme.Space.xxs) {
+                Text(r.title.tidyMoney).textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                Text(r.range).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
             }
+            .frame(maxWidth: .infinity)
+            stepButton(glyph: Glyph.chevron, enabled: i < all.count - 1, label: "Later report") { chosen[kind.rawValue] = all[i + 1].id }
         }
     }
 
     private func stepButton(glyph: String, enabled: Bool, label: String, action: @escaping () -> Void) -> some View {
         Button { Haptics.choose(); action() } label: {
-            GlyphView(glyph: glyph, size: 14, weight: 2, tint: enabled ? Theme.gold : Theme.ivoryDim.opacity(0.5))
-                .frame(width: 36, height: 36)
-                .overlay(Circle().strokeBorder(Theme.borderStrong, lineWidth: 1))
-                .contentShape(Circle())
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: enabled ? Theme.ink : Theme.inkFaint.opacity(0.4))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle()).disabled(!enabled).accessibilityLabel(label)
     }
 
     // MARK: Hero, story and tables
 
+    /// The one big number: profit after tax, with its change against the period before; net worth follows as one quiet line.
     private func hero(_ r: PeriodReport) -> some View {
         let f = format
         let net = r.group.pnl.netProfit
         let profitChange = ReportChangeText(now: net, before: r.previous?.pnl.netProfit, isCost: false, format: f)
         let worthChange = r.netWorthChange
-        let worthPrev = r.previous?.netWorthChange
-        let worthNote = "Change " + f.signed(worthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? "")
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 10) {
-                OverviewFigureCard(label: "Profit after tax", value: f.short(net),
-                                   note: r.previous.map { "\(profitChange.text) vs \($0.title)" } ?? "Nothing earlier to compare with.",
-                                   noteTint: profitChange.tint, live: net, countFormat: f.short, valueTint: Theme.change(net))
-                    .profitGlow(net)
-                OverviewFigureCard(label: companyID == nil ? "Net worth" : "Your share's value", value: f.short(r.netWorthEnd.total),
-                                   note: worthNote, noteTint: Theme.change(worthChange), live: r.netWorthEnd.total, countFormat: f.short)
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text("Profit after tax").textStyle(.label, tint: Theme.inkFaint)
+            CountedFigure(value: net, format: f.short, tint: net < -0.5 ? Theme.loss : Theme.ink)
+                .font(.hero(heroSize)).lineLimit(1).minimumScaleFactor(0.5)
+            if let prev = r.previous {
+                HStack(spacing: Theme.Space.xs) {
+                    Text(profitChange.text).textStyle(.body, tint: profitChange.tint, numeric: true, weight: .medium)
+                    Text("vs " + prev.title.tidyMoney).textStyle(.body, tint: Theme.inkSoft).lineLimit(1)
+                }
+            } else {
+                Text("Nothing earlier to compare with.").textStyle(.body, tint: Theme.inkFaint)
             }
-            if let p = worthPrev, r.previous != nil {
-                Text("Net worth change before: " + f.signed(p)).textStyle(.caption, tint: Theme.inkFaint)
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(companyID == nil ? "Net worth" : "Your share").textStyle(.caption, tint: Theme.inkFaint)
+                Text(f.short(r.netWorthEnd.total)).textStyle(.headline, numeric: true)
+                Text(f.signed(worthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? "")).textStyle(.caption, tint: Theme.change(worthChange), numeric: true)
             }
+            .lineLimit(1).minimumScaleFactor(0.8)
+            .padding(.top, Theme.Space.s)
             if r.partial {
-                Text("This period began part-way through: the game was saved before reports existed.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                Text("This period began part-way through: the game was saved before reports existed.").textStyle(.caption, tint: Theme.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

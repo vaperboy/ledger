@@ -9,20 +9,8 @@ import Businesses
 /// so Back always returns to where the player came from.
 struct PhoneHome: View {
     @Environment(Entitlements.self) private var ent
-    /// What the Phone stack holds: an app, or a company a link opened from inside an app. One typed path (not a type-erased
-    /// `NavigationPath`), so a company link tapped in the Inbox is pushed on exactly the stack the Inbox itself sits on.
-    enum Page: Hashable {
-        case app(PhoneApp)
-        case company(CompanyRoute)
-
-        /// The record a page shows: two pages with the same key are the same screen, so a link to it goes back to it.
-        var key: String {
-            switch self {
-            case .app(let app): return "app.\(app.rawValue)"
-            case .company(let route): return route.key
-            }
-        }
-    }
+    /// What the Phone stack holds: apps, and whatever they link to (a company, an entity page, another app): the shared `NavRoute`.
+    typealias Page = NavRoute
 
     @EnvironmentObject var store: GameStore
     @Environment(\.tabBarClearance) private var clearance
@@ -35,15 +23,7 @@ struct PhoneHome: View {
     var body: some View {
         NavigationStack(path: Binding(get: { store.phonePath }, set: { store.setPhonePath($0) })) {
             home
-                .navigationDestination(for: Page.self) { (page: Page) in destination(page) }
                 .companyRouteDestinations()
-        }
-    }
-
-    @ViewBuilder private func destination(_ page: Page) -> some View {
-        switch page {
-        case .app(let app): PhoneAppScreen(app: app)
-        case .company(let route): CompanyRouteDestination(route: route)
         }
     }
 

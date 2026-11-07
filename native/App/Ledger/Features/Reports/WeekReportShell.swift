@@ -28,7 +28,7 @@ struct WeekReportShell<More: View>: View {
     // MARK: Body
 
     var body: some View {
-        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, footer: AnyView(footer), onClose: { }) {
+        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, footer: AnyView(footer), category: .detail, tone: .info, onClose: { }) {
             pageContent
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -147,6 +147,7 @@ struct WeekReportShell<More: View>: View {
     private func numberBlock(_ r: WeekRecap) -> some View {
         let word: String = vsWord(r)
         return VStack(alignment: .leading, spacing: 4) {
+            Text("Profit").textStyle(.label, tint: Theme.inkFaint)
             CountedFigure(value: r.profit, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(r.profit), duration: Motion.revealSeconds)
                 .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.5)
                 .scaleEffect(numberShown || reduceMotion ? 1 : 0.9, anchor: .leading)
@@ -158,15 +159,16 @@ struct WeekReportShell<More: View>: View {
     }
 
     private func storyBlock(_ r: WeekRecap) -> some View {
-        Text(r.story).popupText(.title)
+        Text(r.story).popupText(.body)
+            .fixedSize(horizontal: false, vertical: true)
             .opacity(storyShown ? 1 : 0)
     }
 
     private func barsBlock(_ r: WeekRecap) -> some View {
         let top: Double = max(1, max(r.sales, max(r.costs, abs(r.profit))))
         return VStack(spacing: 12) {
-            barRow("Sales", r.sales, Theme.gold, 0, top, false)
-            barRow("Costs", r.costs, Theme.ivoryFaint, 1, top, false)
+            barRow("Sales", r.sales, Theme.ink.opacity(0.75), 0, top, false)
+            barRow("Costs", r.costs, Theme.inkFaint, 1, top, false)
             barRow("Profit", r.profit, Theme.change(r.profit), 2, top, true)
         }
     }
@@ -184,11 +186,11 @@ struct WeekReportShell<More: View>: View {
             GeometryReader { (geo: GeometryProxy) in
                 let full: CGFloat = max(6, geo.size.width * CGFloat(share))
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.surface)
+                    Capsule().fill(Theme.line)
                     Capsule().fill(color).frame(width: full * CGFloat(grown))
                 }
             }
-            .frame(height: 12)
+            .frame(height: 6)
         }
     }
 
@@ -257,8 +259,8 @@ struct WeekReportShell<More: View>: View {
     @ViewBuilder private func nextCard(_ r: WeekRecap) -> some View {
         if let n = r.next {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text("One thing to do").capsLabel()
-                Text(n.title.tidyMoney).popupText(.title)
+                Text("One thing to do").textStyle(.label, tint: Theme.inkFaint)
+                Text(n.title.tidyMoney).popupText(.rowValue)
                 Text(n.detail.tidyMoney).popupText(.subtitle)
                 Button {
                     Haptics.tap()
@@ -270,8 +272,8 @@ struct WeekReportShell<More: View>: View {
                 }
                 .buttonStyle(SecondaryButtonStyle(tint: Theme.accent)).padding(.top, Theme.Space.s).accessibilityIdentifier("report-next")
             }
-            .padding(.top, Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .top) { Hairline() }
+            .padding(Theme.Space.l).frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.inset))
             .offset(y: (cardShown || reduceMotion) ? 0 : 24)
             .opacity((cardShown || reduceMotion) ? 1 : 0)
         }

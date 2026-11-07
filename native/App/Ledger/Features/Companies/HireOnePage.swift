@@ -62,10 +62,14 @@ struct HireOnePage: View {
         withAnimation(Motion.move(reduceMotion)) { stage = to }
     }
 
-    /// The page content in the app's scroll view, or bare inside the popup (whose `FitScroll` scrolls it).
-    @ViewBuilder private func scrolled<C: View>(@ViewBuilder _ content: () -> C) -> some View {
+    /// The page content in the app's scroll view with its actions pinned under it, or bare inside the popup (whose `FitScroll` scrolls it)
+    /// with the actions at the end.
+    @ViewBuilder private func scrolled<C: View, F: View>(@ViewBuilder _ content: () -> C, @ViewBuilder footer: () -> F) -> some View {
         if embedded {
-            content()
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                content()
+                footer()
+            }
         } else {
             ScrollView {
                 content()
@@ -74,6 +78,13 @@ struct HireOnePage: View {
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                footer()
+                    .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.m)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    .background(P.page)
+                    .overlay(alignment: .top) { Hairline() }
+            }
         }
     }
 
@@ -123,11 +134,15 @@ struct HireOnePage: View {
         let offerArg: Double? = model.offerSet ? model.offer : nil
         let summary: HirePay? = paySummary(e, terms, offerArg)
         return scrolled {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 header(e, person)
                 if let s = summary {
                     if stage == 1 { quickStage(e, s, cur, terms, problem).transition(.opacity) } else { payStage(e, opts, s, cur, terms, problem).transition(.opacity) }
                 }
+            }
+        } footer: {
+            if let s = summary {
+                if stage == 1 { quickActions(e, s, cur, terms, problem) } else { payActions(e, s, cur, terms, problem) }
             }
         }
     }
@@ -135,13 +150,14 @@ struct HireOnePage: View {
     /// One header for both pages: who they are and what they claim.
     private func header(_ e: GameEngine, _ person: Person) -> some View {
         return HStack(spacing: Theme.Space.m) {
-            ThumbnailView(kind: .person, key: person.role, size: 36, initials: person.name, face: person.faceKey)
+            ThumbnailView(kind: .person, key: person.role, size: 48, initials: person.name, face: person.faceKey)
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(person.name.tidyText).textStyle(.figure).lineLimit(1)
-                Text(CandidateClaims.line(e, person)).popupText(.caption).lineLimit(1)
+                Text(person.name.tidyText).textStyle(.headline).lineLimit(1)
+                Text(CandidateClaims.line(e, person)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func block<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
@@ -157,24 +173,79 @@ struct HireOnePage: View {
 
     // MARK: Page 1: the going rate
 
+    /// Page 1: what they ask as the one big figure (the going rate and start date as its line), then what you know about them and what
+    /// the hire costs in all, so the decision is on one screen.
     private func quickStage(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
+        let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: s.market)
+        return VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            askHero(s, cur)
+            knownBlock(e)
+            if let talk {
+                TeamBlock("At the going rate") {
+                    VStack(spacing: 0) {
+                        FlatRow(label: "Costs you in all", value: cur.tidyShort(talk.monthlyEmployerCost) + " a month",
+                                sub: "Wage plus employer charges \u{00B7} \(cur.tidyShort(talk.annualEmployerCost)) a year", rule: false)
+                        FlatRow(label: "By the hour", value: HireWords.hourly(talk.hourlyWage, cur), sub: HireWords.hours(talk.hoursPerWeek))
+                    }
+                }
+            }
+        }
+    }
+
+    private func askHero(_ s: HirePay, _ cur: Currency) -> TeamHero {
+        let startText: String = GameCalendar.dateString(week: s.startWeek)
+        guard let ask = s.ask else {
+            return TeamHero(label: "Going rate", value: cur.tidyShort(s.market), unit: "a month",
+                            context: "\(first) names a figure when you offer \u{00B7} starts \(startText)")
+        }
+        let gap: Double = ask - s.market
+        let near: Bool = abs(gap) < max(1, s.market * 0.02)
+        let line: String = near ? "About the going rate of \(cur.tidyShort(s.market))"
+            : (gap > 0 ? "\(cur.tidyShort(gap)) above" : "\(cur.tidyShort(-gap)) below") + " the going rate of \(cur.tidyShort(s.market))"
+        return TeamHero(label: "\(first) asks", value: cur.tidyShort(ask), unit: "a month", context: line + " \u{00B7} starts \(startText)",
+                        contextTint: gap > 0 && !near ? P.caution : nil)
+    }
+
+    /// What the CV, the first impression, the references and a trial week say, for a worker who answered an ad. Words only, never a skill figure.
+    @ViewBuilder private func knownBlock(_ e: GameEngine) -> some View {
+        if isWorker, let cid = request.companyID, let a = e.applicants(companyID: cid).first(where: { (x: Applicant) -> Bool in x.personID == request.personID }) {
+            TeamBlock("What you know") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    fact("CV", a.cvImpression)
+                    fact("First impression", a.seems)
+                    fact("References", a.referencesChecked ? "Checked" : "Not checked yet")
+                    ForEach(Array(a.trialObservations.prefix(2).enumerated()), id: \.offset) { (_: Int, line: String) in fact("Trial week", line) }
+                    if !a.resume.isEmpty {
+                        Text("\u{201C}\(a.resume)\u{201D}").textStyle(.caption).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func fact(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Text(label).textStyle(.caption, tint: P.inkFaint).frame(width: 104, alignment: .leading)
+            Text(value.tidyText).textStyle(.body).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Page 1's actions: offer the going rate (the one button), or change the offer.
+    private func quickActions(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
         let rate: Double = s.market
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: rate)
         let annual: Double = talk?.annualEmployerCost ?? 0
-        let startText: String = GameCalendar.dateString(week: s.startWeek)
-        let items: [KeyFigures.Item] = [
-            .init(label: "Asks", value: s.ask.map { (a: Double) -> String in cur.tidyShort(a) } ?? "Not yet", sub: s.ask == nil ? "names it when you offer" : "a month"),
-            .init(label: "Going rate", value: cur.tidyShort(rate), sub: "a month"),
-            .init(label: "Starts", value: startText),
-        ]
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            FigureRow(items: items, columns: 3, combineCells: true)
-                .padding(.vertical, Theme.Space.m)
-                .overlay(alignment: .top) { Hairline() }
-            PrimaryAction(title: "Offer the going rate", blockedReason: problem, identifier: "hire-quick-offer") { confirm(rate, annual, cur, terms) }
-            Button("Change the offer") { go(2) }
-                .buttonStyle(TertiaryButtonStyle(fullWidth: true))
-                .accessibilityIdentifier("hire-next")
+        return VStack(spacing: Theme.Space.xxs) {
+            PrimaryAction(title: "Offer the going rate \u{00B7} \(cur.tidyShort(rate))", blockedReason: problem, identifier: "hire-quick-offer") { confirm(rate, annual, cur, terms) }
+            HStack(spacing: 0) {
+                Button("Change the offer") { go(2) }
+                    .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("hire-next")
+                Button("Walk away") { Haptics.tap(); dismiss() }
+                    .buttonStyle(TertiaryButtonStyle(fullWidth: true, tint: P.inkSoft)).accessibilityIdentifier("hire-walk-away")
+            }
         }
     }
 
@@ -243,7 +314,7 @@ struct HireOnePage: View {
         let shown: Double = shownOffer(s)
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: shown)
         let comOnly: Bool = model.draft.isCommissionOnly(sells: sells(e))
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
             figuresCard(s, cur, shown)
             if s.ask == nil { hearAskRow(e, cur, terms) }
             counterChips(s, shown)
@@ -252,25 +323,20 @@ struct HireOnePage: View {
             if has(opts, "percent") { hoursBlock(opts) }
             if let last = model.lines.last { SpeechBubble(text: last.text, mine: last.mine) }
             moreTerms(e, opts)
-            actions(talk, cur, terms, shown, problem: problem)
         }
     }
 
-    /// The offer is the one big figure of the page; their ask and the market sit under it.
+    /// Page 2's actions: make the offer, Back and Walk away.
+    private func payActions(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
+        let shown: Double = shownOffer(s)
+        let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: shown)
+        return actions(talk, cur, terms, shown, problem: problem)
+    }
+
+    /// The offer is the one big figure of the page; their ask and the going rate are its context line.
     private func figuresCard(_ s: HirePay, _ cur: Currency, _ shown: Double) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Text(cur.tidyShort(shown)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
-                Text("a month, yours").textStyle(.caption)
-                Spacer(minLength: 0)
-            }
-            HStack {
-                Text(s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet").textStyle(.caption, tint: P.warn)
-                Spacer(minLength: Theme.Space.s)
-                Text("Market " + cur.tidyShort(s.market)).textStyle(.caption)
-            }
-        }
-        .padding(.top, Theme.Space.xs)
+        let ask: String = s.ask.map { (a: Double) -> String in "They ask " + cur.tidyShort(a) } ?? "Ask not said yet"
+        return TeamHero(label: "Your offer", value: cur.tidyShort(shown), unit: "a month", context: ask + " \u{00B7} going rate " + cur.tidyShort(s.market))
     }
 
     private func chipTitle(_ id: String) -> String {
@@ -500,7 +566,7 @@ struct HireOnePage: View {
     private func confirm(_ amount: Double, _ annual: Double, _ cur: Currency, _ terms: Hiring.Terms) {
         let cost: String = annual > 0 ? " The company pays about \(cur.tidyShort(annual)) a year in total employer cost." : ""
         let message: String = "If \(first) accepts, they start at once at \(cur.tidyShort(amount)) a month.\(cost) If not, they may name a figure of their own, take offence or lose patience."
-        pending = PendingAction(title: "Offer \(cur.tidyShort(amount)) a month to \(first)?", message: message, button: "Make the offer") { send(amount, cur, terms) }
+        pending = PendingAction(title: "Offer \(cur.tidyShort(amount)) a month to \(first)?", message: message, button: "Make the offer", tone: .info, icon: "banknote") { send(amount, cur, terms) }
     }
 
     private func send(_ amount: Double, _ cur: Currency, _ terms: Hiring.Terms) {
@@ -527,11 +593,13 @@ struct HireOnePage: View {
     private var ended: some View {
         scrolled {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
+                Text(model.hired ? "Hired" : "No deal").textStyle(.display, tint: model.hired ? P.gain : P.ink)
+                Text(model.closing.tidyText).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
                 VStack(spacing: Theme.Space.s) { ForEach(model.lines) { (l: HireLine) -> SpeechBubble in SpeechBubble(text: l.text, mine: l.mine) } }
-                Text(model.closing.tidyText).textStyle(.headline, tint: model.hired ? P.gain : P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                Button("Done") { model.finished = true }
-                    .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("hire-done")
             }
+        } footer: {
+            Button("Done") { model.finished = true }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("hire-done")
         }
     }
 }

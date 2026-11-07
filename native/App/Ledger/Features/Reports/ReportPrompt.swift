@@ -124,7 +124,7 @@ struct CelebrationPopup: View {
     @State private var leaving = false
 
     var body: some View {
-        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, onClose: { }) {
+        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, category: .compact, tone: .investment, icon: "trophy", onClose: { }) {
             card
         }
         .offset(y: leaving ? -900 : 0)

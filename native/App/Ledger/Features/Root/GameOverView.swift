@@ -3,11 +3,12 @@ import GameCore
 import Events
 import Simulation
 
-/// Shown when the bank has taken everything. The save is kept. Shows how the run went, using only what the game recorded:
-/// how long it lasted, the best and final net worth, what happened to every company, and the lifetime totals in `stats`.
+/// Shown when the bank has taken everything. The save is kept. The hero is the final net worth with why the run ended; under it, unboxed,
+/// how long it lasted, what became of every company and the lifetime totals in `stats`. One action, pinned: back to the start screen.
 struct GameOverView: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 42
 
     var body: some View {
         let s = engine.state
@@ -17,66 +18,75 @@ struct GameOverView: View {
         let reason: String = over["reason"].string == "insolvent"
             ? "You owe more than you own and the bank has ended it."
             : "Your account stayed empty for too long. The bank has stopped lending."
+        let weeks = max(1, endWeek + 1)
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                AppHeader(title: "The ledger is closed", subtitle: reason)
-                    .padding(.top, 28)
-                HeroFigure(label: "\(s.player.name)'s net worth at the end", value: store.short(endWorth), tint: endWorth < 0 ? Theme.loss : Theme.ivory,
-                           note: "Best: \(store.short(max(s.stats.peakNetWorth, 0)))")
-                runCard(s, endWeek: endWeek, endWorth: endWorth)
-                companiesCard(s)
-                totalsCard(s)
-                QuietButton(title: "Back to the start screen", fullWidth: true) { store.quitToMenu() }
-                    .padding(.top, 6)
-                Text("This run stays saved. Starting a new game from the start screen replaces it.")
-                    .textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, alignment: .center).multilineTextAlignment(.center)
+            VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("The ledger is closed").textStyle(.label, tint: Theme.inkFaint)
+                    Text(store.short(endWorth))
+                        .font(.hero(heroSize))
+                        .foregroundStyle(endWorth < 0 ? Theme.loss : Theme.ink)
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                    Text("\(s.player.name)'s net worth at the end").textStyle(.body, tint: Theme.inkSoft)
+                    Text(reason).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, Theme.Space.xxl)
+                group("The run") {
+                    FigureRow(items: [
+                        .init(label: "Lasted", value: duration(weeks: weeks)),
+                        .init(label: "Ended", value: GameCalendar.dateString(week: endWeek)),
+                        .init(label: "Best net worth", value: store.short(max(s.stats.peakNetWorth, 0))),
+                    ], columns: 3)
+                }
+                companiesGroup(s)
+                totalsGroup(s)
             }
-            .padding(.horizontal, 18).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: Theme.Space.s) {
+                Button("Back to the start screen") { Haptics.tap(); store.quitToMenu() }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("game-over-start")
+                Text("This run stays saved until you start a new game.")
+                    .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
+            .background(Theme.page)
+            .overlay(alignment: .top) { Hairline() }
+        }
         .ledgerBackground()
     }
 
-    /// The run as a timeline: first week at the left, last at the right, the best point of the net worth marked on the line.
-    private func runCard(_ s: GameState, endWeek: Int, endWorth: Double) -> some View {
-        let weeks = max(1, endWeek + 1)
-        return CardSection("The run") {
-            HStack {
-                Text(GameCalendar.dateString(week: 0)).textStyle(.caption)
-                Spacer()
-                Text(GameCalendar.dateString(week: endWeek)).textStyle(.caption)
-            }
-            ZStack(alignment: .leading) {
-                Capsule().fill(Theme.divider).frame(height: 3)
-                Capsule().fill(Theme.gold).frame(height: 3)
-            }
-            FigureCard(items: [
-                .init(label: "Lasted", value: duration(weeks: weeks)),
-                .init(label: "Weeks", value: "\(weeks)"),
-                .init(label: "Best net worth", value: store.short(max(s.stats.peakNetWorth, 0))),
-            ])
+    private func group<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(title).textStyle(.label, tint: Theme.inkFaint)
+            content()
         }
     }
 
-    /// What became of every company, as one stacked bar with the counts below it.
-    private func companiesCard(_ s: GameState) -> some View {
+    /// What became of every company: one stacked bar, then the counts.
+    private func companiesGroup(_ s: GameState) -> some View {
         let businesses = s.companies.filter { $0.type != "hold" }
         let standing = businesses.filter { $0.status.isLive }.count
         let sold = businesses.filter { $0.status == .sold }.count
         let bust = businesses.filter { $0.status == .bust }.count
-        return CardSection("Companies") {
+        return group("Companies") {
             if businesses.isEmpty {
-                RowLine(glyph: Glyph.group, title: "You never started or bought a company.")
+                Text("You never started or bought a company.").textStyle(.body, tint: Theme.inkSoft)
             } else {
                 outcomeBar(standing: standing, sold: sold, bust: bust)
-                FigureCard(items: [
-                    .init(label: "In the run", value: "\(businesses.count)"),
-                    .init(label: "Standing", value: "\(standing)", tint: Theme.gain),
+                FigureRow(items: [
+                    .init(label: "Standing", value: "\(standing)", tint: standing > 0 ? Theme.gain : Theme.ink),
                     .init(label: "Sold", value: "\(sold)"),
-                    .init(label: "Went bust", value: "\(bust)", tint: bust > 0 ? Theme.loss : Theme.ivory),
-                ], columns: 4)
+                    .init(label: "Went bust", value: "\(bust)", tint: bust > 0 ? Theme.loss : Theme.ink),
+                ], columns: 3)
             }
         }
     }
@@ -86,30 +96,33 @@ struct GameOverView: View {
         return GeometryReader { g in
             HStack(spacing: 2) {
                 if standing > 0 { Rectangle().fill(Theme.gain).frame(width: g.size.width * CGFloat(standing) / total) }
-                if sold > 0 { Rectangle().fill(Theme.gold).frame(width: g.size.width * CGFloat(sold) / total) }
+                if sold > 0 { Rectangle().fill(Theme.inkSoft).frame(width: g.size.width * CGFloat(sold) / total) }
                 if bust > 0 { Rectangle().fill(Theme.loss).frame(width: g.size.width * CGFloat(bust) / total) }
             }
             .clipShape(Capsule())
         }
-        .frame(height: 6)
+        .frame(height: 4)
+        .accessibilityHidden(true)
     }
 
-    /// Lifetime totals, one icon row each, and the trophies as a gauge.
-    private func totalsCard(_ s: GameState) -> some View {
+    /// Lifetime totals as plain rows, and the trophies reached.
+    private func totalsGroup(_ s: GameState) -> some View {
         let trophies = Trophies.entries(s)
         let reached = trophies.filter { $0.reachedWeek != nil }.count
-        let share: Double = trophies.isEmpty ? 0 : Double(reached) / Double(trophies.count)
-        return CardSection("Over the whole run") {
-            RowLine(glyph: Glyph.team, title: "Wages paid", trailing: store.short(s.stats.wagesPaid))
-            CardLine()
-            RowLine(glyph: Glyph.reports, title: "Tax paid", trailing: store.short(s.stats.taxPaid))
-            CardLine()
-            RowLine(glyph: Glyph.arrowIn, title: "Dividends you received", trailing: store.short(s.stats.dividendsReceived))
-            CardLine()
-            RowLine(glyph: Glyph.bank, title: "Interest paid", trailing: store.short(s.stats.interestPaid))
-            CardLine()
-            RowLine(glyph: Glyph.achievements, title: "Trophies", trailing: "\(reached) of \(trophies.count)")
-            RateBar(label: "Reached", fraction: share)
+        let rows: [(glyph: String, title: String, value: String)] = [
+            (Glyph.team, "Wages paid", store.short(s.stats.wagesPaid)),
+            (Glyph.reports, "Tax paid", store.short(s.stats.taxPaid)),
+            (Glyph.arrowIn, "Dividends you received", store.short(s.stats.dividendsReceived)),
+            (Glyph.bank, "Interest paid", store.short(s.stats.interestPaid)),
+            (Glyph.achievements, "Trophies", "\(reached) of \(trophies.count)"),
+        ]
+        return group("Over the whole run") {
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { (i: Int, r: (glyph: String, title: String, value: String)) in
+                    if i > 0 { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
+                    LedgerRow(leading: .glyph(r.glyph), leadingTint: Theme.inkSoft, title: r.title, value: r.value)
+                }
+            }
         }
     }
 

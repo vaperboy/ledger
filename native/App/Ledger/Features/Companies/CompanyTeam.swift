@@ -12,9 +12,9 @@ enum TeamPage: String, Hashable, Identifiable {
     var id: String { rawValue }
 }
 
-/// One company's Team tab on ONE page, STAFF ONLY: the head count with the hire button, why hiring is blocked or the free places, the
-/// workers, what they cost, and a flat list of team settings (applicants, goals, perks, the management link). Managers, the owner and
-/// executive posts live in Group > the company > Management. Perks open as a popup; labour rules are in Stats; payroll in Accounting.
+/// One company's Team tab on ONE page, STAFF ONLY. A hero (head count and what the team costs a month, then Hire, the one action), the people
+/// as clean rows with role and mood (a tap pushes the profile), then a short list of team settings (applicants, goals, perks, the way to the
+/// managers). Managers, the owner and executive posts live in Group > the company > Management. Labour rules are in Stats; payroll in Accounting.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -25,47 +25,72 @@ struct CompanyTeam: View {
     @State private var profile: WorkerRef?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                header
-                placesNote
-            }
-            if company.staff.isEmpty {
-                EmptyState(glyph: Glyph.hire, title: "No staff yet", message: "Hire the people the business needs to open and serve customers.", centered: false)
-            } else {
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            hero
+            if !company.staff.isEmpty {
                 CompanyStaffRoster(engine: engine, company: company, profile: $profile)
             }
-            CompanyPeopleCost(engine: engine, company: company)
             settingsList
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
         .navigationDestination(item: $profile) { (w: WorkerRef) -> StaffProfileView in StaffProfileView(companyID: company.id, staffID: w.id) }
-        .centerSheet(isPresented: $showPerks) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
+        .centerSheet(isPresented: $showPerks, category: .medium, tone: .info) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
     }
 
-    // MARK: Header and places
+    // MARK: Hero
 
-    /// The head count and the one filled action of the tab: "Hire workers" while nobody is hired, "Hire" after.
-    private var header: some View {
+    /// What the whole team costs (this company's contracts only).
+    private var metrics: TeamMetrics? { engine.teamMetrics(companyID: company.id) }
+
+    /// The head count and the monthly cost side by side, one context line, then Hire full width with why it is blocked or the free places.
+    private var hero: some View {
         let n: Int = company.staff.count
-        return HStack(alignment: .center, spacing: Theme.Space.s) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Staff").textStyle(.label)
-                Text(n == 0 ? "Nobody yet" : (n == 1 ? "1 person" : "\(n) people")).textStyle(.figure)
+        let cur: Currency = engine.currency(for: company)
+        let t: TeamMetrics? = metrics.flatMap { $0.workers > 0 ? $0 : nil }
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if n == 0 {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    Text("No staff yet").textStyle(.display)
+                    Text("Hire the people the business needs to open and serve customers.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
+                        heroFigure("\(n)", n == 1 ? "person" : "people")
+                        Rectangle().fill(P.hairline).frame(width: 0.5, height: 44)
+                        heroFigure(t.map { cur.tidyShort($0.totalMonthlyCost) } ?? "\u{2014}", "a month")
+                        Spacer(minLength: 0)
+                    }
+                    if let t {
+                        Text("Wages \(cur.tidyShort(t.grossMonthlyWages)) plus taxes and cover \u{00B7} \(cur.tidyShort(t.totalAnnualCost)) a year \u{00B7} \(Int(t.totalHoursPerWeek.rounded())) h a week")
+                            .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("people-cost-card")
             }
-            Spacer(minLength: Theme.Space.s)
-            Button { Haptics.tap(); page = .hire } label: { Text(n == 0 ? "Hire workers" : "Hire") }
-                .buttonStyle(PrimaryButtonStyle(size: .compact))
-                .accessibilityIdentifier("team-hire-workers")
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Button { Haptics.tap(); page = .hire } label: { Text(n == 0 ? "Hire workers" : "Hire") }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("team-hire-workers")
+                placesNote
+            }
+        }
+    }
+
+    private func heroFigure(_ value: String, _ unit: String, trailing: Bool = false) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 0) {
+            Text(value).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+            Text(unit).textStyle(.caption, tint: P.inkFaint)
         }
     }
 
     /// Why hiring is blocked (the engine's reason), else how many places are free where the premises have a limit. Nothing for unlimited premises.
     @ViewBuilder private var placesNote: some View {
         if let why = engine.hireBlock(companyID: company.id) {
-            Text(why.tidyText).textStyle(.caption, tint: P.warn, weight: .medium).fixedSize(horizontal: false, vertical: true)
+            Text(why.tidyText).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true)
         } else if let w = engine.workplaces(companyID: company.id), let cap = w.capacity, let free = w.free {
-            Text(free == 1 ? "1 of \(cap) places is free" : "\(free) of \(cap) places are free").textStyle(.caption)
+            Text(free == 1 ? "1 of \(cap) places is free" : "\(free) of \(cap) places are free").textStyle(.caption).frame(maxWidth: .infinity)
         }
     }
 
@@ -77,17 +102,18 @@ struct CompanyTeam: View {
         let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
         let perksOn: Int = engine.staffPerkOptions.filter { engine.staffPerkIsOn(companyID: company.id, perk: $0.id) }.count
         let perksCost: Double = engine.staffPerksMonthlyTotal(companyID: company.id)
-        let perksValue: String = perksOn == 0 ? "None on" : "\(perksOn) on"
+        let perksValue: String = perksOn == 0 ? "None" : "\(perksOn) on"
         let perksNote: String = perksOn == 0 ? "" : cur.tidyShort(perksCost) + " a month"
-        return LedgerSection("Team") {
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text("Running the team").textStyle(.label, tint: P.inkFaint)
             VStack(spacing: 0) {
                 ApplicantsLinkRow(engine: engine, companyID: company.id)
-                Hairline()
-                LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: "Monthly targets and bonus", value: goals) { page = .targets }
-                Hairline()
-                LedgerRow(leading: .glyph(Glyph.person), title: "Perks", subtitle: "Cars and benefits for every worker", value: perksValue, valueNote: perksNote) { showPerks = true }
-                Hairline()
-                LedgerRow(leading: .glyph(Glyph.group), title: "Managers and executives", subtitle: "Hired in Group, under this company's Management",
+                Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
+                LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: "Monthly targets and bonus", value: goals, identifier: "team-goals") { page = .targets }
+                Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
+                LedgerRow(leading: .glyph(Glyph.person), title: "Perks", subtitle: "Cars and benefits for every worker", value: perksValue, valueNote: perksNote, identifier: "team-perks") { showPerks = true }
+                Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
+                LedgerRow(leading: .glyph(Glyph.group), title: "Managers and executives", subtitle: "In Group, under this company's Management",
                           identifier: "team-open-management") { store.openGroupEntity(companyID: company.id, section: "management") }
             }
         }

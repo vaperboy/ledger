@@ -131,11 +131,15 @@ extension FeatureToursTests {
             guard tapBack() else { return .fail("no Back on the profile") }
             return isSelected("company-tab-team") ? h : .fail("Back did not return to the Team section: \(signature().text)")
         }
-        step("team: Managers and executives opens the Group Management tab") {
+        step("team: Managers and executives pushes the entity's Management page on Home, and Back returns to Team") {
             guard openCompany("Caf"), tapID("company-tab-team") else { return .skip("no company / Team section") }
             guard tapID("team-open-management", wait: 4) else { return .skip("no management link") }
             pause(0.8)
-            return isSelected("group-tab-Management") ? health("team management", title: false) : .fail("Group > Management is not showing: \(signature().text)")
+            guard isSelected("tab-Home") else { return .fail("the link changed tab: \(tabState())") }
+            guard isSelected("group-tab-Management") else { return .fail("the entity's Management page is not showing: \(signature().text)") }
+            let h: R = health("team management", title: false)
+            guard tapBack() else { return .fail("no Back on the entity page") }
+            return isSelected("company-tab-team") ? h : .fail("Back did not return to Team: \(signature().text)")
         }
         roundTrip("team: Perks popup closes and keeps Team", prepare: { openCompany("Caf") && tapID("company-tab-team") }) { tapLabel("Perks") }
         step("team: Goals page opens and Back returns") {

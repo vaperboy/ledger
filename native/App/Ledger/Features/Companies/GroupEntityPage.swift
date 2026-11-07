@@ -31,7 +31,9 @@ struct GroupEntityPage: View {
     }
 
     @ViewBuilder private func screen(_ e: GameEngine, _ s: GroupSection) -> some View {
-        ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.l) { content(e, s) }
+        // Content sits on the page: plain cards inside the tabs draw flat (only tiles with their own fill keep a surface).
+        ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l) { content(e, s) }
+            .environment(\.insideCard, true)
     }
 
     /// Every tab. The Boardroom is always there: with no co-owner it is an advisory board of your managers.
@@ -43,32 +45,49 @@ struct GroupEntityPage: View {
         return n > 0 ? [.board: n] : [:]
     }
 
-    /// Back, then the name and kind, then the entity's value as the lead figure with its 30-day change.
+    /// Back with the name and kind on one line, then the entity's value as the hero with its 30-day change and trend line.
     private var header: some View {
         let ch = GroupFmt.change(entity, store)
-        return HStack(alignment: .top, spacing: Theme.Space.xs) {
-            Button { Haptics.tap(); onBack() } label: {
-                LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: Theme.accent)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+        let trend: [Double] = Array(entity.trend.suffix(90))
+        var amount: String = ""
+        if entity.hasChange && abs(entity.changeAmount) >= 1 { amount = (entity.changeAmount >= 0 ? "+" : "\u{2212}") + store.short(abs(entity.changeAmount)) }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .center, spacing: Theme.Space.xs) {
+                Button { Haptics.tap(); onBack() } label: {
+                    LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: Theme.ink)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .padding(.leading, -Theme.Space.m)
+                .accessibilityLabel("Back to Group")
+                .accessibilityIdentifier("group-back")
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(entity.name).textStyle(.headline).lineLimit(1)
+                    Text(entity.kind).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
             }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("Back to Group")
-            .accessibilityIdentifier("group-back")
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(entity.name).textStyle(.headline).lineLimit(1)
-                Text(entity.kind).textStyle(.caption, tint: entity.isChain ? Theme.accent : nil).lineLimit(1)
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            HStack(alignment: .bottom, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     LiveFigure(value: entity.value, text: store.short(entity.value)).textStyle(.display, numeric: true)
                         .lineLimit(1).minimumScaleFactor(0.6)
-                    Text(ch.text).textStyle(.caption, tint: ch.tint).lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        Text(amount.isEmpty ? ch.text : ch.text + "  " + amount).textStyle(.caption, tint: ch.tint, numeric: true).lineLimit(1)
+                        if entity.hasChange { Text("in 30 days").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1) }
+                    }
                 }
-                .padding(.top, Theme.Space.xs)
+                .accessibilityElement(children: .combine)
+                Spacer(minLength: Theme.Space.s)
+                if trend.count >= 2 {
+                    Sparkline(values: trend, tint: (trend.last ?? 0) >= (trend.first ?? 0) ? Theme.accent : Theme.loss, filled: false)
+                        .frame(width: 96, height: 36)
+                        .padding(.bottom, Theme.Space.xs)
+                        .accessibilityHidden(true)
+                }
             }
-            .padding(.top, Theme.Space.s)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 0)
         }
     }
 
@@ -103,7 +122,7 @@ struct GroupEntityOverview: View {
         var value: String
         var tint: Color = Theme.ivory
         /// The three money figures, shown as one strip above the facts.
-        static let moneyLabels: Set<String> = ["Revenue this month", "Profit this month", "Cash"]
+        static let moneyLabels: Set<String> = ["Profit", "Revenue", "Cash"]
     }
 
     var body: some View {
@@ -112,7 +131,7 @@ struct GroupEntityOverview: View {
         let money: [Stat] = list.filter { (s: Stat) -> Bool in Stat.moneyLabels.contains(s.label) }
         let facts: [Stat] = list.filter { (s: Stat) -> Bool in !Stat.moneyLabels.contains(s.label) }
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            FigureRow(items: money.map { (s: Stat) -> KeyFigures.Item in KeyFigures.Item(label: s.label, value: s.value, tint: s.tint) }, columns: 3, combineCells: true)
+            FigureRow(items: money.map { (s: Stat) -> KeyFigures.Item in KeyFigures.Item(label: s.label, value: s.value, tint: s.tint, sub: s.label == "Cash" ? "today" : "this month") }, columns: 3, size: .figure, combineCells: true)
             VStack(spacing: Theme.Space.s) {
                 ForEach(Array(facts.enumerated()), id: \.element.id) { (n: Int, s: Stat) in
                     if n > 0 { Hairline() }
@@ -164,11 +183,11 @@ struct GroupEntityOverview: View {
             out.append(Stat(label: "Franchised out", value: franchised == 0 ? "None" : "\(franchised) \(franchised == 1 ? "franchisee" : "franchisees")"))
         }
         out.append(Stat(label: "Employees", value: "\(staff)"))
-        out.append(Stat(label: "Revenue this month", value: store.short(revenue)))
-        out.append(Stat(label: "Profit this month", value: store.short(profit), tint: Theme.change(profit)))
+        out.append(Stat(label: "Profit", value: store.short(profit), tint: Theme.change(profit)))
+        out.append(Stat(label: "Revenue", value: store.short(revenue)))
         out.append(Stat(label: "Cash", value: store.short(cash), tint: cash < 0 ? Theme.loss : Theme.ivory))
         let brand: Double = engine.brandValue(companyID: entity.companyID)
-        out.append(Stat(label: "Brand", value: BrandWords.label(score: brand), tint: Theme.gold))
+        out.append(Stat(label: "Brand", value: BrandWords.label(score: brand)))
         if entity.isChain {
             out.append(Stat(label: "Stores in the chain", value: "\(cos.count)"))
             out.append(Stat(label: "Chain CEO", value: chainCEO()))

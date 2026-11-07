@@ -30,8 +30,7 @@ enum AppTab: String, Hashable, CaseIterable, Identifiable {
     static func from(raw: String) -> AppTab { AppTab(rawValue: raw) ?? .launch }
 }
 
-/// Where a link is going to land and how it gets back: the tab it came from, the tab it opened on, and how many screens that tab's
-/// stack held before the link pushed its screen. Back from the screen the link pushed (the stack shrinking to `destDepth`) returns to `from`.
+/// A tab a link landed on and the tab it came from (shown by `ReturnLine`). Links never change tab, so there is none (`returnInfo` is nil).
 struct ReturnInfo: Equatable {
     var from: AppTab
     var dest: AppTab
@@ -201,17 +200,13 @@ final class GameStore: ObservableObject {
 
     // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
 
-    /// The selected tab. Selecting one by hand (`selectTab`) forgets where a link came from.
-    @Published var tab: AppTab = AppTab.launch { didSet { if tab != oldValue && !jumping { returnInfo = nil } } }
-    private var jumping = false
-    private struct LastPush { var route: CompanyRoute; var tab: AppTab; var at: Date }
+    /// The selected tab. Only the tab bar changes it (`selectTab`); no link does.
+    @Published var tab: AppTab = AppTab.launch
+    private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
-    /// The navigation stack of Home, Group and Ventures. The tab roots bind to these; nothing else holds a stack.
-    @Published private(set) var routePaths: [AppTab: [CompanyRoute]] = [:]
-    /// The Phone tab's stack: apps, and the companies a link opened from inside an app.
-    @Published private(set) var phonePath: [PhoneHome.Page] = []
-    /// The Custom tab's stack (its root is the chosen destination), and the destination itself, kept in UserDefaults ("customTab").
-    @Published private(set) var customPath: [PhoneHome.Page] = []
+    /// Every tab's navigation stack (the Custom tab's root is its chosen destination). The tab roots bind to these; nothing else holds a stack.
+    @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
+    /// The Custom tab's destination, kept in UserDefaults ("customTab").
     @Published var customTarget: CustomTabTarget? = CustomTabTarget.stored()
     /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false
@@ -219,8 +214,6 @@ final class GameStore: ObservableObject {
     var marketNewsPending = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
-    /// Set while the player is on a tab they were sent to by a link; see `ReturnInfo`.
-    @Published private(set) var returnInfo: ReturnInfo?
     /// The one pending request for the app a link opened (an Inbox message, a Bank account, a report).
     @Published private(set) var appRequest: AppRequest?
     /// Set when the save on disk exists but could not be opened; the start screen explains it instead of a passing alert.
@@ -612,81 +605,66 @@ final class GameStore: ObservableObject {
 
     // MARK: Navigation
 
-    /// The tab the player came from while a link has them on another tab (the gold "Back to <tab>" line at a tab root).
-    var returnTab: AppTab? { returnInfo?.from }
+    /// Links never change tab, so no tab root is reached from another tab: there is no origin to go back to.
+    var returnInfo: ReturnInfo? { nil }
+    var returnTab: AppTab? { nil }
+    func returnToOrigin() {}
 
-    func path(for tab: AppTab) -> [CompanyRoute] { routePaths[tab] ?? [] }
+    func path(for tab: AppTab) -> [NavRoute] { stacks[tab] ?? [] }
+    var phonePath: [NavRoute] { path(for: .phone) }
+    var customPath: [NavRoute] { path(for: .custom) }
     /// How many screens are pushed on a tab (0 = its root).
-    func depth(_ tab: AppTab) -> Int { tab == .phone ? phonePath.count : (tab == .custom ? customPath.count : path(for: tab).count) }
+    func depth(_ tab: AppTab) -> Int { path(for: tab).count }
     func rootToken(_ tab: AppTab) -> Int { rootTokens[tab] ?? 0 }
 
     /// The tab roots set their stack through here (a push, a pop by Back or by swipe). A record that is already on the stack is not
-    /// stacked twice: a link to it goes back to it. When a link's screen is popped the player returns to where the link came from.
-    func setPath(_ new: [CompanyRoute], for tab: AppTab) {
+    /// stacked twice: a link to it goes back to it. The Market route becomes the Market app on the same stack.
+    func setPath(_ new: [NavRoute], for tab: AppTab) {
         let old = path(for: tab)
-        // A link to the Market route (a deep link, a stored route) opens the Market app of the Phone instead of a page on this stack.
-        if new.count == old.count + 1, new.last == .market {
-            openMarket()
-            return
-        }
         var next = new
-        if new.count == old.count + 1, let last = new.last {
+        if new.count == old.count + 1, var last = new.last {
+            if last == .market {
+                appRequest = .market(companyID: 0)
+                last = .app(.market)
+            }
             next = Self.collapse(old, pushing: last)
         }
         guard next != old else { return }
-        routePaths[tab] = next
-        afterPathChange(tab, depth: next.count, grew: next.count > old.count)
+        stacks[tab] = next
     }
 
-    func setPhonePath(_ new: [PhoneHome.Page]) {
-        let old = phonePath
-        var next = new
-        if new.count == old.count + 1, let last = new.last {
-            if let i = old.lastIndex(where: { $0.key == last.key }) { next = Array(old.prefix(i)) + [last] }
-        }
-        guard next != old else { return }
-        phonePath = next
-        afterPathChange(.phone, depth: next.count, grew: next.count > old.count)
-    }
-
-    func setCustomPath(_ new: [PhoneHome.Page]) {
-        let old = customPath
-        var next = new
-        if new.count == old.count + 1, let last = new.last {
-            if let i = old.lastIndex(where: { $0.key == last.key }) { next = Array(old.prefix(i)) + [last] }
-        }
-        guard next != old else { return }
-        customPath = next
-        afterPathChange(.custom, depth: next.count, grew: next.count > old.count)
-    }
+    func setPhonePath(_ new: [NavRoute]) { setPath(new, for: .phone) }
+    func setCustomPath(_ new: [NavRoute]) { setPath(new, for: .custom) }
 
     /// `old` with `route` pushed, unless the same record is already on it: then the stack is cut back to that record, which takes the
-    /// new route (so a link to another section of it shows that section). A finished "new company" form is not kept behind a push.
-    static func collapse(_ old: [CompanyRoute], pushing route: CompanyRoute) -> [CompanyRoute] {
+    /// new route (so a link to another section of it shows that section). A finished "new company" form is not kept behind the company it made.
+    static func collapse(_ old: [NavRoute], pushing route: NavRoute) -> [NavRoute] {
         var base = old
-        if route != .newCompany, base.last == .newCompany { base.removeLast() }
+        if route.companyID != nil, base.last == .newCompany { base.removeLast() }
         if let i = base.lastIndex(where: { $0.key == route.key }) { return Array(base.prefix(i)) + [route] }
         return base + [route]
     }
 
-    /// The stack of `tab` shrank back to where a link found it: the player goes back to the tab the link came from.
-    private func afterPathChange(_ tab: AppTab, depth: Int, grew: Bool) {
-        guard let r = returnInfo, r.dest == tab, !grew, depth <= r.destDepth else { return }
-        returnToOrigin()
-    }
-
-    /// Pushes `route` on the stack of a tab: the one the player is on by default (a company opened from Team stays on Team, so Back
-    /// returns to Team).
-    func push(_ route: CompanyRoute, on target: AppTab? = nil) {
-        if route == .market { openMarket(); return }
+    /// Pushes `route` on the stack of the tab the player is on (or of `target`), so Back returns to the screen the link was on.
+    func push(_ route: NavRoute, on target: AppTab? = nil) {
         let t = target ?? tab
         // A double tap must not push the same screen twice: the same route on the same tab within 0.4 s is ignored.
         let now: Date = Date()
         if let last = lastPush, last.route == route, last.tab == t, now.timeIntervalSince(last.at) < 0.4 { return }
         lastPush = LastPush(route: route, tab: t, at: now)
-        if t == .phone { setPhonePath(phonePath + [.company(route)]) }
-        else if t == .custom { setCustomPath(customPath + [.company(route)]) }
-        else { setPath(path(for: t) + [route], for: t) }
+        setPath(path(for: t) + [route], for: t)
+    }
+
+    /// Swaps the screen on top of the open tab's stack for `route` (the company switcher), so Back still returns to what was under it.
+    /// A record already lower on the stack is gone back to instead of shown twice; on an empty stack the route is pushed.
+    func replaceTop(with route: NavRoute) {
+        let t = tab
+        var base = path(for: t)
+        guard !base.isEmpty else { push(route, on: t); return }
+        base.removeLast()
+        if let i = base.lastIndex(where: { $0.key == route.key }) { base = Array(base.prefix(i)) }
+        Haptics.choose()
+        stacks[t] = base + [route]
     }
 
     /// The one way to open a company (or one of its screens) from anywhere: pushed onto the stack of the tab the player is on, so Back
@@ -694,70 +672,41 @@ final class GameStore: ObservableObject {
     func openCompany(_ id: Int, section: CompanySection? = nil, part: String? = nil) {
         // The Market is a Phone app: a link to a company's market opens it with that company chosen.
         if section == .market { openMarket(companyID: id); return }
-        // Chain and franchise live on the company's entity page in the Group tab.
+        // Chain and franchise live on the company's Group entity page.
         if section == .chain { openGroupEntity(companyID: id); return }
-        let route = CompanyRoute.make(id, section, part)
+        let route = NavRoute.make(id, section, part)
         let target = tab
         // One turn later: a screen that opens a company and then closes itself (a finished form) must pop before the push lands.
         Task { @MainActor [weak self] in self?.push(route, on: target) }
     }
 
-    /// A link that lands on another tab: the screen is pushed on that tab's stack and the player is taken there. Back from it returns
-    /// to the tab they came from, and the other tab keeps no screen from the link.
-    func open(_ route: CompanyRoute, on dest: AppTab) {
-        guard dest != tab else { push(route, on: dest); return }
-        let before = depth(dest)
-        let from = tab
-        push(route, on: dest)
-        arrive(on: dest, from: from, depth: before)
+    /// Pushes a company's Group entity page (its own entry, else the chain or holding it belongs to) on the open tab, on the section with
+    /// that key ("expansion" is chain and franchise; see `GroupSection.key`). A company with no entry opens its company screen.
+    func openGroupEntity(companyID: Int, section: String = "expansion") {
+        guard let e = engine else { return }
+        let list: [GroupEntity] = GroupEntities.cached(self) ?? GroupEntities.build(e)
+        guard let g = GroupEntities.find(list, companyID: companyID) else { openCompany(companyID); return }
+        let s: GroupSection = GroupSection.allCases.first(where: { (x: GroupSection) -> Bool in x.key == section }) ?? .overview
+        Haptics.tap()
+        push(.entity(g.id, s))
     }
 
-    /// A link that lands on the root of another tab (the stack there is cleared, so the root is what shows).
-    func jump(to destination: AppTab) {
-        guard destination != tab else { return }
-        let from = tab
-        clearStack(destination)
-        arrive(on: destination, from: from, depth: 0)
-    }
+    /// Pushes `route` on the open tab. `dest` is ignored: a link never changes tab.
+    @available(*, deprecated, message: "Links never change tab: use push(_:)")
+    func open(_ route: NavRoute, on dest: AppTab) { push(route) }
 
-    private func arrive(on dest: AppTab, from: AppTab, depth: Int) {
-        jumping = true; tab = dest; jumping = false
-        returnInfo = ReturnInfo(from: from, dest: dest, destDepth: depth)
-    }
+    /// The Ventures part of the Projects tab, pushed as the Ventures app on the open tab (on the Projects root it switches the segment).
+    @available(*, deprecated, message: "Links never change tab: use openApp(_:) or push(_:)")
+    func jump(to destination: AppTab) { if destination == .projects { openApp(.ventures) } }
 
-    /// Back to the tab a link came from; the tab the link opened is cut back to where it was before the link.
-    func returnToOrigin() {
-        guard let r = returnInfo else { return }
-        returnInfo = nil
-        cutStack(r.dest, to: r.destDepth)
-        appRequest = nil
-        jumping = true; tab = r.from; jumping = false
-    }
+    private func clearStack(_ tab: AppTab) { stacks[tab] = [] }
 
-    /// Pops a tab's stack back to `depth` screens (what it held before a link pushed onto it).
-    private func cutStack(_ tab: AppTab, to depth: Int) {
-        if tab == .phone {
-            if phonePath.count > depth { phonePath = Array(phonePath.prefix(depth)) }
-        } else if tab == .custom {
-            if customPath.count > depth { customPath = Array(customPath.prefix(depth)) }
-        } else if path(for: tab).count > depth {
-            routePaths[tab] = Array(path(for: tab).prefix(depth))
-        }
-    }
-
-    private func clearStack(_ tab: AppTab) {
-        if tab == .phone { phonePath = [] } else if tab == .custom { customPath = [] } else { routePaths[tab] = [] }
-    }
-
-    /// A tab chosen by hand. A tap on the tab bar or the sidebar (`resetRoot` true) always shows that tab's ROOT: the screens it had are
-    /// dropped. A swipe between tabs (`resetRoot` false) keeps the place it had. Choosing the tab that is already open returns it to its root.
-    /// A link (`open`, `jump`, `openApp`) sets the destination's stack itself and never comes through here.
+    /// A tab chosen on the tab bar or the sidebar: the only way the selected tab changes. A tap (`resetRoot` true) shows that tab's ROOT;
+    /// `resetRoot` false keeps the place it had. Choosing the tab that is already open returns it to its root.
     func selectTab(_ t: AppTab, resetRoot: Bool = true) {
         if t == tab {
             popToRoot(t)
         } else {
-            // Leaving a tab a link opened, by hand: the screens the link pushed there go with it, as with "Back".
-            if let r = returnInfo, r.dest == tab { cutStack(r.dest, to: r.destDepth) }
             if resetRoot { popToRoot(t) }
             tab = t
         }
@@ -768,29 +717,15 @@ final class GameStore: ObservableObject {
     func popToRoot(_ t: AppTab) {
         clearStack(t)
         rootTokens[t] = rootToken(t) + 1
-        if returnInfo?.dest == t { returnInfo = nil }
         appRequest = nil
     }
 
-    /// Opens an app of the Phone tab (Inbox, Bank, News ...). From another tab the Phone stack is replaced by the app and Back returns
-    /// to where the link was; on the Phone it is pushed (or, when already on the stack, gone back to).
+    /// Opens an app of the Phone (Inbox, Bank, News ...) on the open tab: pushed on its stack (or, when already on it, gone back to), so
+    /// Back returns to where the link was. Ventures is a part of the Projects tab: on that tab's root it switches to Ideas and startups.
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
-        // Ventures lives in the Projects tab now: any link to the old Phone app lands on its Ideas and startups segment.
-        if app == .ventures {
-            appRequest = .ventures
-            if tab != .projects { let from = tab; arrive(on: .projects, from: from, depth: path(for: .projects).count) }
-            return
-        }
-        appRequest = request
-        if tab == .phone {
-            setPhonePath(phonePath + [.app(app)])
-        } else if tab == .custom {
-            setCustomPath(customPath + [.app(app)])
-        } else {
-            let from = tab
-            phonePath = [.app(app)]
-            arrive(on: .phone, from: from, depth: 0)
-        }
+        if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
+        appRequest = app == .ventures ? nil : request
+        push(.app(app))
     }
 
     /// Opens one account of the Bank app (and optionally one of its tabs) from anywhere: a company's "Open in Bank", a loan or tax prompt.
@@ -892,8 +827,8 @@ final class GameStore: ObservableObject {
 
     /// Drops every stack and pending request, so nothing from one game (or one visit) opens in the next.
     private func resetNavigation() {
-        jumping = true; tab = .company; jumping = false
-        routePaths = [:]; phonePath = []; customPath = []; rootTokens = [:]; returnInfo = nil; appRequest = nil
+        tab = .company
+        stacks = [:]; rootTokens = [:]; appRequest = nil
         reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
@@ -905,7 +840,7 @@ final class GameStore: ObservableObject {
         case .openLoans: openBank(.personal, tab: .loans)
         case .openInvest: openBank(.investments, tab: .deposits)
         case .openTax: openBank(.personal, tab: .bills)
-        case .newCompany: open(.newCompany, on: .company)
+        case .newCompany: push(.newCompany)
         }
     }
 

@@ -23,7 +23,9 @@ struct RivalGroupProfileView: View {
                     competes(e, g)
                     moves(g)
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
+                // Blocks sit on the page with no surface of their own.
+                .environment(\.insideCard, true)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)
             } else {
                 NoteCard(text: "This group no longer exists.", glyph: Glyph.info).padding(Theme.Space.l)

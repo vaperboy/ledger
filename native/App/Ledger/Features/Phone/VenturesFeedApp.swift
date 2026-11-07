@@ -42,7 +42,7 @@ struct VenturesFeedApp: View {
 
     /// Portfolio (value, then the stakes held), then the ventures to start or manage.
     private func content(_ e: GameEngine, _ cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             VenturesSummary(engine: e)
             stakes(e, cur)
             VenturesContent(hidesBacking: true)
@@ -52,14 +52,11 @@ struct VenturesFeedApp: View {
     // MARK: Header
 
     private func header(_ e: GameEngine, _ cur: Currency) -> some View {
-        let held: [Startups.Stake] = e.startupStakes.filter { $0.live }
-        let value: Double = held.reduce(0) { $0 + $1.value }
         return HStack(alignment: .center, spacing: Theme.Space.s) {
             OutsideBack()
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text("Ventures").textStyle(.title).accessibilityAddTraits(.isHeader)
-                Text(held.isEmpty ? "Founders looking for money" : "\(held.count) backed · " + cur.tidyShort(value) + " at paper value")
-                    .textStyle(.caption)
+                Text("Startups, funds and stakes").textStyle(.caption)
             }
             Spacer(minLength: 0)
         }
@@ -96,7 +93,8 @@ struct VenturesFeedApp: View {
                     let ok = store.act { $0.helpStartupOnBoard(stakeID: st.id) } ?? false
                     store.show(ok ? "You spent time with the team." : "You helped recently.", tone: ok ? "good" : "n")
                 }
-                .buttonStyle(SecondaryButtonStyle(size: .compact))
+                .buttonStyle(TertiaryButtonStyle(size: .compact))
+                .padding(.leading, 52 - Theme.Space.s)
                 .padding(.bottom, Theme.Space.s)
             }
         }

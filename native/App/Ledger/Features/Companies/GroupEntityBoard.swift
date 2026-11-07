@@ -14,6 +14,14 @@ struct GroupEntityBoard: View {
     @State private var seatSheet: SeatRef?
     @State private var message = ""
     @State private var pending: PendingAction?
+    @State private var showOpen = false
+
+    /// A board role with free seats.
+    private struct OpenSeat: Identifiable {
+        var role: ManagerModel.SeatRole
+        var free: Int
+        var id: String { role.id }
+    }
 
     private struct SeatRef: Identifiable, Hashable {
         var id: String
@@ -25,7 +33,7 @@ struct GroupEntityBoard: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if !message.isEmpty { NoteCard(text: message) }
             if active { roomLink(key) }
-            LedgerSection("Board seats") {
+            LedgerSection("Board seats", rule: false) {
                 VStack(spacing: 0) {
                     ownerRow
                     if active { seatRows(key) }
@@ -76,7 +84,7 @@ struct GroupEntityBoard: View {
                 Text(title).textStyle(.headline).lineLimit(1)
                 if !sub.isEmpty { Text(sub).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2) }
             }
-            if !chip.isEmpty { Chip(text: chip, tint: Theme.accent) }
+            if !chip.isEmpty { Chip(text: chip, tint: Theme.inkSoft) }
             Spacer(minLength: Theme.Space.s)
             trail()
         }
@@ -108,18 +116,32 @@ struct GroupEntityBoard: View {
                 trailFor(v, seats: seats, key: key)
             })
         }
-        ForEach(engine.seatRoles) { (r: ManagerModel.SeatRole) in
-            let filled: Int = seats.filter { (s: ManagerModel.Seat) -> Bool in s.role == r.id }.count
-            ForEach(0..<max(0, r.maxSeats - filled), id: \.self) { (_: Int) in
-                emptySeat(r)
+        // The open seats fold into one row; opened, each role shows once with how many of its seats are free.
+        let open: [OpenSeat] = engine.seatRoles.compactMap { (r: ManagerModel.SeatRole) -> OpenSeat? in
+            let free: Int = r.maxSeats - seats.filter { (s: ManagerModel.Seat) -> Bool in s.role == r.id }.count
+            return free > 0 ? OpenSeat(role: r, free: free) : nil
+        }
+        if !open.isEmpty {
+            Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showOpen.toggle() } } label: {
+                line(first: false, lead: { plusRing() }, title: showOpen ? "Hide open seats" : "Open seats",
+                     sub: open.prefix(3).map { (o: OpenSeat) -> String in o.role.title }.joined(separator: ", ") + (open.count > 3 ? " and \(open.count - 3) more" : ""), trail: {
+                    Text("\(open.reduce(0) { (a: Int, o: OpenSeat) -> Int in a + o.free })").textStyle(.headline, tint: Theme.inkSoft, numeric: true)
+                })
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("board-open-seats")
+            if showOpen {
+                ForEach(open) { (o: OpenSeat) in
+                    emptySeat(o.role, free: o.free)
+                }
             }
         }
     }
 
-    private func emptySeat(_ r: ManagerModel.SeatRole) -> some View {
+    private func emptySeat(_ r: ManagerModel.SeatRole, free: Int) -> some View {
         let id: String = r.id
         return Button { Haptics.tap(); seatSheet = SeatRef(id: id) } label: {
-            line(first: false, lead: { plusRing() }, title: r.title, sub: r.text, trail: {
+            line(first: false, lead: { Color.clear.frame(width: 32, height: 32) }, title: r.title, sub: (free > 1 ? "\(free) seats free \u{00B7} " : "") + r.text, trail: {
                 Text("Appoint").textStyle(.body, tint: Theme.accent, weight: .medium)
                     .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
             })
@@ -128,8 +150,9 @@ struct GroupEntityBoard: View {
 
     @ViewBuilder private func trailFor(_ v: ManagerModel.Voter, seats: [ManagerModel.Seat], key: String) -> some View {
         if let pid = v.personID, seats.contains(where: { (s: ManagerModel.Seat) -> Bool in s.id == pid }) {
-            Button("Remove from board") { askToRemove(v, pid: pid, key: key) }
-                .buttonStyle(TinyButtonStyle(tint: Theme.loss))
+            Button("Remove") { askToRemove(v, pid: pid, key: key) }
+                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
+                .accessibilityLabel("Remove \(v.name) from the board")
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .accessibilityIdentifier("board-remove-seat")
         } else {

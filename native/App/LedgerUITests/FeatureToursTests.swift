@@ -51,7 +51,7 @@ final class FeatureToursTests: FeatureTourCase {
                 return .pass("-> \(after.text)" + (backed ? "" : " (no Back button: left by the tab bar)"))
             }
         }
-        roundTrip("home: Edit shortcuts opens the editor and closes back to Home", prepare: { goTab("Home") }) { tapID("edit-home-shortcuts") }
+        roundTrip("home: the rank ring opens Goals and Back returns to Home", prepare: { goTab("Home") }) { tapID("home-rank-ring") }
         step("home: a Needs you row opens its object and Back/close returns to Home") {
             guard goTab("Home") else { return .fail("no Home") }
             guard tapWhere(wait: 2, { $0.id == "suggestion-row" || $0.id == "suggestion-open-company" }) else { return .skip("nothing in Needs you") }

@@ -406,13 +406,11 @@ struct FranchiseTalkView: View {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 choice("Entry fee · \(cur.tidyShort(co.value("fr")["fee"].double * terms.feeFactor))", [(1.0, "Full"), (0.5, "Half"), (0.0, "Waived")], current: terms.feeFactor) { terms.feeFactor = $0 }
                                 choice("Royalty of sales", [0.04, 0.05, 0.06, 0.07, 0.08, 0.10].map { ($0, "\(Int($0 * 100))%") }, current: terms.royalty) { terms.royalty = $0 }
-                                HStack {
-                                    Text("Your help with the setup").textStyle(.caption, tint: Theme.inkSoft); Spacer()
-                                }
-                                HStack {
-                                    ForEach([("none", "None"), ("l25", "Lend 25%"), ("l50", "Lend 50%"), ("c50", "Cover half")], id: \.0) { h in
-                                        Button(h.1) { terms.help = h.0 }.buttonStyle(TinyButtonStyle(tint: terms.help == h.0 ? Theme.gold : Theme.ivoryFaint)).font(.caption)
-                                    }
+                                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                                    Text("Your help with the setup").textStyle(.caption, tint: Theme.inkSoft)
+                                    SegmentedPill(items: ["none", "l25", "l50", "c50"], title: { (h: String) -> String in
+                                        ["none": "None", "l25": "Lend 25%", "l50": "Lend 50%", "c50": "Cover half"][h] ?? h
+                                    }, selection: $terms.help)
                                 }
                                 if terms.help == "c50" {
                                     choice("Your share of their profit", [(0.25, "25%"), (0.45, "45%"), (0.6, "60%")], current: terms.profitShare) { terms.profitShare = $0 }
@@ -426,13 +424,16 @@ struct FranchiseTalkView: View {
                                 }
                                 Text("Seems " + PatienceWords.feeling(left: patience, of: Franchising.patienceDots(for: a.personality)).text.lowercased() + ".")
                                     .textStyle(.caption, tint: Theme.inkFaint)
-                                Button("Send offer") { send(a, co: co, cur: cur) }.buttonStyle(TinyButtonStyle())
+                                Button("Send offer") { Haptics.tap(); send(a, co: co, cur: cur) }
+                                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                                    .padding(.top, Theme.Space.s)
                             }
                         }
                     } else {
-                        HStack { Button("Back to the franchise") { dismiss() }.buttonStyle(TinyButtonStyle()); Spacer() }
+                        Button("Back to the franchise") { dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     }
                 }
+                .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
@@ -456,16 +457,15 @@ struct FranchiseTalkView: View {
         }
     }
 
+    /// One term of the offer as a segmented choice (the option nearest the current value is selected).
     private func choice(_ title: String, _ options: [(Double, String)], current: Double, set: @escaping (Double) -> Void) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+        let values: [Double] = options.map { (o: (Double, String)) -> Double in o.0 }
+        let names: [Double: String] = Dictionary(options.map { (o: (Double, String)) -> (Double, String) in (o.0, o.1) }, uniquingKeysWith: { (a: String, _: String) -> String in a })
+        let chosen: Double = values.first { (v: Double) -> Bool in abs(v - current) < 0.0001 } ?? current
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text(title).textStyle(.caption, tint: Theme.inkSoft)
-            WrapRow {
-                Group {
-                    ForEach(options, id: \.0) { o in
-                        Button(o.1) { set(o.0) }.buttonStyle(TinyButtonStyle(tint: abs(current - o.0) < 0.0001 ? Theme.gold : Theme.ivoryFaint)).font(.caption)
-                    }
-                }
-            }
+            SegmentedPill(items: values, title: { (v: Double) -> String in names[v] ?? "" },
+                          selection: Binding(get: { chosen }, set: { (v: Double) in set(v) }))
         }
     }
 

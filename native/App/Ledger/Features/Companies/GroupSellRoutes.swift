@@ -26,9 +26,9 @@ struct SaleRoutePicker: View {
         let shut: [CompanySale.Route] = routes.filter { (r: CompanySale.Route) -> Bool in !r.available }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text("How do you want to sell?").textStyle(.title)
-                Text("Listing is not a sale: nothing sells until you accept an offer or hammer a bid.")
-                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Text("How to sell").textStyle(.label, tint: Theme.inkFaint)
+                Text("Nothing sells until you accept an offer or hammer a bid.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             if open.isEmpty {
                 EmptyState(glyph: Glyph.lock, title: "No way to sell is open now", message: "Each route below says what it needs.", centered: false)
@@ -36,19 +36,22 @@ struct SaleRoutePicker: View {
                 routeList(open)
             }
             if !shut.isEmpty {
-                LedgerSection("Not open now") { routeList(shut) }
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("Not open now").textStyle(.label, tint: Theme.inkFaint)
+                    routeList(shut)
+                }
             }
         }
         .confirmAction($pending)
-        .centerSheet(item: $sheet) { (s: RouteSheet) in sheetContent(s) }
+        .centerSheet(item: $sheet, category: .medium, tone: .investment) { (s: RouteSheet) in sheetContent(s) }
     }
 
     /// Routes as calm rows under hairlines: an open route opens its step, a shut one says why (its subtitle) and is not a link.
     private func routeList(_ list: [CompanySale.Route]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, r: CompanySale.Route) in
-                if n > 0 { Hairline() }
-                LedgerRow(leading: .glyph(glyph(r.id)), leadingTint: r.available ? nil : Theme.inkFaint, title: r.title,
+                if n > 0 { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
+                LedgerRow(leading: .glyph(glyph(r.id)), leadingTint: r.available ? Theme.ink : Theme.inkFaint, title: r.title,
                           subtitle: r.available ? r.pitch : r.why, chevron: r.available, lineLimit: 3,
                           identifier: "sell-route-\(r.id)", action: { pick(r) })
             }
@@ -111,7 +114,7 @@ struct SaleRoutePicker: View {
             Text("Name the lowest price you accept. Three weekly rounds of bids follow: bids rise about 7% a round, but a bidder may drop out. Hammer the top bid at any time, or wait. Fee 4%; staff hear about it.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             ForEach([0.7, 0.85, 1.0], id: \.self) { (f: Double) in
                 let reserve: Double = (value * f / 1000).rounded() * 1000
-                ChoiceCard(title: "Reserve " + cur.tidyShort(reserve * mine), subtitle: f >= 1 ? "Bold: fewer bidders clear it" : f >= 0.85 ? "Balanced" : "Safe: most bidders clear it", selected: false) {
+                PopupChoiceRow(title: "Reserve " + cur.tidyShort(reserve * mine), subtitle: f >= 1 ? "Bold: fewer bidders clear it" : f >= 0.85 ? "Balanced" : "Safe: most bidders clear it") {
                     sheet = nil
                     let id: Int = company.id
                     let ok: Bool = store.act { $0.startAuction(companyID: id, reserve: reserve) } ?? false
@@ -170,7 +173,7 @@ struct SaleRoutePicker: View {
             if buyers.isEmpty { EmptyState(title: "No group is buying here", message: "No rival group is active in this country.", centered: false) }
             ForEach(buyers) { (b: CompanySale.GroupBuyer) in
                 let mine: Double = b.price * company.ownership / 100
-                ChoiceCard(title: b.name, subtitle: "Pays " + cur.tidyShort(mine) + " for your share", selected: false) { sellToGroup(b, mine, cur) }
+                PopupChoiceRow(title: b.name, subtitle: "Pays " + cur.tidyShort(mine) + " for your share") { sellToGroup(b, mine, cur) }
             }
         }
         .centerSheetTitle("Sell to a rival group")
@@ -193,7 +196,7 @@ struct SaleRoutePicker: View {
             Text("Sell part of your shares and keep running it. Each step gives the buyer more.").popupText(.caption)
             SegmentedPill(items: [false, true], title: { (b: Bool) -> String in b ? "Broker (4%)" : "Quietly" }, selection: $brokerStake)
             ForEach(tiers) { (t: CompanySale.StakeTier) in
-                ChoiceCard(title: "\(t.pct)% of your shares", subtitle: "You keep \(Int(t.youKeep.rounded()))%. " + t.unlocks.joined(separator: " "), selected: false) { listStake(t) }
+                PopupChoiceRow(title: "\(t.pct)% of your shares", subtitle: "You keep \(Int(t.youKeep.rounded()))%. " + t.unlocks.joined(separator: " ")) { listStake(t) }
                     .disabled(!t.allowed)
             }
         }
@@ -216,7 +219,7 @@ struct SaleRoutePicker: View {
             Text("Sign over the franchise rights of a country to a master franchisee. It costs legal work and cannot be undone.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             if countries.isEmpty { EmptyState(title: "Nothing left to sign", message: "Every country you could sell is already taken.", centered: false) }
             ForEach(countries) { (c: Country) in
-                ChoiceCard(title: "\(c.flag) \(c.name)", subtitle: "Master franchise", selected: false) { sellMaster(c) }
+                PopupChoiceRow(title: "\(c.flag) \(c.name)", subtitle: "Master franchise") { sellMaster(c) }
             }
         }
         .centerSheetTitle("Master franchise")

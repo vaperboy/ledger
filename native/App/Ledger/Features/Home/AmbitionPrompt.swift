@@ -19,7 +19,7 @@ struct AmbitionPrompt: View {
     ]
 
     var body: some View {
-        GamePopup(title: "What do you want to build?", showsClose: false, dismissOnBackdrop: false, onClose: { }) {
+        GamePopup(title: "What do you want to build?", showsClose: false, dismissOnBackdrop: false, category: .medium, tone: .investment, icon: "flag", onClose: { }) {
             card
         }
     }

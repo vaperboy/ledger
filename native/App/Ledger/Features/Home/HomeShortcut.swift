@@ -2,7 +2,7 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// The shortcuts the player can put in the boxes on Home (up to four). The engine stores the identifiers per game
+/// Shortcuts to Phone apps and flows (up to four). The engine stores the identifiers per game
 /// (`GameEngine.homeShortcutIDs`); what each one opens lives here.
 enum HomeShortcut: String, CaseIterable, Identifiable {
     case bank, hire, reports, market, inbox, accounting, goals, news, stats, ventures
@@ -79,49 +79,4 @@ struct DayChip: Equatable, Identifiable {
     var day: Int
     var netWorthChange: Double
     var cashChange: Double
-}
-
-/// Choose up to four shortcuts for Home.
-struct HomeShortcutEditor: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.dismiss) private var systemDismiss
-    @Environment(\.popupClose) private var popupClose
-    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    @State private var chosen: [HomeShortcut] = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Pick up to four. \(chosen.count) of 4 chosen.").popupText(.subtitle)
-            VStack(spacing: 6) {
-                ForEach(HomeShortcut.allCases) { item in
-                    row(item)
-                }
-            }
-            QuietButton(title: "Save shortcuts", fullWidth: true) { store.setHomeShortcuts(chosen); dismiss() }
-        }
-        .centerSheetTitle("Home shortcuts")
-        .onAppear { chosen = store.homeShortcuts }
-    }
-
-    private func row(_ item: HomeShortcut) -> some View {
-        let on: Bool = chosen.contains(item)
-        let full: Bool = chosen.count >= 4 && !on
-        return Button {
-            if on { chosen.removeAll { $0 == item } } else if !full { chosen.append(item) }
-            Haptics.choose()
-        } label: {
-            HStack(spacing: Theme.Space.m) {
-                LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium)
-                Text(item.title).popupText(.body)
-                Spacer()
-                if on { LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: Theme.accent) }
-            }
-            .padding(.horizontal, Theme.Space.m).frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(on ? Theme.accentWash : Color.clear))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .opacity(full ? 0.4 : 1)
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
 }

@@ -63,7 +63,8 @@ struct DocumentSignSheet: View {
     }
 }
 
-/// Manage > Licences: the papers the choices in How you sell need. Apply by signing the form; the answer comes later and may be a refusal.
+/// Manage > Licences: how many papers are held (the hero), then one row per licence with its fee, status and the way to apply.
+/// Apply by signing the form; the answer comes later and may be a refusal.
 struct CompanyLicences: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -72,13 +73,22 @@ struct CompanyLicences: View {
 
     var body: some View {
         let lines: [LicenceLine] = engine.licences(companyID: company.id)
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Licences let you add new things to sell. Apply here; once one is held, switch the product on in Sales > How you sell.")
-                .popupText(.subtitle)
-            ForEach(lines) { (l: LicenceLine) in card(l) }
-            if lines.isEmpty { Text("This business has no licences to add.").popupText(.caption) }
+        let held: Int = lines.filter { $0.form.status == "ok" }.count
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            TeamHero(value: "\(held) of \(lines.count)", unit: "held",
+                     context: "Licences add new things to sell. Once one is held, switch the product on in Sales > How you sell.")
+            if lines.isEmpty {
+                Text("This business has no licences to add.").textStyle(.caption)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.element.id) { (n: Int, l: LicenceLine) in
+                        if n > 0 { Hairline() }
+                        card(l)
+                    }
+                }
+            }
         }
-        .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
+        .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } }), category: .detail, tone: .investment) {
             if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
         }
     }
@@ -95,22 +105,26 @@ struct CompanyLicences: View {
 
     private func card(_ l: LicenceLine) -> some View {
         let s = statusText(l.form)
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack {
-                Text(l.form.name).popupText(.rowValue)
+        let fee: String = l.form.fee > 0 ? store.short(l.form.fee, in: company) : "Free"
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                Text(l.form.name.tidyText).textStyle(.headline)
                 Spacer(minLength: Theme.Space.s)
-                Text(s.0).textStyle(.caption, tint: s.1)
+                Text(fee).textStyle(.headline, numeric: true)
             }
-            Text("Unlocks: " + l.unlocks.joined(separator: ", ")).popupText(.subtitle)
-            Text((l.form.fee > 0 ? "Fee " + store.short(l.form.fee, in: company) : "Free") + " \u{00B7} review about \(max(1, l.form.weeks)) week\(l.form.weeks == 1 ? "" : "s")")
-                .popupText(.caption)
-            if ["", "rejected", "lapsed"].contains(l.form.status) {
-                Button(l.form.status == "" ? "Fill in and apply" : "Apply again") { Haptics.tap(); signing = l.id }.buttonStyle(QuietButtonStyle())
-            } else if l.form.status == "ok" {
-                Button("Add the product in How you sell") { store.openCompany(company.id, section: .salesMarket) }.buttonStyle(QuietButtonStyle())
+            Text(("Unlocks " + l.unlocks.joined(separator: ", ") + " \u{00B7} review about \(max(1, l.form.weeks)) week\(l.form.weeks == 1 ? "" : "s")").tidyText)
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: Theme.Space.s) {
+                Text(s.0).textStyle(.caption, tint: s.1, weight: .medium)
+                Spacer(minLength: Theme.Space.s)
+                if ["", "rejected", "lapsed"].contains(l.form.status) {
+                    Button(l.form.status == "" ? "Fill in and apply" : "Apply again") { Haptics.tap(); signing = l.id }.buttonStyle(TertiaryButtonStyle(size: .compact))
+                } else if l.form.status == "ok" {
+                    Button("Add it in How you sell") { store.openCompany(company.id, section: .salesMarket) }.buttonStyle(TertiaryButtonStyle(size: .compact))
+                }
             }
         }
-        .padding(Theme.Space.l).frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
+        .padding(.vertical, Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

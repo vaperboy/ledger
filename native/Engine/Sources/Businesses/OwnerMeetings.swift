@@ -60,7 +60,23 @@ public enum OwnerMeetings {
         for r in ManagerModel.teamRoles {
             if let n = ManagerModel.person(s, t["heads"][r.key]), seen.insert(n.id).inserted { out.append(Counterpart(id: n.id, name: n.name, title: r.title, position: r.key, companyID: companyID)) }
         }
+        // Everyone in a board seat sits at the same table, so they can be talked to and speak in a board round.
+        for seat in ManagerModel.seats(s, key: ManagerModel.boardKey(s, co)) {
+            if let n = s.people[seat.id], seen.insert(n.id).inserted {
+                out.append(Counterpart(id: n.id, name: n.name, title: seat.title, position: seatPosition(seat.role), companyID: companyID))
+            }
+        }
         return out
+    }
+
+    /// The talks a board seat answers: money seats talk finance, the people and marketing seats their field, the rest operations.
+    static func seatPosition(_ role: String) -> String {
+        switch role {
+        case "cfo", "analyst", "chair", "director": return "fin"
+        case "mkt": return "mkt"
+        case "hr": return "hr"
+        default: return "ops"
+        }
     }
 
     public static let topicTable: [String: [(String, String, String)]] = [

@@ -12,9 +12,15 @@ struct GroupWhoRunsWhat: View {
         let overview: TeamOverview = (store.teamOverviewNow ?? engine.teamOverview())
         let lines: [TeamOverview.CompanyLine] = overview.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
         if !lines.isEmpty {
-            LedgerSection("Who runs what") {
-                VStack(spacing: Theme.Space.s) {
-                    ForEach(lines) { (l: TeamOverview.CompanyLine) in
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Who runs what").textStyle(.label, tint: Theme.inkFaint)
+                    Spacer(minLength: Theme.Space.s)
+                    Text("Wages a month").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                }
+                VStack(spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.element.id) { (n: Int, l: TeamOverview.CompanyLine) in
+                        if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
                         row(l, passedUp: overview.issues.filter { (i: TeamOverview.Issue) -> Bool in i.companyID == l.id && i.beyondAuthority }.count)
                     }
                 }
@@ -32,17 +38,14 @@ struct GroupWhoRunsWhat: View {
         }
     }
 
+    /// One company: its name, who runs it and how far they may decide; the wages at the right. Opens the company's team.
     private func row(_ l: TeamOverview.CompanyLine, passedUp: Int) -> some View {
         let face: String? = engine.state.company(l.id)?.managerID.flatMap { (id: Int) -> String? in engine.state.people[id]?.faceKey }
-        let flag: String = passedUp > 0 ? " \u{00B7} \(passedUp) passed up to you" : ""
-        let wages: String? = l.monthlyWages > 0 ? store.short(l.monthlyWages) + "/mo" : nil
-        return Button { Haptics.tap(); store.openCompany(l.id, section: .staff) } label: {
-            ThinPersonRow(name: l.managedBy, title: l.managerTitle ?? "Owner",
-                          note: l.name + " \u{00B7} " + authority(l) + flag,
-                          noteTint: passedUp > 0 ? Theme.gold : Theme.ivoryFaint,
-                          wage: wages, roleKey: l.managerTitle, face: face)
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("group-who-\(l.id)")
+        let who: String = l.managedBy + " \u{00B7} " + (l.managerTitle ?? "Owner")
+        let note: String = passedUp > 0 ? "\(passedUp) passed up to you" : authority(l)
+        return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: l.managerTitle ?? "owner", initials: l.managedBy, face: face)),
+                         title: l.name, subtitle: who + " \u{00B7} " + note,
+                         value: l.monthlyWages > 0 ? store.short(l.monthlyWages) : "", lineLimit: 2,
+                         identifier: "group-who-\(l.id)", action: { store.openCompany(l.id, section: .staff) })
     }
 }

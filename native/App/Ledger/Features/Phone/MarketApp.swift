@@ -32,7 +32,7 @@ struct MarketApp: View {
         let chosen: Company? = companies.first { $0.id == companyID }
         let header = VStack(alignment: .leading, spacing: Theme.Space.m) {
             selector(companies, chosen)
-            SegmentedPill(items: MarketPart.allCases, title: { (p: MarketPart) -> String in p.rawValue }, selection: $part, badges: { (p: MarketPart) -> Bool in tabHasNew(e, p) })
+            partTabs(e)
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.xs)
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -43,6 +43,31 @@ struct MarketApp: View {
             }
         }
         .accessibilityIdentifier("market-app")
+    }
+
+    /// The five parts as words with a rule under the chosen one; they scroll sideways at narrow widths so no title is cut.
+    private func partTabs(_ e: GameEngine) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Space.l) {
+                ForEach(MarketPart.allCases, id: \.self) { (p: MarketPart) in
+                    let on: Bool = part == p
+                    Button { Haptics.choose(); part = p } label: {
+                        VStack(spacing: Theme.Space.xs) {
+                            Text(p.rawValue).textStyle(.body, tint: on ? Theme.ink : Theme.inkFaint, weight: on ? .semibold : .medium).lineLimit(1)
+                                .flagMarker(!on && tabHasNew(e, p), alignment: .topTrailing)
+                            Rectangle().fill(on ? Theme.accent : Color.clear).frame(height: 2)
+                        }
+                        .fixedSize()
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                    .accessibilityIdentifier("segment-\(p.rawValue)")
+                }
+            }
+        }
+        .overlay(alignment: .bottom) { Hairline() }
     }
 
     /// A segment dot: News holds any new market event; Competitors the new ones about rivals.
@@ -96,7 +121,7 @@ struct MarketApp: View {
                 }
             }
         } label: {
-            BusinessMenuLabel(glyph: Glyph.market, title: current)
+            BusinessPickerLabel(caption: "Market for", title: current)
         }
         .accessibilityLabel("Business: \(current)")
         .accessibilityIdentifier("market-business-picker")
