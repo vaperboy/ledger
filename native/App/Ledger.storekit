@@ -1,0 +1,80 @@
+{
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : true,
+      "internalID" : "6740000001",
+      "localizations" : [
+        { "description" : "Every locked item, for good. Removes ads.", "displayName" : "Ledger Pro", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.pro",
+      "referenceName" : "Ledger Pro",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "24.99",
+      "familyShareable" : true,
+      "internalID" : "6740000002",
+      "localizations" : [
+        { "description" : "Pro, your name in the Rich List, a gold icon and all future paid packs.", "displayName" : "Founder's Edition", "locale" : "en_US" }
+      ],
+      "productID" : "com.ledger.founder",
+      "referenceName" : "Founder's Edition",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21400001",
+      "localizations" : [],
+      "name" : "plus",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6740000003",
+          "introductoryOffer" : { "internalID" : "6740000013", "paymentMode" : "free", "subscriptionPeriod" : "P1W" },
+          "localizations" : [
+            { "description" : "Advisor, auto-week, multi-company brief, cloud backup, early access.", "displayName" : "Ledger Plus, monthly", "locale" : "en_US" }
+          ],
+          "productID" : "com.ledger.plus.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Ledger Plus monthly",
+          "subscriptionGroupID" : "21400001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000004",
+          "introductoryOffer" : { "internalID" : "6740000014", "paymentMode" : "free", "subscriptionPeriod" : "P1W" },
+          "localizations" : [
+            { "description" : "Advisor, auto-week, multi-company brief, cloud backup, early access.", "displayName" : "Ledger Plus, yearly", "locale" : "en_US" }
+          ],
+          "productID" : "com.ledger.plus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Ledger Plus yearly",
+          "subscriptionGroupID" : "21400001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : []
+        }
+      ]
+    }
+  ],
+  "version" : { "major" : 3, "minor" : 0 }
+}

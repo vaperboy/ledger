@@ -1,0 +1,654 @@
+{
+ "_doc": "Aurum private sales: the luxury collection (original ui/screens/mockup.js LUX), the uses, risks and company-ownership rules of features/player/lifestyle.js, and the yields of estates (features/player/estates.js). Prices in the reference currency of the original game.",
+ "sellFee": 0.08,
+ "categories": [
+  {
+   "id": "cars",
+   "name": "Cars",
+   "items": [
+    {
+     "id": "c15",
+     "name": "Hyperion Zenith Tourer",
+     "detail": "Electric estate, seats five",
+     "price": 1300000,
+     "upkeep": 0.02,
+     "growth": -0.14,
+     "volatility": 0.04
+    },
+    {
+     "id": "c1",
+     "name": "Aurelion S saloon",
+     "detail": "Chauffeur-grade comfort, loses value quickly",
+     "price": 1800000,
+     "upkeep": 0.03,
+     "growth": -0.12,
+     "volatility": 0.04
+    },
+    {
+     "id": "c11",
+     "name": "Bavaria 8 Apex coupé",
+     "detail": "Four seats, 625 hp",
+     "price": 2700000,
+     "upkeep": 0.03,
+     "growth": -0.1,
+     "volatility": 0.04
+    },
+    {
+     "id": "c10",
+     "name": "Apex V10 GT",
+     "detail": "One of the last naturally aspirated V10s",
+     "price": 3000000,
+     "upkeep": 0.03,
+     "growth": 0.01,
+     "volatility": 0.08
+    },
+    {
+     "id": "c7",
+     "name": "Vanguard Artemis",
+     "detail": "Light hybrid supercar in papaya",
+     "price": 3300000,
+     "upkeep": 0.035,
+     "growth": -0.08,
+     "volatility": 0.06
+    },
+    {
+     "id": "c8",
+     "name": "Vanguard Sovereign GT",
+     "detail": "Grand tourer in racing green",
+     "price": 3600000,
+     "upkeep": 0.03,
+     "growth": -0.07,
+     "volatility": 0.05
+    },
+    {
+     "id": "c9",
+     "name": "Vanguard Sovereign GT Black Edition",
+     "detail": "Midnight blue, black chrome",
+     "price": 4100000,
+     "upkeep": 0.03,
+     "growth": -0.06,
+     "volatility": 0.05
+    },
+    {
+     "id": "c2",
+     "name": "Brandt 912 GT RS",
+     "detail": "A track car with number plates",
+     "price": 4200000,
+     "upkeep": 0.03,
+     "growth": -0.02,
+     "volatility": 0.07
+    },
+    {
+     "id": "c4",
+     "name": "Ravenna Tempesta",
+     "detail": "Mid-engine V6 hybrid",
+     "price": 4500000,
+     "upkeep": 0.04,
+     "growth": -0.05,
+     "volatility": 0.1
+    },
+    {
+     "id": "c3",
+     "name": "Aurelion GT Noir",
+     "detail": "Matte black, built for the track",
+     "price": 4800000,
+     "upkeep": 0.035,
+     "growth": 0,
+     "volatility": 0.09
+    },
+    {
+     "id": "c14",
+     "name": "Hyperion Zenith One",
+     "detail": "V12 hybrid flagship",
+     "price": 7500000,
+     "upkeep": 0.035,
+     "growth": -0.03,
+     "volatility": 0.09
+    },
+    {
+     "id": "c13",
+     "name": "Apex Apexian SUV",
+     "detail": "The most expensive way to go off-road",
+     "price": 8000000,
+     "upkeep": 0.03,
+     "growth": -0.06,
+     "volatility": 0.05
+    },
+    {
+     "id": "c12",
+     "name": "Monarch Regent limousine",
+     "detail": "Hand-built, starlight headliner",
+     "price": 9500000,
+     "upkeep": 0.03,
+     "growth": -0.05,
+     "volatility": 0.05
+    },
+    {
+     "id": "c5",
+     "name": "Halvorsen Hyper 99",
+     "detail": "One of 99 built, 1,500 hp",
+     "price": 38000000,
+     "upkeep": 0.03,
+     "growth": 0.03,
+     "volatility": 0.18
+    },
+    {
+     "id": "c6",
+     "name": "Ravenna Fulmine 63",
+     "detail": "One of 63, carbon and bronze",
+     "price": 42000000,
+     "upkeep": 0.03,
+     "growth": 0.04,
+     "volatility": 0.2
+    }
+   ]
+  },
+  {
+   "id": "watches",
+   "name": "Watches and jewellery",
+   "items": [
+    {
+     "id": "w2",
+     "name": "Voltara Éther Chronograph",
+     "detail": "Grade 5 titanium, monopusher",
+     "price": 140000,
+     "upkeep": 0.01,
+     "growth": -0.02,
+     "volatility": 0.05
+    },
+    {
+     "id": "w1",
+     "name": "Aethelred Vanguard Régulateur Grand Feu",
+     "detail": "Enamel dial, regulator movement",
+     "price": 380000,
+     "upkeep": 0.01,
+     "growth": 0.02,
+     "volatility": 0.05
+    },
+    {
+     "id": "w5",
+     "name": "Aethelred Monarch Solstice Celestial",
+     "detail": "Aventurine night sky, moon phase",
+     "price": 650000,
+     "upkeep": 0.01,
+     "growth": 0.03,
+     "volatility": 0.07
+    },
+    {
+     "id": "w3",
+     "name": "Vescovi Rivière diamond necklace",
+     "detail": "Certified stones",
+     "price": 900000,
+     "upkeep": 0.015,
+     "growth": 0.01,
+     "volatility": 0.05
+    },
+    {
+     "id": "w4",
+     "name": "Aethelred Hyperion Horizon Tourbillon",
+     "detail": "Flying tourbillon, cosmic blue dial",
+     "price": 1500000,
+     "upkeep": 0.01,
+     "growth": 0.04,
+     "volatility": 0.1
+    },
+    {
+     "id": "w6",
+     "name": "Aethelred Apexian Zenith Split-Seconds",
+     "detail": "Skeleton rattrapante, titanium and rose gold",
+     "price": 2600000,
+     "upkeep": 0.01,
+     "growth": 0.04,
+     "volatility": 0.12
+    },
+    {
+     "id": "w7",
+     "name": "Aethelred Sovereign Astrolabe",
+     "detail": "Engraved rose gold, minute repeater",
+     "price": 6500000,
+     "upkeep": 0.01,
+     "growth": 0.05,
+     "volatility": 0.14
+    },
+    {
+     "id": "w8",
+     "name": "Aethelred Aetherius Infinite Complication",
+     "detail": "Grand sonnerie, perpetual calendar, tourbillon",
+     "price": 9800000,
+     "upkeep": 0.01,
+     "growth": 0.05,
+     "volatility": 0.15
+    }
+   ]
+  },
+  {
+   "id": "art",
+   "name": "Art and collectibles",
+   "items": [
+    {
+     "id": "a1",
+     "name": "Oil painting by Mira Halden",
+     "detail": "Emerging artist. Could rise a lot, or not at all",
+     "price": 120000,
+     "upkeep": 0.01,
+     "growth": 0.06,
+     "volatility": 0.3
+    },
+    {
+     "id": "a2",
+     "name": "Captain Polar #1, first issue",
+     "detail": "Graded, sealed comic",
+     "price": 250000,
+     "upkeep": 0.005,
+     "growth": 0.06,
+     "volatility": 0.2
+    },
+    {
+     "id": "a3",
+     "name": "Château Ormel cellar, 120 bottles",
+     "detail": "Fine vintages, stored properly",
+     "price": 600000,
+     "upkeep": 0.02,
+     "growth": 0.04,
+     "volatility": 0.08
+    },
+    {
+     "id": "a4",
+     "name": "Jules Arnaud print set",
+     "detail": "Signed modernist edition",
+     "price": 400000,
+     "upkeep": 0.01,
+     "growth": 0.03,
+     "volatility": 0.1
+    },
+    {
+     "id": "a5",
+     "name": "Canvas by Otto Brehm",
+     "detail": "Blue-chip, museum-grade, insured",
+     "price": 18000000,
+     "upkeep": 0.015,
+     "growth": 0.05,
+     "volatility": 0.14
+    }
+   ]
+  },
+  {
+   "id": "yachts",
+   "name": "Yachts",
+   "items": [
+    {
+     "id": "y1",
+     "name": "Sundqvist 40 day cruiser",
+     "detail": "Weekends on the water",
+     "price": 5000000,
+     "upkeep": 0.08,
+     "growth": -0.08,
+     "volatility": 0.05
+    },
+    {
+     "id": "y2",
+     "name": "Marenco 80 motor yacht",
+     "detail": "Needs a captain",
+     "price": 38000000,
+     "upkeep": 0.1,
+     "growth": -0.07,
+     "volatility": 0.06
+    },
+    {
+     "id": "y3",
+     "name": "Halcyon 50 m superyacht",
+     "detail": "Full crew all year",
+     "price": 320000000,
+     "upkeep": 0.1,
+     "growth": -0.05,
+     "volatility": 0.08
+    }
+   ]
+  },
+  {
+   "id": "jets",
+   "name": "Private jets",
+   "items": [
+    {
+     "id": "j1",
+     "name": "Corvane Light 4 jet",
+     "detail": "Four seats, short trips",
+     "price": 60000000,
+     "upkeep": 0.09,
+     "growth": -0.08,
+     "volatility": 0.05
+    },
+    {
+     "id": "j2",
+     "name": "Stratos Noir midsize jet",
+     "detail": "Nine seats, coast to coast",
+     "price": 160000000,
+     "upkeep": 0.09,
+     "growth": -0.07,
+     "volatility": 0.05
+    },
+    {
+     "id": "j4",
+     "name": "Aerion Long Range 650",
+     "detail": "Fourteen seats, ocean crossings",
+     "price": 380000000,
+     "upkeep": 0.085,
+     "growth": -0.06,
+     "volatility": 0.05
+    },
+    {
+     "id": "j3",
+     "name": "Stratos Global 8000 jet",
+     "detail": "Any continent, non-stop",
+     "price": 520000000,
+     "upkeep": 0.08,
+     "growth": -0.06,
+     "volatility": 0.06
+    },
+    {
+     "id": "j5",
+     "name": "Zephyr Celestia Grand",
+     "detail": "An airliner fitted out as a home",
+     "price": 900000000,
+     "upkeep": 0.08,
+     "growth": -0.05,
+     "volatility": 0.06
+    }
+   ]
+  },
+  {
+   "id": "homes",
+   "name": "Homes",
+   "items": [
+    {
+     "id": "h3",
+     "name": "Forest pavilion near Kyoto",
+     "detail": "Concrete, glass and moss, a pond under the floor",
+     "price": 45000000,
+     "upkeep": 0.012,
+     "growth": 0.03,
+     "volatility": 0.06
+    },
+    {
+     "id": "h4",
+     "name": "Basalt house above a black beach",
+     "detail": "Iceland, on the cliff edge",
+     "price": 70000000,
+     "upkeep": 0.014,
+     "growth": 0.03,
+     "volatility": 0.07
+    },
+    {
+     "id": "h1",
+     "name": "Cliff house on the Big Sur coast",
+     "detail": "Glass on three sides, the Pacific below",
+     "price": 260000000,
+     "upkeep": 0.012,
+     "growth": 0.035,
+     "volatility": 0.07
+    },
+    {
+     "id": "h2",
+     "name": "Villa on the Amalfi cliffs",
+     "detail": "Private funicular down to the sea",
+     "price": 420000000,
+     "upkeep": 0.012,
+     "growth": 0.04,
+     "volatility": 0.08
+    }
+   ]
+  },
+  {
+   "id": "estates",
+   "name": "Estates",
+   "items": [
+    {
+     "id": "e4",
+     "name": "Forest and lake, 900 hectares",
+     "detail": "Pine forest, a lake and a timber cabin",
+     "price": 40000000,
+     "upkeep": 0.003,
+     "growth": 0.035,
+     "volatility": 0.03
+    },
+    {
+     "id": "e3",
+     "name": "Highland estate",
+     "detail": "Moorland, a river, a hunting lodge and two tenant farms",
+     "price": 55000000,
+     "upkeep": 0.01,
+     "growth": 0.03,
+     "volatility": 0.04
+    },
+    {
+     "id": "e1",
+     "name": "Hillside vineyard and château",
+     "detail": "30 hectares of vines and a small stone château",
+     "price": 85000000,
+     "upkeep": 0.015,
+     "growth": 0.03,
+     "volatility": 0.06
+    },
+    {
+     "id": "e5",
+     "name": "Castle and event venue",
+     "detail": "Restored, with a courtyard for weddings and dinners",
+     "price": 140000000,
+     "upkeep": 0.022,
+     "growth": 0.025,
+     "volatility": 0.05
+    },
+    {
+     "id": "e2",
+     "name": "Private island",
+     "detail": "A villa, a jetty and turquoise water",
+     "price": 260000000,
+     "upkeep": 0.025,
+     "growth": 0.035,
+     "volatility": 0.07
+    }
+   ]
+  }
+ ],
+ "uses": {
+  "charter": {
+   "name": "Charter it out",
+   "categories": [
+    "jets",
+    "yachts"
+   ],
+   "yearly": {
+    "jets": 0.075,
+    "yachts": 0.11
+   },
+   "fee": 0.3,
+   "wear": 0.02,
+   "detail": "A charter firm flies or sails it for paying guests and keeps 30%. More wear, and it is not always free when you want it."
+  },
+  "rent": {
+   "name": "Rent it out",
+   "categories": [
+    "homes"
+   ],
+   "yearly": {
+    "homes": 0.032
+   },
+   "fee": 0.12,
+   "wear": 0.004,
+   "detail": "Let it to tenants through an agent who keeps 12%. You no longer stay there yourself."
+  },
+  "museum": {
+   "name": "Lend it to a museum",
+   "categories": [
+    "art"
+   ],
+   "yearly": {},
+   "fee": 0,
+   "wear": -0.02,
+   "detail": "On show for half a year: your name on the label, and the work gains provenance. It cannot be sold until it comes back."
+  }
+ },
+ "risks": {
+  "cars": [
+   0.03,
+   "damage"
+  ],
+  "art": [
+   0.004,
+   "theft"
+  ],
+  "watches": [
+   0.006,
+   "theft"
+  ],
+  "yachts": [
+   0.02,
+   "damage"
+  ],
+  "jets": [
+   0.01,
+   "damage"
+  ],
+  "homes": [
+   0.012,
+   "damage"
+  ]
+ },
+ "benefitInKind": {
+  "NO": 0.3,
+  "SE": 0.3,
+  "UK": 0.37,
+  "DE": 0.12,
+  "NL": 0.22,
+  "FR": 0.3,
+  "ES": 0.2,
+  "PL": 0.1,
+  "LT": 0.15,
+  "US": 0.25,
+  "CA": 0.24,
+  "AU": 0.2,
+  "JP": 0.2,
+  "KR": 0.2,
+  "BR": 0.2,
+  "CH": 0.11,
+  "MX": 0.2,
+  "AE": 0,
+  "IT": 0.25,
+  "DK": 0.25,
+  "FI": 0.2,
+  "IE": 0.3,
+  "SG": 0.15,
+  "default": 0.25
+ },
+ "electric": [
+  "c1",
+  "c15"
+ ],
+ "depreciation": {
+  "cars": 0.2,
+  "jets": 0.1,
+  "default": 0.1
+ },
+ "companyCategories": [
+  "cars",
+  "jets"
+ ],
+ "estates": {
+  "e4": {
+   "yearly": 0.028,
+   "weights": [
+    6,
+    4,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "what": "Timber and carbon credits",
+   "does": "Grows with the trees: the steadiest estate there is."
+  },
+  "e3": {
+   "yearly": 0.02,
+   "weights": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    3,
+    3,
+    3,
+    2,
+    1
+   ],
+   "what": "Shooting, fishing and farm rents",
+   "does": "Steady income from the land and the river."
+  },
+  "e1": {
+   "yearly": 0.035,
+   "weights": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "what": "Wine sales",
+   "does": "Your restaurants, cafes, hotels and bars pour your own wine."
+  },
+  "e5": {
+   "yearly": 0.04,
+   "weights": [
+    0.3,
+    0.3,
+    0.5,
+    0.8,
+    1.6,
+    2,
+    2,
+    1.8,
+    1.4,
+    0.6,
+    0.8,
+    1.6
+   ],
+   "what": "Weddings and dinners",
+   "does": "Open for events it makes you better known."
+  },
+  "e2": {
+   "yearly": 0.02,
+   "weights": [
+    0,
+    0,
+    0,
+    0.6,
+    1.6,
+    2.4,
+    3,
+    3,
+    1.4,
+    0,
+    0,
+    0
+   ],
+   "what": "Guests in season",
+   "does": "Host a retreat once a quarter, or take a week off there."
+  }
+ },
+ "estateLoanShare": 0.5
+}

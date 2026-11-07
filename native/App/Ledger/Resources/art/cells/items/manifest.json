@@ -1,0 +1,957 @@
+{
+ "sheet": "items",
+ "cells": {
+  "bus": {
+   "file": "items/bus.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Bus",
+   "group": "vehicle"
+  },
+  "minibus": {
+   "file": "items/minibus.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Minibus",
+   "group": "vehicle"
+  },
+  "truck_s": {
+   "file": "items/truck_s.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Truck s",
+   "group": "vehicle"
+  },
+  "truck_h": {
+   "file": "items/truck_h.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Truck h",
+   "group": "vehicle"
+  },
+  "truck_ev": {
+   "file": "items/truck_ev.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Truck ev",
+   "group": "vehicle"
+  },
+  "van_box": {
+   "file": "items/van_box.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Van box",
+   "group": "vehicle"
+  },
+  "van_l": {
+   "file": "items/van_l.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Van l",
+   "group": "vehicle"
+  },
+  "ev_van": {
+   "file": "items/ev_van.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Ev van",
+   "group": "vehicle"
+  },
+  "bike": {
+   "file": "items/bike.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Bike",
+   "group": "vehicle"
+  },
+  "scooter": {
+   "file": "items/scooter.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Scooter",
+   "group": "vehicle"
+  },
+  "foodtruck": {
+   "file": "items/foodtruck.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Foodtruck",
+   "group": "vehicle"
+  },
+  "taxi_xl": {
+   "file": "items/taxi_xl.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Taxi xl",
+   "group": "vehicle"
+  },
+  "taxi_cmf": {
+   "file": "items/taxi_cmf.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Taxi cmf",
+   "group": "vehicle"
+  },
+  "taxi_prm": {
+   "file": "items/taxi_prm.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Taxi prm",
+   "group": "vehicle"
+  },
+  "excav": {
+   "file": "items/excav.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Excav",
+   "group": "vehicle"
+  },
+  "crane": {
+   "file": "items/crane.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Crane",
+   "group": "vehicle"
+  },
+  "car_compact": {
+   "file": "items/car_compact.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Car compact",
+   "group": "vehicle"
+  },
+  "car_suv": {
+   "file": "items/car_suv.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Car suv",
+   "group": "vehicle"
+  },
+  "car_estate": {
+   "file": "items/car_estate.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Car estate",
+   "group": "vehicle"
+  },
+  "car_luxury": {
+   "file": "items/car_luxury.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Car luxury",
+   "group": "vehicle"
+  },
+  "pickup": {
+   "file": "items/pickup.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Pickup",
+   "group": "vehicle"
+  },
+  "minivan": {
+   "file": "items/minivan.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Minivan",
+   "group": "vehicle"
+  },
+  "limousine": {
+   "file": "items/limousine.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Limousine",
+   "group": "vehicle"
+  },
+  "ambulance": {
+   "file": "items/ambulance.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Ambulance",
+   "group": "vehicle"
+  },
+  "tow_truck": {
+   "file": "items/tow_truck.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Tow truck",
+   "group": "vehicle"
+  },
+  "forklift": {
+   "file": "items/forklift.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Forklift",
+   "group": "vehicle"
+  },
+  "tractor_road": {
+   "file": "items/tractor_road.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Tractor road",
+   "group": "vehicle"
+  },
+  "dump_truck": {
+   "file": "items/dump_truck.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Dump truck",
+   "group": "vehicle"
+  },
+  "concrete_mixer": {
+   "file": "items/concrete_mixer.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Concrete mixer",
+   "group": "vehicle"
+  },
+  "motorbike_courier": {
+   "file": "items/motorbike_courier.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Motorbike courier",
+   "group": "vehicle"
+  },
+  "trailer": {
+   "file": "items/trailer.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Trailer",
+   "group": "vehicle"
+  },
+  "delivery_van_ev": {
+   "file": "items/delivery_van_ev.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Delivery van ev",
+   "group": "vehicle"
+  },
+  "bus_v2": {
+   "file": "items/bus_v2.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Bus v2",
+   "group": "vehicle"
+  },
+  "minibus_v2": {
+   "file": "items/minibus_v2.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Minibus v2",
+   "group": "vehicle"
+  },
+  "truck_s_v2": {
+   "file": "items/truck_s_v2.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Truck s v2",
+   "group": "vehicle"
+  },
+  "truck_h_v2": {
+   "file": "items/truck_h_v2.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Truck h v2",
+   "group": "vehicle"
+  },
+  "truck_ev_v2": {
+   "file": "items/truck_ev_v2.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Truck ev v2",
+   "group": "vehicle"
+  },
+  "van_box_v2": {
+   "file": "items/van_box_v2.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Van box v2",
+   "group": "vehicle"
+  },
+  "van_l_v2": {
+   "file": "items/van_l_v2.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Van l v2",
+   "group": "vehicle"
+  },
+  "ev_van_v2": {
+   "file": "items/ev_van_v2.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Ev van v2",
+   "group": "vehicle"
+  },
+  "bike_v2": {
+   "file": "items/bike_v2.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Bike v2",
+   "group": "vehicle"
+  },
+  "scooter_v2": {
+   "file": "items/scooter_v2.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Scooter v2",
+   "group": "vehicle"
+  },
+  "foodtruck_v2": {
+   "file": "items/foodtruck_v2.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Foodtruck v2",
+   "group": "vehicle"
+  },
+  "taxi_xl_v2": {
+   "file": "items/taxi_xl_v2.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Taxi xl v2",
+   "group": "vehicle"
+  },
+  "taxi_cmf_v2": {
+   "file": "items/taxi_cmf_v2.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Taxi cmf v2",
+   "group": "vehicle"
+  },
+  "taxi_prm_v2": {
+   "file": "items/taxi_prm_v2.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Taxi prm v2",
+   "group": "vehicle"
+  },
+  "excav_v2": {
+   "file": "items/excav_v2.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Excav v2",
+   "group": "vehicle"
+  },
+  "crane_v2": {
+   "file": "items/crane_v2.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Crane v2",
+   "group": "vehicle"
+  },
+  "bus_var": {
+   "file": "items/bus_var.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Bus var",
+   "group": "vehicle"
+  },
+  "minibus_var": {
+   "file": "items/minibus_var.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Minibus var",
+   "group": "vehicle"
+  },
+  "truck_s_var": {
+   "file": "items/truck_s_var.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Truck s var",
+   "group": "vehicle"
+  },
+  "truck_h_var": {
+   "file": "items/truck_h_var.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Truck h var",
+   "group": "vehicle"
+  },
+  "truck_ev_var": {
+   "file": "items/truck_ev_var.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Truck ev var",
+   "group": "vehicle"
+  },
+  "van_box_var": {
+   "file": "items/van_box_var.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Van box var",
+   "group": "vehicle"
+  },
+  "van_l_var": {
+   "file": "items/van_l_var.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Van l var",
+   "group": "vehicle"
+  },
+  "ev_van_var": {
+   "file": "items/ev_van_var.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Ev van var",
+   "group": "vehicle"
+  },
+  "bike_var": {
+   "file": "items/bike_var.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Bike var",
+   "group": "vehicle"
+  },
+  "scooter_var": {
+   "file": "items/scooter_var.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Scooter var",
+   "group": "vehicle"
+  },
+  "foodtruck_var": {
+   "file": "items/foodtruck_var.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Foodtruck var",
+   "group": "vehicle"
+  },
+  "taxi_xl_var": {
+   "file": "items/taxi_xl_var.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Taxi xl var",
+   "group": "vehicle"
+  },
+  "taxi_cmf_var": {
+   "file": "items/taxi_cmf_var.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Taxi cmf var",
+   "group": "vehicle"
+  },
+  "taxi_prm_var": {
+   "file": "items/taxi_prm_var.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Taxi prm var",
+   "group": "vehicle"
+  },
+  "excav_var": {
+   "file": "items/excav_var.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Excav var",
+   "group": "vehicle"
+  },
+  "crane_var": {
+   "file": "items/crane_var.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Crane var",
+   "group": "vehicle"
+  },
+  "rest_kitchen": {
+   "file": "items/rest_kitchen.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Rest kitchen",
+   "group": "premises"
+  },
+  "rest_kitchen_var": {
+   "file": "items/rest_kitchen_var.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Rest kitchen var",
+   "group": "premises"
+  },
+  "industrial_hall": {
+   "file": "items/industrial_hall.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Industrial hall",
+   "group": "premises"
+  },
+  "ind_hall_var": {
+   "file": "items/ind_hall_var.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Ind hall var",
+   "group": "premises"
+  },
+  "warehouse": {
+   "file": "items/warehouse.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Warehouse",
+   "group": "premises"
+  },
+  "warehouse_var": {
+   "file": "items/warehouse_var.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Warehouse var",
+   "group": "premises"
+  },
+  "clinic": {
+   "file": "items/clinic.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Clinic",
+   "group": "premises"
+  },
+  "clinic_var": {
+   "file": "items/clinic_var.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Clinic var",
+   "group": "premises"
+  },
+  "gym_hall": {
+   "file": "items/gym_hall.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Gym hall",
+   "group": "premises"
+  },
+  "gym_hall_var": {
+   "file": "items/gym_hall_var.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Gym hall var",
+   "group": "premises"
+  },
+  "hotel_building": {
+   "file": "items/hotel_building.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Hotel building",
+   "group": "premises"
+  },
+  "hotel_bldg_var": {
+   "file": "items/hotel_bldg_var.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Hotel bldg var",
+   "group": "premises"
+  },
+  "yard_lot": {
+   "file": "items/yard_lot.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Yard lot",
+   "group": "premises"
+  },
+  "yard_lot_var": {
+   "file": "items/yard_lot_var.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Yard lot var",
+   "group": "premises"
+  },
+  "mountain_slope": {
+   "file": "items/mountain_slope.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Mountain slope",
+   "group": "premises"
+  },
+  "mtn_slope_var": {
+   "file": "items/mtn_slope_var.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Mtn slope var",
+   "group": "premises"
+  },
+  "laptop": {
+   "file": "items/laptop.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Laptop",
+   "group": "equipment"
+  },
+  "tutor_tablet": {
+   "file": "items/tutor_tablet.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Tutor tablet",
+   "group": "equipment"
+  },
+  "car_cleaning_machine": {
+   "file": "items/car_cleaning_machine.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Car cleaning machine",
+   "group": "equipment"
+  },
+  "camera_and_lens": {
+   "file": "items/camera_and_lens.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Camera and lens",
+   "group": "equipment"
+  },
+  "handyman_tool_kit": {
+   "file": "items/handyman_tool_kit.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Handyman tool kit",
+   "group": "equipment"
+  },
+  "cleaning_machine": {
+   "file": "items/cleaning_machine.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Cleaning machine",
+   "group": "equipment"
+  },
+  "desk_setup": {
+   "file": "items/desk_setup.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Desk setup",
+   "group": "equipment"
+  },
+  "marketing_screen": {
+   "file": "items/marketing_screen.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Marketing screen",
+   "group": "equipment"
+  },
+  "office_furniture": {
+   "file": "items/office_furniture.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Office furniture",
+   "group": "equipment"
+  },
+  "bakery_oven": {
+   "file": "items/bakery_oven.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Bakery oven",
+   "group": "equipment"
+  },
+  "brewery_tanks": {
+   "file": "items/brewery_tanks.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Brewery tanks",
+   "group": "equipment"
+  },
+  "farm_tractor": {
+   "file": "items/farm_tractor.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Farm tractor",
+   "group": "equipment"
+  },
+  "fishing_gear": {
+   "file": "items/fishing_gear.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Fishing gear",
+   "group": "equipment"
+  },
+  "hair_salon_chair": {
+   "file": "items/hair_salon_chair.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Hair salon chair",
+   "group": "equipment"
+  },
+  "dental_chair": {
+   "file": "items/dental_chair.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Dental chair",
+   "group": "equipment"
+  },
+  "kiosk_counter": {
+   "file": "items/kiosk_counter.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Kiosk counter",
+   "group": "equipment"
+  },
+  "restaurant": {
+   "file": "items/restaurant.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Restaurant",
+   "group": "equipment"
+  },
+  "nightclub": {
+   "file": "items/nightclub.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Nightclub",
+   "group": "equipment"
+  },
+  "gym": {
+   "file": "items/gym.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Gym",
+   "group": "equipment"
+  },
+  "hotel": {
+   "file": "items/hotel.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Hotel",
+   "group": "equipment"
+  },
+  "casino": {
+   "file": "items/casino.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Casino",
+   "group": "equipment"
+  },
+  "skires": {
+   "file": "items/skires.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Skires",
+   "group": "equipment"
+  },
+  "electrician": {
+   "file": "items/electrician.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Electrician",
+   "group": "equipment"
+  },
+  "plumber": {
+   "file": "items/plumber.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Plumber",
+   "group": "equipment"
+  },
+  "construction": {
+   "file": "items/construction.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Construction",
+   "group": "equipment"
+  },
+  "security": {
+   "file": "items/security.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Security",
+   "group": "equipment"
+  },
+  "webshop": {
+   "file": "items/webshop.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Webshop",
+   "group": "equipment"
+  },
+  "grocery": {
+   "file": "items/grocery.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Grocery",
+   "group": "equipment"
+  },
+  "hardware": {
+   "file": "items/hardware.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Hardware",
+   "group": "equipment"
+  },
+  "pets": {
+   "file": "items/pets.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Pets",
+   "group": "equipment"
+  },
+  "physio": {
+   "file": "items/physio.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Physio",
+   "group": "equipment"
+  },
+  "factory": {
+   "file": "items/factory.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Factory",
+   "group": "equipment"
+  },
+  "home_building_hero": {
+   "file": "items/home_building_hero.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Home building hero",
+   "group": "insurance"
+  },
+  "car_insurance_card": {
+   "file": "items/car_insurance_card.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Car insurance card",
+   "group": "insurance"
+  },
+  "business_property_card": {
+   "file": "items/business_property_card.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Business property card",
+   "group": "insurance"
+  },
+  "liability_card": {
+   "file": "items/liability_card.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Liability card",
+   "group": "insurance"
+  },
+  "fleet_card": {
+   "file": "items/fleet_card.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Fleet card",
+   "group": "insurance"
+  },
+  "workers_card": {
+   "file": "items/workers_card.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Workers card",
+   "group": "insurance"
+  },
+  "cyber_card": {
+   "file": "items/cyber_card.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Cyber card",
+   "group": "insurance"
+  },
+  "travel_card": {
+   "file": "items/travel_card.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "Travel card",
+   "group": "insurance"
+  },
+  "cloud": {
+   "file": "items/cloud.jpg",
+   "row": 0,
+   "col": 0,
+   "caption": "Cloud",
+   "group": "software"
+  },
+  "licence": {
+   "file": "items/licence.jpg",
+   "row": 0,
+   "col": 1,
+   "caption": "Licence",
+   "group": "software"
+  },
+  "subscription_box": {
+   "file": "items/subscription_box.jpg",
+   "row": 0,
+   "col": 2,
+   "caption": "Subscription box",
+   "group": "software"
+  },
+  "developer_laptop": {
+   "file": "items/developer_laptop.jpg",
+   "row": 0,
+   "col": 3,
+   "caption": "Developer laptop",
+   "group": "software"
+  },
+  "accounting_software": {
+   "file": "items/accounting_software.jpg",
+   "row": 1,
+   "col": 0,
+   "caption": "Accounting software",
+   "group": "software"
+  },
+  "crm_dashboard": {
+   "file": "items/crm_dashboard.jpg",
+   "row": 1,
+   "col": 1,
+   "caption": "Crm dashboard",
+   "group": "software"
+  },
+  "design_tablet": {
+   "file": "items/design_tablet.jpg",
+   "row": 1,
+   "col": 2,
+   "caption": "Design tablet",
+   "group": "software"
+  },
+  "e_commerce_screen": {
+   "file": "items/e_commerce_screen.jpg",
+   "row": 1,
+   "col": 3,
+   "caption": "E commerce screen",
+   "group": "software"
+  },
+  "pos_terminal": {
+   "file": "items/pos_terminal.jpg",
+   "row": 2,
+   "col": 0,
+   "caption": "Pos terminal",
+   "group": "software"
+  },
+  "email_icon": {
+   "file": "items/email_icon.jpg",
+   "row": 2,
+   "col": 1,
+   "caption": "Email icon",
+   "group": "software"
+  },
+  "security_shield": {
+   "file": "items/security_shield.jpg",
+   "row": 2,
+   "col": 2,
+   "caption": "Security shield",
+   "group": "software"
+  },
+  "backup_drive": {
+   "file": "items/backup_drive.jpg",
+   "row": 2,
+   "col": 3,
+   "caption": "Backup drive",
+   "group": "software"
+  },
+  "video_editing": {
+   "file": "items/video_editing.jpg",
+   "row": 3,
+   "col": 0,
+   "caption": "Video editing",
+   "group": "software"
+  },
+  "mobile_app_phone": {
+   "file": "items/mobile_app_phone.jpg",
+   "row": 3,
+   "col": 1,
+   "caption": "Mobile app phone",
+   "group": "software"
+  },
+  "analytics_chart": {
+   "file": "items/analytics_chart.jpg",
+   "row": 3,
+   "col": 2,
+   "caption": "Analytics chart",
+   "group": "software"
+  },
+  "helpdesk_headset": {
+   "file": "items/helpdesk_headset.jpg",
+   "row": 3,
+   "col": 3,
+   "caption": "Helpdesk headset",
+   "group": "software"
+  }
+ }
+}

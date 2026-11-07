@@ -1,0 +1,24 @@
+# Xcode and build artifacts
+DerivedData/
+.build/
+build/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcassets/
+.pins
+
+# Dependencies
+.sourcery/
+Pods/
+Carthage/
+
+# Git and OS noise
+.git/
+.DS_Store
+
+# Ledger: heavy or generated, never needed for code work
+.claude/worktrees/
+native/design/mockups/
+native/design/art/
+node_modules/

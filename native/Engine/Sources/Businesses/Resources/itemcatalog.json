@@ -1,0 +1,2118 @@
+{
+ "note": "Product and service options per trade for the add-item popup. svc: a service (else goods); dev: developed first even in the trade's own kind (a different kind is always developed first); b: the company's short name is used as a brand prefix (the signature item).",
+ "trades": {
+  "startup": [
+   {
+    "n": "Team licence",
+    "svc": true
+   },
+   {
+    "n": "Mobile companion app",
+    "svc": true
+   },
+   {
+    "n": "Training workshop",
+    "svc": true
+   },
+   {
+    "n": "Data export add-on",
+    "svc": true
+   }
+  ],
+  "cons": [
+   { "n": "Advisory hour", "svc": true },
+   { "n": "Strategy workshop day", "svc": true },
+   { "n": "Process audit", "svc": true },
+   { "n": "Strategy report", "svc": true },
+   { "n": "Retainer plan", "svc": true },
+   { "n": "Discovery call", "svc": true },
+   { "n": "Interim management day", "svc": true },
+   { "n": "Market entry study", "svc": true },
+   { "n": "Cost reduction review", "svc": true },
+   { "n": "Training programme", "svc": true },
+   { "n": "Merchandise and templates", "svc": false, "dev": true }
+  ],
+  "tutor": [
+   { "n": "Lesson 1:1", "svc": true },
+   { "n": "Group class", "svc": true },
+   { "n": "Exam preparation course", "svc": true },
+   { "n": "Homework help subscription", "svc": true },
+   { "n": "Language conversation club", "svc": true },
+   { "n": "Summer intensive", "svc": true },
+   { "n": "Online masterclass", "svc": true },
+   { "n": "Study guides and workbooks", "svc": false, "dev": true }
+  ],
+  "carclean": [
+   {
+    "n": "Engine bay detail",
+    "svc": true
+   },
+   {
+    "n": "Monthly wash plan",
+    "svc": true
+   },
+   {
+    "n": "Pre-sale valet",
+    "svc": true
+   },
+   {
+    "n": "Paint protection film",
+    "svc": true
+   }
+  ],
+  "photo": [
+   { "n": "Portrait session", "svc": true },
+   { "n": "Wedding day", "svc": true },
+   { "n": "Product shoot with editing", "svc": true },
+   { "n": "Corporate headshots", "svc": true },
+   { "n": "Prints and albums", "svc": false, "dev": true },
+   { "n": "Event coverage", "svc": true },
+   { "n": "Drone shoot", "svc": true },
+   { "n": "Studio hire", "svc": true }
+  ],
+  "handy": [
+   {
+    "n": "Flat-pack assembly",
+    "svc": true
+   },
+   {
+    "n": "Small repairs visit",
+    "svc": true
+   },
+   {
+    "n": "Painting and decorating",
+    "svc": true
+   },
+   {
+    "n": "Garden tidy-up",
+    "svc": true
+   },
+   {
+    "n": "Annual home check plan",
+    "svc": true
+   },
+   {
+    "n": "Emergency call-out",
+    "svc": true
+   },
+   {
+    "n": "Shelving and fitting",
+    "svc": true
+   },
+   {
+    "n": "Tool and materials kit",
+    "svc": false,
+    "dev": true
+   }
+  ],
+  "cleaning": [
+   {
+    "n": "Regular home cleaning plan",
+    "svc": true
+   },
+   {
+    "n": "Kitchen deep clean",
+    "svc": true
+   },
+   {
+    "n": "Washroom restock service",
+    "svc": true
+   },
+   {
+    "n": "Pressure washing",
+    "svc": true
+   }
+  ],
+  "webdev": [
+   {
+    "n": "Landing page",
+    "svc": true
+   },
+   {
+    "n": "Security audit",
+    "svc": true
+   },
+   {
+    "n": "Domain and email set-up",
+    "svc": true
+   },
+   {
+    "n": "Training for your team",
+    "svc": true
+   }
+  ],
+  "mktg": [
+   { "n": "Campaign setup", "svc": true },
+   { "n": "Monthly retainer", "svc": true },
+   { "n": "Content pack", "svc": true },
+   { "n": "Social media management", "svc": true },
+   { "n": "Strategy hour", "svc": true },
+   { "n": "Brand identity package", "svc": true },
+   { "n": "Video production", "svc": true },
+   { "n": "Media buying", "svc": true },
+   { "n": "Email campaigns", "svc": true },
+   { "n": "Market research report", "svc": true },
+   { "n": "Event marketing", "svc": true }
+  ],
+  "law": [
+   { "n": "Contract review", "svc": true },
+   { "n": "Company formation", "svc": true },
+   { "n": "Dispute resolution", "svc": true },
+   { "n": "Employment advice plan", "svc": true },
+   { "n": "Property conveyancing", "svc": true },
+   { "n": "Will and probate", "svc": true },
+   { "n": "Trademark registration", "svc": true },
+   { "n": "Legal templates pack", "svc": false, "dev": true }
+  ],
+  "acctfirm": [
+   { "n": "Bookkeeping plan", "svc": true },
+   { "n": "Annual accounts and tax", "svc": true },
+   { "n": "Payroll service", "svc": true },
+   { "n": "VAT returns", "svc": true },
+   { "n": "Tax returns for private clients", "svc": true },
+   { "n": "Business advisory", "svc": true },
+   { "n": "Audit support", "svc": true },
+   { "n": "Start-up package", "svc": true },
+   { "n": "Tax planning session", "svc": true }
+  ],
+  "staffing": [
+   {
+    "n": "Temp staffing",
+    "svc": true
+   },
+   {
+    "n": "Permanent placement",
+    "svc": true
+   },
+   {
+    "n": "Executive search",
+    "svc": true
+   },
+   {
+    "n": "Payroll outsourcing",
+    "svc": true
+   },
+   {
+    "n": "Seasonal workforce",
+    "svc": true
+   },
+   {
+    "n": "Recruitment process outsourcing",
+    "svc": true
+   },
+   {
+    "n": "Skills testing",
+    "svc": true
+   },
+   {
+    "n": "Training placements",
+    "svc": true
+   }
+  ],
+  "barber": [
+   {
+    "n": "Wedding party styling",
+    "svc": true
+   },
+   {
+    "n": "Scalp treatment",
+    "svc": true
+   },
+   {
+    "n": "Gift vouchers",
+    "svc": true
+   },
+   {
+    "n": "Beard and cut package",
+    "svc": true
+   }
+  ],
+  "drivsk": [
+   {
+    "n": "Motorway lesson",
+    "svc": true
+   },
+   {
+    "n": "Refresher lesson",
+    "svc": true
+   },
+   {
+    "n": "Driver safety workbook",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Simulator hour",
+    "svc": true
+   }
+  ],
+  "physio": [
+   {
+    "n": "Pregnancy physio",
+    "svc": true
+   },
+   {
+    "n": "Shockwave therapy",
+    "svc": true
+   },
+   {
+    "n": "Pilates class",
+    "svc": true
+   },
+   {
+    "n": "Kinesiology tape",
+    "svc": false,
+    "dev": true
+   }
+  ],
+  "travel": [
+   { "n": "Package holidays", "svc": true },
+   { "n": "Flight bookings", "svc": true },
+   { "n": "Hotel stays", "svc": true },
+   { "n": "City breaks", "svc": true },
+   { "n": "Cruises", "svc": true },
+   { "n": "Business travel desk", "svc": true },
+   { "n": "Group and school trips", "svc": true },
+   { "n": "Travel insurance", "svc": true },
+   { "n": "Visa and document service", "svc": true }
+  ],
+  "insbroker": [
+   { "n": "Motor insurance", "svc": true },
+   { "n": "Home and contents insurance", "svc": true },
+   { "n": "Life and critical illness cover", "svc": true },
+   { "n": "Private health insurance", "svc": true },
+   { "n": "Business and liability insurance", "svc": true },
+   { "n": "Landlord insurance", "svc": true },
+   { "n": "Pension and savings advice", "svc": true },
+   { "n": "Annual policy review", "svc": true }
+  ],
+  "finbroker": [
+   { "n": "Residential mortgage", "svc": true },
+   { "n": "Remortgage and product transfer", "svc": true },
+   { "n": "Buy-to-let mortgage", "svc": true },
+   { "n": "Personal loan", "svc": true },
+   { "n": "Business loan", "svc": true },
+   { "n": "Equity release", "svc": true },
+   { "n": "Protection cover referral", "svc": true },
+   { "n": "Mortgage review service", "svc": true }
+  ],
+  "estate": [
+   {
+    "n": "Property valuation",
+    "svc": true
+   },
+   {
+    "n": "Lettings management",
+    "svc": true
+   },
+   {
+    "n": "Sales listing package",
+    "svc": true
+   },
+   {
+    "n": "Tenant find service",
+    "svc": true
+   },
+   {
+    "n": "Property investment advice",
+    "svc": true
+   },
+   {
+    "n": "Inventory and inspections",
+    "svc": true
+   },
+   {
+    "n": "Auction listing",
+    "svc": true
+   },
+   {
+    "n": "Home staging",
+    "svc": true
+   }
+  ],
+  "pets": [
+   {
+    "n": "Puppy training class",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Vet visit transport",
+    "svc": true
+   },
+   {
+    "n": "Dog walking",
+    "svc": true
+   },
+   {
+    "n": "Grooming",
+    "svc": true
+   },
+   {
+    "n": "Daycare",
+    "svc": true
+   },
+   {
+    "n": "Boarding",
+    "svc": true
+   },
+   {
+    "n": "Pet sitting",
+    "svc": true
+   },
+   {
+    "n": "Pet food",
+    "svc": false
+   },
+   {
+    "n": "Pet accessories",
+    "svc": false
+   }
+  ],
+  "carrepair": [
+   {
+    "n": "Servicing plan",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Annual service",
+    "svc": true
+   },
+   {
+    "n": "Brake and tyre package",
+    "svc": true
+   },
+   {
+    "n": "MOT preparation",
+    "svc": true
+   },
+   {
+    "n": "Air conditioning service",
+    "svc": true
+   },
+   {
+    "n": "Diagnostics",
+    "svc": true
+   },
+   {
+    "n": "Mechanical repair",
+    "svc": true
+   },
+   {
+    "n": "Bodywork repair",
+    "svc": true
+   },
+   {
+    "n": "Tyres and parts over the counter",
+    "svc": false
+   }
+  ],
+  "foodtruck": [
+   {
+    "n": "Signature burger",
+    "svc": false,
+    "b": true
+   },
+   {
+    "n": "Breakfast roll",
+    "svc": false
+   },
+   {
+    "n": "Loaded fries",
+    "svc": false
+   },
+   {
+    "n": "Vegan special",
+    "svc": false
+   },
+   {
+    "n": "Dessert of the week",
+    "svc": false
+   },
+   {
+    "n": "Catered events",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Meal deal",
+    "svc": false
+   },
+   {
+    "n": "Craft sodas",
+    "svc": false
+   }
+  ],
+  "cafe": [
+   {
+    "n": "Signature blend",
+    "svc": false,
+    "b": true
+   },
+   {
+    "n": "Breakfast menu",
+    "svc": false
+   },
+   {
+    "n": "Cakes and pastries",
+    "svc": false
+   },
+   {
+    "n": "Cold brew range",
+    "svc": false
+   },
+   {
+    "n": "Sandwich lunch deal",
+    "svc": false
+   },
+   {
+    "n": "Barista training class",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Coffee beans to take home",
+    "svc": false
+   },
+   {
+    "n": "Catered office breakfast",
+    "svc": true,
+    "dev": true
+   }
+  ],
+  "restaurant": [
+   {
+    "n": "Chef's tasting menu",
+    "svc": false,
+    "b": true
+   },
+   {
+    "n": "Business lunch menu",
+    "svc": false
+   },
+   {
+    "n": "Sunday roast",
+    "svc": false
+   },
+   {
+    "n": "Kids' menu",
+    "svc": false
+   },
+   {
+    "n": "Wine pairing",
+    "svc": false
+   },
+   {
+    "n": "Private dining",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Seasonal specials",
+    "svc": false
+   },
+   {
+    "n": "Catering for events",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Takeaway box",
+    "svc": false
+   }
+  ],
+  "nightclub": [
+   {
+    "n": "Themed night",
+    "svc": true
+   },
+   {
+    "n": "Live DJ residency",
+    "svc": true
+   },
+   {
+    "n": "Cocktail masterclass",
+    "svc": true
+   },
+   {
+    "n": "Student night",
+    "svc": true
+   },
+   {
+    "n": "Ticketed festival night",
+    "svc": true
+   },
+   {
+    "n": "Birthday table package",
+    "svc": true
+   },
+   {
+    "n": "Shots promotion",
+    "svc": true
+   },
+   {
+    "n": "Corporate hire",
+    "svc": true
+   }
+  ],
+  "gym": [
+   {
+    "n": "Nutrition coaching",
+    "svc": true
+   },
+   {
+    "n": "Corporate wellness plan",
+    "svc": true
+   },
+   {
+    "n": "Youth programme",
+    "svc": true
+   },
+   {
+    "n": "Sauna and recovery area",
+    "svc": true
+   },
+   {
+    "n": "Boxing class",
+    "svc": true
+   },
+   {
+    "n": "Locker and towel rental",
+    "svc": true
+   },
+   {
+    "n": "Body scan",
+    "svc": true
+   },
+   {
+    "n": "Kit and apparel",
+    "svc": false,
+    "dev": true
+   }
+  ],
+  "hotel": [
+   {
+    "n": "Breakfast add-on",
+    "svc": true
+   },
+   {
+    "n": "Conference package",
+    "svc": true
+   },
+   {
+    "n": "Spa weekend",
+    "svc": true
+   },
+   {
+    "n": "Wedding venue hire",
+    "svc": true
+   },
+   {
+    "n": "Airport transfer",
+    "svc": true
+   },
+   {
+    "n": "Romantic dinner package",
+    "svc": true
+   },
+   {
+    "n": "Late checkout",
+    "svc": true
+   }
+  ],
+  "casino": [
+   {
+    "n": "Baccarat table",
+    "svc": true
+   },
+   {
+    "n": "Craps table",
+    "svc": true
+   },
+   {
+    "n": "Sportsbook counter",
+    "svc": true
+   },
+   {
+    "n": "Live entertainment",
+    "svc": true
+   },
+   {
+    "n": "Corporate events",
+    "svc": true
+   },
+   {
+    "n": "Weekend stay package",
+    "svc": true
+   },
+   {
+    "n": "Loyalty club",
+    "svc": true
+   },
+   {
+    "n": "Slot lounge",
+    "svc": true
+   }
+  ],
+  "fun": [
+   {
+    "n": "School trip day",
+    "svc": true
+   },
+   {
+    "n": "VIP fast track",
+    "svc": true
+   },
+   {
+    "n": "Night-time event",
+    "svc": true
+   },
+   {
+    "n": "Photo package",
+    "svc": true
+   },
+   {
+    "n": "Group tickets",
+    "svc": true
+   },
+   {
+    "n": "Escape room",
+    "svc": true
+   },
+   {
+    "n": "Corporate team day",
+    "svc": true
+   },
+   {
+    "n": "Arcade card top-up",
+    "svc": true
+   }
+  ],
+  "skires": [
+   {
+    "n": "Heli-skiing day",
+    "svc": true
+   },
+   {
+    "n": "Snowboard park pass",
+    "svc": true
+   },
+   {
+    "n": "Family package",
+    "svc": true
+   },
+   {
+    "n": "Ski storage and lockers",
+    "svc": true
+   },
+   {
+    "n": "Beginner carpet pass",
+    "svc": true
+   },
+   {
+    "n": "Sledge and snowshoe hire",
+    "svc": true
+   },
+   {
+    "n": "Ski guide day",
+    "svc": true
+   },
+   {
+    "n": "Apres-ski bar",
+    "svc": true
+   }
+  ],
+  "indoorski": [
+   {
+    "n": "Corporate day",
+    "svc": true
+   },
+   {
+    "n": "Race training",
+    "svc": true
+   },
+   {
+    "n": "Snowboard lessons",
+    "svc": true
+   },
+   {
+    "n": "School group",
+    "svc": true
+   },
+   {
+    "n": "Off-peak pass",
+    "svc": true
+   },
+   {
+    "n": "Ice bar event",
+    "svc": true
+   },
+   {
+    "n": "Pro shop",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Ski camp week",
+    "svc": true
+   }
+  ],
+  "kiosk": [
+   {
+    "n": "Tobacco",
+    "svc": false
+   },
+   {
+    "n": "Beer, wine and spirits",
+    "svc": false
+   },
+   {
+    "n": "Lottery tickets",
+    "svc": true
+   },
+   {
+    "n": "Parcel pickup point",
+    "svc": true
+   },
+   {
+    "n": "Umbrellas and seasonal goods",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Souvenirs",
+    "svc": false
+   },
+   {
+    "n": "Newspapers and magazines",
+    "svc": false
+   },
+   {
+    "n": "Soft drinks and water",
+    "svc": false
+   },
+   {
+    "n": "Snacks and sweets",
+    "svc": false
+   },
+   {
+    "n": "Coffee and hot snacks",
+    "svc": false
+   },
+   {
+    "n": "Phone top-ups",
+    "svc": true
+   }
+  ],
+  "boutique": [
+   {
+    "n": "Personal styling",
+    "svc": true
+   },
+   {
+    "n": "Made-to-measure",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Everyday clothing",
+    "svc": false
+   },
+   {
+    "n": "Signature pieces",
+    "svc": false
+   },
+   {
+    "n": "Coats and knitwear",
+    "svc": false
+   },
+   {
+    "n": "Summer dresses and linen",
+    "svc": false
+   },
+   {
+    "n": "Accessories",
+    "svc": false
+   },
+   {
+    "n": "Gift cards",
+    "svc": true
+   },
+   {
+    "n": "Alterations",
+    "svc": true,
+    "dev": true
+   }
+  ],
+  "webshop": [
+   {
+    "n": "Premium returns",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Marketplace listing",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Own-brand range",
+    "svc": false
+   },
+   {
+    "n": "Branded goods (stocked)",
+    "svc": false
+   },
+   {
+    "n": "Dropshipped goods",
+    "svc": false
+   },
+   {
+    "n": "Subscription box",
+    "svc": false
+   },
+   {
+    "n": "Gift sets and bundles",
+    "svc": false
+   },
+   {
+    "n": "Express delivery",
+    "svc": true
+   }
+  ],
+  "grocery": [
+   {
+    "n": "Wine and spirits",
+    "svc": false
+   },
+   {
+    "n": "Tobacco",
+    "svc": false
+   },
+   {
+    "n": "Parcel pickup point",
+    "svc": true
+   },
+   {
+    "n": "Over-the-counter health",
+    "svc": false
+   },
+   {
+    "n": "Home delivery",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Organic range",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Fresh fruit and vegetables",
+    "svc": false
+   },
+   {
+    "n": "Dairy and eggs",
+    "svc": false
+   },
+   {
+    "n": "Meat and fish counter",
+    "svc": false
+   },
+   {
+    "n": "Bakery counter",
+    "svc": false
+   },
+   {
+    "n": "Delicatessen counter",
+    "svc": false
+   },
+   {
+    "n": "Pantry, drinks and dry goods",
+    "svc": false
+   },
+   {
+    "n": "Own-label basics",
+    "svc": false
+   },
+   {
+    "n": "Ready meals",
+    "svc": false
+   }
+  ],
+  "hardware": [
+   {
+    "n": "Tool hire",
+    "svc": true
+   },
+   {
+    "n": "Own-brand tools",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Smart home range",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Kitchen fitting advice",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Hand and power tools",
+    "svc": false
+   },
+   {
+    "n": "Paint and decorating",
+    "svc": false
+   },
+   {
+    "n": "Timber and sheet materials",
+    "svc": false
+   },
+   {
+    "n": "Building supplies",
+    "svc": false
+   },
+   {
+    "n": "Fixings and ironmongery",
+    "svc": false
+   },
+   {
+    "n": "Electrical and plumbing fittings",
+    "svc": false
+   },
+   {
+    "n": "Garden range",
+    "svc": false
+   },
+   {
+    "n": "Timber cutting and paint mixing",
+    "svc": true
+   }
+  ],
+  "usedcar": [
+   {
+    "n": "Certified pre-owned cars",
+    "svc": false
+   },
+   {
+    "n": "Finance packages",
+    "svc": true
+   },
+   {
+    "n": "Extended warranty",
+    "svc": true
+   },
+   {
+    "n": "Trade-in service",
+    "svc": true
+   },
+   {
+    "n": "Car valeting and prep",
+    "svc": true
+   },
+   {
+    "n": "Service plans",
+    "svc": true
+   },
+   {
+    "n": "Accessories and tyres",
+    "svc": false
+   },
+   {
+    "n": "Vans and light commercials",
+    "svc": false
+   }
+  ],
+  "cardealer": [
+   {
+    "n": "Certified used cars",
+    "svc": false
+   },
+   {
+    "n": "Finance packages",
+    "svc": true
+   },
+   {
+    "n": "Extended warranty",
+    "svc": true
+   },
+   {
+    "n": "Trade-in service",
+    "svc": true
+   },
+   {
+    "n": "Electric vehicle range",
+    "svc": false
+   },
+   {
+    "n": "Service plan",
+    "svc": true
+   },
+   {
+    "n": "Accessories",
+    "svc": false
+   },
+   {
+    "n": "Car subscription",
+    "svc": true,
+    "dev": true
+   }
+  ],
+  "construction": [
+   {
+    "n": "Home extensions",
+    "svc": true
+   },
+   {
+    "n": "Loft conversions",
+    "svc": true
+   },
+   {
+    "n": "New-build houses",
+    "svc": true
+   },
+   {
+    "n": "Renovation packages",
+    "svc": true
+   },
+   {
+    "n": "Commercial fit-out",
+    "svc": true
+   },
+   {
+    "n": "Roofing",
+    "svc": true
+   },
+   {
+    "n": "Project management",
+    "svc": true
+   },
+   {
+    "n": "Maintenance contracts",
+    "svc": true
+   }
+  ],
+  "electrician": [
+   {
+    "n": "Rewiring",
+    "svc": true
+   },
+   {
+    "n": "Fuse board upgrade",
+    "svc": true
+   },
+   {
+    "n": "EV charger install",
+    "svc": true
+   },
+   {
+    "n": "Smart home install",
+    "svc": true
+   },
+   {
+    "n": "Safety inspection plan",
+    "svc": true
+   },
+   {
+    "n": "Emergency call-out",
+    "svc": true
+   },
+   {
+    "n": "Lighting design",
+    "svc": true
+   },
+   {
+    "n": "Solar panel connection",
+    "svc": true
+   }
+  ],
+  "plumber": [
+   {
+    "n": "Boiler service plan",
+    "svc": true
+   },
+   {
+    "n": "Bathroom fitting",
+    "svc": true
+   },
+   {
+    "n": "Emergency call-out",
+    "svc": true
+   },
+   {
+    "n": "Underfloor heating",
+    "svc": true
+   },
+   {
+    "n": "Leak detection",
+    "svc": true
+   },
+   {
+    "n": "Drain clearing",
+    "svc": true
+   },
+   {
+    "n": "Heat pump install",
+    "svc": true
+   },
+   {
+    "n": "Landlord safety certificates",
+    "svc": true
+   }
+  ],
+  "realdev": [
+   {
+    "n": "Starter flats",
+    "svc": true
+   },
+   {
+    "n": "Family houses",
+    "svc": true
+   },
+   {
+    "n": "Luxury apartments",
+    "svc": true
+   },
+   {
+    "n": "Student housing",
+    "svc": true
+   },
+   {
+    "n": "Conversion of old buildings",
+    "svc": true
+   },
+   {
+    "n": "Retirement living",
+    "svc": true
+   },
+   {
+    "n": "Mixed-use block",
+    "svc": true
+   },
+   {
+    "n": "Self-build plots",
+    "svc": true
+   }
+  ],
+  "event": [
+   {
+    "n": "Weddings",
+    "svc": true
+   },
+   {
+    "n": "Corporate conferences",
+    "svc": true
+   },
+   {
+    "n": "Product launches",
+    "svc": true
+   },
+   {
+    "n": "Festivals",
+    "svc": true
+   },
+   {
+    "n": "Private parties",
+    "svc": true
+   },
+   {
+    "n": "Charity galas",
+    "svc": true
+   },
+   {
+    "n": "Team-building days",
+    "svc": true
+   },
+   {
+    "n": "Virtual events",
+    "svc": true
+   }
+  ],
+  "engcons": [
+   {
+    "n": "Structural design",
+    "svc": true
+   },
+   {
+    "n": "Feasibility study",
+    "svc": true
+   },
+   {
+    "n": "Site supervision",
+    "svc": true
+   },
+   {
+    "n": "Environmental assessment",
+    "svc": true
+   },
+   {
+    "n": "Project audit",
+    "svc": true
+   },
+   {
+    "n": "Energy efficiency review",
+    "svc": true
+   },
+   {
+    "n": "Retainer contract",
+    "svc": true
+   },
+   {
+    "n": "Technical training",
+    "svc": true
+   }
+  ],
+  "bakery": [
+   {
+    "n": "Sourdough loaves",
+    "svc": false
+   },
+   {
+    "n": "Wedding cakes",
+    "svc": false
+   },
+   {
+    "n": "Gluten-free range",
+    "svc": false
+   },
+   {
+    "n": "Breakfast catering",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Pastry box",
+    "svc": false
+   },
+   {
+    "n": "Seasonal bakes",
+    "svc": false
+   },
+   {
+    "n": "Bread subscription",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Baking classes",
+    "svc": true,
+    "dev": true
+   }
+  ],
+  "brewery": [
+   {
+    "n": "Seasonal ale",
+    "svc": false
+   },
+   {
+    "n": "Tap room tours",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Gift packs",
+    "svc": false
+   },
+   {
+    "n": "Keg service for pubs",
+    "svc": false
+   },
+   {
+    "n": "Low-alcohol range",
+    "svc": false
+   },
+   {
+    "n": "Barrel-aged special",
+    "svc": false
+   },
+   {
+    "n": "Brewing experience day",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Merchandise",
+    "svc": false
+   }
+  ],
+  "furniture": [
+   {
+    "n": "Bespoke shelving",
+    "svc": true
+   },
+   {
+    "n": "Outdoor bench",
+    "svc": false
+   },
+   {
+    "n": "Table tops for retail partners",
+    "svc": false
+   },
+   {
+    "n": "Repair and reupholstery",
+    "svc": true
+   }
+  ],
+  "salmon": [
+   {
+    "n": "Gift hampers",
+    "svc": false
+   },
+   {
+    "n": "Hot-smoked portions",
+    "svc": false
+   },
+   {
+    "n": "Salmon burgers",
+    "svc": false
+   },
+   {
+    "n": "Live smolt sale",
+    "svc": false
+   }
+  ],
+  "factory": [
+   {
+    "n": "Surface treatment",
+    "svc": true
+   },
+   {
+    "n": "Branded product run",
+    "svc": false
+   },
+   {
+    "n": "Tooling build",
+    "svc": true
+   },
+   {
+    "n": "Welded frames",
+    "svc": false
+   }
+  ],
+  "farm": [
+   {
+    "n": "Veg boxes",
+    "svc": false
+   },
+   {
+    "n": "Free-range eggs",
+    "svc": false
+   },
+   {
+    "n": "Farm shop",
+    "svc": false
+   },
+   {
+    "n": "Pick-your-own",
+    "svc": false
+   },
+   {
+    "n": "Organic dairy",
+    "svc": false
+   },
+   {
+    "n": "Seasonal meat",
+    "svc": false
+   },
+   {
+    "n": "Farm tours",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Wholesale produce",
+    "svc": false
+   }
+  ],
+  "taxi": [
+   {
+    "n": "Airport transfers",
+    "svc": true
+   },
+   {
+    "n": "Corporate accounts",
+    "svc": true
+   },
+   {
+    "n": "Night rides",
+    "svc": true
+   },
+   {
+    "n": "School runs",
+    "svc": true
+   },
+   {
+    "n": "Long-distance trips",
+    "svc": true
+   },
+   {
+    "n": "Executive cars",
+    "svc": true
+   },
+   {
+    "n": "Wheelchair-accessible rides",
+    "svc": true
+   },
+   {
+    "n": "Tourist tours",
+    "svc": true
+   }
+  ],
+  "courier": [
+   {
+    "n": "Same-day delivery",
+    "svc": true
+   },
+   {
+    "n": "Next-day parcels",
+    "svc": true
+   },
+   {
+    "n": "Bike courier",
+    "svc": true
+   },
+   {
+    "n": "Pallet delivery",
+    "svc": true
+   },
+   {
+    "n": "Medical couriers",
+    "svc": true
+   },
+   {
+    "n": "Returns collection",
+    "svc": true
+   },
+   {
+    "n": "Business contracts",
+    "svc": true
+   },
+   {
+    "n": "Tracking premium",
+    "svc": true
+   }
+  ],
+  "trucking": [
+   {
+    "n": "Full loads",
+    "svc": true
+   },
+   {
+    "n": "Refrigerated transport",
+    "svc": true
+   },
+   {
+    "n": "Express freight",
+    "svc": true
+   },
+   {
+    "n": "Cross-border haulage",
+    "svc": true
+   },
+   {
+    "n": "Dedicated contract",
+    "svc": true
+   },
+   {
+    "n": "Heavy haulage",
+    "svc": true
+   },
+   {
+    "n": "Part loads",
+    "svc": true
+   },
+   {
+    "n": "Fuel card service",
+    "svc": true
+   }
+  ],
+  "shipping": [
+   {
+    "n": "Container freight",
+    "svc": true
+   },
+   {
+    "n": "Bulk cargo",
+    "svc": true
+   },
+   {
+    "n": "Refrigerated cargo",
+    "svc": true
+   },
+   {
+    "n": "Express feeder",
+    "svc": true
+   },
+   {
+    "n": "Port handling",
+    "svc": true
+   },
+   {
+    "n": "Charter service",
+    "svc": true
+   },
+   {
+    "n": "Project cargo",
+    "svc": true
+   },
+   {
+    "n": "Insurance bundle",
+    "svc": true
+   }
+  ],
+  "airline": [
+   {
+    "n": "Business class cabin",
+    "svc": true
+   },
+   {
+    "n": "Cargo hold",
+    "svc": true
+   },
+   {
+    "n": "Charter flights",
+    "svc": true
+   },
+   {
+    "n": "Frequent flyer club",
+    "svc": true
+   },
+   {
+    "n": "Extra legroom",
+    "svc": true
+   },
+   {
+    "n": "Priority boarding",
+    "svc": true
+   },
+   {
+    "n": "Seasonal routes",
+    "svc": true
+   },
+   {
+    "n": "In-flight dining",
+    "svc": true
+   }
+  ],
+  "wh3pl": [
+   {
+    "n": "Pick and pack",
+    "svc": true
+   },
+   {
+    "n": "Cold storage",
+    "svc": true
+   },
+   {
+    "n": "Returns handling",
+    "svc": true
+   },
+   {
+    "n": "Pallet storage",
+    "svc": true
+   },
+   {
+    "n": "Cross-docking",
+    "svc": true
+   },
+   {
+    "n": "Kitting and labelling",
+    "svc": true
+   },
+   {
+    "n": "Inventory reporting",
+    "svc": true
+   },
+   {
+    "n": "Same-day dispatch",
+    "svc": true
+   }
+  ],
+  "resrent": [
+   {
+    "n": "Property management plan",
+    "svc": true
+   },
+   {
+    "n": "Rent guarantee cover",
+    "svc": true
+   },
+   {
+    "n": "Utilities bundle",
+    "svc": true
+   },
+   {
+    "n": "Furnishing pack",
+    "svc": true
+   },
+   {
+    "n": "Inventory and check-in service",
+    "svc": true
+   },
+   {
+    "n": "Garden and communal upkeep plan",
+    "svc": true
+   }
+  ],
+  "comrent": [
+   {
+    "n": "Reception and mail service",
+    "svc": true
+   },
+   {
+    "n": "Meeting room booking",
+    "svc": true
+   },
+   {
+    "n": "Event space",
+    "svc": true
+   },
+   {
+    "n": "Fit-out package",
+    "svc": true
+   },
+   {
+    "n": "Serviced-office package",
+    "svc": true
+   },
+   {
+    "n": "Cleaning and security contract",
+    "svc": true
+   }
+  ],
+  "parking": [
+   {
+    "n": "Valet parking",
+    "svc": true
+   },
+   {
+    "n": "EV charging session",
+    "svc": true
+   },
+   {
+    "n": "Car wash add-on",
+    "svc": true
+   },
+   {
+    "n": "Event parking",
+    "svc": true
+   },
+   {
+    "n": "Monthly permit",
+    "svc": true
+   },
+   {
+    "n": "Reserved bay",
+    "svc": true
+   }
+  ],
+  "insco": [
+   {
+    "n": "Home cover",
+    "svc": true
+   },
+   {
+    "n": "Motor cover",
+    "svc": true
+   },
+   {
+    "n": "Travel cover",
+    "svc": true
+   },
+   {
+    "n": "Business cover",
+    "svc": true
+   },
+   {
+    "n": "Pet cover",
+    "svc": true
+   },
+   {
+    "n": "Life cover",
+    "svc": true
+   },
+   {
+    "n": "Gadget cover",
+    "svc": true
+   },
+   {
+    "n": "Cyber cover",
+    "svc": true
+   }
+  ],
+  "bank": [
+   {
+    "n": "Savings account",
+    "svc": true
+   },
+   {
+    "n": "Mortgage",
+    "svc": true
+   },
+   {
+    "n": "Business loan",
+    "svc": true
+   },
+   {
+    "n": "Credit card",
+    "svc": true
+   },
+   {
+    "n": "Overdraft",
+    "svc": true
+   },
+   {
+    "n": "Foreign exchange",
+    "svc": true
+   },
+   {
+    "n": "Wealth management",
+    "svc": true
+   },
+   {
+    "n": "Student account",
+    "svc": true
+   }
+  ],
+  "fund": [
+   {
+    "n": "Growth fund",
+    "svc": true
+   },
+   {
+    "n": "Income fund",
+    "svc": true
+   },
+   {
+    "n": "Index tracker",
+    "svc": true
+   },
+   {
+    "n": "Ethical fund",
+    "svc": true
+   },
+   {
+    "n": "Property fund",
+    "svc": true
+   },
+   {
+    "n": "Bond fund",
+    "svc": true
+   },
+   {
+    "n": "Pension portfolio",
+    "svc": true
+   },
+   {
+    "n": "Managed portfolio",
+    "svc": true
+   }
+  ],
+  "power": [
+   {
+    "n": "Green tariff",
+    "svc": true
+   },
+   {
+    "n": "Fixed-price plan",
+    "svc": true
+   },
+   {
+    "n": "Business supply",
+    "svc": true
+   },
+   {
+    "n": "Solar installation",
+    "svc": true
+   },
+   {
+    "n": "Battery storage",
+    "svc": true
+   },
+   {
+    "n": "EV charging network",
+    "svc": true
+   },
+   {
+    "n": "Smart meter service",
+    "svc": true
+   },
+   {
+    "n": "Heat pump bundle",
+    "svc": true
+   }
+  ],
+  "oilgas": [
+   {
+    "n": "Premium fuel grade",
+    "svc": true
+   },
+   {
+    "n": "Heating oil",
+    "svc": true
+   },
+   {
+    "n": "Lubricants",
+    "svc": true
+   },
+   {
+    "n": "Bunkering",
+    "svc": true
+   },
+   {
+    "n": "Gas supply contract",
+    "svc": true
+   },
+   {
+    "n": "Exploration licence",
+    "svc": true
+   },
+   {
+    "n": "Storage service",
+    "svc": true
+   },
+   {
+    "n": "Retail forecourts",
+    "svc": true
+   }
+  ],
+  "dental": [
+   {
+    "n": "Children's check-up",
+    "svc": true
+   },
+   {
+    "n": "Root canal",
+    "svc": true
+   },
+   {
+    "n": "Clear aligners",
+    "svc": true
+   },
+   {
+    "n": "Night guard",
+    "svc": true
+   }
+  ],
+  "gamestudio": [
+   {
+    "n": "Game engine licence",
+    "svc": true
+   },
+   {
+    "n": "Merchandise",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Soundtrack and art book",
+    "svc": false,
+    "dev": true
+   },
+   {
+    "n": "Early access season",
+    "svc": true
+   }
+  ],
+  "security": [
+   {
+    "n": "Guarding contract",
+    "svc": true
+   },
+   {
+    "n": "Alarm monitoring",
+    "svc": true
+   },
+   {
+    "n": "CCTV install",
+    "svc": true
+   },
+   {
+    "n": "Event security",
+    "svc": true
+   },
+   {
+    "n": "Mobile patrols",
+    "svc": true
+   },
+   {
+    "n": "Key holding",
+    "svc": true
+   },
+   {
+    "n": "Risk assessment",
+    "svc": true
+   },
+   {
+    "n": "Close protection",
+    "svc": true
+   }
+  ],
+  "vineyard": [
+   {
+    "n": "Estate red",
+    "svc": false
+   },
+   {
+    "n": "Sparkling range",
+    "svc": false
+   },
+   {
+    "n": "Rose wine",
+    "svc": false
+   },
+   {
+    "n": "Wine club subscription",
+    "svc": false
+   },
+   {
+    "n": "Cellar-door tastings",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Vineyard tours",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Wedding venue",
+    "svc": true,
+    "dev": true
+   },
+   {
+    "n": "Gift cases",
+    "svc": false
+   }
+  ],
+  "pcbang": [
+   {
+    "n": "Snacks and drinks",
+    "svc": true
+   },
+   {
+    "n": "Tournament entry",
+    "svc": true
+   },
+   {
+    "n": "Night pass",
+    "svc": true
+   },
+   {
+    "n": "Private room hire",
+    "svc": true
+   },
+   {
+    "n": "Esports coaching",
+    "svc": true
+   },
+   {
+    "n": "Membership plan",
+    "svc": true
+   },
+   {
+    "n": "Birthday package",
+    "svc": true
+   }
+  ],
+  "carrental": [
+   {
+    "n": "Insurance excess waiver",
+    "svc": true
+   },
+   {
+    "n": "Child seat and sat-nav",
+    "svc": true
+   },
+   {
+    "n": "Chauffeur service",
+    "svc": true
+   },
+   {
+    "n": "Airport delivery",
+    "svc": true
+   },
+   {
+    "n": "One-way rental fee",
+    "svc": true
+   },
+   {
+    "n": "Long-term lease plan",
+    "svc": true
+   }
+  ],
+  "hold": [
+   {
+    "n": "Management services",
+    "svc": true
+   },
+   {
+    "n": "Shared back office",
+    "svc": true
+   },
+   {
+    "n": "Treasury service",
+    "svc": true
+   },
+   {
+    "n": "Group purchasing",
+    "svc": true
+   },
+   {
+    "n": "Brand licensing",
+    "svc": true
+   },
+   {
+    "n": "Property portfolio",
+    "svc": true
+   },
+   {
+    "n": "Consulting to units",
+    "svc": true
+   },
+   {
+    "n": "Training academy",
+    "svc": true
+   }
+  ],
+  "club": [
+   {
+    "n": "Youth academy",
+    "svc": true
+   },
+   {
+    "n": "Matchday hospitality",
+    "svc": true
+   },
+   {
+    "n": "Stadium tour",
+    "svc": true
+   },
+   {
+    "n": "Fan club membership",
+    "svc": true
+   },
+   {
+    "n": "Pay-per-view stream",
+    "svc": true
+   },
+   {
+    "n": "Corporate boxes",
+    "svc": true
+   },
+   {
+    "n": "Guest passes",
+    "svc": true
+   },
+   {
+    "n": "Coaching sessions",
+    "svc": true
+   }
+  ]
+ }
+}

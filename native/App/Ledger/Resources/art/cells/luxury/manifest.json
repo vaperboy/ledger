@@ -1,0 +1,215 @@
+{
+ "sheet": "luxury",
+ "cells": {
+  "watches-1": {
+   "file": "luxury/watches-1.jpg",
+   "row": 0,
+   "col": 0,
+   "group": "watches",
+   "caption": "Chrono Heritage"
+  },
+  "watches-2": {
+   "file": "luxury/watches-2.jpg",
+   "row": 0,
+   "col": 1,
+   "group": "watches",
+   "caption": "Deep-Sea Mariner"
+  },
+  "watches-3": {
+   "file": "luxury/watches-3.jpg",
+   "row": 0,
+   "col": 2,
+   "group": "watches",
+   "caption": "Aura Tourbillon"
+  },
+  "watches-4": {
+   "file": "luxury/watches-4.jpg",
+   "row": 0,
+   "col": 3,
+   "group": "watches",
+   "caption": "Eclipse GMT"
+  },
+  "watches-5": {
+   "file": "luxury/watches-5.jpg",
+   "row": 0,
+   "col": 4,
+   "group": "watches",
+   "caption": "Regal Gold"
+  },
+  "watches-6": {
+   "file": "luxury/watches-6.jpg",
+   "row": 0,
+   "col": 5,
+   "group": "watches",
+   "caption": "Avant-Garde Concept"
+  },
+  "jewellery-1": {
+   "file": "luxury/jewellery-1.jpg",
+   "row": 1,
+   "col": 0,
+   "group": "jewellery",
+   "caption": "Cascade Diamond Necklace"
+  },
+  "jewellery-2": {
+   "file": "luxury/jewellery-2.jpg",
+   "row": 1,
+   "col": 1,
+   "group": "jewellery",
+   "caption": "Imperial Sapphire Drop"
+  },
+  "jewellery-3": {
+   "file": "luxury/jewellery-3.jpg",
+   "row": 1,
+   "col": 2,
+   "group": "jewellery",
+   "caption": "Aurelia Cuff"
+  },
+  "jewellery-4": {
+   "file": "luxury/jewellery-4.jpg",
+   "row": 1,
+   "col": 3,
+   "group": "jewellery",
+   "caption": "Elysian Emerald Ring"
+  },
+  "jewellery-5": {
+   "file": "luxury/jewellery-5.jpg",
+   "row": 1,
+   "col": 4,
+   "group": "jewellery",
+   "caption": "Majestic Pearl Choker"
+  },
+  "jewellery-6": {
+   "file": "luxury/jewellery-6.jpg",
+   "row": 1,
+   "col": 5,
+   "group": "jewellery",
+   "caption": "Solitaire Platinum Band"
+  },
+  "art-1": {
+   "file": "luxury/art-1.jpg",
+   "row": 2,
+   "col": 0,
+   "group": "art",
+   "caption": "Abstract Fusion"
+  },
+  "art-2": {
+   "file": "luxury/art-2.jpg",
+   "row": 2,
+   "col": 1,
+   "group": "art",
+   "caption": "Sovereign Dynasty Vase"
+  },
+  "art-3": {
+   "file": "luxury/art-3.jpg",
+   "row": 2,
+   "col": 2,
+   "group": "art",
+   "caption": "Siren Sculpture"
+  },
+  "art-4": {
+   "file": "luxury/art-4.jpg",
+   "row": 2,
+   "col": 3,
+   "group": "art",
+   "caption": "Pre-War Heritage Mascot"
+  },
+  "art-5": {
+   "file": "luxury/art-5.jpg",
+   "row": 2,
+   "col": 4,
+   "group": "art",
+   "caption": "Ancient Relic Artifact"
+  },
+  "art-6": {
+   "file": "luxury/art-6.jpg",
+   "row": 2,
+   "col": 5,
+   "group": "art",
+   "caption": "Bespoke Glass installation"
+  },
+  "yachtjet-1": {
+   "file": "luxury/yachtjet-1.jpg",
+   "row": 3,
+   "col": 0,
+   "group": "yachtjet",
+   "caption": "Grand Horizon Mega Yacht (80m+)"
+  },
+  "yachtjet-2": {
+   "file": "luxury/yachtjet-2.jpg",
+   "row": 3,
+   "col": 1,
+   "group": "yachtjet",
+   "caption": "Zephyr Sport Yacht (30m)"
+  },
+  "yachtjet-3": {
+   "file": "luxury/yachtjet-3.jpg",
+   "row": 3,
+   "col": 2,
+   "group": "yachtjet",
+   "caption": "Aura Sailing Yacht"
+  },
+  "yachtjet-4": {
+   "file": "luxury/yachtjet-4.jpg",
+   "row": 3,
+   "col": 3,
+   "group": "yachtjet",
+   "caption": "Stratosphere Private Jet (Ultra-Long)"
+  },
+  "yachtjet-5": {
+   "file": "luxury/yachtjet-5.jpg",
+   "row": 3,
+   "col": 4,
+   "group": "yachtjet",
+   "caption": "Ascent Heavy Jet"
+  },
+  "yachtjet-6": {
+   "file": "luxury/yachtjet-6.jpg",
+   "row": 3,
+   "col": 5,
+   "group": "yachtjet",
+   "caption": "Vanguard Mid-Size Jet"
+  },
+  "homes-1": {
+   "file": "luxury/homes-1.jpg",
+   "row": 4,
+   "col": 0,
+   "group": "homes",
+   "caption": "Light business Jet"
+  },
+  "homes-2": {
+   "file": "luxury/homes-2.jpg",
+   "row": 4,
+   "col": 1,
+   "group": "homes",
+   "caption": "Pacific Waterfront Villa"
+  },
+  "homes-3": {
+   "file": "luxury/homes-3.jpg",
+   "row": 4,
+   "col": 2,
+   "group": "homes",
+   "caption": "Grand Urban Townhouse"
+  },
+  "homes-4": {
+   "file": "luxury/homes-4.jpg",
+   "row": 4,
+   "col": 3,
+   "group": "homes",
+   "caption": "Alpine Chalet"
+  },
+  "homes-5": {
+   "file": "luxury/homes-5.jpg",
+   "row": 4,
+   "col": 4,
+   "group": "homes",
+   "caption": "Regal Country Estate"
+  },
+  "homes-6": {
+   "file": "luxury/homes-6.jpg",
+   "row": 4,
+   "col": 5,
+   "group": "homes",
+   "caption": "Solitude Island Estate"
+  }
+ }
+}

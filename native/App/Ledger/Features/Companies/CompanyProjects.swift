@@ -1,0 +1,387 @@
+import SwiftUI
+import GameCore
+import Countries
+import Businesses
+import Simulation
+
+/// The order book of a project company: jobs on the go and waiting, tenders to bid for, and for a real-estate developer
+/// the developments (zoning, building, selling) and the sheet that starts a new one. Everything is read from
+/// `engine.projectBoard` and changed through the engine's project actions; no money is worked out here.
+struct CompanyProjects: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+
+    var body: some View {
+        if let board = engine.projectBoard(companyID: company.id) {
+            if board.isDeveloper {
+                DevelopmentList(engine: engine, company: company, board: board).modifier(FlatBlocks())
+            } else {
+                JobList(engine: engine, company: company, board: board).modifier(FlatBlocks())
+            }
+        } else {
+            Text("This business does not take projects.").textStyle(.body, tint: Theme.inkSoft)
+        }
+    }
+}
+
+/// The projects section's blocks sit on the page: plain cards inside draw flat.
+private struct FlatBlocks: ViewModifier {
+    func body(content: Content) -> some View { content.environment(\.insideCard, true) }
+}
+
+// MARK: Jobs, tenders
+
+private struct JobList: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    var board: ProjectBoard
+    @State private var openTender: Int? = nil
+    @State private var priceIndex = 3
+    @State private var higherQuality = false
+    private let prices: [Double] = [0.85, 0.9, 0.95, 1.0, 1.05, 1.1]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.projects, title: board.isEvent ? "Bookings" : "Jobs", blurb: board.isEvent ? "Events booked, what is due and the tenders you can bid for." : "Jobs on the go and waiting, and the tenders you can bid for.")
+            Card(padding: Theme.Space.l, radius: Theme.Radius.hero) { FigureStrip(items: figureItems) }
+            MoreBlock(title: board.isEvent ? "Bookings" : "Jobs on the go", card: false, trailing: {
+                Text("last week \(board.lastWeekTaken) of \(board.lastWeekRequests) requests taken").textStyle(.caption, tint: Theme.inkFaint)
+            }) {
+                if board.jobs.isEmpty && board.queuedJobs.isEmpty {
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
+                        Text(board.hoursPerWeek > 0 ? "Nothing booked yet. Requests come in through the week; marketing and a good name bring more." : "The firm cannot take work yet: check staff and equipment under Operations.")
+                            .textStyle(.caption, tint: Theme.inkFaint)
+                    }
+                }
+                VStack(spacing: Theme.Space.m) {
+                    ForEach(board.jobs, id: \.id) { (j: ProjectBoard.JobRow) in jobRow(j) }
+                    if !board.queuedJobs.isEmpty {
+                        Text("Waiting their turn").capsLabel(Theme.ivoryFaint).frame(maxWidth: .infinity, alignment: .leading).padding(.top, Theme.Space.xs)
+                        ForEach(board.queuedJobs, id: \.id) { (j: ProjectBoard.JobRow) in jobRow(j) }
+                    }
+                }
+                Text(terms)
+                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+            }
+            tenders
+        }
+    }
+
+    private var figureItems: [KeyFigures.Item] {
+        let bookedLabel: String = board.isEvent ? "Booked" : "Booked ahead"
+        let bookedValue: String = board.weeksBooked < 0.2 ? "Nothing yet" : String(format: "%.1f wk", board.weeksBooked)
+        let hours: String = "\(Int(board.bookedHours.rounded())) of \(Int(board.hoursPerWeek.rounded())) h a week"
+        let doneLabel: String = board.isEvent ? "Delivered" : "Finished"
+        return [
+            .init(label: bookedLabel, value: bookedValue, tint: board.weeksBooked > 3 ? Theme.caution : Theme.ivory, sub: hours),
+            .init(label: "Still to be paid", value: store.short(board.outstandingPayments, in: company), sub: "on jobs in hand"),
+            .init(label: doneLabel, value: "\(board.finishedCount)", sub: "since opening"),
+        ]
+    }
+
+    private var terms: String {
+        board.isEvent
+            ? "Clients pay 30% when they book and the rest after the event. Preparation goes to the nearest date first; a booking is turned away when the team cannot prepare it in time."
+            : "Short jobs are paid when finished. Big or long jobs pay 30% at the start, 40% halfway and the rest at the end. Business clients then pay their invoices after a few weeks. New requests are turned away when you are booked more than three weeks ahead."
+    }
+
+    private func jobRow(_ j: ProjectBoard.JobRow) -> some View {
+        EntityCard { jobBody(j) }
+    }
+
+    private func jobBody(_ j: ProjectBoard.JobRow) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(j.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                    Text(subtitle(j)).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(store.short(j.value, in: company)).textStyle(.headline, tint: Theme.ink, numeric: true, weight: .semibold)
+                    Text("margin before pay \(Int((j.margin * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                }
+            }
+            if j.started {
+                RateBar(label: "\(Int(j.hoursDone.rounded())) of \(Int(j.hours.rounded())) h", fraction: j.progress, tint: j.held ? Theme.caution : Theme.gain)
+                    .animation(Motion.quickAnimation, value: j.progress)
+                if j.held { Text("Held up").textStyle(.caption, tint: Theme.warn) }
+            }
+        }
+    }
+
+    private func subtitle(_ j: ProjectBoard.JobRow) -> String {
+        var parts = [j.client]
+        if let w = j.dueWeek, board.isEvent { parts.append("on \(GameCalendar.dateString(week: w))") }
+        else { parts.append("\(Int(j.quotedHours.rounded())) h"); if j.isPublic { parts.append("public client") } }
+        if j.paid > 0 { parts.append("paid \(store.short(j.paid, in: company))") }
+        return parts.joined(separator: " · ")
+    }
+
+    // Tenders: buyers publish work; the best score on price and quality wins.
+    @ViewBuilder private var tenders: some View {
+        if ProjectTenders.catalog[company.type] != nil {
+            MoreBlock(title: "Tenders", card: false, trailing: {
+                if board.hasManager {
+                    Button(board.managerBids ? "Manager bids: on" : "Manager bids: off") {
+                        let on: Bool = !board.managerBids
+                        store.act { $0.setManagerBids(companyID: company.id, on: on) }
+                        Haptics.choose()
+                        store.saved(on ? "your manager now bids on tenders" : "you bid on tenders yourself")
+                    }.buttonStyle(TinyButtonStyle())
+                }
+            }) {
+                if board.tenders.isEmpty {
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
+                        Text("Nothing is open for tender right now. New ones come every few weeks.").textStyle(.caption, tint: Theme.inkSoft)
+                    }
+                }
+                VStack(spacing: Theme.Space.m) {
+                    ForEach(board.tenders, id: \.id) { (t: ProjectBoard.TenderRow) in tenderRow(t) }
+                }
+                let results = board.myTenders.filter { $0.outcome != nil }
+                if !results.isEmpty {
+                    Text("Results").capsLabel(Theme.ivoryFaint).padding(.top, Theme.Space.s)
+                    VStack(spacing: Theme.Space.m) {
+                        ForEach(Array(results.prefix(5)), id: \.id) { (t: ProjectBoard.TenderRow) in
+                            let outcomeText: String = t.outcome == "won" ? "Won" : t.outcome == "lost" ? "Lost" : "Closed"
+                            EntityCard {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(t.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                                        Text(t.buyer).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                                    }
+                                    Spacer()
+                                    Chip(text: outcomeText, tint: t.outcome == "won" ? Theme.gain : Theme.ivoryMuted)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func tenderRow(_ t: ProjectBoard.TenderRow) -> some View {
+        EntityCard { tenderBody(t) }
+    }
+
+    private func tenderBody(_ t: ProjectBoard.TenderRow) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button {
+                Motion.animate(Motion.quickAnimation) { openTender = openTender == t.id ? nil : t.id }
+                Haptics.choose()
+            } label: {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(t.title.tidyMoney).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2).multilineTextAlignment(.leading)
+                        Text("\(t.buyer) · about \(store.short(t.worth, in: company))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                        if let r = t.requirement, !t.qualifies { Text("Needs \(r)").textStyle(.caption, tint: Theme.warn) }
+                    }
+                    Spacer(minLength: 8)
+                    if let b = t.myBid { Chip(text: "Bid \(Int((b * 100).rounded()))%", tint: Theme.gold) }
+                    else { Text("\(t.weeksToBid) wk to bid").textStyle(.caption, tint: Theme.accent, numeric: true) }
+                    MoreChevron()
+                }
+                .contentShape(Rectangle())
+            }.buttonStyle(PressableStyle())
+            if openTender == t.id { tenderSheet(t) }
+        }
+    }
+
+    private func tenderSheet(_ t: ProjectBoard.TenderRow) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            valueRow("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int((t.priceWeight * 100).rounded()))% · quality \(Int(((1 - t.priceWeight) * 100).rounded()))%")
+            valueRow("Bids close", "in \(t.weeksToBid.weeksText) · award \(GameCalendar.dateString(week: t.awardWeek))")
+            valueRow("Writing the bid costs", store.money(t.bidCost, in: company))
+            if t.myBid != nil {
+                Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").textStyle(.caption, tint: Theme.inkFaint)
+                Button("Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
+                    .buttonStyle(TinyButtonStyle())
+            } else if !t.qualifies {
+                Text("The firm does not meet the buyer's requirements yet.").textStyle(.caption, tint: Theme.warn)
+            } else {
+                Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
+                SectionTabs(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
+                Toggle(isOn: $higherQuality) {
+                    Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
+                }.tint(Theme.gold)
+                Button("Send the bid") {
+                    let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: prices[priceIndex], higherQuality: higherQuality) }
+                    switch r {
+                    case .sent?: Haptics.success(); store.show("Bid sent. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil
+                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company to write the bid.", tone: "warn")
+                    case .notQualified(let why)?: Haptics.warning(); store.show(why, tone: "warn")
+                    default: Haptics.warning(); store.show("This tender has closed.", tone: "warn")
+                    }
+                }.buttonStyle(TinyButtonStyle())
+            }
+        }
+        .padding(.bottom, Theme.Space.xs)
+    }
+
+    private func valueRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).textStyle(.caption, tint: Theme.inkSoft)
+            Spacer(minLength: 8)
+            Text(value).textStyle(.caption, tint: Theme.ink, numeric: true).multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+// MARK: Developments
+
+private struct DevelopmentList: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    var board: ProjectBoard
+    @State private var sizeIndex = 2
+    @State private var financed = true
+    @State private var showStart = false
+    @State private var pending: PendingAction?
+    private let sizes: [(name: String, factor: Double)] = [("Small", 0.4), ("Half", 0.5), ("Full", 1.0)]
+
+    var body: some View {
+        let active = board.developments
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.projects, title: "Developments", blurb: "Land, zoning, building and selling units: each development is one project with its own risks.")
+            Card(padding: Theme.Space.l, radius: Theme.Radius.hero) { FigureStrip(items: devItems(active)) }
+            MoreBlock(title: "Developments", card: false, trailing: {
+                Button(showStart ? "Close" : "Start a project") { Motion.animate(Motion.quickAnimation) { showStart.toggle() }; Haptics.choose() }.buttonStyle(TinyButtonStyle())
+            }) {
+                if showStart { Card(padding: Theme.Space.l, radius: Theme.Radius.card) { startSheet } }
+                if active.isEmpty && !showStart {
+                    Text("No project yet. Buy land and wait for zoning (about six months, and it can be refused), build (about 16 months), then sell the units. The first income arrives roughly two years after you start, so keep cash for the wait.")
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                }
+                VStack(spacing: Theme.Space.m) {
+                    ForEach(active, id: \.id) { (p: ProjectBoard.DevelopmentRow) in projectRow(p) }
+                }
+            }
+            if !board.finishedDevelopments.isEmpty {
+                MoreBlock("Finished", card: false) {
+                    VStack(spacing: Theme.Space.m) {
+                        ForEach(board.finishedDevelopments, id: \.id) { f in
+                            let profit: Double = f.revenue - f.cost
+                            let line: String = "sold for \(store.short(f.revenue, in: company)) · cost \(store.short(f.cost, in: company))"
+                            let result: String = (profit < 0 ? "−" : "+") + store.short(abs(profit), in: company)
+                            EntityCard {
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(f.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                                        Text(line).textStyle(.caption, tint: Theme.inkFaint)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Text(result).textStyle(.headline, tint: profit < 0 ? Theme.loss : Theme.gain, numeric: true, weight: .semibold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private func devItems(_ active: [ProjectBoard.DevelopmentRow]) -> [KeyFigures.Item] {
+        let tied: Double = active.reduce(0) { $0 + $1.workInProgress }
+        return [
+            .init(label: "Running", value: "\(active.count)", sub: "developments"),
+            .init(label: "Tied up in work", value: store.short(tied, in: company), sub: "land and building so far"),
+            .init(label: "Finished", value: "\(board.finishedCount)", sub: "sold out"),
+        ]
+    }
+
+    private func askStart(_ size: Double, _ q: ProjectDeveloper.Quote?) {
+        let fin: Bool = financed
+        var lines: [String] = []
+        if let q {
+            lines.append("Cash leaves the company now: \(store.money(q.cashNow, in: company)).")
+            if q.financed { lines.append("A construction loan of \(store.short(q.loanAmount, in: company)) is drawn.") }
+            lines.append("If all \(q.units) units sell it brings in about \(store.short(q.expectedRevenue, in: company)).")
+        }
+        lines.append("Zoning takes about six months and can be refused; building costs can overrun; the first income is roughly two years away.")
+        pending = PendingAction(title: "Buy the land and start?", message: lines.joined(separator: "\n"), button: "Start project", amount: q?.cashNow, currency: engine.currency(for: company)) {
+            switch store.act({ $0.startDevelopment(companyID: company.id, size: size, financed: fin) }) {
+            case .started?: Haptics.success(); store.show("Project started. Zoning takes about six months.", tone: "good"); showStart = false
+            case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company.", tone: "warn")
+            case .loanRefused?: Haptics.warning(); store.show("The bank will not lend that much. Try a smaller project or fund it with equity.", tone: "warn")
+            default: Haptics.warning(); store.show("The company must be open to start a project.", tone: "warn")
+            }
+        }
+    }
+
+    private var startSheet: some View {
+        let size = sizes[sizeIndex].factor
+        let q = engine.developmentQuote(companyID: company.id, size: size, financed: financed)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionTabs(items: Array(sizes.indices), title: { sizes[$0].name }, selection: $sizeIndex)
+            Toggle(isOn: $financed) { Text("Construction loan (up to 70% of the building)").textStyle(.caption, tint: Theme.ink) }.tint(Theme.gold)
+            if let q {
+                row("Land", store.short(q.land, in: company))
+                row("Building", store.short(q.build, in: company))
+                row("Units", "\(q.units) at about \(store.short(q.unitPrice, in: company))")
+                row("Cash needed now", store.money(q.cashNow, in: company))
+                if q.financed { row("Loan", store.short(q.loanAmount, in: company)) }
+                row("Brings in, if all sold", store.short(q.expectedRevenue, in: company))
+            }
+            Button("Buy the land and start") { askStart(size, q) }.buttonStyle(TinyButtonStyle())
+        }
+        .padding(.bottom, Theme.Space.s)
+    }
+
+    private func row(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).textStyle(.caption, tint: Theme.inkSoft)
+            Spacer(minLength: 8)
+            Text(value).textStyle(.caption, tint: Theme.ink, numeric: true)
+        }
+    }
+
+    private func stageText(_ p: ProjectBoard.DevelopmentRow) -> String {
+        switch p.stage {
+        case "zoning": return "Zoning · \(p.weeksLeft) wk left"
+        case "build": return "Building · \(p.weeksLeft) wk left" + (p.delayWeeks > 0 ? " · held up" : "")
+        case "sell": return "Selling"
+        default: return "Done"
+        }
+    }
+
+    private func projectRow(_ p: ProjectBoard.DevelopmentRow) -> some View {
+        EntityCard { projectBody(p) }
+    }
+
+    private func projectBody(_ p: ProjectBoard.DevelopmentRow) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(p.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
+                    Text(stageText(p)).textStyle(.caption, tint: p.delayWeeks > 0 ? Theme.warn : Theme.inkFaint)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("\(p.sold) / \(p.units) sold").textStyle(.headline, tint: Theme.ink, numeric: true, weight: .semibold)
+                    Text("land \(store.short(p.land, in: company)) · build \(store.short(p.build, in: company))").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                }
+            }
+            RateBar(label: "Sold", fraction: p.units > 0 ? Double(p.sold) / Double(p.units) : 0, tint: Theme.gain)
+                .animation(Motion.quickAnimation, value: p.sold)
+            if p.loanBalance > 0 { Text("Construction loan \(store.short(p.loanBalance, in: company)), repaid from 70% of each sale").textStyle(.caption, tint: Theme.inkFaint) }
+            HStack {
+                Text("Price per unit \(store.short(p.unitPrice * p.priceMultiplier, in: company))").textStyle(.caption, tint: Theme.inkSoft)
+                Spacer()
+                ForEach([0.9, 1.0, 1.1], id: \.self) { (m: Double) in
+                    let label: String = m == 0.9 ? "−10%" : m == 1.0 ? "Standard" : "+10%"
+                    let chosen: Bool = abs(p.priceMultiplier - m) < 0.001
+                    Button(label) {
+                        store.act { $0.setDevelopmentPrice(companyID: company.id, projectID: p.id, multiplier: m) }; Haptics.choose()
+                        store.saved("unit price \(m == 1.0 ? "standard" : m < 1 ? "10% lower" : "10% higher")")
+                    }.buttonStyle(TinyButtonStyle(tint: chosen ? Theme.gold : Theme.ivoryFaint))
+                }
+            }
+        }
+    }
+}

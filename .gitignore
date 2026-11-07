@@ -1,0 +1,17 @@
+# Swift / Xcode build output
+native/Engine/.build/
+native/App/*.xcodeproj/xcuserdata/
+native/App/build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+.DS_Store
+# stray downloads
+*.whl
+__pycache__/
+*.pyc
+# generated / release artefacts (Stage 9)
+native/App/*.xcodeproj/
+*.ipa
+*.xcarchive
+*.dSYM/

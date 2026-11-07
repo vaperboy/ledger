@@ -1,0 +1,249 @@
+import SwiftUI
+import GameCore
+import Countries
+import Businesses
+import Simulation
+
+/// A label and a figure on one line with a hairline above: the flat label-value row used across the app (text in `.textStyle`).
+struct FlatRow: View {
+    var label: String
+    var value: String
+    var sub: String = ""
+    var tint: Color? = nil
+    var rule = true
+    @Environment(\.outsidePalette) private var palette
+    var body: some View {
+        VStack(spacing: 0) {
+            if rule { Hairline() }
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(label.tidyText).textStyle(.body, tint: palette.ink)
+                    if !sub.isEmpty { Text(sub.tidyText).textStyle(.caption, tint: palette.inkFaint).fixedSize(horizontal: false, vertical: true) }
+                }
+                Spacer(minLength: Theme.Space.s)
+                Text(value.tidyText).textStyle(.body, tint: tint ?? palette.ink, numeric: true).multilineTextAlignment(.trailing)
+            }
+            .padding(.vertical, Theme.Space.s)
+        }
+    }
+}
+
+/// The renewable power plant and the oil and gas company: what they own, what they produce, and how to grow.
+struct CompanyEnergy: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    @State private var megawatts = 10.0
+    @State private var pending: PendingAction?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if company.type == "power" {
+                MoreHeader(glyph: Glyph.invest, title: "Plant", blurb: "Your turbines, what they produce at the power price, and building more capacity.")
+                plant
+            } else {
+                MoreHeader(glyph: Glyph.invest, title: "Fields", blurb: "Oil and gas fields, what they produce, and how to buy or find more.")
+                oil
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    // MARK: Power
+
+    private var plant: some View {
+        let p = engine.powerPlant(companyID: company.id)
+        let cur = engine.currency(for: company)
+        let perMW = engine.turbinePrice(companyID: company.id)
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreBlock("Power plant") {
+                VStack(alignment: .leading, spacing: 0) {
+                    FigureStrip(items: [
+                        .init(label: "Producing", value: "\(Int((p?.megawatts ?? 0).rounded())) MW", sub: p?.source ?? ""),
+                        .init(label: "Being built", value: "\(Int((p?.building ?? 0).rounded())) MW", sub: p?.weeksToReady.map { "first ready in \($0) wk" } ?? ""),
+                        .init(label: "Output last week", value: "\(Int((p?.outputMWh ?? 0).rounded())) MWh"),
+                    ])
+                    FlatRow(label: "Average price", value: cur.tidyShort(p?.averagePrice ?? 0) + " / MWh", sub: "Sold at the power market price, less what is hedged.").padding(.top, 8)
+                    FlatRow(label: "Market price index", value: String(format: "%.0f%% of normal", engine.state.economy.power * 100),
+                            tint: engine.state.economy.power < 0.85 ? Theme.loss : engine.state.economy.power > 1.15 ? Theme.gain : Theme.ivory)
+                }
+            }
+            MoreBlock("Build more") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    HStack {
+                        Text("\(Int(megawatts)) MW").textStyle(.headline, numeric: true)
+                        Spacer()
+                        StepperPill(value: $megawatts, range: 1...100, step: 5)
+                    }
+                    Text("About \(cur.tidyShort(perMW * megawatts)) now (\(cur.tidyShort(perMW)) per MW). New capacity takes \(buildWeeks) weeks to build and only then produces. Output follows the weather and the season.")
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                    Button("Order \(Int(megawatts)) MW…") {
+                        let mw = megawatts
+                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order", amount: perMW * mw, currency: cur) {
+                            if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
+                            else { Haptics.warning(); store.show("The company does not have \(cur.tidyShort(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
+                        }
+                    }.buttonStyle(TinyButtonStyle())
+                }
+            }
+        }
+    }
+
+    private func fieldSub(_ f: EnergyModel.FieldInfo) -> String {
+        if f.state == "dev" { return "In development · \(f.weeksToProduction) weeks to production" }
+        if f.state == "prod" { return "Producing about \(Int(f.weeklyBarrels.rounded())) kbbl a week" }
+        return "Depleted"
+    }
+
+    private func fieldCard(_ f: EnergyModel.FieldInfo) -> some View {
+        let left: String = String(format: "%.1f M bbl left", f.millionBarrelsLeft)
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.invest, size: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(f.name).textStyle(.headline)
+                    Text(fieldSub(f)).textStyle(.caption, tint: Theme.inkFaint)
+                }
+                Spacer(minLength: 6)
+                Text(left).textStyle(.caption, numeric: true)
+            }
+        }
+    }
+
+    private func stakeCard(_ k: Double, _ cur: Currency) -> some View {
+        let cost: Double = engine.oilStakePrice(thousandBarrels: k)
+        let title: String = "Stake with \(Int(k / 1000)) M barrels left"
+        return EntityCard {
+            HStack(spacing: 10) {
+                IconCircle(glyph: Glyph.market, size: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).textStyle(.headline)
+                    Text(cur.tidyShort(cost)).textStyle(.caption, tint: Theme.inkFaint)
+                }
+                Spacer()
+                Button("Buy…") {
+                    let message: String = "\(cur.tidyDisplay(cost)) from company cash (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time."
+                    pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: message, button: "Buy stake", amount: cost, currency: cur) {
+                        switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
+                        case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
+                        default: Haptics.warning(); store.show("The company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")
+                        }
+                    }
+                }.buttonStyle(TinyButtonStyle())
+            }
+        }
+    }
+
+    private var buildWeeks: Int { EnergyModel.source(of: company).buildWeeks }
+
+    // MARK: Oil and gas
+
+    private var oil: some View {
+        let cur = engine.currency(for: company)
+        let fields = engine.oilFields(companyID: company.id)
+        let price = engine.oilPricePerBarrel(companyID: company.id)
+        let drill = engine.explorationCost()
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreBlock("Production") {
+                VStack(alignment: .leading, spacing: 0) {
+                    FigureStrip(items: [
+                        .init(label: "Fields", value: "\(fields.filter { $0.state != "depleted" }.count)", sub: "\(fields.filter { $0.state == "dev" }.count) in development"),
+                        .init(label: "Last week", value: "\(Int(company.lastWeekUnits.rounded())) kbbl"),
+                        .init(label: "Oil price", value: cur.tidyShort(price), sub: "per barrel"),
+                    ])
+                    FlatRow(label: "Market index", value: String(format: "%.0f%% of normal", engine.state.economy.oil * 100),
+                            sub: "Taxes on oil are very high. Term contracts take part of the swing out.",
+                            tint: engine.state.economy.oil < 0.85 ? Theme.loss : engine.state.economy.oil > 1.15 ? Theme.gain : Theme.ivory).padding(.top, 8)
+                }
+            }
+            MoreBlock("Fields", card: false) {
+                VStack(spacing: 10) {
+                    if fields.isEmpty {
+                        Card(padding: 12, radius: Theme.Radius.row) {
+                            Text("No fields yet. Buy a stake in a producing field for income right away, or drill.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    ForEach(fields, id: \.id) { (f: EnergyModel.FieldInfo) in fieldCard(f) }
+                }
+            }
+            MoreBlock("Grow", card: false) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach([2000.0, 5000, 10000], id: \.self) { (k: Double) in stakeCard(k, cur) }
+                    EntityCard {
+                        HStack(spacing: 10) {
+                            IconCircle(glyph: Glyph.hire, size: 34)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Drill an exploration well").textStyle(.headline)
+                                Text("\(cur.tidyShort(drill)) · most wells find nothing; a hit takes about three years to produce").textStyle(.caption, tint: Theme.inkFaint)
+                            }
+                            Spacer()
+                            Button("Drill…") { askToDrill(drill, cur) }.buttonStyle(TinyButtonStyle())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func askToDrill(_ drill: Double, _ cur: Currency) {
+        let message: String = "The well costs \(cur.tidyShort(drill)) from company cash. A discovery takes about three years to produce."
+        pending = PendingAction(title: "Drill an exploration well?", message: message, button: "Drill for \(cur.tidyShort(drill))",
+                                amount: drill, currency: cur, risk: "Most wells find nothing.") {
+            switch store.act({ $0.exploreForOil(companyID: company.id) }) {
+            case .hit?: Haptics.success(); store.show("Discovery. Check your inbox.", tone: "good")
+            case .dry?: Haptics.warning(); store.show("A dry well.", tone: "bad")
+            default: Haptics.warning(); store.show("Not enough cash.", tone: "warn")
+            }
+        }
+    }
+}
+
+/// The salmon farm: the fish in the pens, the price, and whether to keep stocking and harvesting.
+struct CompanySalmon: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+
+    var body: some View {
+        let cohorts = engine.salmonCohorts(companyID: company.id)
+        let cur = engine.currency(for: company)
+        let fm = company.value("fm")
+        let stocking = company.value("flags")["autoStock"].isNull || company.value("flags")["autoStock"].double != 0
+        let harvesting = company.value("flags")["harvest"].isNull || company.value("flags")["harvest"].double != 0
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoreHeader(glyph: Glyph.world, title: "Fish", blurb: "The salmon in your pens, the price per kilo and whether to keep stocking and harvesting.")
+            MoreBlock("In the pens") {
+                VStack(alignment: .leading, spacing: 0) {
+                    FigureStrip(items: [
+                        .init(label: "Fish", value: String(format: "%.0f k", cohorts.reduce(0) { $0 + $1.fish } / 1000)),
+                        .init(label: "Biomass", value: "\(Int(fm["bio"].double.rounded())) t"),
+                        .init(label: "Price a kilo", value: cur.tidyShort(engine.salmonPricePerKilo())),
+                    ])
+                    if cohorts.isEmpty {
+                        Text("No fish in the pens. A new cohort is stocked when the cash allows.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
+                    }
+                    ForEach(cohorts) { c in
+                        EntityCard {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text("Cohort \(c.id + 1) · week \(c.age)").textStyle(.headline)
+                                    Spacer()
+                                    Text("\(Int((c.fish / 1000).rounded())) k fish · \(String(format: "%.1f", c.kilosEach)) kg").textStyle(.caption, numeric: true)
+                                }
+                                RateBar(label: "Ready to harvest", fraction: c.readyShare, tint: c.readyShare >= 0.95 ? Theme.gain : Theme.gold)
+                            }
+                        }.padding(.top, Theme.Space.s)
+                    }
+                    Text("Fish grow for about 18 months, then are sold at the market price. Lice, storms and algae can cost a cohort.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
+                }
+            }
+            MoreBlock("Routine") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) }; store.saved(v ? "new fish are stocked automatically" : "automatic stocking is off") })).tint(Theme.gold)
+                    Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) }; store.saved(v ? "ripe fish are harvested" : "harvesting is off") })).tint(Theme.gold)
+                    Text("A new cohort needs cash for the young fish (a few million) and then feed every week for over a year before anything is sold.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}

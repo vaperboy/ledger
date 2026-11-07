@@ -1,0 +1,2776 @@
+{
+ "NO": {
+  "code": "NO",
+  "pl": 1,
+  "mkt": 1,
+  "rent": 1,
+  "wage": 1,
+  "loan": 150000,
+  "loanTermM": 60,
+  "asCapital": 30000,
+  "asFee": 6825,
+  "asConvFee": 9800,
+  "vatThr": 50000,
+  "fx": 1,
+  "policy0": 0.04,
+  "bur": 1,
+  "corp": 0.22,
+  "divTax": 0.3784,
+  "empNI": 0.141,
+  "otp": 0.02,
+  "injury": 0.005,
+  "eeNI": 0.076,
+  "selfNI": 0.108,
+  "leaveWk": 5,
+  "inhFree": 0,
+  "wealthThr": 1760000,
+  "income": {
+   "flat": 0.22,
+   "allowance": 108550,
+   "wageDeduction": [
+    0.46,
+    92000
+   ],
+   "brackets": [
+    [
+     226100,
+     0.017
+    ],
+    [
+     318300,
+     0.04
+    ],
+    [
+     725050,
+     0.137
+    ],
+    [
+     980100,
+     0.168
+    ],
+    [
+     1467200,
+     0.178
+    ]
+   ],
+   "floor": 99650,
+   "capShare": 0.25
+  },
+  "cities": [
+   {
+    "id": "oslo",
+    "name": "Oslo",
+    "pop": 710,
+    "rent": 1,
+    "wage": 1,
+    "dem": 1.25,
+    "price": 1
+   },
+   {
+    "id": "bergen",
+    "name": "Bergen",
+    "pop": 290,
+    "rent": 0.82,
+    "wage": 0.97,
+    "dem": 1,
+    "price": 0.97
+   },
+   {
+    "id": "trondheim",
+    "name": "Trondheim",
+    "pop": 215,
+    "rent": 0.74,
+    "wage": 0.96,
+    "dem": 0.95,
+    "price": 0.96
+   },
+   {
+    "id": "stavanger",
+    "name": "Stavanger",
+    "pop": 145,
+    "rent": 0.82,
+    "wage": 1.04,
+    "dem": 0.92,
+    "price": 1
+   },
+   {
+    "id": "kristiansand",
+    "name": "Kristiansand",
+    "pop": 115,
+    "rent": 0.62,
+    "wage": 0.94,
+    "dem": 0.8,
+    "price": 0.94
+   },
+   {
+    "id": "tromso",
+    "name": "Troms\u00f8",
+    "pop": 78,
+    "rent": 0.62,
+    "wage": 1,
+    "dem": 0.7,
+    "price": 0.98
+   },
+   {
+    "id": "small",
+    "name": "Small town",
+    "pop": 20,
+    "rent": 0.38,
+    "wage": 0.9,
+    "dem": 0.42,
+    "price": 0.9
+   }
+  ],
+  "vat": {
+   "std": 0.25,
+   "food": 0.15,
+   "low": 0.12,
+   "zero": 0
+  }
+ },
+ "SE": {
+  "code": "SE",
+  "pl": 0.86,
+  "mkt": 1,
+  "rent": 0.77,
+  "wage": 0.8,
+  "loan": 122285.712,
+  "loanTermM": 60,
+  "asCapital": 25476.19,
+  "asFee": 2242,
+  "asConvFee": 4840.4761,
+  "vatThr": 122285.712,
+  "fx": 1.0190476,
+  "policy0": 0.0175,
+  "bur": 1,
+  "corp": 0.206,
+  "divTax": 0.3,
+  "empNI": 0.3142,
+  "otp": 0,
+  "injury": 0,
+  "eeNI": 0.07,
+  "selfNI": 0.29,
+  "leaveWk": 5,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     45857.142,
+     0.32
+    ],
+    [
+     637719.9880799999,
+     0.52
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "sthlm",
+    "name": "Stockholm",
+    "pop": 980,
+    "rent": 0.89,
+    "wage": 0.86,
+    "dem": 1.35,
+    "price": 0.87
+   },
+   {
+    "id": "gbg",
+    "name": "Gothenburg",
+    "pop": 600,
+    "rent": 0.65,
+    "wage": 0.8,
+    "dem": 1.24,
+    "price": 0.85
+   },
+   {
+    "id": "malmo",
+    "name": "Malm\u00f6",
+    "pop": 350,
+    "rent": 0.6,
+    "wage": 0.78,
+    "dem": 1.1,
+    "price": 0.84
+   },
+   {
+    "id": "uppsala",
+    "name": "Uppsala",
+    "pop": 235,
+    "rent": 0.55,
+    "wage": 0.76,
+    "dem": 1.01,
+    "price": 0.84
+   },
+   {
+    "id": "sundsvall",
+    "name": "Sundsvall",
+    "pop": 100,
+    "rent": 0.35,
+    "wage": 0.72,
+    "dem": 0.8,
+    "price": 0.81
+   },
+   {
+    "id": "smallse",
+    "name": "Small town",
+    "pop": 20,
+    "rent": 0.27,
+    "wage": 0.69,
+    "dem": 0.42,
+    "price": 0.81
+   }
+  ],
+  "vat": {
+   "std": 0.25,
+   "food": 0.12,
+   "low": 0.06,
+   "zero": 0
+  }
+ },
+ "PL": {
+  "code": "PL",
+  "pl": 0.55,
+  "mkt": 1,
+  "rent": 0.51,
+  "wage": 0.49,
+  "loan": 86937.5,
+  "loanTermM": 60,
+  "asCapital": 13375,
+  "asFee": 936,
+  "asConvFee": 4012.4999999999995,
+  "vatThr": 535000,
+  "fx": 2.675,
+  "policy0": 0.04,
+  "bur": 1.1,
+  "corp": 0.19,
+  "divTax": 0.19,
+  "empNI": 0.205,
+  "otp": 0,
+  "injury": 0.0167,
+  "eeNI": 0.22,
+  "selfNI": 0.19,
+  "leaveWk": 4,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     80250,
+     0.12
+    ],
+    [
+     321000,
+     0.32
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "waw",
+    "name": "Warsaw",
+    "pop": 1800,
+    "rent": 0.64,
+    "wage": 0.59,
+    "dem": 1.49,
+    "price": 0.56
+   },
+   {
+    "id": "krk",
+    "name": "Krak\u00f3w",
+    "pop": 800,
+    "rent": 0.51,
+    "wage": 0.52,
+    "dem": 1.3,
+    "price": 0.55
+   },
+   {
+    "id": "wro",
+    "name": "Wroc\u0142aw",
+    "pop": 670,
+    "rent": 0.48,
+    "wage": 0.5,
+    "dem": 1.26,
+    "price": 0.55
+   },
+   {
+    "id": "gdn",
+    "name": "Gda\u0144sk",
+    "pop": 470,
+    "rent": 0.47,
+    "wage": 0.49,
+    "dem": 1.18,
+    "price": 0.55
+   },
+   {
+    "id": "poz",
+    "name": "Pozna\u0144",
+    "pop": 540,
+    "rent": 0.46,
+    "wage": 0.49,
+    "dem": 1.21,
+    "price": 0.55
+   },
+   {
+    "id": "smallpl",
+    "name": "Small town",
+    "pop": 25,
+    "rent": 0.2,
+    "wage": 0.39,
+    "dem": 0.47,
+    "price": 0.51
+   }
+  ],
+  "vat": {
+   "std": 0.23,
+   "food": 0.05,
+   "low": 0.08,
+   "zero": 0
+  }
+ },
+ "LT": {
+  "code": "LT",
+  "pl": 0.59,
+  "mkt": 1,
+  "rent": 0.35,
+  "wage": 0.55,
+  "loan": 87228.261,
+  "loanTermM": 60,
+  "asCapital": 11630.434799999999,
+  "asFee": 698,
+  "asConvFee": 2442.3913079999998,
+  "vatThr": 523369.566,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 0.8,
+  "corp": 0.16,
+  "divTax": 0.15,
+  "empNI": 0.0177,
+  "otp": 0,
+  "injury": 0,
+  "eeNI": 0.195,
+  "selfNI": 0.15,
+  "leaveWk": 4,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0.2
+    ],
+    [
+     1325869.5672,
+     0.32
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "vln",
+    "name": "Vilnius",
+    "pop": 580,
+    "rent": 0.42,
+    "wage": 0.66,
+    "dem": 1.22,
+    "price": 0.6
+   },
+   {
+    "id": "kau",
+    "name": "Kaunas",
+    "pop": 290,
+    "rent": 0.32,
+    "wage": 0.55,
+    "dem": 1.06,
+    "price": 0.58
+   },
+   {
+    "id": "klp",
+    "name": "Klaip\u0117da",
+    "pop": 150,
+    "rent": 0.28,
+    "wage": 0.52,
+    "dem": 0.9,
+    "price": 0.58
+   },
+   {
+    "id": "siau",
+    "name": "\u0160iauliai",
+    "pop": 100,
+    "rent": 0.19,
+    "wage": 0.47,
+    "dem": 0.81,
+    "price": 0.57
+   },
+   {
+    "id": "smalllt",
+    "name": "Small town",
+    "pop": 15,
+    "rent": 0.12,
+    "wage": 0.41,
+    "dem": 0.35,
+    "price": 0.55
+   }
+  ],
+  "vat": {
+   "std": 0.21,
+   "food": 0.09,
+   "low": 0.05,
+   "zero": 0
+  }
+ },
+ "DE": {
+  "code": "DE",
+  "pl": 0.86,
+  "mkt": 1,
+  "rent": 0.74,
+  "wage": 0.93,
+  "loan": 127934.7828,
+  "loanTermM": 60,
+  "asCapital": 290760.87,
+  "asFee": 8141,
+  "asConvFee": 24423.91308,
+  "vatThr": 290760.87,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 1.3,
+  "corp": 0.3,
+  "divTax": 0.26375,
+  "empNI": 0.21,
+  "otp": 0,
+  "injury": 0.01,
+  "eeNI": 0.205,
+  "selfNI": 0.2,
+  "leaveWk": 4,
+  "inhFree": 4652173.92,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     140728.26108,
+     0.3
+    ],
+    [
+     796684.7838,
+     0.42
+    ],
+    [
+     3233260.8744,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "ber",
+    "name": "Berlin",
+    "pop": 3700,
+    "rent": 0.85,
+    "wage": 0.97,
+    "dem": 1.66,
+    "price": 0.87
+   },
+   {
+    "id": "ham",
+    "name": "Hamburg",
+    "pop": 1900,
+    "rent": 0.81,
+    "wage": 1.01,
+    "dem": 1.51,
+    "price": 0.87
+   },
+   {
+    "id": "muc",
+    "name": "Munich",
+    "pop": 1500,
+    "rent": 1.04,
+    "wage": 1.07,
+    "dem": 1.45,
+    "price": 0.89
+   },
+   {
+    "id": "col",
+    "name": "Cologne",
+    "pop": 1100,
+    "rent": 0.74,
+    "wage": 0.95,
+    "dem": 1.37,
+    "price": 0.86
+   },
+   {
+    "id": "fra",
+    "name": "Frankfurt",
+    "pop": 760,
+    "rent": 0.85,
+    "wage": 1.04,
+    "dem": 1.29,
+    "price": 0.87
+   },
+   {
+    "id": "smallde",
+    "name": "Small town",
+    "pop": 25,
+    "rent": 0.33,
+    "wage": 0.77,
+    "dem": 0.47,
+    "price": 0.82
+   }
+  ],
+  "vat": {
+   "std": 0.19,
+   "food": 0.07,
+   "low": 0.07,
+   "zero": 0
+  }
+ },
+ "UK": {
+  "code": "UK",
+  "pl": 0.86,
+  "mkt": 1,
+  "rent": 0.89,
+  "wage": 0.93,
+  "loan": 128670.8861,
+  "loanTermM": 60,
+  "asCapital": 13.5443038,
+  "asFee": 677,
+  "asConvFee": 1489.873418,
+  "vatThr": 1218987.342,
+  "fx": 13.5443038,
+  "policy0": 0.0375,
+  "bur": 0.8,
+  "corp": 0.25,
+  "divTax": 0.3375,
+  "empNI": 0.15,
+  "otp": 0.03,
+  "injury": 0,
+  "eeNI": 0.08,
+  "selfNI": 0.06,
+  "leaveWk": 5.6,
+  "inhFree": 4401898.735,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     170251.898766,
+     0.2
+    ],
+    [
+     680872.152026,
+     0.4
+    ],
+    [
+     1694934.177532,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "lon",
+    "name": "London",
+    "pop": 8900,
+    "rent": 1.34,
+    "wage": 1.12,
+    "dem": 1.87,
+    "price": 0.9
+   },
+   {
+    "id": "man",
+    "name": "Manchester",
+    "pop": 550,
+    "rent": 0.71,
+    "wage": 0.92,
+    "dem": 1.21,
+    "price": 0.84
+   },
+   {
+    "id": "bir",
+    "name": "Birmingham",
+    "pop": 1150,
+    "rent": 0.69,
+    "wage": 0.89,
+    "dem": 1.39,
+    "price": 0.84
+   },
+   {
+    "id": "edi",
+    "name": "Edinburgh",
+    "pop": 530,
+    "rent": 0.76,
+    "wage": 0.93,
+    "dem": 1.2,
+    "price": 0.85
+   },
+   {
+    "id": "bri",
+    "name": "Bristol",
+    "pop": 470,
+    "rent": 0.8,
+    "wage": 0.94,
+    "dem": 1.17,
+    "price": 0.85
+   },
+   {
+    "id": "smalluk",
+    "name": "Small town",
+    "pop": 25,
+    "rent": 0.36,
+    "wage": 0.74,
+    "dem": 0.47,
+    "price": 0.81
+   }
+  ],
+  "vat": {
+   "std": 0.2,
+   "food": 0,
+   "low": 0.05,
+   "zero": 0
+  }
+ },
+ "FR": {
+  "code": "FR",
+  "pl": 0.86,
+  "mkt": 1,
+  "rent": 0.74,
+  "wage": 0.84,
+  "loan": 116304.348,
+  "loanTermM": 60,
+  "asCapital": 11.6304348,
+  "asFee": 2442,
+  "asConvFee": 8141.30436,
+  "vatThr": 436141.305,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 1.3,
+  "corp": 0.25,
+  "divTax": 0.3,
+  "empNI": 0.42,
+  "otp": 0,
+  "injury": 0.01,
+  "eeNI": 0.22,
+  "selfNI": 0.22,
+  "leaveWk": 5,
+  "inhFree": 1163043.48,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     133750.0002,
+     0.11
+    ],
+    [
+     340771.73964,
+     0.3
+    ],
+    [
+     974630.43624,
+     0.41
+    ],
+    [
+     2096967.39444,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "par",
+    "name": "Paris",
+    "pop": 2100,
+    "rent": 1.11,
+    "wage": 1.01,
+    "dem": 1.53,
+    "price": 0.9
+   },
+   {
+    "id": "lyo",
+    "name": "Lyon",
+    "pop": 520,
+    "rent": 0.67,
+    "wage": 0.84,
+    "dem": 1.2,
+    "price": 0.85
+   },
+   {
+    "id": "mrs",
+    "name": "Marseille",
+    "pop": 870,
+    "rent": 0.59,
+    "wage": 0.81,
+    "dem": 1.32,
+    "price": 0.84
+   },
+   {
+    "id": "tls",
+    "name": "Toulouse",
+    "pop": 500,
+    "rent": 0.59,
+    "wage": 0.82,
+    "dem": 1.19,
+    "price": 0.84
+   },
+   {
+    "id": "nan",
+    "name": "Nantes",
+    "pop": 320,
+    "rent": 0.58,
+    "wage": 0.81,
+    "dem": 1.08,
+    "price": 0.84
+   },
+   {
+    "id": "smallfr",
+    "name": "Small town",
+    "pop": 20,
+    "rent": 0.28,
+    "wage": 0.67,
+    "dem": 0.42,
+    "price": 0.8
+   }
+  ],
+  "vat": {
+   "std": 0.2,
+   "food": 0.055,
+   "low": 0.1,
+   "zero": 0
+  }
+ },
+ "ES": {
+  "code": "ES",
+  "pl": 0.73,
+  "mkt": 1,
+  "rent": 0.6,
+  "wage": 0.74,
+  "loan": 87228.261,
+  "loanTermM": 60,
+  "asCapital": 11.6304348,
+  "asFee": 6978,
+  "asConvFee": 11630.434799999999,
+  "vatThr": 0,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 1.2,
+  "corp": 0.25,
+  "divTax": 0.23,
+  "empNI": 0.3,
+  "otp": 0,
+  "injury": 0.01,
+  "eeNI": 0.0648,
+  "selfNI": 0.3,
+  "leaveWk": 4.4,
+  "inhFree": 1163043.48,
+  "wealthThr": 8141304.359999999,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     64548.91314,
+     0.19
+    ],
+    [
+     144798.91326,
+     0.24
+    ],
+    [
+     234934.78295999998,
+     0.3
+    ],
+    [
+     409391.30496,
+     0.37
+    ],
+    [
+     697826.088,
+     0.45
+    ],
+    [
+     3489130.44,
+     0.47
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "mad",
+    "name": "Madrid",
+    "pop": 3300,
+    "rent": 0.75,
+    "wage": 0.85,
+    "dem": 1.64,
+    "price": 0.75
+   },
+   {
+    "id": "bcn",
+    "name": "Barcelona",
+    "pop": 1600,
+    "rent": 0.75,
+    "wage": 0.83,
+    "dem": 1.46,
+    "price": 0.75
+   },
+   {
+    "id": "val",
+    "name": "Valencia",
+    "pop": 800,
+    "rent": 0.51,
+    "wage": 0.72,
+    "dem": 1.3,
+    "price": 0.72
+   },
+   {
+    "id": "sev",
+    "name": "Seville",
+    "pop": 690,
+    "rent": 0.45,
+    "wage": 0.69,
+    "dem": 1.27,
+    "price": 0.71
+   },
+   {
+    "id": "bil",
+    "name": "Bilbao",
+    "pop": 345,
+    "rent": 0.51,
+    "wage": 0.76,
+    "dem": 1.1,
+    "price": 0.72
+   },
+   {
+    "id": "smalles",
+    "name": "Small town",
+    "pop": 20,
+    "rent": 0.23,
+    "wage": 0.6,
+    "dem": 0.42,
+    "price": 0.69
+   }
+  ],
+  "vat": {
+   "std": 0.21,
+   "food": 0.04,
+   "low": 0.1,
+   "zero": 0
+  }
+ },
+ "NL": {
+  "code": "NL",
+  "pl": 0.95,
+  "mkt": 1,
+  "rent": 0.84,
+  "wage": 1.11,
+  "loan": 139565.2176,
+  "loanTermM": 60,
+  "asCapital": 11.6304348,
+  "asFee": 989,
+  "asConvFee": 8722.8261,
+  "vatThr": 232608.696,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 1,
+  "corp": 0.258,
+  "divTax": 0.31,
+  "empNI": 0.18,
+  "otp": 0.05,
+  "injury": 0,
+  "eeNI": 0,
+  "selfNI": 0,
+  "leaveWk": 4,
+  "inhFree": 290760.87,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0.3582
+    ],
+    [
+     446608.69632,
+     0.3748
+    ],
+    [
+     893217.39264,
+     0.495
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "ams",
+    "name": "Amsterdam",
+    "pop": 930,
+    "rent": 1.18,
+    "wage": 1.27,
+    "dem": 1.33,
+    "price": 0.98
+   },
+   {
+    "id": "rtm",
+    "name": "Rotterdam",
+    "pop": 660,
+    "rent": 0.8,
+    "wage": 1.14,
+    "dem": 1.26,
+    "price": 0.95
+   },
+   {
+    "id": "hag",
+    "name": "The Hague",
+    "pop": 560,
+    "rent": 0.84,
+    "wage": 1.17,
+    "dem": 1.21,
+    "price": 0.95
+   },
+   {
+    "id": "utr",
+    "name": "Utrecht",
+    "pop": 360,
+    "rent": 0.88,
+    "wage": 1.17,
+    "dem": 1.11,
+    "price": 0.95
+   },
+   {
+    "id": "ein",
+    "name": "Eindhoven",
+    "pop": 240,
+    "rent": 0.71,
+    "wage": 1.11,
+    "dem": 1.01,
+    "price": 0.94
+   },
+   {
+    "id": "smallnl",
+    "name": "Small town",
+    "pop": 25,
+    "rent": 0.42,
+    "wage": 0.95,
+    "dem": 0.47,
+    "price": 0.91
+   }
+  ],
+  "vat": {
+   "std": 0.21,
+   "food": 0.09,
+   "low": 0.09,
+   "zero": 0
+  }
+ },
+ "US": {
+  "code": "US",
+  "pl": 0.91,
+  "mkt": 1,
+  "rent": 1.03,
+  "wage": 1.03,
+  "loan": 171200,
+  "loanTermM": 60,
+  "asCapital": 0,
+  "asFee": 3210,
+  "asConvFee": 4012.4999999999995,
+  "vatThr": 0,
+  "fx": 10.7,
+  "policy0": 0.0363,
+  "bur": 1,
+  "corp": 0.26,
+  "divTax": 0.238,
+  "empNI": 0.09,
+  "otp": 0.03,
+  "injury": 0.01,
+  "eeNI": 0.0765,
+  "selfNI": 0.153,
+  "leaveWk": 0,
+  "inhFree": 160500000,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     160500,
+     0.1
+    ],
+    [
+     288097.5,
+     0.12
+    ],
+    [
+     679182.5,
+     0.22
+    ],
+    [
+     1266345,
+     0.24
+    ],
+    [
+     2271610,
+     0.32
+    ],
+    [
+     2841117.5,
+     0.35
+    ],
+    [
+     6862445,
+     0.37
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "nyc",
+    "name": "New York",
+    "pop": 8300,
+    "rent": 1.75,
+    "wage": 1.34,
+    "dem": 1.86,
+    "price": 0.97
+   },
+   {
+    "id": "la",
+    "name": "Los Angeles",
+    "pop": 3900,
+    "rent": 1.44,
+    "wage": 1.23,
+    "dem": 1.68,
+    "price": 0.95
+   },
+   {
+    "id": "chi",
+    "name": "Chicago",
+    "pop": 2700,
+    "rent": 1.03,
+    "wage": 1.14,
+    "dem": 1.59,
+    "price": 0.91
+   },
+   {
+    "id": "hou",
+    "name": "Houston",
+    "pop": 2300,
+    "rent": 0.82,
+    "wage": 1.03,
+    "dem": 1.55,
+    "price": 0.89
+   },
+   {
+    "id": "den",
+    "name": "Denver",
+    "pop": 710,
+    "rent": 0.98,
+    "wage": 1.08,
+    "dem": 1.27,
+    "price": 0.91
+   },
+   {
+    "id": "smallus",
+    "name": "Small town",
+    "pop": 30,
+    "rent": 0.41,
+    "wage": 0.77,
+    "dem": 0.51,
+    "price": 0.86
+   }
+  ],
+  "vat": {
+   "std": 0.066,
+   "food": 0.02,
+   "low": 0.066,
+   "zero": 0
+  }
+ },
+ "CA": {
+  "code": "CA",
+  "pl": 1.05,
+  "mkt": 1,
+  "rent": 0.86,
+  "wage": 1.02,
+  "loan": 145214.2849,
+  "loanTermM": 60,
+  "asCapital": 0,
+  "asFee": 2293,
+  "asConvFee": 4203.571405,
+  "vatThr": 229285.713,
+  "fx": 7.6428571,
+  "policy0": 0.0225,
+  "bur": 1,
+  "corp": 0.122,
+  "divTax": 0.3,
+  "empNI": 0.075,
+  "otp": 0,
+  "injury": 0.01,
+  "eeNI": 0.07,
+  "selfNI": 0.12,
+  "leaveWk": 2,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0.2
+    ],
+    [
+     420357.1405,
+     0.28
+    ],
+    [
+     840714.281,
+     0.34
+    ],
+    [
+     1299285.707,
+     0.41
+    ],
+    [
+     1834285.704,
+     0.48
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "tor",
+    "name": "Toronto",
+    "pop": 2800,
+    "rent": 1.12,
+    "wage": 1.18,
+    "dem": 1.6,
+    "price": 1.09
+   },
+   {
+    "id": "van",
+    "name": "Vancouver",
+    "pop": 660,
+    "rent": 1.16,
+    "wage": 1.15,
+    "dem": 1.25,
+    "price": 1.09
+   },
+   {
+    "id": "mtl",
+    "name": "Montr\u00e9al",
+    "pop": 1760,
+    "rent": 0.82,
+    "wage": 1.02,
+    "dem": 1.49,
+    "price": 1.05
+   },
+   {
+    "id": "cal",
+    "name": "Calgary",
+    "pop": 1340,
+    "rent": 0.82,
+    "wage": 1.11,
+    "dem": 1.42,
+    "price": 1.05
+   },
+   {
+    "id": "ott",
+    "name": "Ottawa",
+    "pop": 1020,
+    "rent": 0.82,
+    "wage": 1.08,
+    "dem": 1.36,
+    "price": 1.05
+   },
+   {
+    "id": "smallca",
+    "name": "Small town",
+    "pop": 20,
+    "rent": 0.34,
+    "wage": 0.82,
+    "dem": 0.42,
+    "price": 0.99
+   }
+  ],
+  "vat": {
+   "std": 0.13,
+   "food": 0,
+   "low": 0.05,
+   "zero": 0
+  }
+ },
+ "AU": {
+  "code": "AU",
+  "pl": 1.14,
+  "mkt": 1,
+  "rent": 0.98,
+  "wage": 1,
+  "loan": 142666.666,
+  "loanTermM": 60,
+  "asCapital": 7.1333333,
+  "asFee": 4637,
+  "asConvFee": 6063.333305,
+  "vatThr": 534999.9975,
+  "fx": 7.1333333,
+  "policy0": 0.036,
+  "bur": 1,
+  "corp": 0.25,
+  "divTax": 0.2,
+  "empNI": 0.05,
+  "otp": 0.12,
+  "injury": 0.01,
+  "eeNI": 0.02,
+  "selfNI": 0.02,
+  "leaveWk": 4,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     129826.66606,
+     0.16
+    ],
+    [
+     320999.9985,
+     0.3
+    ],
+    [
+     962999.9955000001,
+     0.37
+    ],
+    [
+     1355333.327,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "syd",
+    "name": "Sydney",
+    "pop": 5300,
+    "rent": 1.37,
+    "wage": 1.15,
+    "dem": 1.75,
+    "price": 1.19
+   },
+   {
+    "id": "mel",
+    "name": "Melbourne",
+    "pop": 5100,
+    "rent": 1.18,
+    "wage": 1.1,
+    "dem": 1.75,
+    "price": 1.17
+   },
+   {
+    "id": "bne",
+    "name": "Brisbane",
+    "pop": 2600,
+    "rent": 0.98,
+    "wage": 1.05,
+    "dem": 1.58,
+    "price": 1.14
+   },
+   {
+    "id": "per",
+    "name": "Perth",
+    "pop": 2200,
+    "rent": 0.93,
+    "wage": 1.09,
+    "dem": 1.54,
+    "price": 1.14
+   },
+   {
+    "id": "ade",
+    "name": "Adelaide",
+    "pop": 1400,
+    "rent": 0.83,
+    "wage": 1,
+    "dem": 1.44,
+    "price": 1.13
+   },
+   {
+    "id": "smallau",
+    "name": "Small town",
+    "pop": 20,
+    "rent": 0.39,
+    "wage": 0.8,
+    "dem": 0.42,
+    "price": 1.08
+   }
+  ],
+  "vat": {
+   "std": 0.1,
+   "food": 0,
+   "low": 0.1,
+   "zero": 0
+  }
+ },
+ "JP": {
+  "code": "JP",
+  "pl": 0.77,
+  "mkt": 1,
+  "rent": 0.86,
+  "wage": 0.68,
+  "loan": 92733.29000000001,
+  "loanTermM": 60,
+  "asCapital": 0.0713333,
+  "asFee": 14267,
+  "asConvFee": 19616.6575,
+  "vatThr": 713333,
+  "fx": 0.0713333,
+  "policy0": 0.0075,
+  "bur": 1.3,
+  "corp": 0.3,
+  "divTax": 0.20315,
+  "empNI": 0.15,
+  "otp": 0,
+  "injury": 0.005,
+  "eeNI": 0.15,
+  "selfNI": 0.15,
+  "leaveWk": 2,
+  "inhFree": 2567998.8000000003,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0.1,
+   "allowance": 30673.319,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0.05
+    ],
+    [
+     139099.935,
+     0.1
+    ],
+    [
+     235399.89,
+     0.2
+    ],
+    [
+     495766.435,
+     0.23
+    ],
+    [
+     641999.7000000001,
+     0.33
+    ],
+    [
+     1283999.4000000001,
+     0.4
+    ],
+    [
+     2853332,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "tyo",
+    "name": "Tokyo",
+    "pop": 14000,
+    "rent": 1.29,
+    "wage": 0.81,
+    "dem": 1.98,
+    "price": 0.81
+   },
+   {
+    "id": "osa",
+    "name": "Osaka",
+    "pop": 2750,
+    "rent": 0.86,
+    "wage": 0.71,
+    "dem": 1.6,
+    "price": 0.77
+   },
+   {
+    "id": "nag",
+    "name": "Nagoya",
+    "pop": 2300,
+    "rent": 0.77,
+    "wage": 0.7,
+    "dem": 1.55,
+    "price": 0.76
+   },
+   {
+    "id": "fuk",
+    "name": "Fukuoka",
+    "pop": 1600,
+    "rent": 0.69,
+    "wage": 0.65,
+    "dem": 1.47,
+    "price": 0.76
+   },
+   {
+    "id": "sap",
+    "name": "Sapporo",
+    "pop": 1960,
+    "rent": 0.6,
+    "wage": 0.63,
+    "dem": 1.51,
+    "price": 0.74
+   },
+   {
+    "id": "smalljp",
+    "name": "Small town",
+    "pop": 40,
+    "rent": 0.34,
+    "wage": 0.53,
+    "dem": 0.59,
+    "price": 0.73
+   }
+  ],
+  "vat": {
+   "std": 0.1,
+   "food": 0.08,
+   "low": 0.08,
+   "zero": 0
+  }
+ },
+ "KR": {
+  "code": "KR",
+  "pl": 0.77,
+  "mkt": 1,
+  "rent": 0.7,
+  "wage": 0.64,
+  "loan": 91714.8,
+  "loanTermM": 60,
+  "asCapital": 7642.900000000001,
+  "asFee": 3821,
+  "asConvFee": 5732.175,
+  "vatThr": 794861.6,
+  "fx": 0.0076429,
+  "policy0": 0.025,
+  "bur": 1.1,
+  "corp": 0.22,
+  "divTax": 0.154,
+  "empNI": 0.1,
+  "otp": 0,
+  "injury": 0.01,
+  "eeNI": 0.09,
+  "selfNI": 0.09,
+  "leaveWk": 3,
+  "inhFree": 3821450,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0.06
+    ],
+    [
+     107000.6,
+     0.15
+    ],
+    [
+     382145,
+     0.24
+    ],
+    [
+     672575.2000000001,
+     0.35
+    ],
+    [
+     1146435,
+     0.38
+    ],
+    [
+     2292870,
+     0.4
+    ],
+    [
+     3821450,
+     0.42
+    ],
+    [
+     7642900,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "sel",
+    "name": "Seoul",
+    "pop": 9400,
+    "rent": 0.98,
+    "wage": 0.77,
+    "dem": 1.89,
+    "price": 0.8
+   },
+   {
+    "id": "pus",
+    "name": "Busan",
+    "pop": 3300,
+    "rent": 0.63,
+    "wage": 0.64,
+    "dem": 1.64,
+    "price": 0.76
+   },
+   {
+    "id": "inc",
+    "name": "Incheon",
+    "pop": 3000,
+    "rent": 0.6,
+    "wage": 0.64,
+    "dem": 1.62,
+    "price": 0.76
+   },
+   {
+    "id": "dae",
+    "name": "Daegu",
+    "pop": 2400,
+    "rent": 0.52,
+    "wage": 0.61,
+    "dem": 1.56,
+    "price": 0.76
+   },
+   {
+    "id": "dej",
+    "name": "Daejeon",
+    "pop": 1450,
+    "rent": 0.52,
+    "wage": 0.61,
+    "dem": 1.44,
+    "price": 0.76
+   },
+   {
+    "id": "smallkr",
+    "name": "Small town",
+    "pop": 40,
+    "rent": 0.28,
+    "wage": 0.5,
+    "dem": 0.59,
+    "price": 0.72
+   }
+  ],
+  "vat": {
+   "std": 0.1,
+   "food": 0,
+   "low": 0.1,
+   "zero": 0
+  }
+ },
+ "BR": {
+  "code": "BR",
+  "pl": 0.5,
+  "mkt": 1,
+  "rent": 0.34,
+  "wage": 0.23,
+  "loan": 83017.242,
+  "loanTermM": 60,
+  "asCapital": 2029.31036,
+  "asFee": 1845,
+  "asConvFee": 3320.68968,
+  "vatThr": 0,
+  "fx": 1.8448276,
+  "policy0": 0.15,
+  "bur": 1.6,
+  "corp": 0.34,
+  "divTax": 0.1,
+  "empNI": 0.28,
+  "otp": 0,
+  "injury": 0.02,
+  "eeNI": 0.09,
+  "selfNI": 0.11,
+  "leaveWk": 5,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     50732.759,
+     0.075
+    ],
+    [
+     73793.10399999999,
+     0.15
+    ],
+    [
+     101465.518,
+     0.225
+    ],
+    [
+     119913.794,
+     0.275
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "sp",
+    "name": "S\u00e3o Paulo",
+    "pop": 12300,
+    "rent": 0.44,
+    "wage": 0.3,
+    "dem": 1.95,
+    "price": 0.51
+   },
+   {
+    "id": "rio",
+    "name": "Rio de Janeiro",
+    "pop": 6700,
+    "rent": 0.39,
+    "wage": 0.25,
+    "dem": 1.82,
+    "price": 0.51
+   },
+   {
+    "id": "bsb",
+    "name": "Bras\u00edlia",
+    "pop": 3000,
+    "rent": 0.34,
+    "wage": 0.28,
+    "dem": 1.62,
+    "price": 0.5
+   },
+   {
+    "id": "ssa",
+    "name": "Salvador",
+    "pop": 2400,
+    "rent": 0.24,
+    "wage": 0.21,
+    "dem": 1.57,
+    "price": 0.49
+   },
+   {
+    "id": "cur",
+    "name": "Curitiba",
+    "pop": 1900,
+    "rent": 0.29,
+    "wage": 0.23,
+    "dem": 1.51,
+    "price": 0.49
+   },
+   {
+    "id": "smallbr",
+    "name": "Small town",
+    "pop": 30,
+    "rent": 0.12,
+    "wage": 0.16,
+    "dem": 0.52,
+    "price": 0.46
+   }
+  ],
+  "vat": {
+   "std": 0.17,
+   "food": 0.07,
+   "low": 0.12,
+   "zero": 0
+  }
+ },
+ "CH": {
+  "code": "CH",
+  "pl": 1.27,
+  "mkt": 1,
+  "rent": 1.5,
+  "wage": 1.55,
+  "loan": 201000,
+  "loanTermM": 60,
+  "asCapital": 268000,
+  "asFee": 24120,
+  "asConvFee": 33500,
+  "vatThr": 1340000,
+  "fx": 13.4,
+  "policy0": 0,
+  "bur": 0.8,
+  "corp": 0.147,
+  "divTax": 0.2,
+  "empNI": 0.064,
+  "otp": 0.07,
+  "injury": 0.01,
+  "eeNI": 0.064,
+  "selfNI": 0.1,
+  "leaveWk": 4,
+  "inhFree": 0,
+  "wealthThr": 1072000,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": [
+    0.03,
+    53600
+   ],
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     241200,
+     0.05
+    ],
+    [
+     536000,
+     0.12
+    ],
+    [
+     1072000,
+     0.2
+    ],
+    [
+     2010000,
+     0.28
+    ],
+    [
+     4020000,
+     0.34
+    ]
+   ],
+   "floor": 131320,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "zrh",
+    "name": "Zurich",
+    "pop": 430,
+    "rent": 2.03,
+    "wage": 1.74,
+    "dem": 1.15,
+    "price": 1.31
+   },
+   {
+    "id": "gva",
+    "name": "Geneva",
+    "pop": 205,
+    "rent": 1.95,
+    "wage": 1.7,
+    "dem": 0.98,
+    "price": 1.31
+   },
+   {
+    "id": "bsl",
+    "name": "Basel",
+    "pop": 175,
+    "rent": 1.58,
+    "wage": 1.63,
+    "dem": 0.93,
+    "price": 1.28
+   },
+   {
+    "id": "brn",
+    "name": "Bern",
+    "pop": 145,
+    "rent": 1.5,
+    "wage": 1.58,
+    "dem": 0.89,
+    "price": 1.27
+   },
+   {
+    "id": "lsn",
+    "name": "Lausanne",
+    "pop": 140,
+    "rent": 1.58,
+    "wage": 1.55,
+    "dem": 0.89,
+    "price": 1.28
+   },
+   {
+    "id": "zug",
+    "name": "Zug",
+    "pop": 31,
+    "rent": 1.95,
+    "wage": 1.78,
+    "dem": 0.53,
+    "price": 1.31
+   },
+   {
+    "id": "smallch",
+    "name": "Mountain village",
+    "pop": 4,
+    "rent": 1.05,
+    "wage": 1.4,
+    "dem": 0.35,
+    "price": 1.23
+   }
+  ],
+  "vat": {
+   "std": 0.081,
+   "food": 0.026,
+   "low": 0.038,
+   "zero": 0
+  }
+ },
+ "MX": {
+  "code": "MX",
+  "pl": 0.47,
+  "mkt": 1,
+  "rent": 0.69,
+  "wage": 0.21,
+  "loan": 144500,
+  "loanTermM": 60,
+  "asCapital": 0.578,
+  "asFee": 10404,
+  "asConvFee": 11560,
+  "vatThr": 0,
+  "fx": 0.578,
+  "policy0": 0.075,
+  "bur": 1.5,
+  "corp": 0.37,
+  "divTax": 0.1,
+  "empNI": 0.22,
+  "otp": 0.07,
+  "injury": 0.01,
+  "eeNI": 0.028,
+  "selfNI": 0.1,
+  "leaveWk": 2.4,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0.0192
+    ],
+    [
+     5174.255999999999,
+     0.064
+    ],
+    [
+     43918.752,
+     0.1088
+    ],
+    [
+     77183.80799999999,
+     0.16
+    ],
+    [
+     89722.362,
+     0.1792
+    ],
+    [
+     107422.45599999999,
+     0.2136
+    ],
+    [
+     216655.786,
+     0.2352
+    ],
+    [
+     341480.088,
+     0.3
+    ],
+    [
+     651941.228,
+     0.32
+    ],
+    [
+     869255.3559999999,
+     0.34
+    ],
+    [
+     2607766.6459999997,
+     0.35
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "cdmx",
+    "name": "Mexico City",
+    "pop": 9200,
+    "rent": 0.93,
+    "wage": 0.27,
+    "dem": 1.88,
+    "price": 0.49
+   },
+   {
+    "id": "gdl",
+    "name": "Guadalajara",
+    "pop": 1400,
+    "rent": 0.69,
+    "wage": 0.23,
+    "dem": 1.44,
+    "price": 0.47
+   },
+   {
+    "id": "mty",
+    "name": "Monterrey",
+    "pop": 1150,
+    "rent": 0.79,
+    "wage": 0.25,
+    "dem": 1.38,
+    "price": 0.48
+   },
+   {
+    "id": "pue",
+    "name": "Puebla",
+    "pop": 1700,
+    "rent": 0.52,
+    "wage": 0.19,
+    "dem": 1.49,
+    "price": 0.46
+   },
+   {
+    "id": "tij",
+    "name": "Tijuana",
+    "pop": 1900,
+    "rent": 0.62,
+    "wage": 0.23,
+    "dem": 1.51,
+    "price": 0.47
+   },
+   {
+    "id": "cun",
+    "name": "Canc\u00fan",
+    "pop": 900,
+    "rent": 0.76,
+    "wage": 0.21,
+    "dem": 1.32,
+    "price": 0.47
+   },
+   {
+    "id": "smallmx",
+    "name": "Small town",
+    "pop": 30,
+    "rent": 0.31,
+    "wage": 0.15,
+    "dem": 0.51,
+    "price": 0.45
+   }
+  ],
+  "vat": {
+   "std": 0.16,
+   "food": 0,
+   "low": 0.16,
+   "zero": 0
+  }
+ },
+ "AE": {
+  "code": "AE",
+  "pl": 0.77,
+  "mkt": 1,
+  "rent": 2.1,
+  "wage": 0.52,
+  "loan": 145675,
+  "loanTermM": 60,
+  "asCapital": 2.9135,
+  "asFee": 46616,
+  "asConvFee": 34962,
+  "vatThr": 1092562.5,
+  "fx": 2.9135,
+  "policy0": 0.04,
+  "bur": 0.8,
+  "corp": 0.08,
+  "divTax": 0,
+  "empNI": 0,
+  "otp": 0.06,
+  "injury": 0.005,
+  "eeNI": 0,
+  "selfNI": 0,
+  "leaveWk": 4.3,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "dxb",
+    "name": "Dubai",
+    "pop": 3800,
+    "rent": 2.73,
+    "wage": 0.6,
+    "dem": 1.67,
+    "price": 0.79
+   },
+   {
+    "id": "auh",
+    "name": "Abu Dhabi",
+    "pop": 1600,
+    "rent": 2.52,
+    "wage": 0.6,
+    "dem": 1.47,
+    "price": 0.78
+   },
+   {
+    "id": "shj",
+    "name": "Sharjah",
+    "pop": 1800,
+    "rent": 1.58,
+    "wage": 0.46,
+    "dem": 1.49,
+    "price": 0.75
+   },
+   {
+    "id": "aan",
+    "name": "Al Ain",
+    "pop": 770,
+    "rent": 1.47,
+    "wage": 0.46,
+    "dem": 1.29,
+    "price": 0.75
+   },
+   {
+    "id": "rak",
+    "name": "Ras Al Khaimah",
+    "pop": 400,
+    "rent": 1.37,
+    "wage": 0.44,
+    "dem": 1.13,
+    "price": 0.75
+   },
+   {
+    "id": "smallae",
+    "name": "Small town",
+    "pop": 30,
+    "rent": 1.05,
+    "wage": 0.42,
+    "dem": 0.52,
+    "price": 0.74
+   }
+  ],
+  "vat": {
+   "std": 0.05,
+   "food": 0.05,
+   "low": 0.05,
+   "zero": 0
+  }
+ },
+ "IT": {
+  "code": "IT",
+  "pl": 0.73,
+  "mkt": 1,
+  "rent": 0.79,
+  "wage": 0.66,
+  "loan": 139565.2176,
+  "loanTermM": 60,
+  "asCapital": 116304.348,
+  "asFee": 23261,
+  "asConvFee": 29076.087,
+  "vatThr": 988586.958,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 1.45,
+  "corp": 0.279,
+  "divTax": 0.26,
+  "empNI": 0.3,
+  "otp": 0.069,
+  "injury": 0.01,
+  "eeNI": 0.0919,
+  "selfNI": 0.24,
+  "leaveWk": 4,
+  "inhFree": 11630434.799999999,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     98858.6958,
+     0.25
+    ],
+    [
+     325652.1744,
+     0.35
+    ],
+    [
+     581521.74,
+     0.45
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "rom",
+    "name": "Rome",
+    "pop": 2750,
+    "rent": 1.03,
+    "wage": 0.69,
+    "dem": 1.6,
+    "price": 0.75
+   },
+   {
+    "id": "mil",
+    "name": "Milan",
+    "pop": 1370,
+    "rent": 1.26,
+    "wage": 0.81,
+    "dem": 1.43,
+    "price": 0.77
+   },
+   {
+    "id": "nap",
+    "name": "Naples",
+    "pop": 910,
+    "rent": 0.67,
+    "wage": 0.56,
+    "dem": 1.33,
+    "price": 0.72
+   },
+   {
+    "id": "tor",
+    "name": "Turin",
+    "pop": 840,
+    "rent": 0.79,
+    "wage": 0.66,
+    "dem": 1.31,
+    "price": 0.73
+   },
+   {
+    "id": "pal",
+    "name": "Palermo",
+    "pop": 630,
+    "rent": 0.59,
+    "wage": 0.54,
+    "dem": 1.24,
+    "price": 0.71
+   },
+   {
+    "id": "bol",
+    "name": "Bologna",
+    "pop": 390,
+    "rent": 0.91,
+    "wage": 0.7,
+    "dem": 1.13,
+    "price": 0.74
+   },
+   {
+    "id": "flr",
+    "name": "Florence",
+    "pop": 360,
+    "rent": 0.99,
+    "wage": 0.66,
+    "dem": 1.11,
+    "price": 0.75
+   },
+   {
+    "id": "smallit",
+    "name": "Small town",
+    "pop": 15,
+    "rent": 0.43,
+    "wage": 0.56,
+    "dem": 0.35,
+    "price": 0.7
+   }
+  ],
+  "vat": {
+   "std": 0.22,
+   "food": 0.1,
+   "low": 0.04,
+   "zero": 0
+  }
+ },
+ "DK": {
+  "code": "DK",
+  "pl": 1.02,
+  "mkt": 1,
+  "rent": 0.75,
+  "wage": 1.05,
+  "loan": 156200,
+  "loanTermM": 60,
+  "asCapital": 62480,
+  "asFee": 1047,
+  "asConvFee": 23430,
+  "vatThr": 78100,
+  "fx": 1.562,
+  "policy0": 0.016,
+  "bur": 0.7,
+  "corp": 0.22,
+  "divTax": 0.42,
+  "empNI": 0.01,
+  "otp": 0.08,
+  "injury": 0.005,
+  "eeNI": 0.08,
+  "selfNI": 0.08,
+  "leaveWk": 5,
+  "inhFree": 535453.6,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     84504.2,
+     0.34
+    ],
+    [
+     1088714,
+     0.41
+    ],
+    [
+     1320671,
+     0.48
+    ],
+    [
+     4401716,
+     0.52
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "cph",
+    "name": "Copenhagen",
+    "pop": 660,
+    "rent": 1.01,
+    "wage": 1.16,
+    "dem": 1.26,
+    "price": 1.06
+   },
+   {
+    "id": "aar",
+    "name": "Aarhus",
+    "pop": 290,
+    "rent": 0.79,
+    "wage": 1.05,
+    "dem": 1.06,
+    "price": 1.03
+   },
+   {
+    "id": "ode",
+    "name": "Odense",
+    "pop": 185,
+    "rent": 0.68,
+    "wage": 1,
+    "dem": 0.95,
+    "price": 1.01
+   },
+   {
+    "id": "aal",
+    "name": "Aalborg",
+    "pop": 120,
+    "rent": 0.64,
+    "wage": 1,
+    "dem": 0.85,
+    "price": 1
+   },
+   {
+    "id": "esb",
+    "name": "Esbjerg",
+    "pop": 72,
+    "rent": 0.6,
+    "wage": 1.01,
+    "dem": 0.72,
+    "price": 1
+   },
+   {
+    "id": "smalldk",
+    "name": "Small town",
+    "pop": 12,
+    "rent": 0.41,
+    "wage": 0.94,
+    "dem": 0.35,
+    "price": 0.97
+   }
+  ],
+  "vat": {
+   "std": 0.25,
+   "food": 0.25,
+   "low": 0.25,
+   "zero": 0
+  }
+ },
+ "FI": {
+  "code": "FI",
+  "pl": 0.91,
+  "mkt": 1,
+  "rent": 1.07,
+  "wage": 0.85,
+  "loan": 139565.2176,
+  "loanTermM": 60,
+  "asCapital": 0,
+  "asFee": 3198,
+  "asConvFee": 23260.869599999998,
+  "vatThr": 232608.696,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 0.75,
+  "corp": 0.2,
+  "divTax": 0.28,
+  "empNI": 0.023,
+  "otp": 0.171,
+  "injury": 0.007,
+  "eeNI": 0.095,
+  "selfNI": 0.24,
+  "leaveWk": 5,
+  "inhFree": 232608.696,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     174456.522,
+     0.2
+    ],
+    [
+     246565.21776,
+     0.265
+    ],
+    [
+     366358.6962,
+     0.38
+    ],
+    [
+     605945.65308,
+     0.415
+    ],
+    [
+     1025804.34936,
+     0.49
+    ]
+   ],
+   "floor": 0,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "hel",
+    "name": "Helsinki",
+    "pop": 680,
+    "rent": 1.44,
+    "wage": 0.94,
+    "dem": 1.27,
+    "price": 0.94
+   },
+   {
+    "id": "esp",
+    "name": "Espoo",
+    "pop": 315,
+    "rent": 1.28,
+    "wage": 0.95,
+    "dem": 1.08,
+    "price": 0.93
+   },
+   {
+    "id": "tam",
+    "name": "Tampere",
+    "pop": 260,
+    "rent": 1.02,
+    "wage": 0.83,
+    "dem": 1.03,
+    "price": 0.91
+   },
+   {
+    "id": "oul",
+    "name": "Oulu",
+    "pop": 215,
+    "rent": 0.91,
+    "wage": 0.83,
+    "dem": 0.99,
+    "price": 0.9
+   },
+   {
+    "id": "tku",
+    "name": "Turku",
+    "pop": 205,
+    "rent": 0.96,
+    "wage": 0.82,
+    "dem": 0.98,
+    "price": 0.9
+   },
+   {
+    "id": "rov",
+    "name": "Rovaniemi",
+    "pop": 65,
+    "rent": 0.8,
+    "wage": 0.78,
+    "dem": 0.7,
+    "price": 0.89
+   },
+   {
+    "id": "smallfi",
+    "name": "Small town",
+    "pop": 10,
+    "rent": 0.54,
+    "wage": 0.75,
+    "dem": 0.35,
+    "price": 0.86
+   }
+  ],
+  "vat": {
+   "std": 0.255,
+   "food": 0.135,
+   "low": 0.1,
+   "zero": 0
+  }
+ },
+ "IE": {
+  "code": "IE",
+  "pl": 1,
+  "mkt": 1,
+  "rent": 1.4,
+  "wage": 0.98,
+  "loan": 139565.2176,
+  "loanTermM": 60,
+  "asCapital": 11.6304348,
+  "asFee": 582,
+  "asConvFee": 11630.434799999999,
+  "vatThr": 494293.479,
+  "fx": 11.6304348,
+  "policy0": 0.02,
+  "bur": 0.8,
+  "corp": 0.125,
+  "divTax": 0.52,
+  "empNI": 0.1125,
+  "otp": 0.015,
+  "injury": 0,
+  "eeNI": 0.042,
+  "selfNI": 0.042,
+  "leaveWk": 4,
+  "inhFree": 4652173.92,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     232608.696,
+     0.22
+    ],
+    [
+     333793.47875999997,
+     0.23
+    ],
+    [
+     511739.1312,
+     0.43
+    ],
+    [
+     814642.1751312,
+     0.48
+    ]
+   ],
+   "floor": 58152.174,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "dub",
+    "name": "Dublin",
+    "pop": 590,
+    "rent": 1.96,
+    "wage": 1.09,
+    "dem": 1.23,
+    "price": 1.04
+   },
+   {
+    "id": "cork",
+    "name": "Cork",
+    "pop": 225,
+    "rent": 1.4,
+    "wage": 0.98,
+    "dem": 1,
+    "price": 1
+   },
+   {
+    "id": "lim",
+    "name": "Limerick",
+    "pop": 100,
+    "rent": 1.19,
+    "wage": 0.93,
+    "dem": 0.81,
+    "price": 0.98
+   },
+   {
+    "id": "gal",
+    "name": "Galway",
+    "pop": 85,
+    "rent": 1.33,
+    "wage": 0.93,
+    "dem": 0.76,
+    "price": 0.99
+   },
+   {
+    "id": "wat",
+    "name": "Waterford",
+    "pop": 60,
+    "rent": 1.12,
+    "wage": 0.91,
+    "dem": 0.68,
+    "price": 0.98
+   },
+   {
+    "id": "smallie",
+    "name": "Small town",
+    "pop": 8,
+    "rent": 0.77,
+    "wage": 0.87,
+    "dem": 0.35,
+    "price": 0.95
+   }
+  ],
+  "vat": {
+   "std": 0.23,
+   "food": 0,
+   "low": 0.135,
+   "zero": 0
+  }
+ },
+ "SG": {
+  "code": "SG",
+  "pl": 0.95,
+  "mkt": 1,
+  "rent": 2.65,
+  "wage": 0.89,
+  "loan": 124349.99999999999,
+  "loanTermM": 60,
+  "asCapital": 8.29,
+  "asFee": 2611,
+  "asConvFee": 8290,
+  "vatThr": 8289999.999999999,
+  "fx": 8.29,
+  "policy0": 0.015,
+  "bur": 0.5,
+  "corp": 0.17,
+  "divTax": 0,
+  "empNI": 0.17,
+  "otp": 0,
+  "injury": 0.005,
+  "eeNI": 0.2,
+  "selfNI": 0.105,
+  "leaveWk": 2,
+  "inhFree": 0,
+  "wealthThr": 0,
+  "income": {
+   "flat": 0,
+   "allowance": 0,
+   "wageDeduction": null,
+   "brackets": [
+    [
+     0,
+     0
+    ],
+    [
+     165799.99999999997,
+     0.02
+    ],
+    [
+     248699.99999999997,
+     0.035
+    ],
+    [
+     331599.99999999994,
+     0.07
+    ],
+    [
+     663199.9999999999,
+     0.115
+    ],
+    [
+     994799.9999999999,
+     0.15
+    ],
+    [
+     1326399.9999999998,
+     0.18
+    ],
+    [
+     1657999.9999999998,
+     0.19
+    ],
+    [
+     2652799.9999999995,
+     0.22
+    ],
+    [
+     4144999.9999999995,
+     0.23
+    ],
+    [
+     8289999.999999999,
+     0.24
+    ]
+   ],
+   "floor": 49739.99999999999,
+   "capShare": 0
+  },
+  "cities": [
+   {
+    "id": "sgc",
+    "name": "Central (CBD and Orchard)",
+    "pop": 940,
+    "rent": 3.84,
+    "wage": 0.99,
+    "dem": 1.34,
+    "price": 0.99
+   },
+   {
+    "id": "sgw",
+    "name": "Jurong",
+    "pop": 400,
+    "rent": 2.12,
+    "wage": 0.84,
+    "dem": 1.14,
+    "price": 0.93
+   },
+   {
+    "id": "sge",
+    "name": "Tampines",
+    "pop": 270,
+    "rent": 2.38,
+    "wage": 0.86,
+    "dem": 1.04,
+    "price": 0.94
+   },
+   {
+    "id": "sgn",
+    "name": "Woodlands",
+    "pop": 255,
+    "rent": 1.99,
+    "wage": 0.82,
+    "dem": 1.03,
+    "price": 0.93
+   },
+   {
+    "id": "sgne",
+    "name": "Punggol",
+    "pop": 190,
+    "rent": 2.25,
+    "wage": 0.84,
+    "dem": 0.95,
+    "price": 0.94
+   },
+   {
+    "id": "sgs",
+    "name": "Sentosa",
+    "pop": 6,
+    "rent": 4.24,
+    "wage": 0.89,
+    "dem": 0.35,
+    "price": 1
+   }
+  ],
+  "vat": {
+   "std": 0.09,
+   "food": 0.09,
+   "low": 0.09,
+   "zero": 0
+  }
+ }
+}

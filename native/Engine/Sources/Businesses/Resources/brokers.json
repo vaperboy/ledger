@@ -1,0 +1,59 @@
+{
+ "about": "Middle-man trades that earn commission on what others make (Brokers.swift): travel agency, insurance broker, finance and mortgage broker. Money values are in the reference currency at the reference price level (the engine scales them by the company's country, city, inflation and price position, like every ticket). Rates are shares: com / fyc / ren / proc / trail. Game design values based on typical real-world broker terms, not a source. line.mix = share of new business; focus = what a knob option does to the mix (option id: line id: multiplier); addons = extra commission sold with a deal when the option is switched on (attach = chance, value = what the customer pays, rate = the broker's share).",
+ "trades": {
+  "travel": {
+   "kind": "booking",
+   "cancelFee": 0.012,
+   "disruptionCancel": 2.0,
+   "supplierShare": 0.6,
+   "lines": [
+    { "id": "pkg", "name": "Package holiday", "value": 32000, "com": [0.08, 0.12], "mix": 0.35, "lead": [8, 26], "cancel": 0.06, "deposit": 0.2, "balanceWeeks": 8 },
+    { "id": "flt", "name": "Flight", "value": 6800, "com": [0.05, 0.09], "mix": 0.35, "lead": [3, 16], "cancel": 0.05, "deposit": 1.0, "balanceWeeks": 0, "supplier": "airline" },
+    { "id": "htl", "name": "Hotel stay", "value": 8500, "com": [0.05, 0.09], "mix": 0.30, "lead": [3, 14], "cancel": 0.10, "deposit": 0.2, "balanceWeeks": 2, "supplier": "hotel" }
+   ],
+   "focus": {
+    "leisure": { "pkg": 2.0 },
+    "flights": { "flt": 1.8, "htl": 1.4 },
+    "corp": { "flt": 2.0, "htl": 2.0, "pkg": 0.3 }
+   },
+   "addons": [
+    { "option": "ins", "lines": ["pkg", "flt"], "attach": 0.4, "value": 1100, "rate": 0.3 },
+    { "option": "visa", "lines": ["pkg"], "attach": 0.25, "value": 900, "rate": 0.5 }
+   ]
+  },
+  "insbroker": {
+   "kind": "policy",
+   "retentionOption": { "renew": 0.04 },
+   "lines": [
+    { "id": "motor", "name": "Motor insurance", "value": 7200, "com": [0.10, 0.14], "ren": [0.05, 0.07], "mix": 0.40, "retention": 0.80, "cancel": 0.07 },
+    { "id": "home", "name": "Home insurance", "value": 4600, "com": [0.14, 0.20], "ren": [0.07, 0.09], "mix": 0.30, "retention": 0.86, "cancel": 0.05 },
+    { "id": "life", "name": "Life and health cover", "value": 9800, "com": [0.15, 0.20], "ren": [0.05, 0.08], "mix": 0.15, "retention": 0.90, "cancel": 0.06 },
+    { "id": "biz", "name": "Business insurance", "value": 26000, "com": [0.12, 0.18], "ren": [0.08, 0.10], "mix": 0.15, "retention": 0.88, "cancel": 0.05 }
+   ],
+   "focus": {
+    "personal": { "motor": 1.6, "home": 1.4, "life": 0.5, "biz": 0.3 },
+    "commercial": { "biz": 3.0, "motor": 0.6, "home": 0.5 },
+    "life": { "life": 3.0, "home": 0.8, "motor": 0.6 }
+   }
+  },
+  "finbroker": {
+   "kind": "loan",
+   "rateSensitivity": 14,
+   "declineStress": 4,
+   "lines": [
+    { "id": "mort", "name": "Mortgage", "value": 3200000, "com": [0.005, 0.008], "mix": 0.40, "lag": [8, 14], "decline": 0.15, "fallThrough": 0.08, "lenderFee": 1500, "clientFee": 3500, "trail": [0.0015, 0.0025], "amort": 0.022, "redeem": 0.05, "redeemLater": 0.08 },
+    { "id": "remort", "name": "Remortgage and product transfer", "value": 2100000, "com": [0.005, 0.007], "mix": 0.30, "lag": [3, 6], "decline": 0.05, "fallThrough": 0.05, "lenderFee": 800, "clientFee": 2000, "trail": [0.0015, 0.0020], "amort": 0.022, "redeem": 0.05, "redeemLater": 0.08 },
+    { "id": "loan", "name": "Personal loan", "value": 150000, "com": [0.008, 0.010], "mix": 0.15, "lag": [2, 4], "decline": 0.22, "fallThrough": 0.10, "lenderFee": 500, "clientFee": 0, "trail": [0, 0], "amort": 0.2, "redeem": 0.10, "redeemLater": 0.10 },
+    { "id": "biz", "name": "Business loan", "value": 900000, "com": [0.008, 0.010], "mix": 0.15, "lag": [6, 10], "decline": 0.28, "fallThrough": 0.10, "lenderFee": 3000, "clientFee": 6000, "trail": [0.0010, 0.0020], "amort": 0.12, "redeem": 0.06, "redeemLater": 0.08 }
+   ],
+   "focus": {
+    "home": { "mort": 2.0, "remort": 1.5, "loan": 0.3, "biz": 0.2 },
+    "biz": { "biz": 3.0, "loan": 1.5, "mort": 0.4, "remort": 0.5 },
+    "remort": { "remort": 1.8 }
+   },
+   "addons": [
+    { "option": "protect", "lines": ["mort", "remort"], "attach": 0.35, "value": 5000, "rate": 0.18 }
+   ]
+  }
+ }
+}

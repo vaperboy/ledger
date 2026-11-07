@@ -1,0 +1,591 @@
+import SwiftUI
+import GameCore
+import Countries
+import Simulation
+
+/// The loan application in two stages: 1 Apply and the bank's assessment (Apply, Offer), then 2 the final
+/// agreement (Choose, Agreement, Confirm). The assessment shows the MAXIMUM the bank approves with its rate, period and instalment; the player then
+/// chooses any amount up to it (never forced to take the maximum), reads and accepts the agreement, and confirms where the money is paid.
+/// Every figure comes from `loanAssessment`, `loanApplicationQuote` and `loanAgreement`; `applyForLoan` re-checks everything and may refuse with a reason.
+struct BankLoanApplyFlow: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
+    var account: BankAccountID
+    @State private var step = 1   // 1 Offer, 2 Choose, 3 Confirm
+    @State private var amount = 0.0
+    @State private var term = 36
+    @State private var payInto: LoanPayout = .current
+    @State private var name = ""
+    @State private var proof: LoanDocuments.IncomeProof = .none
+    @State private var papers: LoanDocuments.CompanyPapers = .none
+    @State private var agreed = false
+    @State private var refusal: String?
+    @State private var approved: LoanApplicationOutcome?
+    @State private var pending: PendingAction?
+
+    private var kind: String { account.companyID == nil ? "cons" : "biz" }
+    private static let stepCount = 3
+
+    var body: some View {
+        if let e = store.engine {
+            let cur: Currency = account.companyID.flatMap { e.state.company($0) }.map { e.currency(for: $0) } ?? e.homeCurrency
+            let a: LoanAssessment = e.loanAssessment(kind: kind, companyID: account.companyID)
+            let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: account.companyID)
+            VStack(spacing: 0) {
+                AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: "Back") {
+                    Button("Done") { dismiss() }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                }
+                .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
+                StepDots(step: step, count: Self.stepCount, labels: ["Offer", "Choose", "Confirm"]).padding(.bottom, 8)
+                ScrollView {
+                    stepContent(e, a, q, cur)
+                        .padding(.horizontal, 18).padding(.bottom, 20)
+                        .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden).noSidewaysDrag()
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .swipeBackEnabled(canStep: { approved == nil && step > 1 }, step: { back() })
+            .confirmAction($pending)
+            .onAppear { if name.isEmpty { name = e.state.player.name } }
+        }
+    }
+
+    private var titleText: String {
+        switch step {
+        case 1: return "Loan offer"
+        case 2: return "Choose your loan"
+        default: return "Confirm the loan"
+        }
+    }
+    private var subtitleText: String {
+        switch step {
+        case 1: return "What the bank can offer you"
+        case 2: return "Borrow what you need, up to the maximum"
+        default: return "Review it, then take the loan"
+        }
+    }
+
+    private func back() {
+        if approved != nil || step == 1 { dismiss() } else { Motion.animate(Motion.quickAnimation) { step -= 1 }; refusal = nil }
+    }
+
+    @ViewBuilder private func stepContent(_ e: GameEngine, _ a: LoanAssessment, _ q: LoanApplicationQuote, _ cur: Currency) -> some View {
+        switch step {
+        case 1:
+            LoanStepOffer(a: a, cur: cur, choose: { startChoosing(a) })
+        case 2:
+            LoanStepChoose(a: a, q: q, cur: cur, amount: $amount, term: $term, payInto: $payInto) { step = 3 }
+        default:
+            LoanStepSummary(q: q, cur: cur, payIntoName: payIntoName(a), personalGuarantee: a.personalGuarantee, refusal: refusal, approved: approved,
+                            clauses: e.loanAgreement(kind: kind, amount: amount, termMonths: term, companyID: account.companyID),
+                            name: $name, proof: $proof, papers: $papers, agreed: $agreed,
+                            onApply: { confirmApply(a, q, cur) }, onDone: { dismiss() })
+        }
+    }
+
+    /// From the offer to the choice: start below the maximum (the player is never pushed to the top) and on the bank's usual term.
+    private func startChoosing(_ a: LoanAssessment) {
+        let step100: Double = max(1, (a.maximum / 100).rounded())
+        let suggested: Double = (a.maximum * 0.6 / step100).rounded() * step100
+        amount = min(a.maximum, max(a.minimum, suggested))
+        term = a.defaultTermMonths
+        payInto = a.payoutAccounts.first?.id ?? .current
+        step = 2
+    }
+
+    private func payIntoName(_ a: LoanAssessment) -> String {
+        a.payoutAccounts.first(where: { $0.id == payInto })?.name ?? "the account"
+    }
+
+    /// The final confirmation: cost, effect and risk first. Nothing is booked until the player confirms here and the bank accepts.
+    private func confirmApply(_ a: LoanAssessment, _ q: LoanApplicationQuote, _ cur: Currency) {
+        let into: String = payIntoName(a)
+        var message: String = "You borrow \(cur.tidyDisplay(q.amount)) for \(q.termMonths) months at \(Currency.percent(q.yearlyRate, decimals: 2)) a year. "
+        message += "\(cur.tidyDisplay(q.disbursal)) is paid into \(into) after the \(cur.tidyDisplay(q.fee)) arrangement fee; you owe the full amount, \(cur.tidyDisplay(q.monthlyPayment)) a month. "
+        message += a.personalGuarantee ? "You are personally liable for it. " : ""
+        message += "A missed instalment adds a penalty and lowers your credit."
+        pending = PendingAction(title: "Take this loan?", message: message, button: "Take the loan", alwaysAsk: true) { apply(cur) }
+    }
+
+    private func apply(_ cur: Currency) {
+        let docs = LoanDocuments(fullName: name, incomeProof: proof, companyPapers: papers)
+        let result: LoanApplicationOutcome? = store.act({ (e: inout GameEngine) -> LoanApplicationOutcome in
+            e.applyForLoan(kind: kind, amount: amount, termMonths: term, companyID: account.companyID, documents: docs, agreed: agreed, payInto: payInto)
+        })
+        switch result {
+        case .approved(_, _, let disbursed)?:
+            Haptics.option()
+            approved = result
+            refusal = nil
+            store.show("\(cur.tidyShort(disbursed)) is in the account.", tone: "good")
+        case .refused(let why)?:
+            Haptics.warning(); refusal = why
+        case nil:
+            Haptics.warning(); refusal = "The bank could not be reached."
+        }
+    }
+}
+
+/// Dots under the header: where the player is in the application.
+private struct StepDots: View {
+    @Environment(\.outsidePalette) private var P
+    var step: Int
+    var count: Int
+    var labels: [String] = []
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                ForEach(1...count, id: \.self) { n in
+                    Capsule().fill(n <= step ? P.accent : P.lineStrong).frame(width: n == step ? 26 : 10, height: 4)
+                }
+            }
+            if step >= 1 && step <= labels.count {
+                Text(labels[step - 1]).popupText(.caption)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(step) of \(count)")
+    }
+}
+
+// MARK: Stage 1: Offer
+
+private struct LoanStepOffer: View {
+    @Environment(\.outsidePalette) private var P
+    var a: LoanAssessment
+    var cur: Currency
+    var choose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if a.approved {
+                IvoryPanel { LoanOfferPanel(a: a, cur: cur) }
+                conditions
+                QuietButton(title: "Choose an amount", fullWidth: true, action: choose)
+                    .accessibilityIdentifier("bank-loan-choose")
+            } else {
+                refused
+            }
+        }
+    }
+
+    private var refused: some View {
+        HStack(alignment: .top, spacing: 10) {
+            GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: P.caution)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("The bank would not lend now").popupText(.button)
+                Text((a.refusal ?? "The bank would not lend to you at the moment.").tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.caution.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.caution.opacity(0.45), lineWidth: 1))
+    }
+
+    private var conditions: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("CONDITIONS").capsLabel()
+            ForEach(Array(a.conditions.enumerated()), id: \.offset) { _, c in
+                Text(c.tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 2)
+    }
+}
+
+/// The offer on ivory: the maximum approved amount first, then rate, period and the instalment at the maximum.
+private struct LoanOfferPanel: View {
+    @Environment(\.outsidePalette) private var P
+    var a: LoanAssessment
+    var cur: Currency
+
+    var body: some View {
+        let minTerm: Int = a.termOptions.min() ?? a.defaultTermMonths
+        let maxTerm: Int = a.termOptions.max() ?? a.defaultTermMonths
+        let example: LoanExample? = a.examplesAtMaximum.first(where: { $0.termMonths == a.defaultTermMonths }) ?? a.examplesAtMaximum.first
+        let period: String = minTerm == maxTerm ? "\(minTerm) months" : "\(minTerm) to \(maxTerm) months"
+        let instalment: String = example.map { cur.tidyDisplay($0.monthlyPayment) } ?? "\u{2013}"
+        let instalmentNote: String = example.map { "over \($0.termMonths) months" } ?? ""
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Maximum approved amount").popupText(.subtitle)
+            Text(cur.tidyDisplay(a.maximum)).popupText(.hero)
+                .accessibilityIdentifier("bank-loan-maximum")
+            FlatRow(label: "Interest rate", value: Currency.percent(a.yearlyRate, decimals: 2) + " a year", rule: true)
+            FlatRow(label: "Repayment period", value: period)
+            FlatRow(label: "Monthly instalment at the maximum", value: instalment, sub: instalmentNote)
+            FlatRow(label: "Arrangement fee", value: Currency.percent(a.feeRate, decimals: 2), sub: "taken when the money is paid out")
+            FlatRow(label: "Your credit band", value: a.creditBand)
+            if a.personalGuarantee { FlatRow(label: "Guarantee", value: "You are personally liable") }
+        }
+    }
+}
+
+// MARK: Stage 2: Choose
+
+private struct LoanStepChoose: View {
+    @Environment(\.outsidePalette) private var P
+    var a: LoanAssessment
+    var q: LoanApplicationQuote
+    var cur: Currency
+    @Binding var amount: Double
+    @Binding var term: Int
+    @Binding var payInto: LoanPayout
+    var next: () -> Void
+
+    private var valid: Bool { amount >= a.minimum && amount <= a.maximum + 0.5 && q.refusal == nil }
+
+    /// Why Continue waits: the engine's refusal first, else the approved range.
+    private var blockedReason: String? {
+        if valid { return nil }
+        if let r = q.refusal { return r.tidyText }
+        return amount < a.minimum ? "The bank lends at least \(cur.tidyDisplay(a.minimum))." : "The bank approved up to \(cur.tidyDisplay(a.maximum))."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            amountPanel
+            termCard
+            if a.payoutAccounts.count > 1 { payoutCard }
+            figures
+            PrimaryAction(title: "Continue", blockedReason: blockedReason, identifier: "bank-loan-continue", action: next)
+        }
+    }
+
+    private var amountPanel: some View {
+        let step: Double = max(1, (a.maximum / 100).rounded())
+        let slider = Binding<Double>(
+            get: { amount },
+            set: { v in amount = min(a.maximum, max(a.minimum, (v / step).rounded() * step)) })
+        return IvoryPanel {
+            LoanAmountPanel(cur: cur, amount: amount, minimum: a.minimum, maximum: a.maximum, slider: slider, setFraction: { f in
+                amount = min(a.maximum, max(a.minimum, f >= 1 ? a.maximum : (a.maximum * f / step).rounded() * step))
+            })
+        }
+    }
+
+    private var termCard: some View {
+        let lo = Double(q.minTermMonths), hi = Double(q.maxTermMonths)
+        let value = Binding<Double>(get: { Double(term) }, set: { term = Int($0.rounded()) })
+        return Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("REPAYMENT PERIOD (MONTHS)").capsLabel()
+                HStack(spacing: 14) {
+                    VStack(spacing: 2) {
+                        LedgerSlider(value: value, in: lo...hi, step: 1).tint(P.accent)
+                        HStack {
+                            Text("\(q.minTermMonths)").textStyle(.caption, tint: P.inkFaint)
+                            Spacer()
+                            Text("\(q.maxTermMonths)").textStyle(.caption, tint: P.inkFaint)
+                        }
+                    }
+                    Text("\(q.termMonths)").popupText(.figure)
+                        .frame(width: 64, height: 46)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+                }
+            }
+        }
+    }
+
+    private var payoutCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("PAY THE LOAN INTO").capsLabel()
+            ForEach(a.payoutAccounts) { (acc: LoanPayoutAccount) in
+                ChoiceCard(title: acc.name, subtitle: "Balance " + cur.tidyShort(acc.balance), selected: payInto == acc.id) { payInto = acc.id }
+            }
+        }
+    }
+
+    @ViewBuilder private var figures: some View {
+        StatStrip(cells: [
+            .init(label: "Each month", value: cur.tidyShort(q.monthlyPayment)),
+            .init(label: "Interest in all", value: cur.tidyShort(q.totalInterest)),
+            .init(label: "Paid out", value: cur.tidyShort(q.disbursal), tint: P.gain),
+        ], ruled: false)
+        .padding(.vertical, 10).padding(.horizontal, 6)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.card))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+    }
+}
+
+/// The amount on ivory: the figure, a slider from the smallest loan to the maximum, and quick choices (25%, 50%, 75%, Maximum).
+private struct LoanAmountPanel: View {
+    @Environment(\.outsidePalette) private var P
+    var cur: Currency
+    var amount: Double
+    var minimum: Double
+    var maximum: Double
+    var slider: Binding<Double>
+    var setFraction: (Double) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Choose amount").popupText(.subtitle)
+            Text(cur.tidyDisplay(amount)).popupText(.hero)
+                .accessibilityIdentifier("bank-loan-amount")
+            if maximum > minimum {
+                LedgerSlider(value: slider, in: minimum...maximum).tint(P.accent)
+                    .accessibilityIdentifier("bank-loan-slider")
+                HStack {
+                    Text(cur.tidyShort(minimum)).popupText(.caption)
+                    Spacer()
+                    Text(cur.tidyShort(maximum)).popupText(.caption)
+                }
+            }
+            HStack(spacing: 8) {
+                chip("25%", 0.25)
+                chip("50%", 0.5)
+                chip("75%", 0.75)
+                chip("Maximum", 1)
+            }
+            Text("The bank approved up to " + cur.tidyDisplay(maximum) + ". You can borrow less.").popupText(.caption)
+        }
+    }
+
+    private func chip(_ title: String, _ fraction: Double) -> some View {
+        Button {
+            Haptics.choose()
+            setFraction(fraction)
+        } label: {
+            Text(title).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 34)
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("bank-loan-chip-" + title.lowercased())
+    }
+}
+
+// MARK: Stage 2: Agreement (papers)
+
+private struct LoanStepPapers: View {
+    @Environment(\.outsidePalette) private var P
+    var q: LoanApplicationQuote
+    var cur: Currency
+    var clauses: [LoanClause]
+    @Binding var name: String
+    @Binding var proof: LoanDocuments.IncomeProof
+    @Binding var papers: LoanDocuments.CompanyPapers
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            formCard
+            agreementCard
+        }
+    }
+
+    private var formCard: some View {
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("YOUR PAPERS").capsLabel()
+                Text("Full name").popupText(.caption)
+                TextField("Full name", text: $name)
+                    .textContentType(.name).autocorrectionDisabled()
+                    .popupField()
+                if q.needsIncomeProof { proofChoices }
+                if q.needsCompanyPapers { paperChoices }
+                Text("The bank checks these against its records and may turn the application down.").popupText(.caption)
+            }
+        }
+    }
+
+    private var proofChoices: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Proof of income").popupText(.caption).padding(.top, 4)
+            ForEach(LoanDocuments.IncomeProof.allCases, id: \.rawValue) { p in
+                ChoiceCard(title: Self.label(p), selected: proof == p) { proof = p }
+            }
+        }
+    }
+
+    private var paperChoices: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Company papers").popupText(.caption).padding(.top, 4)
+            ForEach(LoanDocuments.CompanyPapers.allCases, id: \.rawValue) { p in
+                ChoiceCard(title: Self.label(p), selected: papers == p) { papers = p }
+            }
+        }
+    }
+
+    private var agreementCard: some View {
+        Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("LOAN AGREEMENT").capsLabel()
+                ForEach(clauses) { c in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(c.title).popupText(.button)
+                        Text(c.body.tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private static func label(_ p: LoanDocuments.IncomeProof) -> String {
+        switch p {
+        case .none: return "None"
+        case .payslips: return "Payslips"
+        case .taxReturn: return "Last tax return"
+        case .bankStatements: return "Bank statements"
+        }
+    }
+
+    private static func label(_ p: LoanDocuments.CompanyPapers) -> String {
+        switch p {
+        case .none: return "None"
+        case .registration: return "Registration certificate"
+        case .accounts: return "Company accounts"
+        }
+    }
+}
+
+/// The one visible line of the agreement: the tick that the loan terms were read. The terms themselves sit under `More options`.
+private struct LoanAgreeBox: View {
+    @Environment(\.outsidePalette) private var P
+    @Binding var agreed: Bool
+
+    var body: some View {
+        Button { agreed.toggle(); Haptics.choose() } label: {
+            HStack(alignment: .top, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(agreed ? P.accent : P.lineStrong, lineWidth: 1.5)
+                    if agreed { GlyphView(glyph: "M5 12 L10 17 L19 7", size: 14, weight: 2, tint: P.accent) }
+                }
+                .frame(width: 22, height: 22)
+                Text("I agree to the loan terms.")
+                    .popupText(.rowLabel).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(agreed ? .isSelected : [])
+        .accessibilityIdentifier("bank-loan-agree")
+    }
+}
+
+// MARK: Confirm
+
+private struct LoanStepSummary: View {
+    @Environment(\.outsidePalette) private var P
+    var q: LoanApplicationQuote
+    var cur: Currency
+    var payIntoName: String
+    var personalGuarantee: Bool
+    var refusal: String?
+    var approved: LoanApplicationOutcome?
+    var clauses: [LoanClause]
+    @Binding var name: String
+    @Binding var proof: LoanDocuments.IncomeProof
+    @Binding var papers: LoanDocuments.CompanyPapers
+    @Binding var agreed: Bool
+    var onApply: () -> Void
+    var onDone: () -> Void
+    @State private var showSchedule = false
+    @State private var moreOpen = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if approved != nil { approvedBanner }
+            loanCard
+            repayCard
+            if let refusal { refusedCard(refusal) }
+            scheduleLink
+            if approved == nil {
+                LoanAgreeBox(agreed: $agreed)
+                DisclosureGroup("More options", isExpanded: $moreOpen) {
+                    LoanStepPapers(q: q, cur: cur, clauses: clauses, name: $name, proof: $proof, papers: $papers).padding(.top, 8)
+                }
+                .popupText(.rowLabel)
+                .onChange(of: refusal) { _, why in if why != nil { moreOpen = true } }
+                PrimaryAction(title: "Take the loan", blockedReason: agreed ? nil : "Tick that you agree to the terms first.", identifier: "bank-loan-confirm", action: onApply)
+            } else {
+                Button("Done", action: onDone).buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("bank-loan-done")
+            }
+        }
+    }
+
+    private var approvedBanner: some View {
+        HStack(spacing: 10) {
+            GlyphView(glyph: "M5 12 L10 17 L19 7", size: 18, weight: 2, tint: P.gain)
+            Text("Approved. \(cur.tidyDisplay(q.disbursal)) has been paid into \(payIntoName).").popupText(.body)
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.gain.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.gain.opacity(0.45), lineWidth: 1))
+    }
+
+    private func refusedCard(_ why: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            GlyphView(glyph: Glyph.warning, size: 18, weight: 1.6, tint: P.caution)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("The bank turned the application down").popupText(.button)
+                Text(why.tidyText).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.caution.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(P.caution.opacity(0.45), lineWidth: 1))
+    }
+
+    private var loanCard: some View {
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(spacing: 0) {
+                line("Loan amount", cur.tidyDisplay(q.amount))
+                line("Loan term", "\(q.termMonths) months")
+                line("Arrangement fee (\(Currency.percent(q.feeRate, decimals: 2)))", q.fee > 0 ? "\u{2212}" + cur.tidyDisplay(q.fee) : cur.tidyDisplay(0), tint: q.fee > 0 ? P.loss : P.ink)
+                Hairline().padding(.vertical, 6)
+                line("Paid into", payIntoName)
+                line("Disbursal amount", cur.tidyDisplay(q.disbursal), tint: P.gain, strong: true)
+                if personalGuarantee { line("Guarantee", "You are personally liable") }
+            }
+        }
+    }
+
+    private var repayCard: some View {
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            VStack(spacing: 0) {
+                line("Repayment amount", cur.tidyDisplay(q.totalRepaid))
+                line("Interest in total", cur.tidyDisplay(q.totalInterest))
+                line("Interest rate a year", Currency.percent(q.yearlyRate, decimals: 2))
+                line("First payment due", q.firstPaymentText)
+                Hairline().padding(.vertical, 6)
+                line("Monthly instalment", cur.tidyDisplay(q.monthlyPayment), tint: P.gain, strong: true)
+            }
+        }
+    }
+
+    private func line(_ label: String, _ value: String, tint: Color? = nil, strong: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).textStyle(.body, tint: strong ? P.ink : P.inkSoft)
+            Spacer(minLength: 8)
+            Text(value).font(.system(size: strong ? 16 : 14, weight: strong ? .medium : .regular).monospacedDigit()).foregroundStyle(tint ?? P.ink)
+        }
+        .padding(.vertical, 5)
+    }
+
+    @ViewBuilder private var scheduleLink: some View {
+        Button { showSchedule.toggle(); Haptics.choose() } label: {
+            HStack {
+                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").textStyle(.body, tint: P.accent).underline()
+                Spacer()
+            }.contentShape(Rectangle())
+        }.buttonStyle(PressableStyle())
+        if showSchedule { schedule }
+    }
+
+    private var schedule: some View {
+        let columns: [TableColumn] = [TableColumn(title: "Date"), TableColumn(title: "Pay", width: 78), TableColumn(title: "Left", width: 78)]
+        return SharpTable {
+            TableHeader(columns: columns)
+            ForEach(q.schedule) { r in
+                TableRow(columns: columns, title: r.dateText, note: "Payment \(r.number)", values: [cur.tidyShort(r.payment), cur.tidyShort(r.balance)])
+            }
+        }
+    }
+}

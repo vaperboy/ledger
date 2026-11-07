@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "techpro-pickup.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
