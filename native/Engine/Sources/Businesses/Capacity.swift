@@ -151,7 +151,9 @@ public enum CapacityModel {
             if e.isRequired && n < 1 && n > 0.01 && equipmentCount(co, e) >= 1 {
                 availability = min(availability, n)
             } else if e.isRequired && n < 1 {
-                parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name + " (required)", kind: .gate, have: 0, need: 1, capacity: 0, capacityPerUnit: 0))
+                // A machine that is only in for repair is not the same problem as one never bought: say which.
+                let inRepair = equipmentCount(co, e) >= 1
+                parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name + (inRepair ? " (broken, in repair)" : " (required)"), kind: .gate, have: 0, need: 1, capacity: 0, capacityPerUnit: 0))
             } else if e.limitsCapacity && e.standardCount > 0 {
                 let cp = capD / e.standardCount
                 parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name, kind: .equip, have: n,
