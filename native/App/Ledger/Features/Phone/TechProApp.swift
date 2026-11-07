@@ -783,7 +783,7 @@ struct TechProApp: View {
         let id: Int = companyID
         let rid: Int = receiptID
         let message: String = "\(cur.tidyShort(q.chargeNow)) leaves \(co.name)'s account now. " + (q.days == 0 ? "Everything arrives today." : "It arrives on \(q.deliveryText), \(q.carrier.lowercased()).")
-        pending = PendingAction(title: "Pay for this order?", message: message.tidyMoney, button: "Pay", amount: q.chargeNow, currency: cur) {
+        pending = PendingAction(title: "Pay for this order?", message: message.tidyMoney, button: "Pay", amount: q.chargeNow, currency: cur, tone: .info, icon: "cart") {
             place(lines, how, id, rid, cur)
         }
     }

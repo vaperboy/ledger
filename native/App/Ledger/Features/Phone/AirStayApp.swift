@@ -138,34 +138,28 @@ struct AirStayApp: View {
     private func exploreView(_ e: GameEngine) -> some View {
         let all: [PlaceMarket.Offer] = visibleOffers(e)
         let shown: [PlaceMarket.Offer] = all.filter { (o: PlaceMarket.Offer) -> Bool in o.category == category && matches(o) }
-        return ShopPage {
-            hero
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                ShopSearchField(prompt: "Search offices, shops or spaces", text: $query, identifier: "stay-search")
-                chips
-                focusNote(e)
-            }
-            ShopSection(title: "Recommended for you", trailing: shown.count == 1 ? "1 place" : "\(shown.count) places") {
-                listings(e, shown)
-            }
+        return ShopPage(spacing: Theme.Space.l) {
+            ShopSearchField(prompt: "Search offices, shops or spaces", text: $query, identifier: "stay-search")
+            chips
+            focusNote(e)
+            resultsLine(e, shown)
+            listings(e, shown)
         }
         .accessibilityIdentifier("stay-explore")
     }
 
-    /// The app's welcome: one office photo under a flat scrim, and the line it is about.
-    private var hero: some View {
-        ShopPhoto(name: "airstay-office-2", glyph: Glyph.building, height: 120)
-            .overlay {
-                // Dark enough for white type over a bright photo (the light palette's scrim is only 35 percent).
-                RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Color.black.opacity(0.5)).allowsHitTesting(false)
+    /// How many places match, where they are and what they start at: the one line that matters before the photos.
+    @ViewBuilder private func resultsLine(_ e: GameEngine, _ shown: [PlaceMarket.Offer]) -> some View {
+        if !shown.isEmpty {
+            let rents: [Double] = shown.compactMap { (o: PlaceMarket.Offer) -> Double? in e.premisesTerms(companyID: o.originCompanyID, listing: o.listing)?.monthlyRent }
+            let cities: [String] = Array(Set(shown.map { (o: PlaceMarket.Offer) -> String in o.cityName })).sorted()
+            let from: String = rents.min().map { (v: Double) -> String in " \u{00B7} from " + money(v, shown[0].originCompanyID) + " a month" } ?? ""
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(shown.count == 1 ? "1 place" : "\(shown.count) places").textStyle(.title)
+                Text(cities.prefix(3).joined(separator: ", ") + (cities.count > 3 ? " and more" : "") + from).textStyle(.caption).lineLimit(2)
             }
-            .overlay(alignment: .bottomLeading) {
-                Text("Find the perfect space for your business")
-                    .textStyle(.title)
-                    .containerInk(P.onAccent)
-                    .lineLimit(2).minimumScaleFactor(0.6)
-                    .padding(Theme.Space.l)
-            }
+            .padding(.top, Theme.Space.s)
+        }
     }
 
     private func chipTitle(_ c: PlaceMarket.Category) -> String {
@@ -184,13 +178,26 @@ struct AirStayApp: View {
         }
     }
 
+    /// The kinds of place as icon tabs with an underline under the chosen one, like a travel app's categories.
     private var chips: some View {
-        ShopChipRow {
+        HStack(spacing: 0) {
             ForEach(PlaceMarket.Category.allCases, id: \.self) { (c: PlaceMarket.Category) in
-                ShopChip(title: chipTitle(c), glyph: chipGlyph(c), selected: category == c) { category = c }
-                    .accessibilityIdentifier("stay-chip-\(c.rawValue)")
+                let on: Bool = category == c
+                Button { Haptics.choose(); category = c } label: {
+                    VStack(spacing: Theme.Space.xs) {
+                        LedgerGlyph(glyph: chipGlyph(c), size: Theme.Icon.medium, tint: on ? P.ink : P.inkFaint)
+                        Text(chipTitle(c)).textStyle(.caption, tint: on ? P.ink : P.inkFaint, weight: on ? .semibold : .medium)
+                        Rectangle().fill(on ? P.ink : Color.clear).frame(height: 2)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityIdentifier("stay-chip-\(c.rawValue)")
             }
         }
+        .overlay(alignment: .bottom) { Hairline() }
     }
 
     @ViewBuilder private func focusNote(_ e: GameEngine) -> some View {
@@ -209,7 +216,9 @@ struct AirStayApp: View {
         if shown.isEmpty {
             ShopEmptyNote(text: emptyText(e), glyph: Glyph.building, buttonTitle: query.isEmpty ? nil : "Clear search") { query = "" }
         } else {
-            ForEach(shown) { (o: PlaceMarket.Offer) in listingCard(e, o) }
+            LazyVStack(alignment: .leading, spacing: Theme.Space.xl) {
+                ForEach(shown) { (o: PlaceMarket.Offer) in listingCard(e, o) }
+            }
         }
     }
 
@@ -248,8 +257,8 @@ struct AirStayApp: View {
             buy = false
             step = .info
         } label: {
-            ShopProductCard(photo: photo(o), glyph: Glyph.building, item: art(o), photoHeight: 150, title: o.title, lines: [subtitleLine(o)],
-                            price: money(rent, o.originCompanyID), priceUnit: "/ month")
+            ShopProductCard(photo: photo(o), glyph: Glyph.building, item: art(o), photoHeight: 220, title: o.title, lines: [subtitleLine(o)],
+                            price: money(rent, o.originCompanyID), priceUnit: "a month")
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("stay-listing-\(o.id)")
@@ -262,8 +271,9 @@ struct AirStayApp: View {
         let rent: Double = t?.monthlyRent ?? 0
         return ShopPage {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                ShopPhoto(name: photo(o), glyph: Glyph.building, height: 220, item: art(o))
-                ShopPageTitle(title: o.title, subtitle: "\(o.cityName) \u{00B7} \(o.listing.landlord)")
+                ShopPhoto(name: photo(o), glyph: Glyph.building, height: 260, item: art(o))
+                ShopPageTitle(title: o.title, subtitle: "\(o.buildingType) in \(o.cityName) \u{00B7} \(o.listing.landlord)")
+                keyFacts(o)
             }
             factsSection(e, o, t)
             aboutSection(e, o)
@@ -272,7 +282,7 @@ struct AirStayApp: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ShopActionBar(left: {
-                ShopPriceTag(value: money(rent, o.originCompanyID), caption: "per month")
+                ShopPriceTag(value: money(rent, o.originCompanyID), caption: "a month")
             }, action: {
                 Button("Rent") { goCompany(e, o, buying: false) }
                     .buttonStyle(ShopFilledButtonStyle())
@@ -282,25 +292,34 @@ struct AirStayApp: View {
         }
     }
 
-    private func factsSection(_ e: GameEngine, _ o: PlaceMarket.Offer, _ t: CompanySetup.PremisesTerms?) -> some View {
+    /// Size, desks and passing trade side by side under the title.
+    private func keyFacts(_ o: PlaceMarket.Offer) -> some View {
         let loc: Double = o.listing.location
-        let locText: String = loc > 1.03 ? "More passing trade" : (loc < 0.97 ? "Less passing trade" : "Normal")
+        let locText: String = loc > 1.03 ? "Busy" : (loc < 0.97 ? "Quiet" : "Normal")
+        var items: [KeyFigures.Item] = [KeyFigures.Item(label: "Floor area", value: "\(Int(o.listing.squareMetres)) m²")]
+        if let n = store.engine?.officeCapacity(forListing: o.listing, companyID: o.originCompanyID) { items.append(KeyFigures.Item(label: "Desks", value: "\(n)")) }
+        items.append(KeyFigures.Item(label: "Passing trade", value: locText))
+        return FigureRow(items: items, columns: items.count, combineCells: true)
+            .padding(.vertical, Theme.Space.m)
+            .overlay(alignment: .top) { Hairline() }
+            .overlay(alignment: .bottom) { Hairline() }
+    }
+
+    private func factsSection(_ e: GameEngine, _ o: PlaceMarket.Offer, _ t: CompanySetup.PremisesTerms?) -> some View {
         let id: Int = o.originCompanyID
-        let room: [(label: String, value: String)] = placesText(o).map { (p: String) -> [(label: String, value: String)] in [(label: "Room for", value: p)] } ?? []
-        let facts: [(label: String, value: String)] = [(label: "Building type", value: o.buildingType), (label: "Floor area", value: "\(Int(o.listing.squareMetres)) m²")]
-            + room
-            + [(label: "Location", value: locText),
-               (label: "Deposit (three months, returned when you leave)", value: money(t?.deposit ?? 0, id)),
-               (label: "Fit-out, paid once", value: money(t?.fitOut ?? 0, id))]
-        return ShopSection(title: "The place") {
-            ShopFacts(facts: facts, total: (label: "Needed to move in", value: money((t?.deposit ?? 0) + (t?.fitOut ?? 0), id)))
+        let facts: [(label: String, value: String)] = [
+            (label: "Deposit, returned when you leave", value: money(t?.deposit ?? 0, id)),
+            (label: "Fit-out, paid once", value: money(t?.fitOut ?? 0, id))
+        ]
+        return ShopSection(title: "To move in") {
+            ShopFacts(facts: facts, total: (label: "Due now", value: money((t?.deposit ?? 0) + (t?.fitOut ?? 0), id)))
         }
     }
 
     private func aboutSection(_ e: GameEngine, _ o: PlaceMarket.Offer) -> some View {
         let note: String = e.data.catalog.tables.premises[o.placeKind]?.note ?? ""
         return ShopSection(title: "About this place") {
-            Text((note.isEmpty ? "" : note + " ") + "A place in the centre costs more and draws more passing trade; one out of town is cheap but quiet. Moving gives the old deposit back.")
+            Text(note.isEmpty ? "Central places cost more and draw more passing trade; quiet ones are cheap. Moving gives the old deposit back." : note + " Moving gives the old deposit back.")
                 .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -345,21 +364,22 @@ struct AirStayApp: View {
         let canGo: Bool = chosen.map { (c: PlaceMarket.Candidate) -> Bool in buy ? c.canBuy : c.canRent } ?? false
         let now: Double = chosen.map { (c: PlaceMarket.Candidate) -> Double in buy ? c.upfrontBuy : c.upfrontRent } ?? 0
         return ShopPage {
-            ShopPageTitle(title: "Choose company", subtitle: "Which company \(buy ? "buys" : "rents") \(o.title)? Its account pays.")
-            VStack(spacing: Theme.Space.s) {
-                ForEach(cands) { (c: PlaceMarket.Candidate) in candidateRow(c) }
+            ShopHero(label: buy ? "Buy \(o.title)" : "Rent \(o.title)", value: money(now, payerID),
+                     note: canGo ? "Due now to move in, paid by the company you choose" : "The chosen company cannot pay this", noteTint: canGo ? nil : P.loss)
+            ShopSection(title: "Which company \(buy ? "buys" : "rents") it") {
+                VStack(spacing: Theme.Space.xxs) {
+                    ForEach(cands) { (c: PlaceMarket.Candidate) in candidateRow(c) }
+                }
             }
             ShopReceiptPicker(companies: companies, selection: $receiptID, idPrefix: "stay")
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            ShopActionBar(left: {
-                ShopPriceTag(value: money(now, payerID), caption: canGo ? "to move in" : "the chosen company cannot pay this")
-            }, action: {
+            ShopBottomAction {
                 Button("Continue") { askToConfirm(e, o) }
                     .buttonStyle(ShopFilledButtonStyle())
                     .disabled(!canGo)
                     .accessibilityIdentifier("stay-continue")
-            })
+            }
             .environment(\.outsidePalette, P)
         }
     }
@@ -367,7 +387,7 @@ struct AirStayApp: View {
     private func candidateRow(_ c: PlaceMarket.Candidate) -> some View {
         let upfront: Double = buy ? c.upfrontBuy : c.upfrontRent
         let ok: Bool = buy ? c.canBuy : c.canRent
-        var line: String = "Cash \(money(c.cash, c.companyID)) \u{00B7} rent \(money(c.monthlyRent, c.companyID)) a month"
+        var line: String = "Cash \(money(c.cash, c.companyID)) \u{00B7} \(money(c.monthlyRent, c.companyID)) a month"
         if !ok { line += " \u{00B7} needs \(money(max(0, upfront - c.cash), c.companyID)) more" }
         if ok && c.hasPlace { line += " \u{00B7} its present place is given up" }
         return ShopChoiceRow(title: c.name, subtitle: line, trailing: money(upfront, c.companyID), selected: payerID == c.companyID, enabled: ok,
@@ -395,7 +415,7 @@ struct AirStayApp: View {
         let risk: String = c.hasPlace ? "The place \(co.name) works in now is given up; its deposit comes back." : ""
         message = message.tidyMoney
         pending = PendingAction(title: (isBuy ? "Buy " : "Rent ") + o.title + "?", message: message, button: isBuy ? "Buy it" : "Rent it",
-                                alwaysAsk: isBuy, amount: upfront, currency: cur, risk: risk) {
+                                alwaysAsk: isBuy, amount: upfront, currency: cur, risk: risk, tone: .investment, icon: "building.2") {
             let r: PlaceMarket.RentOutcome? = store.act { $0.takePlace(companyID: id, offer: place, buy: isBuy, receiptCompanyID: rid) }
             switch r?.result {
             case .ok?:
@@ -439,14 +459,21 @@ struct AirStayApp: View {
 
     private func rentedView(_ e: GameEngine) -> some View {
         let list: [PlaceMarket.Rented] = e.rentedPlaces()
+        let monthly: Double = list.filter { (r: PlaceMarket.Rented) -> Bool in !r.atHome && !r.owned }.reduce(0) { (s: Double, r: PlaceMarket.Rented) -> Double in s + r.monthlyRent }
+        let places: Int = list.filter { (r: PlaceMarket.Rented) -> Bool in !r.atHome }.count
+        let home: Int = list.count - places
         return ShopPage {
-            ShopSection(title: "Active rents", trailing: list.isEmpty ? "" : "\(list.count)") {
-                if list.isEmpty {
-                    ShopEmptyNote(text: "None of your companies rents a place.", glyph: Glyph.building, buttonTitle: "Explore places") { tab = .explore }
-                }
-                ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, r: PlaceMarket.Rented) in
-                    if n > 0 { Hairline() }
-                    rentedBlock(e, r)
+            if list.isEmpty {
+                ShopHero(label: "Rented", value: "No places yet", note: "None of your companies rents a place.")
+                Button("Explore places") { tab = .explore }.buttonStyle(TertiaryButtonStyle(size: .compact)).padding(.leading, -Theme.Space.s)
+            } else {
+                ShopHero(label: "Rent a month", value: store.short(monthly),
+                         note: (places == 1 ? "1 place" : "\(places) places") + (home > 0 ? " \u{00B7} \(home) working from home" : ""))
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, r: PlaceMarket.Rented) in
+                        if n > 0 { Hairline() }
+                        rentedBlock(e, r)
+                    }
                 }
             }
         }
@@ -456,37 +483,45 @@ struct AirStayApp: View {
     private func rentedBlock(_ e: GameEngine, _ r: PlaceMarket.Rented) -> some View {
         let id: Int = r.companyID
         let fresh: [String] = store.messageItemIDs(.airStay, companyID: id)
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if !r.atHome {
-                ShopPhoto(name: StayPhotos.name(category: r.category, slot: r.photoSlot), glyph: Glyph.building, height: 120)
+        return HStack(alignment: .center, spacing: Theme.Space.m) {
+            if r.atHome {
+                LedgerGlyph(glyph: Glyph.airStay, size: Theme.Icon.large, tint: P.inkSoft).frame(width: 56, height: 56)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.cardDeep))
+            } else {
+                ShopThumb(photo: StayPhotos.name(category: r.category, slot: r.photoSlot), glyph: Glyph.building, size: 56)
             }
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(r.atHome ? "Working from home" : r.placeName).textStyle(.headline)
-                Text(rentedLine(r)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                Text(r.atHome ? "Working from home" : r.placeName).textStyle(.headline).lineLimit(2)
+                Text(rentedLine(r)).textStyle(.caption).lineLimit(2)
             }
+            Spacer(minLength: Theme.Space.s)
+            Text(r.atHome ? "No rent" : (r.owned ? "Owned" : money(r.monthlyRent, id))).textStyle(.headline, tint: r.atHome || r.owned ? P.inkSoft : nil, numeric: true).lineLimit(1)
             rentedActions(e, r, id)
         }
-        .padding(.vertical, Theme.Space.s)
+        .padding(.vertical, Theme.Space.m)
         .newGroupMarker(.airStay, fresh, style: .capsule, alignment: .topTrailing)
     }
 
     private func rentedLine(_ r: PlaceMarket.Rented) -> String {
-        if r.atHome { return "\(r.companyName) \u{00B7} no rent, no deposit" }
-        let cost: String = r.owned ? "owned" : "\(money(r.monthlyRent, r.companyID)) a month, deposit \(money(r.deposit, r.companyID))"
-        return "\(r.companyName) \u{00B7} \(Int(r.squareMetres)) m² \u{00B7} \(r.buildingType) \u{00B7} \(r.cityName) \u{00B7} \(cost)"
+        if r.atHome { return r.companyName }
+        return "\(r.companyName) \u{00B7} \(Int(r.squareMetres)) m² \u{00B7} \(r.cityName)"
     }
 
+    /// The row's actions in "…": find a place, move the lease, work from home.
     @ViewBuilder private func rentedActions(_ e: GameEngine, _ r: PlaceMarket.Rented, _ id: Int) -> some View {
-        WrapRow(spacing: Theme.Space.s) {
-            if r.atHome {
-                Button("Find a place") { focusCompany = id; tab = .explore }.buttonStyle(SecondaryButtonStyle(size: .compact))
-            }
-            if !r.atHome && !r.owned && !e.placeTargets(from: id).isEmpty {
-                Button("Move to another company") { startReassign(e, id) }.buttonStyle(SecondaryButtonStyle(size: .compact))
-                    .accessibilityIdentifier("stay-reassign-\(id)")
-            }
-            if !r.atHome && r.isHomeTrade {
-                Button("Work from home") { askHome(e, id) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.loss))
+        let canMove: Bool = !r.atHome && !r.owned && !e.placeTargets(from: id).isEmpty
+        if r.atHome || canMove || (!r.atHome && r.isHomeTrade) {
+            ShopMoreMenu(label: "Actions for \(r.companyName)", identifier: "stay-actions-\(id)") {
+                if r.atHome {
+                    Button("Find a place") { focusCompany = id; tab = .explore }
+                }
+                if canMove {
+                    Button("Move to another company") { startReassign(e, id) }
+                        .accessibilityIdentifier("stay-reassign-\(id)")
+                }
+                if !r.atHome && r.isHomeTrade {
+                    Button("Work from home", role: .destructive) { askHome(e, id) }
+                }
             }
         }
     }
@@ -503,7 +538,7 @@ struct AirStayApp: View {
             msg = "The lease ends and the deposit of \(cur.tidyShort(q.proceeds)) comes back to the company. The fit-out you paid for is not refunded."
         }
         pending = PendingAction(title: "Work from home again?", message: msg + " Everyone works from home; a team of four or more loses morale and quality every week.",
-                                button: "Move home", destructive: true) {
+                                button: "Move home", destructive: false, tone: .warning, icon: "house") {
             if store.act({ $0.giveUpPremises(companyID: id) }) == true {
                 Haptics.success()
                 store.show("Everyone works from home again.", tone: "n")
@@ -530,8 +565,8 @@ struct AirStayApp: View {
         let from: Company? = e.state.company(movingFrom)
         let chosen: PlaceMarket.Candidate? = targets.first { (c: PlaceMarket.Candidate) -> Bool in c.companyID == targetID }
         return ShopPage {
-            ShopPageTitle(title: "Move this rent", subtitle: "Which company takes over the lease from \(from?.name ?? "this company")? The deposit and the fit-out go with it.")
-            VStack(spacing: Theme.Space.s) {
+            ShopPageTitle(title: "Move this rent", subtitle: "Who takes over the lease from \(from?.name ?? "this company")? The deposit and the fit-out go with it.")
+            VStack(spacing: Theme.Space.xxs) {
                 ForEach(targets) { (c: PlaceMarket.Candidate) in
                     ShopChoiceRow(title: c.name, subtitle: "Cash \(money(c.cash, c.companyID)) \u{00B7} deposit \(money(c.upfrontRent, c.companyID)) moves" + (c.hasPlace ? " \u{00B7} its present place is given up" : ""),
                                   trailing: money(c.monthlyRent, c.companyID) + "/mo", selected: targetID == c.companyID, enabled: c.canRent,
@@ -552,7 +587,7 @@ struct AirStayApp: View {
         pending = PendingAction(title: "Move the lease to \(to.name)?",
                                 message: "\(to.name) pays the \(cur.tidyShort(c.upfrontRent)) deposit and takes over the rent of \(cur.tidyShort(c.monthlyRent)) a month; \(from.name) gets its deposit back and is left without a place.".tidyMoney,
                                 button: "Move it", alwaysAsk: true, amount: c.upfrontRent, currency: cur,
-                                risk: "\(from.name) has no place to work in until you rent another one.") {
+                                risk: "\(from.name) has no place to work in until you rent another one.", tone: .investment, icon: "arrow.left.arrow.right") {
             switch store.act({ $0.reassignPlace(from: a, to: b) }) {
             case .ok?:
                 Haptics.success()

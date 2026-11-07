@@ -96,7 +96,7 @@ struct MarketApp: View {
                 }
             }
         } label: {
-            BusinessMenuLabel(glyph: Glyph.market, title: current)
+            BusinessPickerLabel(caption: "Market for", title: current)
         }
         .accessibilityLabel("Business: \(current)")
         .accessibilityIdentifier("market-business-picker")

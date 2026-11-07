@@ -300,7 +300,7 @@ struct TechProProduct: View {
         let q: Int = ownQty
         let total: Double = l.price * Double(q)
         let message: String = "\(l.itemName) from \(l.sellerName), \(q) for \(cur.tidyDisplay(total)). The money and the profit go to \(l.sellerName)."
-        pendingOwn = PendingAction(title: "Buy from \(l.sellerName)?", message: message, button: "Buy", amount: total, currency: cur) {
+        pendingOwn = PendingAction(title: "Buy from \(l.sellerName)?", message: message, button: "Buy", amount: total, currency: cur, tone: .info, icon: "cart") {
             let r = store.act { $0.buyFromOwnCompany(buyer: buyer, seller: l.sellerID, itemID: l.itemID, quantity: q) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show("Bought \(l.itemName) from \(l.sellerName).", tone: "good") }
@@ -343,7 +343,7 @@ struct TechProProduct: View {
         let equip: String = equipmentID
         let price: String = o.cost == 0 ? "at no charge" : "for \(cur.tidyDisplay(o.cost))" + (o.monthly ? " a month" : " once")
         let message: String = "This company takes \(o.name) from \(producer) \(price); the money goes to \(producer). " + (o.tested ? "It is still a test version and may let you down. " : "") + "It replaces any other software of this kind here."
-        pendingOwn = PendingAction(title: "Use \(o.name)?", message: message, button: "Use it", amount: o.cost, currency: cur) {
+        pendingOwn = PendingAction(title: "Use \(o.name)?", message: message, button: "Use it", amount: o.cost, currency: cur, tone: .info, icon: "app.badge.checkmark") {
             switch store.act({ $0.useOwnSoftware(companyID: id, equipmentID: equip, producerID: o.producerID) }) {
             case .ok?:
                 Haptics.success()
@@ -407,8 +407,8 @@ struct TechProProduct: View {
 
 /// A button style chosen at run time (a recommended plan gets the filled one).
 struct AnyButtonStyle: ButtonStyle {
-    private let make: (Configuration) -> AnyView
-    init<S: ButtonStyle>(_ s: S) { make = { (c: Configuration) -> AnyView in AnyView(s.makeBody(configuration: c)) } }
+    private let make: (ButtonStyleConfiguration) -> AnyView
+    init<S: ButtonStyle>(_ s: S) { make = { (c: ButtonStyleConfiguration) -> AnyView in AnyView(s.makeBody(configuration: c)) } }
     func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }
 

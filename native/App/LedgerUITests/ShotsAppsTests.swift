@@ -85,6 +85,7 @@ final class ShotsAppsTests: FeatureTourCase {
             if tapID("atlas-confirm", wait: 3) { shot("atlas-quote-confirm"); closeAnyPopup() }
         }
         if openPhoneApp("Atlas Insurance"), tapPrefix("atlas-cancel-", wait: 4) { shot("atlas-cancel-confirm"); closeAnyPopup() }
+        if openPhoneApp("Atlas Insurance"), tapID("atlas-advisers", wait: 4) { shotLong("atlas-advisers") }
     }
 
     private func marketplace() {
@@ -99,7 +100,8 @@ final class ShotsAppsTests: FeatureTourCase {
 
     private func luxury() {
         guard openPhoneApp("Luxury") else { shot("luxury-not-opened"); return }
-        if has("luxury-apply", wait: 2) {
+        pause(1.5)
+        if has("luxury-apply", wait: 3) {
             shot("luxury-gate")
             _ = tapID("luxury-apply", wait: 2)
             closeAnyPopup()
@@ -121,9 +123,10 @@ final class ShotsAppsTests: FeatureTourCase {
     private func others() {
         if openPhoneApp("Market") { shotLong("market", drags: 2) } else { shot("market-not-opened") }
         if openPhoneApp("Reviews") { shotLong("reviews", drags: 2) } else { shot("reviews-not-opened") }
-        if openPhoneApp("Ventures") {
+        // The Ventures app is the Ventures tab's "Ideas and startups" part.
+        if goTab("Ventures"), tapLabel("Ideas and startups", wait: 3) {
             shotLong("ventures-feed", drags: 2)
-            if openPhoneApp("Ventures"), tapPrefix("ventures-part-", wait: 3) { shotLong("ventures-portfolio") }
+            if tapPrefix("ventures-part-", wait: 3) { shotLong("ventures-portfolio") }
         } else { shot("ventures-not-opened") }
     }
 }

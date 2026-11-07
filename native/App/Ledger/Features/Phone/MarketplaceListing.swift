@@ -69,20 +69,26 @@ struct MarketplaceListingPage: View {
         let agoText: String = ago == 0 ? "today" : (ago == 1 ? "yesterday" : "\(ago) days ago")
         let notSelling: Bool = blocked || refusedHere
         return ShopPage {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 220, item: key)
-                    .padding(.bottom, Theme.Space.s)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 280, item: key)
+                    .padding(.bottom, Theme.Space.m)
+                Text(cur.tidyShort(listing.askingPrice)).textStyle(.display)
                 Text(listing.title).textStyle(.title).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
-                Text(cur.tidyShort(listing.askingPrice)).textStyle(.display, tint: P.accent2)
-                Text(listing.blurb).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                Text("\(listing.city) \u{00B7} posted \(agoText)").textStyle(.caption)
             }
-            ShopFacts(facts: [(label: "Seller", value: listing.sellerName), (label: "City", value: listing.city), (label: "Posted", value: agoText)])
+            Text(listing.blurb).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            ShopSection(title: "Seller") {
+                LedgerRow(leading: .initials(initials(listing.sellerName)), leadingTint: P.accent, title: listing.sellerName, subtitle: "Private seller in \(listing.city)")
+            }
             lotCard
-            action(notSelling)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            ShopBottomAction { action(notSelling) }
+                .environment(\.outsidePalette, P)
         }
         .accessibilityIdentifier("mk-listing")
         .onAppear { blocked = store.marketRefused(listingID: listing.id, companyID: companyID) }
-        .centerSheet(isPresented: $talking, title: "Message seller") {
+        .centerSheet(isPresented: $talking, title: "Message seller", category: .medium, tone: .info) {
             MarketplaceDealView(listing: listing, cur: cur, companyID: companyID, onRefused: { (id: String) in
                 blocked = true
                 onRefused(id)
@@ -93,6 +99,10 @@ struct MarketplaceListingPage: View {
             .environment(\.outsidePalette, OutsidePalette.marketplace)
             .environmentObject(store)
         }
+    }
+
+    private func initials(_ name: String) -> String {
+        String(name.split(separator: " ").prefix(2).compactMap { (w: Substring) -> Character? in w.first })
     }
 
     /// A used car dealer can only buy a car or van when a lot space is free: the lot is shown on the listing.
@@ -252,7 +262,7 @@ struct MarketplaceDealView: View {
 
     private func askToBuy(_ priceText: String) {
         let at: Double = price
-        pending = PendingAction(title: "Buy " + listing.title + "?", message: "Pay " + priceText + " to " + listing.sellerName + " from the company account.", button: "Buy", amount: at, currency: cur) {
+        pending = PendingAction(title: "Buy " + listing.title + "?", message: "Pay " + priceText + " to " + listing.sellerName + " from the company account.", button: "Buy", amount: at, currency: cur, tone: .info, icon: "tag") {
             buy(at, priceText)
         }
     }

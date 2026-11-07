@@ -3,86 +3,79 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The My Vault tab: what the player holds, with value and upkeep, and Sell with the sale price shown before confirming.
+/// The My Vault tab: what the collection is worth as the one figure, then each piece as a row; a row opens Inspect (use, lend, sell).
 struct LuxuryVaultTab: View {
     @EnvironmentObject var store: GameStore
     var onInspect: (Int) -> Void
     var onShowroom: () -> Void
-    @State private var pending: PendingAction? = nil
     private var P: OutsidePalette { .luxury }
 
     var body: some View {
         if let e = store.engine {
             let pieces: [Luxury.Piece] = e.luxuryPieces
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxl) {
                     summary(e, pieces)
                     if pieces.isEmpty {
                         EmptyState(glyph: Glyph.bank, title: "Your vault is empty", message: "What you buy in the Showroom is kept here, with its value and upkeep.",
                                    actionTitle: "Open the Showroom", action: onShowroom)
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
+                            Text("Your collection").textStyle(.label, tint: P.inkFaint).padding(.bottom, Theme.Space.s)
                             ForEach(Array(pieces.enumerated()), id: \.element.id) { (n: Int, p: Luxury.Piece) in
-                                if n > 0 { Hairline() }
-                                row(e, p)
+                                if n > 0 { Hairline().padding(.leading, 92) }
+                                row(p)
                             }
                         }
                     }
                 }
-                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.xl)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xxl)
                 .frame(maxWidth: 640).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
-            .confirmAction($pending)
         }
     }
 
-    private func askToSell(_ e: GameEngine, _ p: Luxury.Piece) {
-        guard let get = e.luxurySellQuote(pieceID: p.id) else { return }
-        let fee: Int = Int((Luxury.sellFee * 100).rounded())
-        let message: String = "You receive \(store.money(get)), after \(fee)% selling costs. A gain is taxed with your other gains."
-        pending = PendingAction(title: "Sell \(p.item.name)?", message: message, button: "Sell for \(store.short(get))", destructive: true) { sell(p.id) }
-    }
-
-    private func sell(_ id: Int) {
-        let v: Double = store.act { $0.sellLuxury(pieceID: id) } ?? 0
-        store.show(v > 0 ? "Sold for \(store.short(v))." : "It cannot be sold right now.", tone: v > 0 ? "good" : "warn")
-    }
-
+    /// What the collection is worth, what it cost, and what it costs to keep.
     private func summary(_ e: GameEngine, _ pieces: [Luxury.Piece]) -> some View {
         let worth: Double = pieces.reduce(0) { $0 + $1.value }
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("My vault").textStyle(.title).accessibilityAddTraits(.isHeader)
-            FigureRow(items: [
-                KeyFigures.Item(label: "Assets held", value: "\(pieces.count)"),
-                KeyFigures.Item(label: "Portfolio value", value: store.short(worth)),
-                KeyFigures.Item(label: "Upkeep a month", value: store.short(Luxury.upkeepPerMonth(e.state)), tint: P.loss)
-            ], columns: 3, combineCells: true)
+        let paid: Double = pieces.reduce(0) { $0 + $1.paid }
+        let change: Double = worth - paid
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text("My vault").textStyle(.label, tint: P.inkFaint)
+            Text(store.short(worth)).font(.system(size: 40, weight: .regular, design: .serif).monospacedDigit()).foregroundStyle(P.ink)
+                .lineLimit(1).minimumScaleFactor(0.5)
+                .accessibilityAddTraits(.isHeader)
+            if !pieces.isEmpty {
+                Text((change >= 0 ? "+" : "\u{2212}") + store.short(abs(change)) + " on what you paid").textStyle(.body, tint: P.change(change), numeric: true)
+            }
+            Text((pieces.count == 1 ? "1 piece" : "\(pieces.count) pieces") + " \u{00B7} " + store.short(Luxury.upkeepPerMonth(e.state)) + " a month to keep")
+                .textStyle(.caption, tint: P.inkFaint, numeric: true)
         }
     }
 
-    private func row(_ e: GameEngine, _ p: Luxury.Piece) -> some View {
-        let get: Double? = e.luxurySellQuote(pieceID: p.id)
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(alignment: .top, spacing: Theme.Space.m) {
-                LuxuryPhoto(itemID: p.item.id, height: 80).frame(width: 106).clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
+    private func row(_ p: Luxury.Piece) -> some View {
+        let change: Double = p.value - p.paid
+        return Button { Haptics.tap(); onInspect(p.id) } label: {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                LuxuryPhoto(itemID: p.item.id, height: 60).frame(width: 80)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text(LuxuryFacts.categoryName(p.item)).textStyle(.label)
                     Text(p.item.name).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-                    Text("Value " + store.short(p.value)).textStyle(.body, numeric: true)
-                    Text(store.short(p.item.monthlyUpkeep * (p.paid / max(1, p.item.price))) + " / month upkeep").textStyle(.caption, tint: P.loss, numeric: true)
+                    Text(LuxuryFacts.categoryName(p.item)).textStyle(.caption, tint: P.inkFaint)
                 }
-                Spacer(minLength: 0)
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    Text(store.short(p.value)).textStyle(.headline, numeric: true).lineLimit(1)
+                    Text((change >= 0 ? "+" : "\u{2212}") + store.short(abs(change))).textStyle(.caption, tint: P.change(change), numeric: true).lineLimit(1)
+                }
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
             }
-            WrapRow(spacing: Theme.Space.s) {
-                Button("Inspect") { onInspect(p.id) }.buttonStyle(SecondaryButtonStyle(size: .compact))
-                    .accessibilityIdentifier("luxury-inspect-\(p.id)")
-                Button(get.map { "Sell for " + store.short($0) } ?? "Not for sale now") { askToSell(e, p) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact, passive: true)).disabled(get == nil)
-                    .accessibilityIdentifier("luxury-sell")
-            }
+            .padding(.vertical, Theme.Space.m)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, Theme.Space.m)
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("luxury-inspect-\(p.id)")
     }
 }
 
@@ -96,6 +89,17 @@ struct LuxuryInspectSheet: View {
     @State private var pending: PendingAction? = nil
     private var P: OutsidePalette { .luxury }
 
+    private func askToSell(_ e: GameEngine, _ p: Luxury.Piece) {
+        guard let get = e.luxurySellQuote(pieceID: p.id) else { return }
+        let fee: Int = Int((Luxury.sellFee * 100).rounded())
+        let message: String = "You receive \(store.money(get)), after \(fee)% selling costs. A gain is taxed with your other gains."
+        pending = PendingAction(title: "Sell \(p.item.name)?", message: message, button: "Sell for \(store.short(get))", destructive: false, tone: .warning, icon: "tag") {
+            let v: Double = store.act { $0.sellLuxury(pieceID: p.id) } ?? 0
+            store.show(v > 0 ? "Sold for \(store.short(v))." : "It cannot be sold right now.", tone: v > 0 ? "good" : "warn")
+            if v > 0 { dismiss() }
+        }
+    }
+
     var body: some View {
         if let e = store.engine, let p = e.luxuryPieces.first(where: { $0.id == pieceID }) {
             Group {
@@ -103,6 +107,7 @@ struct LuxuryInspectSheet: View {
                     LuxuryItemHead(item: p.item)
                     Text(useLine(e, p)).popupText(.subtitle).padding(.horizontal, Theme.Space.page)
                     manage(e, p).padding(.horizontal, Theme.Space.page)
+                    sellButton(e, p).padding(.horizontal, Theme.Space.page)
                 }
                 .padding(.bottom, Theme.Space.xl)
             }
@@ -111,6 +116,15 @@ struct LuxuryInspectSheet: View {
             .preferredColorScheme(.dark)
             .confirmAction($pending)
         }
+    }
+
+    /// Selling is the quiet last line of Inspect, with the price it would fetch.
+    private func sellButton(_ e: GameEngine, _ p: Luxury.Piece) -> some View {
+        let get: Double? = e.luxurySellQuote(pieceID: p.id)
+        return Button(get.map { "Sell for " + store.short($0) } ?? "Not for sale now") { askToSell(e, p) }
+            .buttonStyle(TertiaryButtonStyle(fullWidth: true, tint: P.loss))
+            .disabled(get == nil)
+            .accessibilityIdentifier("luxury-sell")
     }
 
     private func useLine(_ e: GameEngine, _ p: Luxury.Piece) -> String {
@@ -162,7 +176,7 @@ struct LuxuryInspectSheet: View {
                     Button(q.waitWeeks > 0 ? "Dinner in \(q.waitWeeks) wk" : "Host a dinner") {
                         pending = PendingAction(title: "Host a dinner on board?",
                                                 message: "Costs \(store.short(q.cost)) from your cash. Warms the three suppliers you know least. Possible once every four weeks.",
-                                                button: "Host for \(store.short(q.cost))", amount: q.cost, currency: e.homeCurrency) {
+                                                button: "Host for \(store.short(q.cost))", amount: q.cost, currency: e.homeCurrency, tone: .prestige, icon: "wineglass") {
                             switch store.act({ $0.hostYachtDinner() }) {
                             case .ok(let guests)?: store.show(guests.isEmpty ? "A quiet evening on board: you know nobody to invite yet." : "Aboard: " + guests.joined(separator: ", ") + ".", tone: "good")
                             case .wait?: store.show("Your last dinner was less than four weeks ago.", tone: "warn")
@@ -175,7 +189,7 @@ struct LuxuryInspectSheet: View {
                 if p.item.id == "e2" {
                     Button("Host a retreat") {
                         pending = PendingAction(title: "Host a retreat on the island?", message: "Paid from your cash. Possible once every three months.", button: "Host",
-                                                amount: Luxury.retreatCost(e.homeCurrency), currency: e.homeCurrency) {
+                                                amount: Luxury.retreatCost(e.homeCurrency), currency: e.homeCurrency, tone: .prestige, icon: "sun.max") {
                         switch store.act({ $0.hostIslandRetreat() }) {
                         case .ok?: store.show("A retreat on the island.", tone: "good")
                         case .wait?: store.show("Your last retreat was less than three months ago.", tone: "warn")
