@@ -28,6 +28,8 @@ struct FitScroll<Content: View>: View {
     var maxHeight: CGFloat
     /// Called with the measured content height whenever it changes (a popup frame picks its size class from it).
     var onMeasure: ((CGFloat) -> Void)? = nil
+    /// Height used while the content has not measured (nil: `maxHeight`). Popups pass a small value so nothing is ever stretched to the maximum.
+    var unmeasured: CGFloat? = nil
     @ViewBuilder var content: () -> Content
     @State private var natural: CGFloat = -1
     @State private var forceShow = false
@@ -37,7 +39,7 @@ struct FitScroll<Content: View>: View {
     var body: some View {
         let reported: Bool = natural >= 0
         let usable: Bool = natural > 0.5
-        let height: CGFloat = usable ? min(natural, maxHeight) : maxHeight
+        let height: CGFloat = usable ? min(natural, maxHeight) : (unmeasured ?? maxHeight)
         ScrollView(.vertical) {
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
