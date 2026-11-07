@@ -17,9 +17,9 @@ struct MarketCompaniesPage: View {
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(lines)
                 if lines.isEmpty {
-                    EmptyState(glyph: Glyph.market, title: "No market yet", message: "Each business you open shows here against its rivals.")
+                    EmptyState(glyph: Glyph.market, title: "No market yet")
                 } else {
-                    MarketLabel(title: "Your companies", note: "share \u{00B7} against the market")
+                    MarketLabel(title: "Your companies")
                     VStack(spacing: 0) {
                         ForEach(Array(lines.enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketUI.CompanyLine)) in
                             if pair.offset > 0 { Hairline() }
@@ -27,12 +27,10 @@ struct MarketCompaniesPage: View {
                         }
                     }
                 }
-                MarketLabel(title: "Who measures")
+                MarketLabel(title: "Analyst")
                 LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: "Data analyst",
-                          subtitle: e.hasDataAnalyst ? "Puts ranges on every share and rival" : "Without one, shares are your own guess",
-                          value: e.hasDataAnalyst ? "Hired" : "", identifier: "market-data-analyst", action: { open(.dataAnalyst) })
+                          value: e.hasDataAnalyst ? "Hired" : "Hire", identifier: "market-data-analyst", action: { open(.dataAnalyst) })
             }
-            .accessibilityIdentifier("market-companies")
         }
     }
 
@@ -40,7 +38,7 @@ struct MarketCompaniesPage: View {
         let leading: Int = lines.filter { (l: MarketUI.CompanyLine) -> Bool in l.rank == 1 }.count
         let measured: Int = lines.filter { (l: MarketUI.CompanyLine) -> Bool in l.level != .feeling }.count
         let value: String = lines.isEmpty ? "None" : (measured > 0 ? "Leading \(leading) of \(lines.count)" : lines.count.countText("market"))
-        let context: String = measured == 0 ? "No analyst yet: every share is your own guess" : "\(measured) of \(lines.count) measured by an analyst"
+        let context: String = measured == 0 ? "Share unknown" : "\(measured) of \(lines.count) measured"
         return MarketHero(label: "Your markets", value: value, context: lines.isEmpty ? "" : context, identifier: "market-companies-hero")
     }
 
@@ -79,7 +77,6 @@ struct CompanyInMarketPage: View {
                 let rows: [MarketUI.CompareRow] = MarketData.compareRows(e, co)
                 ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                     hero(e, line)
-                    analyst(e, line)
                     field(e, co, rows)
                     compare(rows)
                     wins(e, co)
@@ -96,7 +93,6 @@ struct CompanyInMarketPage: View {
                 EmptyState(glyph: Glyph.home, title: "This company is no longer open").ledgerBackground()
             }
         }
-        .accessibilityIdentifier("market-page-company")
     }
 
     // MARK: Hero
@@ -106,25 +102,9 @@ struct CompanyInMarketPage: View {
         var parts: [String] = []
         if let t = l.trend { parts.append(MarketFormat.points(t) + " last month") }
         if let r = l.rank { parts.append("#\(r) of \(l.players)") }
-        if l.level == .feeling { parts.append("your own guess") }
         let tint: Color? = l.trend.map { (t: Double) -> Color in P.change(t) }
         return MarketHero(label: "Your share", value: l.shareText, context: parts.joined(separator: " \u{00B7} "), contextTint: tint,
                           series: series, identifier: "market-company-hero")
-    }
-
-    /// While nobody measures this market, what a market analyst here would bring.
-    @ViewBuilder private func analyst(_ e: GameEngine, _ l: MarketUI.CompanyLine) -> some View {
-        let v: MarketMap.HireVerdict = e.marketAnalystVerdict(companyID: companyID)
-        if v.ok && l.level != .marketAnalyst {
-            HStack(alignment: .top, spacing: Theme.Space.m) {
-                LedgerGlyph(glyph: Glyph.info, size: Theme.Icon.medium, tint: P.inkFaint)
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text(v.title.tidyText).textStyle(.headline)
-                    Text(v.text.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.top, Theme.Space.s)
-        }
     }
 
     // MARK: You against the field
@@ -132,10 +112,9 @@ struct CompanyInMarketPage: View {
     private func field(_ e: GameEngine, _ co: Company, _ rows: [MarketUI.CompareRow]) -> some View {
         let cur: Currency = e.currency(for: co)
         return VStack(alignment: .leading, spacing: 0) {
-            MarketLabel(title: "Against the field", note: "share \u{00B7} price \u{00B7} rating")
+            MarketLabel(title: "Against the field")
             if rows.count <= 1 {
-                EmptyState(glyph: Glyph.market, title: "No rivals here yet", message: "Rivals appear once the business has traded for a while.", centered: false)
-                    .padding(.top, Theme.Space.s)
+                EmptyState(glyph: Glyph.market, title: "No rivals here yet", centered: false).padding(.top, Theme.Space.s)
             }
             ForEach(Array(rows.enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketUI.CompareRow)) in
                 if pair.offset > 0 { Hairline() }
@@ -220,7 +199,7 @@ struct CompanyInMarketPage: View {
     private func wins(_ e: GameEngine, _ co: Company) -> some View {
         let lines: [String] = MarketData.whatWins(e, co)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            MarketLabel(title: "What wins customers here")
+            MarketLabel(title: "What wins customers")
             ForEach(Array(lines.enumerated()), id: \.offset) { (pair: (offset: Int, element: String)) in
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                     Circle().fill(P.accent).frame(width: 5, height: 5).alignmentGuide(.firstTextBaseline) { (d: ViewDimensions) -> CGFloat in d[.bottom] + 4 }

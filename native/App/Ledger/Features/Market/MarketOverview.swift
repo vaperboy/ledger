@@ -22,28 +22,34 @@ struct MarketOverviewPage: View {
                 signals("Threats", store.memo("mk.threats") { MarketData.threats($0) } ?? [])
                 latest(e)
             }
-            .accessibilityIdentifier("market-overview")
         }
     }
 
     // MARK: Hero
 
+    /// Your combined share where it is measured, with your best place among the businesses of one of your markets; otherwise the number
+    /// of markets and the one step that measures them.
     private func hero(_ e: GameEngine) -> some View {
         let lines: [MarketUI.CompanyLine] = store.memo("mk.lines") { MarketData.companyLines($0) } ?? []
         let share: Double? = store.memo("mk.share") { MarketData.combinedShare($0) } ?? nil
+        let best: MarketUI.CompanyLine? = lines.filter { (l: MarketUI.CompanyLine) -> Bool in l.rank != nil }
+            .min { (a: MarketUI.CompanyLine, b: MarketUI.CompanyLine) -> Bool in (a.rank ?? 99) < (b.rank ?? 99) }
         let value: String
         if let share {
             value = share < 0.001 ? "Under 0.1%" : String(format: share < 0.1 ? "%.1f%%" : "%.0f%%", share * 100)
         } else {
             value = lines.isEmpty ? "No market yet" : lines.count.countText("market")
         }
-        var context: String = share == nil && !lines.isEmpty ? "Your guess: an analyst measures your share" : ""
-        if let r = e.yourRanking() {
-            let rank: String = "#\(r.rank) of \(r.of) by sales in \(e.homeCountry.name)"
-            context = context.isEmpty ? rank : rank + " \u{00B7} " + context
+        let context: String = best.map { (l: MarketUI.CompanyLine) -> String in "#\(l.rank ?? 0) of \(l.players) in \(l.trade.lowercased()), \(l.city)" } ?? ""
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            MarketHero(label: share == nil ? "Your markets" : "Your share of your markets", value: value, context: context, identifier: "market-overview-hero")
+            if share == nil && !lines.isEmpty {
+                Button("Share unknown: hire an analyst") { Haptics.tap(); open(.dataAnalyst) }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
+                    .padding(.leading, -Theme.Space.s)
+                    .accessibilityIdentifier("market-overview-analyst")
+            }
         }
-        if lines.isEmpty { context = "Open a business and its market shows here." }
-        return MarketHero(label: share == nil ? "Your markets" : "Your share of your markets", value: value, context: context, identifier: "market-overview-hero")
     }
 
     // MARK: Invested
@@ -62,9 +68,7 @@ struct MarketOverviewPage: View {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Invested").textStyle(.label, tint: P.inkFaint)
                     Text(cur.tidyShort(p.value)).textStyle(.figure).lineLimit(1).minimumScaleFactor(0.7)
-                    if p.positions.isEmpty {
-                        Text("Nothing yet \u{00B7} funds and crypto in Invest").textStyle(.caption)
-                    } else {
+                    if !p.positions.isEmpty {
                         HStack(spacing: Theme.Space.s) {
                             if p.weekMove != nil {
                                 Text(MarketFormat.money(week, cur) + " this week").textStyle(.caption, tint: P.change(week), numeric: true)
@@ -75,7 +79,7 @@ struct MarketOverviewPage: View {
                     }
                 }
                 Spacer(minLength: Theme.Space.s)
-                if series.count >= 2 {
+                if series.count >= 2 && series.contains(where: { (v: Double) -> Bool in abs(v) > 0.5 }) {
                     Sparkline(values: series, tint: (series.last ?? 0) >= (series.first ?? 0) ? P.gain : P.loss, filled: false)
                         .frame(width: 88, height: 32)
                         .accessibilityHidden(true)

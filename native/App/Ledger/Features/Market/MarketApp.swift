@@ -15,13 +15,11 @@ struct MarketApp: View {
         Group {
             if store.engine != nil {
                 VStack(spacing: 0) {
-                    SegmentedPill(items: MarketUI.Tab.allCases, title: { (t: MarketUI.Tab) -> String in t.rawValue }, selection: $tab,
-                                  identifier: { (t: MarketUI.Tab) -> String in "market-tab-\(t.rawValue)" })
-                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
+                    SectionTabs(items: MarketUI.Tab.allCases, title: { (t: MarketUI.Tab) -> String in t.rawValue }, selection: $tab,
+                                itemIdentifier: { (t: MarketUI.Tab) -> String in "market-tab-\(t.rawValue)" }, scrolls: true)
                         .frame(maxWidth: 760).frame(maxWidth: .infinity)
                     SegmentPager(items: MarketUI.Tab.allCases, selection: $tab) { (t: MarketUI.Tab) in page(t) }
                 }
-                .accessibilityIdentifier("market-app")
             } else {
                 Color.clear
             }

@@ -575,15 +575,15 @@ enum MarketData {
     static func whatWins(_ e: GameEngine, _ co: Company) -> [String] {
         var out: [String] = []
         if let t = e.data.catalog[co.type] {
-            if t.elasticity >= 1.4 { out.append("Price decides most choices here: a cheaper rival takes customers fast.") }
-            else if t.elasticity <= 0.8 { out.append("Quality and name count for more than price here.") }
-            else { out.append("Price and quality weigh about the same here.") }
+            if t.elasticity >= 1.4 { out.append("Price decides") }
+            else if t.elasticity <= 0.8 { out.append("Quality and name beat price") }
+            else { out.append("Price and quality weigh the same") }
         }
-        out.append("Being known matters: \(Int(co.awareness.rounded()))% of people here know \(co.name).")
-        out.append("Reputation \(Int(co.reputation.rounded())) of 100: good reviews bring customers back.")
+        out.append("Known by \(Int(co.awareness.rounded()))% of people")
+        out.append("Reputation \(Int(co.reputation.rounded())) of 100")
         if let m = market(e, companyID: co.id) {
             let know: MarketMap.Knowledge = MarketMap.knowledge(e.state, m)
-            if know.level != .feeling { out.append(contentsOf: MarketMap.report(e.state, m, know, data: e.data).prefix(3).map { (s: String) -> String in s.tidyText }) }
+            if know.level != .feeling { out.append(contentsOf: MarketMap.report(e.state, m, know, data: e.data).prefix(2).map { (s: String) -> String in s.tidyText }) }
         }
         return out
     }
@@ -689,7 +689,7 @@ enum MarketData {
                 if best == nil || score > (best?.score ?? 0) {
                     let demand: String = city.demand >= 1.1 ? "Strong demand" : city.demand >= 0.95 ? "Average demand" : "Quieter demand"
                     best = (score, BusyCity(city: city.name, trade: e.tradeName(co), country: country.code,
-                                            detail: "\(demand) \u{00B7} \(Int(city.population.rounded())) k people \u{00B7} no \(e.tradeName(co).lowercased()) of yours there"))
+                                            detail: "\(demand) \u{00B7} \(Int(city.population.rounded()).formatted())k people"))
                 }
             }
         }
@@ -702,13 +702,14 @@ enum MarketData {
         for co in companies(e) {
             for r in e.rivalRows(co) {
                 guard let cut = e.rivalPriceCut(companyID: co.id, rivalID: r.id), cut.answered == nil else { continue }
-                out.append(MarketUI.Signal(id: "cut\(co.id).\(r.id)", title: "\(r.rival.name) cut prices \(cut.pct)%", detail: "Against \(co.name) until about week \(cut.end)",
+                out.append(MarketUI.Signal(id: "cut\(co.id).\(r.id)", title: "\(r.rival.name) cut prices \(cut.pct)%", detail: "Against \(co.name) \u{00B7} until week \(cut.end)",
                                            tone: "bad", glyph: Glyph.warning, target: .rival(co.id, r.id)))
             }
         }
         for m in e.marketEvents(limit: 20) where m.kind == .competitorLaunch || (m.kind == .priceResponse && m.tone == "bad") {
             let target: MarketUI.Signal.Target = m.companyID.map { (id: Int) -> MarketUI.Signal.Target in .company(id) } ?? .nothing
-            out.append(MarketUI.Signal(id: "ev\(m.id)", title: m.title.tidyText, detail: (m.consequence.isEmpty ? m.detail : m.consequence).tidyText,
+            guard !out.contains(where: { (s: MarketUI.Signal) -> Bool in s.title == m.title.tidyText }) else { continue }
+            out.append(MarketUI.Signal(id: "ev\(m.id)", title: m.title.tidyText, detail: MarketEventRows.impact(m),
                                        tone: "bad", glyph: Glyph.market, target: target))
         }
         return Array(out.prefix(3))

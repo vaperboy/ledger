@@ -31,7 +31,7 @@ final class ShotsMarketTests: FeatureTourCase {
     private func toMarket() -> Bool {
         closeAll()
         var n = 0
-        while !has("market-tab-Overview", wait: 0.6) && n < 6 {
+        while !has("market-tab-Overview", wait: 1) && n < 6 {
             if !tapBack() { break }
             n += 1
         }
@@ -39,11 +39,27 @@ final class ShotsMarketTests: FeatureTourCase {
         return openPhoneApp("Market") && has("market-tab-Overview", wait: 4)
     }
 
+    /// Shows one of the five parts: its tab is tapped by id, the tab row dragged sideways first when the tab is out of view.
     private func part(_ name: String) -> Bool {
         guard toMarket() else { return false }
-        guard tapID("market-tab-\(name)", wait: 3) else { return false }
-        pause(0.8)
-        return true
+        let id: String = "market-tab-\(name)"
+        for i in 0..<3 {
+            if let h = find(wait: i == 0 ? 2 : 0.5, { $0.id == id && $0.type == .button }), h.frame.minX >= win().minX - 1, h.frame.maxX <= win().maxX + 1 {
+                touch(h)
+                pause(0.8)
+                return true
+            }
+            guard let row = find({ $0.id.hasPrefix("market-tab-") && $0.type == .button }) else { return false }
+            let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
+            let w: CGRect = win()
+            let leftward: Bool = name == "Invest" || name == "World"
+            o.withOffset(CGVector(dx: leftward ? w.maxX - 40 : w.minX + 40, dy: row.frame.midY))
+                .press(forDuration: 0.05, thenDragTo: o.withOffset(CGVector(dx: leftward ? w.minX + 60 : w.maxX - 60, dy: row.frame.midY)))
+            pause(0.5)
+        }
+        if let h = find({ $0.id == id && $0.type == .button }) { touch(h); pause(0.8); return true }
+        snap("tab-\(name)-not-found")
+        return false
     }
 
     /// Closes an open menu with a tap at the very top of the screen, where nothing is.

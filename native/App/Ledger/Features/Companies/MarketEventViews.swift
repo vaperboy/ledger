@@ -17,11 +17,20 @@ struct MarketEventRows: View {
     /// Events of this company, plus the ones about the whole market, newest first.
     static func relevant(_ e: GameEngine, companyID: Int?, limit: Int = 4) -> [MarketEvent] {
         let all: [MarketEvent] = e.marketEvents(limit: 30)
+        var seen: Set<String> = []
+        // Newest first; the same headline again (a later week's copy) is left out.
         let mine: [MarketEvent] = all.filter { (m: MarketEvent) -> Bool in
-            guard let id = companyID else { return true }
-            return m.companyID == nil || m.companyID == id
+            if let id = companyID, m.companyID != nil && m.companyID != id { return false }
+            return seen.insert(m.title).inserted
         }
         return Array(mine.prefix(limit))
+    }
+
+    /// What the event does to you, in one line: the first sentence of its consequence (or of its detail when it has none).
+    static func impact(_ m: MarketEvent) -> String {
+        let text: String = (m.consequence.isEmpty ? m.detail : m.consequence).tidyText
+        guard let end = text.range(of: ". ") else { return text }
+        return String(text[..<end.lowerBound]) + "."
     }
 
     static func tint(_ m: MarketEvent) -> Color {
@@ -69,12 +78,9 @@ struct MarketEventRows: View {
         return HStack(alignment: .top, spacing: 10) {
             Circle().fill(tint).frame(width: 7, height: 7).padding(.top, 5)
             VStack(alignment: .leading, spacing: 1) {
-                Text(m.title.tidyText).textStyle(.body, weight: .medium).lineLimit(2)
-                if !m.detail.isEmpty {
-                    Text(m.detail.tidyText).textStyle(.caption).lineLimit(2)
-                }
-                if !m.consequence.isEmpty {
-                    Text(m.consequence.tidyText).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
+                Text(m.title.tidyText).textStyle(.body, weight: .medium).lineLimit(1)
+                if !Self.impact(m).isEmpty {
+                    Text(Self.impact(m)).textStyle(.caption).lineLimit(1)
                 }
                 if m.kind == .recognition && !m.acknowledged {
                     TeamAction(title: "Thank them") { thank(m) }

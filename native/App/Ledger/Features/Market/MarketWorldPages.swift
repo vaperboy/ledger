@@ -28,7 +28,7 @@ struct CompanyRankingSection: View {
                         }
                     }
                 } else {
-                    EmptyState(glyph: Glyph.richList, title: "Not ranked yet", message: "Open or buy a company and you appear here.", centered: false)
+                    EmptyState(glyph: Glyph.richList, title: "Not ranked yet", centered: false)
                 }
             }
         }
@@ -214,7 +214,7 @@ struct DataAnalystCard: View {
             CardSection("Data analyst") {
                 VStack(alignment: .leading, spacing: 8) {
                     if e.hasDataAnalyst {
-                        Text("Your data analyst puts ranges on market shares, rivals and price forecasts.").textStyle(.caption)
+                        Text("Hired").textStyle(.caption)
                         HStack {
                             Button("Report on all companies") {
                                 let r = store.act { $0.orderAnalystReport(companyID: nil) }
@@ -228,7 +228,7 @@ struct DataAnalystCard: View {
                             }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                         }
                     } else {
-                        Text("Without an analyst you only have your own guess. A data analyst in your head office gives ranges, sharper with experience.").textStyle(.caption)
+                        Text("Not hired: shares are your guess").textStyle(.caption)
                         if candidates.isEmpty {
                             Button("Find a data analyst") { candidates = store.act { $0.dataAnalystCandidates() } ?? [] }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
                         }

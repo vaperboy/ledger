@@ -49,7 +49,6 @@ struct MarketTradeFlow: View {
         .toolbar(.hidden, for: .navigationBar)
         .swipeBackEnabled(canStep: { canStepBack }, step: { back() })
         .onAppear { skipLoneOwner() }
-        .accessibilityIdentifier("market-trade")
     }
 
     // MARK: Header and steps
@@ -108,8 +107,6 @@ struct MarketTradeFlow: View {
         let list: [MarketUI.Asset] = MarketData.assets(e)
         let cur: Currency = e.homeCurrency
         return VStack(alignment: .leading, spacing: 0) {
-            Text("Funds spread your money; crypto swings hard. Listed shares are not sold to new buyers.").textStyle(.caption, tint: P.inkFaint)
-                .padding(.bottom, Theme.Space.s)
             ForEach(Array(list.enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketUI.Asset)) in
                 if pair.offset > 0 { Hairline().padding(.leading, Theme.Icon.large + Theme.Space.m) }
                 assetRow(pair.element, cur)
@@ -130,7 +127,7 @@ struct MarketTradeFlow: View {
                 LedgerGlyph(glyph: a.kind == .crypto ? Glyph.luxury : Glyph.invest, size: Theme.Icon.large, tint: P.inkSoft)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(a.name).textStyle(.headline).lineLimit(1)
-                    Text(a.risk + " \u{00B7} " + a.note).textStyle(.caption).lineLimit(1)
+                    Text(a.risk).textStyle(.caption).lineLimit(1)
                 }
                 Spacer(minLength: Theme.Space.s)
                 if a.history.count >= 2 {
@@ -164,7 +161,7 @@ struct MarketTradeFlow: View {
                 let why: String? = asset.flatMap { (a: MarketUI.Asset) -> String? in MarketData.refusal(a, for: o.owner) }
                 let pick: (() -> Void)? = why == nil ? { () -> Void in owner = o.owner; step = .amount } : nil
                 LedgerRow(leading: .glyph(o.owner == .you ? Glyph.person : Glyph.group), leadingTint: P.inkSoft, title: o.name,
-                          subtitle: why ?? (o.owner == .you ? "Current account and savings" : "The holding's treasury"),
+                          subtitle: why ?? "",
                           value: cur.tidyShort(o.cash), valueNote: "available", identifier: "trade-owner-\(o.id)", action: pick)
                     .opacity(why == nil ? 1 : 0.5)
             }
@@ -231,12 +228,12 @@ struct MarketTradeFlow: View {
             let q: MarketUI.TradePreview = MarketData.sellPreview(e, p, fraction: fraction)
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 Text("\(p.name) \u{00B7} held by \(p.ownerName)").textStyle(.caption, tint: P.inkFaint)
-                Figure(label: "You sell", value: cur.tidyDisplay(q.amount), note: "about \(cur.tidyDisplay(q.cashChange)) reaches \(p.owner == .you ? "your account" : p.ownerName) after costs", size: .display)
+                Figure(label: "You sell", value: cur.tidyDisplay(q.amount), note: "\(cur.tidyDisplay(q.cashChange)) after costs", size: .display)
                 if !p.wholeOnly {
                     SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in f >= 1 ? "All" : "\(Int(f * 100))%" }, selection: $fraction,
                                   identifier: { (f: Double) -> String in "trade-fraction-\(Int(f * 100))" })
                 } else {
-                    Text("A stake like this sells in one piece.").textStyle(.caption)
+                    Text("Sells whole").textStyle(.caption)
                 }
                 PrimaryAction(title: "Review", blockedReason: q.refusal, identifier: "trade-review") { step = .review }
             }
@@ -263,8 +260,6 @@ struct MarketTradeFlow: View {
                     Hairline()
                     line("Cash after", cur.tidyDisplay(q.cashAfter), strong: true)
                 }
-                Text(a.kind == .crypto ? "Crypto can lose most of its value. A gain is taxed at the year end." : "The price can fall as well as rise. A gain is taxed at the year end.")
-                    .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 if let problem { Text(problem).textStyle(.caption, tint: P.warn).fixedSize(horizontal: false, vertical: true) }
                 PrimaryAction(title: "Confirm purchase", blockedReason: q.refusal, identifier: "trade-confirm") {
                     finish(MarketData.buy(store, a, owner: payer, amount: q.amount))
@@ -288,7 +283,6 @@ struct MarketTradeFlow: View {
                     Hairline()
                     line("Cash after", cur.tidyDisplay(q.cashAfter), strong: true)
                 }
-                Text("A gain is taxed at the year end.").textStyle(.caption, tint: P.inkFaint)
                 if let problem { Text(problem).textStyle(.caption, tint: P.warn).fixedSize(horizontal: false, vertical: true) }
                 if large && q.refusal == nil {
                     HoldToConfirmButton(title: "sell all", identifier: "trade-confirm") { finish(MarketData.sell(store, p, fraction: fraction)) }
@@ -328,7 +322,7 @@ struct MarketTradeFlow: View {
 
     private func done() -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            EmptyState(glyph: Glyph.check, title: result ?? (side == .buy ? "Bought" : "Sold"), message: "It shows in Invest with what you paid.", tint: P.gain)
+            EmptyState(glyph: Glyph.check, title: result ?? (side == .buy ? "Bought" : "Sold"), tint: P.gain)
             Button("Done") { Haptics.tap(); dismiss() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("trade-done")

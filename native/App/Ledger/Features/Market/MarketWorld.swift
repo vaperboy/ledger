@@ -28,7 +28,6 @@ struct MarketWorldPage: View {
                     countryList(rest.filter { (c: MarketUI.CountryLine) -> Bool in c.region == r })
                 }
             }
-            .accessibilityIdentifier("market-world")
         }
     }
 
@@ -36,7 +35,7 @@ struct MarketWorldPage: View {
         let sites: Int = mine.reduce(0) { (a: Int, c: MarketUI.CountryLine) -> Int in a + c.yourCompanies }
         let abroad: Int = mine.filter { (c: MarketUI.CountryLine) -> Bool in !c.isHome && c.yourCompanies > 0 }.count
         let value: String = abroad == 0 ? "Home only" : (abroad + 1).countText("country", plural: "countries")
-        let context: String = sites == 0 ? "No company yet" : "\(sites.countText("company", plural: "companies")) \u{00B7} home in \(e.homeCountry.name)"
+        let context: String = sites == 0 ? "" : "\(sites.countText("company", plural: "companies")) \u{00B7} home \(e.homeCountry.name)"
         return MarketHero(label: "Where you are", value: value, context: context, identifier: "market-world-hero")
     }
 
@@ -45,15 +44,13 @@ struct MarketWorldPage: View {
         let rich: String = st?.rank.map { (r: Int) -> String in "#\(r)" } ?? "Not placed"
         return VStack(spacing: 0) {
             MarketLabel(title: "Rankings")
-            LedgerRow(leading: .glyph(Glyph.richList), leadingTint: P.inkSoft, title: "Rich list and biggest companies",
-                      subtitle: "Where you stand, and the yearly awards", value: rich, valueNote: "rich list", identifier: "world-rankings",
+            LedgerRow(leading: .glyph(Glyph.richList), leadingTint: P.inkSoft, title: "Rankings",
+                      value: rich, valueNote: "rich list", identifier: "world-rankings",
                       action: { open(.rankings) })
             Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-            LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Records",
-                      subtitle: "Your rival, the Top 50, monthly results, crises", identifier: "world-records", action: { open(.records) })
+            LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Records", identifier: "world-records", action: { open(.records) })
             Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-            LedgerRow(leading: .glyph(Glyph.people), leadingTint: P.inkSoft, title: "People and reputation",
-                      subtitle: "How you are seen, who you know, favours", identifier: "world-around", action: { open(.aroundYou) })
+            LedgerRow(leading: .glyph(Glyph.people), leadingTint: P.inkSoft, title: "People and reputation", identifier: "world-around", action: { open(.aroundYou) })
         }
     }
 
@@ -116,7 +113,6 @@ struct CountryPage: View {
                 EmptyState(glyph: Glyph.world, title: "Unknown country").appScreen(title: "Country", subtitle: "Market \u{00B7} World")
             }
         }
-        .accessibilityIdentifier("market-page-country")
     }
 
     private func hero(_ c: Country, _ here: [Company]) -> some View {
@@ -127,12 +123,12 @@ struct CountryPage: View {
 
     private func figures(_ c: Country) -> some View {
         FigureRow(items: [
-            KeyFigures.Item(label: "Demand", value: MarketWords.level(c.marketStrength), sub: "spending power"),
-            KeyFigures.Item(label: "Wages", value: MarketWords.cost(c.wageLevel), sub: String(format: "%.2f\u{00D7} reference", c.wageLevel)),
-            KeyFigures.Item(label: "Rents", value: MarketWords.cost(c.rentLevel), sub: String(format: "%.2f\u{00D7} reference", c.rentLevel)),
+            KeyFigures.Item(label: "Demand", value: MarketWords.level(c.marketStrength)),
+            KeyFigures.Item(label: "Wages", value: MarketWords.cost(c.wageLevel)),
+            KeyFigures.Item(label: "Rents", value: MarketWords.cost(c.rentLevel)),
             KeyFigures.Item(label: "Company tax", value: Currency.percent(c.corporateTax, decimals: 0)),
             KeyFigures.Item(label: "Dividend tax", value: Currency.percent(c.dividendTax, decimals: 0)),
-            KeyFigures.Item(label: "Employer costs", value: Currency.percent(c.employerSocial, decimals: 0), sub: "on top of pay"),
+            KeyFigures.Item(label: "Employer costs", value: Currency.percent(c.employerSocial, decimals: 0)),
         ], columns: 3, combineCells: true)
         .padding(.top, Theme.Space.l)
     }
@@ -155,7 +151,7 @@ struct CountryPage: View {
     @ViewBuilder private func competition(_ e: GameEngine, _ groups: [RivalGroups.Group]) -> some View {
         MarketLabel(title: "Rival groups here", note: groups.isEmpty ? "" : "\(groups.count)")
         if groups.isEmpty {
-            Text("No rival group is active here.").textStyle(.caption)
+            Text("None").textStyle(.caption)
         } else {
             VStack(spacing: 0) {
                 ForEach(Array(groups.prefix(6).enumerated()), id: \.element.id) { (pair: (offset: Int, element: RivalGroups.Group)) in
@@ -171,7 +167,7 @@ struct CountryPage: View {
 
     @ViewBuilder private func cities(_ e: GameEngine, _ c: Country, _ here: [Company]) -> some View {
         let list: [Country.City] = c.coreCities.sorted { (a: Country.City, b: Country.City) -> Bool in a.population > b.population }
-        MarketLabel(title: "Cities", note: "people \u{00B7} demand \u{00B7} rent")
+        MarketLabel(title: "Cities")
         VStack(spacing: 0) {
             ForEach(Array(list.prefix(12).enumerated()), id: \.element.id) { (pair: (offset: Int, element: Country.City)) in
                 if pair.offset > 0 { Hairline() }
@@ -201,7 +197,7 @@ struct CountryPage: View {
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("country-open-company")
             } else {
-                PrimaryAction(title: "Open a company here", blockedReason: can.isEmpty ? "None of your open companies can start in \(c.name) yet." : nil,
+                PrimaryAction(title: "Open a company here", blockedReason: can.isEmpty ? "No company of yours can start here yet" : nil,
                               identifier: "country-open-company") { if let co = can.first { abroadFor = co.id } }
             }
         }
@@ -235,7 +231,6 @@ struct MarketRankingsPage: View {
                 .appScreen(title: "Rankings", subtitle: "Market \u{00B7} World")
             }
         }
-        .accessibilityIdentifier("market-rankings")
     }
 
     private func movement(_ st: RichList.Standing) -> String {
@@ -276,7 +271,7 @@ struct MarketRankingsPage: View {
         if let r = st.rank, r > 100 {
             Text("Number 100 has \(store.short(st.hundredth)): \(store.short(max(0, st.hundredth - st.netWorth))) to go.").textStyle(.caption)
         } else if st.rank == nil {
-            Text("You need a positive net worth to be placed on the list.").textStyle(.caption)
+            Text("Not placed: net worth below zero").textStyle(.caption)
         }
     }
 
@@ -299,8 +294,7 @@ struct MarketRankingsPage: View {
         let years = Array(Awards.years(s).reversed())
         MarketLabel(title: "Business awards", note: "\(Awards.wonCount(s)) won")
         if years.isEmpty {
-            Text("The first business awards are held at the end of the year, once you have been in business for half a year.").textStyle(.body, tint: P.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
+            Text("First awards at the end of the year").textStyle(.caption)
         } else {
             ForEach(Array(years.prefix(4)), id: \.year) { y in
                 MarketLabel(title: "\(y.year)")

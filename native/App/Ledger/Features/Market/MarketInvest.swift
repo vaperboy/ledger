@@ -27,19 +27,16 @@ struct MarketInvestPage: View {
                                   selection: $ownerKey, identifier: { (k: String) -> String in "invest-owner-\(k)" })
                 }
                 positions(p, cur)
-                MarketLabel(title: "Let someone invest for you")
-                LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: "Fund manager",
-                          subtitle: e.fundManager.map { (m: FinanceManager.Account) -> String in "\(m.name) \u{00B7} \(m.mandate.title) mandate" } ?? "A professional invests for a yearly fee",
-                          identifier: "invest-fund-manager", action: { open(.fundManager) })
-                Text("Gains are taxed at the year end. Prices can fall as well as rise.").textStyle(.caption, tint: P.inkFaint)
-                    .padding(.top, Theme.Space.s)
+                MarketLabel(title: "Fund manager")
+                LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: e.fundManager?.name ?? "Fund manager",
+                          subtitle: e.fundManager.map { (m: FinanceManager.Account) -> String in "\(m.mandate.title) mandate" } ?? "",
+                          value: e.fundManager == nil ? "Hire" : "", identifier: "invest-fund-manager", action: { open(.fundManager) })
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 PrimaryAction(title: "Buy", identifier: "invest-buy") { open(.buy(assetID: nil, owner: chosen)) }
                     .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
                     .background(P.ground.opacity(0.96))
             }
-            .accessibilityIdentifier("market-invest")
         }
     }
 
@@ -50,7 +47,7 @@ struct MarketInvestPage: View {
             parts.append(MarketFormat.money(p.pnl, cur) + (p.pnlShare.map { (s: Double) -> String in " (" + MarketFormat.percent(s) + ")" } ?? "") + " in all")
         }
         if let w = p.weekMove { parts.append(MarketFormat.money(w, cur) + " this week") }
-        let context: String = p.positions.isEmpty ? "Nothing invested yet. Funds and crypto are a tap away." : parts.joined(separator: " \u{00B7} ")
+        let context: String = parts.joined(separator: " \u{00B7} ")
         let series: [Double] = owner == nil || owner == .you ? MarketData.investedHistory(store) : []
         return MarketHero(label: name.map { (n: String) -> String in "Invested by \(n)" } ?? "Invested", value: cur.tidyShort(p.value), context: context,
                           contextTint: p.cost > 0.5 ? P.change(p.pnl) : nil, series: series,
@@ -59,9 +56,9 @@ struct MarketInvestPage: View {
 
     @ViewBuilder private func positions(_ p: MarketUI.Portfolio, _ cur: Currency) -> some View {
         if p.positions.isEmpty {
-            EmptyState(glyph: Glyph.invest, title: "No positions", message: "What you and your holdings buy shows here, with what you paid and how it is doing.")
+            EmptyState(glyph: Glyph.invest, title: "No positions")
         } else {
-            MarketLabel(title: "Positions", note: "\(p.positions.count) \u{00B7} value \u{00B7} result")
+            MarketLabel(title: "Positions", note: "\(p.positions.count)")
             let total: Double = max(1, p.value)
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(p.positions.enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketUI.Position)) in
@@ -117,11 +114,10 @@ struct PositionPage: View {
                 .appScreen(title: p.name, subtitle: "\(p.ownerName) \u{00B7} \(p.assetClass.word)")
                 .navigationDestination(item: $next) { (r: MarketRoute) in MarketDestination(route: r) }
             } else {
-                EmptyState(glyph: Glyph.invest, title: "Nothing held here any more", message: "It was sold or has ended.")
+                EmptyState(glyph: Glyph.invest, title: "Nothing held here any more")
                     .appScreen(title: "Position", subtitle: "Market \u{00B7} Invest")
             }
         }
-        .accessibilityIdentifier("market-page-position")
     }
 
     private func hero(_ p: MarketUI.Position, _ cur: Currency) -> some View {
@@ -148,18 +144,15 @@ struct PositionPage: View {
         return FigureRow(items: items, columns: 3, combineCells: true).padding(.top, Theme.Space.l)
     }
 
+    /// One status line where the position carries a cost or a risk that its figures do not show.
     @ViewBuilder private func notes(_ p: MarketUI.Position) -> some View {
         switch p.assetClass {
-        case .crypto: Text("Very volatile: crypto can lose most of its value.").textStyle(.caption, tint: P.warn)
-        case .shares: Text("Listed shares are no longer sold to new buyers; what you hold can be sold.").textStyle(.caption, tint: P.inkFaint)
-        case .startup: Text("A stake in someone else's startup sells at about 72% of its fair value.").textStyle(.caption, tint: P.inkFaint)
-        case .privateEquity: Text("A fund stake sells in one piece on the secondary market, at a discount to its value.").textStyle(.caption, tint: P.inkFaint)
-        case .groupStake, .partnership: Text("This stake pays its share of profit; it is not sold here.").textStyle(.caption, tint: P.inkFaint)
-        case .managed: Text("Your fund manager invests this for a yearly fee.").textStyle(.caption, tint: P.inkFaint)
+        case .crypto: Text("Very volatile").textStyle(.caption, tint: P.warn)
+        case .startup: Text("Sells at 72% of value").textStyle(.caption)
+        case .privateEquity: Text("Sells whole, at a discount").textStyle(.caption)
         case .fund:
-            if case .holding = p.owner {
-                Text("The holding's treasury holds this. Selling costs 0.66%; the cash stays in the holding.").textStyle(.caption, tint: P.inkFaint)
-            }
+            if case .holding = p.owner { Text("Selling costs 0.66%").textStyle(.caption) }
+        case .shares, .groupStake, .partnership, .managed: EmptyView()
         }
     }
 

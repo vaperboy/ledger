@@ -23,7 +23,7 @@ struct MarketRivalsPage: View {
             let watched: Set<String> = MarketWatchlist.ids(watchRaw, seed: e.state.seed)
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(all, groups, e)
-                LedgerField(placeholder: "Search by name, owner, trade or city", text: $query, identifier: "market-rival-search")
+                LedgerField(placeholder: "Search", text: $query, identifier: "market-rival-search")
                 SegmentedPill(items: Filter.allCases, title: { (f: Filter) -> String in f.rawValue }, selection: $filter,
                               identifier: { (f: Filter) -> String in "market-rivals-\(f.rawValue)" })
                 if filter == .groups {
@@ -32,7 +32,6 @@ struct MarketRivalsPage: View {
                     rivalList(shown(all, watched), watched)
                 }
             }
-            .accessibilityIdentifier("market-rivals")
         }
     }
 
@@ -54,16 +53,14 @@ struct MarketRivalsPage: View {
 
     private func hero(_ all: [MarketUI.RivalItem], _ groups: [MarketUI.GroupItem], _ e: GameEngine) -> some View {
         let forSale: Int = all.filter { (r: MarketUI.RivalItem) -> Bool in r.forSale }.count
-        let context: String = all.isEmpty ? "Rivals appear once one of your businesses is open." :
-            "\(forSale) for sale \u{00B7} \(groups.count.countText("group")) around you"
+        let context: String = all.isEmpty ? "" : "\(forSale) for sale \u{00B7} \(groups.count.countText("group"))"
         return MarketHero(label: "Rivals in your markets", value: "\(all.count)", context: context, contextTint: forSale > 0 ? P.accent : nil,
                           identifier: "market-rivals-hero")
     }
 
     @ViewBuilder private func rivalList(_ list: [MarketUI.RivalItem], _ watched: Set<String>) -> some View {
         if list.isEmpty {
-            EmptyState(glyph: Glyph.market, title: filter == .watching ? "You watch no rival yet" : "No rival matches",
-                       message: filter == .watching ? "Tap the star on a rival's profile to follow it here." : "")
+            EmptyState(glyph: Glyph.market, title: filter == .watching ? "No rival watched" : "No rival matches")
         } else {
             let cur: Currency? = store.engine?.homeCurrency
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -88,7 +85,7 @@ struct MarketRivalsPage: View {
 
     @ViewBuilder private func groupList(_ list: [MarketUI.GroupItem]) -> some View {
         if list.isEmpty {
-            EmptyState(glyph: Glyph.group, title: "No rival group around you", message: "Groups that compete where you are show here.")
+            EmptyState(glyph: Glyph.group, title: "No rival group around you")
         } else {
             let cur: Currency? = store.engine?.homeCurrency
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -146,11 +143,10 @@ struct RivalProfilePage: View {
                 .navigationDestination(item: Binding(get: { group.map { (g: String) -> MarketRoute in MarketRoute.group(g) } },
                                                      set: { (r: MarketRoute?) in if r == nil { group = nil } })) { (r: MarketRoute) in MarketDestination(route: r) }
             } else {
-                EmptyState(glyph: Glyph.market, title: "This rival is gone", message: "It closed, merged or was bought.")
+                EmptyState(glyph: Glyph.market, title: "This rival is gone")
                     .appScreen(title: "Rival", subtitle: "Market")
             }
         }
-        .accessibilityIdentifier("rival-profile")
     }
 
     // MARK: Hero
@@ -205,7 +201,7 @@ struct RivalProfilePage: View {
             if let answer = cut.answered {
                 Text("You answered: \(answer).").textStyle(.caption)
             } else {
-                Text("Some of your customers are trying them. It runs until about week \(cut.end).").textStyle(.caption)
+                Text("Until week \(cut.end)").textStyle(.caption)
                 VStack(spacing: 0) {
                     LedgerRow(leading: .symbol("tag"), title: "Match their price", identifier: "rival-cut-match", action: { answerCut(.match) })
                     Hairline()
@@ -223,8 +219,7 @@ struct RivalProfilePage: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             MarketLabel(title: "The owner")
             Text("\(d.rival.owner) \u{00B7} \(d.moodWord)").textStyle(.headline)
-            Text(d.temperament.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-            Text(d.nextMove.tidyText).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            Text(d.nextMove.tidyText).textStyle(.caption).lineLimit(1)
             if !d.rival.memory.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(d.rival.memory.prefix(8).enumerated()), id: \.offset) { (pair: (offset: Int, element: (week: Int, text: String, change: Double))) in
@@ -267,7 +262,7 @@ struct RivalProfilePage: View {
             MarketLabel(title: "What customers say", note: String(format: "%.1f \u{2605}", d.reviewRating))
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 ForEach(d.reviews.prefix(3)) { (r: ReviewLine) in
-                    Text(String(repeating: "\u{2605}", count: r.stars) + "  " + r.text.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    Text(String(repeating: "\u{2605}", count: r.stars) + "  " + r.text.tidyText).textStyle(.caption).lineLimit(2)
                 }
             }
         }
@@ -393,11 +388,11 @@ struct RivalOfferSheet: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text("Your offer for \(d.rival.name)").textStyle(.label, tint: P.inkFaint)
                 Text(cur.tidyShort(price)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6).accessibilityIdentifier("rival-offer-price")
-                Text(String(format: "%.2f\u{00D7} what it is worth (about %@)", multiple, cur.tidyShort(value))).textStyle(.caption)
+                Text(String(format: "%.2f\u{00D7} its value of %@", multiple, cur.tidyShort(value))).textStyle(.caption)
             }
             LedgerSlider(value: $multiple, in: 0.8...3, step: 0.05)
                 .accessibilityIdentifier("rival-offer-slider")
-            Text("Plus about \(cur.tidyShort(setUp)) to set the business up as your own.").popupText(.caption)
+            Text("+ \(cur.tidyShort(setUp)) set-up").popupText(.caption)
             if let reply {
                 Text(reply.tidyText).popupText(.body).fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("rival-offer-reply")
             }
