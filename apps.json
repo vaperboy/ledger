@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.89",
+          "buildVersion": "89",
+          "date": "2026-11-07T20:55:20Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v89/Ledger-unsigned.ipa",
+          "size": 29329791,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Group redesigned: group value and trend, what needs you, Boardroom where you can talk to every board member, sale routes, chain page with branch close/sell\n- No more jumping between tabs: links open inside the tab you are on with Back, a company switcher on company and group pages; outside apps redesigned (TechPro, AirStay, Atlas, Marketplace, Luxury, Reviews, Market, Ventures) with a readable status bar\n- Redesigned Home (one screen: net worth, what needs you or your next goal, top companies, Next day), Team (people and cost, one worker profile, offer page that shows what you know), Phone home, Bank and Accounting\n- A business that served no one last week now says why (e.g. a required machine in repair) and opens the fix\n- Popups on light screens (Bank, Accounting, outside apps) are readable: light glass with dark text; buttons are capsules everywhere\n- Chains work like one company: one board, one dividend from the whole chain, branches share cash; a losing branch is closed (lease, staff moved or paid off, stock moved) or sold as a going concern, never bankrupt on its own\n- Popups rebuilt: three sizes (compact, medium, detail) that fit their content exactly, centred"
+        },
+        {
           "version": "1.0.88",
           "buildVersion": "88",
           "date": "2026-11-07T14:09:14Z",
@@ -187,22 +196,13 @@
           "size": 29280578,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades\n\n# Missing / coming next\n- Wider skilled-vs-idle gap; screen-tour fixes"
-        },
-        {
-          "version": "1.0.69",
-          "buildVersion": "69",
-          "date": "2026-11-06T01:35:53Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v69/Ledger-unsigned.ipa",
-          "size": 29256567,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades\n\n# Missing / coming next\n- Balance pass for skilled-vs-idle play; screen-tour fixes"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.88",
-      "versionDate": "2026-11-07T14:09:14Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v88/Ledger-unsigned.ipa",
-      "size": 29238212
+      "version": "1.0.89",
+      "versionDate": "2026-11-07T20:55:20Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v89/Ledger-unsigned.ipa",
+      "size": 29329791
     }
   ]
 }
