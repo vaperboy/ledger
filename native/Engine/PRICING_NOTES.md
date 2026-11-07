@@ -9,4 +9,9 @@
 7. Item edits (price, discount, group listing, supplier) are refused with "Choose what you sell first." while pending.
 8. Who sets prices: `SalesItem.priceSetter` = `.advisor` when the advisor role is filled, else `.manager(name:)` when a manager is hired, else `.owner`; the item page shows "Set by ..." for non-owners. It is shown, not enforced.
 9. Tests: `SalesItemsTests` gains ceiling, first-choice and price-setter cases. Nothing was compiled or run here (no Swift toolchain).
-10. Open: starters added by a module after the choice are visible; revenue is not zero while nothing is chosen; the first company from `newGame(tradeID:)` is unchanged.
+10. Ceiling is per trade: `SalesItems.ceiling(for:)` / `range(for:)` (table by trade, then family, default 1.8); `GameEngine.itemPriceRange(companyID:)`, `SalesItem.priceCeiling/maxPrice`.
+11. Choosing seeds the trade module's starters first (`SalesItems.seedStarters`), so `firstItemChoices` and the hidden ids are the real list, also before the first weekly step.
+12. Hidden starters carry no customers (`SalesItems.shaped`: visible shares renormalised, hidden 0); `DemandModel.compute` and the finance model return 0 while the choice is pending.
+13. `newGame(... chooseFirstItem: true)` marks the onboarding company pending (default false so engine balance tests are unchanged; the app passes true).
+14. The owner can always set prices; `priceSetter` is information only.
+15. Open: rental, developer and special-family models do not read the gate; starters a module adds long after the choice are visible.

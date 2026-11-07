@@ -21,6 +21,11 @@ public struct SalesItem: Equatable, Identifiable, Sendable {
     public var revenueWeight: Double
     /// Who sets this price: the owner, or the advisor or manager who was hired for it.
     public var priceSetter: SalesItems.PriceSetter = .owner
+    /// The cheapest and dearest price the owner may set, as multiples of the market price (the dearest depends on the trade).
+    public var priceFloor: Double = SalesItems.priceFloor
+    public var priceCeiling: Double = SalesItems.priceCeiling
+    public var minPrice: Double { marketPrice * priceFloor }
+    public var maxPrice: Double { marketPrice * priceCeiling }
 }
 
 /// What a price and a discount would do to one item in a normal week.
@@ -55,6 +60,7 @@ public extension SalesItems {
         let list = items(co, bd), mt = marketTicket(co, bd, w)
         let g = max(1e-9, demandFactor(co))
         let setter = priceSetter(s, co)
+        let top = ceiling(for: bd)
         let units = co.value("lastW")["units"].isNull ? 0 : co.value("lastW")["units"].double
         return list.map { it in
             let dm = demandMultiplier(priceRatio: it.effectiveMultiplier)
@@ -62,7 +68,8 @@ public extension SalesItems {
             let market = mt * it.ratio
             return SalesItem(id: it.id, name: it.name, isService: it.isService, price: market * it.priceMultiplier, marketPrice: market,
                              discountPercent: it.discountPercent, discountWeeksLeft: it.discountWeeks, weeklyUnits: u,
-                             weeklyRevenue: u * market * it.effectiveMultiplier, demandChange: dm - 1, listedForGroup: it.listedForGroup, revenueWeight: it.revenueWeight, priceSetter: setter)
+                             weeklyRevenue: u * market * it.effectiveMultiplier, demandChange: dm - 1, listedForGroup: it.listedForGroup, revenueWeight: it.revenueWeight, priceSetter: setter,
+                             priceFloor: priceFloor, priceCeiling: top)
         }
     }
 
@@ -73,7 +80,7 @@ public extension SalesItems {
         }
         let w = World(state: s, data: data)
         let market = marketTicket(co, bd, w) * it.ratio
-        let newMult = market > 0 ? clamp(max(0, price) / market, priceRange.lowerBound, priceRange.upperBound) : 1
+        let newMult = market > 0 ? clamp(max(0, price) / market, range(for: bd).lowerBound, range(for: bd).upperBound) : 1
         let mult = newMult * (1 - clamp(discountPercent, 0, 90) / 100)
         let gNow = max(1e-9, demandFactor(co))
         let dmNow = demandMultiplier(priceRatio: it.effectiveMultiplier), dmNew = demandMultiplier(priceRatio: mult)
@@ -103,6 +110,7 @@ public extension SalesItems {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
         guard co.status == .open else { return "Only an open company sets item prices." }
         if firstChoicePending(co), itemID != nil { return "Choose what you sell first." }
+        if let id = itemID, hiddenIDs(co).contains(id) { return "That item no longer exists." }
         if let id = itemID, !items(co, bd).contains(where: { $0.id == id }) { return "That item no longer exists." }
         return nil
     }
@@ -111,7 +119,7 @@ public extension SalesItems {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return }
         let market = marketTicket(co, bd, World(state: s, data: data)) * (items(co, bd).first { $0.id == itemID }?.ratio ?? 1)
         mutate(&s, companyID: companyID, data: data) { list in
-            if let k = list.firstIndex(where: { $0.id == itemID }), market > 0 { list[k].priceMultiplier = clamp(price / market, priceRange.lowerBound, priceRange.upperBound) }
+            if let k = list.firstIndex(where: { $0.id == itemID }), market > 0 { list[k].priceMultiplier = clamp(price / market, range(for: bd).lowerBound, range(for: bd).upperBound) }
         }
     }
 
