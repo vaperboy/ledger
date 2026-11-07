@@ -107,6 +107,8 @@ struct CenterSheetFrame<Content: View>: View {
     @State private var contentTitle = ""
     @State private var drag: CGFloat = 0
     @State private var keyboardUp = false
+    /// The content's natural height, measured from a hidden copy (0 until measured).
+    @State private var natural: CGFloat = 0
 
     private var cat: PopupCategory { category ?? PopupLayout.category(for: size) }
     private var shade: PopupTone { tone ?? PopupTone(variant: variant) }
@@ -184,6 +186,8 @@ struct CenterSheetFrame<Content: View>: View {
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
         .modifier(PopupGlass(tone: shade, light: P.isLight))
         .overlay { celebration }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("popup-card")
     }
 
     private var hasHeader: Bool { !shownTitle.isEmpty || showsClose }
@@ -235,21 +239,29 @@ struct CenterSheetFrame<Content: View>: View {
         if variant == .reward && !reduceMotion { ConfettiBurst() }
     }
 
-    /// The body: exactly as high as the content when it fits the category's room, otherwise a scroll view of that room. `ViewThatFits`
-    /// decides from the content's own size, so nothing is measured afterwards and no fallback height can stretch a short popup.
-    /// A detail panel whose content scrolls by itself (`.tall`) fills the panel instead.
+    /// The body: exactly as high as the content, scrolling only past the category's room. A hidden copy of the content at its natural
+    /// height (outside any scroll view) is measured, and the scroll view gets exactly that height; until then it is invisible, never a
+    /// guessed height. A detail panel whose content scrolls by itself (`.tall`) fills the panel instead.
     @ViewBuilder private func inner(bodyMax: CGFloat) -> some View {
         if size == .tall {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ViewThatFits(in: .vertical) {
-                padded
-                ScrollView(.vertical) { padded }
-                    .scrollBounceBehavior(.basedOnSize)
-                    .scrollDismissesKeyboard(.interactively)
-            }
-            .frame(maxHeight: bodyMax)
+            ScrollView(.vertical) { padded }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.interactively)
+                .frame(height: natural > 0 ? min(natural, bodyMax) : 1)
+                .opacity(natural > 0 ? 1 : 0)
+                .background(alignment: .top) {
+                    padded
+                        .hidden()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: CGFloat.self, of: { (g: GeometryProxy) -> CGFloat in g.size.height }) { (h: CGFloat) in
+                            if abs(h - natural) > 0.5 { natural = h }
+                        }
+                }
+                .clipped()
         }
     }
 

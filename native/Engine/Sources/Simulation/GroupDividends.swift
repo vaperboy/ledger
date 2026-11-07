@@ -19,12 +19,17 @@ public struct DividendRow: Identifiable, Equatable, Sendable {
 
 public extension GameEngine {
     /// Every live limited company that has something to pay or has paid before, largest payable first.
+    /// A chain is one row (its head office, under the chain's name): it declares one dividend from all its branches.
     func dividendRows() -> [DividendRow] {
         state.companies.filter { $0.status.isLive && $0.form == .limited && $0.type != "hold" }.compactMap { co -> DividendRow? in
+            let br = state.chainStores(of: co)
+            if br.count >= 2 && br[0].id != co.id { return nil }
             let can = Payments.maximumDividend(co, state: state, context: context)
-            guard can > 0 || co.distributed > 0 else { return nil }
+            let paid = br.count >= 2 ? br.reduce(0) { $0 + $1.distributed } : co.distributed
+            guard can > 0 || paid > 0 else { return nil }
             let h: Company? = co.holdingID != 0 ? state.company(co.holdingID) : nil
-            return DividendRow(id: co.id, name: co.name, holdingID: h?.id, holdingName: h?.name, payable: can, distributed: co.distributed)
+            let name = br.count >= 2 ? Chains.chain(state, of: co)?["name"].string ?? co.name : co.name
+            return DividendRow(id: co.id, name: name, holdingID: h?.id, holdingName: h?.name, payable: can, distributed: paid)
         }.sorted { $0.payable > $1.payable }
     }
 

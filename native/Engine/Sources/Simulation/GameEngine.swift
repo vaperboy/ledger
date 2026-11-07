@@ -393,11 +393,13 @@ public struct GameEngine {
         MarketResearch.weekly(&state, data: data)   // ordered research reports arrive (inbox message)
         Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
         ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
+        ChainBranches.weekly(&state, data: data)   // a chain is one company: a branch short of cash is covered by the chain first
         Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
         FirstYear.freezeSweep(&state, balance: data.balance)   // before week 27 a company in the red is frozen, not bankrupt (Businesses/FirstYear.swift)
         let bankruptcyOn = data.balance.firstYear.bankruptcyActive(week: state.week)
         for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
+            if state.isBranch(c) { continue }   // a branch is not a legal entity: only its whole chain can fail (Failure.chainChecks)
             if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
                 Failure.bankrupt(&state, companyIndex: i, reason: "cash", data: data, context: context)
             }
@@ -410,9 +412,11 @@ public struct GameEngine {
                 Failure.bankrupt(&state, companyIndex: i, reason: "unpaid", data: data, context: context)
             }
         }
-        for id in FinanceModel.insolventCompanies(&state, data: data) where bankruptcyOn {
-            if let i = state.companyIndex(id) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
+        let insolvent = FinanceModel.insolventCompanies(&state, data: data)
+        for id in insolvent where bankruptcyOn {
+            if let i = state.companyIndex(id), !state.isBranch(state.companies[i]) { Failure.bankrupt(&state, companyIndex: i, reason: "insolvent", data: data, context: context) }
         }
+        if bankruptcyOn { Failure.chainChecks(&state, data: data, context: context, insolvent: Set(insolvent)) }
         FaceBook.sweep(&state, data: data)   // portraits: hired people keep theirs for good, stale candidates give theirs back
         snapshot()
         let ctx = context

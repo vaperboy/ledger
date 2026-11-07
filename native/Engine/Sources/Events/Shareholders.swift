@@ -82,6 +82,8 @@ public enum Shareholders {
     public static func setPolicy(_ s: inout GameState, companyID: Int, policy p: String) {
         guard let i = s.companyIndex(companyID), policies.contains(p) else { return }
         s.companies[i].set("dp27", p)
+        // A chain has one dividend policy: every branch carries it.
+        for c in s.chainStores(of: s.companies[i]) { if let k = s.companyIndex(c.id) { s.companies[k].set("dp27", p) } }
     }
 
     /// Buy one owner's stake back from your own account. Original: `ACT.own27buy`.
@@ -120,7 +122,10 @@ public enum Shareholders {
     static func quarter(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         guard co.status == .open, co.form == .limited, co.type != "hold" else { return }
-        let pol = policy(co), pr = quarterProfit(co)
+        // A chain's quarter is decided once, at its head office, on the profit of all its branches.
+        let br = s.chainStores(of: co)
+        if br.count >= 2 && br[0].id != co.id { return }
+        let pol = policy(co), pr = br.count >= 2 ? br.reduce(0) { $0 + quarterProfit($1) } : quarterProfit(co)
         var paid = 0.0
         if (payout[pol] ?? 0) > 0 && pr > 0 {
             // Dividends are never automatic: the policy only proposes this quarter's dividend, and the owner (or whoever
