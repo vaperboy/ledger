@@ -247,19 +247,18 @@ struct CompanyInMarketPage: View {
 
     // MARK: Menu
 
-    private func menu(_ e: GameEngine, _ co: Company, _ l: MarketUI.CompanyLine) -> some View {
-        Menu {
-            if l.level == .marketAnalyst, let key = l.marketKey {
+    @ViewBuilder private func menu(_ e: GameEngine, _ co: Company, _ l: MarketUI.CompanyLine) -> some View {
+        if l.level == .marketAnalyst, let key = l.marketKey {
+            Menu {
                 Button("Ask your analyst for a report") {
                     let r = store.act { $0.orderMarketReport(marketKey: key) }
                     if case .refused(let why)? = r { store.show(why, tone: "warn") } else { Haptics.success(); store.show("Report sent to your inbox.", tone: "good") }
                 }
+            } label: {
+                Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink).frame(width: 44, height: 44)
             }
-            Button("Open \(co.name)") { store.openCompany(co.id) }
-        } label: {
-            Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold)).foregroundStyle(P.ink).frame(width: 44, height: 44)
+            .accessibilityLabel("More")
+            .accessibilityIdentifier("market-company-more")
         }
-        .accessibilityLabel("More")
-        .accessibilityIdentifier("market-company-more")
     }
 }

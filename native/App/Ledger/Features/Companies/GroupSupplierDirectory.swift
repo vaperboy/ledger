@@ -184,22 +184,9 @@ struct GroupSupplierDirectory: View {
                     }
                 }
             }
-            openButtons(en)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(en.name)
     }
 
-    @ViewBuilder private func openButtons(_ en: Entry) -> some View {
-        VStack(spacing: Theme.Space.s) {
-            ForEach(en.companyIDs, id: \.self) { (id: Int) in
-                let name: String = en.uses.first(where: { $0.companyID == id })?.companyName ?? "company"
-                Button("Open in \(name)") {
-                    Haptics.tap()
-                    picked = nil
-                    store.openCompany(id, section: .operations, part: OpsPart.suppliers.rawValue)
-                }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
-            }
-        }
-    }
 }

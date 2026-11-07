@@ -310,7 +310,7 @@ struct RivalProfilePage: View {
         case .done(let m)?: Haptics.success(); store.show(m, tone: "good")
         case .alreadyLowest?: store.show("You are already at your lowest price.", tone: "warn")
         case .notEnoughCash?: store.show("Not enough cash.", tone: "warn")
-        case .newCompany(let id)?: Haptics.success(); store.show("The second brand is registered. Set it up to open."); store.openCompany(id)
+        case .newCompany?: Haptics.success(); store.show("The second brand is registered. Set it up to open.")
         case .failed(let m)?: store.show(m, tone: "warn")
         case nil: break
         }
@@ -321,7 +321,7 @@ struct RivalProfilePage: View {
         let rid: Int = rivalID
         let r = store.act { $0.openBranchNextToRival(companyID: cid, rivalID: rid) }
         switch r {
-        case .ok(let id)?: Haptics.success(); store.show("The new site is registered. Set it up to open."); store.openCompany(id)
+        case .ok?: Haptics.success(); store.show("The new site is registered. Set it up to open.")
         case .needsFranchisePapers?: store.show("You need your franchise papers first.", tone: "warn")
         case .notEnoughCash?: store.show("Not enough money to start it.", tone: "warn")
         case .failed(let m)?: store.show(m, tone: "warn")
@@ -422,7 +422,7 @@ struct RivalOfferSheet: View {
         let rid: Int = rivalID
         let r = store.act { $0.absorbRival(companyID: cid, rivalID: rid, price: price, how: how) }
         switch r {
-        case .ok(let message, let id, _)?: Haptics.success(); store.show(message, tone: "good"); dismiss(); if let id { store.openCompany(id) }
+        case .ok(let message, _, _)?: Haptics.success(); store.show(message, tone: "good"); dismiss()
         case .notEnoughCash?: reply = "Not enough cash for the price and the extra costs."; Haptics.warning()
         case .failed(let why)?: reply = why
         case nil: break
@@ -437,7 +437,7 @@ struct RivalOfferSheet: View {
         let amount: Double = min((price * 0.7 / 1000).rounded() * 1000, (e.ownBankRoom() / 1000).rounded(.down) * 1000)
         let r = store.act { $0.buyRivalWithOwnBank(companyID: cid, rivalID: rid, price: price, amount: amount) }
         switch r {
-        case .ok(.ok(let id))?: Haptics.success(); store.show("You bought the business with a loan from your bank.", tone: "good"); dismiss(); store.openCompany(id)
+        case .ok(.ok)?: Haptics.success(); store.show("You bought the business with a loan from your bank.", tone: "good"); dismiss()
         case .ok(.notEnoughCash)?: reply = "Not enough cash for the rest of the price and the set-up."; Haptics.warning()
         case .ok(.failed(let why))?: reply = why
         case .bankCannotLend?: reply = "Your bank cannot lend that much."; Haptics.warning()
@@ -450,7 +450,7 @@ struct RivalOfferSheet: View {
         let rid: Int = rivalID
         let r = store.act { $0.buyRival(companyID: cid, rivalID: rid, price: price) }
         switch r {
-        case .ok(let id)?: Haptics.success(); store.show("You bought the business.", tone: "good"); dismiss(); store.openCompany(id)
+        case .ok?: Haptics.success(); store.show("You bought the business.", tone: "good"); dismiss()
         case .notEnoughCash?: reply = "Not enough cash for the price and the set-up."; Haptics.warning()
         case .failed(let why)?: reply = why
         case nil: break

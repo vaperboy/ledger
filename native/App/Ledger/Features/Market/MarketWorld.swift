@@ -142,7 +142,7 @@ struct CountryPage: View {
                     let co: Company = pair.element
                     LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: co.type, glyph: Glyph.home)), title: co.name,
                               subtitle: "\(e.tradeName(co)) \u{00B7} \(e.cityName(co))", lineLimit: 1, identifier: "country-company-\(co.id)",
-                              action: { if co.status == .open && co.type != "hold" { next = .company(co.id) } else { store.openCompany(co.id) } })
+                              action: co.status == .open && co.type != "hold" ? { next = .company(co.id) } : nil)
                 }
             }
         }
