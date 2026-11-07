@@ -1,4 +1,5 @@
 # What's new
+- No more jumping between tabs: links open inside the tab you are on with Back, a company switcher on company and group pages; outside apps redesigned (TechPro, AirStay, Atlas, Marketplace, Luxury, Reviews, Market, Ventures) with a readable status bar
 - Redesigned Home (one screen: net worth, what needs you or your next goal, top companies, Next day), Team (people and cost, one worker profile, offer page that shows what you know), Phone home, Bank and Accounting
 - A business that served no one last week now says why (e.g. a required machine in repair) and opens the fix
 - Popups on light screens (Bank, Accounting, outside apps) are readable: light glass with dark text; buttons are capsules everywhere
