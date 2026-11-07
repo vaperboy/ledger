@@ -1,0 +1,325 @@
+import XCTest
+
+/// Feature tours (manual CI job `ui-tours`, see .github/workflows/native-ios.yml). One class so one summary covers every tour; the tours
+/// are separate test methods (each relaunches the app on the prepared `-showcase -showcase-rich -showcase-board` game) so one crash or one
+/// long screen cannot take the others down. Methods run in name order; testT99 prints the summary. See FeatureToursKit for the step rules.
+final class FeatureToursTests: FeatureTourCase {
+
+    // MARK: T01 tabs and Home
+
+    func testT01_TabsAndHome() {
+        let tabs: [String] = tabIDs()
+        step("tabs: the pill bar shows five tabs") {
+            if tabs.count == 5 { return .pass(tabs.joined(separator: ",")) }
+            return tabs.isEmpty ? .fail("no tab-* buttons on screen") : .fail("found \(tabs.count): \(tabs.joined(separator: ","))")
+        }
+        for id in tabs {
+            let title: String = String(id.dropFirst(4))
+            step("tab \(title): opens and is selected") {
+                guard goTab(title) else { return .fail("the tab button is not there") }
+                return isSelected(id) ? .pass() : .fail("tapped but the tab is not marked selected: " + tabState())
+            }
+            step("tab \(title): health") { health("tab \(title)", title: false) }
+        }
+        // Home: one scroll with net worth, Needs you, the companies, rank and the shortcuts.
+        _ = goTab("Home")
+        step("home: Next day is in view without scrolling") { primaryInView("next-day") }
+        step("home: the companies list shows at most 6 rows or a 'Show all'") {
+            guard goTab("Home"), find(wait: 4, { $0.id == "home-companies-box" }) != nil else { return .fail("no home-companies-box") }
+            let rows: Int = hits().filter { $0.type == .button && $0.label.contains("\u{00B7}") && !$0.id.hasPrefix("home-") }.count
+            if has("show-all-companies") { return .pass("\(rows) rows + Show all") }
+            return rows <= 6 ? .pass("\(rows) rows") : .fail("\(rows) company rows and no Show all")
+        }
+        let shortcuts: [String] = ids(prefix: "home-")
+        step("home: shortcuts are on screen") { shortcuts.isEmpty ? .fail("no home-* buttons") : .pass("\(shortcuts.count): \(shortcuts.joined(separator: ","))") }
+        for id in shortcuts {
+            step("home shortcut \(id): opens something and Back returns") {
+                guard goTab("Home") else { return .fail("cannot get to Home") }
+                let f: CGRect = hit(id)?.frame ?? .zero
+                noteBefore = true
+                let tapped: Bool = tapID(id)
+                noteBefore = false
+                let before: TourSig = lastBefore ?? signature()
+                guard tapped else { return .skip("not tappable (off screen)") }
+                if popupUp(1) { closePopup(); return waitPopupGone(3) ? .pass("opened a popup that closed") : .fail("its popup did not close") }
+                pause(0.6)
+                let after: TourSig = signature()
+                if before.same(after) { return .fail("nothing changed after tapping it (frame \(Int(f.minX)),\(Int(f.minY)) \(Int(f.width))x\(Int(f.height)))") }
+                let backed: Bool = tapBack()
+                _ = goTab("Home")
+                if !homeVisible(4) { return .fail("did not get back to Home from \(after.text)") }
+                return .pass("-> \(after.text)" + (backed ? "" : " (no Back button: left by the tab bar)"))
+            }
+        }
+        roundTrip("home: Edit shortcuts opens the editor and closes back to Home", prepare: { goTab("Home") }) { tapID("edit-home-shortcuts") }
+        step("home: a Needs you row opens its object and Back/close returns to Home") {
+            guard goTab("Home") else { return .fail("no Home") }
+            guard tapWhere(wait: 2, { $0.id == "suggestion-row" || $0.id == "suggestion-open-company" }) else { return .skip("nothing in Needs you") }
+            if popupUp(2) {
+                let raw: [String] = rawProblems("needs you popup")
+                closePopup(); _ = waitPopupGone(3)
+                return raw.isEmpty ? .pass("popup") : .fail(raw.joined(separator: "; "))
+            }
+            let s: String = signature().text
+            _ = tapBack()
+            _ = goTab("Home")
+            return homeVisible(4) ? .pass("page " + s) : .fail("could not get back to Home")
+        }
+        step("home: 'Inbox' link in Needs you opens the Inbox") {
+            guard goTab("Home") else { return .fail("no Home") }
+            guard tapID("home-open-inbox", wait: 2) else { return .skip("no decision waiting, so no Inbox link") }
+            let ok: Bool = find(wait: 4, { $0.id == "inbox-row" || $0.label == "Inbox" }) != nil
+            _ = tapBack()
+            return ok ? .pass() : .fail("the Inbox did not open: \(signature().text)")
+        }
+    }
+
+    // MARK: T02 and T03 Phone apps
+
+    private func tourApp(_ title: String) {
+        var opened = false
+        step("phone app \(title): opens") {
+            guard openPhoneApp(title) else {
+                return lastOpenWhy == "hidden" ? .skip("no tile on the Phone grid: locked by the unlock ladder in this game") : .fail("cannot open phone-app-\(title): \(lastOpenWhy)")
+            }
+            let gated: Bool = popupUp(1)
+            if gated { closePopup(prefer: ["paywall-pass", "popup-close"]); _ = waitPopupGone(3) }
+            let sig: TourSig = signature()
+            if lastOpenWhy != "pick" && gridUp() {
+                return gated ? .skip("the tile opens a popup (paywall or gate) instead of the app") : .fail("the app grid is still on screen after tapping the tile")
+            }
+            opened = true
+            return .pass((lastOpenWhy == "pick" ? "via the Pick tab (not on the Phone grid in this game) " : "") + sig.text)
+        }
+        step("phone app \(title): health") { opened ? health("app \(title)") : .skip("not opened") }
+        step("phone app \(title): Back returns to the grid") {
+            guard opened else { return .skip("not opened") }
+            if lastOpenWhy == "pick" {
+                // At the root of the Pick tab there is no grid to go back to: re-selecting the tab must keep the app at its root.
+                guard let t = find({ $0.id == "tab-\(title)" && $0.type == .button }) else { return .fail("the Pick tab does not carry the app's name") }
+                touch(t)
+                return find(wait: 2, { $0.id == "tab-\(title)" && $0.selected }) != nil ? .pass("Pick tab root") : .fail("re-selecting the Pick tab left the app")
+            }
+            guard tapBack() else { return .fail("no Back button on the app") }
+            return gridUp(4) ? .pass() : .fail("Back did not show the app grid")
+        }
+    }
+
+    func testT02_PhoneAppsA() {
+        for t in ["Bank", "Accounting", "Inbox", "News", "Weather", "Stats", "World", "Luxury", "Rich list"] { tourApp(t) }
+    }
+
+    func testT03_PhoneAppsB() {
+        for t in ["Market", "Reviews", "Achievements", "Settings", "AirStay", "TechPro Store", "Atlas Insurance", "Marketplace"] { tourApp(t) }
+    }
+
+    // MARK: T04 Group: entity pages, Boardroom, Ownership
+
+    /// The Group entity to work on: the café (it has the co-owner of the board game), else the first one.
+    private func groupEntity() -> String {
+        guard goTab("Group") else { return "" }
+        if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
+        return ids(prefix: "group-entity-co", wait: 1).first ?? ids(prefix: "group-entity-", wait: 1).first ?? ""
+    }
+
+    /// Taps a tab of the entity page's tab strip; the strip scrolls sideways, so it is dragged until the tab is on screen.
+    private func tapGroupTab(_ name: String) -> Bool {
+        let id: String = "group-tab-\(name)"
+        for i in 0..<5 {
+            if let h = find(wait: i == 0 ? 2 : 0.5, { $0.id == id && $0.type == .button }), h.frame.minX >= win().minX - 1, h.frame.maxX <= win().maxX + 1 {
+                touch(h); return true
+            }
+            guard let strip = find({ $0.id.hasPrefix("group-tab-") && $0.type == .button }) else { return false }
+            let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
+            let w: CGRect = win()
+            let toLeft: Bool = i < 3
+            o.withOffset(CGVector(dx: toLeft ? w.maxX - 40 : w.minX + 40, dy: strip.frame.midY))
+                .press(forDuration: 0.05, thenDragTo: o.withOffset(CGVector(dx: toLeft ? w.minX + 60 : w.maxX - 60, dy: strip.frame.midY)))
+            pause(0.5)
+        }
+        if let h = find({ $0.id == id && $0.type == .button }) { touch(h); return true }
+        return false
+    }
+
+    private func openEntityTab(_ entity: String, _ name: String) -> Bool {
+        guard !entity.isEmpty, goTab("Group") else { return false }
+        guard tapID(entity, wait: 4) else { return false }
+        return tapGroupTab(name)
+    }
+
+    func testT04_Group() {
+        step("group tab: opens on the picker") { goTab("Group") ? (ids(prefix: "group-entity-").isEmpty ? .fail("no group-entity-* rows: " + tabState()) : .pass(signature().text)) : .fail("no Group tab") }
+        step("group tab: health") { health("Group", title: false) }
+        let entity: String = groupEntity()
+        step("group entity page: opens, Back returns to the picker") {
+            guard !entity.isEmpty, tapID(entity, wait: 3) else { return .skip("no entity in the Group picker") }
+            guard has("group-back", wait: 3) else { return .fail("the entity page has no group-back") }
+            let h: R = health("group entity overview", title: false)
+            guard tapBack() else { return .fail("Back not tappable") }
+            if !has("group-back") && find(wait: 3, { $0.id.hasPrefix("group-entity-") }) != nil { return h }
+            return .fail("Back did not return to the picker: \(signature().text)")
+        }
+        for name in ["Overview", "Management", "Boardroom", "Money", "Expansion", "Ownership"] {
+            step("group entity page: \(name) tab opens, is selected and is clean") {
+                guard openEntityTab(entity, name) else { return .skip("no \(name) tab on the entity page") }
+                if !isSelected("group-tab-\(name)") { return .fail("tapped but not selected") }
+                return health("group \(name)", title: false)
+            }
+        }
+        step("group entity page: tab strip titles are not cut at the side") {
+            guard openEntityTab(entity, "Overview") else { return .skip("no entity page") }
+            let cut: [String] = hits().filter { $0.id.hasPrefix("group-tab-") && $0.type == .button && !$0.hScroll && ($0.frame.minX < win().minX - 1 || $0.frame.maxX > win().maxX + 1) }.map { $0.id }
+            return cut.isEmpty ? .pass() : .fail("cut: " + cut.joined(separator: ","))
+        }
+        roundTrip("group money: Policy popup closes and keeps the page", prepare: { openEntityTab(entity, "Money") }) { tapID("money-policy") }
+        step("group: Suppliers directory opens and Back returns") {
+            guard goTab("Group") else { return .fail("no Group tab") }
+            guard tapID("group-suppliers") else { return .skip("no group-suppliers link") }
+            let h: R = health("group suppliers")
+            _ = tapBack()
+            return find(wait: 3, { $0.id.hasPrefix("group-entity-") }) != nil ? h : .fail("Back did not return to the picker")
+        }
+        roundTrip("group: Add menu opens and closes back to the picker", prepare: { goTab("Group") }) { tapID("group-add") }
+        roundTrip("boardroom: Talk to a manager opens the talk and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-talk-", wait: 4) }
+        step("boardroom: talk goes through a choice and ends with a result") {
+            guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-talk-", wait: 4) else { return .skip("nobody to talk to") }
+            guard popupUp(3) else { return .fail("the talk did not open") }
+            var picks = 0
+            // Answer the talk with the first option on each screen until it ends (at most 4 screens).
+            while picks < 4 && popupUp(1) {
+                let opts: [Hit] = hits().filter { $0.type == .button && !$0.label.isEmpty && !["popup-close", "popup-backdrop", "confirm-cancel"].contains($0.id) }
+                guard let first = opts.first(where: { !$0.label.lowercased().contains("close") }) else { break }
+                touch(first); picks += 1; pause(0.6)
+            }
+            let raw: [String] = rawProblems("boardroom talk")
+            var n = 0
+            while popupUp() && n < 3 { closePopup(); n += 1 }
+            if popupUp(1) { return .fail("the talk popup did not close") }
+            if !isSelected("group-tab-Boardroom") { return .fail("after the talk the Boardroom is not showing: \(signature().text)") }
+            return raw.isEmpty ? .pass("\(picks) taps") : .fail(raw.joined(separator: "; "))
+        }
+        roundTrip("boardroom: Call the board opens a popup and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-call-", wait: 4) }
+        step("board room: opens and Back returns to the Boardroom") {
+            guard openEntityTab(entity, "Boardroom"), tapID("group-board-room", wait: 4) else { return .skip("no board room (needs a co-owner)") }
+            let h: R = health("board room")
+            guard tapBack() else { return .fail("no Back in the board room") }
+            return isSelected("group-tab-Boardroom") ? h : .fail("Back did not return to the Boardroom: \(signature().text)")
+        }
+        roundTrip("board room: Remove from board -> Cancel keeps the screen", closeWith: ["confirm-cancel"], prepare: { openEntityTab(entity, "Boardroom") }) { tapID("board-remove-seat", wait: 4) }
+    }
+
+    // MARK: T07 Group > Ownership: parts and the sell route picker
+
+    func testT07_Ownership() {
+        let entity: String = groupEntity()
+        for part in ["Owners", "Sell", "Raise", "Offers"] {
+            step("ownership: \(part) page opens and is clean") {
+                guard openEntityTab(entity, "Ownership"), tapID("group-ownership-\(part)") else { return .skip("no Ownership > \(part) segment") }
+                return health("ownership \(part)", title: false)
+            }
+        }
+        step("ownership: Sell lists the route picker") {
+            guard openEntityTab(entity, "Ownership"), tapID("group-ownership-Sell") else { return .skip("no Ownership > Sell segment") }
+            let routes: [String] = ids(prefix: "sell-route-")
+            if routes.isEmpty { return .fail("Sell shows no sell-route-* rows (a limited company with a route is expected): " + tabState()) }
+            return .pass("\(routes.count) routes: " + routes.map { String($0.dropFirst(11)) }.joined(separator: ","))
+        }
+        for route in ["auction", "merger", "stake", "private"] {
+            step("ownership: sell route \(route) opens and Cancel/close keeps Sell") {
+                guard openEntityTab(entity, "Ownership"), tapID("group-ownership-Sell") else { return .skip("no Sell segment") }
+                let before: TourSig = signature()
+                guard tapID("sell-route-\(route)", wait: 2) else { return .skip("no sell-route-\(route)") }
+                if popupUp(2) {
+                    let raw: [String] = rawProblems("sell \(route)")
+                    closePopup(prefer: ["confirm-cancel", "popup-close"])
+                    guard waitPopupGone(3) else { return .fail("the \(route) popup did not close") }
+                    let after: TourSig = signature()
+                    if !before.same(after, strictText: false) { return .fail("closing changed the screen: \(before.text) -> \(after.text)") }
+                    return raw.isEmpty ? .pass("popup") : .fail(raw.joined(separator: "; "))
+                }
+                let after: TourSig = signature()
+                if after.back && !before.back { let h: R = health("sell \(route) page"); _ = tapBack(); return h }
+                return before.same(after) ? .fail("the route did nothing") : .pass("changed in place: \(after.text)")
+            }
+        }
+    }
+
+    // MARK: T06 Ventures tab
+
+    func testT06_Ventures() {
+        step("ventures tab: opens") { goTab("Ventures") ? .pass(signature().text) : .fail("no Ventures tab") }
+        for part in ["Running", "Ideas and startups", "Done"] {
+            step("ventures: \(part) part opens and is clean") {
+                guard goTab("Ventures") else { return .fail("no Ventures tab") }
+                guard tapLabel(part, wait: 3) else { return .fail("no '\(part)' tab") }
+                return health("ventures \(part)", title: false)
+            }
+        }
+        for seg in ["In progress", "Timeline", "Bids and offers"] {
+            step("ventures: Running > \(seg) opens and is clean") {
+                guard goTab("Ventures"), tapLabel("Running", wait: 3) else { return .fail("no Running tab") }
+                guard tapID("segment-\(seg)", wait: 3) else { return .fail("no segment-\(seg)") }
+                return isSelected("segment-\(seg)") ? health("ventures \(seg)", title: false) : .fail("not selected after the tap")
+            }
+        }
+        step("ventures: New project goes to Running > Bids and offers") {
+            guard goTab("Ventures") else { return .fail("no Ventures tab") }
+            guard tapLabel("New project", wait: 3) else { return .skip("no New project button") }
+            return isSelected("segment-Bids and offers") ? .pass() : .fail("Bids and offers is not selected: \(signature().text)")
+        }
+    }
+
+    // MARK: T05 swipe back from pushed screens
+
+    func testT05_SwipeBack() {
+        step("swipe back: company page returns to Home") {
+            guard openCompany("Caf") else { return .skip("no company on Home") }
+            swipeBackFromEdge()
+            return homeVisible(4) ? .pass() : .fail("an edge swipe did not return to Home (screen: \(signature().text))")
+        }
+        step("swipe back: company section then Back still needs one swipe") {
+            guard openCompany("Caf") else { return .skip("no company on Home") }
+            _ = tapID("company-tab-manage")
+            swipeBackFromEdge()
+            return homeVisible(4) ? .pass() : .fail("after switching section an edge swipe did not return to Home (\(signature().text))")
+        }
+        for name in ["Inbox", "Settings", "Reviews", "Rich list"] {
+            step("swipe back: Phone app \(name) returns to the grid") {
+                guard openPhoneApp(name), lastOpenWhy != "pick" else { return .skip("no tile on the grid") }
+                swipeBackFromEdge()
+                return gridUp(4) ? .pass() : .fail("an edge swipe did not return to the app grid (\(signature().text))")
+            }
+        }
+        step("swipe back: pushed page inside an app (Bank account) returns one level") {
+            guard openPhoneApp("Bank") else { return .skip("no Bank tile") }
+            guard tapPrefix("bank-pick-", wait: 4) else { return .skip("no bank-pick row") }
+            let inner: TourSig = signature()
+            swipeBackFromEdge()
+            let after: TourSig = signature()
+            if after.same(inner) { return .fail("the swipe did nothing on \(inner.text)") }
+            if gridUp() { return .fail("the swipe left the whole app: \(inner.text) -> grid") }
+            return has("bank-pick-personal", wait: 2) ? .pass("\(inner.text) -> chooser") : .fail("not back on the chooser: \(after.text)")
+        }
+        step("swipe back: hiring screen returns to the Team section") {
+            guard openCompany("Caf"), tapID("company-tab-team"), tapID("team-hire-workers", wait: 4) else { return .skip("hiring screen not reachable") }
+            swipeBackFromEdge()
+            return isSelected("company-tab-team") ? .pass() : .fail("an edge swipe did not return to Team (\(signature().text))")
+        }
+        step("swipe back: Accounting > Payroll returns to Accounting home") {
+            guard openPhoneApp("Accounting"), tapID("acct-row-payroll", wait: 4) else { return .skip("no Accounting payroll row") }
+            swipeBackFromEdge()
+            if gridUp() { return .fail("the swipe left the whole app instead of going back one level") }
+            return has("acct-row-payroll", wait: 3) ? .pass() : .fail("not back on Accounting home: \(signature().text)")
+        }
+    }
+
+    // MARK: T99 summary
+
+    func testT99_Summary() {
+        let block: String = log.finish()
+        let a: XCTAttachment = XCTAttachment(string: block)
+        a.name = "tour-result"
+        a.lifetime = .keepAlways
+        add(a)
+    }
+}

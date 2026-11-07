@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--page:#0F1011;--raised:#141516;--surface:#151617;--border:#2B2C2E;--bstrong:#3A3B3D;--divider:#242527;--ivory:#F1EBDD;--muted:#A19B8F;--faint:#8A857C;--dim:#75706A;--gold:#D6B889;--goldwash:rgba(214,184,137,.14);--gain:#7FC79B;--loss:#E58B78;--caution:#E0B064;--alert:#E5584B;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:390px;height:844px;background:var(--page);overflow:hidden}
+body{position:relative;font-family:Inter,-apple-system,sans-serif;color:var(--ivory);-webkit-font-smoothing:antialiased}
+.serif{font-family:'Liberation Serif','Noto Serif','DejaVu Serif',Georgia,serif;font-weight:500}
+.backdrop{position:absolute;inset:0;background:radial-gradient(circle at 50% 0,#1B1C1F 0,var(--page) 560px)}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px 8px;font-size:15px;font-weight:600;z-index:5}
+.scroll{position:absolute;top:47px;left:0;right:0;bottom:0;padding:12px 20px 0;overflow:hidden}
+.caps{font-size:10.5px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.hero{border-radius:16px}
+.muted{color:var(--muted)}.faint{color:var(--faint)}.gain{color:var(--gain)}.loss{color:var(--loss)}
+.gap{height:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--gold);border-radius:8px;color:var(--ivory);font-size:14px;font-weight:600;padding:9px 16px;background:transparent}
+.btn.full{display:flex;width:100%;height:46px;font-size:16px}
+.next{display:flex;align-items:center;justify-content:center;background:var(--gold);color:#0F1011;border-radius:999px;font-weight:600;font-size:16px;height:48px}
+.link{color:var(--gold);font-size:14px;font-weight:600}
+.pill{display:inline-block;font-size:11px;font-weight:600;color:var(--caution);border:1px solid rgba(224,176,100,.45);background:rgba(224,176,100,.1);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.row{display:flex;align-items:center;justify-content:space-between}
+.hair{height:.5px;background:rgba(239,233,223,.09)}
+/* guide card */
+.guide h3{font-size:16px;font-weight:700;margin:6px 0 2px}.guide p{font-size:13.5px;color:var(--muted);line-height:1.35;margin-bottom:12px}
+/* needs you */
+.need{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.need b{font-size:14.5px;font-weight:600;display:block}.need span.s{font-size:12.5px;color:var(--muted);display:block;margin-top:2px}
+/* strip */
+.strip{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.strip .f{display:flex;gap:12px;text-align:right}.strip .f div{font-size:10px;color:var(--faint)}.strip .f b{display:block;font-size:13px;font-weight:600;color:var(--ivory);font-variant-numeric:tabular-nums}
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);row-gap:18px;column-gap:8px}
+.app{text-align:center;position:relative}
+.tile{width:62px;height:62px;margin:0 auto 6px;border-radius:15px;background:#17181A;border:1px solid #303134;display:flex;align-items:center;justify-content:center}
+.tile svg{width:28px;height:28px;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.app span{font-size:11.5px;display:block;white-space:nowrap;overflow:hidden}
+.bub{position:absolute;top:-5px;right:8px;min-width:18px;height:18px;border-radius:9px;background:var(--alert);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+/* tab bar */
+.tabbar{position:absolute;left:14px;right:14px;bottom:26px;height:58px;border-radius:999px;background:var(--raised);border:1px solid var(--border);box-shadow:0 4px 10px rgba(0,0,0,.35);display:flex;padding:0 6px;z-index:4}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;color:var(--muted);border-radius:999px;position:relative;margin:6px 0}
+.tab svg{width:22px;height:22px;fill:none;stroke:var(--muted);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{background:var(--goldwash);color:var(--gold)}.tab.on svg{stroke:var(--gold)}
+.tab .bub{top:-2px;right:10px;min-width:15px;height:15px;font-size:9.5px}
+.homebar{position:absolute;bottom:8px;left:140px;width:110px;height:4px;border-radius:2px;background:rgba(241,235,221,.5);z-index:6}
+/* segments */
+.seg{display:flex;gap:5px}.seg i{flex:1;height:5px;border-radius:3px;background:rgba(239,233,223,.13)}.seg i.f{background:var(--gold)}.seg i.o{background:transparent;border:1px solid var(--gold)}
+.seg.lg i{height:8px}
+/* overlay */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:8}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:338px;z-index:9;background:var(--raised);border-radius:22px 22px 0 0;border-top:1px solid var(--bstrong);padding:22px 28px 40px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.sheet.amber{background:linear-gradient(rgba(224,176,100,.13),rgba(224,176,100,.13)),var(--raised);border-top-color:rgba(224,176,100,.5)}
+.sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--bstrong);margin-bottom:18px}
+.sheet .big{font-size:34px;font-weight:700;margin:6px 0 10px;font-variant-numeric:tabular-nums}
+.sheet .line{font-size:15px;color:var(--ivory);line-height:1.35;max-width:300px}
+.sheet .seg{width:100%;margin-top:auto}
+.sheet .tap{font-size:11px;color:var(--faint);margin-top:10px}
+/* report */
+.bars .b{margin:10px 0}.bars .b .l{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.bars .t{height:12px;border-radius:6px;background:rgba(239,233,223,.06)}.bars .t i{display:block;height:12px;border-radius:6px}
+.rec{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--gold);font-weight:600}
+</style></head><body><div class="backdrop"></div><div class="status"><span>9:41</span><span style="font-size:12px">5G &nbsp;100%</span></div><div class="scroll"><div style="text-align:center"><div class="serif" style="font-size:52px;line-height:1">9:41</div><div style="font-size:12.5px;color:var(--muted);margin-top:4px">Tuesday 2 February 2027</div></div><div class="gap"></div><div class="strip"><div style="font-size:13px;color:var(--muted)">Tue · Week 7 · Day 3</div><div class="f"><div>Sales<b>41,300</b></div><div>Costs<b>34,400</b></div><div>Profit<b class="gain">+6,900</b></div></div></div><div class="gap"></div><div class="card guide"><div class="caps">Next goal · M3</div><h3>Hire your first worker</h3><p>Your café is busy enough that one person cannot keep up.</p><div class="btn">Find workers</div></div><div class="gap"></div><div class="card"><div class="caps" style="margin-bottom:10px">Needs you</div><div class="need"><div><b>A supplier wants cash up front</b><span class="s">Pay now or lose your 30-day terms.</span></div><span class="pill">4 days left</span></div><div class="hair" style="margin:12px 0 10px"></div><div class="row"><span class="link">Open in Inbox</span></div></div></div><div class="tabbar"><div class="tab "><svg viewBox="0 0 24 24" style="stroke:#A19B8F;"><path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-8"/></svg>Ventures</div><div class="tab "><svg viewBox="0 0 24 24" style="stroke:#A19B8F;"><path d="M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3.500 2.500-6 6-6s6 2.500 6 6M17 11a2.500 2.500 0 100-5M18 14c2 .5 3 2.500 3 6"/></svg>Group</div><div class="tab on"><svg viewBox="0 0 24 24" style="stroke:#D6B889;"><path d="M4 11l8-7 8 7v9H4zM10 20v-6h4v6"/></svg>Home</div><div class="tab "><svg viewBox="0 0 24 24" style="stroke:#A19B8F;"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>Pick tab</div><div class="tab "><div class="bub">2</div><svg viewBox="0 0 24 24" style="stroke:#A19B8F;"><path d="M8 3h8a1 1 0 011 1v16a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1zM11 18h2"/></svg>Phone</div></div><div class="homebar"></div><div class="scrim"></div><div class="sheet amber"><div class="grab"></div><div class="muted" style="font-size:13px">Tue · Day 3</div><div class="big gain">+1,850 kr</div><div class="line">New in Inbox: A supplier wants cash up front</div><div class="tap">Tap to dismiss</div><div class="seg"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i><i></i><i class="o"></i></div></div></body></html>

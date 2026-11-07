@@ -1,0 +1,142 @@
+import SwiftUI
+import GameCore
+import Countries
+import Businesses
+import Simulation
+
+/// Group > Dividends: the dividend desk. Nothing is paid by itself; the owner picks a company or a holding and a share of what it may pay.
+struct GroupDividendsPage: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    /// Only these companies (an entity page); nil lists every company. Companies show as cards of their own unless `holding` names the
+    /// holding whose companies they are: then the page shows that holding's collect card.
+    var scope: Set<Int>? = nil
+    var holding: Int? = nil
+    /// One tight line per company, for the one-screen Money tab.
+    var compact: Bool = false
+    @State private var pending: PendingAction?
+
+    var body: some View {
+        if compact { compactBody } else { fullBody }
+    }
+
+    private var compactBody: some View {
+        let rows: [DividendRow] = engine.dividendRows().filter { (r: DividendRow) -> Bool in scope == nil || scope!.contains(r.id) }
+        let hold: Company? = holding.flatMap { (id: Int) -> Company? in engine.state.company(id) }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            if let h = hold {
+                let under: [DividendRow] = rows.filter { (r: DividendRow) -> Bool in r.holdingID == h.id }
+                let total: Double = under.reduce(0) { $0 + $1.payable }
+                compactLine("Up to \(store.short(total, in: h))", payable: total > 0) { (s: Double) in askCollect(h, total, s) }
+            } else if rows.isEmpty {
+                Text("Nothing to pay out yet").textStyle(.caption, tint: Theme.inkFaint)
+            } else {
+                ForEach(rows.prefix(3)) { (r: DividendRow) in
+                    compactLine("\(r.name) \(money(r.payable, r.id))", payable: r.payable > 0) { (s: Double) in askPay(r, s) }
+                }
+            }
+        }
+        .confirmAction($pending)
+    }
+
+    private func compactLine(_ text: String, payable: Bool, _ pick: @escaping (Double) -> Void) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            Text(text).textStyle(.body, tint: Theme.ink, numeric: true, weight: .medium).lineLimit(1).minimumScaleFactor(0.7)
+            Spacer(minLength: 4)
+            if payable {
+                Button("Half") { pick(0.5) }.buttonStyle(TinyButtonStyle())
+                Button("All") { pick(1.0) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
+            }
+        }
+    }
+
+    @ViewBuilder private var fullBody: some View {
+        let all: [DividendRow] = engine.dividendRows()
+        let rows: [DividendRow] = all.filter { (r: DividendRow) -> Bool in scope == nil || scope!.contains(r.id) }
+        let grouped: Bool = scope == nil || holding != nil
+        let holdings: [Company] = grouped ? engine.holdingCompanies.filter { (h: Company) -> Bool in rows.contains { (r: DividendRow) -> Bool in r.holdingID == h.id } } : []
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            if rows.isEmpty {
+                Text("No company has retained profit to pay out yet.").textStyle(.body, tint: Theme.inkFaint)
+            }
+            ForEach(holdings) { (h: Company) in holdingCard(h, rows.filter { (r: DividendRow) -> Bool in r.holdingID == h.id }) }
+            let direct: [DividendRow] = grouped ? rows.filter { (r: DividendRow) -> Bool in r.holdingID == nil } : rows
+            ForEach(direct) { (r: DividendRow) in companyCard(r) }
+        }
+        .confirmAction($pending)
+    }
+
+    private func holdingCard(_ h: Company, _ under: [DividendRow]) -> some View {
+        let total: Double = under.reduce(0) { $0 + $1.payable }
+        return Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(h.name).textStyle(.headline, tint: Theme.ink, weight: .semibold)
+                        Text("Collects from \(under.count) \(under.count == 1 ? "company" : "companies") \u{00B7} up to \(store.short(total, in: h))").textStyle(.caption, tint: Theme.inkSoft)
+                    }
+                    Spacer(minLength: 8)
+                }
+                shareButtons { (s: Double) in askCollect(h, total, s) }
+                ForEach(under) { (r: DividendRow) in
+                    HStack {
+                        Text(r.name).textStyle(.body, tint: Theme.inkSoft)
+                        Spacer(minLength: 8)
+                        Text(store.short(r.payable, in: h)).textStyle(.body, tint: Theme.ink, numeric: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func companyCard(_ r: DividendRow) -> some View {
+        Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(r.name).textStyle(.headline, tint: Theme.ink, weight: .semibold)
+                        Text("Can pay \(money(r.payable, r.id)) \u{00B7} paid so far \(money(r.distributed, r.id))").textStyle(.caption, tint: Theme.inkSoft)
+                    }
+                    Spacer(minLength: 8)
+                }
+                if r.payable > 0 { shareButtons { (s: Double) in askPay(r, s) } }
+            }
+        }
+    }
+
+    private func money(_ v: Double, _ id: Int) -> String {
+        guard let c = engine.state.company(id) else { return "" }
+        return store.short(v, in: c)
+    }
+
+    private func shareButtons(_ pick: @escaping (Double) -> Void) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            ForEach([0.25, 0.5, 1.0], id: \.self) { (s: Double) in
+                Button(s == 1 ? "All" : "\(Int(s * 100))%") { pick(s) }.buttonStyle(QuietButtonStyle())
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func askPay(_ r: DividendRow, _ share: Double) {
+        guard let co = engine.state.company(r.id) else { return }
+        let cur: Currency = engine.currency(for: co)
+        let amount: Double = (r.payable * share).rounded(.down)
+        let to: String = r.holdingName ?? "you"
+        pending = PendingAction(title: "Pay \(cur.tidyShort(amount)) from \(r.name)?", message: "It goes to \(to) from retained profit. It is taxed as income and cannot be paid back in as a dividend.", button: "Pay", amount: amount, currency: cur) {
+            let paid: Double = store.act { $0.payDividendShare(companyID: r.id, share: share) } ?? 0
+            store.show(paid > 0 ? "Dividend of \(cur.tidyShort(paid)) paid." : "Nothing could be paid.", tone: paid > 0 ? "good" : "warn")
+            if paid > 0 { store.flyChip("Dividend", amount: paid) }
+        }
+    }
+
+    private func askCollect(_ h: Company, _ total: Double, _ share: Double) {
+        let cur: Currency = engine.currency(for: h)
+        let amount: Double = (total * share).rounded(.down)
+        pending = PendingAction(title: "Collect about \(cur.tidyShort(amount)) for \(h.name)?", message: "Each company under it pays \(share == 1 ? "all it can" : "\(Int(share * 100))% of what it can") from retained profit.", button: "Collect", amount: amount, currency: cur) {
+            let r: (total: Double, companies: Int) = store.act { $0.collectForHolding(holdingID: h.id, share: share) } ?? (total: 0, companies: 0)
+            store.show(r.total > 0 ? "Collected \(cur.tidyShort(r.total)) from \(r.companies)." : "Nothing could be collected.", tone: r.total > 0 ? "good" : "warn")
+            if r.total > 0 { store.flyChip("Dividends", amount: r.total) }
+        }
+    }
+}

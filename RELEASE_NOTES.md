@@ -1,0 +1,30 @@
+# What's new
+- Popups on light screens (Bank, Accounting, outside apps) are readable: light glass with dark text; buttons are capsules everywhere
+- Chains work like one company: one board, one dividend from the whole chain, branches share cash; a losing branch is closed (lease, staff moved or paid off, stock moved) or sold as a going concern, never bankrupt on its own
+- Popups rebuilt: three sizes (compact, medium, detail) that fit their content exactly, centred glass cards with an event colour, press-and-hold for irreversible actions
+- Speed: screens redraw much faster (money text, Home, Group, Phone badges and Accounting lists no longer redo whole-game work on every redraw); text on filled buttons, chips and photo banners always uses the fill's readable ink
+- Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale
+- Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring without the extra toggle; Group pages, Treasury, sale routes and Boardroom calmer; new-company flow reviews the cost before paying; Bank flatter, payroll lives in Accounting
+- Look: new design system: one type scale that follows your text size, one spacing and corner set, unboxed sections and rows, three button styles with full-size tap areas, buttons say why they are disabled, no gradients or glows
+- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handles them, no flood after replacing a CEO, pay requests capped per week
+- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed
+- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)
+- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device
+- Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap
+- Notices: minor "cannot / not enough" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette
+- Balance: managers can approve more space; nightclub wages sane; salmon farms no longer run dry before the first harvest; dealer customer loans approve far more often
+- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; sheet text uses the shared popup styles
+- Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps
+- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full
+- Week report: Continue and Full report stay pinned at the bottom of the card
+- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play
+- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels
+- Inbox: "Handled by" and a Handled tab; messages open the right app; research reports open as documents
+- Group: "Who runs what" table; own staff on a board; interview chips for manager candidates
+- Goals link to where they are done; promises can be given more time
+- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market
+- News links to the company; achievements show streaks; reports show more figures
+- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades
+
+# Missing / coming next
+- Wider skilled-vs-idle gap; screen-tour fixes

@@ -1,0 +1,238 @@
+import SwiftUI
+import GameCore
+import Countries
+import Finance
+import Businesses
+import Events
+import Simulation
+
+/// The company itself: its legal form, its name, closing it for a while, and winding it up. Each action shows what it costs and
+/// what follows before it is confirmed, and reports the engine's answer. Original: money.js 'legal' and 'close', rename_and_rebrand.js,
+/// owner_hours_clients_assistants.js (`clgo`, `reopen`), engine `convertToAS` and `windUp`.
+struct CompanySettings: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    @State private var newName = ""
+    @State private var closeWeeks = 4
+    @State private var giveUpRent = false
+    @State private var pauseSubscriptions = false
+    @State private var pending: PendingAction?
+    @State private var converting = false
+
+    var body: some View {
+        let cur = engine.currency(for: company)
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            if company.status == .closed { closing(cur) }
+            legalForm(cur)
+            rename(cur)
+            if company.status != .closed { closing(cur) }
+            windUp(cur)
+            documents(cur)
+        }
+        .confirmAction($pending)
+        .centerSheet(isPresented: $converting, title: "Limited company") { ConversionSheet(companyID: company.id).environmentObject(store) }
+    }
+
+    // MARK: Legal form
+
+    @ViewBuilder private func legalForm(_ cur: Currency) -> some View {
+        CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").textStyle(.caption) }) {
+            if let cost = engine.convertToLimitedCost(companyID: company.id) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
+                    FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
+                    Button("Review the conversion\u{2026}") { converting = true }.buttonStyle(QuietButtonStyle())
+                        .accessibilityIdentifier("company-convert-review")
+                }
+            } else {
+                Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    // MARK: Name
+
+    @ViewBuilder private func rename(_ cur: Currency) -> some View {
+        let cost = engine.renameCost(companyID: company.id)
+        let inChain = engine.chainOf(companyID: company.id) != nil
+        CardSection(title: "Name", trailing: { Text(company.name).textStyle(.caption).lineLimit(1) }) {
+            if inChain {
+                Text("This store carries its chain's name. Rebranding the whole chain is done from the chain.").textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    TextField("New name", text: $newName).textStyle(.body).autocorrectionDisabled()
+                        .padding(.horizontal, 10).padding(.vertical, 8).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
+                    Text("New signs and paperwork cost \(cur.tidyDisplay(cost)) from company cash. About a third of the people who knew the old name lose track of you.")
+                        .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
+                    Button("Rename…") { confirmRename(cost, cur) }.buttonStyle(QuietButtonStyle()).disabled(newName.trimmingCharacters(in: .whitespaces).count < 2)
+                }
+            }
+        }
+    }
+
+    private func confirmRename(_ cost: Double, _ cur: Currency) {
+        let name = newName.trimmingCharacters(in: .whitespaces)
+        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur) {
+            switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
+            case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
+            case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")
+            case .nameTaken?: Haptics.warning(); store.show("Another company already has that name.", tone: "warn")
+            case .notEnoughCash?: Haptics.warning(); store.show("The company needs \(cur.tidyDisplay(cost)) in cash.", tone: "warn")
+            case .partOfChain?: Haptics.warning(); store.show("A chain store carries the chain's name.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("It cannot be renamed now.", tone: "warn")
+            }
+        }
+    }
+
+    // MARK: Closing for a while
+
+    @ViewBuilder private func closing(_ cur: Currency) -> some View {
+        if company.status == .closed {
+            CardSection(title: "Closed", trailing: {
+                let left = company.int("closeW")
+                Text(left > 0 && left < 999 ? "reopens in \(left) week\(left == 1 ? "" : "s")" : "until you reopen").textStyle(.caption, tint: Theme.warn)
+            }) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("No sales while closed. Rent, the accountant and part of the running costs continue; wages are paid in full for two weeks, then 40%.")
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    Button("Reopen now") {
+                        switch store.act({ $0.reopenCompany(companyID: company.id) }) {
+                        case .ok?: Haptics.success(); store.show("\(company.name) is open again.", tone: "good")
+                        case nil: break
+                        default: Haptics.warning(); store.show("It is not closed.", tone: "warn")
+                        }
+                    }.buttonStyle(QuietButtonStyle())
+                }
+            }
+        } else if company.status == .open && company.type != "hold" {
+            let notice = engine.closeNoticeTerms(companyID: company.id)
+            CardSection("Close for a while") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("For a refit, a quiet season or to stop losses. It reopens by itself after the weeks you choose. Rent and the accountant continue; wages are paid in full for two weeks, then 40%.")
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    SegmentedChoice(items: [2, 4, 8, 13, 26], title: { "\($0) weeks" }, selection: $closeWeeks)
+                    if let notice {
+                        Toggle(isOn: $giveUpRent) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Give up the rented place").textStyle(.body)
+                                Text("Three months' rent as notice (\(cur.tidyShort(notice.notice)))" + (notice.depositBack > 0 ? ", deposit of \(cur.tidyShort(notice.depositBack)) back" : "") + ". You will need new premises to reopen.")
+                                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }.tint(Theme.gold)
+                    }
+                    if company.value("eq").object.values.contains(where: { !$0["sub"].isNull }) {
+                        Toggle(isOn: $pauseSubscriptions) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Pause software plans").textStyle(.body)
+                                Text("No charge while it is closed; the plans start again when it reopens. Your data is kept.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }.tint(Theme.gold)
+                    }
+                    Button("Close for \(closeWeeks) weeks…") { confirmClose(notice, cur) }.buttonStyle(QuietButtonStyle())
+                }
+            }
+        }
+    }
+
+    private func confirmClose(_ notice: (notice: Double, depositBack: Double)?, _ cur: Currency) {
+        let weeks = closeWeeks, giveUp = giveUpRent && notice != nil
+        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
+            switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp, pauseSubscriptions: pauseSubscriptions) }) {
+            case .ok?: Haptics.warning(); giveUpRent = false; store.show("\(company.name) is closed for \(weeks) weeks.", tone: "n")
+            case .notOpen?: Haptics.warning(); store.show("Only an open company can be closed.", tone: "warn")
+            case nil: break
+            default: Haptics.warning(); store.show("It cannot be closed now.", tone: "warn")
+            }
+        }
+    }
+
+    // MARK: Winding up
+
+    @ViewBuilder private func windUp(_ cur: Currency) -> some View {
+        if company.status.isLive && engine.isBranch(companyID: company.id) {
+            branchExit(cur)
+        } else if company.status.isLive {
+            let back = engine.windUpEstimate(companyID: company.id)
+            let debts = CompanyFigures.debts(company, loans: engine.state.loans)
+            CardSection("Close down for good") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("Everything is sold at about 55% of its book value, loans and unpaid bills are paid first, and everyone who works here is let go." + (company.form == .soleTrader ? " As a sole trader you cover any shortfall yourself." : " Loans you guaranteed become yours."))
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
+                    FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
+                    if CompanySale.canSell(engine.state, companyID: company.id) {
+                        Text("Selling as a going concern usually fetches more: see You and owners.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                    }
+                    Button("Wind up \(company.name)…") { confirmWindUp(back, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                }
+            }
+        }
+    }
+
+    /// A branch of a chain is not wound up as a company: it is closed into the chain or sold as a going concern, and the money stays in the chain.
+    @ViewBuilder private func branchExit(_ cur: Currency) -> some View {
+        let plan = engine.branchClosurePlan(storeID: company.id), quote = engine.branchSaleQuote(storeID: company.id)
+        CardSection("Close or sell this branch") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("A branch is part of the chain, not a company of its own. Close it (the lease is given up, staff move to other branches or are made redundant, stock moves) or sell it to a buyer who takes the site and the staff. The money stays in the chain.")
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                if let p = plan {
+                    FlatRow(label: "Closing: cash in less costs", value: cur.tidyShort(p.net), tint: p.net >= 0 ? Theme.gain : Theme.loss, rule: false)
+                    FlatRow(label: "Move to other branches / redundant", value: "\(p.transfers.count) / \(p.redundancies)")
+                    Button("Close \(company.name)…") { confirmBranch(close: true, amount: p.net, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                }
+                if let q = quote {
+                    FlatRow(label: "A buyer pays", value: cur.tidyShort(q.price), tint: Theme.gain)
+                    Button("Sell \(company.name) as a going concern…") { confirmBranch(close: false, amount: q.price, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.ivory))
+                }
+                if plan == nil && quote == nil {
+                    Text("This branch cannot leave the chain now.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+        }
+    }
+
+    private func confirmBranch(close: Bool, amount: Double, _ cur: Currency) {
+        let name = company.name, id = company.id
+        pending = PendingAction(title: close ? "Close \(name)?" : "Sell \(name)?",
+                                message: close ? "This is final. The branch is wound down into the chain (\(cur.tidyDisplay(amount)) net)." : "This is final. The buyer takes the site and the staff and pays the chain \(cur.tidyDisplay(amount)).",
+                                button: close ? "Close the branch" : "Sell the branch", destructive: true) {
+            let ok: Bool
+            if close { if case .success = store.act({ $0.closeBranch(storeID: id) }) { ok = true } else { ok = false } }
+            else { if case .success = store.act({ $0.sellBranch(storeID: id) }) { ok = true } else { ok = false } }
+            Haptics.warning(); store.show(ok ? (close ? "\(name) is closed." : "\(name) is sold.") : "\(name) could not leave the chain.", tone: ok ? "n" : "warn")
+        }
+    }
+
+    private func confirmWindUp(_ back: Double, _ cur: Currency) {
+        let name = company.name, staff = company.staff.count
+        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true) {
+            // Closing against every other owner and board seat: they remember it (their mood drops, the Inbox gets a line).
+            let alone = engine.boardVote(kind: "close", companyID: company.id).pushedThroughAlone
+            if store.act({ $0.windUpCompany(companyID: company.id) }) == true {
+                if alone { store.act { $0.recordPushedThrough(companyID: company.id) } }
+                Haptics.warning(); store.show("\(name) is closed down and its things sold." + (alone ? " The other owners did not want this." : ""), tone: "n")
+            } else {
+                Haptics.warning(); store.show("\(name) could not be wound up.", tone: "warn")
+            }
+        }
+    }
+
+    // MARK: Documents
+
+    @ViewBuilder private func documents(_ cur: Currency) -> some View {
+        let lic = engine.financeOverview(companyID: company.id).licences
+        if !lic.isEmpty {
+            CardSection(title: "Documents and permits", trailing: { Label("held", systemImage: "checkmark").textStyle(.caption, tint: Theme.inkFaint) }) {
+                VStack(spacing: 0) {
+                    ForEach(Array(lic.enumerated()), id: \.element.id) { n, l in FlatRow(label: l.label, value: l.amount > 0 ? cur.tidyShort(l.amount) : "free", sub: l.detail, rule: n > 0) }
+                }
+            }
+        }
+    }
+}

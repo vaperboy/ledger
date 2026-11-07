@@ -1,0 +1,163 @@
+import SwiftUI
+import Charts
+import GameCore
+import Countries
+import Finance
+import Businesses
+import Events
+import Simulation
+
+/// The parts of a company's Finances tab: Summary and Settings. Ownership, dividends and selling are in the Group tab. Every payment, loan and money move is in the Bank
+/// app, on this company's account ("Open in Bank").
+enum CompanyMoneyPart: String, CaseIterable, Hashable {
+    case summary = "Summary", settings = "Settings"
+    /// The tab row.
+    static let tabs: [CompanyMoneyPart] = [.summary, .settings]
+}
+
+/// One company's Finances tab: a read-only, scannable view of the money, with the company's settings kept here, ownership and selling in
+/// the Group tab and every payment handled in the Bank app.
+struct CompanyMoney: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    @Binding var part: CompanyMoneyPart
+    /// The last opened page, kept while the page slides away.
+    @State private var heldPart: CompanyMoneyPart = .summary
+
+    var body: some View {
+        CompanyMoneySummary(engine: engine, company: company, part: $part)
+            .navigationDestination(isPresented: Binding(get: { part != .summary }, set: { if !$0 { part = .summary } })) {
+                MoneyPageDestination(part: part == .summary ? heldPart : part, companyID: company.id)
+            }
+            .onChange(of: part) { (_: CompanyMoneyPart, new: CompanyMoneyPart) in if new != .summary { heldPart = new } }
+    }
+}
+
+/// The full-screen page a row of the Finances table opens: the company's own settings.
+struct MoneyPageDestination: View {
+    @EnvironmentObject var store: GameStore
+    var part: CompanyMoneyPart
+    var companyID: Int
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID) {
+            SettingsPage(title: part.rawValue, subtitle: co.name) { content(e, co) }
+        } else {
+            Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
+        }
+    }
+
+    @ViewBuilder private func content(_ e: GameEngine, _ co: Company) -> some View {
+        switch part {
+        case .summary: EmptyView()
+        case .settings: CompanySettings(engine: e, company: co)
+        }
+    }
+}
+
+// MARK: Summary
+
+/// Read-only: where the money goes and the margins under it, what is owed, then ownership and legal form. Cash is on the Overview, what is
+/// coming up is in the Bank and Accounting, and the reports are in the Reports app.
+struct CompanyMoneySummary: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    @Binding var part: CompanyMoneyPart
+
+    var body: some View {
+        let cur = engine.currency(for: company)
+        let o = engine.financeOverview(companyID: company.id)
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            // Anything overdue leads the page; the spending picture and what is owed follow.
+            CompanyPaymentStress(engine: engine, company: company)
+            CompanyStatsFigures(engine: engine, company: company, block: .spending)
+            owedCard(cur, o)
+            settingsTable(cur)
+            CompanyStatsFigures(engine: engine, company: company, block: .legal)
+            CompanyLabourCard(engine: engine, company: company)
+        }
+    }
+
+    // MARK: Cards
+
+    private func owedCard(_ cur: Currency, _ o: FinanceOverview) -> some View {
+        let h = engine.companyHealth(company)
+        let debtTint: Color = h.debt > 0 ? Theme.loss : Theme.ivory
+        let taxTint: Color = o.taxesOwed > 0 ? Theme.caution : Theme.ivory
+        let dueTint: Color = o.dueWithin30Days > max(0, company.cash) ? Theme.loss : Theme.ivory
+        let cells: [StatStrip.Cell] = [
+            .init(label: "Tax and VAT owed", value: cur.tidyShort(o.taxesOwed), tint: taxTint),
+            .init(label: "Debt", value: cur.tidyShort(h.debt), tint: debtTint),
+            .init(label: "Due in 30 days", value: cur.tidyShort(o.dueWithin30Days), tint: dueTint),
+        ]
+        return LedgerSection("Owed") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                StatStrip(cells: cells, ruled: false)
+                loansRow(cur)
+            }
+        }
+    }
+
+    /// Compact loans row: the monthly instalments (the balance is the Debt figure above; loans are handled in the Bank app on the Phone).
+    private func loansRow(_ cur: Currency) -> some View {
+        let loans = engine.state.loans.filter { $0.companyID == company.id && $0.balance > 0 }
+        let monthly = loans.reduce(0) { $0 + $1.monthlyPayment }
+        let value: String = loans.isEmpty ? "No loans" : "\(cur.tidyShort(monthly)) a month"
+        let sub: String = loans.isEmpty ? "" : "\(loans.count) \(loans.count == 1 ? "loan" : "loans"), repaid in the Bank"
+        return FlatRow(label: "Loans", value: value, sub: sub, rule: true)
+    }
+
+    // MARK: Table of settings
+
+    /// One row per area of the company's money; each opens a full page (the decisions there are big: closing, winding up).
+    private func settingsTable(_ cur: Currency) -> some View {
+        let canSell = CompanySale.canSell(engine.state, companyID: company.id)
+        let whole: Double = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
+        let share: String = "You own \(Int(company.ownership.rounded()))%" + (canSell ? ", worth about " + cur.tidyShort(whole * company.ownership / 100) : "")
+        let form: String = company.form == .limited ? "Limited company" : "Sole trader"
+        let closed: Bool = company.status == .closed
+        return SharpTable {
+            SettingsTableRow(title: "Ownership", note: "Owners, selling and shares are in the Group tab", value: share) { store.openGroupEntity(companyID: company.id, section: "ownership") }
+            SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
+            SettingsTableRow(title: "Statements", note: "Balance sheet and cash flow, in Accounting", value: "Open") { store.openAccountingReports(companyID: company.id) }
+        }
+    }
+}
+
+/// What unpaid loans, bills and VAT have set in motion: restricted credit, a called loan, suppliers who want cash, overdue VAT.
+struct CompanyPaymentStress: View {
+    var engine: GameEngine
+    var company: Company
+
+    var body: some View {
+        let cur = engine.currency(for: company)
+        let loans = engine.state.loans.filter { $0.companyID == company.id }
+        let missed = loans.reduce(0) { $0 + $1.int("miss") }
+        let called = company.int("loanCall")
+        let weeksLeft = called - engine.state.week
+        let sup = company.int("supCut")
+        let vatOver = company.num("vatOver")
+        let billsOwed = (company.payables["rent"] ?? 0) + (company.payables["other"] ?? 0)
+        if missed > 0 || company.flag("loanFrozen") || called != 0 || sup > 0 || vatOver > 1 {
+            CardSection("Behind on payments") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    if called != 0 { line("The bank has called the loan: pay the next instalment within \(max(0, weeksLeft).weeksText) or the company is wound up.", Theme.loss) }
+                    else if missed > 0 { line("\(missed) loan instalment\(missed == 1 ? "" : "s") missed. Unpaid interest and a penalty were added to the loan.", Theme.loss) }
+                    if company.flag("loanFrozen") { line("Credit restricted: no new loans until the instalments are back on track.", Theme.caution) }
+                    if vatOver > 1 { line("VAT overdue \(cur.tidyShort(vatOver)), with interest running and a penalty added.", Theme.loss) }
+                    if sup >= 2 { line("Suppliers have stopped delivering stock until the overdue bills are paid.", Theme.loss) }
+                    else if sup == 1 { line("Suppliers only deliver stock against cash in the account.", Theme.caution) }
+                    if billsOwed > 0 { line("Rent and supplier bills waiting for month end: \(cur.tidyShort(billsOwed)).", Theme.ivoryMuted) }
+                }
+            }
+        }
+    }
+    private func line(_ text: String, _ tint: Color) -> some View {
+        HStack(alignment: .top, spacing: Theme.Space.s) {
+            LedgerGlyph(glyph: tint == Theme.ivoryMuted ? Glyph.info : Glyph.warning, size: Theme.Icon.small, tint: tint).padding(.top, Theme.Space.xxs)
+            Text(text).textStyle(.body, tint: tint == Theme.ivoryMuted ? Theme.inkSoft : Theme.ink, weight: tint == Theme.ivoryMuted ? .regular : .medium).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
