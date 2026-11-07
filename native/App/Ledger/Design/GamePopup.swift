@@ -14,11 +14,18 @@ struct GamePopup<Content: View>: View {
     var variant: PopupVariant = .standard
     /// Optional footer pinned below the scrolling content (always visible); none by default.
     var footer: AnyView? = nil
+    /// The popup's size category (`PopupCategory`); nil: medium.
+    var category: PopupCategory? = nil
+    /// The event's tone; nil: taken from the variant.
+    var tone: PopupTone? = nil
+    /// A compact popup's icon (SF Symbol); nil: the tone's own symbol.
+    var icon: String? = nil
     var onClose: () -> Void
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        CenterSheetFrame(onClose: onClose, title: title, size: .fit, showsClose: showsClose, backdropCloses: dismissOnBackdrop, variant: variant, pinnedFooter: footer) {
+        CenterSheetFrame(onClose: onClose, title: title, size: .fit, showsClose: showsClose, backdropCloses: dismissOnBackdrop, variant: variant, pinnedFooter: footer,
+                         category: category, tone: tone, icon: icon) {
             VStack(alignment: .leading, spacing: PopupSpace.block) { content() }
         }
     }
