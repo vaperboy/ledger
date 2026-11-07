@@ -115,7 +115,7 @@ struct AcctAccessDetail: View {
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-            .confirmAction($pending)
+            .moneyPopups { $0.confirmAction($pending) }
             .onAppear {
                 if !loaded {
                     let current: AccountingLevel = e.accountingLevel(companyID: co.id, user: userID)

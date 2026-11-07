@@ -55,14 +55,18 @@ struct PhoneHome: View {
         let badges: [PhoneApp: Int] = store.phoneBadges
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
         let shown: [PhoneApp] = PhoneApp.launcher.filter { gateState($0) != .hidden }
-        let grid: [PhoneApp] = shown.filter { !Self.dockApps.contains($0) }
-        let dock: [PhoneApp] = shown.filter { Self.dockApps.contains($0) }
+        let later: [PhoneApp] = PhoneApp.launcher.filter { gateState($0) == .hidden }
+        // A dock of one app is an empty shelf: the dock only shows with two apps or more, else they stay in the grid.
+        let docked: [PhoneApp] = shown.filter { Self.dockApps.contains($0) }
+        let dock: [PhoneApp] = docked.count >= 2 ? docked : []
+        let grid: [PhoneApp] = shown.filter { !dock.contains($0) }
         return FixedScreen(spacing: 16, top: 12, maxWidth: 560) {
-            VStack(spacing: 22) {
+            VStack(alignment: .leading, spacing: 22) {
                 widgets
                 LazyVGrid(columns: columns, spacing: 20) {
                     ForEach(grid) { app in icon(app, badges) }
                 }
+                if !later.isEmpty { comingLater(later, columns) }
             }
             .frame(maxWidth: .infinity)
         }
@@ -102,6 +106,29 @@ struct PhoneHome: View {
     private func gateState(_ app: PhoneApp) -> GateVisibility {
         guard let e = store.engine else { return GateVisibility.open }
         return app.visibility(e)
+    }
+
+    /// The apps the game has not opened yet: faint outlines in the grid's places, under one line that says they come with growth.
+    private func comingLater(_ apps: [PhoneApp], _ columns: [GridItem]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Coming as you grow").textStyle(.label, tint: Theme.inkFaint).textCase(.uppercase)
+                Spacer(minLength: 8)
+                Text("\(apps.count) more \(apps.count == 1 ? "app" : "apps")").textStyle(.caption, tint: Theme.inkFaint)
+            }
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(Array(apps.prefix(8))) { (app: PhoneApp) in
+                    let shape = RoundedRectangle(cornerRadius: 60 * 0.235, style: .continuous)
+                    GlyphView(glyph: app.glyph, size: 26, weight: 1.5, tint: Theme.inkFaint.opacity(0.6))
+                        .frame(width: 60, height: 60)
+                        .overlay(shape.strokeBorder(Theme.inkFaint.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [4, 4])))
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.top, 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(apps.count) more apps open as your business grows")
     }
 
     // MARK: Widgets

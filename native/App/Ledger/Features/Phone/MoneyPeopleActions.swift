@@ -57,7 +57,7 @@ struct HostingSection: View {
                     guestRow(g, venues, cur)
                 }
             }
-            .confirmAction($pending)
+            .moneyPopups { $0.confirmAction($pending) }
         }
     }
 
@@ -222,7 +222,7 @@ struct FundManagerCard: View {
         VStack(alignment: .leading, spacing: 14) {
             if let a = engine.fundManager { hiredView(a, cur) } else { hireView(cur) }
         }
-        .confirmAction($pending)
+        .moneyPopups { $0.confirmAction($pending) }
     }
 
     private func askToHire(_ c: FinanceManager.Candidate) {
@@ -337,7 +337,7 @@ struct HoldingFinanceManagerCard: View {
             else { Text("You have no finance manager. Hire one for the group office:").textStyle(.caption) }
             hireFlow
         }
-        .confirmAction($pending)
+        .moneyPopups { $0.confirmAction($pending) }
     }
 
     /// Handing the holding over, or taking it back, costs nothing and can be changed back, so it is done at once.

@@ -38,7 +38,7 @@ struct BankSavingsAndDeposits: View {
                 savings(e, cur)
                 deposits(e, cur)
             }
-            .confirmAction($pending)
+            .moneyPopups { $0.confirmAction($pending) }
         }
     }
 

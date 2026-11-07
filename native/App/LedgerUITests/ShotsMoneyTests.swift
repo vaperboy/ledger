@@ -32,13 +32,25 @@ final class ShotsMoneyTests: FeatureTourCase {
         while popupUp(0.5) && n < 4 { closePopup(); n += 1 }
     }
 
+    /// Closes popups and pops every pushed page, so the next app opens at its own root (the Pick tab keeps its stack otherwise).
+    private func fresh() {
+        closeAll()
+        toRoot()
+    }
+
+    /// Opens a Phone app at its root.
+    private func open(_ name: String) -> Bool {
+        fresh()
+        return openPhoneApp(name)
+    }
+
     private func bankTab(_ t: String) -> Bool {
         tapWhere(wait: 3) { $0.type == .button && ($0.label == t || $0.label.hasPrefix(t + ",") || $0.label.hasPrefix(t + " ")) && $0.frame.minY < self.win().minY + 320 }
     }
 
     private func openBank(_ acc: String) -> Bool {
-        guard openPhoneApp("Bank") else { return false }
-        return tapPrefix("bank-pick-\(acc)", wait: 4)
+        guard open("Bank") else { return false }
+        return tapPrefix("bank-pick-\(acc)", wait: 4) || tapPrefix("bank-account-\(acc)", wait: 2)
     }
 
     func testShots() {
@@ -46,15 +58,17 @@ final class ShotsMoneyTests: FeatureTourCase {
         if goTab("Phone"), gridUp(6) { snap("phone-home") } else { miss("phone-home") }
 
         // Bank
-        if openPhoneApp("Bank") { closeAll(); snap("bank-chooser") } else { miss("bank") }
+        if open("Bank") { closeAll(); snap("bank-chooser") } else { miss("bank") }
         if openBank("personal") {
             snapScroll("bank-personal")
-            for t in ["Bills", "Loans", "Deposits", "Statements"] {
+            for t in ["Bills", "Loans", "Deposits"] {
                 if bankTab(t) { snapScroll("bank-personal-\(t)") } else { miss("bank-tab-\(t)") }
             }
+            // Statements sits under More when the tabs do not fit.
+            if bankTab("Statements") || (bankTab("More") && tapText("Statements", wait: 2)) { snapScroll("bank-personal-Statements") } else { miss("bank-tab-Statements") }
             _ = bankTab("Account")
             if tapLabel("Transfer") { snap("bank-transfer"); closeAll() } else { miss("bank-transfer") }
-            if tapLabel("Deposit") { snap("bank-deposit"); closeAll() }
+            if tapWhere(wait: 2, { $0.type == .button && $0.label == "Deposit" }) { snap("bank-deposit"); closeAll() }
         } else { miss("bank-personal") }
         if openBank("personal"), bankTab("Loans"), tapID("bank-apply-loan", wait: 3) {
             snap("bank-loan-offer")
@@ -79,17 +93,21 @@ final class ShotsMoneyTests: FeatureTourCase {
             snapScroll("bank-investments")
             if tapWhere(wait: 4, { $0.type == .button && $0.label.contains("%") && $0.frame.minY > self.win().minY + 200 }) {
                 snap("bank-asset")
-                if tapLabel("Buy", wait: 3) { snap("bank-buy") }
+                if tapLabel("Buy", wait: 3) {
+                    snap("bank-buy")
+                    if tapPrefix("amount-preset-", wait: 2) { snap("bank-buy-amount") }
+                    if tapEnabled("bank-trade-review", wait: 2) { snap("bank-buy-review") }
+                }
             }
         } else { miss("bank-investments") }
 
         // Accounting
-        if openPhoneApp("Accounting") {
+        if open("Accounting") {
             closeAll()
             snapScroll("acct-home")
             let rows: [String] = ids(prefix: "acct-row-")
             for r in rows {
-                guard openPhoneApp("Accounting"), tapID(r, wait: 4) else { miss(r); continue }
+                guard open("Accounting"), tapID(r, wait: 4) else { miss(r); continue }
                 closeAll()
                 snapScroll(String(r.dropFirst(4)))
                 if r == "acct-row-payroll" {
@@ -101,6 +119,7 @@ final class ShotsMoneyTests: FeatureTourCase {
         } else { miss("accounting") }
 
         // New company
+        fresh()
         if goTab("Home"), tapLabel("New company", wait: 4) {
             snapScroll("newco-trade")
             if tapWhere(wait: 4, { $0.type == .button && $0.enabled && $0.frame.minY > self.win().minY + 200 && $0.label.contains("\u{00A3}") }) {
@@ -115,25 +134,25 @@ final class ShotsMoneyTests: FeatureTourCase {
         } else { miss("new-company") }
 
         // The other Money apps
-        if openPhoneApp("Stats") {
+        if open("Stats") {
             snapScroll("stats")
             if tapText("Activity") { snapScroll("activity"); _ = tapBack() }
             if tapText("Goals") { snapScroll("goals"); _ = tapBack() }
         } else { miss("stats") }
-        if openPhoneApp("Achievements") { snapScroll("achievements") } else { miss("achievements") }
-        if openPhoneApp("News") {
+        if open("Achievements") { snapScroll("achievements") } else { miss("achievements") }
+        if open("News") {
             snapScroll("news")
             if tapID("news-paper-link", wait: 3) { snap("news-paper"); _ = tapBack() }
         } else { miss("news") }
-        if openPhoneApp("Rich list") { snapScroll("richlist") } else { miss("richlist") }
-        if openPhoneApp("World") {
+        if open("Rich list") { snapScroll("richlist") } else { miss("richlist") }
+        if open("World") {
             snapScroll("world")
             for p in ["Around you", "Biggest companies", "Records"] {
                 if tapText(p, wait: 2) { snapScroll("world-\(p.replacingOccurrences(of: " ", with: "-"))"); _ = tapBack() }
             }
         } else { miss("world") }
-        if openPhoneApp("Weather") { snapScroll("weather") } else { miss("weather") }
-        if openPhoneApp("Settings") {
+        if open("Weather") { snapScroll("weather") } else { miss("weather") }
+        if open("Settings") {
             snapScroll("settings")
             if tapText("Save slots", wait: 3) { snapScroll("save-slots"); _ = tapBack() }
         } else { miss("settings") }

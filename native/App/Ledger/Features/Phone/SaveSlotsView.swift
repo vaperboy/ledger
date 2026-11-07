@@ -22,14 +22,20 @@ struct SaveSlotsView: View {
     private var limit: Int { ent.effective.saveSlots(now: Date()) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("\(rows.count) of \(limit) slots used").textStyle(.body, tint: Theme.inkSoft)
-                Spacer(minLength: 8)
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            HStack(alignment: .top) {
+                MoneyHero(label: "Slots used", value: "\(rows.count) of \(limit)", context: "Named copies of the game you are playing")
                 ProMark(feature: .saveSlots)
             }
-            ForEach(rows) { (r: SlotRow) in slotCard(r) }
             newSlot
+            if !rows.isEmpty {
+                MoneyGroup("Your copies") {
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: SlotRow) in
+                        if n > 0 { MoneyRule(inset: 0) }
+                        slotCard(r)
+                    }
+                }
+            }
             cloud
         }
         .onAppear { reload() }
@@ -53,20 +59,23 @@ struct SaveSlotsView: View {
 
     private func slotCard(_ r: SlotRow) -> some View {
         let isCurrent: Bool = r.id == "current"
-        return Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(isCurrent ? "Current game" : r.id).textStyle(.headline)
                 Text(detail(r)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 if renaming == r.id {
                     renameEditor(r)
                 } else if !isCurrent {
-                    HStack(spacing: 8) {
-                        Button("Load") { askLoad(r) }.buttonStyle(TinyButtonStyle()).disabled(r.summary == nil)
-                        Button("Rename") { renaming = r.id; renameText = r.id }.buttonStyle(TinyButtonStyle())
-                        Button("Delete") { askDelete(r) }.buttonStyle(TinyButtonStyle(tint: Theme.loss))
+                    HStack(spacing: Theme.Space.m) {
+                        Button("Load") { askLoad(r) }.buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(r.summary == nil)
+                        Button("Rename") { renaming = r.id; renameText = r.id }.buttonStyle(TertiaryButtonStyle(size: .compact))
+                        Spacer(minLength: 0)
+                        Button("Delete") { askDelete(r) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
                     }
+                    .padding(.leading, -Theme.Space.s)
                 }
             }
+            .padding(.vertical, Theme.Space.m)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -83,20 +92,17 @@ struct SaveSlotsView: View {
         }
     }
 
+    /// A name, then the one filled action of the page.
     private var newSlot: some View {
-        Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("New slot").textStyle(.headline)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(spacing: Theme.Space.s) {
                 TextField("Name this copy", text: $newName).textFieldStyle(.plain).textStyle(.headline)
-                HStack(spacing: 8) {
-                    Button("Save to slot") { ent.run(.saveSlots, "More save slots") { createSlot() } }
-                        .buttonStyle(TinyButtonStyle()).disabled(store.engine == nil)
-                    ProMark(feature: .saveSlots)
-                    Spacer(minLength: 4)
-                    InfoSheetButton(title: "Save slots", text: "A slot is a named copy of the game you are playing. Loading one replaces the current game; the game it replaces is kept as a backup file first.")
-                }
+                InfoSheetButton(title: "Save slots", text: "A slot is a named copy of the game you are playing. Loading one replaces the current game; the game it replaces is kept as a backup file first.")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, Theme.Space.xs)
+            .overlay(alignment: .bottom) { Hairline() }
+            Button("Save a copy now") { ent.run(.saveSlots, "More save slots") { createSlot() } }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true)).disabled(store.engine == nil)
         }
     }
 
@@ -127,21 +133,18 @@ struct SaveSlotsView: View {
     }
 
     private var cloud: some View {
-        Card(padding: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text("Cloud backup").textStyle(.headline)
-                    ProMark(feature: .cloudBackup)
-                }
-                Text(cloudLine).textStyle(.caption)
-                HStack(spacing: 8) {
+        MoneyGroup(title: "Cloud backup", trailing: { ProMark(feature: .cloudBackup) }) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text(cloudLine).textStyle(.body, tint: Theme.inkSoft)
+                HStack(spacing: Theme.Space.m) {
                     Button("Back up now") { ent.run(.cloudBackup, "Cloud backup") { backUp() } }
-                        .buttonStyle(TinyButtonStyle()).disabled(!CloudConfig.iCloudReady || store.engine == nil)
+                        .buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(!CloudConfig.iCloudReady || store.engine == nil)
                     Button("Restore") { ent.run(.cloudBackup, "Cloud backup") { askRestore() } }
-                        .buttonStyle(TinyButtonStyle()).disabled(!CloudConfig.iCloudReady)
+                        .buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(!CloudConfig.iCloudReady)
                 }
+                .padding(.leading, -Theme.Space.s)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, Theme.Space.xs)
         }
     }
 

@@ -64,7 +64,8 @@ struct NewCompanySetupView: View {
                     costBlock(plan)
                     LedgerField(placeholder: t.name, text: $name, identifier: "new-company-name", hint: "Company name. Leave it empty and one is chosen for you.")
                     if d.form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID) }
-                    NavigationLink { NewCompanyDetailedSetupView(tradeID: tradeID, cityID: cityID) } label: {
+                    coverBlock(e, d, plan)
+                    NavigationLink { NewCompanyDetailedSetupView(tradeID: tradeID, cityID: cityID).environment(\.insideCard, true) } label: {
                         LedgerRow(leading: .glyph(Glyph.settings), title: "Customise", subtitle: "City, legal form, premises and each item", chevron: true)
                     }
                     .buttonStyle(AcctPressStyle()).accessibilityIdentifier("new-company-detail")
@@ -90,11 +91,37 @@ struct NewCompanySetupView: View {
         }
     }
 
+    /// What the start-up cost buys and what it keeps running: the place, the money left in the company, the monthly cost.
+    @ViewBuilder private func coverBlock(_ e: GameEngine, _ d: NewCompanyDraft, _ plan: NewCompanyPlan?) -> some View {
+        if let plan {
+            let monthly: MonthlyFixedCostEstimate? = d.monthly(e)
+            MoneyGroup("What it covers") {
+                LedgerRow(leading: .glyph(Glyph.home), title: "Premises", value: premisesWord(plan), lineLimit: 1)
+                MoneyRule(inset: 32)
+                LedgerRow(leading: .glyph(BankGlyph.company), title: "Kept in the company", subtitle: "Working capital for the first weeks",
+                          value: store.money(plan.workingCapital), lineLimit: 1)
+                if let monthly {
+                    MoneyRule(inset: 32)
+                    LedgerRow(leading: .glyph(BankGlyph.bill), title: "Running cost", subtitle: "Rent, wages and bills, before sales",
+                              value: "about " + store.money(monthly.total), valueNote: "a month", lineLimit: 1)
+                }
+            }
+        }
+    }
+
+    private func premisesWord(_ plan: NewCompanyPlan) -> String {
+        switch plan.premisesKind {
+        case .none: return "None needed"
+        case .home: return "At home"
+        case .place: return plan.pick?.buy == true ? "Bought" : "Rented"
+        }
+    }
+
     /// Goes to the review: nothing is paid on this step.
     private func startBar(_ plan: NewCompanyPlan?) -> some View {
         let reason: String? = plan == nil ? "This company can no longer be priced."
             : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash in your current account." : nil)
-        return NewCompanyStepBar(title: "Review · \(store.money(plan?.payToday ?? 0))", blockedReason: reason, identifier: "new-company-start") { goReview = true }
+        return NewCompanyStepBar(title: "Review", blockedReason: reason, identifier: "new-company-start") { goReview = true }
     }
 }
 

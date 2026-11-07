@@ -19,7 +19,7 @@ struct InvestContent: View {
             let list: [Quote] = e.quotes(kind)
             let mine: [Quote] = list.filter { $0.value > 0 }
             let rest: [Quote] = list.filter { $0.value <= 0 }
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 PortfolioRingCard(slices: Self.slices(e), cur: cur)
                 SegmentedPill(items: kinds(e), title: { $0 == .stock ? "Shares" : $0 == .crypto ? "Crypto" : "Funds" }, selection: $kind)
                 if kind == .crypto { Text("Very volatile: you can lose most of it.").textStyle(.caption, tint: Theme.warn) }
@@ -49,20 +49,14 @@ struct InvestContent: View {
     }
 
     @ViewBuilder private func assets(title: String, rows: [Quote], cur: Currency, empty: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).capsLabel().padding(.horizontal, 2)
+        MoneyGroup(title) {
             if rows.isEmpty {
-                EmptyState(glyph: Glyph.invest, title: empty, centered: false)
+                EmptyState(glyph: Glyph.invest, title: empty, centered: false).padding(.vertical, Theme.Space.s)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { n, q in
-                        if n > 0 { Hairline() }
-                        Button { Haptics.tap(); selected = q } label: { AssetRow(quote: q, cur: cur) }.buttonStyle(PressableStyle())
-                    }
+                ForEach(Array(rows.enumerated()), id: \.element.id) { n, q in
+                    if n > 0 { MoneyRule(inset: 44) }
+                    Button { Haptics.tap(); selected = q } label: { AssetRow(quote: q, cur: cur) }.buttonStyle(AcctPressStyle())
                 }
-                .padding(.horizontal, 12)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.surface))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(Theme.border, lineWidth: 1))
             }
         }
     }

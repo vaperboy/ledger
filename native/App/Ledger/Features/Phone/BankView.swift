@@ -28,7 +28,7 @@ struct BankLoansTab: View {
                     EmptyState(glyph: BankGlyph.transfer, title: "No loans here", message: "Loans are taken for your personal account or a company's, not for investments.")
                 }
             }
-            .centerSheet(isPresented: $applying, size: .tall, category: .detail, tone: .warning) { BankLoanApplyFlow(account: account) }
+            .moneyPopups { $0.centerSheet(isPresented: $applying, size: .tall, category: .detail, tone: .warning) { BankLoanApplyFlow(account: account) } }
         }
     }
 
@@ -88,7 +88,7 @@ struct BankPersonalLoans: View {
             }
             loansCard(e, cur, personal)
         }
-        .centerSheet(item: $repaying, title: "Loan details", category: .detail, tone: .warning) { l in LoanDetailSheet(loanID: l.id) }
+        .moneyPopups { $0.centerSheet(item: $repaying, title: "Loan details", category: .detail, tone: .warning) { l in LoanDetailSheet(loanID: l.id) } }
     }
 
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {

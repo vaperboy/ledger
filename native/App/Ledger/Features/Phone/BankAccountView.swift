@@ -50,8 +50,8 @@ struct BankAccountScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .onAppear { clearLoanDot() }
             .onChange(of: tab) { _, _ in clearLoanDot() }
-            .centerSheet(item: $move, category: .medium, tone: .info) { kind in BankMoveSheet(account: id, kind: kind) }
-            .centerSheet(isPresented: $viewAll, title: "Every movement", category: .detail, tone: .info) { BankAllMovementsSheet(account: id) }
+            .moneyPopups { $0.centerSheet(item: $move, category: .medium, tone: .info) { kind in BankMoveSheet(account: id, kind: kind) } }
+            .moneyPopups { $0.centerSheet(isPresented: $viewAll, title: "Every movement", category: .detail, tone: .info) { BankAllMovementsSheet(account: id) } }
         } else {
             EmptyState(title: "This account is closed.").padding(Theme.Space.xl)
         }

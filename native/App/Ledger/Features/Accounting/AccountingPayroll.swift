@@ -35,7 +35,7 @@ struct AcctPayroll: View {
                     .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
                 }
             }
-            .confirmAction($pending)
+            .moneyPopups { $0.confirmAction($pending) }
         }
     }
 

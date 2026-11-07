@@ -53,19 +53,15 @@ struct BankAssetScreen: View {
                 AppHeader(title: live.symbol, subtitle: live.name, onBack: { dismiss() }, backLabel: "Back")
                     .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xl) {
                         priceCard(live, cur)
                         if live.quantity > 0 { heldCard(live, cur) }
-                        HStack(spacing: 0) {
-                            if live.kind != .stock { BankRoundButton(glyph: BankGlyph.deposit, title: "Buy") { side = .buy } }
-                            if live.quantity > 0 { BankRoundButton(glyph: BankGlyph.withdraw, title: "Sell", tint: Theme.roseGold) { side = .sell } }
-                        }
-                        .frame(maxWidth: live.quantity > 0 && live.kind != .stock ? .infinity : 140, alignment: .leading)
                     }
-                    .padding(.horizontal, 18).padding(.bottom, 20)
+                    .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).noSidewaysDrag()
+                .safeAreaInset(edge: .bottom, spacing: 0) { tradeBar(live) }
             }
             .ledgerBackground()
             .navigationBarBackButtonHidden(true)
@@ -75,32 +71,50 @@ struct BankAssetScreen: View {
         }
     }
 
+    /// Buy is the filled action, pinned under the page; Sell sits beside it once something is held (shares can only be sold).
+    @ViewBuilder private func tradeBar(_ live: Quote) -> some View {
+        let canBuy: Bool = live.kind != .stock
+        let canSell: Bool = live.quantity > 0
+        if canBuy || canSell {
+            HStack(spacing: Theme.Space.m) {
+                if canSell {
+                    Button { Haptics.tap(); side = .sell } label: { Text("Sell") }
+                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                }
+                if canBuy {
+                    Button { Haptics.tap(); side = .buy } label: { Text("Buy") }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                }
+            }
+            .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
+            .background(P.page)
+            .overlay(alignment: .top) { Hairline() }
+        }
+    }
+
+    /// The price leads with the week's change and the trend under it; no box.
     private func priceCard(_ live: Quote, _ cur: Currency) -> some View {
         let hist: [Double] = Array(live.history.suffix(52))
-        let up: Bool = (live.weekChange ?? 0) >= 0
         let note: String = live.weekChange.map { String(format: "%+.1f%% this week", $0 * 100) } ?? "No history yet"
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("PRICE").capsLabel()
-                Text(cur.tidyDisplay(live.price)).textStyle(.display, numeric: true)
-                Text(note).font(.system(size: 12.5)).foregroundStyle(P.change(live.weekChange ?? 0))
-                if hist.count >= 2 { Sparkline(values: hist, tint: up ? P.gain : P.loss).frame(height: 90) }
-                if live.kind == .crypto { Text("Very volatile: you can lose most of it.").textStyle(.caption, tint: P.caution) }
-            }
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            MoneyHero(label: "Price", value: cur.tidyDisplay(live.price), context: note, contextTint: P.change(live.weekChange ?? 0))
+            if hist.count >= 2 { Sparkline(values: hist, tint: (live.weekChange ?? 0) >= 0 ? P.gain : P.loss).frame(height: 120).padding(.top, Theme.Space.s) }
+            if live.kind == .crypto { Text("Very volatile: you can lose most of it.").textStyle(.caption, tint: P.caution) }
         }
     }
 
     private func heldCard(_ live: Quote, _ cur: Currency) -> some View {
         let result: Double = live.value - live.costBasis
         let sign: String = result >= 0 ? "+" : "\u{2212}"
-        return StatStrip(cells: [
-            .init(label: "You hold", value: cur.tidyShort(live.value)),
-            .init(label: "You paid", value: cur.tidyShort(live.costBasis)),
-            .init(label: "Result if sold", value: sign + cur.tidyShort(abs(result)), tint: P.change(result)),
-        ], ruled: false)
-        .padding(.vertical, 12).padding(.horizontal, 6)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+        return MoneyGroup("Your holding") {
+            FigureRow(items: [
+                .init(label: "You hold", value: cur.tidyShort(live.value)),
+                .init(label: "You paid", value: cur.tidyShort(live.costBasis)),
+                .init(label: "Result if sold", value: sign + cur.tidyShort(abs(result)), tint: P.change(result)),
+            ])
+            .padding(.top, Theme.Space.xs)
+        }
     }
 }
 
@@ -129,11 +143,12 @@ struct BankTradeFlow: View {
                     .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 ScrollView {
                     content(e, tq, cur)
-                        .padding(.horizontal, 18).padding(.bottom, 20)
+                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                         .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
                 .scrollIndicators(.hidden).noSidewaysDrag()
                 .scrollDismissesKeyboard(.interactively)
+                .safeAreaInset(edge: .bottom, spacing: 0) { actionBar(tq, cur) }
             }
             .ledgerBackground()
             .navigationBarBackButtonHidden(true)
@@ -156,18 +171,44 @@ struct BankTradeFlow: View {
         }
     }
 
+    // MARK: Pinned action
+
+    /// The step's one action, pinned under the page: Review, then Confirm, then Done.
+    private func actionBar(_ tq: TradeQuote, _ cur: Currency) -> some View {
+        Group {
+            if done != nil {
+                Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("bank-trade-done")
+            } else if step == 1 {
+                let reason: String? = side == .buy ? (amount <= 0 ? "Type an amount or pick one above." : tq.refusal) : nil
+                PrimaryAction(title: "Review", blockedReason: reason, identifier: "bank-trade-review") { step = 2 }
+            } else {
+                PrimaryAction(title: side == .buy ? "Confirm purchase" : "Confirm sale", blockedReason: tq.refusal, identifier: "bank-trade-confirm") { confirm(tq, cur) }
+            }
+        }
+        .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
+        .frame(maxWidth: 560).frame(maxWidth: .infinity)
+        .background(P.page)
+        .overlay(alignment: .top) { Hairline() }
+    }
+
     // MARK: Step 1
 
+    /// The amount is the hero: typed large, or one of the quick amounts that fit what you have.
     private func buyAmount(_ tq: TradeQuote, _ cur: Currency) -> some View {
-        let reason: String? = amount <= 0 ? "Enter an amount." : tq.refusal
+        let avail: Double = tq.available
+        let quick: [Double] = [1_000, 10_000, 100_000].map { $0 * cur.rate }.filter { $0 <= avail }
+        var presets: [MoneyAmountHero.Preset] = quick.map { MoneyAmountHero.Preset(title: cur.tidyShort($0), amount: $0) }
+        if avail > 0, let e = store.engine {
+            let fee: Double = e.buyQuote(quote.kind, symbol: quote.symbol, amount: avail).fee
+            presets.append(MoneyAmountHero.Preset(title: "All", amount: max(0, (avail - fee * 1.01).rounded(.down))))
+        }
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerSection(title: "How much", rule: false, trailing: {
-                Text("available \(cur.tidyShort(tq.available))").textStyle(.caption, tint: P.inkFaint)
-            }) {
-                AmountField(title: "Amount to buy", currency: cur, amount: $amount)
-                Text("Smallest order \(cur.tidyShort(tq.minimumPurchase)). The broker fee is added to the price.").textStyle(.caption, tint: P.inkFaint)
+            MoneyAmountHero(label: "How much to buy", currency: cur, amount: $amount,
+                            note: "You have \(cur.tidyShort(avail)). Smallest order \(cur.tidyShort(tq.minimumPurchase)); the broker fee is added.",
+                            presets: presets)
+            if amount > 0 && tq.refusal == nil {
+                Text("\(String(format: "%.4f", tq.units)) \(quote.symbol) \u{00B7} fee \(cur.tidyShort(tq.fee))").textStyle(.caption, tint: P.inkSoft, numeric: true)
             }
-            PrimaryAction(title: "Review", blockedReason: reason, identifier: "bank-trade-review") { step = 2 }
         }
     }
 
@@ -179,7 +220,6 @@ struct BankTradeFlow: View {
                 ChoiceCard(title: f == 1 ? "Sell all" : "Sell \(Int(f * 100))%", subtitle: "about \(cur.tidyShort(q.cashChange)) after the fee",
                            trailing: cur.tidyShort(q.amount), selected: fraction == f) { fraction = f }
             }
-            PrimaryAction(title: "Review", identifier: "bank-trade-review") { step = 2 }
         }
     }
 
@@ -188,7 +228,7 @@ struct BankTradeFlow: View {
     private func review(_ tq: TradeQuote, _ cur: Currency) -> some View {
         let buying: Bool = side == .buy
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Figure(label: buying ? "Leaves your accounts" : "Reaches your account", value: cur.tidyDisplay(tq.cashChange), tint: buying ? P.ink : P.gain, size: .display)
+            MoneyHero(label: buying ? "Leaves your accounts" : "Reaches your account", value: cur.tidyDisplay(tq.cashChange), tint: buying ? nil : P.gain)
             VStack(spacing: 0) {
                 line(buying ? "You buy" : "You sell", cur.tidyDisplay(tq.amount))
                 line("Price", cur.tidyDisplay(quote.price))
@@ -199,7 +239,6 @@ struct BankTradeFlow: View {
             }
             Text(riskNote(buying)).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
             if let r = problem { Text(r).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true) }
-            PrimaryAction(title: buying ? "Confirm purchase" : "Confirm sale", blockedReason: tq.refusal, identifier: "bank-trade-confirm") { confirm(tq, cur) }
         }
     }
 
@@ -236,9 +275,6 @@ struct BankTradeFlow: View {
     }
 
     private func doneCard(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            EmptyState(glyph: Glyph.check, title: text, tint: P.gain)
-            Button("Done") { dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("bank-trade-done")
-        }
+        EmptyState(glyph: Glyph.check, title: text, tint: P.gain)
     }
 }

@@ -152,7 +152,7 @@ struct AcctInvoiceDetail: View {
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-            .confirmAction($pending)
+            .moneyPopups { $0.confirmAction($pending) }
         }
     }
 

@@ -46,7 +46,7 @@ struct BankAccountsScreen: View {
                 .environment(\.insideCard, true)
             }
             .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)
-            .centerSheet(item: $move, category: .medium, tone: .info) { kind in BankMoveSheet(account: .personal, kind: kind) }
+            .moneyPopups { $0.centerSheet(item: $move, category: .medium, tone: .info) { kind in BankMoveSheet(account: .personal, kind: kind) } }
         }
     }
 
