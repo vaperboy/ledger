@@ -23,6 +23,7 @@ struct HomeSummary<Companies: View>: View {
         VStack(alignment: .leading, spacing: compact ? Theme.Space.l : Theme.Space.xl) {
             VStack(alignment: .leading, spacing: compact ? Theme.Space.m : Theme.Space.l) {
                 HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag)  Week \(e.state.week + 1) · \(e.date)", engine: e, onNewCompany: onNewCompany)
+                if fills { Spacer(minLength: 0).frame(maxHeight: Theme.Space.l) }
                 if e.cashIsTight { cashTightLine }
                 if ent.plusEndedNotice {
                     Text("Plus has ended. Your saves are safe.").textStyle(.caption)
@@ -37,14 +38,17 @@ struct HomeSummary<Companies: View>: View {
                     NetWorthCard(engine: e, chartHeight: compact ? 24 : 32) { showInsights = true }
                 }
             }
-            if fills { Spacer(minLength: 0) }
+            if fills { Self.gap }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact) }
-            if fills { Spacer(minLength: 0) }
+            if fills { Self.gap }
             companies()
             if fills { Spacer(minLength: 0) }
         }
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
     }
+
+    /// Spare height between two groups, at most 32 pt; whatever is left over gathers under the companies, above the day bar.
+    private static var gap: some View { Spacer(minLength: 0).frame(maxHeight: Theme.Space.xxl) }
 
     private var playerName: String {
         let n = engine.state.player.name
@@ -235,17 +239,42 @@ struct TopPriorities: View {
     var engine: GameEngine
     var compact: Bool = false
 
+    @State private var daily: PlayerGoals.DailyGoal?
+
+    /// With nothing to answer, the player's next goal fills the slot: the ladder goal, else today's mission while it is open.
+    private struct Goal {
+        var title: String
+        var line: String
+        var action: String
+        var link: String
+    }
+
+    private var goal: Goal? {
+        if let g = PlayerGoals.currentLadderGoal(engine.state) {
+            return Goal(title: g.title, line: g.body, action: g.button, link: g.link)
+        }
+        if let d = daily, !d.claimed {
+            if d.done { return Goal(title: d.title, line: "Done. Claim the reward in Goals.", action: "Claim", link: "goals") }
+            return Goal(title: d.title, line: d.progress, action: d.link.isEmpty ? "" : "Go", link: d.link)
+        }
+        return nil
+    }
+
     var body: some View {
         let first: Suggestion? = store.suggestionsNow.first { $0.tone != .neutral }
         let waiting: Int = store.openDecisionCount
+        let next: Goal? = first == nil && waiting == 0 ? goal : nil
+        let tick: Int = engine.state.week * 7 + engine.state.day
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HomeGroupLabel(title: "Needs you") { inboxLink(waiting) }
+            HomeGroupLabel(title: next != nil ? "Your next goal" : "Needs you") { inboxLink(waiting) }
             if let first {
                 lead(first)
                     .id(first.id)
                     .transition(.opacity)
             } else if waiting > 0 {
                 waitingCard(waiting)
+            } else if let next {
+                goalCard(next)
             } else {
                 HStack(spacing: Theme.Space.s) {
                     LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: Theme.inkFaint)
@@ -256,6 +285,42 @@ struct TopPriorities: View {
             }
         }
         .animation(Motion.quick(reduceMotion), value: first?.id)
+        .onAppear { daily = store.dailyGoal() }
+        .onChange(of: tick) { _, _ in daily = store.dailyGoal() }
+    }
+
+    /// The goal as a raised card: title, one line of how, and the action that opens where it is done (none when it has no screen).
+    private func goalCard(_ g: Goal) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+        let opens: Bool = !g.link.isEmpty && !g.action.isEmpty
+        let card = HStack(alignment: .center, spacing: Theme.Space.m) {
+            LedgerGlyph(glyph: Glyph.goals, size: Theme.Icon.medium, tint: Theme.inkSoft)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(g.title.tidyMoney).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                if !g.line.isEmpty {
+                    Text(g.line.tidyMoney).textStyle(.caption).lineLimit(compact ? 1 : 2).multilineTextAlignment(.leading)
+                }
+                if opens {
+                    Text(g.action).textStyle(.body, tint: Theme.accent, weight: .semibold).lineLimit(1)
+                        .padding(.top, Theme.Space.xxs)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if opens { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.l)
+        .background(shape.fill(Theme.surfaceRaised))
+        .contentShape(shape)
+        return Button {
+            guard opens else { return }
+            Haptics.tap()
+            if g.link == "goals" { store.openApp(.goals) } else { _ = store.openLadderLink(g.link) }
+        } label: { card }
+        .buttonStyle(PressableStyle())
+        .disabled(!opens)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home-goal")
     }
 
     /// "Inbox · 3": every open decision, with the count, beside the label.
