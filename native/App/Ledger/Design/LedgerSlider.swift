@@ -14,6 +14,8 @@ struct LedgerSlider: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.isEnabled) private var isEnabled
     @State private var dragging = false
+    /// The direction of the current drag: nil until decided, true for sideways (moves the value), false for a scroll (ignored).
+    @State private var axis: Bool? = nil
     @State private var lastTick: Double = .nan
 
     init(value: Binding<Double>, in range: ClosedRange<Double>, step: Double? = nil, valueText: String? = nil,
@@ -129,9 +131,21 @@ struct LedgerSlider: View {
             .frame(width: w, height: hit)
             .contentShape(Rectangle())
             .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { (g: DragGesture.Value) in PageSwipeGate.shared.touching = true; update(x: g.location.x, width: w) }
-                    .onEnded { (_: DragGesture.Value) in PageSwipeGate.shared.touching = false; finish() }
+                // Only a clearly sideways drag moves the value: a scroll that starts on the track (mostly vertical) is ignored, so the
+                // page scrolls instead and no value changes by accident.
+                DragGesture(minimumDistance: 8)
+                    .onChanged { (g: DragGesture.Value) in
+                        if axis == nil { axis = abs(g.translation.width) > abs(g.translation.height) * 1.2 }
+                        guard axis == true else { return }
+                        PageSwipeGate.shared.touching = true
+                        update(x: g.location.x, width: w)
+                    }
+                    .onEnded { (_: DragGesture.Value) in
+                        let moved: Bool = axis == true
+                        axis = nil
+                        PageSwipeGate.shared.touching = false
+                        if moved { finish() }
+                    }
             )
             .animation(Motion.tapAnimation, value: dragging)
         }
