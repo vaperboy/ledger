@@ -131,7 +131,7 @@ enum ApplicantTrial {
         return PendingAction(
             title: "Pay for a trial week with \(a.name)?",
             message: "Cost: \(cur.tidyShort(cost)) paid now, whatever you decide. Benefit: you see how their work really goes. Risk: one week shows only part of the picture, and they may take another job. It does not hire them.",
-            button: "Pay \(cur.tidyShort(cost))", amount: cost, currency: cur) {
+            button: "Pay \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .info, icon: "calendar") {
                 if let seen = store.act({ $0.startTrialWeek(personID: pid, companyID: companyID) }) ?? nil {
                     Haptics.success(); store.show(seen.first?.text ?? "The trial week is done.", tone: "n")
                 } else {

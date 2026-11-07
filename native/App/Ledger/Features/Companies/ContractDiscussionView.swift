@@ -350,7 +350,7 @@ struct ContractDiscussionView: View {
                     pending = PendingAction(
                         title: answering ? "Answer \(first(n)) with this?" : "Put this to \(first(n))?",
                         message: summary(pv, cur),
-                        button: answering ? "Send answer" : "Put it to \(first(n))") {
+                        button: answering ? "Send answer" : "Put it to \(first(n))", tone: .info, icon: "doc.text") {
                             if answering { show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .counter(counterValue(p))) }) }
                             else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }) }
                         }
@@ -380,7 +380,7 @@ struct ContractDiscussionView: View {
     private func answer(_ d: ContractTalk.Decision, _ e: GameEngine, _ n: Person, _ cur: Currency, _ pv: ContractTalk.Consequences) {
         let (title, button): (String, String) = d == .accept ? ("Agree to \(first(n))'s request?", "Agree") : d == .delay ? ("Delay your answer?", "Delay") : ("Decline \(first(n))'s request?", "Decline")
         pending = PendingAction(title: title, message: d == .decline ? summary(pv, cur) + " They feel turned down." : d == .delay ? "You have \(ContractTalk.delayWeeks) weeks to answer. If the answer does not come, it counts as a decline. " + summary(pv, cur) : summary(pv, cur),
-                                button: button, destructive: d == .decline) {
+                                button: button, tone: d == .decline ? .warning : .info, icon: "doc.text") {
             show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: d) })
         }
     }

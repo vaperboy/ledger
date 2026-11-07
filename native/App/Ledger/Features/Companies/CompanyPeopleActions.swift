@@ -375,7 +375,7 @@ struct SuccessorSection: View {
         let feeAmount: Double = ManagerModel.searchFee(currency: cur)
         let fee: String = cur.tidyShort(feeAmount)
         pending = PendingAction(title: "Start the search?", message: "Three people from the trade and one generalist. The list stays for about six months.", button: "Pay \(fee) and search",
-                                amount: feeAmount, currency: cur, risk: "None may suit, and the fee is not refunded.") {
+                                amount: feeAmount, currency: cur, risk: "None may suit, and the fee is not refunded.", tone: .info, icon: "magnifyingglass") {
             if let list = store.act({ $0.findSuccessor(companyID: company.id) }) ?? nil, !list.isEmpty { Haptics.success(); store.show("\(list.count) candidates found. Search paid: \(fee).", tone: "good") }
             else { Haptics.warning(); store.show("The search found no one, or the company cannot pay \(fee).", tone: "warn") }
         }

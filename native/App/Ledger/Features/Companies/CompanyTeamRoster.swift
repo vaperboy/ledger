@@ -207,7 +207,7 @@ struct CompanyTeamRoster: View {
                     }
                 }
             }
-            .centerSheet(item: $openSlot) { ref in
+            .centerSheet(item: $openSlot, category: .detail, tone: .info) { ref in
                 TeamSlotSheet(companyID: company.id, slotID: ref.id, candidates: Binding(get: { candidates[ref.id] ?? [] }, set: { candidates[ref.id] = $0 }))
                     .environmentObject(store)
             }
@@ -285,13 +285,13 @@ struct TeamSlotSheet: View {
         Button("Let \(p.name.split(separator: " ").first.map(String.init) ?? "them") go…") {
             pending = PendingAction(title: "Let \(p.name) go?",
                                     message: "Cost: about one month of pay (\(cur.tidyShort(slot.monthlyWage))) plus employer costs as severance, paid now. Their work goes back to the manager (or to you).",
-                                    button: "Let go", destructive: true) {
+                                    button: "Let go", destructive: true, tone: .danger, icon: "person.fill.xmark") {
                 let ok = store.act { $0.releaseTeam(companyID: co.id, key: slot.key, regionalID: slot.regionalID) } ?? false
                 Haptics.warning()
                 store.show(ok ? "\(p.name) has left. Severance is paid." : "They had already left.", tone: ok ? "n" : "warn")
             }
         }
-        .buttonStyle(QuietButtonStyle(tint: Theme.loss))
+        .buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
     }
 
     @ViewBuilder private func vacant(_ slot: ManagerModel.TeamSlot, _ co: Company, _ cur: Currency, _ e: GameEngine) -> some View {
@@ -302,13 +302,13 @@ struct TeamSlotSheet: View {
                 Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
                     pending = PendingAction(title: "Pay for an executive search?",
                                             message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist for \(slot.title.lowercased()). Risk: none may suit.",
-                                            button: "Search for \(cur.tidyShort(fee))", amount: fee, currency: cur) {
+                                            button: "Search for \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "magnifyingglass") {
                         if let list = store.act({ $0.searchTeam(companyID: co.id, key: slot.key) }) ?? nil {
                             candidates = list.map { $0.id }; Haptics.tap()
                             store.show((list.isEmpty ? "The search found no one." : "\(list.count) candidates found.") + " Search paid: \(cur.tidyShort(fee)).", tone: list.isEmpty ? "warn" : "n")
                         } else { Haptics.warning(); store.show("Not enough cash for the search (\(cur.tidyShort(fee))).", tone: "warn") }
                     }
-                }.buttonStyle(QuietButtonStyle())
+                }.buttonStyle(TertiaryButtonStyle(size: .compact))
             }
         }
         let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }

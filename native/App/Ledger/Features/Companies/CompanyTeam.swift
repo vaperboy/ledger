@@ -34,7 +34,7 @@ struct CompanyTeam: View {
         }
         .navigationDestination(item: $page) { p in TeamPageDestination(page: p, companyID: company.id) }
         .navigationDestination(item: $profile) { (w: WorkerRef) -> StaffProfileView in StaffProfileView(companyID: company.id, staffID: w.id) }
-        .centerSheet(isPresented: $showPerks) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
+        .centerSheet(isPresented: $showPerks, category: .medium, tone: .info) { CompanyPerksPopup(companyID: company.id, onClose: { showPerks = false }).environmentObject(store) }
     }
 
     // MARK: Hero

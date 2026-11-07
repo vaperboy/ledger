@@ -162,7 +162,7 @@ struct HireWorkersView: View {
             " The ad names " + f.companyName + (f.orgNumber.isEmpty ? "." : ", organisation number " + f.orgNumber + ".")
         } ?? ""
         pending = PendingAction(title: "Post a job ad for a \(name)?", message: "Cost: \(cur.tidyShort(fee)), paid now. Benefit: applicants answer over four weeks. Risk: none may suit." + who,
-                                button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur) {
+                                button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "megaphone") {
             let r: JobAds.PostResult? = store.act { $0.postJobAd(companyID: cid, role: role) }
             switch r {
             case .posted(_, let n)?: Haptics.success(); store.show("Ad running. About \(n) \(n == 1 ? "person" : "people") should answer over the next weeks.", tone: "good")
@@ -178,7 +178,7 @@ struct HireWorkersView: View {
         let cid = companyID, role = chosen.id, name = chosen.name.lowercased()
         let share: Int = Int((Agency.salaryShare * 100).rounded())
         pending = PendingAction(title: "Engage an agency for a \(name)?", message: "Cost: \(cur.tidyShort(fee)) now, then \(share) percent of the hired person's salary for \(Agency.months) months. Benefit: suggestions at once and better ones over weeks. Risk: it is the dearest way.",
-                                button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur) {
+                                button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "person.badge.plus") {
             let r: Agency.EngageResult? = store.act { $0.engageAgency(companyID: cid, role: role) }
             switch r {
             case .engaged(_, let ids)?: Haptics.success(); store.show("The agency has \(ids.count) suggestions for you now, more to follow.", tone: "good")

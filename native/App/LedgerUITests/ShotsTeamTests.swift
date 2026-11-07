@@ -120,6 +120,8 @@ final class ShotsTeamTests: FeatureTourCase {
             scrollShot("16-hire-lower")
             dragPage(900)
             if tapLabel("Agency", wait: 2) { shot("17-hire-agency"); _ = tapLabel("Job ad", wait: 2) || tapLabel("Ad", wait: 1) }
+            // Post the ad waits for a role: pick one that is not filled yet.
+            _ = tapText("Cook", wait: 2) || tapText("General helper", wait: 1) || tapText("Cleaner", wait: 1)
             if tapEnabled("hire-post-ad", wait: 3) {
                 pause(0.8)
                 shot("18-hire-post-confirm")
@@ -160,7 +162,7 @@ final class ShotsTeamTests: FeatureTourCase {
         }
 
         // Management (Group > company > Management) and the manager / assistant sheets
-        if openTeam() && tapID("team-open-management", wait: 4) {
+        if openTeam(), { dragPage(-600); return true }(), tapID("team-open-management", wait: 4) {
             pause(1)
             shot("27-management")
             scrollShot("28-management-lower")
@@ -192,7 +194,7 @@ final class ShotsTeamTests: FeatureTourCase {
 
         // Paperwork: Manage > Licences > the signing form
         toRoot()
-        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), tapText("Licences", wait: 3) {
+        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), { dragPage(-600); return true }(), tapText("Licences", wait: 3) {
             pause(0.8)
             shot("35-licences")
             if tapText("Fill in and apply", wait: 2) || tapText("Apply again", wait: 2) || tapText("Apply", wait: 2) {
