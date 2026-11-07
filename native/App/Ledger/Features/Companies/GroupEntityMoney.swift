@@ -89,6 +89,24 @@ struct GroupEntityMoney: View {
         }
     }
 
+    private func investIndex() {
+        let id: Int = entity.companyID
+        let amt: Double = amount
+        if amt > 0, store.act({ $0.holdingInvest(holdingID: id, amount: amt) }) == true { Haptics.success(); store.show("Invested.", tone: "good") }
+        else { Haptics.warning(); store.show(amt > 0 ? "Not enough cash in the holding." : "Enter an amount first.", tone: "warn") }
+    }
+
+    private func askSellIndex(_ cur: Currency) {
+        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
+        let id: Int = entity.companyID
+        let sold: Double = amount
+        pending = PendingAction(title: "Sell \(cur.tidyShort(sold)) of the index fund?", message: "The holding sells index holdings worth this much. The fund charges 0.66% to sell.", button: "Sell index", destructive: true) {
+            if store.act({ $0.holdingDivest(holdingID: id, amount: sold) }) == true { Haptics.success(); store.show("Sold.", tone: "good") }
+            else { Haptics.warning(); store.show("Nothing to sell.", tone: "warn") }
+        }
+    }
+
+
     private func askDividend(_ cur: Currency) {
         let id: Int = entity.companyID
         let amt: Double = amount
