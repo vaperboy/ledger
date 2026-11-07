@@ -23,8 +23,15 @@ public extension GameEngine {
     /// What the trade can start with, to choose the first product or service from. Empty once the choice is made; a custom first item is
     /// added with `addSalesItem` or `addNewItem`.
     func firstItemChoices(companyID: Int) -> [SalesItem] {
-        guard let co = state.company(companyID), SalesItems.firstChoicePending(co) else { return [] }
-        return SalesItems.rows(state, companyID: companyID, data: data)
+        guard let co = state.company(companyID), SalesItems.firstChoicePending(co), let i = state.companyIndex(companyID) else { return [] }
+        var seeded = state   // the trade's own starter items, as they will be once its module has installed them
+        SalesItems.seedStarters(&seeded, i, data: data)
+        return SalesItems.rows(seeded, companyID: companyID, data: data)
+    }
+
+    /// The lowest and highest price of an item against its market price for this company's trade (the slider's range).
+    func itemPriceRange(companyID: Int) -> ClosedRange<Double> {
+        state.company(companyID).flatMap { data.catalog[$0.type] }.map { SalesItems.range(for: $0) } ?? SalesItems.priceRange
     }
 
     /// Choose the first item to sell from `firstItemChoices`; the other starter items stay out of the list.
@@ -34,8 +41,10 @@ public extension GameEngine {
         return applySetting(refuse: { s in
             guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
             guard co.status == .open else { return "Only an open company sells things." }
-            guard SalesItems.firstChoicePending(co) else { return "You have already chosen what to sell." }
-            return SalesItems.items(co, bd).contains { $0.id == itemID } ? nil : "That choice is not on offer."
+            guard SalesItems.firstChoicePending(co), let i = s.companyIndex(companyID) else { return "You have already chosen what to sell." }
+            var seeded = s
+            SalesItems.seedStarters(&seeded, i, data: data)
+            return SalesItems.items(seeded.companies[i], bd).contains { $0.id == itemID } ? nil : "That choice is not on offer."
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
         }
@@ -52,7 +61,8 @@ public extension GameEngine {
         return SalesItems.suggestedName(co, bd, isService: isService, seed: state.seed)
     }
 
-    /// Any real number is kept as typed; the price must lie between 30% and 180% of the market price (`SalesItems.priceRange`).
+    /// Any real number is kept as typed; the price must lie between 30% and the trade's ceiling of the market price (`itemPriceRange`).
+    /// The owner can always set it, whoever is hired to advise: `SalesItem.priceSetter` is information only.
     @discardableResult
     mutating func setItemPrice(companyID: Int, itemID: String, price: Double) -> SettingResult {
         let data = self.data
@@ -62,7 +72,8 @@ public extension GameEngine {
             let r = SalesItems.rows(s, companyID: companyID, data: data).first { $0.id == itemID }
             guard let m = r?.marketPrice, m > 0 else { return "That price is too far from the market price." }
             guard price >= m * SalesItems.priceFloor else { return "That price is too far below the market price." }
-            guard price <= m * SalesItems.priceCeiling else { return "Customers will not pay that: the most this sells for is about \(Int((SalesItems.priceCeiling * 100).rounded()))% of the market price." }
+            let ceiling = s.company(companyID).flatMap { data.catalog[$0.type] }.map { SalesItems.ceiling(for: $0) } ?? SalesItems.priceCeiling
+            guard price <= m * ceiling else { return "Customers will not pay that: the most this sells for is about \(Int((ceiling * 100).rounded()))% of the market price." }
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setPrice(&s, companyID: companyID, itemID: itemID, price: price, data: d)
@@ -96,7 +107,8 @@ public extension GameEngine {
             if let why = SalesItems.refusal(s, companyID: companyID, itemID: nil, data: data) { return why }
             guard !clean.isEmpty, clean.count <= 40 else { return "Give it a name of up to 40 letters." }
             guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return nil }
-            let list = SalesItems.items(co, bd)
+            let hidden = SalesItems.hiddenIDs(co)
+            let list = SalesItems.items(co, bd).filter { !hidden.contains($0.id) }
             if list.count >= SalesItems.maxItems { return "That is as many items as one company can sell." }
             if list.contains(where: { $0.name.lowercased() == clean.lowercased() }) { return "There is already an item with that name." }
             return nil

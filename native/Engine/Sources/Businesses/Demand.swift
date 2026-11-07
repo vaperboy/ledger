@@ -52,7 +52,8 @@ public enum DemandModel {
         if fy != 1 { apply("firstYear", fy) }
         if co.value("franchise")["fran"].bool { D *= 1 + co.value("franchise")["brand"].double * 0.002 }
 
-        var r = DemandResult(customers: max(0, D), parts: parts)
+        // Nothing is on sale until the owner has chosen the first product (`SalesItems.firstChoicePending`).
+        var r = DemandResult(customers: max(0, D) * SalesItems.demandGate(co), parts: parts)
         applySteps(&r, co, bd, w)
         return r
     }

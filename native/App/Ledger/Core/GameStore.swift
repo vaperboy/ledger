@@ -318,7 +318,7 @@ final class GameStore: ObservableObject {
     /// `story: .fresh` is the new-player start: `tradeID` and `companyName` are the player's two choices after the country.
     func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil) {
         RememberedDetails.clearAll()
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.

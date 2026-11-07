@@ -115,7 +115,7 @@ public enum FinanceModel {
         let price = premiumBase * pm * Knobs.effect(co, bd, "t", w) * (1 + 0.08 * co.priceLevel) * w.inflationIndex
         let rm = Competition.rivalFactor(co, w)
         var target = volF * policiesBase * co.size * DemandModel.awarenessFactor(co) * (0.6 + 0.8 * co.reputation / 100) * Knobs.effect(co, bd, "d", w)
-            * Pricing.demandEffect(co, bd, w) * rm * DemandModel.modifier(co, "dem") * (1 + (w.economy.demand - 1) * 0.4)
+            * Pricing.demandEffect(co, bd, w) * rm * DemandModel.modifier(co, "dem") * (1 + (w.economy.demand - 1) * 0.4) * SalesItems.demandGate(co)
         let sol0 = fm["sol"].isNull ? 1.5 : fm["sol"].double
         if sol0 < 1 { target *= 0.5 }
         let cap = policiesBase * co.size * 1.3 * min(1, cover + 0.15)
