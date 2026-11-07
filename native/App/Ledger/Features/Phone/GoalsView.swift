@@ -12,7 +12,7 @@ struct GoalsView: View {
 
     var body: some View {
         if let e = store.engine {
-            FixedScreen(spacing: 14, top: 4, overflowScrolls: true) {
+            FixedScreen(spacing: Theme.Space.xl, top: Theme.Space.m, overflowScrolls: true) {
                 rankCard(e)
                 ladderCard(e)
                 nextUpCard(e)
@@ -60,8 +60,8 @@ struct GoalsView: View {
             HStack(spacing: 16) {
                 GoalRing(progress: st.progress, done: st.next == nil, size: 64, label: "\(Int((st.progress * 100).rounded()))%")
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Your rank").capsLabel()
-                    Text(st.rank.title).textStyle(.title)
+                    Text("Your rank").textStyle(.label, tint: Theme.inkFaint).textCase(.uppercase)
+                    Text(st.rank.title).textStyle(.display).lineLimit(2).minimumScaleFactor(0.7)
                     Text(line).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
@@ -287,7 +287,7 @@ struct TrophyShelfRow: View {
         let got = entries.filter { $0.reachedWeek != nil }.sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
         let slots: Int = 6
         return NavigationLink {
-            AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle)
+            AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle).environment(\.insideCard, true)
         } label: {
             Card(padding: 14) {
                 VStack(alignment: .leading, spacing: 10) {

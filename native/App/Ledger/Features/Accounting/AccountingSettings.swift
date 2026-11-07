@@ -188,7 +188,7 @@ struct AcctAccessDetail: View {
         let id: Int = co.id
         let target: String = p.id
         let name: String = p.name
-        pending = PendingAction(title: "Remove \(name)'s access?", message: "\(name) can no longer open the accounting of \(co.name). You can add them again later.", button: "Remove access", destructive: true) {
+        pending = PendingAction(title: "Remove \(name)'s access?", message: "\(name) can no longer open the accounting of \(co.name). You can add them again later.", button: "Remove access", alwaysAsk: true, tone: .warning, icon: "lock") {
             let result: AccessChange? = store.act({ (e: inout GameEngine) -> AccessChange in e.removeAccountingAccess(companyID: id, userID: target) })
             switch result {
             case .changed?:

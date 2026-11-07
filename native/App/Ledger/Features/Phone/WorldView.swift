@@ -219,7 +219,7 @@ struct WorldAroundView: View {
 
     private func recordLink(_ page: WorldRecordsView.Page, _ preview: String) -> some View {
         NavigationLink {
-            WorldRecordsView(page: page).appScreen(title: page.rawValue, subtitle: "Records of the world around you")
+            WorldRecordsView(page: page).appScreen(title: page.rawValue, subtitle: "Records of the world around you").environment(\.insideCard, true)
         } label: {
             RowLine(glyph: page.glyph, tint: Theme.gold, title: page.rawValue, subtitle: preview, chevron: true)
         }.buttonStyle(PressableStyle())
@@ -253,7 +253,7 @@ struct DataAnalystCard: View {
                                 if case .refused(let why)? = r { store.show(why, tone: "warn") } else { store.show("Report sent to your inbox."); Haptics.success() }
                             }.buttonStyle(QuietButtonStyle(tint: Theme.gold))
                             Button("Let them go") {
-                                pending = PendingAction(title: "Let your data analyst go?", message: "Market shares, rivals and forecasts go back to guesses until you hire another. Their desk in the main office is freed.", button: "Let go", destructive: true) {
+                                pending = PendingAction(title: "Let your data analyst go?", message: "Market shares, rivals and forecasts go back to guesses until you hire another. Their desk in the main office is freed.", button: "Let go", destructive: true, tone: .danger, icon: "person.fill.xmark") {
                                     if store.act({ $0.fireDataAnalyst() }) == true { Haptics.warning(); store.show("Your data analyst has left.", tone: "n") }
                                     else { store.show("You have no data analyst.", tone: "warn") }
                                 }

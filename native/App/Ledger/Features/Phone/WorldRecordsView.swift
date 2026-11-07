@@ -64,7 +64,7 @@ struct WorldRecordsView: View {
             }
         }
         .navigationDestination(item: $opened) { (p: Page) in
-            WorldRecordsView(page: p).appScreen(title: p.rawValue, subtitle: "Records of the world around you")
+            WorldRecordsView(page: p).appScreen(title: p.rawValue, subtitle: "Records of the world around you").environment(\.insideCard, true)
         }
     }
 

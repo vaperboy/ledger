@@ -88,20 +88,3 @@ struct MoneyTextAction: View {
             .modifier(OptionalIdentifier(identifier: identifier))
     }
 }
-
-/// The primary button pinned under a screen's content, on the page colour so the list scrolls under it cleanly.
-struct MoneyPinnedAction<Content: View>: View {
-    @Environment(\.outsidePalette) private var P
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Hairline()
-            content()
-                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
-        }
-        .background(P.ground.ignoresSafeArea(edges: .bottom))
-    }
-}

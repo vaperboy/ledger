@@ -65,7 +65,7 @@ struct HostingSection: View {
         let cost: Double = engine.hostingCost(pieceID: v.id) ?? 0
         let effect: String = "The evening is paid from your cash. For about three months the guests deal with you on better terms (a rival takes your offers more seriously, buyers come sooner, applicants come keener)."
         pending = PendingAction(title: "Host \(g.title) on \(v.item.name)?", message: effect, button: "Host for \(cur.tidyShort(cost))",
-                                amount: cost, currency: cur, risk: "It does not guarantee a deal, and the effect fades.") {
+                                amount: cost, currency: cur, risk: "It does not guarantee a deal, and the effect fades.", tone: .prestige, icon: "wineglass") {
             switch store.act({ $0.hostDeal(pieceID: v.id, guest: g.guest) }) {
             case .ok(let title, _)?: Haptics.success(); store.show(title, tone: "good")
             case .away?: store.show("That piece is away.", tone: "warn")
@@ -231,7 +231,7 @@ struct FundManagerCard: View {
         let effect: String = "A fee of \(pct(c.fee)) a year on the managed money, about \(cur.tidyShort(sum * c.fee)) a year on this sum. It is invested for you without your time."
         let chosen: FinanceManager.Mandate = mandate
         pending = PendingAction(title: "Hand \(cur.tidyShort(sum)) to \(c.name)?", message: effect, button: "Hire, \(chosen.title.lowercased()) mandate",
-                                amount: sum, currency: cur, risk: "It can lose value, more under an aggressive mandate, and the fee is due even in a bad year.") {
+                                amount: sum, currency: cur, risk: "It can lose value, more under an aggressive mandate, and the fee is due even in a bad year.", tone: .investment, icon: "chart.line.uptrend.xyaxis") {
             switch store.act({ $0.hireFundManager(personID: c.id, mandate: chosen, amount: sum) }) {
             case .ok?: Haptics.success(); store.show("\(c.name) now manages your money.", tone: "good"); amount = 0
             case .notEnoughCash?: Haptics.warning(); store.show("You don't have that much available.", tone: "warn")
@@ -242,7 +242,7 @@ struct FundManagerCard: View {
     }
 
     private func askToLetGo() {
-        pending = PendingAction(title: "Let the fund manager go?", message: "All the managed money comes back to your account now. A gain is taxed as a capital gain at year end.", button: "Let go", destructive: true) {
+        pending = PendingAction(title: "Let the fund manager go?", message: "All the managed money comes back to your account now. A gain is taxed as a capital gain at year end.", button: "Let go", destructive: true, tone: .danger, icon: "person.fill.xmark") {
             if store.act({ $0.dismissFundManager() }) == true { Haptics.warning(); store.show("The fund manager is gone. The managed money is back in your account.", tone: "n") }
             else { store.show("You have no fund manager.", tone: "warn") }
         }
@@ -347,7 +347,7 @@ struct HoldingFinanceManagerCard: View {
     }
 
     private func askToFire() {
-        pending = PendingAction(title: "Let the finance manager go?", message: "He stops running your holdings, and you run them yourself again.", button: "Let go", destructive: true) {
+        pending = PendingAction(title: "Let the finance manager go?", message: "He stops running your holdings, and you run them yourself again.", button: "Let go", destructive: true, tone: .danger, icon: "person.fill.xmark") {
             if let id = staffEntry?["id"].int {
                 if store.act({ $0.fireOffice(personID: id) }) == true { Haptics.warning(); store.show("The finance manager has left. You run your holdings yourself again.", tone: "n") }
                 else { store.show("The finance manager is no longer in the group office.", tone: "warn") }

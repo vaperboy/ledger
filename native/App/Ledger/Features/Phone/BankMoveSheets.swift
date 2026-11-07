@@ -221,7 +221,7 @@ struct BankMoveSheet: View {
         if big {
             pending = PendingAction(title: "Move \(leg.currency.tidyShort(a))?",
                                     message: "\(leg.title): more than half of what the account holds (\(leg.currency.tidyDisplay(leg.source))). Check that bills due soon are still covered.",
-                                    button: "Move it", amount: nil, currency: leg.currency, run: run)
+                                    button: "Move it", amount: nil, currency: leg.currency, tone: .warning, icon: "arrow.left.arrow.right", run: run)
         } else { run() }
     }
 }

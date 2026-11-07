@@ -132,9 +132,11 @@ struct PhoneHome: View {
     }
 
     @ViewBuilder private var worthWidget: some View {
-        let history: [Double] = Array((store.engine?.state.netWorthHistory ?? []).suffix(13))
-        let now: Double = history.last ?? store.netWorth
-        let change: Double = history.count >= 2 ? now - history[history.count - 2] : 0
+        // The weekly snapshots draw the trend; today's figure is read once per engine change.
+        let weekly: [Double] = Array((store.engine?.state.netWorthHistory ?? []).suffix(12))
+        let now: Double = store.memo("phone-net-worth") { $0.netWorth.total } ?? (weekly.last ?? 0)
+        let change: Double = weekly.last.map { now - $0 } ?? 0
+        let history: [Double] = weekly + [now]
         let open: Bool = gateState(.stats) == .open
         let tile = PhoneWidget {
             VStack(alignment: .leading, spacing: 2) {
@@ -292,24 +294,25 @@ struct PhoneAppScreen: View {
             AccountingApp()
         case .inbox:
             InboxView()
+        // These pages sit on the page itself: their groups draw flat (no boxes).
         case .news:
-            NewsView()
+            NewsView().environment(\.insideCard, true)
         case .weather:
-            WeatherApp()
+            WeatherApp().environment(\.insideCard, true)
         case .stats:
-            StatsView().appScreen(title: app.title, subtitle: app.subtitle)
+            StatsView().appScreen(title: app.title, subtitle: app.subtitle).environment(\.insideCard, true)
         case .goals:
-            GoalsView().appScreen(title: app.title, subtitle: app.subtitle)
+            GoalsView().appScreen(title: app.title, subtitle: app.subtitle).environment(\.insideCard, true)
         case .achievements:
-            AchievementsView().appScreen(title: app.title, subtitle: app.subtitle)
+            AchievementsView().appScreen(title: app.title, subtitle: app.subtitle).environment(\.insideCard, true)
         case .world:
-            WorldMapApp()
+            WorldMapApp().environment(\.insideCard, true)
         case .luxury:
             LuxuryView()
         case .ventures:
             VenturesFeedApp()
         case .richList:
-            RichListView()
+            RichListView().environment(\.insideCard, true)
         case .reports:
             ReportsScreen()
         case .market:
@@ -318,7 +321,7 @@ struct PhoneAppScreen: View {
         case .reviews:
             ReviewsApp()
         case .settings:
-            SettingsView().appScreen(title: app.title, subtitle: app.subtitle)
+            SettingsView().appScreen(title: app.title, subtitle: app.subtitle).environment(\.insideCard, true)
         case .airStay:
             // The three shopping and insurance apps draw their own coloured header and keep their own steps (Back goes up one step first).
             AirStayApp()

@@ -92,7 +92,7 @@ struct TrophiesPreview: View {
             let got = entries.filter { $0.reachedWeek != nil }.sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
             CardSection(title: "Trophies", trailing: {
                 NavigationLink {
-                    AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle)
+                    AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle).environment(\.insideCard, true)
                 } label: {
                     LinkLabel(text: "All \(entries.count)")
                 }.buttonStyle(PressableStyle())

@@ -83,12 +83,10 @@ struct NewCompanySetupView: View {
 
     @ViewBuilder private func costBlock(_ plan: NewCompanyPlan?) -> some View {
         if let plan {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Figure(label: "Start-up cost", value: store.money(plan.payToday), note: "Premises, tools and papers included", size: .display)
-                if plan.registrationShortfall > 0 {
-                    Text("Needs \(store.money(plan.registrationShortfall)) more cash.").textStyle(.caption, tint: Theme.warn)
-                }
-            }
+            let short: Double = plan.registrationShortfall
+            MoneyHero(label: "Start-up cost", value: store.money(plan.payToday),
+                      context: short > 0 ? "Needs \(store.money(short)) more cash" : "Premises, tools and papers included",
+                      contextTint: short > 0 ? Theme.warn : nil)
         }
     }
 

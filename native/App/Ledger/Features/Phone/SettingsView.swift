@@ -49,17 +49,17 @@ struct SettingsView: View {
             store.saved(policyChange(from: old, to: v))
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
+        .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall, category: .detail, tone: .info) { WardrobeView() }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
-        .centerSheet(isPresented: $showRedeem, title: "Redeem a code", size: .fit) {
+        .centerSheet(isPresented: $showRedeem, title: "Redeem a code", size: .fit, category: .compact, tone: .investment) {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
                 Text("Type the code from your gift. It opens the full game for the time it names.").popupText(.body)
                 PopupTextInput(placeholder: "XXXX-XXXX-XXXX-XXXX", text: $giftCode, actionTitle: "Redeem", identifier: "redeem-code", hint: giftNote.hasPrefix("Unlocked") ? giftNote : nil, message: giftNote.isEmpty || giftNote.hasPrefix("Unlocked") ? nil : giftNote, onSubmit: redeemTapped, onAction: redeemTapped)
             }
         }
-        .centerSheet(isPresented: $showPaste) {
+        .centerSheet(isPresented: $showPaste, category: .medium, tone: .warning) {
             VStack(spacing: Theme.Space.m) {
-                TextEditor(text: $pasted).popupText(.code).frame(height: 220)
+                TextEditor(text: $pasted).popupText(.code).frame(minHeight: 140)
                     .scrollContentBackground(.hidden)
                     .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
                 Button(store.hasSavedGame ? "Import and replace" : "Import") { importPasted() }
@@ -99,7 +99,7 @@ struct SettingsView: View {
                 if !embedded {
                     rule
                     NavigationLink {
-                        PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Named copies and cloud backup")
+                        PhonePageScroll(spacing: Theme.Space.xl) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Named copies and cloud backup").environment(\.insideCard, true)
                     } label: {
                         plainRow(Glyph.save, "Save slots", detail: "Named copies of this game", chevron: true)
                     }.buttonStyle(PressableStyle())
@@ -134,7 +134,7 @@ struct SettingsView: View {
         let code: String = store.engine?.state.homeCountryCode ?? (Locale.current.region?.identifier == "GB" ? "UK" : (Locale.current.region?.identifier ?? "NO"))
         let who: String = store.engine?.state.player.name ?? ""
         pending = PendingAction(title: "Start a new game?", message: "It replaces the saved game. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story); ads.resetForNewSave() }
+                                button: "Start new game", alwaysAsk: true, tone: .warning, icon: "arrow.counterclockwise") { store.newGame(name: who, countryCode: code, story: story); ads.resetForNewSave() }
     }
 
     /// Current plan, renewal date, manage, restore. Prices are never written here.
@@ -223,7 +223,7 @@ struct SettingsView: View {
         pasted = ""
         guard store.hasSavedGame else { store.importLegacy(text: text); return }
         pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                button: "Import and replace", destructive: true) { store.importLegacy(text: text) }
+                                button: "Import and replace", alwaysAsk: true, tone: .warning, icon: "square.and.arrow.down") { store.importLegacy(text: text) }
     }
 
     private func importPicked(_ result: Result<URL, Error>) {
@@ -234,7 +234,7 @@ struct SettingsView: View {
         // Ask once the file picker has gone: an import replaces the game you are playing.
         DispatchQueue.main.async {
             pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                    button: "Import and replace", destructive: true) { store.importLegacy(text: text) }
+                                    button: "Import and replace", alwaysAsk: true, tone: .warning, icon: "square.and.arrow.down") { store.importLegacy(text: text) }
         }
     }
 

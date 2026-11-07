@@ -298,12 +298,12 @@ struct NewCompanyReviewView: View {
             let company: String = draft.name.isEmpty ? t.name : draft.name
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    Figure(label: "Paid today from your personal account", value: store.money(plan.payToday), note: "\(t.name) in \(cityName)", size: .display)
+                    MoneyHero(label: "Paid today from your account", value: store.money(plan.payToday),
+                              context: "\(t.name) in \(cityName) \u{00B7} \(store.money(plan.accountsAfter)) left after")
                     FigureRow(items: [
-                        KeyFigures.Item(label: "Left after", value: store.money(plan.accountsAfter)),
                         KeyFigures.Item(label: "Your reserve", value: store.money(plan.personalReserve)),
                         KeyFigures.Item(label: "Monthly", value: monthly.map { "about " + store.money($0.total) } ?? "n/a")
-                    ])
+                    ], columns: 2)
                     LedgerSection("The company") {
                         VStack(spacing: 0) {
                             line("Legal form", draft.form == .limited ? "Limited company" : "Sole trader")
@@ -346,12 +346,12 @@ struct NewCompanyReviewView: View {
                             .accessibilityIdentifier("register-refusal")
                     }
                 }
-                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.l)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 let reason: String? = plan.registrationShortfall > 0 ? "Needs \(store.money(plan.registrationShortfall)) more cash in your current account." : (working ? "Registering…" : nil)
-                NewCompanyStepBar(title: "Pay \(store.money(plan.payToday)) and start", blockedReason: reason, identifier: "new-company-pay") { register(e) }
+                NewCompanyStepBar(title: "Pay and start", blockedReason: reason, identifier: "new-company-pay") { register(e) }
             }
             .appScreen(title: "Register \(company)", subtitle: "Step 3 of 3 · check and pay", tab: .company)
         } else {

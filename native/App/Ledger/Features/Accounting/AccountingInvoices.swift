@@ -224,7 +224,7 @@ struct AcctInvoiceDetail: View {
         let number: String = inv.number
         let user: String? = m.user
         let who: String = inv.counterparty
-        pending = PendingAction(title: "Send invoice #\(number)?", message: "\(who) receives it today and its payment terms start now.", button: "Send") {
+        pending = PendingAction(title: "Send invoice #\(number)?", message: "\(who) receives it today and its payment terms start now.", button: "Send", tone: .info, icon: "paperplane") {
             let ok: Bool = store.act({ (e: inout GameEngine) -> Bool in e.sendDraftInvoice(companyID: id, number: number, user: user) }) ?? false
             if ok { Haptics.success(); store.show("Invoice #\(number) sent to \(who).", tone: "good") }
             else { Haptics.warning(); store.show("The invoice could not be sent: it is no longer a draft, or you lack access.", tone: "warn") }
@@ -239,7 +239,7 @@ struct AcctInvoiceDetail: View {
         let balance: String = fmt.short(co.cash)
         let amount: String = fmt.short(inv.gross)
         let message: String = "\(amount) leaves the company account (\(balance) available) and \(inv.counterparty) is paid."
-        pending = PendingAction(title: "Pay invoice #\(inv.number)?", message: message, button: "Pay \(amount)", amount: inv.gross, currency: cur) {
+        pending = PendingAction(title: "Pay invoice #\(inv.number)?", message: message, button: "Pay \(amount)", amount: inv.gross, currency: cur, tone: .info, icon: "doc.text") {
             let outcome: EarlyPaymentOutcome? = store.act({ (e: inout GameEngine) -> EarlyPaymentOutcome in e.paySupplierInvoice(companyID: id, invoiceID: invoiceID, user: user) })
             switch outcome {
             case .paid(let paid)?:

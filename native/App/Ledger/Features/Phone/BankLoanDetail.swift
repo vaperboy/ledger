@@ -30,7 +30,7 @@ struct LoanDetailSheet: View {
             }
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $partial, title: "Pay back") { partialSheet }
+        .centerSheet(isPresented: $partial, title: "Pay back", category: .compact, tone: .info) { partialSheet }
     }
 
     private func record(_ e: GameEngine, _ l: Loan) -> LoanRecord? {
@@ -106,7 +106,7 @@ struct LoanDetailSheet: View {
         let id: Int = rec.id
         let from: String = accountName(e, rec)
         let message: String = "\(cur.tidyDisplay(rec.instalment)) is taken from \(from) today. It is not taken again at month end, and the loan keeps its schedule."
-        pending = PendingAction(title: "Pay this month's instalment now?", message: message, button: "Pay \(cur.tidyShort(rec.instalment))", amount: rec.instalment, currency: cur) {
+        pending = PendingAction(title: "Pay this month's instalment now?", message: message, button: "Pay \(cur.tidyShort(rec.instalment))", amount: rec.instalment, currency: cur, tone: .info, icon: "calendar") {
             BankPay.instalment(store, loanID: id)
         }
     }
@@ -119,7 +119,7 @@ struct LoanDetailSheet: View {
         var message: String = "Balance \(cur.tidyDisplay(q.balance)) plus \(cur.tidyDisplay(q.accruedInterest)) interest accrued since the last month end: \(cur.tidyDisplay(q.total)) from \(accountName(e, rec)). "
         message += "There is no early repayment fee, the interest still to come is saved and the loan ends today. "
         message += funds >= q.total ? "About \(cur.tidyShort(funds - q.total)) is left afterwards." : "It holds \(cur.tidyShort(funds)), which is not enough."
-        pending = PendingAction(title: "Pay off \(name) in full?", message: message, button: "Pay off \(cur.tidyShort(q.total))", amount: q.total, currency: cur) {
+        pending = PendingAction(title: "Pay off \(name) in full?", message: message, button: "Pay off \(cur.tidyShort(q.total))", amount: q.total, currency: cur, tone: .info, icon: "checkmark.seal") {
             let ok: Bool = store.act({ (g: inout GameEngine) -> Bool in g.payOffLoan(loanID: id) }) ?? false
             if ok {
                 Haptics.success()
@@ -206,7 +206,7 @@ struct LoanDetailSheet: View {
         let margin: Double = offer
         let pct: String = Currency.percent(margin, decimals: 2)
         let message: String = "You offer \(pct) a year on top of the loan's margin for the rest of its term. If the bank agrees, the guarantee ends and the instalments rise. If you push too hard it may walk away and will not talk again for about six months."
-        pending = PendingAction(title: "Ask the bank to release the guarantee?", message: message, button: "Make the offer") {
+        pending = PendingAction(title: "Ask the bank to release the guarantee?", message: message, button: "Make the offer", tone: .info, icon: "person.badge.shield.checkmark") {
             let answer: LoanGuarantee.Answer? = store.act({ (g: inout GameEngine) -> LoanGuarantee.Answer in g.offerGuaranteeRelease(loanID: id, extraMargin: margin) })
             switch answer {
             case .released(let m)?:

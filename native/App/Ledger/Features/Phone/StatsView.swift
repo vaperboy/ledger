@@ -38,7 +38,7 @@ struct StatsView: View {
                 }
                 if store.gateOpen(.bank) { TrophiesPreview() }
             }
-            .centerSheet(item: $docItem) { (item: DocumentItem) in DocumentView(doc: item.doc, close: { docItem = nil }) }
+            .centerSheet(item: $docItem, category: .detail, tone: .info) { (item: DocumentItem) in DocumentView(doc: item.doc, close: { docItem = nil }) }
         }
     }
 
@@ -51,7 +51,7 @@ struct StatsView: View {
         let best: Double = max(s.stats.peakNetWorth, nw.total)
         let ofBest: String = best > 0 ? String(format: "%.0f%% of your best", max(0, nw.total) / best * 100) : "No best yet"
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            Figure(label: "Net worth now", value: store.short(nw.total), note: ofBest, tint: nw.total < 0 ? Theme.loss : nil, size: .display, live: nw.total)
+            MoneyHero(label: "Net worth now", value: store.money(nw.total), tint: nw.total < 0 ? Theme.loss : nil, context: ofBest, live: nw.total)
             FigureRow(items: [
                 KeyFigures.Item(label: "Best net worth", value: store.short(best), sub: "Highest so far"),
                 KeyFigures.Item(label: "Weeks played", value: "\(s.week)", sub: "Since you started"),
@@ -229,7 +229,7 @@ struct StatsView: View {
 
     private var activityLink: some View {
         NavigationLink {
-            ActivityView().appScreen(title: "Activity", subtitle: PhonePage.activity.note)
+            ActivityView().appScreen(title: "Activity", subtitle: PhonePage.activity.note).environment(\.insideCard, true)
         } label: {
             LedgerRow(leading: .glyph(Glyph.list), title: "Activity", subtitle: PhonePage.activity.note, chevron: true)
         }

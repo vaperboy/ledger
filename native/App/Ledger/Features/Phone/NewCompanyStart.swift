@@ -227,7 +227,7 @@ struct TradeDetailView: View {
         let sz = size
         let chosen = choices
         let accountant = accountantID
-        return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
+        return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur, tone: .investment, icon: "building.2") {
             let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen, accountantID: accountant) }
             switch r {
             case .success(let out)?:

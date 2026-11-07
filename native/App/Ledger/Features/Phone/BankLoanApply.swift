@@ -39,13 +39,10 @@ struct BankLoanApplyFlow: View {
                 }
                 .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 StepDots(step: step, count: Self.stepCount, labels: ["Offer", "Choose", "Confirm"]).padding(.bottom, 8)
-                ScrollView {
-                    stepContent(e, a, q, cur)
-                        .padding(.horizontal, 18).padding(.bottom, 20)
-                        .frame(maxWidth: 560).frame(maxWidth: .infinity)
-                }
-                .scrollIndicators(.hidden).noSidewaysDrag()
-                .scrollDismissesKeyboard(.interactively)
+                // The popup frame scrolls the steps; the content keeps its natural height.
+                stepContent(e, a, q, cur)
+                    .padding(.horizontal, 18).padding(.bottom, 20)
+                    .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
@@ -107,9 +104,10 @@ struct BankLoanApplyFlow: View {
         let into: String = payIntoName(a)
         var message: String = "You borrow \(cur.tidyDisplay(q.amount)) for \(q.termMonths) months at \(Currency.percent(q.yearlyRate, decimals: 2)) a year. "
         message += "\(cur.tidyDisplay(q.disbursal)) is paid into \(into) after the \(cur.tidyDisplay(q.fee)) arrangement fee; you owe the full amount, \(cur.tidyDisplay(q.monthlyPayment)) a month. "
-        message += a.personalGuarantee ? "You are personally liable for it. " : ""
-        message += "A missed instalment adds a penalty and lowers your credit."
-        pending = PendingAction(title: "Take this loan?", message: message, button: "Take the loan", alwaysAsk: true) { apply(cur) }
+                message += "A missed instalment adds a penalty and lowers your credit."
+        // A loan you guarantee personally is held to confirm; an ordinary loan is a plain confirm.
+        pending = PendingAction(title: "Take this loan?", message: message, button: "Take the loan", destructive: a.personalGuarantee, alwaysAsk: true,
+                                risk: a.personalGuarantee ? "You are personally liable if it is not repaid." : "", tone: .warning, icon: "banknote") { apply(cur) }
     }
 
     private func apply(_ cur: Currency) {

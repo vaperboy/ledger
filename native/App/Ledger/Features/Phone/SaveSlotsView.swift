@@ -108,13 +108,13 @@ struct SaveSlotsView: View {
     }
 
     private func askLoad(_ r: SlotRow) {
-        pending = PendingAction(title: "Load \(r.id)?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Load \(r.id)", alwaysAsk: true) {
+        pending = PendingAction(title: "Load \(r.id)?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Load \(r.id)", alwaysAsk: true, tone: .warning, icon: "tray.and.arrow.down") {
             store.loadSlot(r.id); reload()
         }
     }
 
     private func askDelete(_ r: SlotRow) {
-        pending = PendingAction(title: "Delete \(r.id)?", message: "The slot is removed from this device.", button: "Delete \(r.id)", destructive: true) {
+        pending = PendingAction(title: "Delete \(r.id)?", message: "The slot is removed from this device.", button: "Delete \(r.id)", destructive: true, tone: .danger, icon: "trash") {
             store.deleteSlot(r.id); reload()
         }
     }
@@ -153,7 +153,7 @@ struct SaveSlotsView: View {
 
     private func askRestore() {
         guard let text = CloudBackup.restoreText() else { store.show("No backup found.", tone: "warn"); return }
-        pending = PendingAction(title: "Restore the backup?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Restore backup", alwaysAsk: true) {
+        pending = PendingAction(title: "Restore the backup?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Restore backup", alwaysAsk: true, tone: .warning, icon: "arrow.counterclockwise") {
             store.save(backup: true); store.importLegacy(text: text); reload()
         }
     }
