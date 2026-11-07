@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.86",
+          "buildVersion": "86",
+          "date": "2026-11-07T12:53:55Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v86/Ledger-unsigned.ipa",
+          "size": 28987388,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Popups on light screens (Bank, Accounting, outside apps) are readable: light glass with dark text; buttons are capsules everywhere\n- Chains work like one company: one board, one dividend from the whole chain, branches share cash; a losing branch is closed (lease, staff moved or paid off, stock moved) or sold as a going concern, never bankrupt on its own\n- Popups rebuilt: three sizes (compact, medium, detail) that fit their content exactly, centred glass cards with an event colour, press-and-hold for irreversible actions\n- Speed: screens redraw much faster (money text, Home, Group, Phone badges and Accounting lists no longer redo whole-game work on every redraw); text on filled buttons, chips and photo banners always uses the fill's readable ink\n- Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale\n- Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring witho"
+        },
+        {
           "version": "1.0.85",
           "buildVersion": "85",
           "date": "2026-11-07T12:17:45Z",
@@ -187,22 +196,13 @@
           "size": 29095753,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Home: your rank with a progress ring, next goal, streak and daily mission; Pro Insights charts, Wardrobe (badges and colours) and a fast-forward hint\n- Screen polish: filter chips wrap instead of scrolling sideways, pages keep their place while closing, softer list and progress animations\n- Code clean-up: no behaviour change (comments, notes and unused screens removed, files renamed by what they do)\n- Board removal, portraits, Home companies box, chain/regional manager hiring, Market notice fix\n\n# Missing / coming next\n- Play-test findings are being fixed batch by batch"
-        },
-        {
-          "version": "1.0.66",
-          "buildVersion": "66",
-          "date": "2026-11-05T23:33:44Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v66/Ledger-unsigned.ipa",
-          "size": 28931445,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Screen polish: filter chips wrap instead of scrolling sideways, pages keep their place while closing, softer list and progress animations\n- Code clean-up: no behaviour change (comments, notes and unused screens removed, files renamed by what they do)\n- Board removal, portraits, Home companies box, chain/regional manager hiring, Market notice fix\n\n# Missing / coming next\n- Play-test findings are being fixed batch by batch"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.85",
-      "versionDate": "2026-11-07T12:17:45Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v85/Ledger-unsigned.ipa",
-      "size": 28973117
+      "version": "1.0.86",
+      "versionDate": "2026-11-07T12:53:55Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v86/Ledger-unsigned.ipa",
+      "size": 28987388
     }
   ]
 }
