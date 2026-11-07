@@ -40,10 +40,7 @@ struct CarStockCard: View {
             UsedCarPhoto(family: row.body, title: row.title)
             VStack(alignment: .leading, spacing: 4) {
                 Text(row.title).textStyle(.headline).lineLimit(1)
-                HStack(spacing: 5) {
-                    TeamBadge(text: statusText, tint: row.status == .inStock ? Theme.gold : Theme.ivoryMuted)
-                    TeamBadge(text: row.body.isEmpty ? "car" : row.body)
-                }
+                Text(statusText + " \u{00B7} " + (row.body.isEmpty ? "car" : row.body)).textStyle(.caption).lineLimit(1)
                 Text(note.tidyText).textStyle(.caption, tint: noteTint)
                     .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
             }
@@ -54,9 +51,8 @@ struct CarStockCard: View {
             }
             if row.status == .inStock { GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim) }
         }
-        .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
+        .padding(.vertical, Theme.Space.m)
+        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
         .opacity(row.status == .inStock ? 1 : 0.6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -79,45 +75,49 @@ struct CarDealerSection: View {
         let cur: Currency = engine.currency(for: company)
         let rows: [CarDealerRow] = engine.carDealerRows(companyID: company.id)
         let sp = engine.carDealerSpaces(companyID: company.id)
-        VStack(alignment: .leading, spacing: 18) {
-            supplierBlock(cur)
-            TeamGroup(title: "Showroom and orders", trailing: {
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            PageGroup(title: "Showroom and orders", trailing: {
                 Text("\(sp.used) of \(sp.total) spaces").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 if rows.isEmpty {
                     Text("The showroom is empty. Cars only arrive when you order them from your supplier.")
-                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.vertical, Theme.Space.s)
                 } else {
-                    ForEach(rows) { (r: CarDealerRow) in
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: CarDealerRow) in
+                        if n > 0 { RowRule(inset: 54) }
                         if r.status == .inStock {
-                            Button { Haptics.tap(); carSheet = CarSheetID(id: r.id) } label: { CarStockCard(row: r, currency: cur) }.buttonStyle(PressableStyle())
+                            Button { Haptics.tap(); carSheet = CarSheetID(id: r.id) } label: { CarStockCard(row: r, currency: cur) }
+                                .buttonStyle(AcctPressStyle())
+                                .accessibilityIdentifier("dealer-car-\(r.id)")
                         } else {
                             CarStockCard(row: r, currency: cur)
                         }
                     }
                 }
-                Button { Haptics.tap(); ordering = true } label: { Text("Order cars").frame(maxWidth: .infinity) }
-                    .buttonStyle(GoldButtonStyle())
+                Button { Haptics.tap(); ordering = true } label: { Text("Order cars") }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .padding(.top, Theme.Space.m)
+                    .accessibilityIdentifier("dealer-order-cars")
             }
+            supplierBlock(cur)
         }
-        .centerSheet(item: $carSheet, title: "Car") { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store) }
-        .centerSheet(isPresented: $ordering, title: "Order cars") { CarOrderSheet(companyID: company.id).environmentObject(store) }
-        .centerSheet(isPresented: $brandScreen, title: "Brand contract", size: .tall) { CarBrandScreen(companyID: company.id).environmentObject(store) }
+        .centerSheet(item: $carSheet, title: "Car", category: .compact, tone: .info) { (c: CarSheetID) in CarPriceSheet(companyID: company.id, carID: c.id).environmentObject(store) }
+        .centerSheet(isPresented: $ordering, title: "Order cars", category: .medium, tone: .info) { CarOrderSheet(companyID: company.id).environmentObject(store) }
+        .centerSheet(isPresented: $brandScreen, title: "Brand contract", size: .tall, category: .detail, tone: .investment) { CarBrandScreen(companyID: company.id).environmentObject(store) }
     }
 
+    /// Who supplies the cars, the margin on each, who orders; the row opens the brand contracts.
     private func supplierBlock(_ cur: Currency) -> some View {
         let con = engine.carBrandContract(companyID: company.id)
         let buyer = engine.carDealerHasBuyer(companyID: company.id)
-        return MoreBlock("Supplier") {
-            VStack(alignment: .leading, spacing: 0) {
-                FlatRow(label: con == nil ? "Distributor" : "Brand contract", value: engine.carDealerSupplier(companyID: company.id), rule: false)
-                FlatRow(label: "Dealer margin", value: Currency.percent(con?.margin ?? CarBrands.distributorMargin, decimals: 1),
-                        sub: con == nil ? "The distributor sells any brand but keeps most of the margin." : "Built into the invoice price of every car.")
-                FlatRow(label: "Who orders", value: buyer ? "Buyer or manager" : "You, by hand",
-                        sub: buyer ? "Orders when the showroom runs thin." : "Hire a buyer, or a manager, to keep the showroom stocked.")
-                Button { Haptics.tap(); brandScreen = true } label: { Text(con == nil ? "Brand contracts" : "Your brand contract").frame(maxWidth: .infinity) }
-                    .buttonStyle(GreyOutlineButtonStyle()).padding(.top, 10)
-            }
+        let margin: String = Currency.percent(con?.margin ?? CarBrands.distributorMargin, decimals: 1)
+        return PageGroup("Supplier") {
+            LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: engine.carDealerSupplier(companyID: company.id),
+                      subtitle: con == nil ? "Distributor: any brand, but it keeps most of the margin" : "Brand contract: the margin is in every invoice price",
+                      value: margin, valueNote: "dealer margin", identifier: "dealer-brand") { brandScreen = true }
+            RowRule()
+            LedgerRow(leading: .glyph(Glyph.person), leadingTint: buyer ? Theme.inkSoft : Theme.warn, title: buyer ? "A buyer or manager orders" : "You order by hand",
+                      subtitle: buyer ? "Orders when the showroom runs thin" : "Hire a buyer, or a manager, to keep the showroom stocked")
         }
     }
 }
@@ -143,14 +143,14 @@ struct CarPriceSheet: View {
         let pct: Double = car.cost > 0 ? profit / car.cost * 100 : 0
         VStack(alignment: .leading, spacing: 16) {
             Text(car.title).popupText(.figure)
-            MoreBlock("Cost") {
+            PageGroup("Cost") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "You paid the supplier", value: cur.tidyShort(car.cost), rule: false)
                     FlatRow(label: "List price", value: cur.tidyShort(car.listPrice))
                     FlatRow(label: "In the showroom", value: "\(car.weeks) \(car.weeks == 1 ? "week" : "weeks")", sub: car.weeks > 13 ? "Old stock loses value every week." : "")
                 }
             }
-            MoreBlock("Asking price") {
+            PageGroup("Asking price") {
                 VStack(alignment: .leading, spacing: 8) {
                     LedgerSlider(value: $price, in: (car.cost * 0.8)...(car.listPrice * 1.15), step: max(1, (car.listPrice / 400).rounded()),
                                  valueText: cur.tidyShort(price)) { editing in if !editing { commit() } }

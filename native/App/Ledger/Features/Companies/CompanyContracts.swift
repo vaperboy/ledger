@@ -313,7 +313,7 @@ struct CompanyContracts: View {
                 QuietButton(title: "Send the bid…") {
                     let hq = higherQuality
                     pending = PendingAction(title: "Bid \(Int((pf * 100).rounded()))% of list?", message: "Writing the bid costs \(store.money(t.bidCost, in: company)) even if you lose. Worth about \(store.short(t.worth * pf / years, in: company)) a year if you win; the result comes on \(GameCalendar.dateString(week: t.awardWeek)).",
-                                            button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company)) {
+                                            button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company), tone: .warning, icon: "doc.text") {
                         let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: pf, higherQuality: hq) }
                         switch r {
                         case .sent?: Haptics.success(); store.show("Bid sent at \(Int((pf * 100).rounded()))% of list. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil

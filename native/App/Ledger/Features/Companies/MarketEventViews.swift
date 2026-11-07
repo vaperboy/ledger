@@ -101,17 +101,16 @@ struct MarketTrendCard: View {
         let word: String = change > 0 ? "up" : "down"
         let figure: String = String(format: "%.1f%%", pct)
         let text: String = steady ? "Prices are steady this month" : "Prices are \(word) \(figure) this month"
-        return Card(padding: 12, radius: Theme.Radius.hero) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("MARKET TREND").capsLabel()
-                    Text(text).textStyle(.headline, tint: tint).lineLimit(2)
-                }
-                Spacer(minLength: 6)
-                Sparkline(values: trend.points, tint: tint, filled: false)
-                    .frame(width: 96, height: 30)
-                    .drawsItself()
+        return HStack(spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Market prices").textStyle(.label, tint: Theme.inkFaint)
+                Text(text).textStyle(.headline, tint: tint).lineLimit(2)
             }
+            Spacer(minLength: Theme.Space.s)
+            Sparkline(values: trend.points, tint: tint, filled: false)
+                .frame(width: 96, height: 30)
+                .drawsItself()
         }
+        .accessibilityElement(children: .combine)
     }
 }

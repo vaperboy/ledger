@@ -120,7 +120,7 @@ struct WorkerGrowthSection: View {
         let cid: Int = companyID
         let eid: Int = employeeID
         let cost: Double = c.cost
-        pending = PendingAction(title: "Send \(p.name) on \(name)?", message: "Costs \(cur.tidyDisplay(cost)) from company cash. \(c.benefit) It may also change nothing.", button: "Send for \(cur.tidyShort(cost))", amount: cost, currency: cur) {
+        pending = PendingAction(title: "Send \(p.name) on \(name)?", message: "Costs \(cur.tidyDisplay(cost)) from company cash. \(c.benefit) It may also change nothing.", button: "Send for \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .info, icon: "airplane") {
             let r: StaffProfile.CourseResult? = store.act { $0.sendOnCourse(companyID: cid, staffID: eid, courseID: tid) }
             switch r {
             case .done(let msg)?: Haptics.success(); store.show("\(name): \(msg).", tone: "good")
@@ -180,7 +180,8 @@ struct ResearchRow: View {
 
     var body: some View {
         if let lock = engine.unlockItem("research", companyID: company.id), !lock.unlocked {
-            SettingsTableRow(title: "Research", value: "Locked", valueTint: Theme.ivoryFaint, opens: .sheet, glyph: Glyph.lock) { store.show(lock.reason, tone: "n") }
+            LedgerRow(leading: .glyph(Glyph.lock), leadingTint: Theme.inkFaint, title: "Research", subtitle: lock.reason, valueNote: "Locked",
+                      lineLimit: 1, identifier: "sales-research") { store.show(lock.reason, tone: "n") }
                 .opacity(0.6)
         } else {
             openRow
@@ -191,8 +192,9 @@ struct ResearchRow: View {
         let reports: Int = engine.research(companyID: company.id).count
         let waiting: Int = MarketResearch.pending(company).count
         let value: String = waiting > 0 ? "\(waiting) on its way" : (reports > 0 ? "\(reports) delivered" : "Buy a report")
-        return SettingsTableRow(title: "Research", value: value, opens: .sheet, glyph: Glyph.stats) { open = true }
-            .centerSheet(isPresented: $open) { ResearchSheet(companyID: company.id) }
+        return LedgerRow(leading: .glyph(Glyph.stats), leadingTint: Theme.inkSoft, title: "Research", subtitle: "Reports on customers, rivals and prices",
+                         valueNote: value, valueNoteTint: waiting > 0 ? Theme.gain : nil, identifier: "sales-research") { open = true }
+            .centerSheet(isPresented: $open, category: .medium, tone: .info) { ResearchSheet(companyID: company.id) }
     }
 }
 
@@ -280,7 +282,7 @@ struct ResearchSheet: View {
         let oid: String = o.id
         let title: String = o.title
         let weeks: Int = o.weeks
-        pending = PendingAction(title: "Order \(title.lowercased())?", message: "Paid now from company cash. The report arrives in \(weeks.weeksText).", button: "Order for \(cur.tidyShort(o.cost))", amount: o.cost, currency: cur) {
+        pending = PendingAction(title: "Order \(title.lowercased())?", message: "Paid now from company cash. The report arrives in \(weeks.weeksText).", button: "Order for \(cur.tidyShort(o.cost))", amount: o.cost, currency: cur, tone: .info, icon: "doc.text.magnifyingglass") {
             let r = store.act { $0.buyResearch(companyID: cid, optionID: oid) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show("\(title) ordered.", tone: "good") }

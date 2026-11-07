@@ -81,7 +81,7 @@ struct UsedCarPageView: View {
         let hi: Double = max(max(basis, fair) * 1.6, car.askingPrice * 1.1)
         let step: Double = max(1, (fair / 400).rounded())
         let binding: Binding<Double> = Binding<Double>(get: { draft ?? car.askingPrice }, set: { (v: Double) in draft = v })
-        return MoreBlock(title: "Asking price", trailing: {
+        return PageGroup(title: "Asking price", trailing: {
             Text(cur.tidyShort(price)).textStyle(.caption, tint: Theme.inkFaint, numeric: true)
         }) {
             VStack(alignment: .leading, spacing: 8) {
@@ -149,7 +149,7 @@ struct UsedCarPageView: View {
         if car.status == "quoted" {
             quotedBlock(e, car, cur)
         } else if car.status == "repair" {
-            MoreBlock("At the garage") {
+            PageGroup("At the garage") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: car.repairSupplierName.isEmpty ? "Garage" : car.repairSupplierName, value: usedCarMoney(car.repairQuote, cur), sub: "Paid when it is done", rule: false)
                     FlatRow(label: "Back in", value: car.repairWeeksLeft <= 1 ? "this week or next" : "\(car.repairWeeksLeft) weeks",
@@ -157,7 +157,7 @@ struct UsedCarPageView: View {
                 }
             }
         } else if car.status == "new" {
-            MoreBlock("Inspection") {
+            PageGroup("Inspection") {
                 Text("The yard cleans and looks at the car next week. Hidden faults come out then, with a repair quote.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
@@ -170,7 +170,7 @@ struct UsedCarPageView: View {
         let who: String = offer?.supplierName ?? "A garage"
         let weeks: Int = offer?.weeks ?? 1
         let own: String = (offer?.isOwn ?? false) ? "Your own company, at the group price." : "An independent garage at the market price."
-        return MoreBlock("Repair") {
+        return PageGroup("Repair") {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Repair quote", value: usedCarMoney(car.repairQuote, cur), sub: "What the faults cost at market price.", rule: false)
                 FlatRow(label: who, value: usedCarMoney(price, cur), sub: own + " About \(weeks) \(weeks == 1 ? "week" : "weeks").")
@@ -185,7 +185,7 @@ struct UsedCarPageView: View {
     private func askRepair(_ who: String, _ price: Double, _ weeks: Int, _ cur: Currency) {
         let id: Int = carID, cid: Int = companyID
         pending = PendingAction(title: "Send to repair?", message: who + " repairs it for " + usedCarMoney(price, cur) + " in about \(weeks) \(weeks == 1 ? "week" : "weeks"). It is greyed out meanwhile, but customers can reserve it.",
-                                button: "Send", amount: price, currency: cur) {
+                                button: "Send", amount: price, currency: cur, tone: .info, icon: "wrench.and.screwdriver") {
             let r: SettingResult? = store.act { (e: inout GameEngine) -> SettingResult in e.sendUsedCarToRepair(companyID: cid, carID: id) }
             store.settle(r, "Sent to the garage.")
         }
@@ -194,7 +194,7 @@ struct UsedCarPageView: View {
     private func askAsIs(_ car: UsedCarStockItem, _ cur: Currency) {
         let id: Int = carID, cid: Int = companyID
         pending = PendingAction(title: "Sell as it is?", message: "No repair is paid. Customers see the faults, so the car looks worth less and sells at a lower price.",
-                                button: "Sell as it is", risk: "You cannot send it to repair afterwards.") {
+                                button: "Sell as it is", risk: "You cannot send it to repair afterwards.", tone: .info, icon: "tag") {
             let r: SettingResult? = store.act { (e: inout GameEngine) -> SettingResult in e.sellUsedCarAsIs(companyID: cid, carID: id) }
             store.settle(r, "It is for sale as it is.")
         }
@@ -207,7 +207,7 @@ struct UsedCarPageView: View {
             let offer: Double = m.value("data")["price"].double
             let diff: Double = offer - car.costBasis
             let note: String = diff >= 0 ? usedCarMoney(diff, cur) + " over what it cost you" : usedCarMoney(diff, cur) + " under what it cost you"
-            MoreBlock("Wholesaler offer") {
+            PageGroup("Wholesaler offer") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "A wholesaler offers", value: usedCarMoney(offer, cur), sub: note, tint: diff >= 0 ? Theme.gain : Theme.loss, rule: false)
                     Button { Haptics.tap(); accept(m) } label: { Text("Sell to the wholesaler").frame(maxWidth: .infinity) }

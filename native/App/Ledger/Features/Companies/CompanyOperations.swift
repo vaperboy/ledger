@@ -36,8 +36,8 @@ enum OpsSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// Operations of one company on ONE page: what needs fixing first, capacity, then a table of settings (each row one setting with its
-/// current value; a small change opens a sheet, a bigger decision a full page), and open complaints.
+/// Manage of one company on one page: capacity as the hero (how full the place is and what limits it), what needs fixing first, then how
+/// the place is run as plain rows (a small change opens a popup, a bigger one a page), and open complaints.
 struct CompanyOperations: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -46,54 +46,59 @@ struct CompanyOperations: View {
     @State private var sheet: OpsSheet?
     /// The last opened page, kept while the page slides away.
     @State private var heldPart: OpsPart = .setup
+    @Environment(\.outsidePalette) private var P
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            notes
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             CompanyPerformance(engine: engine, company: company)
-            settingsTable
+            FixFirstCard(issues: issues, heading: "Needs you")
+            runRows
             CompanyOtherSections(engine: engine, company: company)
         }
-        .centerSheet(item: $sheet) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
+        .centerSheet(item: $sheet, category: .medium, tone: .info) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
         .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
             OpsPageDestination(part: part == .setup ? heldPart : part, companyID: company.id)
         }
         .onChange(of: part) { (_: OpsPart, new: OpsPart) in if new != .setup { heldPart = new } }
     }
 
-    // MARK: Table of settings
+    // MARK: How the place is run
 
-    private var settingsTable: some View {
-        OverviewSettingsCard(heading: "Settings") {
-            smallRows
-            bigRows
-        }
-    }
-
-    @ViewBuilder private var smallRows: some View {
-        let stockNote: String = company.inventory > 0 ? "Equipment upkeep and stock; cash tied up " + store.short(company.inventory, in: company) : "Equipment upkeep and how much stock you keep"
-        SettingsTableRow(title: "Upkeep", note: stockNote, value: OpsWords.name(OpsWords.maintenance, company.maintenance) + " / " + OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased(), opens: .sheet, glyph: Glyph.opsWrench) { sheet = .upkeep }
-    }
-
-    @ViewBuilder private var bigRows: some View {
+    private var runRows: some View {
         let licences: [LicenceLine] = engine.licences(companyID: company.id)
-        if !licences.isEmpty {
-            let held: Int = licences.filter { $0.form.status == "ok" }.count
-            SettingsTableRow(title: "Licences", note: "Add new things to sell; apply and wait for the answer", value: "\(held) of \(licences.count) held", glyph: Glyph.reports) { part = .licences }
-        }
-        premisesRow
-        equipmentRow
-        if CompanySourcing.isAvailable(engine: engine, company: company) {
-            SettingsTableRow(title: "Suppliers", note: "Who provides each input", value: "\(engine.supplierInputs(companyID: company.id).count) inputs", glyph: Glyph.suppliers) { part = .suppliers }
+        let rental: Bool = engine.tradeInfo(companyID: company.id)?.family == "rent"
+        let sourcing: Bool = CompanySourcing.isAvailable(engine: engine, company: company)
+        return PageGroup("Run the place") {
+            upkeepRow
+            if !licences.isEmpty {
+                let held: Int = licences.filter { $0.form.status == "ok" }.count
+                RowRule()
+                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Licences", subtitle: "New things to sell need a licence first",
+                          value: "\(held) of \(licences.count)", valueNote: "held", identifier: "manage-licences") { part = .licences }
+            }
+            if rental {
+                let count: Int = engine.propertyPortfolio(companyID: company.id)?.rows.count ?? 0
+                RowRule()
+                LedgerRow(leading: .glyph(Glyph.opsPin), leadingTint: P.inkSoft, title: "Properties", subtitle: "What you own and let",
+                          value: "\(count)", valueNote: count == 1 ? "property" : "properties", identifier: "manage-properties") { part = .premises }
+            }
+            RowRule()
+            equipmentRow
+            if sourcing {
+                let inputs: Int = engine.supplierInputs(companyID: company.id).count
+                RowRule()
+                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers", subtitle: "Who provides each input, and at what price",
+                          value: "\(inputs)", valueNote: inputs == 1 ? "input" : "inputs", identifier: "manage-suppliers") { part = .suppliers }
+            }
+            CompanyMorePages(engine: engine, company: company, pages: [.energy, .salmon, .club], ruled: true)
         }
     }
 
-    @ViewBuilder private var premisesRow: some View {
-        if engine.tradeInfo(companyID: company.id)?.family == "rent" {
-            let count: Int = engine.propertyPortfolio(companyID: company.id)?.rows.count ?? 0
-            SettingsTableRow(title: "Properties", note: "What you own and let", value: "\(count) \(count == 1 ? "property" : "properties")", glyph: Glyph.opsPin) { part = .premises }
-        }
-        // Premises are in AirStay and insurance and advisers in Atlas: no rows for them here. Equipment is bought in TechPro Store.
+    private var upkeepRow: some View {
+        let stockNote: String = company.inventory > 0 ? "Upkeep and stock \u{00B7} " + store.short(company.inventory, in: company) + " tied up in stock" : "Equipment upkeep and how much stock you keep"
+        return LedgerRow(leading: .glyph(Glyph.opsWrench), leadingTint: P.inkSoft, title: "Upkeep", subtitle: stockNote,
+                         value: OpsWords.name(OpsWords.maintenance, company.maintenance), valueNote: OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased() + " stock",
+                         identifier: "manage-upkeep") { sheet = .upkeep }
     }
 
     /// What the company owns and what is missing; the page sells, services and links to TechPro Store to buy.
@@ -101,38 +106,38 @@ struct CompanyOperations: View {
         let needs: [EquipmentMarket.Need] = engine.equipmentNeeds(companyID: company.id)
         let missing: Int = needs.filter { !$0.isVehicle && !$0.isSoftware && $0.need > 0 && $0.have + $0.leased < $0.need }.count
         let owned: Int = engine.ownedEquipment(companyID: company.id).filter { $0.kind != "veh" }.count
-        return SettingsTableRow(title: "Equipment", note: "What you own, what is missing, selling and leases",
-                                value: missing > 0 ? "\(missing) missing" : "\(owned) owned", valueTint: missing > 0 ? Theme.warn : Theme.ink,
-                                glyph: Glyph.settings) { part = .equipment }
+        return LedgerRow(leading: .glyph(Glyph.settings), leadingTint: missing > 0 ? P.warn : P.inkSoft, title: "Equipment", subtitle: "What you own, what is missing, selling and leases",
+                         value: missing > 0 ? "\(missing)" : "\(owned)", valueTint: missing > 0 ? P.warn : nil, valueNote: missing > 0 ? "missing" : "owned",
+                         identifier: "manage-equipment") { part = .equipment }
     }
 
-    // MARK: Below: paperwork and what needs you
+    // MARK: What needs you
 
     private var paperworkIssues: [TeamOverview.Issue] {
         (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == company.id && $0.kind == .paperwork }
     }
 
-    @ViewBuilder private var notes: some View {
+    /// Paperwork that can bring a fine, no insurance, a team that has outgrown working from home: most urgent first.
+    private var issues: [CompanyIssue] {
         let o: CoverageOverview? = engine.coverageOverview(companyID: company.id)
         let uninsured: Bool = (o?.activeCount ?? 1) == 0
         let outgrown: Bool = engine.isHomeTrade(companyID: company.id) && engine.hasOutgrownHome(companyID: company.id)
         let paper: [TeamOverview.Issue] = paperworkIssues
-        if paper.first != nil || uninsured || outgrown {
-            LedgerSection("Needs you", rule: false) {
-                VStack(spacing: 0) {
-                    if let first = paper.first {
-                        note(paper.count == 1 ? first.detail : "\(paper.count) paperwork matters need you. An inspection can fine you.", action: "Team") { store.openCompany(company.id, section: .staff) }
-                    }
-                    if uninsured { note("Not insured. A bad week has nothing behind it: get the policies you want in Atlas.", action: "Cover") { store.openAtlas(companyID: company.id) } }
-                    if outgrown { note("The team has outgrown working from home: morale and quality slip every week.", action: "Premises") { store.openAirStay(companyID: company.id) } }
-                }
-            }
+        let id: Int = company.id
+        var out: [CompanyIssue] = []
+        if let first = paper.first {
+            out.append(CompanyIssue(id: "paper", glyph: Glyph.reports, tint: P.warn, title: paper.count == 1 ? first.title : "\(paper.count) paperwork matters",
+                                    sub: paper.count == 1 ? first.detail : "An inspection can fine you", action: "Open Team") { store.openCompany(id, section: .staff) })
         }
-    }
-
-    /// A warning row, the same as the Overview's: warn glyph, what is wrong, and where it is handled; the whole row opens it.
-    private func note(_ text: String, action: String, tap: @escaping () -> Void) -> some View {
-        LedgerRow(leading: .glyph(Glyph.warning), leadingTint: Theme.warn, title: text, valueNote: action, valueNoteTint: Theme.accent, lineLimit: 3, action: tap)
+        if uninsured {
+            out.append(CompanyIssue(id: "cover", glyph: Glyph.opsShield, tint: P.warn, title: "Not insured", sub: "A bad week has nothing behind it: get the policies you want in Atlas",
+                                    action: "Get cover") { store.openAtlas(companyID: id) })
+        }
+        if outgrown {
+            out.append(CompanyIssue(id: "home", glyph: Glyph.home, tint: P.warn, title: "Outgrown working from home", sub: "Morale and quality slip every week",
+                                    action: "Find premises") { store.openAirStay(companyID: id) })
+        }
+        return out
     }
 }
 

@@ -37,13 +37,15 @@ struct MarketingSheet: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// "Marketing", how many campaigns run and the total weekly budget; 
+    /// The total weekly budget as the one figure, and how many channels run.
     private func header(active: Int, total: Double, cur: Currency) -> some View {
-        let sub: String = active == 0 ? "No campaigns" : "\(active) active \u{00B7} " + cur.tidyDisplay(total) + " a week"
+        let sub: String = active == 0 ? "No campaigns running: switch a channel on" : "\(active.countText("channel")) running"
         return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("Marketing").popupText(.figure).accessibilityAddTraits(.isHeader)
+            Text("Marketing a week").popupText(.caption).accessibilityAddTraits(.isHeader)
+            Text(cur.tidyDisplay(total)).popupText(.figure)
             Text(sub).popupText(active > 0 ? .effect : .subtitle)
         }
+        .padding(.bottom, Theme.Space.s)
     }
 
     private func channelList(_ e: GameEngine, _ channels: [MarketingChannel], cur: Currency, mkt: JSONValue) -> some View {
@@ -89,9 +91,12 @@ struct MarketingSheet: View {
                 if value > 0, let line = effectLine(e, ch, budget: value, cur: cur) {
                     Text(line.text).textStyle(.caption, tint: line.tint, numeric: true).fixedSize(horizontal: false, vertical: true)
                 }
+                // Snaps to the engine's own budget levels (and 0, which stops the channel).
                 LedgerSlider(value: amount, in: 0...top, onEditingChanged: { (editing: Bool) in
                     if !editing { commit(ch, draft[ch.id] ?? value, cur: cur) }
                 })
+                .detents([0] + budgets)
+                .accessibilityIdentifier("marketing-budget-" + ch.id)
             }
         }
         .padding(.vertical, Theme.Space.xxs)

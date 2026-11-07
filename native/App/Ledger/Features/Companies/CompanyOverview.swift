@@ -6,11 +6,158 @@ import Finance
 import Businesses
 import Simulation
 
+// MARK: Hero
+
+/// The opening of a company screen: a faint caps label, one large serif figure, one context line (a change in gain or loss colour, then
+/// a plain note) and a sparkline of the real history behind the figure when there is any.
+struct CompanyHero: View {
+    var label: String
+    var value: String
+    var tint: Color? = nil
+    var change: String = ""
+    var changeTint: Color? = nil
+    var context: String = ""
+    var trend: [Double] = []
+    var live: Double? = nil
+    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 42
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(label.tidyText).textStyle(.label, tint: P.inkFaint)
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                figure
+                Spacer(minLength: 0)
+                if trend.count >= 2 {
+                    Sparkline(values: trend, tint: changeTint ?? P.accent).frame(width: 88, height: 36).accessibilityHidden(true)
+                }
+            }
+            if !change.isEmpty || !context.isEmpty { contextLine }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var figure: some View {
+        let t = Text(value.tidyText).font(.system(size: size, weight: .medium, design: .serif).monospacedDigit())
+            .foregroundStyle(tint ?? P.ink).lineLimit(1).minimumScaleFactor(0.5)
+        if let live { t.moneyFlash(live) } else { t }
+    }
+
+    private var contextLine: some View {
+        let sep: String = !change.isEmpty && !context.isEmpty ? "  \u{00B7}  " : ""
+        return (Text(change.tidyText).foregroundColor(changeTint ?? P.inkSoft) + Text((sep + context).tidyText).foregroundColor(P.inkSoft))
+            .font(Font.step(.body, numeric: true))
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// A titled group of rows sitting on the page: a faint caps label, then the rows (callers put an inset `RowRule` between them). No box.
+struct PageGroup<Content: View, Trailing: View>: View {
+    var title: String
+    /// Space between the children (0 for rows that carry their own rules).
+    var spacing: CGFloat = 0
+    @ViewBuilder var trailing: () -> Trailing
+    @ViewBuilder var content: () -> Content
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            if !title.isEmpty {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title.tidyText).textStyle(.label, tint: P.inkFaint)
+                    Spacer(minLength: Theme.Space.s)
+                    trailing()
+                }
+            }
+            VStack(alignment: .leading, spacing: spacing) { content() }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension PageGroup where Trailing == EmptyView {
+    init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.init(title: title, trailing: { EmptyView() }, content: content)
+    }
+}
+
+/// The hairline between two rows of a group, inset past the leading glyph.
+struct RowRule: View {
+    var inset: CGFloat = 32
+    var body: some View { Hairline().padding(.leading, inset) }
+}
+
+/// One matter for the owner: what is wrong, why, and where it is handled.
+struct CompanyIssue: Identifiable {
+    var id: String
+    var glyph: String
+    var tint: Color
+    var title: String
+    var sub: String
+    var action: String
+    var run: () -> Void
+}
+
+/// The one thing to fix first, as a raised card with its own action; the rest of the list opens under it.
+struct FixFirstCard: View {
+    var issues: [CompanyIssue]
+    var heading: String = "Fix this first"
+    @State private var showAll = false
+    @Environment(\.outsidePalette) private var P
+
+    var body: some View {
+        if let first = issues.first {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                Text(heading).textStyle(.label, tint: first.tint)
+                HStack(alignment: .top, spacing: Theme.Space.m) {
+                    LedgerGlyph(glyph: first.glyph, size: Theme.Icon.large, tint: first.tint)
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(first.title.tidyText).textStyle(.headline).fixedSize(horizontal: false, vertical: true)
+                        if !first.sub.isEmpty { Text(first.sub.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
+                    }
+                    Spacer(minLength: 0)
+                }
+                Button { Haptics.tap(); first.run() } label: { Text(first.action) }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("company-fix-first")
+                if issues.count > 1 {
+                    Button {
+                        Haptics.choose()
+                        Motion.animate(Motion.quickAnimation) { showAll.toggle() }
+                    } label: {
+                        HStack {
+                            Text(showAll ? "Hide the rest" : "\(issues.count - 1) more \(issues.count == 2 ? "needs" : "need") you").textStyle(.body, tint: P.accent)
+                            Spacer()
+                            Image(systemName: showAll ? "chevron.up" : "chevron.down").font(.caption.weight(.semibold)).foregroundStyle(P.accent)
+                        }
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("company-needs-more")
+                    if showAll {
+                        VStack(spacing: 0) {
+                            ForEach(Array(issues.dropFirst().enumerated()), id: \.element.id) { (n: Int, i: CompanyIssue) in
+                                if n > 0 { Hairline() }
+                                LedgerRow(leading: .glyph(i.glyph), leadingTint: i.tint, title: i.title, subtitle: i.sub, valueNote: i.action,
+                                          valueNoteTint: P.accent, action: i.run)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(Theme.Space.l)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.surfaceRaised))
+            .elevation(.raised)
+        }
+    }
+}
+
 // MARK: Overview
 
-/// One company at a glance, the same template for every trade. Scan order: cash with its runway, what needs the owner (flat rows),
-/// three key figures, how customers see the place (capacity lives on Manage), and revenue and profit by month. Families with a model of their own (energy, fish,
-/// property, finance, club, holding) keep this summary and do their detailed work in their own section.
+/// One company at a glance, the same cockpit for every trade: profit a week with its trend, cash, revenue and margin; the one thing to
+/// fix first; the other sections as rows with their live state; then revenue and profit by month.
 struct CompanyOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -18,17 +165,24 @@ struct CompanyOverview: View {
     @Binding var section: CompanySection
     @Binding var moneyPart: CompanyMoneyPart
     @State private var months = 12
-    /// Energy, fish, holding and club have their own section instead of the customers-and-capacity picture.
-    private var isSpecial: Bool { engine.tradeInfo(companyID: company.id).map { SpecialFamilies.handles($0) } ?? false }
+    @Environment(\.outsidePalette) private var P
 
     var body: some View {
         let co = company
-        let h = engine.companyHealth(co)
-        VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            hero(co, h)
-            needsYou(co)
-            keyFigures(co, h)
-            if co.status == .open && !isSpecial { operations(co, h) }
+        let h: CompanyHealth = store.memo("coHealth\(co.id)") { $0.companyHealth(co) } ?? engine.companyHealth(co)
+        let ops: OperationsFigures? = store.memo("coOps\(co.id)") { $0.operationsFigures(companyID: co.id) } ?? nil
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                hero(co, h, ops)
+                strip(co, h, ops)
+            }
+            let list: [CompanyIssue] = issues(co)
+            if list.isEmpty {
+                if co.status == .open { allClear(h) }
+            } else {
+                FixFirstCard(issues: list)
+            }
+            sectionRows(co, h, ops)
             performance(co, h)
         }
     }
@@ -40,130 +194,165 @@ struct CompanyOverview: View {
     }
     private func goMoney(_ part: CompanyMoneyPart) { moneyPart = part; go(.finances) }
 
-    /// Staff matters shown under "Needs you" (paperwork, worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
-    private func staffMatters(_ co: Company) -> [TeamOverview.Issue] {
-        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
-    }
+    // MARK: Hero and figures
 
-    // 1. Hero: cash first with how long it lasts, and the verdict in words when it adds something
-    private func hero(_ co: Company, _ h: CompanyHealth) -> some View {
-        let cashSub: String = h.runwayWeeks != nil ? "lasts \(RunwayText.of(h))" : String(format: "%.0f weeks of costs", h.weeksOfCash)
-        let growth: String = h.revenueGrowth.map { String(format: " \u{00B7} revenue %+.0f%% vs 3 mo", $0 * 100) } ?? ""
-        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("Cash").textStyle(.label)
-            Text(store.money(co.cash, in: co)).textStyle(.display, tint: co.cash < 0 ? Theme.loss : nil)
-                .minimumScaleFactor(0.6).lineLimit(1).moneyFlash(co.cash)
-            Text("Cash \(cashSub)" + growth).textStyle(.caption)
-            if showVerdict(co, h) {
-                Text(verdict(co, h)).textStyle(.body).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.xs)
-            }
+    /// Profit a week (last closed month) with the change against the month before; before the first month closes, the cash.
+    @ViewBuilder private func hero(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
+        if co.status == .open, let pw = ops?.profitPerWeek {
+            let change: String = ops?.profitChangePerWeek.map { (d: Double) -> String in
+                (d >= 0 ? "\u{25B2} " : "\u{25BC} ") + store.short(abs(d), in: co) + " vs the month before"
+            } ?? ""
+            let tint: Color? = (ops?.profitChangePerWeek ?? 0) >= 0 ? P.gain : P.loss
+            CompanyHero(label: "Profit a week", value: (pw < 0 ? "\u{2212}" : "") + store.money(abs(pw), in: co), tint: pw < 0 ? P.loss : nil,
+                        change: change, changeTint: tint, context: change.isEmpty ? "last full month" : "",
+                        trend: Array(h.profitSeries.suffix(12)), live: pw)
+        } else {
+            CompanyHero(label: "Cash", value: store.money(co.cash, in: co), tint: co.cash < 0 ? P.loss : nil,
+                        context: verdict(co, h), trend: Array(h.cashSeries.suffix(12)), live: co.cash)
         }
     }
 
-    /// Profit, margin and revenue over twelve months. Costs, debt and value are on Stats.
-    private func keyFigures(_ co: Company, _ h: CompanyHealth) -> some View {
-        let loss: Bool = h.profitTTM < 0
-        let margin: String = h.marginTTM.map { String(format: "%.1f%%", $0 * 100) } ?? "\u{2013}"
-        return FigureRow(items: [
-            .init(label: "Profit 12 mo", value: (loss ? "\u{2212}" : "") + store.short(abs(h.profitTTM), in: co), tint: loss ? Theme.loss : Theme.ink, live: h.profitTTM),
-            .init(label: "Margin", value: margin),
-            .init(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co), live: h.revenueTTM),
-        ], combineCells: true)
-    }
-
-    /// The verdict sentence is shown when it adds something: a company that is not trading, short of cash, or not doing well. A healthy
-    /// company's figures already say so, and the line would only push the overview past one screen.
-    private func showVerdict(_ co: Company, _ h: CompanyHealth) -> Bool {
-        if co.status != .open || co.cash < 0 { return true }
-        return h.label == "Tight" || h.label == "Struggling" || (h.runwayWeeks.map { $0 < 8 } ?? false)
+    /// Cash with how long it lasts, revenue and margin over twelve months (profit a week is the hero, so no profit figure here).
+    @ViewBuilder private func strip(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
+        let heroIsCash: Bool = !(co.status == .open && ops?.profitPerWeek != nil)
+        let margin: String = h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "\u{2013}"
+        let runway: String = h.runwayWeeks != nil ? "lasts \(RunwayText.of(h))" : (h.profitTTM > 0 ? "self-funding" : "")
+        let short: Bool = h.runwayWeeks.map { $0 < 8 } ?? false
+        let cashTint: Color = co.cash < 0 ? P.loss : (short ? P.warn : P.ink)
+        let cashCell = KeyFigures.Item(label: "Cash", value: store.short(co.cash, in: co), tint: cashTint, sub: runway, live: co.cash)
+        let revCell = KeyFigures.Item(label: "Revenue 12 mo", value: store.short(h.revenueTTM, in: co), live: h.revenueTTM)
+        let marginCell = KeyFigures.Item(label: "Margin", value: margin, tint: (h.marginTTM ?? 0) < 0 ? P.loss : P.ink)
+        let healthCell = KeyFigures.Item(label: "Health", value: h.label, tint: HealthChip.tint(h.label))
+        FigureRow(items: heroIsCash ? [revCell, marginCell, healthCell] : [cashCell, revCell, marginCell], combineCells: true)
     }
 
     private func verdict(_ co: Company, _ h: CompanyHealth) -> String {
         switch co.status {
-        case .setup: return "Not open yet: finish the setup to start trading."
-        case .closed: return "Closed for now: no sales, but rent and part of the wages still run."
-        case .sold: return "No longer yours."
-        case .bust: return "Bankrupt."
+        case .setup: return "Not open yet: finish the setup to start trading"
+        case .closed: return "Closed for now: rent and part of the wages still run"
+        case .sold: return "No longer yours"
+        case .bust: return "Bankrupt"
         default: break
         }
-        if co.cash < 0 { return "Out of cash: bills and wages are at risk. Put money in or cut costs." }
-        if let w = h.runwayWeeks, w < 8 { return "Losing money: at this rate the cash runs out in \(Int(w).weeksText)." }
-        switch h.label {
-        case "Thriving": return "Doing very well: profitable, growing and with cash to spare."
-        case "Healthy": return "Doing well: profitable and paying its way."
-        case "Tight": return "Getting by, with little room: watch costs and cash."
-        case "Struggling": return "Struggling: costs are higher than what comes in."
-        default: return "Too new to judge: the picture fills in over the first months."
-        }
+        if co.cash < 0 { return "Out of cash: bills and wages are at risk" }
+        if h.runwayWeeks != nil { return "Losing money: the cash lasts \(RunwayText.of(h))" }
+        return h.label == "New" ? "Profit shows after the first full month" : "\(String(format: "%.0f", h.weeksOfCash)) weeks of costs in hand"
     }
 
-    // 2. What needs the owner here, first: decisions waiting, setup, closure, unpaid bills, people problems, nobody in charge
-    @ViewBuilder private func needsYou(_ co: Company) -> some View {
+    /// Nothing needs the owner: one calm line instead of a card.
+    private func allClear(_ h: CompanyHealth) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.medium, tint: P.gain)
+            Text(h.label == "Struggling" || h.label == "Tight" ? "Nothing waits for you, but margins are thin." : "Nothing needs you here.")
+                .textStyle(.body, tint: P.inkSoft)
+        }
+        .accessibilityIdentifier("company-all-clear")
+    }
+
+    // MARK: What needs the owner
+
+    /// Staff matters (paperwork, worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
+    private func staffMatters(_ co: Company) -> [TeamOverview.Issue] {
+        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
+    }
+
+    /// Everything that needs the owner, most urgent first: money trouble, nobody in charge, decisions waiting, setup, closure, people.
+    private func issues(_ co: Company) -> [CompanyIssue] {
+        var out: [CompanyIssue] = []
         let asks = engine.state.inbox.filter { $0.companyID == co.id && $0.status == "open" }.sorted { $0.week > $1.week }
         let people = co.staff.filter { !$0.value("flag").isNull || $0.noticeWeeks > 0 || $0.sickUntilWeek != nil }.count
-        // The same list the Team tab shows (paperwork, worn-out staff, a manager leaving or struggling), so the two screens never disagree.
         let matters = staffMatters(co)
         let nobody = co.status == .open && co.type != "hold" && co.managerID == nil && co.ownerHours == 0 && engine.decisionChain(companyID: co.id).isEmpty
         let setupLeft = co.status == .setup ? engine.openingChecklist(companyID: co.id).filter { !$0.isDone }.count : 0
         let behind = engine.state.loans.contains { $0.companyID == co.id && $0.int("miss") > 0 } || co.int("supCut") > 0 || co.num("vatOver") > 1 || co.int("loanCall") != 0
-        if !(asks.isEmpty && setupLeft == 0 && co.status != .closed && !behind && people == 0 && matters.isEmpty && !nobody) {
-            LedgerSection(title: "Needs you", rule: false, trailing: {
-                if !asks.isEmpty { Text(asks.count.countText("decision")).textStyle(.caption, tint: Theme.warn) }
-            }) {
-              VStack(spacing: 0) {
-                ForEach(Array(asks.prefix(2).enumerated()), id: \.element.id) { _, m in
-                    warning(glyph: Glyph.inbox, tint: Theme.caution, title: m.title, sub: m.from.isEmpty ? "Waiting for your answer" : "From \(m.from)", action: "Decide") {
-                        store.openMessage(m.id)
-                    }
+        if co.cash < 0 && co.status == .open {
+            out.append(CompanyIssue(id: "cash", glyph: Glyph.warning, tint: P.loss, title: "Out of cash", sub: "Bills and wages are at risk: put money in or cut costs", action: "Open finances") { goMoney(.summary) })
+        }
+        if behind { out.append(CompanyIssue(id: "behind", glyph: Glyph.warning, tint: P.loss, title: "Behind on payments", sub: "Loans, VAT or suppliers", action: "Open finances") { goMoney(.summary) }) }
+        if nobody { out.append(CompanyIssue(id: "nobody", glyph: Glyph.person, tint: P.loss, title: "No one runs it", sub: "You do not work here and there is no manager", action: "Open Team") { go(.staff) }) }
+        for m in asks.prefix(3) {
+            let mid = m.id
+            out.append(CompanyIssue(id: "ask\(m.id)", glyph: Glyph.inbox, tint: P.warn, title: m.title, sub: m.from.isEmpty ? "Waiting for your answer" : "From \(m.from)", action: "Decide") { store.openMessage(mid) })
+        }
+        if setupLeft > 0 { out.append(CompanyIssue(id: "setup", glyph: Glyph.reports, tint: P.warn, title: "\(setupLeft.countText("thing")) left before opening", sub: "Documents, premises, equipment, stock", action: "Open setup") { go(.setup) }) }
+        if co.status == .closed { out.append(CompanyIssue(id: "closed", glyph: Glyph.settings, tint: P.warn, title: "Closed", sub: "Reopen it or close down for good", action: "Open settings") { goMoney(.settings) }) }
+        if !matters.isEmpty {
+            let one: Bool = matters.count == 1
+            out.append(CompanyIssue(id: "matters", glyph: Glyph.person, tint: P.warn, title: one ? matters[0].title : "\(matters.count) staff matters need you", sub: one ? matters[0].detail : "Paperwork, tired staff or your manager", action: "Open Team") { go(.staff) })
+        }
+        if people > 0 { out.append(CompanyIssue(id: "people", glyph: Glyph.team, tint: P.warn, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Open Team") { go(.staff) }) }
+        return out
+    }
+
+    // MARK: The sections as rows
+
+    @ViewBuilder private func sectionRows(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
+        let tabs: [CompanyTab] = CompanyDetailView.tabs(co, engine)
+        let rows: [CompanyTab] = tabs.filter { $0 != .overview }
+        if !rows.isEmpty {
+            PageGroup("The business") {
+                ForEach(Array(rows.enumerated()), id: \.element) { (n: Int, t: CompanyTab) in
+                    if n > 0 { RowRule() }
+                    sectionRow(t, co, h, ops)
                 }
-                if asks.count > 2 { Text("and \(asks.count - 2) more in Inbox").textStyle(.caption).padding(.vertical, Theme.Space.xs) }
-                if setupLeft > 0 { warning(glyph: Glyph.reports, tint: Theme.caution, title: "\(setupLeft.countText("thing")) left before opening", sub: "Documents, premises, equipment, stock", action: "Setup") { go(.setup) } }
-                if co.status == .closed { warning(glyph: Glyph.settings, tint: Theme.caution, title: "Closed", sub: "Reopen it or close down for good", action: "Settings") { goMoney(.settings) } }
-                if behind { warning(glyph: Glyph.warning, tint: Theme.loss, title: "Behind on payments", sub: "Loans, VAT or suppliers", action: "Finances") { goMoney(.summary) } }
-                if !matters.isEmpty {
-                    let one: Bool = matters.count == 1
-                    warning(glyph: Glyph.person, tint: Theme.caution, title: one ? matters[0].title : "\(matters.count) staff matters need you", sub: one ? matters[0].detail : "Paperwork, tired staff or your manager", action: "Team") { go(.staff) }
-                }
-                if people > 0 { warning(glyph: Glyph.team, tint: Theme.caution, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Team") { go(.staff) } }
-                if nobody { warning(glyph: Glyph.person, tint: Theme.loss, title: "No one runs it", sub: "You do not work here and there is no manager", action: "Team") { go(.staff) } }
-              }
             }
         }
     }
 
-    /// A warning row: tinted glyph, what is wrong, and where it is handled as the row's value; the whole row opens it.
-    private func warning(glyph: String, tint: Color, title: String, sub: String, action: String, _ run: @escaping () -> Void) -> some View {
-        LedgerRow(leading: .glyph(glyph), leadingTint: tint, title: title, subtitle: sub, valueNote: action, valueNoteTint: Theme.accent, action: run)
-    }
-
-    // 3. Last week: how customers see the place. Capacity and demand are on Manage; this row links there.
-    private func operations(_ co: Company, _ h: CompanyHealth) -> some View {
-        let turnedAway: Bool = h.demandCoverage > 1.05
-        let note: String = h.bottleneck.map { b in
-            turnedAway ? "Limited by \(b.lowercased()) \u{00B7} turning customers away" : "Spare room: demand, not \(b.lowercased()), limits sales"
-        } ?? "\(Int(h.servedLastWeek.rounded())) served last week"
-        return LedgerSection("Last week") {
-            FigureRow(items: [
-                .init(label: "Rating", value: StandingWords.ratingText(h.rating)),
-                .init(label: "Reputation", value: StandingWords.reputation(co.reputation)),
-                .init(label: "Quality", value: Words.level(co.quality, scale: .quality)),
-                .init(label: "Awareness", value: StandingWords.awareness(co.awareness)),
-            ], columns: 2, combineCells: true)
-            LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? Theme.warn : nil, title: "Capacity and demand", subtitle: note) { go(.operations) }
+    @ViewBuilder private func sectionRow(_ t: CompanyTab, _ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
+        switch t {
+        case .team:
+            let n: Int = co.staff.count
+            let boss: String = engine.decisionChain(companyID: co.id).first.map { "Run by \($0.name)" } ?? (OwnerHours.works(co) ? "You work here" : "No manager")
+            LedgerRow(leading: .glyph(Glyph.team), leadingTint: P.inkSoft, title: "Team", subtitle: boss, value: n == 0 ? "" : "\(n)", valueNote: n == 0 ? "" : (n == 1 ? "person" : "people"),
+                      identifier: "overview-open-team") { go(.staff) }
+        case .manage:
+            let use: String = ops?.capacityUse.map { "\(Int(($0 * 100).rounded()))%" } ?? ""
+            let turnedAway: Bool = h.demandCoverage > 1.05
+            let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? "Premises, suppliers, equipment"
+            LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Manage", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
+                      identifier: "overview-open-manage") { go(.operations) }
+        case .sales:
+            let items: Int = engine.salesItems(companyID: co.id).count
+            let week: Double = co.lastWeekRevenue
+            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Sales", subtitle: items == 0 ? "Products, prices and marketing" : "\(items.countText("item")) on sale \u{00B7} prices and marketing",
+                      value: week > 0 ? store.short(week, in: co) : "", valueNote: week > 0 ? "last week" : "", identifier: "overview-open-sales") { go(.salesMarket) }
+        case .stats:
+            let rated: String = h.rating > 0 ? StandingWords.ratingText(h.rating) : ""
+            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Stats", subtitle: "Costs, what is owed, customers \u{00B7} reputation " + StandingWords.reputation(co.reputation).lowercased(),
+                      value: rated, valueNote: rated.isEmpty ? "" : "rating", identifier: "overview-open-stats") { go(.finances) }
+        case .overview:
+            EmptyView()
         }
     }
 
-    // 4. The trend behind the figures
+    // MARK: The trend behind the figures
+
     private func performance(_ co: Company, _ h: CompanyHealth) -> some View {
         let rev = Array(h.revenueSeries.suffix(months)), prof = Array(h.profitSeries.suffix(months))
         let monthsBinding = Binding<Int>(get: { months }, set: { months = $0 })
         let spans: [Int] = [6, 12, 24]
-        return LedgerSection("Revenue and profit by month") {
-            SegmentedPill(items: spans, title: { $0 == 6 ? "6 months" : $0 == 12 ? "1 year" : "2 years" }, selection: monthsBinding)
-            ChartFrame(key: [("Revenue", Theme.accent), ("Profit", Theme.gain)], height: 104, isEmpty: rev.count < 2,
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("By month").textStyle(.label, tint: P.inkFaint)
+                Spacer()
+                Menu {
+                    ForEach(spans, id: \.self) { (s: Int) in Button(spanTitle(s)) { monthsBinding.wrappedValue = s } }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(spanTitle(months)).textStyle(.caption, tint: P.accent)
+                        Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(P.accent)
+                    }
+                    .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("overview-chart-span")
+            }
+            ChartFrame(key: [("Revenue", Theme.accent), ("Profit", Theme.gain)], height: 120, isEmpty: rev.count < 2,
                        emptyText: "The chart starts after the first full month.") {
-                RevenueProfitChart(revenue: rev, profit: prof, format: { store.short($0, in: co) }, height: 104)
+                RevenueProfitChart(revenue: rev, profit: prof, format: { store.short($0, in: co) }, height: 120)
             }
         }
     }
+
+    private func spanTitle(_ s: Int) -> String { s == 6 ? "6 months" : s == 12 ? "1 year" : "2 years" }
 }

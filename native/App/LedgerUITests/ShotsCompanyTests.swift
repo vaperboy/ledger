@@ -61,20 +61,21 @@ final class ShotsCompanyTests: FeatureTourCase {
 
     /// A popup: shot, one screenful further down inside it, then closed.
     func shotPopup(_ name: String) {
-        guard popupUp(2) else { shot(name + "-nopopup"); return }
+        guard popupUp(2) || app.buttons["popup-close"].exists else { shot(name + "-nopopup"); return }
         shot(name)
         dragPage(-420)
         shot(name + "-2")
         var n = 0
-        while n < 3 && popupUp(1) { closePopup(); n += 1 }
+        while n < 3 && (popupUp(1) || app.buttons["popup-close"].exists) { closePopup(); n += 1 }
     }
 
-    /// Back to the company screen after a pushed page or a popup.
+    /// Back to the company screen after a pushed page or a popup (a popup hides the screen under it, so the section bar is not found).
     func backToCompany() {
-        var n = 0
-        while n < 3 && popupUp(1) { closePopup(); n += 1 }
-        var b = 0
-        while b < 3 && !has("company-tab-overview", wait: 1) { if !tapBack() { break }; b += 1 }
+        for _ in 0..<5 {
+            if has("company-tab-overview", wait: 1) { return }
+            if popupUp(0.5) || app.buttons["popup-close"].exists || app.buttons["Close"].exists { closePopup(); continue }
+            if !tapBack() { closePopup() }
+        }
     }
 
     /// Opens a company from Home by a word of its row; true on its company screen (a company still being set up shows Setup).
@@ -105,7 +106,7 @@ final class ShotsCompanyTests: FeatureTourCase {
             guard tapLabel(l, wait: 2) || tapText(l, wait: 1) else { continue }
             pause(0.8)
             let name: String = "\(tag)-\(section)-" + l.lowercased().replacingOccurrences(of: " ", with: "_")
-            if popupUp(1) { shotPopup(name) } else if scroll { shotScrolled(name) } else { shot(name) }
+            if popupUp(1.5) || app.buttons["popup-close"].exists { shotPopup(name) } else if scroll { shotScrolled(name) } else { shot(name) }
             then?()
             backToCompany()
         }
@@ -125,7 +126,7 @@ final class ShotsCompanyTests: FeatureTourCase {
         shotScrolled("\(tag)-overview")
         if onSection("team") { shot("\(tag)-team") }
         if onSection("manage") { shotScrolled("\(tag)-manage") }
-        visit(tag, "manage", ["Upkeep", "Licences", "Suppliers", "Equipment", "Properties", "Energy", "Security", "Insurance"]) {
+        visit(tag, "manage", ["Upkeep", "Licences", "Suppliers", "Equipment", "Properties", "Plant", "Fish"]) {
             // Suppliers: one supplier's popup.
             if self.tapID("supplier-option", wait: 1) { self.shotPopup("\(tag)-supplier-detail") }
         }
@@ -138,8 +139,8 @@ final class ShotsCompanyTests: FeatureTourCase {
                 backToCompany()
             }
         }
-        if onSection("sales") && tapID("sales-add-item", wait: 2) { pause(1); if popupUp(1) { shotPopup("\(tag)-new-item") } else { shotScrolled("\(tag)-new-item") }; backToCompany() }
-        visit(tag, "sales", ["Marketing", "How you sell", "New ", "Develop", "Research", "Brand", "Warranty", "Showroom", "Yard", "Market"])
+        if onSection("sales") && tapID("sales-add-item", wait: 2) { pause(1.5); if popupUp(2) || app.buttons["popup-close"].exists { shotPopup("\(tag)-new-item") } else { shot("\(tag)-new-item") }; backToCompany() }
+        visit(tag, "sales", ["Marketing", "Develop", "New ", "Research", "Warranty", "Order cars", "Brand contract"])
         if dealer {
             visit(tag, "sales", ["Cars", "Stock", "Order", "Buy"])
         }

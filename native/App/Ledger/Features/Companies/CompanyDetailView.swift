@@ -119,7 +119,6 @@ struct CompanyDetailView: View {
         case .manage:
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
-                CompanyMorePages(engine: e, company: co, pages: [.energy, .salmon, .club])
             } else {
                 CompanyClub(engine: e, company: co)
             }

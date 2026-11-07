@@ -31,7 +31,7 @@ struct CompanySettings: View {
             documents(cur)
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $converting, title: "Limited company") { ConversionSheet(companyID: company.id).environmentObject(store) }
+        .centerSheet(isPresented: $converting, title: "Limited company", category: .detail, tone: .investment) { ConversionSheet(companyID: company.id).environmentObject(store) }
     }
 
     // MARK: Legal form
@@ -76,7 +76,7 @@ struct CompanySettings: View {
 
     private func confirmRename(_ cost: Double, _ cur: Currency) {
         let name = newName.trimmingCharacters(in: .whitespaces)
-        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur) {
+        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur, tone: .info, icon: "pencil") {
             switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
             case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
             case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")
@@ -141,7 +141,7 @@ struct CompanySettings: View {
 
     private func confirmClose(_ notice: (notice: Double, depositBack: Double)?, _ cur: Currency) {
         let weeks = closeWeeks, giveUp = giveUpRent && notice != nil
-        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
+        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: false, tone: .warning, icon: "pause.circle") {
             switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp, pauseSubscriptions: pauseSubscriptions) }) {
             case .ok?: Haptics.warning(); giveUpRent = false; store.show("\(company.name) is closed for \(weeks) weeks.", tone: "n")
             case .notOpen?: Haptics.warning(); store.show("Only an open company can be closed.", tone: "warn")
@@ -174,7 +174,7 @@ struct CompanySettings: View {
 
     private func confirmWindUp(_ back: Double, _ cur: Currency) {
         let name = company.name, staff = company.staff.count
-        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true) {
+        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true, tone: .danger, icon: "xmark.octagon") {
             // Closing against every other owner and board seat: they remember it (their mood drops, the Inbox gets a line).
             let alone = engine.boardVote(kind: "close", companyID: company.id).pushedThroughAlone
             if store.act({ $0.windUpCompany(companyID: company.id) }) == true {

@@ -103,7 +103,7 @@ struct NewItemSheet: View {
                                 message: dev ? "Development takes \(o.developmentWeeks) weeks and costs " + cur.tidyDisplay(o.developmentCost) + "." : "It goes on sale at once.",
                                 button: "Add", alwaysAsk: true,
                                 amount: dev ? o.developmentCost : nil, currency: cur,
-                                run: {
+                                tone: .info, icon: "plus.circle", run: {
             let r = store.act { $0.addNewItem(companyID: id, optionID: oid) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show(dev ? "Started developing \(name)." : "Added \(name).", tone: "good"); onClose(); if !dev { onAdded?(name) } }
@@ -135,7 +135,7 @@ struct NewItemSheet: View {
         let id: Int = companyID
         let did: String = d.id
         let name: String = d.name
-        pending = PendingAction(title: "Add \(name)?", message: "It goes on sale at once.", button: "Add", alwaysAsk: true, run: {
+        pending = PendingAction(title: "Add \(name)?", message: "It goes on sale at once.", button: "Add", alwaysAsk: true, tone: .info, icon: "plus.circle", run: {
             let r = store.act { $0.addRetailItem(companyID: id, defID: did) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show("Added \(name).", tone: "good"); onClose(); onAdded?(name) }

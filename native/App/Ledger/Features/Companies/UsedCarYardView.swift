@@ -97,9 +97,8 @@ struct UsedCarRowView: View {
             }
             GlyphView(glyph: Glyph.chevron, size: 13, weight: 2, tint: Theme.ivoryDim)
         }
-        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surface))
+        .padding(.vertical, Theme.Space.m)
+        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
         .opacity(atGarage ? 0.5 : 1)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -127,7 +126,7 @@ struct UsedCarYardSection: View {
     var body: some View {
         let cur: Currency = engine.currency(for: company)
         let cars: [UsedCarStockItem] = engine.usedCarStock(companyID: company.id)
-        return VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             carsGroup(cars, cur)
             lotBlock(cur)
             buyersBlock()
@@ -144,14 +143,19 @@ struct UsedCarYardSection: View {
         let value: Double = cars.reduce(0) { (a: Double, c: UsedCarStockItem) -> Double in a + c.purchasePrice + c.repairs }
         let noun: String = cars.count == 1 ? "car" : "cars"
         let count: String = "\(cars.count) \(noun), \(cur.tidyShort(value)) in stock"
-        return TeamGroup(title: "Cars", trailing: {
+        return PageGroup(title: "Cars", trailing: {
             Text(count).textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if cars.isEmpty {
                 Text("The yard is empty. Cars only come from the Marketplace app on your Phone, bought by you or by a buyer.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
-            ForEach(cars) { (c: UsedCarStockItem) -> AnyView in AnyView(carRow(c, cur)) }
+            ForEach(Array(cars.enumerated()), id: \.element.id) { (n: Int, c: UsedCarStockItem) -> AnyView in
+                AnyView(VStack(spacing: 0) {
+                    if n > 0 { RowRule(inset: 54) }
+                    carRow(c, cur)
+                })
+            }
         }
     }
 
@@ -159,7 +163,8 @@ struct UsedCarYardSection: View {
         let q: UsedCarQuote? = engine.usedCarQuote(companyID: company.id, carID: c.id, price: c.askingPrice)
         let id: Int = c.id
         return Button { Haptics.tap(); openCar = UsedCarPick(id: id) } label: { UsedCarRowView(car: c, cur: cur, quote: q) }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(AcctPressStyle())
+            .accessibilityIdentifier("dealer-car-\(id)")
     }
 
     // MARK: Lot
@@ -171,7 +176,7 @@ struct UsedCarYardSection: View {
         let free: Int = lot?.free ?? 0
         let full: Color? = free == 0 ? Theme.loss : nil
         let sub: String = spaces == 0 ? "These premises have no space for cars. Buying a car needs a free space." : (free == 0 ? "The lot is full. Sell a car before you buy another." : "Premises decide how many cars you can hold.")
-        return MoreBlock("Lot") {
+        return PageGroup("Lot") {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Spaces used", value: "\(used) of \(spaces)", sub: sub, tint: full, rule: false)
                 FlatRow(label: "Free spaces", value: "\(free)", tint: free == 0 ? Theme.loss : Theme.gain)
@@ -183,7 +188,7 @@ struct UsedCarYardSection: View {
 
     private func buyersBlock() -> some View {
         let recs: [UsedCarBuyerRecord] = engine.usedCarBuyers(companyID: company.id)
-        return MoreBlock("Buyers") {
+        return PageGroup("Buyers") {
             VStack(alignment: .leading, spacing: 0) {
                 if recs.isEmpty {
                     Text("Nobody buys cars for you. You buy by hand on the Marketplace. A hired buyer or a manager buys for you when the lot has room.")
@@ -195,8 +200,8 @@ struct UsedCarYardSection: View {
                 Text("Skill comes from the deals he got against fair value. A better record means better cars at lower prices.")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
                 if company.status == .open {
-                    Button { Haptics.tap(); showHire = true } label: { Text("Hire a buyer").frame(maxWidth: .infinity) }
-                        .buttonStyle(GreyOutlineButtonStyle()).padding(.top, 4)
+                    Button("Hire a buyer") { Haptics.tap(); showHire = true }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact))
                 }
             }
         }
@@ -225,7 +230,7 @@ struct UsedCarYardSection: View {
             let r: SettingResult? = store.act { (e: inout GameEngine) -> SettingResult in e.setUsedCarAutoRepair(companyID: company.id, on: v) }
             store.settle(r, v ? "Repairs go to the garage at once." : "You decide car by car.")
         })
-        return MoreBlock("Repairs") {
+        return PageGroup("Repairs") {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Send every repair to the garage at once", isOn: binding).tint(Theme.gold).textStyle(.headline)
                 Text("Off: each quoted car waits for you to send it to repair or sell it as it is. Your own mechanic company is used first, at the group price.")
@@ -239,7 +244,7 @@ struct UsedCarYardSection: View {
     @ViewBuilder private func salesBlock(_ cur: Currency) -> some View {
         let sold: [UsedCarSale] = Array(engine.usedCarSales(companyID: company.id).suffix(6).reversed())
         if !sold.isEmpty {
-            MoreBlock("Last sold") {
+            PageGroup("Last sold") {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(sold.enumerated()), id: \.offset) { (i: Int, s: UsedCarSale) in
                         FlatRow(label: s.title, value: saleReading(s, cur).text, sub: saleNote(s), tint: saleReading(s, cur).tint, rule: i > 0)

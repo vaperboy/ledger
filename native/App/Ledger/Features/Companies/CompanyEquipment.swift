@@ -39,9 +39,8 @@ struct CompanyEquipmentScreen: View {
             let needs = e.equipmentNeeds(companyID: companyID)
             let tabs: [EquipmentTab] = visibleTabs(e, needs)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    Text("Cash \(store.short(co.cash, in: co))" + (e.equipmentHealth(companyID: companyID).map { " \u{00B7} equipment \(Words.level($0 * 100, scale: .condition).lowercased())" } ?? "") + " \u{00B7} buy in TechPro Store")
-                        .textStyle(.caption)
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                    hero(e, co, needs)
                     // With only the equipment part there is no index to choose from: its page shows here directly.
                     if tabs.count == 1 {
                         pageContent(.needed, e, co, needs)
@@ -63,6 +62,14 @@ struct CompanyEquipmentScreen: View {
         } else {
             EmptyState(glyph: Glyph.settings, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
+    }
+
+    /// What is missing as the hero (or the condition when nothing is), with the cash to buy it and where to buy.
+    private func hero(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
+        let missing: Int = needs.filter { $0.required && $0.have + $0.leased < 1 }.count
+        let condition: String? = e.equipmentHealth(companyID: companyID).map { Words.level($0 * 100, scale: .condition) }
+        return CompanyHero(label: missing > 0 ? "Missing to work" : "Equipment condition", value: missing > 0 ? "\(missing) \(missing == 1 ? "item" : "items")" : (condition ?? "\u{2013}"),
+                           tint: missing > 0 ? Theme.warn : nil, change: "Cash " + store.short(co.cash, in: co), changeTint: Theme.inkSoft, context: "buy in TechPro Store")
     }
 
     /// One row per part of the equipment; each opens its own page.
@@ -133,7 +140,7 @@ struct CompanyEquipmentScreen: View {
     }
     /// Selling, cancelling and ending a lease cannot be taken back, so each one asks.
     private func ask(_ p: Pending) {
-        asking = PendingAction(title: askTitle(p), message: askMessage(p), button: buttonTitle(p), destructive: true) { confirm(p) }
+        asking = PendingAction(title: askTitle(p), message: askMessage(p), button: buttonTitle(p), destructive: false, tone: .danger, icon: "tag") { confirm(p) }
     }
     private func confirm(_ p: Pending) {
         switch p {
@@ -176,7 +183,7 @@ struct CompanyEquipmentScreen: View {
     }
 
     private func needRows(_ title: String, _ list: [EquipmentMarket.Need], _ cur: Currency) -> some View {
-        CardSection(title) {
+        PageGroup(title) {
             VStack(spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, x in
                     Button { store.openTechPro(companyID: companyID, equipmentID: x.equipmentID) } label: {
@@ -216,7 +223,7 @@ struct CompanyEquipmentScreen: View {
             NoteCard(text: "Nothing bought yet. Start under Needed.")
         }
         ForEach(list) { o in
-            CardSection(o.name) {
+            PageGroup(o.name) {
                 VStack(alignment: .leading, spacing: 0) {
                     if let s = o.subscription {
                         FlatRow(label: s, value: cur.tidyShort(o.subscriptionMonthly) + "/mo", sub: "Subscription", rule: false)
@@ -260,7 +267,7 @@ struct CompanyEquipmentScreen: View {
             }
         }
         if let h = e.equipmentHealth(companyID: companyID) {
-            CardSection("Condition") {
+            PageGroup("Condition") {
                 VStack(alignment: .leading, spacing: 4) {
                     Meter(label: "Equipment health, as far as you can tell", value: h * 100, scale: .condition)
                     Text("Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days. Servicing costs little; replacing costs a lot.")
@@ -277,7 +284,7 @@ struct CompanyEquipmentScreen: View {
         let owned = e.ownedEquipment(companyID: companyID)
         ForEach(needs.filter { $0.isVehicle }) { n in
             let mine = owned.first { $0.equipmentID == n.equipmentID }?.vehicles ?? []
-            CardSection(title: n.name, trailing: { Text(n.need > 0 ? "\(mine.count) of \(Int(n.need))" : "\(mine.count)").textStyle(.caption) }) {
+            PageGroup(title: n.name, trailing: { Text(n.need > 0 ? "\(mine.count) of \(Int(n.need))" : "\(mine.count)").textStyle(.caption) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if mine.isEmpty { Text("No vehicles yet.").textStyle(.body, tint: Theme.inkFaint).padding(.bottom, 6) }
                     ForEach(Array(mine.enumerated()), id: \.element.id) { i, v in
@@ -309,7 +316,7 @@ struct CompanyEquipmentScreen: View {
         let worn: [EquipmentMarket.VehicleRow] = owned.flatMap { (o: EquipmentMarket.Owned) -> [EquipmentMarket.VehicleRow] in o.vehicles }
             .filter { (v: EquipmentMarket.VehicleRow) -> Bool in v.seenCondition < 0.8 || v.daysInRepair > 0 }
         if let gid = garages.first, !worn.isEmpty {
-            CardSection("Repair at your garage") {
+            PageGroup("Repair at your garage") {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(worn.enumerated()), id: \.element.id) { i, v in
                         HStack(alignment: .firstTextBaseline) {
@@ -336,7 +343,7 @@ struct CompanyEquipmentScreen: View {
         let cid: Int = companyID
         let weeks: String = "\(q.weeks) " + (q.weeks == 1 ? "week" : "weeks")
         let msg: String = q.garageName + " charges " + cur.tidyShort(q.price) + " plus " + cur.tidyShort(q.vat) + " VAT for " + kind.name.lowercased() + ", back in about " + weeks + "."
-        asking = PendingAction(title: "Repair " + vehicle + "?", message: msg, button: "Order", amount: q.total, currency: cur) {
+        asking = PendingAction(title: "Repair " + vehicle + "?", message: msg, button: "Order", amount: q.total, currency: cur, tone: .info, icon: "wrench.and.screwdriver") {
             let r: RepairResult? = store.act { (g: inout GameEngine) -> RepairResult in g.orderCarRepair(garageID: garageID, dealerID: cid, kind: kind.id, ref: vehicle) }
             switch r {
             case .ordered(let o)?: store.show("Ordered for " + cur.tidyShort(o.price + o.vat) + ", back in \(o.weeks) " + (o.weeks == 1 ? "week" : "weeks") + ".", tone: "good")
@@ -348,7 +355,7 @@ struct CompanyEquipmentScreen: View {
 
     @ViewBuilder private func perkCars(_ owned: [EquipmentMarket.Owned], _ cur: Currency) -> some View {
         if let perk = owned.first(where: { $0.equipmentID == "perkcar" }) {
-            CardSection(title: perk.name, trailing: { Text("\(perk.vehicles.count)").textStyle(.caption) }) {
+            PageGroup(title: perk.name, trailing: { Text("\(perk.vehicles.count)").textStyle(.caption) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { i, v in
                         FlatRow(label: v.driver, value: cur.tidyShort(v.monthlyLease) + "/mo", sub: v.name + " · fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk", rule: i > 0)
@@ -361,7 +368,7 @@ struct CompanyEquipmentScreen: View {
     @ViewBuilder private func runningCosts(_ e: GameEngine, _ cur: Currency) -> some View {
         let run = e.fleetRunningCosts(companyID: companyID)
         if run.total > 0 {
-            CardSection(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").textStyle(.caption) }) {
+            PageGroup(title: "Running costs", trailing: { Text("\(cur.tidyShort(run.total)) a week").textStyle(.caption) }) {
                 VStack(alignment: .leading, spacing: 0) {
                     if run.fuel > 0 { FlatRow(label: "Fuel", value: cur.tidyShort(run.fuel), sub: "At full use; taxis, couriers and hauliers carry fuel in their cost of sales", rule: false) }
                     if run.leases > 0 { FlatRow(label: "Leases", value: cur.tidyShort(run.leases), sub: "Service included", rule: run.fuel > 0) }
@@ -393,7 +400,7 @@ struct CompanyEquipmentScreen: View {
         let owned = e.ownedEquipment(companyID: companyID)
         Text("Small programs are bought once. Bigger systems cost more up front plus yearly updates. Some are only sold as a subscription, priced by how many people use them. You have \(EquipmentMarket.users(co)) \(EquipmentMarket.users(co) == 1 ? "user" : "users").")
             .font(.caption).foregroundStyle(Theme.ivoryMuted)
-        CardSection("Software") {
+        PageGroup("Software") {
             VStack(spacing: 0) {
                 ForEach(Array(needs.filter { $0.isSoftware }.enumerated()), id: \.element.id) { n, x in
                     let o = owned.first { $0.equipmentID == x.equipmentID }

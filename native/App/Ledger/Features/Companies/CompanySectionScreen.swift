@@ -53,16 +53,27 @@ struct CompanyMorePages: View {
     var engine: GameEngine
     var company: Company
     var pages: [CompanySection]
+    /// Rows inside a group that already has rows above (each row gets a rule above it), instead of a group of their own.
+    var ruled = false
+    @Environment(\.outsidePalette) private var P
 
     var body: some View {
         let available: [CompanySection] = CompanyDetailView.availableSections(company, engine)
         let list: [CompanySection] = pages.filter { available.contains($0) }
         if !list.isEmpty {
-            OverviewSettingsCard(heading: "More for this business") {
-                ForEach(list, id: \.self) { (s: CompanySection) in
-                    SettingsTableRow(title: s.rawValue, note: Self.note(s), value: "", glyph: Glyph.opsBox) { store.openCompany(company.id, section: s) }
-                }
+            if ruled {
+                rows(list)
+            } else {
+                PageGroup("More for this business") { rows(list) }
             }
+        }
+    }
+
+    @ViewBuilder private func rows(_ list: [CompanySection]) -> some View {
+        ForEach(Array(list.enumerated()), id: \.element) { (n: Int, s: CompanySection) in
+            if ruled || n > 0 { RowRule() }
+            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: s.rawValue, subtitle: Self.note(s),
+                      identifier: "company-page-\(s)") { store.openCompany(company.id, section: s) }
         }
     }
 
