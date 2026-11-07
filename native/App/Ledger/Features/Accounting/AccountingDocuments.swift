@@ -30,14 +30,14 @@ struct AcctDocuments: View {
     private func docPage(_ e: GameEngine, _ co: Company, _ fmt: BankFmt, _ t: AcctDocTab) -> some View {
         let docs: [AccountingDocument]? = e.companyDocuments(companyID: co.id, group: t.group, user: m.user)
         return ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 if let docs {
                     list(docs, co, fmt, t)
                 } else {
                     AcctLocked(section: "Documents")
                 }
             }
-            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 560).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -47,7 +47,7 @@ struct AcctDocuments: View {
         if docs.isEmpty {
             AcctNotice(glyph: Glyph.list, title: "No \(t.rawValue.lowercased()) documents yet", message: emptyReason(t))
         } else {
-            AcctPanel {
+            AcctFlat {
                 ForEach(Array(docs.enumerated()), id: \.element.id) { n, d in
                     VStack(spacing: 0) {
                         if n > 0 { AcctDivider() }
@@ -108,25 +108,25 @@ struct AcctDocuments: View {
     private func plainRow(_ d: AccountingDocument, _ co: Company, _ sub: String, _ value: String, _ identifier: String) -> AnyView {
         // Records that are managed somewhere else link there (read-only here).
         if d.kind == "financing" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+            return AnyView(AcctLine(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
                 store.openBank(.company(co.id), tab: .loans)
             })
         }
         if d.kind == "insurance" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+            return AnyView(AcctLine(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
                 store.openAtlas(companyID: co.id)
             })
         }
         if d.kind == "chain" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+            return AnyView(AcctLine(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
                 store.openCompany(co.id, section: .chain)
             })
         }
         if d.kind == "franchise" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
+            return AnyView(AcctLine(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
                 showFranchises = true
             })
         }
-        return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier))
+        return AnyView(AcctLine(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier))
     }
 }

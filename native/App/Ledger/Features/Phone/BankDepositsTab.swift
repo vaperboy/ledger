@@ -18,8 +18,7 @@ struct BankDepositsTab: View {
         case .investments: InvestContent()
         case .personal: BankSavingsAndDeposits()
         case .company:
-            Text("A company account has no savings or fixed deposits. Spare cash can be moved to your own account, or the company can pay it out.")
-                .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            EmptyState(glyph: BankGlyph.deposit, title: "No savings on a company account", message: "Move spare cash to your own account, or have the company pay it out.")
         }
     }
 }
@@ -35,7 +34,7 @@ struct BankSavingsAndDeposits: View {
     var body: some View {
         if let e = store.engine {
             let cur = e.homeCurrency
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 savings(e, cur)
                 deposits(e, cur)
             }
@@ -43,18 +42,22 @@ struct BankSavingsAndDeposits: View {
         }
     }
 
+    /// Savings lead: the balance and its rate, then one amount with Save (filled) and Withdraw (text).
     private func savings(_ e: GameEngine, _ cur: Currency) -> some View {
         let rate: String = Currency.percent(PersonalFinance.savingsRate(e.state), decimals: 2)
-        return BankCard(title: "Savings", trailing: cur.tidyDisplay(e.state.savings) + " · " + rate) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                AmountField(title: "Amount", currency: cur, amount: $amount)
-                HStack {
-                    Button(amount > 0 ? "Save \(cur.tidyShort(amount))" : "Save") { move(amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.cash)
-                    Button(amount > 0 ? "Withdraw \(cur.tidyShort(amount))" : "Withdraw") { move(-amount, cur) }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0 || amount > e.state.savings)
-                }
-                if amount > e.state.cash && amount > e.state.savings && amount > 0 {
-                    Text("More than either account holds: \(cur.tidyShort(max(0, e.state.cash))) current, \(cur.tidyShort(e.state.savings)) savings.").font(.caption2).foregroundStyle(P.caution)
-                }
+        let held: Double = e.deposits.reduce(0) { $0 + $1.balance }
+        let context: String = "Earns \(rate) a year" + (held > 0.5 ? " \u{00B7} \(cur.tidyShort(held)) more in fixed deposits" : "")
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            MoneyHero(label: "Savings", value: cur.tidyDisplay(e.state.savings), context: context, live: e.state.savings)
+            AmountField(title: "Amount", currency: cur, amount: $amount)
+            VStack(spacing: Theme.Space.xs) {
+                Button(amount > 0 ? "Save \(cur.tidyShort(amount))" : "Save") { move(amount, cur) }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true)).disabled(amount <= 0 || amount > e.state.cash)
+                Button(amount > 0 ? "Withdraw \(cur.tidyShort(amount)) to the current account" : "Withdraw to the current account") { move(-amount, cur) }
+                    .buttonStyle(TertiaryButtonStyle()).disabled(amount <= 0 || amount > e.state.savings)
+            }
+            if amount > e.state.cash && amount > e.state.savings && amount > 0 {
+                Text("More than either account holds: \(cur.tidyShort(max(0, e.state.cash))) current, \(cur.tidyShort(e.state.savings)) savings.").textStyle(.caption, tint: P.caution)
             }
         }
     }
@@ -65,11 +68,13 @@ struct BankSavingsAndDeposits: View {
         return BankCard(title: "Fixed deposits", trailing: e.deposits.isEmpty ? "" : cur.tidyShort(held)) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 ForEach(e.deposits) { d in
-                    ListRow(symbol: "lock.fill", tint: P.accent, title: "Fixed deposit at \(Currency.percent(d.rate, decimals: 2))",
-                            subtitle: d.weeksLeft == 0 ? "Matures this week" : "Matures in \(d.weeksLeft) week\(d.weeksLeft == 1 ? "" : "s")", trailing: cur.tidyDisplay(d.balance))
+                    LedgerRow(leading: .symbol("lock"), title: "Fixed at \(Currency.percent(d.rate, decimals: 2))",
+                              subtitle: d.weeksLeft == 0 ? "Matures this week" : "Matures in \(d.weeksLeft) week\(d.weeksLeft == 1 ? "" : "s")",
+                              value: cur.tidyDisplay(d.balance), lineLimit: 1)
+                    Hairline()
                 }
                 SegmentedChoice(items: GameEngine.depositTermChoices, title: { "\($0) weeks" }, selection: $depositWeeks)
-                KeyFigures(items: [
+                FigureRow(items: [
                     .init(label: "Rate", value: Currency.percent(q.yearlyRate, decimals: 2), sub: "a year, fixed"),
                     .init(label: "Interest at the end", value: amount > 0 ? cur.tidyShort(q.interest) : "–", tint: P.gain),
                     .init(label: "Back to you", value: amount > 0 ? cur.tidyShort(amount + q.interest) : "–", sub: "in \(depositWeeks) weeks"),
@@ -82,8 +87,8 @@ struct BankSavingsAndDeposits: View {
                         if store.act({ $0.openDeposit(amount: a, weeks: w) }) == true { Haptics.success(); store.show("\(cur.tidyShort(a)) locked until week \((store.engine?.state.week ?? 0) + w).", tone: "good"); amount = 0 }
                         else { Haptics.warning(); store.show("Not enough on the current account for that deposit.", tone: "warn") }
                     }
-                }.buttonStyle(QuietButtonStyle()).disabled(amount <= 0)
-                Text("Only the current account can fund a deposit; move savings back first if needed.").font(.caption2).foregroundStyle(P.inkFaint)
+                }.buttonStyle(SecondaryButtonStyle(fullWidth: true)).disabled(amount <= 0)
+                Text("Uses the amount above. Only the current account can fund a deposit.").textStyle(.caption, tint: P.inkFaint)
             }
         }
     }

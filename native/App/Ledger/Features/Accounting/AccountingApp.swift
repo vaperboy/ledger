@@ -107,7 +107,8 @@ struct AccountingApp: View {
             }
             .background(FinanceColor.forest.ignoresSafeArea(edges: .top))
             if m.user != nil { previewBanner }
-            screen.frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Pages sit on the ivory page itself: any panel inside draws flat.
+            screen.frame(maxWidth: .infinity, maxHeight: .infinity).environment(\.insideCard, true)
         }
         .environment(\.outsidePalette, OutsidePalette.accounting)
         .environment(\.colorScheme, .light)
@@ -221,7 +222,8 @@ struct AccountingApp: View {
 
 // MARK: Home
 
-/// Home: the business selector and the six sections (Transactions, Payroll, Invoices & Payments, Suppliers, Documents, Settings).
+/// Home: the business, its cash as the figure that leads (with this month's revenue and profit), what needs the owner, then the sections
+/// in three groups (Money, Reports, Records).
 struct AcctHome: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -231,75 +233,155 @@ struct AcctHome: View {
         if let e = store.engine {
             let companies: [Company] = e.state.liveCompanies
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxl) {
                     if companies.isEmpty {
                         AcctNotice(glyph: Glyph.accounting, title: "No company yet",
-                                   message: "Accounting keeps the books of your companies. Start a company and its transactions, payroll, invoices and records appear here.")
+                                   message: "Start a company and its transactions, payroll, invoices and records appear here.")
                     } else {
-                        selector(companies)
+                        VStack(alignment: .leading, spacing: Theme.Space.l) {
+                            selector(companies)
+                            hero(e)
+                        }
+                        needsYou(e)
                         sections(e)
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         }
     }
 
+    /// The business being looked at: its name as a menu, the way a dashboard switches accounts.
     private func selector(_ companies: [Company]) -> some View {
         let current: String = companies.first { $0.id == m.companyID }?.name ?? "Choose a business"
-        return VStack(alignment: .leading, spacing: 6) {
-            AcctLabel(text: "Select business")
-            Menu {
-                ForEach(companies) { (co: Company) in
-                    Button {
-                        m.companyID = co.id
-                        Haptics.choose()
-                    } label: {
-                        if co.id == m.companyID { Label(co.name, systemImage: "checkmark") } else { Text(co.name) }
-                    }
+        return Menu {
+            ForEach(companies) { (co: Company) in
+                Button {
+                    m.companyID = co.id
+                    Haptics.choose()
+                } label: {
+                    if co.id == m.companyID { Label(co.name, systemImage: "checkmark") } else { Text(co.name) }
                 }
-            } label: {
-                HStack {
-                    Text(current).textStyle(.headline).lineLimit(1)
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.up.chevron.down").textStyle(.caption, tint: P.inkFaint, weight: .semibold)
-                }
-                .padding(.horizontal, Theme.Space.m).frame(minHeight: 48)
-                .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
-                .contentShape(Rectangle())
             }
-            .accessibilityIdentifier("acct-company-picker")
+        } label: {
+            HStack(spacing: Theme.Space.s) {
+                Text(current.tidyText).textStyle(.headline).lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down").textStyle(.caption, tint: P.inkFaint, weight: .semibold)
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .disabled(companies.count < 2)
+        .accessibilityLabel("Business: \(current)")
+        .accessibilityIdentifier("acct-company-picker")
+    }
+
+    /// Cash in the books leads; this month's revenue and profit sit under it. Hidden from a viewer who cannot see transactions.
+    @ViewBuilder private func hero(_ e: GameEngine) -> some View {
+        let id: Int = m.companyID
+        if e.canAccess(.transactions, companyID: id, user: m.user), let co = e.state.company(id) {
+            let o = store.memo("acct-home-\(id)") { $0.financeOverview(companyID: id) } ?? e.financeOverview(companyID: id)
+            let fmt = BankFmt(store: store, company: co)
+            let profit: String = (o.monthProfit >= 0 ? "profit " : "loss ") + fmt.short(abs(o.monthProfit))
+            MoneyHero(label: "Cash", value: fmt.full(co.cash), tint: co.cash < 0 ? P.loss : nil,
+                      context: "This month: revenue \(fmt.short(o.monthRevenue)) \u{00B7} \(profit)", contextTint: P.change(o.monthProfit), live: co.cash)
+        }
+    }
+
+    /// One thing that waits on the owner, and the page that settles it.
+    private struct Attention: Identifiable {
+        var id: String
+        var title: String
+        var note: String
+        var route: AcctRoute
+    }
+
+    /// A payroll to approve or run late, overdue invoices, else drafts to send.
+    private func attention(_ e: GameEngine) -> [Attention] {
+        let id: Int = m.companyID
+        let u: String? = m.user
+        var out: [Attention] = []
+        if PhoneAlerts.payroll(engine: e).contains(where: { (p: PayrollAlertInfo) -> Bool in p.companyID == id }) {
+            let late: Bool = payrollTag(e, id)?.0 == "Late"
+            out.append(Attention(id: "payroll", title: late ? "Payroll is late" : "Payroll needs you", note: payrollLine(e, id) ?? "Approve the run", route: .payroll))
+        }
+        let overdue: Int = e.invoices(companyID: id, kind: nil, status: .overdue, user: u)?.count ?? 0
+        let drafts: Int = e.invoices(companyID: id, kind: .customer, status: .draft, user: u)?.count ?? 0
+        if overdue > 0 {
+            out.append(Attention(id: "invoices", title: "\(overdue) invoice\(overdue == 1 ? "" : "s") overdue", note: "Chase it or record the payment", route: .invoices))
+        } else if drafts > 0 {
+            out.append(Attention(id: "invoices", title: "\(drafts) draft\(drafts == 1 ? "" : "s") to send", note: "Customers are not billed until it is sent", route: .invoices))
+        }
+        return out
+    }
+
+    /// What waits on the owner: raised tiles, each opening its page.
+    @ViewBuilder private func needsYou(_ e: GameEngine) -> some View {
+        let items: [Attention] = attention(e)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                AcctCaps(text: "Needs you")
+                ForEach(items) { (item: Attention) in
+                    Button { Haptics.tap(); m.push(item.route) } label: {
+                        HStack(spacing: Theme.Space.m) {
+                            Circle().fill(P.caution).frame(width: 8, height: 8)
+                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                                Text(item.title.tidyText).textStyle(.headline)
+                                Text(item.note.tidyText).textStyle(.caption).lineLimit(2)
+                            }
+                            Spacer(minLength: Theme.Space.s)
+                            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
+                        }
+                        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.card))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(AcctButtonPressStyle())
+                    .accessibilityIdentifier("acct-needs-" + item.id)
+                }
+            }
         }
     }
 
     private func sections(_ e: GameEngine) -> some View {
         let id: Int = m.companyID
-        let u: String? = m.user
         let tag: (String, AcctPill.Tone)? = payrollTag(e, id)
-        let overdue: Int = e.invoices(companyID: id, kind: nil, status: .overdue, user: u)?.count ?? 0
-        let drafts: Int = e.invoices(companyID: id, kind: .customer, status: .draft, user: u)?.count ?? 0
-        var invoiceNote: String = "Send, receive and track invoices"
-        if overdue > 0 { invoiceNote = "\(overdue) overdue" } else if drafts > 0 { invoiceNote = "\(drafts) draft\(drafts == 1 ? "" : "s") to send" }
-        let payrollNote: String = payrollLine(e, id) ?? "Manage salaries, pay day and timesheets"
-        let payrollNeedsYou: Bool = PhoneAlerts.payroll(engine: e).contains { (p: PayrollAlertInfo) -> Bool in p.companyID == id }
-        let items: [HomeItem] = [
-            HomeItem(key: "transactions", glyph: BankGlyph.transfer, title: "Transactions", note: "View and match all transactions", route: .transactions),
-            HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: payrollNote, route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral, flag: payrollNeedsYou),
-            HomeItem(key: "invoices", glyph: BankGlyph.bill, title: "Invoices & Payments", note: invoiceNote, route: .invoices, flag: overdue > 0),
-            HomeItem(key: "suppliers", glyph: Glyph.projects, title: "Suppliers", note: "Supplier agreements and purchases", route: .suppliers),
+        let payrollNote: String = payrollLine(e, id) ?? "Salaries, pay day and timesheets"
+        let money: [HomeItem] = [
+            HomeItem(key: "transactions", glyph: BankGlyph.transfer, title: "Transactions", note: "Every movement, matched to its record", route: .transactions),
+            HomeItem(key: "invoices", glyph: BankGlyph.bill, title: "Invoices & Payments", note: "Send, receive and track invoices", route: .invoices),
+            HomeItem(key: "payroll", glyph: Glyph.people, title: "Payroll", note: payrollNote, route: .payroll, pill: tag?.0, tone: tag?.1 ?? .neutral),
+            HomeItem(key: "suppliers", glyph: Glyph.projects, title: "Suppliers", note: "Agreements and purchases", route: .suppliers),
+        ]
+        let reports: [HomeItem] = [
             HomeItem(key: "balance", glyph: Glyph.reports, title: "Balance sheet", note: "Assets, debts and equity", route: .balanceSheet),
             HomeItem(key: "cashflow", glyph: Glyph.market, title: "Cash flow", note: "Profit against cash, month by month", route: .cashFlow),
-            HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Records, tax, contracts, insurance, applications", route: .documents),
-            HomeItem(key: "settings", glyph: Glyph.settings, title: "Settings", note: "Access and user management", route: .settings),
         ]
-        return AcctPanel {
-            ForEach(Array(items.enumerated()), id: \.element.key) { n, item in
-                VStack(spacing: 0) {
-                    if n > 0 { AcctDivider() }
-                    AcctRow(glyph: item.glyph, title: item.title, subtitle: item.note, pill: item.pill, pillTone: item.tone, identifier: "acct-row-" + item.key) { m.push(item.route) }
-                        .flagMarker(item.flag, important: true, alignment: .topLeading)
+        let records: [HomeItem] = [
+            HomeItem(key: "documents", glyph: Glyph.list, title: "Documents", note: "Records, tax, contracts, insurance", route: .documents),
+            HomeItem(key: "settings", glyph: Glyph.settings, title: "Settings", note: "Access and users", route: .settings),
+        ]
+        return VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            group("Money", money)
+            group("Reports", reports)
+            group("Records", records)
+        }
+    }
+
+    private func group(_ title: String, _ items: [HomeItem]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            AcctCaps(text: title)
+            AcctFlat {
+                ForEach(Array(items.enumerated()), id: \.element.key) { n, item in
+                    VStack(spacing: 0) {
+                        if n > 0 { MoneyRule(inset: 32) }
+                        AcctLine(glyph: item.glyph, title: item.title, subtitle: item.note, pill: item.pill, pillTone: item.tone, identifier: "acct-row-" + item.key) { m.push(item.route) }
+                    }
                 }
             }
         }
@@ -313,7 +395,6 @@ struct AcctHome: View {
         var route: AcctRoute
         var pill: String? = nil
         var tone: AcctPill.Tone = .neutral
-        var flag: Bool = false
     }
 
     /// The live line under Payroll: the next pay day and what it should cost, when there is a payroll to run.

@@ -110,19 +110,17 @@ struct BankApp: View {
     }
 }
 
-/// A caps label over a group: the system `CardSection` under the Bank's older name.
+/// A group of the Bank: a faint caps label (with an optional note at the right) over its content, on the page itself (no box).
 struct BankCard<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String = ""
     var trailing: String = ""
     @ViewBuilder var content: () -> Content
     var body: some View {
-        if title.isEmpty {
-            Card(padding: 14) { VStack(alignment: .leading, spacing: Theme.Space.s) { content() } }
-        } else {
-            CardSection(title: title, trailing: {
-                if !trailing.isEmpty { Text(trailing.tidyText).textStyle(.caption, tint: P.inkFaint) }
-            }) { content() }
+        MoneyGroup(title: title, trailing: {
+            if !trailing.isEmpty { Text(trailing.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1) }
+        }) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) { content() }
         }
     }
 }

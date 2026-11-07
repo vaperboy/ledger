@@ -22,53 +22,49 @@ struct BankStatementsTab: View {
             let all: [PeriodReport] = e.reports(kind)
             let index: Int = max(0, all.count - 1 - back)
             let reportID: Int? = all.indices.contains(index) ? all[index].id : nil
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 SegmentedPill(items: ReportKind.allCases, title: { $0.title }, selection: $kind)
                     .onChange(of: kind) { _, _ in back = 0 }
                 if let s = e.bankStatement(account, kind: kind, reportID: reportID) {
                     statement(s, fmt, count: all.count)
                 } else {
-                    BankCard {
-                        Text("No \(kind.rawValue) has closed yet, so there is no statement. It appears at the end of the first \(kind.rawValue).")
-                            .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    }
+                    EmptyState(glyph: Glyph.reports, title: "No statement yet", message: "It appears when the first \(kind.rawValue) closes.")
                 }
                 costs(e, fmt)
                 NavigationLink { ReportsScreen(companyID: account.companyID).environment(\.outsidePalette, OutsidePalette.game) } label: {
-                    HStack {
-                        Text("Full reports: profit, costs, people").textStyle(.body, tint: P.accent)
-                        Spacer()
-                        GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.accent)
-                    }.padding(.vertical, 10).contentShape(Rectangle())
-                }.buttonStyle(PressableStyle())
+                    LedgerRow(leading: .glyph(Glyph.reports), title: "Full reports", subtitle: "Profit, costs and people", chevron: true)
+                }.buttonStyle(AcctPressStyle())
             }
         }
     }
 
+    /// The statement: the closing balance leads, money in and out under it, then the period stepper and the movements.
     private func statement(_ s: BankStatement, _ fmt: BankFmt, count: Int) -> some View {
-        BankCard(title: s.title, trailing: s.range) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Button { back = min(back + 1, count - 1); Haptics.choose() } label: { Text("‹ Earlier").font(.system(size: 12)).foregroundStyle(back >= count - 1 ? P.inkDim : P.accent) }
-                        .buttonStyle(PressableStyle()).disabled(back >= count - 1)
-                    Spacer()
-                    Button { back = max(back - 1, 0); Haptics.choose() } label: { Text("Later ›").textStyle(.caption, tint: back == 0 ? P.inkDim : P.accent) }
-                        .buttonStyle(PressableStyle()).disabled(back == 0)
+        let net: Double = s.closing - s.opening
+        let context: String = "+\(fmt.short(s.moneyIn)) in \u{00B7} \u{2212}\(fmt.short(s.moneyOut)) out \u{00B7} opened at \(fmt.short(s.opening))"
+        return VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                MoneyHero(label: "Closing balance \u{00B7} " + s.title, value: fmt.full(s.closing), tint: s.closing < 0 ? P.loss : nil,
+                          context: context, contextTint: P.change(net))
+                HStack(spacing: Theme.Space.s) {
+                    Button { back = min(back + 1, count - 1); Haptics.choose() } label: { Text("\u{2039} Earlier") }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(back >= count - 1)
+                    Spacer(minLength: Theme.Space.s)
+                    Text(s.range.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer(minLength: Theme.Space.s)
+                    Button { back = max(back - 1, 0); Haptics.choose() } label: { Text("Later \u{203A}") }
+                        .buttonStyle(TertiaryButtonStyle(size: .compact)).disabled(back == 0)
                 }
-                StatStrip(cells: [
-                    .init(label: "Opening", value: fmt.short(s.opening)),
-                    .init(label: "Money in", value: fmt.short(s.moneyIn), tint: P.gain),
-                    .init(label: "Money out", value: fmt.short(s.moneyOut), tint: s.moneyOut > 0 ? P.caution : P.ink),
-                    .init(label: "Closing", value: fmt.short(s.closing), tint: s.closing < 0 ? P.loss : P.ink),
-                ], ruled: false)
+            }
+            MoneyGroup("Movements") {
                 if s.lines.isEmpty {
-                    EmptyState(glyph: BankGlyph.transfer, title: "No movements kept for this period.", centered: false)
+                    EmptyState(glyph: BankGlyph.transfer, title: "No movements kept for this period.", centered: false).padding(.vertical, Theme.Space.s)
                 }
                 ForEach(Array(s.lines.prefix(60).enumerated()), id: \.element.id) { n, t in
-                    if n > 0 { Hairline() }
+                    if n > 0 { MoneyRule(inset: 0) }
                     BankTransactionRow(transaction: t, fmt: fmt)
                 }
-                if s.lines.count > 60 { Text("The latest 60 of \(s.lines.count) movements.").font(.caption2).foregroundStyle(P.inkFaint) }
+                if s.lines.count > 60 { Text("The latest 60 of \(s.lines.count) movements.").textStyle(.caption, tint: P.inkFaint).padding(.top, Theme.Space.s) }
             }
         }
     }

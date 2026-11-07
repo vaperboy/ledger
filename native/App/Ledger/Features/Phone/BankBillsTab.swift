@@ -20,7 +20,7 @@ struct BankBillsList: View {
             VStack(alignment: .leading, spacing: 0) {
                 if upcoming.isEmpty { EmptyState(glyph: BankGlyph.bill, title: "Nothing is due.", centered: false) }
                 ForEach(Array(upcoming.enumerated()), id: \.element.id) { n, u in
-                    if n > 0 { Hairline() }
+                    if n > 0 { MoneyRule(inset: 32) }
                     row(u, alerts, e)
                 }
             }
@@ -38,6 +38,7 @@ struct BankBillsList: View {
                 Spacer(minLength: 8)
                 action(u, alerts, e)
             }
+            .padding(.leading, 32)
             if short && u.daysAway <= 30 && account != .investments {
                 Text("The account does not hold this much yet. Move money in first.").textStyle(.caption, tint: P.caution)
             }
@@ -49,16 +50,16 @@ struct BankBillsList: View {
         switch u.kind {
         case .payroll:
             if alerts.contains(where: { $0.companyID == u.companyID }) {
-                Button("Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                Button("Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }.buttonStyle(TertiaryButtonStyle(size: .compact))
             } else {
                 Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
             }
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
-                Button("Pay now") { BankPay.instalment(store, loanID: loanID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                Button("Pay now") { BankPay.instalment(store, loanID: loanID) }.buttonStyle(TertiaryButtonStyle(size: .compact))
             }
         case .bills, .tax, .invoice:
-            Button("Pay now") { BankPay.early(store, u) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+            Button("Pay now") { BankPay.early(store, u) }.buttonStyle(TertiaryButtonStyle(size: .compact))
         }
     }
 }
@@ -77,7 +78,7 @@ struct BankBillsTab: View {
             let o = e.financeOverview(companyID: account.companyID)
             let fmt = BankFmt.make(store, account)
             let co: Company? = account.companyID.flatMap { e.state.company($0) }
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 dueCard(detail, fmt)
                 BankCard(title: "Coming up", trailing: "\(detail.upcoming.count) payment\(detail.upcoming.count == 1 ? "" : "s")") {
                     BankBillsList(account: account, upcoming: detail.upcoming, cash: detail.balance)
@@ -97,21 +98,13 @@ struct BankBillsTab: View {
         }
     }
 
-    /// The one figure of the tab: what falls due in 30 days, with whether the account covers it.
+    /// The one figure of the tab: what falls due in 30 days, and whether the account covers it.
     private func dueCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         let due: Double = d.upcoming.filter { $0.daysAway <= 30 }.reduce(0) { $0 + $1.amount }
         let short: Double = max(0, due - max(0, d.available))
-        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .top, spacing: Theme.Space.s) {
-                Figure(label: "Due in the next 30 days", value: fmt.full(due), tint: short > 0 ? P.loss : P.ink, size: .display)
-                Spacer(minLength: Theme.Space.s)
-                AcctPill(text: short > 0 ? "Short by \(fmt.short(short))" : "Covered", tone: short > 0 ? .bad : .good)
-            }
-            if short > 0 {
-                Text("This account will not cover what is due. Move money in, sell something or borrow before the dates below.")
-                    .textStyle(.caption, tint: P.loss).fixedSize(horizontal: false, vertical: true)
-            }
-        }
+        let context: String = short > 0 ? "Short by \(fmt.short(short)): move money in, sell something or borrow before the dates below"
+            : (due > 0.5 ? "Covered by this account" : "Nothing falls due this month")
+        return MoneyHero(label: "Due in the next 30 days", value: fmt.full(due), context: context, contextTint: short > 0 ? P.loss : P.inkSoft)
     }
 
     private func taxCard(_ o: FinanceOverview, _ fmt: BankFmt) -> some View {

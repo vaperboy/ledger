@@ -17,40 +17,48 @@ struct BankLoansTab: View {
 
     var body: some View {
         if let e = store.engine {
-            VStack(alignment: .leading, spacing: 12) {
-                if account != .investments { applyCard(e) }
-                loansFor(e)
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                switch account {
+                case .company(let cid):
+                    applyButton
+                    if let co = e.state.company(cid) { CompanyLoans(engine: e, company: co) }
+                case .personal:
+                    BankPersonalLoans(engine: e, onApply: { applying = true })
+                case .investments:
+                    EmptyState(glyph: BankGlyph.transfer, title: "No loans here", message: "Loans are taken for your personal account or a company's, not for investments.")
+                }
             }
             .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(account: account) }
         }
     }
 
-    @ViewBuilder private func loansFor(_ e: GameEngine) -> some View {
-        switch account {
-        case .company(let cid):
-            if let co = e.state.company(cid) { CompanyLoans(engine: e, company: co) }
-        case .personal:
-            BankPersonalLoans(engine: e)
-        case .investments:
-            Text("Loans are taken for your personal account or a company's, not for investments.").textStyle(.body, tint: P.inkSoft)
-        }
-    }
-
-    private func applyCard(_ e: GameEngine) -> some View {
-        let sub: String = "Ask the bank, see its offer, then choose how much"
-        return Button { Haptics.tap(); applying = true } label: {
-            CardRow(glyph: BankGlyph.transfer, title: "Apply for a loan", subtitle: sub)
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("bank-apply-loan")
+    /// The one action of the tab: ask the bank for a loan (its offer comes first, then the amount).
+    private var applyButton: some View {
+        BankApplyLoanButton { applying = true }
     }
 }
 
-/// Your personal loans and borrowing.
+/// "Apply for a loan": the tab's filled action, with the one line that says what follows.
+struct BankApplyLoanButton: View {
+    @Environment(\.outsidePalette) private var P
+    var action: () -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Button { Haptics.tap(); action() } label: { Text("Apply for a loan") }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("bank-apply-loan")
+            Text("See the bank's offer first, then choose how much.").textStyle(.caption, tint: P.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+}
+
+/// Your personal loans: what you owe as the figure that leads, the credit line under it, Apply, then each loan (it opens its details).
 struct BankPersonalLoans: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
+    var onApply: (() -> Void)? = nil
     @State private var repaying: Loan?
 
     var body: some View {
@@ -61,18 +69,22 @@ struct BankPersonalLoans: View {
         let owed = personal.reduce(0) { $0 + $1.balance }
         let monthly = personal.reduce(0) { $0 + $1.monthlyPayment }
         let missed = personal.reduce(0) { $0 + $1.int("miss") }
-        VStack(alignment: .leading, spacing: 12) {
-            BankCard(title: "You owe") {
-                VStack(alignment: .leading, spacing: 8) {
-                    KeyFigures(items: [
-                        .init(label: "You owe", value: owed > 0 ? store.short(owed) : "Nothing", tint: owed > 0 ? P.caution : P.ink, sub: personal.isEmpty ? "" : "\(store.short(monthly)) a month"),
-                        .init(label: "Credit", value: Banking.creditWord(s.credit), sub: "bank rate \(Currency.percent(s.economy.policyRate, decimals: 2))"),
-                    ], columns: 2)
-                    if missed > 0 {
-                        Label("\(missed) loan instalment\(missed == 1 ? "" : "s") missed. Pay it before the next week: a missed payment adds a penalty and hurts your credit.", systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption).foregroundStyle(P.loss).fixedSize(horizontal: false, vertical: true)
+        let credit: String = "Credit " + Banking.creditWord(s.credit).lowercased() + " \u{00B7} bank rate " + Currency.percent(s.economy.policyRate, decimals: 2)
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                MoneyHero(label: "You owe", value: owed > 0 ? store.money(owed) : "Nothing", tint: owed > 0 ? P.ink : P.inkSoft,
+                          context: (owed > 0 ? "\(store.short(monthly)) a month \u{00B7} " : "") + credit)
+                if missed > 0 {
+                    HStack(alignment: .top, spacing: Theme.Space.m) {
+                        LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.medium, tint: P.loss)
+                        Text("\(missed) instalment\(missed == 1 ? "" : "s") missed. Pay before next week: a missed payment adds a penalty and hurts your credit.")
+                            .textStyle(.caption, tint: P.ink).fixedSize(horizontal: false, vertical: true)
                     }
+                    .padding(Theme.Space.m)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.loss.opacity(0.10)))
                 }
+                if let onApply { BankApplyLoanButton(action: onApply) }
             }
             loansCard(e, cur, personal)
         }
@@ -80,38 +92,40 @@ struct BankPersonalLoans: View {
     }
 
     private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
-        BankCard(title: "Your loans") {
-            VStack(alignment: .leading, spacing: 0) {
-                if loans.isEmpty { EmptyState(glyph: Glyph.check, title: "You owe nothing personally.", centered: false) }
-                ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
-                    if n > 0 { Hairline() }
-                    Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(PressableStyle())
-                }
+        MoneyGroup("Your loans") {
+            if loans.isEmpty { EmptyState(glyph: Glyph.check, title: "You owe nothing personally.", centered: false).padding(.vertical, Theme.Space.s) }
+            ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
+                if n > 0 { MoneyRule(inset: 0) }
+                Button { Haptics.tap(); repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(AcctPressStyle())
             }
         }
     }
 
+    /// Name and terms on the left, what is left to pay and how much is repaid on the right.
     private func loanRow(_ e: GameEngine, _ cur: Currency, _ l: Loan) -> some View {
         let p = e.loanPayoff(loanID: l.id)
         let paid = l.originalAmount > 0 ? max(0, min(1, 1 - l.balance / l.originalAmount)) : 0
         let missed = l.int("miss")
-        return HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(l.name).textStyle(.body).lineLimit(1)
-                Text("\(Currency.percent(p?.yearlyRate ?? Banking.rate(of: l, state: e.state), decimals: 2)) · \(cur.tidyShort(l.monthlyPayment)) a month" + (p?.monthsLeft.map { " · \($0) months to go" } ?? ""))
-                    .textStyle(.caption, tint: P.inkFaint)
-                Text("\(Int((paid * 100).rounded()))% repaid" + ((p?.interestLeft ?? 0) > 0 ? " · about \(cur.tidyShort(p!.interestLeft)) interest still to come" : ""))
-                    .textStyle(.caption, tint: P.inkFaint)
-                if missed > 0 { Text("\(missed) instalment\(missed == 1 ? "" : "s") missed").textStyle(.caption, tint: P.loss, weight: .medium) }
+        let terms: String = "\(Currency.percent(p?.yearlyRate ?? Banking.rate(of: l, state: e.state), decimals: 2)) \u{00B7} \(cur.tidyShort(l.monthlyPayment)) a month"
+            + (p?.monthsLeft.map { " \u{00B7} \($0) months" } ?? "")
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.name.tidyText).textStyle(.headline).lineLimit(1)
+                    Text(terms.tidyText).textStyle(.caption).lineLimit(2)
+                    if missed > 0 { Text("\(missed) instalment\(missed == 1 ? "" : "s") missed").textStyle(.caption, tint: P.loss, weight: .medium) }
+                }
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(cur.tidyShort(l.balance)).textStyle(.headline, numeric: true).moneyFlash(l.balance)
+                    Text("\(Int((paid * 100).rounded()))% repaid").textStyle(.caption, tint: P.inkFaint, numeric: true)
+                }
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(cur.tidyShort(l.balance)).textStyle(.body, numeric: true).moneyFlash(l.balance)
-                Text("left to pay").font(.caption2).foregroundStyle(P.inkFaint)
-            }
-            Image(systemName: "chevron.right").textStyle(.caption, tint: P.inkFaint)
+            ProgressLine(fraction: paid, height: 3)
         }
-        .padding(.vertical, 9).contentShape(Rectangle())
+        .padding(.vertical, Theme.Space.m).contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 

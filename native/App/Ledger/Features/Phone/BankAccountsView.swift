@@ -3,8 +3,8 @@ import GameCore
 import Countries
 import Simulation
 
-/// Bank, pick an account (BankAccounts.dc.html): the all-accounts total with what is due in 30 days, then YOU (personal, investments) and
-/// YOUR COMPANIES. Loans are not an account: a row only says how many loans the account carries.
+/// Bank, every account (after Back from one): the total with what falls due in 30 days, Transfer as the one action, the accounts with
+/// their balances, then bills, giving, wealth and where the money sits. Loans belong to the account they were taken for.
 struct BankAccountsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -19,105 +19,80 @@ struct BankAccountsScreen: View {
             let you: [BankAccountRow] = all.rows.filter { $0.kind != .company }
             let companies: [BankAccountRow] = all.rows.filter { $0.kind == .company }
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    totalCard(all)
+                VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
+                        BankTotalHero(all: all)
+                        actions
+                    }
+                    accounts("You", you, e)
+                    if companies.isEmpty {
+                        MoneyGroup("Your companies") {
+                            EmptyState(glyph: BankGlyph.company, title: "No company yet", message: "Its account appears here once it exists.", centered: false)
+                                .padding(.vertical, Theme.Space.s)
+                        }
+                    } else {
+                        accounts("Your companies", companies, e)
+                    }
+                    MoneyGroup("More") {
+                        billsLink(all, e)
+                        MoneyRule(inset: 32)
+                        givingLink(e)
+                    }
                     BankWealthCard(engine: e)
                     BankHomeRing(all: all, engine: e)
-                    roundButtons(all)
-                    billsLink(all, e)
-                    givingLink(e)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("YOU").capsLabel()
-                        ForEach(you) { r in row(r, e) }
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("YOUR COMPANIES").capsLabel()
-                        if companies.isEmpty {
-                            EmptyState(glyph: BankGlyph.company, title: "No company yet", message: "Its account appears here once it exists.", centered: false)
-                        }
-                        ForEach(companies) { r in row(r, e) }
-                    }
-                    Text("Loans belong to the account they were taken for. Open an account and choose Loans.")
-                        .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                .environment(\.insideCard, true)
             }
             .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)
             .centerSheet(item: $move) { kind in BankMoveSheet(account: .personal, kind: kind) }
         }
     }
 
-    private func roundButtons(_ all: BankAccounts) -> some View {
-        HStack(spacing: 0) {
-            BankRoundButton(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
-            BankRoundButton(glyph: BankGlyph.withdraw, title: "Send") { move = .withdraw }
-            BankRoundButton(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
+    /// Transfer is the one filled action; paying in and sending out sit beside it as text.
+    private var actions: some View {
+        VStack(spacing: Theme.Space.xs) {
+            Button { Haptics.tap(); move = .transfer } label: { Text("Transfer") }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+            HStack(spacing: Theme.Space.l) {
+                MoneyTextAction(title: "Deposit") { move = .deposit }
+                MoneyTextAction(title: "Send") { move = .withdraw }
+            }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("bank-round-actions")
     }
 
-    /// Gifts, sponsorships and the foundation are paid from the personal account, so they live in the Bank (they used to sit in Group).
+    private func accounts(_ title: String, _ rows: [BankAccountRow], _ e: GameEngine) -> some View {
+        MoneyGroup(title) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: BankAccountRow) in
+                if n > 0 { MoneyRule(inset: 52) }
+                BankAccountLine(row: r, engine: e, identifier: "bank-account-\(r.id.id)") { onPick(r.id) }
+            }
+        }
+    }
+
+    /// Gifts, sponsorships and the foundation are paid from the personal account, so they live in the Bank.
     private func givingLink(_ e: GameEngine) -> some View {
         let n: Int = e.givingMarks.count
         let sub: String = "\(n) \(n == 1 ? "mark" : "marks")" + (e.foundation != nil ? " \u{00B7} foundation running" : "")
-        return Button { ent.run(.luxuryGivingFootball, "Giving back") { givingOpen = true } } label: {
-            CardRow(glyph: Glyph.richList, title: "Giving back", subtitle: "Gifts, sponsorships and your foundation \u{00B7} " + sub)
-                .overlay(alignment: .topTrailing) { ProMark(feature: .luxuryGivingFootball).padding(8) }
-        }
-        .buttonStyle(PressableStyle())
-        .navigationDestination(isPresented: $givingOpen) { GivingView() }
-        .accessibilityIdentifier("bank-giving")
+        return LedgerRow(leading: .glyph(Glyph.richList), title: "Giving back", subtitle: "Gifts, sponsorships, foundation \u{00B7} " + sub,
+                         lineLimit: 1, identifier: "bank-giving", action: { ent.run(.luxuryGivingFootball, "Giving back") { givingOpen = true } })
+            .overlay(alignment: .topTrailing) { ProMark(feature: .luxuryGivingFootball).padding(.top, 4).padding(.trailing, 24) }
+            .navigationDestination(isPresented: $givingOpen) { GivingView() }
     }
 
     private func billsLink(_ all: BankAccounts, _ e: GameEngine) -> some View {
         let count: Int = e.financeOverview().upcoming.count
-        let sub: String = count == 0 ? "Nothing is due" : "\(count) coming · \(store.short(all.dueWithin30Days)) due in 30 days"
+        let sub: String = count == 0 ? "Nothing is due" : "\(count) coming \u{00B7} \(store.short(all.dueWithin30Days)) in 30 days"
         return NavigationLink {
             BankAllBillsScreen()
         } label: {
-            CardRow(glyph: BankGlyph.bill, title: "Bills", subtitle: sub, badge: all.alertCount)
+            LedgerRow(leading: .glyph(BankGlyph.bill), title: "Bills", subtitle: sub, badge: all.alertCount, chevron: true, lineLimit: 1)
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(AcctPressStyle())
         .accessibilityIdentifier("bank-all-bills")
-    }
-
-    /// The balance on warm ivory, as in the Banking mockup: the total of every account, what falls due in 30 days and whether it is covered.
-    private func totalCard(_ all: BankAccounts) -> some View {
-        let totalText: String = store.short(all.total)
-        let dueText: String = store.short(all.dueWithin30Days)
-        return IvoryPanel {
-            BankTotalPanel(totalText: totalText, negative: all.total < 0, dueText: dueText, covered: all.isCovered)
-        }
-    }
-
-    private func row(_ r: BankAccountRow, _ e: GameEngine) -> some View {
-        let co: Company? = r.companyID.flatMap { e.state.company($0) }
-        let fmt = BankFmt(store: store, company: co)
-        let glyph: String = r.kind == .personal ? Glyph.person : r.kind == .investments ? Glyph.invest : BankGlyph.company
-        let note: String = rowNote(r, fmt)
-        let value: String = fmt.short(r.balance)
-        let tint: Color = r.balance < 0 ? P.loss : P.ink
-        return Button { Haptics.tap(); onPick(r.id) } label: {
-            CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
-        }
-        .newGroupMarker(.bank, r.hasAlert ? [] : store.messageItemIDs(.bank, companyID: r.companyID ?? 0), alignment: .topLeading)
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("bank-account-\(r.id.id)")
-    }
-
-    private func rowNote(_ r: BankAccountRow, _ fmt: BankFmt) -> String {
-        if r.hasAlert, let n = r.alertNote { return n }
-        var parts: [String] = []
-        switch r.kind {
-        case .personal:
-            if let rate = r.savingsRate { parts.append("Savings \(Currency.percent(rate, decimals: 2))") }
-            if let s = r.savings, s > 0 { parts.append(fmt.short(s) + " saved") }
-        case .investments: parts.append("Shares · crypto · funds")
-        case .company: parts.append(r.detail)
-        }
-        if r.loanCount > 0 { parts.append("\(r.loanCount) loan\(r.loanCount == 1 ? "" : "s")") }
-        return parts.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 

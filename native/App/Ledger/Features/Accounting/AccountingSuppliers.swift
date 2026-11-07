@@ -17,7 +17,15 @@ struct AcctSuppliers: View {
             let fmt = BankFmt(store: store, company: co)
             let records: [SupplierRecord]? = e.supplierRecords(companyID: co.id, search: m.supplierSearch, user: m.user)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    if let records, m.supplierSearch.isEmpty, !records.isEmpty {
+                        let bought: Double = records.reduce(0) { $0 + $1.purchasesTotal }
+                        let open: Double = records.reduce(0) { $0 + $1.openInvoices }
+                        MoneyHero(label: "Bought from suppliers", value: fmt.full(bought),
+                                  context: "\(records.count) supplier\(records.count == 1 ? "" : "s")" + (open > 0.5 ? " \u{00B7} \(fmt.short(open)) in open invoices" : " \u{00B7} nothing open"),
+                                  contextTint: open > 0.5 ? P.caution : nil)
+                            .padding(.bottom, Theme.Space.s)
+                    }
                     AcctSearchField(text: $m.supplierSearch, prompt: "Search suppliers", identifier: "acct-supplier-search")
                     if let records {
                         list(records, fmt)
@@ -26,7 +34,7 @@ struct AcctSuppliers: View {
                         AcctLocked(section: "Suppliers")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -39,7 +47,7 @@ struct AcctSuppliers: View {
             AcctNotice(glyph: Glyph.suppliers, title: m.supplierSearch.isEmpty ? "No supplier records yet" : "No supplier matches",
                        message: m.supplierSearch.isEmpty ? "A supplier appears here once you have bought from them or chosen them to supply goods or repairs." : "Try another name.")
         } else {
-            AcctPanel {
+            AcctFlat {
                 ForEach(Array(records.enumerated()), id: \.element.id) { n, s in
                     VStack(spacing: 0) {
                         if n > 0 { AcctDivider() }
@@ -83,7 +91,7 @@ struct AcctSupplierProfile: View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             let fmt = BankFmt(store: store, company: co)
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     if let all = e.supplierRecords(companyID: co.id, user: m.user) {
                         if let s = all.first(where: { $0.id == supplierID }) {
                             header(s)
@@ -97,7 +105,7 @@ struct AcctSupplierProfile: View {
                         AcctLocked(section: "Suppliers")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -105,7 +113,7 @@ struct AcctSupplierProfile: View {
     }
 
     private func header(_ s: SupplierRecord) -> some View {
-        AcctPanel(padding: 16) {
+        AcctFlat(padding: 16) {
             HStack(spacing: 12) {
                 Text(AcctRow.initials(s.name)).textStyle(.body, tint: P.onAccent, weight: .semibold)
                     .frame(width: 44, height: 44).background(Circle().fill(P.accent))
@@ -126,8 +134,8 @@ struct AcctSupplierProfile: View {
         let role: String = roles.isEmpty ? "No standing arrangement" : roles.joined(separator: ", ")
         let discount: String = s.discount > 0.0001 ? Currency.percent(s.discount, decimals: 1) : "None"
         return VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Agreement and terms")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "Agreement and terms")
+            AcctFlat(padding: 14) {
                 FlatRow(label: "Arrangement", value: role, rule: false)
                 FlatRow(label: "Agreement", value: s.agreement ?? "No written agreement")
                 FlatRow(label: "Discount", value: discount)
@@ -142,12 +150,12 @@ struct AcctSupplierProfile: View {
         let mine: [InvoiceItem] = (e.invoices(companyID: co.id, kind: .supplier, user: m.user) ?? []).filter { $0.counterparty == s.name }
         if !mine.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                AcctLabel(text: "Invoices")
-                AcctPanel {
+                AcctCaps(text: "Invoices")
+                AcctFlat {
                     ForEach(Array(mine.prefix(6).enumerated()), id: \.element.id) { n, inv in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }
-                            AcctRow(title: "#" + inv.number, subtitle: "due " + inv.dueDateText, value: fmt.short(inv.gross), pill: inv.status.label, pillTone: inv.status.tone,
+                            AcctLine(title: "#" + inv.number, subtitle: "due " + inv.dueDateText, value: fmt.short(inv.gross), pill: inv.status.label, pillTone: inv.status.tone,
                                     identifier: "acct-supplier-invoice") { m.push(.invoice(inv.id)) }
                         }
                     }
@@ -158,15 +166,15 @@ struct AcctSupplierProfile: View {
 
     @ViewBuilder private func purchases(_ s: SupplierRecord, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Purchases and deliveries")
+            AcctCaps(text: "Purchases and deliveries")
             if s.recentPurchases.isEmpty {
                 AcctNotice(glyph: Glyph.list, title: "No purchases booked yet", message: "Each delivery you pay for is booked in the ledger and listed here.")
             } else {
-                AcctPanel {
+                AcctFlat {
                     ForEach(Array(s.recentPurchases.enumerated()), id: \.element.id) { n, t in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }
-                            AcctRow(glyph: BankGlyph.bill, title: t.label, subtitle: t.category, value: fmt.signed(t.amount), valueNote: t.dateText, identifier: "acct-supplier-purchase") { m.push(.transaction(t.id)) }
+                            AcctLine(glyph: BankGlyph.bill, title: t.label, subtitle: t.category, value: fmt.signed(t.amount), valueNote: t.dateText, identifier: "acct-supplier-purchase") { m.push(.transaction(t.id)) }
                         }
                     }
                 }

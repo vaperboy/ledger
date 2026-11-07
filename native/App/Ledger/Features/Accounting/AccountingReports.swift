@@ -27,14 +27,12 @@ struct AcctCompanyMenu: View {
                         }
                     }
                 } label: {
-                    HStack {
-                        Text(current).textStyle(.headline).lineLimit(1)
-                        Spacer(minLength: 8)
+                    HStack(spacing: Theme.Space.s) {
+                        Text(current.tidyText).textStyle(.headline).lineLimit(1)
                         Image(systemName: "chevron.up.chevron.down").textStyle(.caption, tint: P.inkFaint, weight: .semibold)
+                        Spacer(minLength: 0)
                     }
-                    .padding(.horizontal, 14).frame(minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.lineStrong, lineWidth: 1))
+                    .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
                 .accessibilityIdentifier("acct-report-company")
@@ -53,11 +51,11 @@ struct AcctBalanceSheet: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     AcctCompanyMenu(m: m)
                     content(e, co)
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -69,6 +67,9 @@ struct AcctBalanceSheet: View {
             AcctLocked(section: "Balance sheet")
         } else if let b = e.companyBalanceSheet(companyID: co.id) {
             let fmt = BankFmt(store: store, company: co)
+            MoneyHero(label: "Equity", value: fmt.full(b.equity), tint: b.equity < 0 ? P.loss : nil,
+                      context: "Assets \(fmt.short(b.totalAssets)) \u{00B7} debts \(fmt.short(b.totalDebts))" + (b.equity < 0 ? ": it owes more than it has" : ""),
+                      contextTint: b.equity < 0 ? P.loss : nil)
             group("What the company has", b.assets, total: b.totalAssets, totalLabel: "Total assets", fmt)
             group("What the company owes", b.debts, total: b.totalDebts, totalLabel: "Total debts", fmt)
             equity(b, fmt)
@@ -79,8 +80,8 @@ struct AcctBalanceSheet: View {
 
     private func group(_ title: String, _ lines: [FinanceLine], total: Double, totalLabel: String, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: title)
-            AcctPanel(padding: 14) {
+            AcctCaps(text: title)
+            AcctFlat(padding: 14) {
                 if lines.isEmpty {
                     FlatRow(label: "Nothing", value: fmt.full(0), rule: false)
                 }
@@ -92,18 +93,16 @@ struct AcctBalanceSheet: View {
         }
     }
 
-    private func equity(_ b: CompanyBalanceSheet, _ fmt: BankFmt) -> some View {
-        let tint: Color = b.equity < 0 ? P.loss : P.ink
-        return VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "What is left for the owners")
-            AcctPanel(padding: 14) {
-                FlatRow(label: "Equity", value: fmt.full(b.equity), sub: "Assets minus debts", tint: tint, rule: false)
-                if b.shareCapital > 0.5 { FlatRow(label: "Share capital paid in", value: fmt.full(b.shareCapital)) }
-                if b.injected > 0.5 { FlatRow(label: "Put in by the owner", value: fmt.full(b.injected), sub: "over the years, share capital included") }
-                if b.distributed > 0.5 { FlatRow(label: "Paid out as dividends", value: fmt.full(b.distributed)) }
-            }
-            if b.equity < 0 {
-                Text("The company owes more than it has. Lenders and suppliers will notice.").textStyle(.caption, tint: P.loss).padding(.horizontal, 2)
+    /// Where the equity came from (the figure itself leads the page).
+    @ViewBuilder private func equity(_ b: CompanyBalanceSheet, _ fmt: BankFmt) -> some View {
+        if b.shareCapital > 0.5 || b.injected > 0.5 || b.distributed > 0.5 {
+            VStack(alignment: .leading, spacing: 8) {
+                AcctCaps(text: "What is left for the owners")
+                AcctFlat(padding: 14) {
+                    if b.shareCapital > 0.5 { FlatRow(label: "Share capital paid in", value: fmt.full(b.shareCapital), rule: false) }
+                    if b.injected > 0.5 { FlatRow(label: "Put in by the owner", value: fmt.full(b.injected), sub: "over the years, share capital included", rule: b.shareCapital > 0.5) }
+                    if b.distributed > 0.5 { FlatRow(label: "Paid out as dividends", value: fmt.full(b.distributed), rule: b.shareCapital > 0.5 || b.injected > 0.5) }
+                }
             }
         }
     }
@@ -119,11 +118,11 @@ struct AcctCashFlow: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     AcctCompanyMenu(m: m)
                     content(e, co)
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -137,16 +136,20 @@ struct AcctCashFlow: View {
             let months: [CompanyCashMonth] = e.companyCashFlow(companyID: co.id, months: 12)
             if months.isEmpty {
                 AcctNotice(glyph: Glyph.reports, title: "No month has closed yet", message: "Each closed month appears here with its profit and what the cash did.")
-            } else {
-                list(months.reversed(), BankFmt(store: store, company: co))
+            } else if let last = months.last {
+                let fmt = BankFmt(store: store, company: co)
+                MoneyHero(label: "Cash at the end of " + last.label, value: fmt.full(last.cashAtEnd), tint: last.cashAtEnd < 0 ? P.loss : nil,
+                          context: "Profit " + signed(last.profit, fmt) + (last.cashChange.map { " \u{00B7} cash " + signed($0, fmt) } ?? ""),
+                          contextTint: P.change(last.cashChange ?? last.profit), spark: months.map { $0.cashAtEnd })
+                list(months.reversed(), fmt)
             }
         }
     }
 
     private func list(_ months: [CompanyCashMonth], _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Closed months, newest first")
-            AcctPanel {
+            AcctCaps(text: "Closed months, newest first")
+            AcctFlat {
                 ForEach(Array(months.enumerated()), id: \.element.id) { n, month in
                     VStack(spacing: 0) {
                         if n > 0 { AcctDivider() }
@@ -166,6 +169,6 @@ struct AcctCashFlow: View {
         if let other = month.otherMovements { sub += " \u{00B7} other moves " + signed(other, fmt) }
         let note: String = month.cashChange.map { (c: Double) -> String in "cash " + signed(c, fmt) } ?? "first month on record"
         let tint: Color = (month.cashChange ?? 0) < 0 ? P.loss : P.gain
-        return AcctRow(title: month.label, subtitle: sub, value: fmt.short(month.cashAtEnd), valueNote: note, valueNoteTint: tint, identifier: "acct-cashflow-row")
+        return AcctLine(title: month.label, subtitle: sub, value: fmt.short(month.cashAtEnd), valueNote: note, valueNoteTint: tint, identifier: "acct-cashflow-row")
     }
 }

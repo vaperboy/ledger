@@ -74,33 +74,29 @@ struct AcctInvoices: View {
         let kind: InvoiceKind = t == .invoices ? .customer : .supplier
         let items: [InvoiceItem]? = e.invoices(companyID: co.id, kind: kind, status: statusFilter, user: m.user)
         return ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
                 if let items {
                     let valid: [AcctInvoiceFilter] = filters(for: t)
+                    summary(items, fmt, kind).padding(.bottom, Theme.Space.s)
                     SegmentedPill(items: valid, title: { filterTitle($0, t) }, selection: $m.invFilter, identifier: { "acct-inv-" + $0.rawValue.lowercased() })
-                    summary(items, fmt, kind)
                     list(items, fmt, kind)
                 } else {
                     AcctLocked(section: "Invoices")
                 }
             }
-            .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
             .frame(maxWidth: 560).frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
     }
 
+    /// What is open leads (to collect, or to pay), with the overdue part under it.
     private func summary(_ items: [InvoiceItem], _ fmt: BankFmt, _ kind: InvoiceKind) -> some View {
         let open: Double = items.filter { $0.status == .sent || $0.status == .overdue }.reduce(0) { $0 + $1.gross }
         let late: Double = items.filter { $0.status == .overdue }.reduce(0) { $0 + $1.gross }
         let openLabel: String = kind == .customer ? "To collect" : "To pay"
-        return HStack(alignment: .firstTextBaseline) {
-            Text(openLabel + " " + fmt.short(open)).textStyle(.caption, tint: P.ink, numeric: true, weight: .medium)
-            Spacer(minLength: 8)
-            if late > 0.5 { Text("Overdue " + fmt.short(late)).textStyle(.caption, tint: P.loss, numeric: true) }
-        }
-        .padding(.horizontal, 2)
-        .accessibilityElement(children: .combine)
+        let context: String = late > 0.5 ? "\(fmt.short(late)) of it overdue" : "Nothing overdue"
+        return MoneyHero(label: openLabel, value: fmt.full(open), context: context, contextTint: late > 0.5 ? P.loss : P.inkSoft)
     }
 
     @ViewBuilder private func list(_ items: [InvoiceItem], _ fmt: BankFmt, _ kind: InvoiceKind) -> some View {
@@ -109,7 +105,7 @@ struct AcctInvoices: View {
             AcctNotice(glyph: Glyph.reports, title: "No \(what) here",
                        message: kind == .customer ? "Invoices appear when you sell to business customers on account." : "Supplier invoices appear when you buy on credit terms.")
         } else {
-            AcctPanel {
+            AcctFlat {
                 ForEach(Array(items.prefix(60).enumerated()), id: \.element.id) { n, inv in
                     VStack(spacing: 0) {
                         if n > 0 { AcctDivider() }
@@ -122,7 +118,7 @@ struct AcctInvoices: View {
 
     private func row(_ inv: InvoiceItem, _ fmt: BankFmt) -> some View {
         let sub: String = "#" + inv.number + " \u{00B7} due " + inv.dueDateText
-        return AcctRow(initials: AcctRow.initials(inv.counterparty), title: inv.counterparty, subtitle: sub, value: fmt.short(inv.gross),
+        return AcctLine(initials: AcctRow.initials(inv.counterparty), title: inv.counterparty, subtitle: sub, value: fmt.short(inv.gross),
                        pill: inv.status.label, pillTone: inv.status.tone, identifier: "acct-invoice-row") { m.push(.invoice(inv.id)) }
     }
 }
@@ -138,7 +134,7 @@ struct AcctInvoiceDetail: View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             let fmt = BankFmt(store: store, company: co)
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     if let all = e.invoices(companyID: co.id, user: m.user) {
                         if let inv = all.first(where: { $0.id == invoiceID }) {
                             header(inv, fmt)
@@ -152,7 +148,7 @@ struct AcctInvoiceDetail: View {
                         AcctLocked(section: "Invoices")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -161,7 +157,7 @@ struct AcctInvoiceDetail: View {
     }
 
     private func header(_ inv: InvoiceItem, _ fmt: BankFmt) -> some View {
-        AcctPanel(padding: 16) {
+        AcctFlat(padding: 16) {
             HStack(spacing: 12) {
                 Text(AcctRow.initials(inv.counterparty)).textStyle(.body, tint: P.onAccent, weight: .semibold)
                     .frame(width: 44, height: 44).background(Circle().fill(P.accent))
@@ -180,8 +176,8 @@ struct AcctInvoiceDetail: View {
 
     private func lines(_ inv: InvoiceItem, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Line items")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "Line items")
+            AcctFlat(padding: 14) {
                 ForEach(Array(inv.lines.enumerated()), id: \.offset) { n, line in
                     FlatRow(label: line.description, value: fmt.full(line.net), sub: line.quantity != 1 ? "Quantity " + String(format: "%.0f", line.quantity) : "", rule: n > 0)
                 }
@@ -193,7 +189,7 @@ struct AcctInvoiceDetail: View {
     }
 
     private func dates(_ inv: InvoiceItem) -> some View {
-        AcctPanel(padding: 14) {
+        AcctFlat(padding: 14) {
             FlatRow(label: "Issued", value: inv.issuedDateText, rule: false)
             FlatRow(label: "Due", value: inv.dueDateText, tint: inv.status == .overdue ? P.loss : nil)
             if let paid = inv.paidDateText { FlatRow(label: "Paid", value: paid, tint: P.gain) }

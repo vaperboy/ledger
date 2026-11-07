@@ -5,7 +5,8 @@ import Businesses
 import Finance
 import Simulation
 
-/// New company, step 1 of 3: choose the trade (step 2 is the company, step 3 the review and payment). A sharp table (trade, start-up, demand, staff) under sector tabs; the engine's
+/// New company, step 1 of 3: choose the trade (step 2 is the company, step 3 the review and payment). What you can spend leads, then one row
+/// per trade (name, why or what, start-up cost, demand and team) under sector tabs; the engine's
 /// `tradePickerRows` supply every figure and the reason a trade cannot be started. Holding, franchise, abroad and club moved to
 /// Group (Add to group, and Expansion on a company's page).
 struct NewCompanyView: View {
@@ -17,11 +18,6 @@ struct NewCompanyView: View {
     @State private var rows: [TradePickerRow] = []
     @State private var goNext = false
 
-    private let columns: [TableColumn] = [
-        TableColumn(title: "Trade"), TableColumn(title: "Advised", width: 74),
-        TableColumn(title: "Demand", width: 58), TableColumn(title: "Staff", width: 38)
-    ]
-
     var body: some View {
         if let e = store.engine {
             let city: String = cityID.isEmpty ? e.state.player.cityID : cityID
@@ -29,15 +25,15 @@ struct NewCompanyView: View {
             let shown: [TradePickerRow] = sector == "All" ? rows : rows.filter { $0.sector == sector }
             let picked: TradePickerRow? = rows.first { $0.tradeID == selectedID }
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                     cityLine(e, city)
                     SectionTabs(items: sectors, primary: Array(sectors.prefix(5)), title: { $0 }, selection: $sector)
                         .padding(.horizontal, -Theme.Space.margin)
                     table(e, shown)
-                    Text("Demand is for this city; staff is the usual team size. Start-up costs are exact; the rest is an estimate and your result depends on price, location and management.")
+                    Text("Start-up costs are exact. Demand is for this city; results depend on price, place and management.")
                         .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.l).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar(picked) }
@@ -62,21 +58,23 @@ struct NewCompanyView: View {
 
     // MARK: Pieces
 
+    /// What the player can spend leads; the city the trades are priced for sits under it as a menu.
     @ViewBuilder private func cityLine(_ e: GameEngine, _ city: String) -> some View {
         let cities: [Country.City] = e.homeCountry.cities
         let name: String = cities.first { $0.id == city }?.name ?? "Home city"
-        HStack {
-            Text("Priced for").textStyle(.caption)
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            MoneyHero(label: "You can spend", value: store.money(Payments.liquid(e.state)))
             Menu {
                 ForEach(cities) { c in Button(c.name) { cityID = c.id; selectedID = nil } }
             } label: {
                 HStack(spacing: 4) {
+                    Text("Priced for").textStyle(.caption)
                     Text(name).textStyle(.caption, tint: Theme.accent, weight: .medium)
                     Image(systemName: "chevron.down").textStyle(.caption, tint: Theme.accent, weight: .semibold)
                 }
+                .frame(minHeight: 32).contentShape(Rectangle())
             }
-            Spacer()
-            Text("You have \(store.money(Payments.liquid(e.state)))").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+            .accessibilityLabel("Priced for \(name)")
         }
     }
 
@@ -85,29 +83,54 @@ struct NewCompanyView: View {
             EmptyState(glyph: Glyph.market, title: rows.isEmpty ? "No trades are on offer here." : "No trade in this group.",
                        message: rows.isEmpty ? "Try another city." : "Pick another sector above.")
         } else {
-            SharpTable {
-                TableHeader(columns: columns)
-                ForEach(shown) { r in row(e, r) }
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(shown.enumerated()), id: \.element.id) { (n: Int, r: TradePickerRow) in
+                    if n > 0 { Hairline() }
+                    row(e, r)
+                }
             }
         }
     }
 
+    /// One trade: name and why (or what it is), the start-up cost and the city's demand with the usual team. The chosen one is washed in accent.
     @ViewBuilder private func row(_ e: GameEngine, _ r: TradePickerRow) -> some View {
         let choosable: Bool = isChoosable(r)
         let blurb: String = e.data.catalog[r.tradeID]?.blurb ?? ""
         let note: String = reason(e, r) ?? blurb
         let cost: String = r.startUpCost.map { store.money($0) } ?? "n/a"
         let staff: String = r.staffMin == r.staffMax ? "\(r.staffMax)" : "\(r.staffMin)-\(r.staffMax)"
-        let costTint: Color = choosable ? Theme.ivory : Theme.ivoryFaint
-        let tints: [Color] = [costTint, demandTint(r.demand, choosable), Theme.ivoryMuted]
         let trade: String = r.tradeID, tradeName: String = r.name
         let open: Bool = TradeAccess.isUnlocked(tradeID: trade, startUpCost: r.startUpCost, medianWage: e.homeCountry.medianMonthlyWage, entitlements: ent.effective, now: Date())
-        let tap: (() -> Void)? = choosable ? { if open { selectedID = trade } else { ent.run(.tradeAboveCostLine, "Open a " + tradeName.lowercased()) {} } } : nil
-        let opacity: Double = choosable ? 1 : 0.55
-        TableRow(columns: columns, title: r.name, note: note, values: [cost, r.demand.rawValue, staff], valueTints: tints,
-                 selected: r.tradeID == selectedID, action: tap)
-            .opacity(opacity)
-            .overlay(alignment: .topTrailing) { if !open && choosable { ProMark(feature: .tradeAboveCostLine).padding(.trailing, 4).padding(.top, 2) } }
+        let selected: Bool = r.tradeID == selectedID
+        Button {
+            Haptics.choose()
+            if open { selectedID = trade } else { ent.run(.tradeAboveCostLine, "Open a " + tradeName.lowercased()) {} }
+        } label: {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(selected ? Theme.accent : Theme.lineStrong)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(r.name.tidyText).textStyle(.headline).lineLimit(1)
+                    Text(note.tidyText).textStyle(.caption, tint: choosable ? Theme.inkSoft : Theme.warn).lineLimit(2).multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    Text(cost.tidyText).textStyle(.headline, tint: choosable ? Theme.ink : Theme.inkFaint, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("\(r.demand.rawValue) demand \u{00B7} \(staff) staff").textStyle(.caption, tint: demandTint(r.demand, choosable)).lineLimit(1).minimumScaleFactor(0.8)
+                }
+            }
+            .padding(.vertical, Theme.Space.m).padding(.horizontal, Theme.Space.s)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(selected ? Theme.accentWash : Color.clear))
+            .contentShape(Rectangle())
+            .accessibilityElement(children: .combine)
+        }
+        .buttonStyle(AcctPressStyle())
+        .disabled(!choosable)
+        .opacity(choosable ? 1 : 0.6)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .overlay(alignment: .topTrailing) { if !open && choosable { ProMark(feature: .tradeAboveCostLine).padding(.trailing, 4).padding(.top, 2) } }
     }
 
     /// Why a trade cannot be picked: the engine's own refusal, or how much more money it needs.

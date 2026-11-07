@@ -36,12 +36,15 @@ struct BankAccountScreen: View {
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
+                // Pages sit on the page itself: every group inside draws flat (no boxes).
                 if tabs.count > 1 {
                     SegmentPager(items: tabs, selection: pagerSelection) { (t: BankTab) in
-                        ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.xs, maxWidth: 560) { pageContent(e, d, fmt, t) }
+                        ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l, maxWidth: 560) { pageContent(e, d, fmt, t) }
+                            .environment(\.insideCard, true)
                     }
                 } else {
-                    ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.xs, maxWidth: 560) { pageContent(e, d, fmt, .account) }
+                    ScrollScreen(spacing: Theme.Space.xl, top: Theme.Space.l, maxWidth: 560) { pageContent(e, d, fmt, .account) }
+                        .environment(\.insideCard, true)
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -56,8 +59,10 @@ struct BankAccountScreen: View {
 
     @ViewBuilder private func pageContent(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt, _ t: BankTab) -> some View {
         if t == .account {
-            balanceCard(d, fmt)
-            tiles(d)
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                balanceCard(d, fmt)
+                tiles(d)
+            }
         }
         content(e, d, fmt, t)
     }
@@ -108,51 +113,47 @@ struct BankAccountScreen: View {
 
     // MARK: Balance
 
-    /// The balance leads; change this month beside it, then one strip of what can be spent. No box: the page is the surface.
+    /// The balance leads, the month's change under it in gain or loss, then one quiet line of what can be spent. No box.
     private func balanceCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         let label: String = id == .personal ? "Current account" : id == .investments ? "Value of what you hold" : "Company account"
-        let tint: Color = d.balance < 0 ? P.loss : P.ink
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(alignment: .top, spacing: Theme.Space.s) {
-                Figure(label: label, value: fmt.full(d.balance), tint: tint, size: .display, live: d.balance)
-                Spacer(minLength: Theme.Space.s)
-                if let m = d.monthChange, abs(m) >= 0.5 {
-                    VStack(alignment: .trailing, spacing: 0) {
-                        Text((m > 0 ? "▲ " : "▼ ") + fmt.short(abs(m))).textStyle(.caption, tint: P.change(m), numeric: true)
-                        Text("this month").textStyle(.caption, tint: P.inkFaint)
-                    }
-                }
-            }
-            if id != .investments {
-                let overdraft: String = d.overdraftUsed > 0 ? fmt.short(d.overdraftUsed) + " used" : fmt.short(d.overdraftLimit)
-                let rate: String = d.overdraftRate.map { Currency.percent($0, decimals: 2) } ?? "–"
-                FigureRow(items: [
-                    KeyFigures.Item(label: "Available", value: fmt.short(d.available), tint: d.available <= 0 ? P.loss : P.ink),
-                    KeyFigures.Item(label: "Overdraft", value: overdraft, tint: d.overdraftUsed > 0 ? P.warn : P.ink),
-                    KeyFigures.Item(label: "Overdraft rate", value: rate),
-                ])
-            }
-            if let s = d.savings {
-                let r: String = d.savingsRate.map { " at " + Currency.percent($0, decimals: 2) } ?? ""
-                Text("Savings \(fmt.short(s))\(r)").textStyle(.caption)
+        let m: Double = d.monthChange ?? 0
+        let change: String = abs(m) >= 0.5 ? (m > 0 ? "+" : "\u{2212}") + fmt.short(abs(m)) + " this month" : "No change this month"
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            MoneyHero(label: label, value: fmt.full(d.balance), tint: d.balance < 0 ? P.loss : nil,
+                      context: change, contextTint: abs(m) >= 0.5 ? P.change(m) : P.inkFaint, live: d.balance)
+            if !spendLine(d, fmt).isEmpty {
+                Text(spendLine(d, fmt).tidyText).textStyle(.caption, tint: P.inkFaint, numeric: true).fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    // MARK: Tiles
+    /// "£12k available · overdraft £5k at 9.50% · £3k saved at 4.00%": what can be spent, in one line.
+    private func spendLine(_ d: BankAccountDetail, _ fmt: BankFmt) -> String {
+        guard id != .investments else { return "" }
+        var parts: [String] = [fmt.short(d.available) + " available"]
+        let rate: String = d.overdraftRate.map { " at " + Currency.percent($0, decimals: 2) } ?? ""
+        if d.overdraftUsed > 0 { parts.append("overdraft " + fmt.short(d.overdraftUsed) + " used" + rate) }
+        else if d.overdraftLimit > 0 { parts.append("overdraft " + fmt.short(d.overdraftLimit) + rate) }
+        if let s = d.savings, s > 0.5 { parts.append(fmt.short(s) + " saved" + (d.savingsRate.map { " at " + Currency.percent($0, decimals: 2) } ?? "")) }
+        return parts.joined(separator: " \u{00B7} ")
+    }
 
-    /// Pay bill opens the Bills tab: one place for bills instead of a second list in a sheet.
+    // MARK: Actions
+
+    /// Transfer is the one filled action; Deposit and Withdraw sit under it as text. Bills have their own tab.
     @ViewBuilder private func tiles(_ d: BankAccountDetail) -> some View {
         if id == .investments {
-            HStack(spacing: Theme.Space.s) {
-                ActionTile(glyph: BankGlyph.transfer, title: "Cash to invest") { move = .transfer }
-            }
+            Button { Haptics.tap(); move = .transfer } label: { Text("Cash to invest") }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
         } else {
-            HStack(spacing: Theme.Space.s) {
-                ActionTile(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
-                ActionTile(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
-                ActionTile(glyph: BankGlyph.withdraw, title: "Withdraw") { move = .withdraw }
-                ActionTile(glyph: BankGlyph.bill, title: "Pay bill", badge: !d.upcoming.isEmpty && d.alert != nil ? 1 : 0) { tab = .bills }
+            VStack(spacing: Theme.Space.xs) {
+                Button { Haptics.tap(); move = .transfer } label: { Text("Transfer") }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                HStack(spacing: Theme.Space.l) {
+                    MoneyTextAction(title: "Deposit") { move = .deposit }
+                    MoneyTextAction(title: "Withdraw") { move = .withdraw }
+                    if !d.upcoming.isEmpty { MoneyTextAction(title: "Pay a bill") { tab = .bills } }
+                }
             }
         }
     }
@@ -170,7 +171,7 @@ struct BankAccountScreen: View {
     }
 
     private func accountTab(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if id == .investments {
                 InvestContent()
             }
@@ -186,7 +187,7 @@ struct BankAccountScreen: View {
             }
             if id == .personal {
                 NavigationLink { ActivityView().environment(\.outsidePalette, OutsidePalette.game) } label: {
-                    LedgerRow(title: "Every movement on your account", chevron: true)
+                    LedgerRow(leading: .glyph(Glyph.list), title: "Every movement", subtitle: "Week by week, since you started", chevron: true)
                 }
                 .buttonStyle(AcctPressStyle())
             }
@@ -195,24 +196,24 @@ struct BankAccountScreen: View {
 
     /// The next three payments; the Bills tab holds the rest and the Pay now buttons.
     private func comingUp(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        CardSection(title: "Coming up", trailing: {
+        MoneyGroup(title: "Coming up", trailing: {
             Button("All bills") { tab = .bills }.buttonStyle(TertiaryButtonStyle(size: .compact))
         }) {
-            if d.upcoming.isEmpty { EmptyState(glyph: BankGlyph.bill, title: "Nothing is due.", centered: false) }
+            if d.upcoming.isEmpty { EmptyState(glyph: BankGlyph.bill, title: "Nothing is due.", centered: false).padding(.vertical, Theme.Space.s) }
             ForEach(Array(d.upcoming.prefix(3).enumerated()), id: \.element.id) { (n: Int, u: Obligation) in
-                if n > 0 { Hairline() }
+                if n > 0 { MoneyRule(inset: 32) }
                 BankObligationRow(obligation: u, fmt: fmt)
             }
         }
     }
 
     private func recent(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        CardSection(title: "Recent", trailing: {
+        MoneyGroup(title: "Recent", trailing: {
             Button("View all") { viewAll = true }.buttonStyle(TertiaryButtonStyle(size: .compact))
         }) {
-            if d.recent.isEmpty { EmptyState(glyph: BankGlyph.transfer, title: "Nothing has gone through yet.", centered: false) }
+            if d.recent.isEmpty { EmptyState(glyph: BankGlyph.transfer, title: "Nothing has gone through yet.", centered: false).padding(.vertical, Theme.Space.s) }
             ForEach(Array(d.recent.prefix(5).enumerated()), id: \.element.id) { (n: Int, t: BankTransaction) in
-                if n > 0 { Hairline() }
+                if n > 0 { MoneyRule(inset: 0) }
                 BankTransactionRow(transaction: t, fmt: fmt)
             }
         }
@@ -227,7 +228,7 @@ struct BankObligationRow: View {
     var body: some View {
         let glyph: String = obligation.kind == .loan ? BankGlyph.transfer : BankGlyph.bill
         LedgerRow(leading: .glyph(glyph), leadingTint: P.inkSoft, title: obligation.title, subtitle: obligation.dateText,
-                  value: fmt.short(obligation.amount), density: .compact)
+                  value: fmt.short(obligation.amount), lineLimit: 1)
     }
 }
 
@@ -239,7 +240,7 @@ struct BankTransactionRow: View {
     var body: some View {
         let sign: String = transaction.amount >= 0 ? "+" : "−"
         LedgerRow(title: transaction.label, subtitle: transaction.dateText, value: sign + fmt.short(abs(transaction.amount)),
-                  valueTint: P.change(transaction.amount), density: .compact)
+                  valueTint: transaction.amount > 0 ? P.gain : nil, lineLimit: 1)
     }
 }
 

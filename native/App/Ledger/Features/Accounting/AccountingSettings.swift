@@ -30,7 +30,7 @@ struct AcctSettings: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     if let roster = e.accountingRoster(companyID: co.id, user: m.user) {
                         access(roster.granted, co)
                         company(e, co)
@@ -38,7 +38,7 @@ struct AcctSettings: View {
                         AcctLocked(section: "Settings")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -47,13 +47,13 @@ struct AcctSettings: View {
 
     private func access(_ granted: [AccountingUser], _ co: Company) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Access management")
-            AcctPanel {
-                AcctRow(initials: AcctRow.initials(store.engine?.state.player.name ?? "You"), title: "You", subtitle: "Owner", valueNote: "Full access", identifier: "acct-access-owner")
+            AcctCaps(text: "Access management")
+            AcctFlat {
+                AcctLine(initials: AcctRow.initials(store.engine?.state.player.name ?? "You"), title: "You", subtitle: "Owner", valueNote: "Full access", identifier: "acct-access-owner")
                 ForEach(granted) { (u: AccountingUser) in
                     VStack(spacing: 0) {
                         AcctDivider()
-                        AcctRow(initials: AcctRow.initials(u.name), title: u.name, subtitle: u.role.capitalized, valueNote: u.level.title, identifier: "acct-access-user") { m.push(.access(u.id)) }
+                        AcctLine(initials: AcctRow.initials(u.name), title: u.name, subtitle: u.role.capitalized, valueNote: u.level.title, identifier: "acct-access-user") { m.push(.access(u.id)) }
                     }
                 }
             }
@@ -72,8 +72,8 @@ struct AcctSettings: View {
         let fee: String = accountant.map { (a: AdviserOption) -> String in fmt.short(a.monthlyFee) + " a month" } ?? "None"
         let rating: String = accountant.map { (a: AdviserOption) -> String in String(format: "rated %.1f of 5", a.rating) } ?? "Appoint one in Atlas"
         return VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Company")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "Company")
+            AcctFlat(padding: 14) {
                 FlatRow(label: "Legal form", value: stats?.legalForm ?? (co.form == .limited ? "Limited company" : "Sole trader"), rule: false)
                 if let since = stats?.incorporatedSince { FlatRow(label: "Registered since", value: since) }
                 FlatRow(label: "Appointed accountant", value: stats?.accountant ?? "None")
@@ -98,7 +98,7 @@ struct AcctAccessDetail: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     if let roster = e.accountingRoster(companyID: co.id, user: m.user) {
                         if let person = (roster.granted + roster.candidates).first(where: { $0.id == userID }) {
                             header(person)
@@ -111,7 +111,7 @@ struct AcctAccessDetail: View {
                         AcctLocked(section: "Settings")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -127,7 +127,7 @@ struct AcctAccessDetail: View {
     }
 
     private func header(_ p: AccountingUser) -> some View {
-        AcctPanel(padding: 16) {
+        AcctFlat(padding: 16) {
             HStack(spacing: 12) {
                 Text(AcctRow.initials(p.name)).textStyle(.body, tint: P.onAccent, weight: .semibold)
                     .frame(width: 44, height: 44).background(Circle().fill(P.accent))
@@ -142,7 +142,7 @@ struct AcctAccessDetail: View {
 
     private func levels(_ p: AccountingUser) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Access level")
+            AcctCaps(text: "Access level")
             ForEach(AccountingLevel.grantable, id: \.rawValue) { (l: AccountingLevel) in
                 AcctChoice(title: l.title, subtitle: l.summary, selected: level == l, identifier: "acct-level-" + String(l.rawValue)) { level = l }
             }
@@ -216,18 +216,18 @@ struct AcctAddUser: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     if let roster = e.accountingRoster(companyID: co.id, user: m.user) {
                         if roster.candidates.isEmpty {
                             AcctNotice(glyph: Glyph.people, title: "No one to add",
                                        message: "Everyone who works for \(co.name), and its accountant, already has access. Hire a manager or appoint an accountant to add more people.")
                         } else {
                             Text("Choose who should see the books of \(co.name).").textStyle(.body, tint: P.inkSoft).padding(.horizontal, 2)
-                            AcctPanel {
+                            AcctFlat {
                                 ForEach(Array(roster.candidates.enumerated()), id: \.element.id) { n, u in
                                     VStack(spacing: 0) {
                                         if n > 0 { AcctDivider() }
-                                        AcctRow(initials: AcctRow.initials(u.name), title: u.name, subtitle: u.role.capitalized, identifier: "acct-candidate-row") { m.push(.access(u.id)) }
+                                        AcctLine(initials: AcctRow.initials(u.name), title: u.name, subtitle: u.role.capitalized, identifier: "acct-candidate-row") { m.push(.access(u.id)) }
                                     }
                                 }
                             }
@@ -236,7 +236,7 @@ struct AcctAddUser: View {
                         AcctLocked(section: "Settings")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)

@@ -22,14 +22,14 @@ struct AcctPayroll: View {
                     .accessibilityIdentifier("acct-payroll-tabs")
                 SegmentPager(items: AcctPayrollTab.allCases, selection: $m.payTab) { (t: AcctPayrollTab) in
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: Theme.Space.xl) {
                             if !e.canAccess(.payroll, companyID: co.id, user: m.user) {
                                 AcctLocked(section: "Payroll")
                             } else {
                                 tabContent(e, co, t)
                             }
                         }
-                        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                         .frame(maxWidth: 560).frame(maxWidth: .infinity)
                     }
                     .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -69,27 +69,15 @@ struct AcctPayroll: View {
         }
     }
 
+    /// The next payroll leads: its total cost, the date and headcount under it with the status, then Run payroll.
     private func nextPayroll(_ o: PayrollOverview, _ r: PayrollRunReview, _ fmt: BankFmt) -> some View {
         let state: (String, AcctPill.Tone) = status(o, r)
-        return AcctPanel(padding: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Next payroll").textStyle(.body, tint: P.inkSoft)
-                    Spacer(minLength: 8)
-                    AcctPill(text: state.0, tone: state.1)
-                }
-                Text(r.payDateText).textStyle(.title)
-                AcctDivider()
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Total cost").textStyle(.caption, tint: P.inkFaint)
-                        Text(fmt.full(r.totalEmployerCost)).textStyle(.figure).minimumScaleFactor(0.6).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    Text(r.lines.count.peopleText).textStyle(.body, tint: P.inkSoft)
-                }
-                AcctPrimaryButton(title: "Run payroll", identifier: "acct-payroll-run") { m.payTab = .run }
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                MoneyHero(label: "Next payroll", value: fmt.full(r.totalEmployerCost), context: r.payDateText + " \u{00B7} " + r.lines.count.peopleText)
+                AcctPill(text: state.0, tone: state.1)
             }
+            AcctPrimaryButton(title: "Run payroll", identifier: "acct-payroll-run") { m.payTab = .run }
         }
     }
 
@@ -107,7 +95,7 @@ struct AcctPayroll: View {
     private func payday(_ co: Company, _ o: PayrollOverview, _ fmt: BankFmt) -> some View {
         let notCovered: Bool = o.companyCash < o.estimate
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            AcctPanel(padding: 14) {
+            AcctFlat(padding: 14) {
                 FlatRow(label: "Company cash", value: fmt.full(o.companyCash), sub: "Expected by pay day: " + fmt.full(o.estimate), tint: notCovered ? P.loss : P.ink, rule: false)
                 FlatRow(label: "Wages owed now", value: fmt.full(o.wagesOwed), sub: "Booked, not yet paid out")
                 FlatRow(label: "Approval", value: approvalText(o), sub: approvalNote(o))
@@ -127,7 +115,7 @@ struct AcctPayroll: View {
                                message: "Put in \(fmt.short(o.estimate - o.companyCash)) more before pay day, or part of the wages stays unpaid.", tint: P.caution)
                 }
                 Button("Move money in the Bank") { store.openBank(.company(co.id)) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
                     .accessibilityIdentifier("acct-payroll-move-money")
             }
         }
@@ -149,10 +137,10 @@ struct AcctPayroll: View {
         let name: String = o.responsibility?.name ?? "You"
         let why: String = o.responsibility?.reason ?? "No accountant or suitable manager: you approve each payroll yourself."
         return VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Who runs payroll")
+            AcctCaps(text: "Who runs payroll")
             AcctNotice(glyph: Glyph.person, title: "Run by \(name)", message: why)
             if !o.modeIsFixed {
-                AcctPanel {
+                AcctFlat {
                     ForEach(Array(o.choices.enumerated()), id: \.element.id) { n, c in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }
@@ -184,17 +172,17 @@ struct AcctPayroll: View {
             go = { store.openGroupEntity(companyID: id, section: "management") }
         }
         if let why = c.unavailable { note = why }
-        return AcctRow(title: title, subtitle: note, value: fee, pill: c.isCurrent ? "Now" : nil, pillTone: .good, identifier: "acct-payroll-who-" + c.mode.rawValue, action: go)
+        return AcctLine(title: title, subtitle: note, value: fee, pill: c.isCurrent ? "Now" : nil, pillTone: .good, identifier: "acct-payroll-who-" + c.mode.rawValue, action: go)
     }
 
     @ViewBuilder private func recent(_ e: GameEngine, _ co: Company, _ fmt: BankFmt) -> some View {
         let runs: [PayrollRunRecord] = e.payrollRuns(companyID: co.id, user: m.user) ?? []
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Recent payrolls")
+            AcctCaps(text: "Recent payrolls")
             if runs.isEmpty {
                 AcctNotice(glyph: Glyph.reports, title: "No payroll has been run yet", message: "Each run is recorded here with its payslips.")
             } else {
-                AcctPanel {
+                AcctFlat {
                     ForEach(Array(runs.prefix(8).enumerated()), id: \.element.id) { n, run in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }
@@ -210,7 +198,7 @@ struct AcctPayroll: View {
         let isShort: Bool = run.short > 0.5
         let sub: String = run.dateText + " \u{00B7} " + run.lines.count.peopleText
         let tone: AcctPill.Tone = isShort ? .warn : .good
-        return AcctRow(title: run.periodText, subtitle: sub, value: fmt.short(run.paid), pill: isShort ? "Short" : "Paid", pillTone: tone, identifier: "acct-payroll-run-row") { m.push(.payrollRun(run.id)) }
+        return AcctLine(title: run.periodText, subtitle: sub, value: fmt.short(run.paid), pill: isShort ? "Short" : "Paid", pillTone: tone, identifier: "acct-payroll-run-row") { m.push(.payrollRun(run.id)) }
     }
 
     // MARK: Employees
@@ -221,7 +209,7 @@ struct AcctPayroll: View {
             if r.lines.isEmpty {
                 AcctNotice(glyph: Glyph.people, title: "No employees", message: "People on the payroll are listed here with what each costs.")
             } else {
-                AcctPanel {
+                AcctFlat {
                     ForEach(Array(r.lines.enumerated()), id: \.element.id) { n, line in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }
@@ -239,7 +227,7 @@ struct AcctPayroll: View {
         let hours: String = String(format: "%.0f", line.hoursPerMonth)
         let sub: String = line.role.capitalized + " \u{00B7} " + hours + " h a month"
         let gross: String = "gross " + fmt.short(line.grossMonthly)
-        return AcctRow(initials: AcctRow.initials(line.name), title: line.name, subtitle: sub, value: fmt.short(line.totalEmployerCost), valueNote: gross, identifier: "acct-employee-row")
+        return AcctLine(initials: AcctRow.initials(line.name), title: line.name, subtitle: sub, value: fmt.short(line.totalEmployerCost), valueNote: gross, identifier: "acct-employee-row")
     }
 
     // MARK: Timesheets
@@ -249,7 +237,7 @@ struct AcctPayroll: View {
             if rows.isEmpty {
                 AcctNotice(glyph: Glyph.calendar, title: "No timesheets", message: "Hours are tracked for employees on contracts. The owner and manager are salaried.")
             } else {
-                AcctPanel {
+                AcctFlat {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { n, row in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }
@@ -276,7 +264,7 @@ struct AcctPayroll: View {
             let over: String = String(format: "%.0f", row.overtimeHours)
             note += " \u{00B7} +" + over + " overtime"
         }
-        return AcctRow(initials: AcctRow.initials(row.name), title: row.name, subtitle: sub, value: actual, valueNote: note, identifier: "acct-timesheet-row")
+        return AcctLine(initials: AcctRow.initials(row.name), title: row.name, subtitle: sub, value: actual, valueNote: note, identifier: "acct-timesheet-row")
     }
 
     // MARK: Run payroll
@@ -299,7 +287,7 @@ struct AcctPayroll: View {
     }
 
     private func reviewHeader(_ r: PayrollRunReview) -> some View {
-        AcctPanel(padding: 14) {
+        AcctFlat(padding: 14) {
             FlatRow(label: "Period", value: r.periodText, rule: false)
             FlatRow(label: "Pay date", value: r.payDateText)
             FlatRow(label: "Run by", value: r.responsibleName)
@@ -308,8 +296,8 @@ struct AcctPayroll: View {
 
     private func includedList(_ r: PayrollRunReview, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Employees included (\(r.lines.count))")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "Employees included (\(r.lines.count))")
+            AcctFlat(padding: 14) {
                 ForEach(Array(r.lines.enumerated()), id: \.element.id) { n, line in
                     FlatRow(label: line.name, value: fmt.short(line.grossMonthly), sub: line.role.capitalized, rule: n > 0)
                 }
@@ -319,8 +307,8 @@ struct AcctPayroll: View {
 
     private func totals(_ r: PayrollRunReview, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "What it costs")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "What it costs")
+            AcctFlat(padding: 14) {
                 FlatRow(label: "Gross wages", value: fmt.full(r.grossTotal), rule: false)
                 FlatRow(label: "Employer taxes and contributions", value: fmt.full(r.employerContributions))
                 if r.insurance > 0.5 { FlatRow(label: "Insurance", value: fmt.full(r.insurance)) }
@@ -335,8 +323,8 @@ struct AcctPayroll: View {
     private func funding(_ r: PayrollRunReview, _ fmt: BankFmt) -> some View {
         let enough: Bool = r.canCover
         return VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Payment")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "Payment")
+            AcctFlat(padding: 14) {
                 FlatRow(label: "Account charged", value: r.account, rule: false)
                 FlatRow(label: "To pay on pay day", value: fmt.full(r.amountDue))
                 FlatRow(label: "Available balance", value: fmt.full(r.availableBalance), tint: enough ? P.ink : P.loss)
@@ -422,7 +410,7 @@ struct AcctPayrollRunDetail: View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
             let fmt = BankFmt(store: store, company: co)
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     if let runs = e.payrollRuns(companyID: co.id, user: m.user) {
                         if let run = runs.first(where: { $0.id == runID }) {
                             result(run, fmt)
@@ -435,7 +423,7 @@ struct AcctPayrollRunDetail: View {
                         AcctLocked(section: "Payroll")
                     }
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
@@ -444,7 +432,7 @@ struct AcctPayrollRunDetail: View {
 
     private func result(_ run: PayrollRunRecord, _ fmt: BankFmt) -> some View {
         let short: Bool = run.short > 0.5
-        return AcctPanel(padding: 18) {
+        return AcctFlat(padding: 18) {
             VStack(spacing: 10) {
                 ZStack {
                     Circle().fill((short ? P.caution : P.gain).opacity(0.14)).frame(width: 56, height: 56)
@@ -471,8 +459,8 @@ struct AcctPayrollRunDetail: View {
 
     private func breakdown(_ run: PayrollRunRecord, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Breakdown")
-            AcctPanel(padding: 14) {
+            AcctCaps(text: "Breakdown")
+            AcctFlat(padding: 14) {
                 FlatRow(label: "Salaries (gross)", value: fmt.full(run.grossTotal), rule: false)
                 FlatRow(label: "Employer taxes and contributions", value: fmt.full(run.employerCostsTotal))
                 if run.serviceFee > 0.5 { FlatRow(label: "Service fee", value: fmt.full(run.serviceFee)) }
@@ -485,13 +473,13 @@ struct AcctPayrollRunDetail: View {
         let gross: String = fmt.short(line.grossMonthly)
         let tax: String = fmt.short(withheld)
         let sub: String = "Gross " + gross + " \u{00B7} tax withheld " + tax
-        return AcctRow(initials: AcctRow.initials(line.name), title: line.name, subtitle: sub, value: fmt.short(line.netPay), valueNote: "net pay", identifier: "acct-payslip-row")
+        return AcctLine(initials: AcctRow.initials(line.name), title: line.name, subtitle: sub, value: fmt.short(line.netPay), valueNote: "net pay", identifier: "acct-payslip-row")
     }
 
     private func payslips(_ run: PayrollRunRecord, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            AcctLabel(text: "Payslips")
-            AcctPanel {
+            AcctCaps(text: "Payslips")
+            AcctFlat {
                 ForEach(Array(run.lines.enumerated()), id: \.element.id) { n, line in
                     VStack(spacing: 0) {
                         if n > 0 { AcctDivider() }
@@ -517,11 +505,11 @@ struct AcctPayday: View {
         if let info = engine.paydayInfo(companyID: company.id), info.hasPayroll {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(alignment: .firstTextBaseline) {
-                    AcctLabel(text: "Pay day")
+                    AcctCaps(text: "Pay day")
                     Spacer(minLength: Theme.Space.s)
                     Text(info.dayLabel).textStyle(.caption, tint: P.inkFaint)
                 }
-                AcctPanel {
+                AcctFlat {
                     ForEach(Array(info.choices.enumerated()), id: \.element.id) { (n: Int, c: PaydayChoice) in
                         VStack(spacing: 0) {
                             if n > 0 { AcctDivider() }

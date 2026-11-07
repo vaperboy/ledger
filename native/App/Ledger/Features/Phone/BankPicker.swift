@@ -3,8 +3,8 @@ import GameCore
 import Countries
 import Simulation
 
-/// The first page of the Bank app: whose account to open. Lists the accounts the bank already has (the player personally, the investments
-/// account, each company); choosing one opens it. Back from there leads to the full list, where every account can be opened.
+/// The first page of the Bank app: everything the bank holds as one figure, then whose account to open (the player, the investments
+/// account, each company) with its balance. Back from an account leads to the full overview, where every account can be opened.
 struct BankPickerScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -12,19 +12,16 @@ struct BankPickerScreen: View {
 
     var body: some View {
         if let e = store.engine {
-            let rows: [BankAccountRow] = e.bankAccounts().rows
-            let you: [BankAccountRow] = rows.filter { $0.kind == .personal }
-            let group: [BankAccountRow] = rows.filter { $0.kind == .investments }
-            let companies: [BankAccountRow] = rows.filter { $0.kind == .company }
+            let all: BankAccounts = e.bankAccounts()
+            let you: [BankAccountRow] = all.rows.filter { $0.kind != .company }
+            let companies: [BankAccountRow] = all.rows.filter { $0.kind == .company }
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    section("YOU", you, e)
-                    section("GROUP", group, e)
-                    section("YOUR COMPANIES", companies, e)
-                    Text("Choose an account. Back from it shows every account and the totals.")
-                        .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
+                VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                    BankTotalHero(all: all)
+                    group("You", you, e)
+                    group("Your companies", companies, e)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag().scrollBounceBehavior(.basedOnSize)
@@ -32,24 +29,65 @@ struct BankPickerScreen: View {
         }
     }
 
-    @ViewBuilder private func section(_ title: String, _ rows: [BankAccountRow], _ e: GameEngine) -> some View {
+    @ViewBuilder private func group(_ title: String, _ rows: [BankAccountRow], _ e: GameEngine) -> some View {
         if !rows.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title).capsLabel()
-                ForEach(rows) { r in row(r, e) }
+            MoneyGroup(title) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: BankAccountRow) in
+                    if n > 0 { MoneyRule(inset: 52) }
+                    BankAccountLine(row: r, engine: e, identifier: "bank-pick-\(r.id.id)") { onPick(r.id) }
+                }
             }
         }
     }
+}
 
-    private func row(_ r: BankAccountRow, _ e: GameEngine) -> some View {
-        let co: Company? = r.companyID.flatMap { e.state.company($0) }
+/// The opening figure of the Bank: every balance added up, and whether what falls due in 30 days is covered.
+struct BankTotalHero: View {
+    @Environment(\.outsidePalette) private var P
+    @EnvironmentObject var store: GameStore
+    var all: BankAccounts
+
+    var body: some View {
+        let due: String = store.short(all.dueWithin30Days)
+        let context: String = all.dueWithin30Days < 0.5 ? "Nothing falls due in the next 30 days"
+            : (all.isCovered ? "\(due) due in 30 days \u{00B7} covered" : "\(due) due in 30 days \u{00B7} not covered")
+        MoneyHero(label: "Total with the bank", value: store.money(all.total), tint: all.total < 0 ? P.loss : nil,
+                  context: context, contextTint: all.isCovered ? P.inkSoft : P.loss, live: all.total)
+    }
+}
+
+/// One account in a list: its mark (the company's picture, or a glyph), name, one line of detail and its balance; red when a payroll waits.
+struct BankAccountLine: View {
+    @Environment(\.outsidePalette) private var P
+    @EnvironmentObject var store: GameStore
+    var row: BankAccountRow
+    var engine: GameEngine
+    var identifier: String = ""
+    var action: () -> Void
+
+    var body: some View {
+        let r: BankAccountRow = row
+        let co: Company? = r.companyID.flatMap { engine.state.company($0) }
+        let fmt = BankFmt(store: store, company: co)
         let glyph: String = r.kind == .personal ? Glyph.person : r.kind == .investments ? Glyph.invest : BankGlyph.company
-        let sub: String = r.hasAlert ? (r.alertNote ?? r.detail) : r.kind == .investments ? "Shares · crypto · funds" : r.kind == .personal ? "Personal accounts" : r.detail
-        return Button { Haptics.tap(); onPick(r.id) } label: {
-            CardRow(glyph: glyph, title: r.name, subtitle: sub, badge: r.hasAlert ? 1 : 0,
-                    thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
+        let lead: LedgerRow.Leading = co.map { LedgerRow.Leading.thumb(ThumbSpec(kind: .trade, key: $0.type, glyph: glyph)) } ?? .glyph(glyph)
+        LedgerRow(leading: lead, leadingTint: P.accent, title: r.name, subtitle: note(r, fmt),
+                  value: fmt.short(r.balance), valueTint: r.balance < 0 ? P.loss : nil, badge: r.hasAlert ? 1 : 0, lineLimit: 1,
+                  identifier: identifier, action: action)
+            .frame(minHeight: 60)
+            .newGroupMarker(.bank, r.hasAlert ? [] : store.messageItemIDs(.bank, companyID: r.companyID ?? 0), alignment: .topLeading)
+    }
+
+    private func note(_ r: BankAccountRow, _ fmt: BankFmt) -> String {
+        if r.hasAlert, let n = r.alertNote { return n }
+        var parts: [String] = []
+        switch r.kind {
+        case .personal:
+            if let s = r.savings, s > 0 { parts.append(fmt.short(s) + " saved") } else { parts.append("Current account") }
+        case .investments: parts.append("Shares, crypto and funds")
+        case .company: parts.append(r.detail)
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("bank-pick-\(r.id.id)")
+        if r.loanCount > 0 { parts.append("\(r.loanCount) loan\(r.loanCount == 1 ? "" : "s")") }
+        return parts.filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")
     }
 }

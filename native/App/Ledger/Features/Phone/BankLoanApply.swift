@@ -35,7 +35,7 @@ struct BankLoanApplyFlow: View {
             let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: account.companyID)
             VStack(spacing: 0) {
                 AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: "Back") {
-                    Button("Done") { dismiss() }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                    Button("Done") { dismiss() }.buttonStyle(TertiaryButtonStyle(size: .compact))
                 }
                 .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
                 StepDots(step: step, count: Self.stepCount, labels: ["Offer", "Choose", "Confirm"]).padding(.bottom, 8)
@@ -164,9 +164,10 @@ private struct LoanStepOffer: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             if a.approved {
-                IvoryPanel { LoanOfferPanel(a: a, cur: cur) }
+                LoanOfferPanel(a: a, cur: cur)
                 conditions
-                QuietButton(title: "Choose an amount", fullWidth: true, action: choose)
+                Button { Haptics.tap(); choose() } label: { Text("Choose an amount") }
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("bank-loan-choose")
             } else {
                 refused
@@ -261,17 +262,15 @@ private struct LoanStepChoose: View {
         let slider = Binding<Double>(
             get: { amount },
             set: { v in amount = min(a.maximum, max(a.minimum, (v / step).rounded() * step)) })
-        return IvoryPanel {
-            LoanAmountPanel(cur: cur, amount: amount, minimum: a.minimum, maximum: a.maximum, slider: slider, setFraction: { f in
-                amount = min(a.maximum, max(a.minimum, f >= 1 ? a.maximum : (a.maximum * f / step).rounded() * step))
-            })
-        }
+        return LoanAmountPanel(cur: cur, amount: amount, minimum: a.minimum, maximum: a.maximum, slider: slider, setFraction: { f in
+            amount = min(a.maximum, max(a.minimum, f >= 1 ? a.maximum : (a.maximum * f / step).rounded() * step))
+        })
     }
 
     private var termCard: some View {
         let lo = Double(q.minTermMonths), hi = Double(q.maxTermMonths)
         let value = Binding<Double>(get: { Double(term) }, set: { term = Int($0.rounded()) })
-        return Card(padding: 16, radius: Theme.Radius.hero) {
+        return VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("REPAYMENT PERIOD (MONTHS)").capsLabel()
                 HStack(spacing: 14) {
@@ -301,14 +300,13 @@ private struct LoanStepChoose: View {
     }
 
     @ViewBuilder private var figures: some View {
-        StatStrip(cells: [
+        FigureRow(items: [
             .init(label: "Each month", value: cur.tidyShort(q.monthlyPayment)),
             .init(label: "Interest in all", value: cur.tidyShort(q.totalInterest)),
             .init(label: "Paid out", value: cur.tidyShort(q.disbursal), tint: P.gain),
-        ], ruled: false)
-        .padding(.vertical, 10).padding(.horizontal, 6)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.card))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+        ])
+        .padding(.vertical, Theme.Space.s)
+        .overlay(alignment: .top) { Hairline() }
     }
 }
 
@@ -352,8 +350,8 @@ private struct LoanAmountPanel: View {
             setFraction(fraction)
         } label: {
             Text(title).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 34)
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(P.accent, lineWidth: 1))
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -489,8 +487,10 @@ private struct LoanStepSummary: View {
     @State private var moreOpen = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if approved != nil { approvedBanner }
+            MoneyHero(label: "You receive", value: cur.tidyDisplay(q.disbursal),
+                      context: "\(cur.tidyShort(q.monthlyPayment)) a month for \(q.termMonths) months \u{00B7} \(Currency.percent(q.yearlyRate, decimals: 2)) a year")
             loanCard
             repayCard
             if let refusal { refusedCard(refusal) }
@@ -534,7 +534,7 @@ private struct LoanStepSummary: View {
     }
 
     private var loanCard: some View {
-        Card(padding: 16, radius: Theme.Radius.hero) {
+        MoneyGroup("The loan") {
             VStack(spacing: 0) {
                 line("Loan amount", cur.tidyDisplay(q.amount))
                 line("Loan term", "\(q.termMonths) months")
@@ -548,7 +548,7 @@ private struct LoanStepSummary: View {
     }
 
     private var repayCard: some View {
-        Card(padding: 16, radius: Theme.Radius.hero) {
+        MoneyGroup("Paying it back") {
             VStack(spacing: 0) {
                 line("Repayment amount", cur.tidyDisplay(q.totalRepaid))
                 line("Interest in total", cur.tidyDisplay(q.totalInterest))
@@ -572,7 +572,7 @@ private struct LoanStepSummary: View {
     @ViewBuilder private var scheduleLink: some View {
         Button { showSchedule.toggle(); Haptics.choose() } label: {
             HStack {
-                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").textStyle(.body, tint: P.accent).underline()
+                Text(showSchedule ? "Hide repayment schedule" : "View repayment schedule").textStyle(.body, tint: P.accent, weight: .medium)
                 Spacer()
             }.contentShape(Rectangle())
         }.buttonStyle(PressableStyle())
