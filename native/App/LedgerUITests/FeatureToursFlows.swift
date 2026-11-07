@@ -279,8 +279,8 @@ extension FeatureToursTests {
         step("market invest: Buy -> asset -> amount -> Review -> Confirm -> Done") {
             guard openPhoneApp("Market"), tapID("market-tab-Invest", wait: 4) else { return .skip("no Market app") }
             guard tapID("invest-buy", wait: 4) else { return .fail("no Buy on Invest: \(signature().text)") }
-            guard tapPrefix("trade-asset-fund-", wait: 4) else { return .fail("no fund to buy: \(signature().text)") }
-            if tapID("trade-owner-you", wait: 1.5) { pause(0.3) }
+            guard tapPrefix("trade-asset-fund:", wait: 4) else { return .fail("no fund to buy: \(signature().text)") }
+            if tapID("trade-owner-me", wait: 1.5) { pause(0.3) }
             guard let field = find(wait: 3, { $0.type == .textField }) else { return .fail("the buy page has no amount field") }
             touch(field)
             pause(0.6)

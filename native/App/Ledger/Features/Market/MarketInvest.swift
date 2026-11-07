@@ -15,7 +15,7 @@ struct MarketInvestPage: View {
     var body: some View {
         if let e = store.engine {
             let cur: Currency = e.homeCurrency
-            let all: MarketUI.Portfolio = store.memo("mk.portfolio") { MarketData.portfolio($0) } ?? MarketUI.Portfolio(positions: [])
+            let all: MarketUI.Portfolio = store.memo("mk.portfolio") { MarketData.portfolio($0) } ?? MarketUI.Portfolio.empty
             let owners: [MarketUI.OwnerInfo] = MarketData.owners(e)
             let chosen: MarketUI.Owner? = owners.first { (o: MarketUI.OwnerInfo) -> Bool in o.id == ownerKey }?.owner
             let p: MarketUI.Portfolio = all.only(chosen)
@@ -48,7 +48,7 @@ struct MarketInvestPage: View {
         }
         if let w = p.weekMove { parts.append(MarketFormat.money(w, cur) + " this week") }
         let context: String = parts.joined(separator: " \u{00B7} ")
-        let series: [Double] = owner == nil || owner == .you ? MarketData.investedHistory(store) : []
+        let series: [Double] = owner == nil ? (store.engine.map { (g: GameEngine) -> [Double] in MarketData.investedHistory(g) } ?? []) : []
         return MarketHero(label: name.map { (n: String) -> String in "Invested by \(n)" } ?? "Invested", value: cur.tidyShort(p.value), context: context,
                           contextTint: p.cost > 0.5 ? P.change(p.pnl) : nil, series: series,
                           seriesTint: (series.last ?? 0) >= (series.first ?? 0) ? P.gain : P.loss, identifier: "invest-hero")
@@ -152,7 +152,8 @@ struct PositionPage: View {
         case .privateEquity: Text("Sells whole, at a discount").textStyle(.caption)
         case .fund:
             if case .holding = p.owner { Text("Selling costs 0.66%").textStyle(.caption) }
-        case .shares, .groupStake, .partnership, .managed: EmptyView()
+        case .shares, .deposit, .groupStake, .partnership, .managed:
+            if let n = p.sellNote { Text(n.tidyText).textStyle(.caption).lineLimit(1) }
         }
     }
 

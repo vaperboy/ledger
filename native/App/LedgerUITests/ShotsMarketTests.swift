@@ -122,9 +122,9 @@ final class ShotsMarketTests: FeatureTourCase {
             if tapID("invest-buy", wait: 3) {
                 pause(0.8)
                 snapPage("buy-what", lower: 1)
-                if tapID("trade-asset-fund-idx", wait: 3) || tapPrefix("trade-asset-", wait: 2) {
+                if tapID("trade-asset-fund:idx", wait: 3) || tapPrefix("trade-asset-", wait: 2) {
                     pause(0.8)
-                    if has("trade-owner-you", wait: 1) { snap("buy-who"); _ = tapID("trade-owner-you") ; pause(0.6) }
+                    if has("trade-owner-me", wait: 1) { snap("buy-who"); _ = tapID("trade-owner-me") ; pause(0.6) }
                     if let field = find(wait: 3, { $0.type == .textField }) {
                         touch(field)
                         pause(0.6)
@@ -145,7 +145,7 @@ final class ShotsMarketTests: FeatureTourCase {
         if part("Invest") {
             pause(0.6)
             snap("invest-after-buy")
-            if tapID("invest-position-you|fund-idx", wait: 3) || tapPrefix("invest-position-", wait: 2) {
+            if tapID("invest-position-me:fund:idx", wait: 3) || tapPrefix("invest-position-", wait: 2) {
                 pause(1)
                 snapPage("position", lower: 1)
                 if tapID("position-sell", wait: 2) {

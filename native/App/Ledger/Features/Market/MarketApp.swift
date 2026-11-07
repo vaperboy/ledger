@@ -79,7 +79,7 @@ enum MarketRoute: Hashable, Identifiable {
         case .rival(let c, let r): return "rival.\(c).\(r)"
         case .group(let id): return "group.\(id)"
         case .position(let id): return "position.\(id)"
-        case .buy(let a, let o): return "buy.\(a ?? "").\(o?.key ?? "")"
+        case .buy(let a, let o): return "buy.\(a ?? "").\(o?.id ?? "")"
         case .sell(let id): return "sell.\(id)"
         case .country(let c): return "country.\(c)"
         case .rankings: return "rankings"

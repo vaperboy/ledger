@@ -40,7 +40,7 @@ struct MarketWorldPage: View {
     }
 
     private func rankings(_ e: GameEngine) -> some View {
-        let st: RichList.Standing? = store.memo("mk.rich") { (g: GameEngine) -> RichList.Standing in RichList.standing(g.state, data: g.data, context: g.context) }
+        let st: RichList.Standing? = store.memo("mk.rich") { (g: GameEngine) -> RichList.Standing in g.richListStanding }
         let rich: String = st?.rank.map { (r: Int) -> String in "#\(r)" } ?? "Not placed"
         return VStack(spacing: 0) {
             MarketLabel(title: "Rankings")
@@ -165,16 +165,20 @@ struct CountryPage: View {
         }
     }
 
+    /// The country's cities, biggest first: people, demand and rent, and the rivals there in a trade you run.
     @ViewBuilder private func cities(_ e: GameEngine, _ c: Country, _ here: [Company]) -> some View {
-        let list: [Country.City] = c.coreCities.sorted { (a: Country.City, b: Country.City) -> Bool in a.population > b.population }
+        let trade: String? = here.first { (co: Company) -> Bool in co.status == .open && co.type != "hold" }?.type
+            ?? MarketData.companies(e).first?.type
+        let list: [MarketCity] = MarketData.cities(e, country: c.code, tradeID: trade)
         MarketLabel(title: "Cities")
         VStack(spacing: 0) {
-            ForEach(Array(list.prefix(12).enumerated()), id: \.element.id) { (pair: (offset: Int, element: Country.City)) in
+            ForEach(Array(list.prefix(12).enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketCity)) in
                 if pair.offset > 0 { Hairline() }
-                let city: Country.City = pair.element
-                let mine: Int = here.filter { (co: Company) -> Bool in co.cityID == city.id }.count
-                LedgerRow(title: city.name, subtitle: "\(Int((city.population).rounded()).formatted()) k people \u{00B7} \(MarketWords.level(city.demand)) demand \u{00B7} \(MarketWords.cost(city.rent)) rent",
-                          value: mine > 0 ? mine.countText("company", plural: "companies") : "", lineLimit: 1)
+                let city: MarketCity = pair.element
+                let rivals: String = city.rivals.map { (n: Int) -> String in " \u{00B7} " + n.countText("rival") } ?? ""
+                LedgerRow(title: city.name,
+                          subtitle: "\(Int(city.population.rounded()).formatted())k \u{00B7} \(MarketWords.level(city.tradeDemand ?? city.demand)) demand \u{00B7} \(MarketWords.cost(city.rentLevel)) rent" + rivals,
+                          value: city.yourCompanies > 0 ? city.yourCompanies.countText("company", plural: "companies") : "", lineLimit: 1)
             }
         }
     }
@@ -217,7 +221,7 @@ struct MarketRankingsPage: View {
     var body: some View {
         Group {
             if let e = store.engine {
-                let st: RichList.Standing = RichList.standing(e.state, data: e.data, context: e.context)
+                let st: RichList.Standing = e.richListStanding
                 ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                     hero(e, st)
                     SegmentedPill(items: Part.allCases, title: { (p: Part) -> String in p.rawValue }, selection: $part,
@@ -225,7 +229,7 @@ struct MarketRankingsPage: View {
                     switch part {
                     case .rich: richList(st)
                     case .companies: CompanyRankingSection()
-                    case .awards: awards(e.state)
+                    case .awards: awards(e)
                     }
                 }
                 .appScreen(title: "Rankings", subtitle: "Market \u{00B7} World")
@@ -290,9 +294,9 @@ struct MarketRankingsPage: View {
         .accessibilityIdentifier(p.isYou ? "rankings-you" : "rankings-person-\(p.rank)")
     }
 
-    @ViewBuilder private func awards(_ s: GameState) -> some View {
-        let years = Array(Awards.years(s).reversed())
-        MarketLabel(title: "Business awards", note: "\(Awards.wonCount(s)) won")
+    @ViewBuilder private func awards(_ e: GameEngine) -> some View {
+        let years = Array(e.awardYears.reversed())
+        MarketLabel(title: "Business awards", note: "\(Awards.wonCount(e.state)) won")
         if years.isEmpty {
             Text("First awards at the end of the year").textStyle(.caption)
         } else {

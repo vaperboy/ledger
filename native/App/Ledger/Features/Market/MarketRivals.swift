@@ -12,7 +12,6 @@ struct MarketRivalsPage: View {
     var open: (MarketRoute) -> Void
     @State private var query = ""
     @State private var filter: Filter = .all
-    @AppStorage(MarketWatchlist.key) private var watchRaw: String = ""
 
     enum Filter: String, CaseIterable, Hashable { case all = "All", forSale = "For sale", watching = "Watching", groups = "Groups" }
 
@@ -20,7 +19,7 @@ struct MarketRivalsPage: View {
         if let e = store.engine {
             let all: [MarketUI.RivalItem] = store.memo("mk.rivals") { MarketData.rivals($0) } ?? []
             let groups: [MarketUI.GroupItem] = store.memo("mk.groups") { MarketData.groups($0) } ?? []
-            let watched: Set<String> = MarketWatchlist.ids(watchRaw, seed: e.state.seed)
+            let watched: Set<String> = Set(all.filter { (r: MarketUI.RivalItem) -> Bool in r.watched }.map { (r: MarketUI.RivalItem) -> String in r.id })
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(all, groups, e)
                 LedgerField(placeholder: "Search", text: $query, identifier: "market-rival-search")
@@ -114,9 +113,6 @@ struct RivalProfilePage: View {
     var rivalID: Int
     @State private var offering = false
     @State private var group: String?
-    @AppStorage(MarketWatchlist.key) private var watchRaw: String = ""
-
-    private var watchID: String { "co\(companyID).r\(rivalID)" }
 
     var body: some View {
         Group {
@@ -271,13 +267,12 @@ struct RivalProfilePage: View {
     // MARK: Menu
 
     private func menu(_ e: GameEngine, _ d: RivalDetail, _ cur: Currency) -> some View {
-        let watching: Bool = MarketWatchlist.ids(watchRaw, seed: e.state.seed).contains(watchID)
-        let seed: Int = e.state.seed
+        let watching: Bool = MarketData.isWatched(e, rivalID: rivalID)
         let canOpenBeside: Bool = e.state.company(companyID)?.value("docs")["fran"]["st"].string == "ok"
         return HStack(spacing: 0) {
             Button {
                 Haptics.choose()
-                watchRaw = MarketWatchlist.toggled(watchRaw, seed: seed, id: watchID)
+                MarketData.toggleWatch(store, rivalID: rivalID)
             } label: {
                 Image(systemName: watching ? "star.fill" : "star").font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(watching ? P.accent : P.ink).frame(width: 44, height: 44)

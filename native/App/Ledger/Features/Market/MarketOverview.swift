@@ -57,8 +57,8 @@ struct MarketOverviewPage: View {
     /// Everything invested by you and your holdings, with the week's move and the result so far; a tap opens Invest.
     private func invested(_ e: GameEngine) -> some View {
         let cur: Currency = e.homeCurrency
-        let p: MarketUI.Portfolio = store.memo("mk.portfolio") { MarketData.portfolio($0) } ?? MarketUI.Portfolio(positions: [])
-        let series: [Double] = MarketData.investedHistory(store)
+        let p: MarketUI.Portfolio = store.memo("mk.portfolio") { MarketData.portfolio($0) } ?? MarketUI.Portfolio.empty
+        let series: [Double] = MarketData.investedHistory(e)
         let week: Double = p.weekMove ?? 0
         return Button {
             Haptics.tap()

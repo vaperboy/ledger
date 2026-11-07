@@ -85,7 +85,7 @@ struct MarketTradeFlow: View {
     /// With no holding there is no one else to pay: the Who step is skipped.
     private func skipLoneOwner() {
         guard side == .buy, ownerCount <= 1 else { return }
-        if owner == nil { owner = .you }
+        if owner == nil { owner = .player }
         if step == .who { step = .amount }
     }
 
@@ -121,10 +121,10 @@ struct MarketTradeFlow: View {
             assetID = a.id
             if let o = owner, MarketData.refusal(a, for: o) != nil { owner = nil }
             step = owner == nil && ownerCount > 1 ? .who : .amount
-            if owner == nil { owner = .you }
+            if owner == nil { owner = .player }
         } label: {
             HStack(spacing: Theme.Space.m) {
-                LedgerGlyph(glyph: a.kind == .crypto ? Glyph.luxury : Glyph.invest, size: Theme.Icon.large, tint: P.inkSoft)
+                LedgerGlyph(glyph: a.kind == .crypto ? Glyph.luxury : (a.kind == .managedFund ? Glyph.person : Glyph.invest), size: Theme.Icon.large, tint: P.inkSoft)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(a.name).textStyle(.headline).lineLimit(1)
                     Text(a.risk).textStyle(.caption).lineLimit(1)
@@ -160,7 +160,7 @@ struct MarketTradeFlow: View {
                 let o: MarketUI.OwnerInfo = pair.element
                 let why: String? = asset.flatMap { (a: MarketUI.Asset) -> String? in MarketData.refusal(a, for: o.owner) }
                 let pick: (() -> Void)? = why == nil ? { () -> Void in owner = o.owner; step = .amount } : nil
-                LedgerRow(leading: .glyph(o.owner == .you ? Glyph.person : Glyph.group), leadingTint: P.inkSoft, title: o.name,
+                LedgerRow(leading: .glyph(o.owner == .player ? Glyph.person : Glyph.group), leadingTint: P.inkSoft, title: o.name,
                           subtitle: why ?? "",
                           value: cur.tidyShort(o.cash), valueNote: "available", identifier: "trade-owner-\(o.id)", action: pick)
                     .opacity(why == nil ? 1 : 0.5)
@@ -182,7 +182,7 @@ struct MarketTradeFlow: View {
 
     @ViewBuilder private func buyAmount(_ e: GameEngine, _ cur: Currency) -> some View {
         if let a = assetID.flatMap({ (id: String) -> MarketUI.Asset? in MarketData.asset(e, id: id) }) {
-            let payer: MarketUI.Owner = owner ?? .you
+            let payer: MarketUI.Owner = owner ?? .player
             let amount: Double = amountValue(cur)
             let q: MarketUI.TradePreview = MarketData.buyPreview(e, a, owner: payer, amount: amount)
             VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -246,16 +246,16 @@ struct MarketTradeFlow: View {
 
     @ViewBuilder private func review(_ e: GameEngine, _ cur: Currency) -> some View {
         if side == .buy, let a = assetID.flatMap({ (id: String) -> MarketUI.Asset? in MarketData.asset(e, id: id) }) {
-            let payer: MarketUI.Owner = owner ?? .you
+            let payer: MarketUI.Owner = owner ?? .player
             let q: MarketUI.TradePreview = MarketData.buyPreview(e, a, owner: payer, amount: amountValue(cur))
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                Figure(label: "Leaves \(payer == .you ? "your accounts" : MarketData.ownerName(e, payer))", value: cur.tidyDisplay(q.cashChange), size: .display)
+                Figure(label: "Leaves \(payer == .player ? "your accounts" : MarketData.ownerName(e, payer))", value: cur.tidyDisplay(q.cashChange), size: .display)
                 VStack(spacing: 0) {
                     line("You buy", a.name)
                     line("Amount", cur.tidyDisplay(q.amount))
                     line("Price", cur.tidyDisplay(a.price))
                     line("Units", PositionRow.unitsText(q.units))
-                    line("Fee", q.fee > 0 ? cur.tidyDisplay(q.fee) : "None", tint: q.fee > 0 ? P.loss : nil)
+                    line(q.feeLabel, q.fee > 0 ? cur.tidyDisplay(q.fee) : "None", tint: q.fee > 0 ? P.loss : nil)
                     line("Held by", MarketData.ownerName(e, payer))
                     Hairline()
                     line("Cash after", cur.tidyDisplay(q.cashAfter), strong: true)
@@ -270,16 +270,13 @@ struct MarketTradeFlow: View {
             let whole: Bool = p.wholeOnly || fraction >= 0.999
             let large: Bool = whole && q.amount >= cur.scaledPrice(10_000)
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                Figure(label: "Reaches \(p.owner == .you ? "your account" : p.ownerName)", value: cur.tidyDisplay(q.cashChange), tint: P.gain, size: .display)
+                Figure(label: "Reaches \(p.owner == .player ? "your account" : p.ownerName)", value: cur.tidyDisplay(q.cashChange), tint: P.gain, size: .display)
                 VStack(spacing: 0) {
                     line("You sell", whole ? "All of \(p.name)" : "\(Int((fraction * 100).rounded()))% of \(p.name)")
                     line("Value sold", cur.tidyDisplay(q.amount))
                     if q.units > 0 { line("Units", PositionRow.unitsText(q.units)) }
-                    line("Costs", q.fee > 0 ? cur.tidyDisplay(q.fee) : "None", tint: q.fee > 0 ? P.loss : nil)
-                    if p.costKnown {
-                        let result: Double = q.cashChange - p.cost * (whole ? 1 : fraction)
-                        line("Result", MarketFormat.money(result, cur), tint: P.change(result))
-                    }
+                    line(q.feeLabel, q.fee > 0 ? cur.tidyDisplay(q.fee) : "None", tint: q.fee > 0 ? P.loss : nil)
+                    if p.costKnown { line("Result", MarketFormat.money(q.realizedGain, cur), tint: P.change(q.realizedGain)) }
                     Hairline()
                     line("Cash after", cur.tidyDisplay(q.cashAfter), strong: true)
                 }
