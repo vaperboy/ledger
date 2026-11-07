@@ -63,7 +63,7 @@ struct ErrorPopup: View {
     var onClose: () -> Void
 
     var body: some View {
-        GamePopup(title: "Something went wrong", showsClose: false, onClose: onClose) {
+        GamePopup(title: "Something went wrong", showsClose: false, category: .compact, tone: .danger, icon: "exclamationmark.triangle", onClose: onClose) {
             PopupBody {
                 Text(text).popupText(.body)
                 PopupOptionButton(title: "Close", highlighted: true, identifier: "error-ok", action: onClose)
@@ -88,7 +88,7 @@ struct NoticePopup: View {
 
     /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
     private var luxury: some View {
-        GamePopup(title: "Acquired", showsClose: false, variant: .reward, onClose: { store.dismissNotice() }) {
+        GamePopup(title: "Acquired", showsClose: false, variant: .reward, category: .compact, tone: .prestige, icon: "crown", onClose: { store.dismissNotice() }) {
             PopupBody {
                 GoldReveal {
                     VStack(spacing: 6) {
@@ -105,7 +105,7 @@ struct NoticePopup: View {
 
     /// The result of an answered decision: a check, what was chosen, which company, and every change it made.
     private var answered: some View {
-        GamePopup(title: "Done", showsClose: false, onClose: { store.dismissNotice() }) {
+        GamePopup(title: "Done", showsClose: false, category: .compact, tone: .success, icon: "checkmark", onClose: { store.dismissNotice() }) {
             PopupBody {
                 HStack(spacing: 10) {
                     GlyphView(glyph: Glyph.check, size: 22, weight: 1.8, tint: Theme.gain)
@@ -133,7 +133,7 @@ struct NoticePopup: View {
     }
 
     private var plain: some View {
-        GamePopup(title: heading, showsClose: false, onClose: { store.dismissNotice() }) {
+        GamePopup(title: heading, showsClose: false, category: .compact, tone: .danger, icon: "exclamationmark.triangle", onClose: { store.dismissNotice() }) {
             PopupBody {
                 if !notice.text.isEmpty { Text(notice.text.tidyMoney).popupText(.body) }
                 PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
@@ -161,7 +161,7 @@ struct DecisionPopup: View {
     }
 
     private func card(_ e: GameEngine, _ m: Message) -> some View {
-        GamePopup(title: e.displayText(m.title, companyID: m.companyID), showsClose: true, onClose: { store.decisionPopup = nil }) {
+        GamePopup(title: e.displayText(m.title, companyID: m.companyID), showsClose: true, category: .medium, tone: .warning, onClose: { store.decisionPopup = nil }) {
             content(e, m)
         }
     }
@@ -204,8 +204,8 @@ struct DecisionPopup: View {
         let company: Company? = m.companyID != 0 ? e.state.company(m.companyID) : nil
         let place: String = company?.name ?? ""
         let fallback: String = e.displayText(m.title, companyID: m.companyID)
-        var action = PendingAction(title: label + (place.isEmpty ? "" : " · " + place), message: lines.isEmpty ? fallback : lines.joined(separator: "\n"),
-                                   button: label, destructive: need.irreversible) { send(e, m, index, label) }
+        var action = MessageCard.answerConfirm(title: label + (place.isEmpty ? "" : " · " + place), message: lines.isEmpty ? fallback : lines.joined(separator: "\n"),
+                                               button: label, need: need) { send(e, m, index, label) }
         if !need.irreversible, let amount = need.amount {
             action.amount = amount
             action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
@@ -238,7 +238,7 @@ struct RedAlertPopup: View {
     var message: Message
 
     var body: some View {
-        GamePopup(title: "About to be sold", showsClose: false, dismissOnBackdrop: false, variant: .alert, onClose: { }) {
+        GamePopup(title: "About to be sold", showsClose: false, dismissOnBackdrop: false, variant: .alert, category: .compact, tone: .danger, icon: "exclamationmark.octagon", onClose: { }) {
             PopupBody {
                 HStack(spacing: 10) {
                     GlyphView(glyph: Glyph.warning, size: 24, weight: 1.8, tint: Theme.alert)

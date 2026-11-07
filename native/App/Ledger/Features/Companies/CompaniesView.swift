@@ -36,17 +36,14 @@ enum CompanyRoute: Hashable {
     }
 }
 
-/// The Home tab: one scrolling page with net worth, what needs the owner, every company in one comparable list (a table on iPad),
-/// then rank and shortcuts. The Next day bar stays pinned at the bottom.
+/// The Home tab: one screen with net worth, what needs the owner and the companies that need attention most (every company in a
+/// table on iPad). The Next day bar stays pinned at the bottom.
 struct CompaniesView: View {
     enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sort: Sort = .attention
-    /// The phone list shows the first `previewCount` companies (worst first) until the owner asks for all of them.
-    @State private var showAll = false
-    static let previewCount = 6
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
@@ -54,7 +51,8 @@ struct CompaniesView: View {
                 if let e = store.engine {
                     // Health reads every company's books: once per engine change, not on every render of the always-alive Home tab.
                     let healths: [(co: Company, h: CompanyHealth)] = store.memo("homeRows") { (g: GameEngine) -> [(co: Company, h: CompanyHealth)] in
-                        g.state.companies.filter { $0.type != "hold" && $0.status != .sold }.map { (co: $0, h: g.companyHealth($0)) }
+                        // Live companies only (open, setting up, closed for a while): a sold, wound-up or bankrupt one never shows here.
+                        g.state.companies.filter { $0.type != "hold" && $0.status.isLive }.map { (co: $0, h: g.companyHealth($0)) }
                     } ?? []
                     let rows = healths.sorted(by: order)
                     homeScreen(e, rows: rows)
@@ -74,38 +72,56 @@ struct CompaniesView: View {
 
     // MARK: The Home page
 
-    /// A normal vertical scroll, so larger text and small phones push content down instead of clipping it.
-    private func homeScreen(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
-        ScrollView(.vertical) {
-            HomeSummary(engine: e, onNewCompany: { store.push(.newCompany, on: .company) }) {
-                companiesBlock(e, rows: rows)
+    /// iPhone: one screen without scrolling, the top three companies (two when the screen is short); only at very large text sizes
+    /// does it fall back to a scroll. iPad: one scroll with the full company table.
+    @ViewBuilder private func homeScreen(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
+        if sizeClass == .regular {
+            ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
+                .scrollIndicators(.hidden)
+        } else {
+            ViewThatFits(in: .vertical) {
+                page(e, rows: rows, limit: 3, compact: false, fills: true)
+                page(e, rows: rows, limit: 2, compact: true, fills: true)
+                ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
+                    .scrollIndicators(.hidden)
+                    .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
-            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
         }
-        .scrollIndicators(.hidden)
-        .scrollBounceBehavior(.basedOnSize)
     }
 
-    @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
+    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false) -> some View {
+        HomeSummary(engine: e, compact: compact, fills: fills, onNewCompany: { store.push(.newCompany, on: .company) }) {
+            companiesBlock(e, rows: rows, limit: limit)
+        }
+        .padding(.horizontal, Theme.Space.page).padding(.top, compact ? Theme.Space.xs : Theme.Space.s).padding(.bottom, Theme.Space.m)
+        .frame(maxWidth: 1100).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// The companies, worst first: the top `limit` rows and "All N" to the Group tab's full list (nil: every company, iPad).
+    @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?) -> some View {
         if rows.isEmpty {
-            LedgerSection("Companies") {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HomeGroupLabel("Companies")
                 EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Pick a trade, see the full start-up cost, then decide.",
-                           actionTitle: "Choose a trade", action: { store.push(.newCompany, on: .company) })
+                           actionTitle: "Choose a trade", action: { store.push(.newCompany, on: .company) }, centered: false)
+                    .padding(.vertical, Theme.Space.s)
             }
         } else {
-            let regular: Bool = sizeClass == .regular
-            let shown: [(co: Company, h: CompanyHealth)] = (showAll || regular) ? rows : Array(rows.prefix(Self.previewCount))
-            LedgerSection(title: "Companies · \(rows.count)", trailing: { sortMenu }) {
+            let shown: [(co: Company, h: CompanyHealth)] = limit.map { Array(rows.prefix($0)) } ?? rows
+            VStack(alignment: .leading, spacing: 0) {
+                HomeGroupLabel(title: "Companies") {
+                    if sizeClass == .regular {
+                        sortMenu
+                    } else if shown.count < rows.count {
+                        Button("All \(rows.count)") { Haptics.tap(); store.jump(to: .group) }
+                            .buttonStyle(TertiaryButtonStyle(size: .compact))
+                            .accessibilityLabel("All \(rows.count) companies")
+                            .accessibilityIdentifier("show-all-companies")
+                    }
+                }
                 companyRows(e, rows: shown)
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("home-companies-box")
-                if shown.count < rows.count {
-                    Button("Show all \(rows.count) companies") { Haptics.tap(); Motion.animate(Motion.quick(reduceMotion)) { showAll = true } }
-                        .buttonStyle(TertiaryButtonStyle(size: .compact))
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .accessibilityIdentifier("show-all-companies")
-                }
             }
         }
     }
@@ -115,11 +131,12 @@ struct CompaniesView: View {
             Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
         } label: {
             HStack(spacing: Theme.Space.xs) {
-                Text("Sorted by \(sort.rawValue.lowercased())").textStyle(.caption, tint: Theme.inkFaint)
-                Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint).accessibilityHidden(true)
+                Text(sort.rawValue).textStyle(.caption, tint: Theme.inkSoft)
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint).accessibilityHidden(true)
             }
             .frame(minHeight: 44).contentShape(Rectangle())
         }
+        .accessibilityLabel("Sorted by \(sort.rawValue.lowercased())")
     }
 
     @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
@@ -128,7 +145,7 @@ struct CompaniesView: View {
         } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
-                    if i > 0 { Hairline() }
+                    if i > 0 { Hairline().padding(.leading, CompanyRow.textInset) }
                     NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
                         .transition(.opacity)
@@ -241,7 +258,8 @@ struct StatusChip: View {
     }
 }
 
-/// One company in the Home list, unboxed between hairlines: icon, name with trade, city and people, profit a year and cash.
+/// One company in the Home list, unboxed between inset hairlines: the trade picture, the name over "trade · city · people", and on
+/// the right the profit a year (gain or loss) over the cash. A warning mark leads the name when the company needs attention.
 struct CompanyRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -250,6 +268,8 @@ struct CompanyRow: View {
     @Environment(Entitlements.self) private var ent
     @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
     @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
+    /// Where the separators start: past the picture, under the text.
+    static let textInset: CGFloat = 36 + Theme.Space.m
 
     var body: some View {
         let co = company, h = health
@@ -264,27 +284,30 @@ struct CompanyRow: View {
                 HStack(spacing: Theme.Space.xs) {
                     if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }
                     Text(co.name).textStyle(.headline).lineLimit(1)
-                    CosmeticBadgeView(badge: badge, tint: accent, size: 16)
+                    CosmeticBadgeView(badge: badge, tint: accent, size: 14)
                 }
-                Text(subtitle(co)).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
+                Text(subtitle(co)).textStyle(.caption).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                Text((h.profitTTM < 0 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co) + " / yr")
-                    .textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
-                Text("cash " + store.short(co.cash, in: co)).textStyle(.caption, tint: co.cash < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
+                Text((h.profitTTM < -0.5 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co))
+                    .textStyle(.headline, tint: profitTint, numeric: true)
+                Text("a year").textStyle(.caption, tint: Theme.inkFaint)
             }
             .lineLimit(1)
-            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+            .layoutPriority(1)
         }
-        .padding(.vertical, Theme.Space.m)
+        .padding(.vertical, Theme.Space.s)
+        .frame(minHeight: 56)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
-    /// "Gym · London · 3 people", with the status in place of the people when the company is not open.
+    /// "Gym · London · 3 people", with the status (or "out of cash") in place of the people when that matters more.
     private func subtitle(_ co: Company) -> String {
-        let tail = co.status == .open ? co.staff.count.peopleText : (co.status == .setup ? "Setting up" : co.status.rawValue.capitalized)
+        let tail: String
+        if co.status == .open { tail = co.cash < 0 ? "Out of cash" : co.staff.count.peopleText }
+        else { tail = co.status == .setup ? "Setting up" : co.status.rawValue.capitalized }
         return "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(tail)"
     }
 }

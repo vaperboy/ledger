@@ -18,15 +18,11 @@ struct InsightsView: View {
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: pro).accent
         return VStack(spacing: 0) {
             ZStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        netWorthCard(accent: accent)
-                        companiesCard(accent: accent)
-                        runwayCard(accent: accent)
-                    }
-                    .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xl)
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    netWorthCard(accent: accent)
+                    companiesCard(accent: accent)
+                    runwayCard(accent: accent)
                 }
-                .scrollIndicators(.hidden)
                 .blur(radius: pro ? 0 : 9)
                 .allowsHitTesting(pro)
                 .accessibilityHidden(!pro)
@@ -42,10 +38,13 @@ struct InsightsView: View {
             Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
             Text("Net worth over time, which company is pulling ahead, and how many days of cash you have left.")
                 .popupText(.caption).multilineTextAlignment(.center)
-            QuietButton(title: "Unlock with Ledger Pro") {
+            Button("Unlock with Ledger Pro") {
+                Haptics.tap()
                 popupClose?()
                 ent.paywall = PaywallRequest(title: "Insights")
             }
+            .buttonStyle(PopupPrimaryCapsuleStyle(tone: .prestige))
+            .accessibilityIdentifier("insights-unlock")
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: 320)
