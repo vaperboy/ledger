@@ -170,13 +170,13 @@ struct CompanyOverview: View {
     var body: some View {
         let co = company
         let h: CompanyHealth = store.memo("coHealth\(co.id)") { $0.companyHealth(co) } ?? engine.companyHealth(co)
-        let ops: OperationsFigures? = store.memo("coOps\(co.id)") { $0.operationsFigures(companyID: co.id) } ?? nil
+        let ops: OperationsFigures? = engine.operationsFigures(companyID: co.id)
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 hero(co, h, ops)
                 strip(co, h, ops)
             }
-            let list: [CompanyIssue] = issues(co)
+            let list: [CompanyIssue] = issues(co, h, ops)
             if list.isEmpty {
                 if co.status == .open { allClear(h) }
             } else {
@@ -257,8 +257,15 @@ struct CompanyOverview: View {
     }
 
     /// Everything that needs the owner, most urgent first: money trouble, nobody in charge, decisions waiting, setup, closure, people.
-    private func issues(_ co: Company) -> [CompanyIssue] {
+    private func issues(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> [CompanyIssue] {
         var out: [CompanyIssue] = []
+        // Open, with customers asking, but it could serve no one last week: nothing comes in until that is fixed.
+        let lastWeek: OperationsFigures.Week? = ops?.weeks.last
+        if co.status == .open, co.type != "hold", let w = lastWeek, w.capacity <= 0, w.demand > 0 {
+            let limit: String = h.bottleneck.map { "No \($0.lowercased()) to serve them: hire one or work the role yourself" } ?? "Staff or equipment is missing: nothing comes in"
+            out.append(CompanyIssue(id: "nocap", glyph: Glyph.capacity, tint: P.loss, title: "Served no one last week", sub: "\(Int(w.demand.rounded())) customers wanted to buy. " + limit,
+                                    action: h.bottleneck != nil ? "Open Team" : "Open Manage") { go(h.bottleneck != nil ? .staff : .operations) })
+        }
         let asks = engine.state.inbox.filter { $0.companyID == co.id && $0.status == "open" }.sorted { $0.week > $1.week }
         let people = co.staff.filter { !$0.value("flag").isNull || $0.noticeWeeks > 0 || $0.sickUntilWeek != nil }.count
         let matters = staffMatters(co)

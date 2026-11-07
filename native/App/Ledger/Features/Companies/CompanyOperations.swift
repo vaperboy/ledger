@@ -44,8 +44,6 @@ struct CompanyOperations: View {
     var company: Company
     @Binding var part: OpsPart
     @State private var sheet: OpsSheet?
-    /// The last opened page, kept while the page slides away.
-    @State private var heldPart: OpsPart = .setup
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -56,10 +54,6 @@ struct CompanyOperations: View {
             CompanyOtherSections(engine: engine, company: company)
         }
         .centerSheet(item: $sheet, category: .medium, tone: .info) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
-        .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
-            OpsPageDestination(part: part == .setup ? heldPart : part, companyID: company.id)
-        }
-        .onChange(of: part) { (_: OpsPart, new: OpsPart) in if new != .setup { heldPart = new } }
     }
 
     // MARK: How the place is run

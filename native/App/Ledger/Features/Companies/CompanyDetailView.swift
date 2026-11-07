@@ -61,6 +61,8 @@ struct CompanyDetailView: View {
     @State private var salesPart: SalesPart = .sales
     @State private var moneyPart: CompanyMoneyPart = .summary
     @State private var opsPart: OpsPart = .setup
+    /// The last opened Manage or Sales page, kept while it slides away.
+    @State private var heldOpsPart: OpsPart = .setup
     @State private var appliedPart = false
 
     init(companyID: Int, initial: CompanyTab? = nil, part: String? = nil) {
@@ -104,6 +106,11 @@ struct CompanyDetailView: View {
                 if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
             }
             .onAppear { applyPart(tabs) }
+            // One destination for the pages Manage and Sales open (licences, suppliers, equipment, develop ...): both sections live in the pager at once.
+            .navigationDestination(isPresented: Binding(get: { opsPart != .setup }, set: { if !$0 { opsPart = .setup } })) {
+                OpsPageDestination(part: opsPart == .setup ? heldOpsPart : opsPart, companyID: companyID)
+            }
+            .onChange(of: opsPart) { (_: OpsPart, new: OpsPart) in if new != .setup { heldOpsPart = new } }
         } else {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }

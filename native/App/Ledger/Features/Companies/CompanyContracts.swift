@@ -34,12 +34,13 @@ struct CompanyContracts: View {
 
     var body: some View {
         let open: [ProjectTenders.Tender] = openVolumeTenders
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            summary
+        let any: Bool = !engine.volumeContracts(companyID: company.id).isEmpty || !engine.bookedOrders(companyID: company.id).isEmpty
+        PageGroup(title: "Volume contracts", spacing: Theme.Space.m, trailing: { EmptyView() }) {
+            // The weekly promise only means something once there is a contract.
+            if any { summary }
             if !open.isEmpty {
-                SettingsTable(heading: "Contracts") {
-                    SettingsTableRow(title: "Tenders", note: "Volume contracts you can bid for", value: "\(open.count) open") { showTenders = true }
-                }
+                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "Tenders", subtitle: "Volume contracts you can bid for",
+                          value: "\(open.count)", valueNote: "open", identifier: "contracts-tenders") { showTenders = true }
             }
             running
         }
@@ -88,13 +89,8 @@ struct CompanyContracts: View {
         let list = engine.volumeContracts(companyID: company.id).sorted { $0.endWeek < $1.endWeek }
         let orders = engine.bookedOrders(companyID: company.id)
         if list.isEmpty && orders.isEmpty {
-            Card(padding: 14, radius: Theme.Radius.row) {
-                HStack(alignment: .top, spacing: 12) {
-                    IconCircle(glyph: Glyph.calendar)
-                    Text("No volume contracts yet. Offers from business customers arrive in the Inbox.")
-                        .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            Text("None yet. Offers from business customers arrive in the Inbox.")
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
         if !list.isEmpty {
             timelineCard(list)

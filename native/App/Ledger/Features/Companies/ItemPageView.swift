@@ -401,7 +401,7 @@ struct ItemPageView: View {
                 .accessibilityIdentifier("item-history-weeks")
             }) {
                 HStack(alignment: .center, spacing: Theme.Space.m) {
-                    Figure(label: "", value: (total >= 0 ? "profit " : "loss ") + itemAmount(total, cur), note: "over \(all.count.weeksText)", tint: total >= 0 ? P.gain : P.loss)
+                    Figure(label: "", value: (total >= 0 ? "profit " : "loss ") + usedCarMoney(total, cur), note: "over \(all.count.weeksText)", tint: total >= 0 ? P.gain : P.loss)
                     Spacer(minLength: 0)
                     Sparkline(values: all.suffix(16).map { $0.profit }, tint: total >= 0 ? P.gain : P.loss, filled: false).frame(width: 110, height: 36)
                 }

@@ -12,8 +12,6 @@ struct CompanySales: View {
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
-    /// The last opened page, kept while the page slides away so it does not flash the settings list.
-    @State private var heldPart: OpsPart = .setup
     @State private var showMarketing = false
     @State private var openItem: SalesItemPick?
     @State private var addingService: Bool?
@@ -34,7 +32,7 @@ struct CompanySales: View {
             growRows
             trendLine
         }
-        .centerSheet(isPresented: $showMarketing, category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
+        .centerSheet(isPresented: $showMarketing, title: "Marketing", category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id }), category: .medium, tone: .info) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
                          onHireAdvisor: { addingService = nil; showHire = true },
@@ -46,10 +44,6 @@ struct CompanySales: View {
         .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: $showAddons) { DealerAddonsPage(companyID: company.id) }
-        .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
-            OpsPageDestination(part: part == .setup ? heldPart : part, companyID: company.id)
-        }
-        .onChange(of: part) { (_: OpsPart, new: OpsPart) in if new != .setup { heldPart = new } }
     }
 
     /// Sales last week, the brand's standing and the best seller; the sparkline is revenue by month.
@@ -59,7 +53,8 @@ struct CompanySales: View {
         let week: Double = co.lastWeekRevenue
         let best: SalesItem? = items.max { (a: SalesItem, b: SalesItem) -> Bool in a.weeklyRevenue < b.weeklyRevenue }
         let brand: String = "Brand " + BrandWords.label(score: engine.brandValue(companyID: co.id)).lowercased()
-        let bestText: String = (best?.weeklyRevenue ?? 0) > 0 ? "best seller " + (best?.name ?? "") : ""
+        let noCap: Bool = engine.operationsFigures(companyID: co.id)?.weeks.last.map { $0.capacity <= 0 && $0.demand > 0 } ?? false
+        let bestText: String = noCap ? "no one could be served" : ((best?.weeklyRevenue ?? 0) > 0 ? "best seller " + (best?.name ?? "") : "")
         return CompanyHero(label: "Sales last week", value: store.money(week, in: co), change: brand, changeTint: P.accent,
                            context: bestText, trend: Array(h.revenueSeries.suffix(12)), live: week)
     }

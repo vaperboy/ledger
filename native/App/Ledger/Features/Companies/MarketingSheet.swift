@@ -41,8 +41,7 @@ struct MarketingSheet: View {
     private func header(active: Int, total: Double, cur: Currency) -> some View {
         let sub: String = active == 0 ? "No campaigns running: switch a channel on" : "\(active.countText("channel")) running"
         return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("Marketing a week").popupText(.caption).accessibilityAddTraits(.isHeader)
-            Text(cur.tidyDisplay(total)).popupText(.figure)
+            Text(cur.tidyDisplay(total) + " a week").popupText(.figure)
             Text(sub).popupText(active > 0 ? .effect : .subtitle)
         }
         .padding(.bottom, Theme.Space.s)
@@ -74,20 +73,23 @@ struct MarketingSheet: View {
         let reason: String? = plan?.runByChain == true ? "Run by the chain." : blockedText
         let on = Binding<Bool>(get: { value > 0 }, set: { (v: Bool) in commit(ch, v ? first : 0, cur: cur) })
         let amount = Binding<Double>(get: { value }, set: { (v: Double) in draft[ch.id] = v })
+        // An off channel is one compact row with its switch; the budget slider and its effect show once it runs (or while dragged).
+        let live: Bool = running(ch, mkt: mkt) > 0 || draft[ch.id] != nil
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Theme.Space.xs) {
                 Text(ch.name).popupText(.rowValue)
                     .lineLimit(2).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
                 InfoPopoverButton(title: ch.name, text: ch.note.tidyMoney)
                 Spacer(minLength: Theme.Space.xs)
-                if reason == nil {
-                    Text(cur.tidyDisplay(value) + " a week").popupText(value > 0 ? .effect : .caption).lineLimit(1).minimumScaleFactor(0.8)
+                if reason == nil && live {
+                    Text(cur.tidyDisplay(value) + " a week").popupText(.effect).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 LedgerSwitch(isOn: on).disabled(reason != nil)
             }
+            .frame(minHeight: 44)
             if let why = reason {
                 Text(why).popupText(.risk).padding(.bottom, Theme.Space.xs)
-            } else {
+            } else if live {
                 if value > 0, let line = effectLine(e, ch, budget: value, cur: cur) {
                     Text(line.text).textStyle(.caption, tint: line.tint, numeric: true).fixedSize(horizontal: false, vertical: true)
                 }

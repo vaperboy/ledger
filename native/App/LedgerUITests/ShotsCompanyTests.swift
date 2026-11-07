@@ -11,7 +11,7 @@ final class ShotsCompanyTests: FeatureTourCase {
         winCache = .zero
         app = XCUIApplication()
         // Pro in a debug build: the dealerships cost more than the free start-up line.
-        app.launchArguments = ["-showcase", "-showcase-rich", "-ledger.debugEntitlements", "pro"]
+        app.launchArguments = ["-showcase", "-showcase-rich", "-showcase-trades", "boutique,cardealer,usedcar", "-ledger.debugEntitlements", "pro"]
         app.launch()
         let end: Date = Date().addingTimeInterval(40)
         while Date() < end {
@@ -85,6 +85,9 @@ final class ShotsCompanyTests: FeatureTourCase {
         _ = find(wait: 4) { $0.id == "home-companies-box" }
         for w in words {
             let pred: (Hit) -> Bool = { ($0.type == .button || $0.type == .cell) && $0.label.range(of: w, options: [.caseInsensitive, .diacriticInsensitive]) != nil && !$0.id.hasPrefix("home-") && !$0.id.hasPrefix("tab-") }
+            // Home lists the companies under its summary: scroll down to the row first.
+            var tries = 0
+            while find(wait: 1, pred) == nil && tries < 6 { dragPage(-400); tries += 1 }
             if tapWhere(wait: 2, pred) {
                 pause(1)
                 if has("company-tab-overview", wait: 3) || has("back-button", wait: 1) { return true }
@@ -155,7 +158,10 @@ final class ShotsCompanyTests: FeatureTourCase {
         guard goTab("Home"), tapLabel("New company", wait: 4) || tapText("New company", wait: 2) else { shot("\(tag)-no-new-company"); return }
         pause(1)
         let pred: (Hit) -> Bool = { [.button, .cell, .other, .staticText].contains($0.type) && $0.label.localizedCaseInsensitiveContains(trade) }
-        guard tapWhere(wait: 4, pred) else { shot("\(tag)-trade-missing"); toRoot(); return }
+        _ = tapWhere(wait: 2) { $0.type == .button && $0.label == "Retail" }
+        var tries = 0
+        while find(wait: 1, pred) == nil && tries < 10 { dragPage(-400); tries += 1 }
+        guard tapWhere(wait: 2, pred) else { shot("\(tag)-trade-missing"); toRoot(); return }
         pause(0.8)
         if popupUp(1) { shotPopup("\(tag)-trade-popup") }
         guard tapWhere(wait: 3, { $0.type == .button && $0.id.hasPrefix("Continue") && $0.enabled }) else { shot("\(tag)-no-continue"); toRoot(); return }
@@ -183,16 +189,11 @@ final class ShotsCompanyTests: FeatureTourCase {
 
     func testShots() {
         tourCompany("cafe", ["Caf", "Café", "Coffee"])
-        startCompany("boutique", "Clothing boutique")
-        startCompany("dealer", "Vehicle dealership")
-        startCompany("usedcar", "Used car dealer")
-        // Documents and fit-out take a few weeks; the dealers and the shop open by themselves once ready.
-        for round in 0..<5 {
-            playDays(7)
-            if openCo(["boutique"]) && has("company-tab-overview", wait: 2) && round >= 2 { break }
-        }
+        // The showcase starts these too (-showcase-trades); one still setting up shows the Setup screen instead.
         tourCompany("boutique", ["boutique"])
         tourCompany("dealer", ["dealership"], dealer: true)
         tourCompany("usedcar", ["Used car"], dealer: true)
+        // A company registered by hand lands on its Setup screen.
+        startCompany("kiosk", "Convenience store")
     }
 }
