@@ -101,9 +101,13 @@ struct HomeRankStrip: View {
                     Image(systemName: "flame.fill").font(.caption).foregroundStyle(streak > 0 ? accent : Theme.inkFaint)
                     Text(streak > 0 ? "\(streak)" : "0").textStyle(.body, tint: streak > 0 ? Theme.ink : Theme.inkFaint, numeric: true, weight: .semibold)
                 }
-                if !line.isEmpty {
-                    Text(line).textStyle(.caption, tint: lineColor, weight: claimable ? .semibold : nil).lineLimit(1)
-                        .opacity(claimable && claimGlow ? 0.55 : 1)
+                if claimable {
+                    Text(line).textStyle(.caption, weight: .semibold).lineLimit(1)
+                        .containerInk(Theme.accentInk)
+                        .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
+                        .background(Capsule().fill(accent))
+                } else if !line.isEmpty {
+                    Text(line).textStyle(.caption, tint: lineColor).lineLimit(1)
                 }
             }
             .frame(minWidth: 52, minHeight: 44)
@@ -156,12 +160,9 @@ struct HomeRankStrip: View {
         Motion.animate(Motion.reveal(reduceMotion)) { shownProgress = t }
     }
 
+    /// A ready mission shows a filled accent capsule instead of a pulse (no looping animation on Home).
     private func pulse(_ on: Bool) {
-        guard on, pageActive, !reduceMotion else {
-            if claimGlow { Motion.animate(nil) { claimGlow = false } }
-            return
-        }
-        Motion.animate(Motion.pulseAnimation) { claimGlow = true }
+        if claimGlow { claimGlow = false }
     }
 
     /// A rank-up: the ring and badge swell once with a glow (the celebration popup itself comes from the engine's queue).

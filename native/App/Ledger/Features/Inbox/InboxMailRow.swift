@@ -81,7 +81,7 @@ struct InboxMailRow: View {
                 .accessibilityIdentifier("inbox-row")
             if let answer, open, message.doc == nil, (1...3).contains(message.options.count) { inlineOptions(answer) }
         }
-        .padding(.vertical, Theme.Space.s)
+        .padding(.vertical, Theme.Space.m)
     }
 
     /// The options as buttons under the row, side by side when they fit, else stacked; the first (the suggested answer) in the accent.
@@ -91,23 +91,25 @@ struct InboxMailRow: View {
             HStack(spacing: Theme.Space.s) { optionButtons(labels, answer, fullWidth: false) }
             VStack(alignment: .leading, spacing: Theme.Space.s) { optionButtons(labels, answer, fullWidth: true) }
         }
-        .padding(.leading, 40 + Theme.Space.m)
+        .padding(.leading, Self.avatar + Theme.Space.m - Theme.Space.s)
     }
+
+    static let avatar: CGFloat = 36
 
     private func optionButtons(_ labels: [String], _ answer: @escaping (Int) -> Void, fullWidth: Bool) -> some View {
         ForEach(Array(labels.enumerated()), id: \.offset) { (i: Int, label: String) in
             Button(label) { Haptics.tap(); answer(i) }
-                .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: fullWidth, tint: i == 0 ? P.accent : nil))
+                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: i == 0 ? P.accent : P.inkSoft))
                 .accessibilityIdentifier("inbox-inline-option")
         }
     }
 
     private var content: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
-            InboxAvatar(initial: "", glyph: message.inboxCategoryGlyph, tint: unread ? message.inboxTint(P) : P.inkFaint, size: 40, face: message.inboxFace(store.engine))
+            InboxAvatar(initial: "", glyph: message.inboxCategoryGlyph, tint: unread ? message.inboxTint(P) : P.inkFaint, size: Self.avatar, face: message.inboxFace(store.engine))
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title).textStyle(.headline, tint: unread ? P.ink : P.inkFaint, weight: unread ? .semibold : .regular).lineLimit(1)
-                Text(consequence).textStyle(.caption, tint: P.inkFaint).lineLimit(2)
+                Text(title).textStyle(.headline, tint: unread ? P.ink : P.inkSoft, weight: unread ? .semibold : .regular).lineLimit(2)
+                Text(consequence).textStyle(.caption, tint: P.inkSoft).lineLimit(2)
                 if !message.handledBy.isEmpty {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1)
                 }
@@ -116,7 +118,7 @@ struct InboxMailRow: View {
                 }
             }
             Spacer(minLength: Theme.Space.s)
-            if open { expiryPill }
+            if open { expiryPill } else if unread { Circle().fill(P.accent).frame(width: 7, height: 7).padding(.top, Theme.Space.xs).accessibilityLabel("Unread") }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -128,9 +130,7 @@ struct InboxMailRow: View {
             let left: Int = exp - week
             let tint: Color = left <= 1 ? P.loss : P.caution
             Text(left > 0 ? "\(left)w left" : "This week")
-                .textStyle(.caption, tint: tint, weight: .semibold).lineLimit(1).fixedSize()
-                .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
-                .background(Capsule().fill(tint.opacity(0.16)))
+                .textStyle(.caption, tint: tint, numeric: true, weight: .semibold).lineLimit(1).fixedSize()
         }
     }
 }

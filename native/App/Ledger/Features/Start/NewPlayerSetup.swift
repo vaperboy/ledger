@@ -75,17 +75,19 @@ struct NewPlayerSetup: View {
             ScrollView {
                 LazyVStack(spacing: 0) {
                     if shown.isEmpty { EmptyState(glyph: Glyph.world, title: "No country matches \u{201C}\(countryQuery)\u{201D}") }
-                    ForEach(shown) { (c: Country) in
+                    ForEach(Array(shown.enumerated()), id: \.element.id) { (i: Int, c: Country) in
+                        if i > 0 { Hairline().padding(.leading, 44) }
                         Button { chooseCountry(c) } label: {
                             HStack(spacing: Theme.Space.m) {
-                                Text(c.flag).font(.title)
+                                Text(c.flag).font(.title2).frame(width: 32)
                                 Text(c.name).textStyle(.headline)
                                 Spacer(minLength: Theme.Space.s)
+                                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                             }
-                            .padding(.vertical, Theme.Space.s).frame(minHeight: 44).contentShape(Rectangle())
+                            .frame(minHeight: 56).contentShape(Rectangle())
                         }
                         .buttonStyle(PressableStyle())
-                        Hairline()
+                        .accessibilityIdentifier("country-" + c.code)
                     }
                 }
             }
@@ -128,20 +130,42 @@ struct NewPlayerSetup: View {
         loading = false
     }
 
-    /// The in-game trade picker's table (`SharpTable`, trade and start-up cost): the twelve starters first, all trades on request.
+    /// One row per trade (name, one line about it, start-up cost on the right): the twelve starters first, all trades on request.
     private var tradeTable: some View {
         let rest: [StarterTrade] = allTrades.filter { !GameEngine.starterTradeIDs.contains($0.id) }
         let shown: [StarterTrade] = showAll ? starters + rest : starters
-        return SharpTable {
-            TableHeader(columns: Self.tradeColumns)
-            ForEach(shown) { (t: StarterTrade) in
-                TableRow(columns: Self.tradeColumns, title: t.name, note: t.line.tidyMoney, values: [costText(t)],
-                         valueTints: [t.startUpCost == nil ? Theme.inkFaint : Theme.ink]) { pick(t) }
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Trade").textStyle(.label, tint: Theme.inkFaint)
+                Spacer()
+                Text("Start-up").textStyle(.label, tint: Theme.inkFaint)
+            }
+            .padding(.bottom, Theme.Space.xs)
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(shown.enumerated()), id: \.element.id) { (i: Int, t: StarterTrade) in
+                    if i > 0 { Hairline() }
+                    tradeRow(t)
+                }
             }
         }
     }
 
-    private static let tradeColumns: [TableColumn] = [TableColumn(title: "Trade"), TableColumn(title: "Start-up", width: 84)]
+    private func tradeRow(_ t: StarterTrade) -> some View {
+        Button { pick(t) } label: {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(t.name).textStyle(.headline).lineLimit(1)
+                    Text(t.line.tidyMoney).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(costText(t)).textStyle(.headline, tint: t.startUpCost == nil ? Theme.inkFaint : Theme.ink, numeric: true).lineLimit(1)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+            }
+            .padding(.vertical, Theme.Space.m).frame(minHeight: 60).contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("trade-" + t.id)
+    }
 
     private func costText(_ t: StarterTrade) -> String {
         guard let cost = t.startUpCost, let cur = currency else { return "n/a" }
@@ -164,7 +188,9 @@ struct NewPlayerSetup: View {
             if let cash = startCash, let cur = currency {
                 Text("You start with \(cur.tidyShort(cash)), enough for the set-up and the first eight weeks.").popupText(.caption)
             }
-            QuietButton(title: "Open \(t.name)", fullWidth: true) { open(t) }
+            Button("Open \(t.name)") { Haptics.tap(); open(t) }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("trade-open")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(t.name)
@@ -203,8 +229,11 @@ struct NewPlayerSetup: View {
                 .textStyle(.figure)
                 .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
-            QuietButton(title: "Start", fullWidth: true) { start() }
+            Text("You can rename the company later.").textStyle(.caption, tint: Theme.inkFaint)
             Spacer(minLength: 0)
+            Button("Start") { Haptics.tap(); start() }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("setup-start")
         }
         .onAppear { nameFocused = true }
     }

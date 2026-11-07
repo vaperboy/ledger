@@ -3,8 +3,9 @@ import Simulation
 import Finance
 import Businesses
 
-/// The Home tab (route name `.company`) as one scrolling page: date and name, the net worth hero, what needs the owner right under it,
-/// the companies (passed in by CompaniesView), then rank and shortcuts. Report sheets and reward popups appear on top of it.
+/// The Home tab (route name `.company`) as one calm scrolling page, private-bank style: the date and the owner, the net worth hero
+/// (figure, change, chart, what it is made of), the one thing that needs the owner, the companies (passed in by CompaniesView), then
+/// career and shortcuts. Report sheets and reward popups appear on top of it; Next day is pinned under it (`AdvanceBar`).
 struct HomeSummary<Companies: View>: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject var store: GameStore
@@ -16,31 +17,30 @@ struct HomeSummary<Companies: View>: View {
 
     var body: some View {
         let e = engine
-        VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                // The streak lives once on the page, in the rank row with the daily mission.
-                HomeHeader(name: playerName, dateText: "\(e.homeCountry.flag) Week \(e.state.week + 1) · \(e.date)", streak: 0, onNewCompany: onNewCompany)
-                if e.cashIsTight { cashTightBanner }
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag)  Week \(e.state.week + 1) · \(e.date)", onNewCompany: onNewCompany)
+                if e.cashIsTight { cashTightLine }
                 if ent.plusEndedNotice {
                     Text("Plus has ended. Your saves are safe.").textStyle(.caption)
                         .accessibilityIdentifier("plus-ended-line")
                 }
-            }
-            if sizeClass == .regular {
-                HStack(alignment: .top, spacing: Theme.Space.xl) {
-                    NetWorthCard(engine: e).frame(maxWidth: .infinity)
-                    TopPriorities(engine: e).frame(maxWidth: .infinity)
+                if sizeClass == .regular {
+                    HStack(alignment: .top, spacing: Theme.Space.xxl) {
+                        NetWorthCard(engine: e).frame(maxWidth: .infinity)
+                        TopPriorities(engine: e).frame(maxWidth: .infinity)
+                    }
+                } else {
+                    NetWorthCard(engine: e)
                 }
-            } else {
-                NetWorthCard(engine: e)
-                TopPriorities(engine: e)
             }
+            if sizeClass != .regular { TopPriorities(engine: e) }
             companies()
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                Hairline()
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HomeGroupLabel("Career")
                 HomeRankStrip(engine: e) { showInsights = true }
-                HomeShortcutRow()
             }
+            HomeShortcutRow()
         }
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall) { InsightsView(engine: e) }
     }
@@ -51,26 +51,53 @@ struct HomeSummary<Companies: View>: View {
     }
 
     /// New-player start: a bill the account cannot cover yet waits one day; nothing else happens.
-    private var cashTightBanner: some View {
-        Text("Cash is tight. A bill waits until tomorrow.")
-            .textStyle(.body, weight: .medium)
-            .containerInk(Theme.accentInk)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.warn))
-            .accessibilityIdentifier("cash-tight-banner")
+    private var cashTightLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            Circle().fill(Theme.warn).frame(width: 6, height: 6).accessibilityHidden(true)
+            Text("Cash is tight. A bill waits until tomorrow.").textStyle(.body, tint: Theme.warn)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("cash-tight-banner")
+    }
+}
+
+/// The page's top line: the date over the owner's name, and a round New company button.
+struct HomeTopLine: View {
+    var name: String
+    var dateText: String
+    var onNewCompany: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(dateText).textStyle(.label, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+                Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: Theme.Space.s)
+            Button { Haptics.tap(); onNewCompany() } label: {
+                LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.medium, tint: Theme.ink)
+                    .frame(width: 40, height: 40)
+                    .overlay(Circle().strokeBorder(Theme.lineStrong, lineWidth: 1))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("New company")
+        }
     }
 }
 
 // MARK: Net worth
 
-/// The hero: the serif figure, what it did this week and in 30 days, a thin chart, the period picker, and the four figures it is made of.
+/// The hero: the label, the big serif figure, what it did this week and in 30 days, the chart with its periods under it, and the four
+/// figures it is made of on one quiet line. No box around it.
 struct NetWorthCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     @State private var days = 365
     @State private var snap: NetWorthSnap?
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 42
 
     /// What the chart and the two change texts showed before the day: kept while the daily report is waiting for its Continue.
     struct NetWorthSnap {
@@ -97,55 +124,26 @@ struct NetWorthCard: View {
         let owed = nw.debt + nw.pendingTax
         let wealth: NetWorthBreakdown = store.netWorthBreakdownNow ?? engine.netWorthBreakdown()
         let otherAssets: Double = wealth.investments + wealth.luxury + wealth.otherEstimatedHoldings
-        Card(padding: Theme.Space.l, radius: Theme.Radius.large) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(alignment: .center) {
-                    Text("Net worth").textStyle(.label)
-                    Spacer(minLength: Theme.Space.s)
+        let series: [Double] = frozenSeries ?? store.netWorthSeriesNow(days: days)
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("Net worth").textStyle(.label, tint: Theme.inkFaint)
+                HeldValue(live: nw.total) { (v: Double) in
+                    Text(store.money(v))
+                        .font(.hero(heroSize))
+                        .foregroundStyle(v < 0 ? Theme.loss : Theme.ink)
+                        .minimumScaleFactor(0.5).lineLimit(1)
+                        .moneyFlash(v)
+                }
+                changeLine(week: week, month: month)
+            }
+            if series.count >= 2 {
+                VStack(spacing: Theme.Space.s) {
+                    NetWorthChart(engine: engine, days: days, height: 64, frozen: series)
                     PeriodPicker(days: $days)
                 }
-                HStack(alignment: .firstTextBaseline) {
-                    HeldValue(live: nw.total) { (v: Double) in
-                        Text(store.money(v))
-                            .textStyle(.display, tint: v < 0 ? Theme.loss : Theme.ink)
-                            .minimumScaleFactor(0.55).lineLimit(1)
-                            .moneyFlash(v)
-                    }
-                    Spacer(minLength: Theme.Space.s)
-                    VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                        changeText(week, "week")
-                        changeText(month, "30 days")
-                    }
-                }
-                NetWorthChart(engine: engine, days: days, height: 30, frozen: frozenSeries ?? store.netWorthSeriesNow(days: days))
-                Hairline()
-                // Four across when they fit, else two by two (larger text, small phones).
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 0) {
-                        cashBox(wealth.liquid)
-                        divider
-                        investedBox(otherAssets)
-                        divider
-                        companiesBox(wealth.estimatedCompanyEquity)
-                        divider
-                        debtBox(owed)
-                    }
-                    VStack(spacing: Theme.Space.s) {
-                        HStack(spacing: 0) {
-                            cashBox(wealth.liquid)
-                            divider
-                            investedBox(otherAssets)
-                        }
-                        Hairline()
-                        HStack(spacing: 0) {
-                            companiesBox(wealth.estimatedCompanyEquity)
-                            divider
-                            debtBox(owed)
-                        }
-                    }
-                }
-                .fixedSize(horizontal: false, vertical: true)
             }
+            breakdown(cash: wealth.liquid, invested: otherAssets, companies: wealth.estimatedCompanyEquity, debt: owed)
         }
         .accessibilityElement(children: .contain)
         .onAppear { if snap == nil { snap = takeSnap() } }
@@ -153,78 +151,134 @@ struct NetWorthCard: View {
         .onChange(of: blocked) { _, now in if !now { snap = takeSnap() } }
     }
 
-    private var divider: some View { Rectangle().fill(Theme.line).frame(width: 0.5) }
-    private func cashBox(_ v: Double) -> some View { box("Personal cash", v) { store.short($0) } }
-    private func investedBox(_ v: Double) -> some View { box("Invested", v) { store.short($0) } }
-    private func companiesBox(_ v: Double) -> some View { box("Companies", v) { store.short($0) } }
-    private func debtBox(_ v: Double) -> some View { box("Debt", v, loss: true) { $0 > 0.5 ? "−" + store.short($0) : store.short(0) } }
-
-    private func box(_ label: String, _ live: Double, loss: Bool = false, _ text: @escaping (Double) -> String) -> some View {
-        VStack(spacing: Theme.Space.xxs) {
-            Text(label).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
-            HeldValue(live: loss ? -live : live) { (v: Double) in
-                let amount: Double = loss ? -v : v
-                Text(text(amount)).textStyle(.headline, tint: loss && amount > 0.5 ? Theme.loss : Theme.ink, numeric: true)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                    .moneyFlash(v)
+    /// "▲ 12.3k this week · ▲ 40k in 30 days" on one line, or two lines when it does not fit.
+    @ViewBuilder private func changeLine(week: Double?, month: Double?) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Space.s) {
+                changeText(week, "this week")
+                Text("·").textStyle(.caption, tint: Theme.inkFaint)
+                changeText(month, "in 30 days")
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                changeText(week, "this week")
+                changeText(month, "in 30 days")
             }
         }
-        .padding(.horizontal, Theme.Space.xs)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private func changeText(_ c: Double?, _ unit: String) -> some View {
         if let c {
             HStack(spacing: Theme.Space.xs) {
-                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c))).textStyle(.caption, tint: Theme.change(c), numeric: true)
-                Text(unit).textStyle(.caption)
+                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c))).textStyle(.body, tint: Theme.change(c), numeric: true, weight: .medium)
+                Text(unit).textStyle(.body, tint: Theme.inkSoft)
             }
+            .lineLimit(1)
+            .accessibilityElement(children: .combine)
         } else {
-            Text("–  " + unit).textStyle(.caption, tint: Theme.inkFaint)
+            Text("No change yet " + unit).textStyle(.body, tint: Theme.inkFaint).lineLimit(1)
         }
+    }
+
+    /// Cash, invested, companies and debt: four across when they fit, else two by two (larger text, small phones).
+    private func breakdown(cash: Double, invested: Double, companies: Double, debt: Double) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) {
+                box("Cash", cash)
+                box("Invested", invested)
+                box("Companies", companies)
+                box("Debt", debt, loss: true)
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                HStack(spacing: 0) {
+                    box("Cash", cash)
+                    box("Invested", invested)
+                }
+                HStack(spacing: 0) {
+                    box("Companies", companies)
+                    box("Debt", debt, loss: true)
+                }
+            }
+        }
+        .padding(.top, Theme.Space.m)
+        .overlay(alignment: .top) { Hairline() }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func box(_ label: String, _ live: Double, loss: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(label).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+            HeldValue(live: loss ? -live : live) { (v: Double) in
+                let amount: Double = loss ? -v : v
+                Text(loss && amount > 0.5 ? "−" + store.short(amount) : store.short(loss ? 0 : amount))
+                    .textStyle(.headline, tint: loss && amount > 0.5 ? Theme.loss : Theme.ink, numeric: true)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .moneyFlash(v)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// 1W 1M 3M 1Y All, as text with an underline under the chosen one; each label has a 44 pt hit area.
+/// 1W 1M 3M 1Y All spread under the chart; the chosen one sits on a quiet pill. Each label has a 44 pt hit area.
 struct PeriodPicker: View {
     @Binding var days: Int
     static let periods: [(label: String, days: Int)] = [("1W", 8), ("1M", 31), ("3M", 92), ("1Y", 365), ("All", 3650)]
     var body: some View {
         HStack(spacing: 0) {
             ForEach(Self.periods, id: \.days) { p in
+                let on: Bool = days == p.days
                 Button { days = p.days; Haptics.choose() } label: {
-                    Text(p.label).textStyle(.caption, tint: days == p.days ? Theme.ink : Theme.inkFaint, weight: days == p.days ? .semibold : nil)
-                        .padding(.vertical, Theme.Space.xxs)
-                        .overlay(alignment: .bottom) { if days == p.days { Rectangle().fill(Theme.accent).frame(height: 1) } }
-                        .frame(minWidth: 36, minHeight: 44)
+                    Text(p.label).textStyle(.caption, tint: on ? Theme.ink : Theme.inkFaint, weight: on ? .semibold : .medium)
+                        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs)
+                        .background(Capsule().fill(on ? Theme.inset : Color.clear))
+                        .frame(maxWidth: .infinity, minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
-                .accessibilityAddTraits(days == p.days ? .isSelected : [])
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
         .padding(.vertical, -Theme.Space.s)
     }
 }
 
-// MARK: Shortcut boxes
+/// A group label in small caps (faint ink) with an optional action on the right; no rule, no box.
+struct HomeGroupLabel<Trailing: View>: View {
+    var title: String
+    @ViewBuilder var trailing: () -> Trailing
+    var body: some View {
+        HStack(alignment: .center, spacing: Theme.Space.s) {
+            Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
+            Spacer(minLength: Theme.Space.s)
+            trailing()
+        }
+        .frame(minHeight: 28)
+    }
+}
 
-/// The player's shortcuts (up to four, chosen with Edit or a long press). Each opens the matching Phone app or flow.
+extension HomeGroupLabel where Trailing == EmptyView {
+    init(_ title: String) { self.init(title: title, trailing: { EmptyView() }) }
+}
+
+// MARK: Shortcut tiles
+
+/// The player's shortcuts (up to four, chosen with Edit or a long press), as tappable tiles. Each opens the matching Phone app or flow.
 struct HomeShortcutRow: View {
     @EnvironmentObject var store: GameStore
     @State private var editing = false
 
     var body: some View {
         let badges = store.phoneBadges
-        LedgerSection(title: "Shortcuts", rule: false, trailing: {
-            Button("Edit") { Haptics.tap(); editing = true }
-                .buttonStyle(TertiaryButtonStyle(size: .compact))
-                .accessibilityIdentifier("edit-home-shortcuts")
-        }) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HomeGroupLabel(title: "Shortcuts") {
+                Button("Edit") { Haptics.tap(); editing = true }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("edit-home-shortcuts")
+            }
             HStack(spacing: Theme.Space.s) {
                 ForEach(store.homeShortcuts) { item in
-                    box(item, badge: item.badgeApp.map { badges[$0] ?? 0 } ?? 0)
+                    tile(item, badge: item.badgeApp.map { badges[$0] ?? 0 } ?? 0)
                 }
             }
             .contextMenu { Button("Edit shortcuts") { editing = true } }
@@ -232,14 +286,14 @@ struct HomeShortcutRow: View {
         .centerSheet(isPresented: $editing) { HomeShortcutEditor() }
     }
 
-    private func box(_ item: HomeShortcut, badge: Int) -> some View {
+    private func tile(_ item: HomeShortcut, badge: Int) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
         return Button { Haptics.tap(); item.open(store) } label: {
-            VStack(spacing: Theme.Space.xs) {
-                LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium)
-                Text(item.title).textStyle(.caption, tint: Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+            VStack(spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: Theme.ink)
+                Text(item.title).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.75)
             }
-            .frame(maxWidth: .infinity, minHeight: 56).padding(.vertical, Theme.Space.xs)
+            .frame(maxWidth: .infinity, minHeight: 64).padding(.vertical, Theme.Space.xs)
             .background(shape.fill(Theme.surface))
             .overlay(alignment: .topTrailing) { RedBubble(count: badge, size: .small).offset(x: Theme.Space.xs, y: -Theme.Space.xs) }
             .contentShape(Rectangle())
@@ -263,11 +317,11 @@ extension GameStore {
     }
 }
 
-// MARK: Top priorities
+// MARK: Needs you
 
-/// "Needs you", right under net worth: what needs the owner, worst first, at most three rows, each opening the exact object (a decision
-/// opens in a popup right here, answered with one more tap); the rest wait in the Inbox. Decisions a manager already handled never
-/// reach this list (the engine settles them), and neutral information (a tax estimate, idle cash) is not a priority.
+/// "Needs you", right under net worth: the one most important thing as a raised card (what it is, why, and the action), then at most
+/// two more as quiet lines; the rest wait in the Inbox. Each opens the exact object (a decision opens in a popup right here). Decisions a
+/// manager already handled never reach this list (the engine settles them), and neutral information is not a priority.
 struct TopPriorities: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -278,28 +332,33 @@ struct TopPriorities: View {
         let list: [Suggestion] = store.suggestionsNow.filter { $0.tone != .neutral }
         let shown: [Suggestion] = Array(list.prefix(limit))
         let waiting: Int = store.openDecisionCount
-        LedgerSection(title: "Needs you", rule: false, trailing: { inboxLink(waiting) }) {
-            if shown.isEmpty && waiting > 0 {
-                LedgerRow(leading: .glyph(Glyph.inbox), title: waiting == 1 ? "1 decision waiting" : "\(waiting) decisions waiting",
-                          subtitle: "Answer in the Inbox", action: { store.openApp(.inbox) })
-            } else if shown.isEmpty {
-                EmptyState(glyph: Glyph.check, title: "Nothing needs you right now", message: "Play the next day when you are ready.", centered: false)
-            } else {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(shown.enumerated()), id: \.element.id) { (i: Int, item: Suggestion) in
-                        if i > 0 { Hairline() }
-                        row(item).transition(.opacity)
-                    }
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HomeGroupLabel(title: "Needs you") { inboxLink(waiting) }
+            if let first = shown.first {
+                lead(first)
+                    .id(first.id)
+                    .transition(.opacity)
+                ForEach(shown.dropFirst(), id: \.id) { (item: Suggestion) in
+                    row(item).transition(.opacity)
                 }
-                .animation(Motion.quick(reduceMotion), value: shown.map { (s: Suggestion) -> String in s.id })
+            } else if waiting > 0 {
+                waitingCard(waiting)
+            } else {
+                HStack(spacing: Theme.Space.s) {
+                    LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.small, tint: Theme.inkFaint)
+                    Text("Nothing needs you right now.").textStyle(.body, tint: Theme.inkSoft)
+                }
+                .frame(minHeight: 44)
+                .accessibilityElement(children: .combine)
             }
         }
+        .animation(Motion.quick(reduceMotion), value: shown.map { (s: Suggestion) -> String in s.id })
     }
 
-    /// "Inbox · 3 ›": every open decision, with the count, beside the section title.
+    /// "Inbox · 3": every open decision, with the count, beside the label.
     @ViewBuilder private func inboxLink(_ waiting: Int) -> some View {
         if waiting > 0 {
-            Button { Haptics.tap(); store.openApp(.inbox) } label: { Text("Inbox · \(waiting) ›") }
+            Button { Haptics.tap(); store.openApp(.inbox) } label: { Text("Inbox · \(waiting)") }
                 .buttonStyle(TertiaryButtonStyle(size: .compact))
                 .accessibilityLabel("Open the Inbox, \(waiting) waiting")
                 .accessibilityIdentifier("home-open-inbox")
@@ -307,66 +366,125 @@ struct TopPriorities: View {
         }
     }
 
-    private func row(_ item: Suggestion) -> some View {
-        Button { store.go(popup: item.action) } label: {
-            HStack(spacing: Theme.Space.m) {
-                Circle().fill(tint(item.tone)).frame(width: Theme.Space.s, height: Theme.Space.s).accessibilityHidden(true)
-                Text(item.title.tidyMoney).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text(item.actionLabel).textStyle(.caption, tint: Theme.accent, weight: .medium).lineLimit(1).fixedSize()
-                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+    private func identifier(_ item: Suggestion) -> String {
+        if case .openCompany = item.action { return "suggestion-open-company" } else { return "suggestion-row" }
+    }
+
+    /// The raised card: a tone mark, the title, one line of why, and the action in accent.
+    private func lead(_ item: Suggestion) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+        let detail: String = item.detail.tidyMoney
+        return Button { Haptics.tap(); store.go(popup: item.action) } label: {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                Capsule().fill(tint(item.tone)).frame(width: 3).frame(maxHeight: .infinity).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    Text(item.title.tidyMoney).textStyle(.headline).multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !detail.isEmpty {
+                        Text(detail).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading)
+                    }
+                    HStack(spacing: Theme.Space.xs) {
+                        Text(item.actionLabel).textStyle(.body, tint: Theme.accent, weight: .semibold).lineLimit(1)
+                        LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.accent)
+                    }
+                    .padding(.top, Theme.Space.xxs)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical, Theme.Space.s).frame(minHeight: 44).contentShape(Rectangle())
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(Theme.Space.l)
+            .background(shape.fill(Theme.surfaceRaised))
+            .contentShape(shape)
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier({ if case .openCompany = item.action { return "suggestion-open-company" } else { return "suggestion-row" } }())
+        .accessibilityIdentifier(identifier(item))
+    }
+
+    /// A further item: a tone dot, the title and a chevron, 44 pt high.
+    private func row(_ item: Suggestion) -> some View {
+        Button { Haptics.tap(); store.go(popup: item.action) } label: {
+            HStack(spacing: Theme.Space.m) {
+                Circle().fill(tint(item.tone)).frame(width: 6, height: 6).accessibilityHidden(true)
+                Text(item.title.tidyMoney).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(item.actionLabel).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1).fixedSize()
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+            }
+            .padding(.horizontal, Theme.Space.l)
+            .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier(item))
+    }
+
+    private func waitingCard(_ waiting: Int) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
+        return Button { Haptics.tap(); store.openApp(.inbox) } label: {
+            HStack(spacing: Theme.Space.m) {
+                LedgerGlyph(glyph: Glyph.inbox, size: Theme.Icon.medium, tint: Theme.accent)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(waiting == 1 ? "1 decision waiting" : "\(waiting) decisions waiting").textStyle(.headline)
+                    Text("Answer in the Inbox").textStyle(.caption)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+            }
+            .padding(Theme.Space.l)
+            .background(shape.fill(Theme.surfaceRaised))
+            .contentShape(shape)
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("suggestion-row")
     }
 
     private func tint(_ t: Suggestion.Tone) -> Color {
-        switch t { case .bad: return Theme.loss; case .warn: return Theme.warn; case .good: return Theme.gain; case .neutral: return Theme.accent }
+        switch t { case .bad: return Theme.loss; case .warn: return Theme.warn; case .good: return Theme.gain; case .neutral: return Theme.inkFaint }
     }
 }
 
 // MARK: Next day
 
-/// The one filled control on the screen: the champagne Next day button at the right; at the left the week's progress (seven segments)
-/// with what the last day did to net worth, and "Play to end of week" under it. While a day runs the button shows progress and ignores taps.
+/// Pinned under Home: one line with the week's progress (seven short segments), the day and what the last day did to net worth, and
+/// "End of week" at the right; under it the full-width champagne Next day. While a day runs the button shows progress.
 struct AdvanceBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
     @Environment(Entitlements.self) private var ent
-    @State private var pulseDim = false
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                caption
-                HStack(spacing: Theme.Space.xs) {
-                    ForEach(0..<7, id: \.self) { d in
-                        Capsule().fill(d <= engine.state.day ? Theme.accent : Theme.line).frame(width: 22, height: 3)
+        VStack(spacing: Theme.Space.s) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    caption
+                    HStack(spacing: 3) {
+                        ForEach(0..<7, id: \.self) { d in
+                            Capsule().fill(d <= engine.state.day ? Theme.ink.opacity(0.85) : Theme.line).frame(width: 14, height: 3)
+                        }
                     }
+                    .accessibilityHidden(true)
+                    .animation(Motion.quick(reduceMotion), value: engine.state.day)
                 }
-                .accessibilityHidden(true)
-                .animation(Motion.quick(reduceMotion), value: engine.state.day)
+                Spacer(minLength: Theme.Space.s)
                 weekButton
             }
-            Spacer(minLength: Theme.Space.s)
             nextButton
         }
-        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xs)
+        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)
         .background(Theme.page)
         .overlay(alignment: .top) { Hairline() }
     }
 
-    /// "Day 3 of 7", and after a day the real change in net worth (an arrow and the amount). The line keeps its height, so nothing jumps.
+    /// "Day 3 of 7", and after a day the real change in net worth. The line keeps its height, so nothing jumps.
     private var caption: some View {
         HStack(spacing: Theme.Space.s) {
-            Text("Day \(engine.state.day + 1) of 7").textStyle(.caption, tint: Theme.inkFaint)
+            Text("Day \(engine.state.day + 1) of 7").textStyle(.caption, tint: Theme.inkSoft)
             if let chip = store.dayChip {
                 let c: Double = chip.netWorthChange
-                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c)) + " net worth")
+                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c)))
                     .textStyle(.caption, tint: Theme.change(c), numeric: true, weight: .medium)
                     .id(chip.id)
                     .transition(.opacity)
@@ -377,29 +495,29 @@ struct AdvanceBar: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Week 1, day 1 of a game with the ladder: nothing has been played yet.
-    private var firstDay: Bool { engine.state.week == 0 && engine.state.day == 0 && Gates.ladderOn(engine.state) }
-
-    /// A free player in weeks 9 to 12 gets one quiet line: the fast-forward becomes a Pro feature after week 12.
+    /// A free player in weeks 9 to 12 sees "Pro after week 12" by the fast-forward, which becomes a Pro feature after week 12.
     private var proTeaser: Bool {
         let w: Int = engine.state.week + 1
         return !ent.isPro && w >= 9 && w <= 12
     }
 
-    /// "Play to end of week": a text button under the week's progress from week 2; off while a blocking Inbox item is open.
+    /// "Play to end of week": a text button from week 2; off while a blocking Inbox item is open.
     @ViewBuilder private var weekButton: some View {
         if store.canPlayWeek {
             Button { if ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { store.playToEndOfWeek() } else { ent.run(.playToEndOfWeek, "Play to end of week") {} } } label: {
-                HStack(spacing: Theme.Space.s) {
-                    Text(proTeaser ? "Play to end of week · Pro after week 12" : "Play to end of week")
-                        .textStyle(.caption, tint: Theme.inkSoft, weight: .medium).lineLimit(1).minimumScaleFactor(0.85)
+                HStack(spacing: Theme.Space.xs) {
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text("End of week").textStyle(.caption, tint: Theme.ink, weight: .medium).lineLimit(1)
+                        if proTeaser { Text("Pro after week 12").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1) }
+                    }
                     if !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { ProMark(feature: .playToEndOfWeek) }
+                    Image(systemName: "forward.end").font(.caption.weight(.semibold)).foregroundStyle(Theme.inkSoft).accessibilityHidden(true)
                 }
                 .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
-            .padding(.vertical, -Theme.Space.s)
             .disabled(store.isAdvancing || store.blockingMessageID != nil || store.reportSheet != nil)
+            .accessibilityLabel(proTeaser ? "Play to end of week, Pro after week 12" : "Play to end of week")
             .accessibilityIdentifier("play-week")
         }
     }
@@ -408,23 +526,17 @@ struct AdvanceBar: View {
         let busy: Bool = store.isAdvancing
         let over: Bool = engine.state.isGameOver
         let blockID: Int? = store.blockingMessageID
-        let label: String = over ? "Game over" : busy ? "Running" : blockID != nil ? "Answer first  ›" : "Next day  ›"
+        let label: String = over ? "Game over" : busy ? "Running" : blockID != nil ? "Answer first" : "Next day"
         return Button {
+            Haptics.tap()
             if let id = blockID { store.openApp(.inbox, request: .message(id)) } else { store.nextDay() }
         } label: {
             HStack(spacing: Theme.Space.s) {
-                if busy { ProgressView().controlSize(.small).tint(Theme.inkSoft) }
+                if busy { ProgressView().controlSize(.small).tint(Theme.accentInk) }
                 Text(label)
             }
-            .fixedSize()
         }
-        .buttonStyle(PrimaryButtonStyle())
-        .opacity(firstDay && pulseDim ? 0.6 : 1)
-        .onAppear {
-            // Until the first day has been played the button breathes (opacity 1.0 to 0.6, 1.2 s a cycle).
-            guard firstDay, !reduceMotion else { return }
-            Motion.animate(Motion.pulseAnimation) { pulseDim = true }
-        }
+        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
         .disabled(over || busy || (blockID == nil && store.reportSheet != nil))
         .accessibilityIdentifier("next-day")
     }

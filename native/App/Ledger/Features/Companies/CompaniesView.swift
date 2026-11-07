@@ -89,21 +89,24 @@ struct CompaniesView: View {
 
     @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
         if rows.isEmpty {
-            LedgerSection("Companies") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HomeGroupLabel("Companies")
                 EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Pick a trade, see the full start-up cost, then decide.",
-                           actionTitle: "Choose a trade", action: { store.push(.newCompany, on: .company) })
+                           actionTitle: "Choose a trade", action: { store.push(.newCompany, on: .company) }, centered: false)
+                    .padding(.vertical, Theme.Space.s)
             }
         } else {
             let regular: Bool = sizeClass == .regular
             let shown: [(co: Company, h: CompanyHealth)] = (showAll || regular) ? rows : Array(rows.prefix(Self.previewCount))
-            LedgerSection(title: "Companies · \(rows.count)", trailing: { sortMenu }) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HomeGroupLabel(title: "Companies · \(rows.count)") { sortMenu }
                 companyRows(e, rows: shown)
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("home-companies-box")
                 if shown.count < rows.count {
-                    Button("Show all \(rows.count) companies") { Haptics.tap(); Motion.animate(Motion.quick(reduceMotion)) { showAll = true } }
+                    Button("Show all \(rows.count)") { Haptics.tap(); Motion.animate(Motion.quick(reduceMotion)) { showAll = true } }
                         .buttonStyle(TertiaryButtonStyle(size: .compact))
-                        .frame(maxWidth: .infinity, alignment: .center)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("show-all-companies")
                 }
             }
@@ -115,11 +118,12 @@ struct CompaniesView: View {
             Picker("Sort by", selection: $sort) { ForEach(Sort.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
         } label: {
             HStack(spacing: Theme.Space.xs) {
-                Text("Sorted by \(sort.rawValue.lowercased())").textStyle(.caption, tint: Theme.inkFaint)
-                Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint).accessibilityHidden(true)
+                Text(sort.rawValue).textStyle(.caption, tint: Theme.inkSoft)
+                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint).accessibilityHidden(true)
             }
             .frame(minHeight: 44).contentShape(Rectangle())
         }
+        .accessibilityLabel("Sorted by \(sort.rawValue.lowercased())")
     }
 
     @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
@@ -128,7 +132,7 @@ struct CompaniesView: View {
         } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
-                    if i > 0 { Hairline() }
+                    if i > 0 { Hairline().padding(.leading, CompanyRow.textInset) }
                     NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
                         .transition(.opacity)
@@ -241,7 +245,8 @@ struct StatusChip: View {
     }
 }
 
-/// One company in the Home list, unboxed between hairlines: icon, name with trade, city and people, profit a year and cash.
+/// One company in the Home list, unboxed between inset hairlines: the trade picture, the name over "trade · city · people", and on
+/// the right the profit a year (gain or loss) over the cash. A warning mark leads the name when the company needs attention.
 struct CompanyRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -250,6 +255,8 @@ struct CompanyRow: View {
     @Environment(Entitlements.self) private var ent
     @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
     @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
+    /// Where the separators start: past the picture, under the text.
+    static let textInset: CGFloat = 36 + Theme.Space.m
 
     var body: some View {
         let co = company, h = health
@@ -264,27 +271,30 @@ struct CompanyRow: View {
                 HStack(spacing: Theme.Space.xs) {
                     if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }
                     Text(co.name).textStyle(.headline).lineLimit(1)
-                    CosmeticBadgeView(badge: badge, tint: accent, size: 16)
+                    CosmeticBadgeView(badge: badge, tint: accent, size: 14)
                 }
-                Text(subtitle(co)).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
+                Text(subtitle(co)).textStyle(.caption).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                Text((h.profitTTM < 0 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co) + " / yr")
-                    .textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
-                Text("cash " + store.short(co.cash, in: co)).textStyle(.caption, tint: co.cash < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
+                Text((h.profitTTM < -0.5 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co))
+                    .textStyle(.headline, tint: profitTint, numeric: true)
+                Text("a year").textStyle(.caption, tint: Theme.inkFaint)
             }
             .lineLimit(1)
-            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+            .layoutPriority(1)
         }
         .padding(.vertical, Theme.Space.m)
+        .frame(minHeight: 60)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
-    /// "Gym · London · 3 people", with the status in place of the people when the company is not open.
+    /// "Gym · London · 3 people", with the status (or "out of cash") in place of the people when that matters more.
     private func subtitle(_ co: Company) -> String {
-        let tail = co.status == .open ? co.staff.count.peopleText : (co.status == .setup ? "Setting up" : co.status.rawValue.capitalized)
+        let tail: String
+        if co.status == .open { tail = co.cash < 0 ? "Out of cash" : co.staff.count.peopleText }
+        else { tail = co.status == .setup ? "Setting up" : co.status.rawValue.capitalized }
         return "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(tail)"
     }
 }

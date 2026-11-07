@@ -87,7 +87,7 @@ struct WardrobeView: View {
         let accent: Color = Cosmetics.theme(previewTheme).accent
         return VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     preview(accent: accent)
                     themeSection(pro: pro)
                     badgeSection(pro: pro)
@@ -110,32 +110,26 @@ struct WardrobeView: View {
         let st: Career.RankStatus? = store.engine?.careerStatus
         let rank: String = st?.rank.title ?? "Street Vendor"
         let progress: Double = st?.progress ?? 0.4
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            HStack(spacing: 14) {
-                ZStack {
-                    AccentRing(progress: progress, tint: accent, size: 64)
-                    CosmeticBadgeView(badge: badge, tint: accent, size: 38)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Preview").capsLabel()
-                    Text(rank).popupText(.figure)
-                    HStack(spacing: 6) {
-                        Capsule().fill(accent).frame(width: 26, height: 4)
-                        Text(Cosmetics.theme(previewTheme).title + " · " + badge.title)
-                            .popupText(.caption)
-                    }
-                }
-                Spacer(minLength: 0)
+        return VStack(spacing: Theme.Space.s) {
+            ZStack {
+                AccentRing(progress: progress, tint: accent, size: 92)
+                CosmeticBadgeView(badge: badge, tint: accent, size: 56)
             }
+            .padding(.bottom, Theme.Space.xs)
+            Text(rank).popupText(.figure).multilineTextAlignment(.center)
+            Text(Cosmetics.theme(previewTheme).title + " · " + badge.title).popupText(.caption).multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, Theme.Space.s)
+        .accessibilityElement(children: .combine)
         .animation(Motion.quick(reduceMotion), value: previewTheme)
         .animation(Motion.quick(reduceMotion), value: previewBadge)
     }
 
     private func themeSection(pro: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Colour").capsLabel()
-            HStack(spacing: 10) {
+            Text("Colour").textStyle(.label, tint: Theme.inkFaint)
+            HStack(spacing: Theme.Space.s) {
                 ForEach(Cosmetics.themes) { (t: Cosmetics.Palette) in
                     themeDot(t, pro: pro)
                 }
@@ -169,7 +163,7 @@ struct WardrobeView: View {
         let accent: Color = Cosmetics.theme(previewTheme).accent
         let columns: [GridItem] = [GridItem(.adaptive(minimum: 74), spacing: 8)]
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Logo badge").capsLabel()
+            Text("Logo badge").textStyle(.label, tint: Theme.inkFaint)
             LazyVGrid(columns: columns, spacing: 8) {
                 ForEach(Cosmetics.badges) { (b: Cosmetics.Badge) in
                     badgeCell(b, accent: accent, pro: pro)
@@ -192,10 +186,10 @@ struct WardrobeView: View {
                 CosmeticBadgeView(badge: b, tint: open ? accent : Theme.ivoryDim, size: 36)
                 Text(note).textStyle(.caption, tint: open ? Theme.inkSoft : Theme.inkFaint).lineLimit(1)
             }
-            .frame(maxWidth: .infinity).padding(.vertical, 9)
-            .background(shape.fill(on ? Theme.goldSelected : Theme.surface))
-            .overlay(shape.strokeBorder(on ? accent : Theme.border, lineWidth: 1))
-            .opacity(open ? 1 : 0.7)
+            .frame(maxWidth: .infinity, minHeight: 64).padding(.vertical, Theme.Space.s)
+            .background(shape.fill(on ? Theme.inset : Color.clear))
+            .overlay(shape.strokeBorder(on ? accent.opacity(0.8) : Color.clear, lineWidth: 1))
+            .opacity(open ? 1 : 0.6)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
@@ -208,16 +202,19 @@ struct WardrobeView: View {
         let lockedByPro: Bool = (Cosmetics.badge(previewBadge).premium && !ent.isPro) || (Cosmetics.theme(previewTheme).premium && !ent.isPro)
         return VStack(spacing: 6) {
             if lockedByPro {
-                QuietButton(title: "Unlock with Ledger Pro", fullWidth: true) {
+                Button("Unlock with Ledger Pro") {
+                    Haptics.tap()
                     popupClose?()
                     ent.paywall = PaywallRequest(title: "Wardrobe")
                 }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("wardrobe-unlock")
             } else {
                 Text("This badge is won in your career. Keep playing to earn it.")
                     .popupText(.caption)
             }
         }
-        .padding(.horizontal, 18).padding(.vertical, 10)
-        .background(Theme.page)
+        .padding(.horizontal, 18).padding(.vertical, Theme.Space.m)
+        .overlay(alignment: .top) { Hairline() }
     }
 }

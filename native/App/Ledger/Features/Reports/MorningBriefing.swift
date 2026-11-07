@@ -31,7 +31,6 @@ struct DailyReportPopup: View {
     @State private var revealed: Int = 0
     @State private var showContinue: Bool = false
     @State private var skipped: Bool = false
-    @State private var barFill: Double = 0
 
     // MARK: Content from real data
 
@@ -94,7 +93,6 @@ struct DailyReportPopup: View {
     private func run(count n: Int) async {
         if reduceMotion { return }
         let total: Double = Self.barDuration
-        Motion.animate(Motion.revealAnimation) { barFill = 1 }
         var elapsed: Double = 0
         for i in 0..<n {
             let at: Double = timeFor(progress: (Double(i) + 0.5) / Double(n)) * total
@@ -113,21 +111,11 @@ struct DailyReportPopup: View {
     private func skip(count n: Int) {
         if reduceMotion || skipped || showContinue { return }
         skipped = true
-        Motion.animate(Motion.tapAnimation) { revealed = n; barFill = 1 }
+        Motion.animate(Motion.tapAnimation) { revealed = n }
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
             Motion.animate(Motion.quickAnimation) { showContinue = true }
         }
-    }
-
-    private var loadingBar: some View {
-        let fill: Double = reduceMotion ? 1 : barFill
-        return ZStack(alignment: .leading) {
-            Capsule().fill(Theme.ivoryFaint.opacity(0.18))
-            Capsule().fill(Theme.gold).scaleEffect(x: max(fill, 0.001), y: 1, anchor: .leading)
-        }
-        .frame(height: 2.5)
-        .accessibilityHidden(true)
     }
 
     // MARK: Views
@@ -139,9 +127,8 @@ struct DailyReportPopup: View {
         GamePopup(title: digest.dateLabel, showsClose: false, dismissOnBackdrop: false, onClose: { store.dismissDailySheet() }) {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
                 VStack(alignment: .leading, spacing: PopupSpace.block) {
-                    Text("Morning briefing").capsLabel()
+                    Text("Morning briefing").textStyle(.label, tint: Theme.inkFaint)
                     headline.modifier(BriefingStep(shown: visible(0)))
-                    loadingBar
                     ForEach(list) { (line: BriefingLine) in
                         row(line).modifier(BriefingStep(shown: visible(line.id)))
                     }
@@ -172,18 +159,15 @@ struct DailyReportPopup: View {
 
     @ViewBuilder private var headlineFigures: some View {
         if let n = digest.netWorthChange {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Net worth today").popupText(.rowLabel)
-                    CountedFigure(value: n, format: signedText, tint: Theme.change(n), instant: instant)
-                        .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
-                }
-                Spacer(minLength: 8)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Net worth today").popupText(.rowLabel)
+                CountedFigure(value: n, format: signedText, tint: Theme.change(n), instant: instant)
+                    .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
                 if let c = digest.cashChange {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Cash").popupText(.rowLabel)
+                    HStack(spacing: Theme.Space.xs) {
+                        Text("Cash").popupText(.caption)
                         CountedFigure(value: c, format: signedText, tint: Theme.change(c), instant: instant)
-                            .font(PopupVariant.standard.valueFont).lineLimit(1)
+                            .textStyle(.caption, numeric: true, weight: .medium).lineLimit(1)
                     }
                 }
             }
@@ -210,8 +194,8 @@ struct DailyReportPopup: View {
     private func insightView(_ item: BriefingInsight, compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if compact { Text("A quiet day: nothing sold, nothing new in the Inbox.").popupText(.subtitle) }
-            Text(item.label).capsLabel()
-            Text(item.text).popupText(.body)
+            Text(item.label).textStyle(.label, tint: item.tint)
+            Text(item.text).popupText(.body).fixedSize(horizontal: false, vertical: true)
             if let title = item.buttonTitle, let action = item.action {
                 Button {
                     Haptics.tap()
@@ -223,8 +207,8 @@ struct DailyReportPopup: View {
                 .buttonStyle(PressableStyle()).accessibilityIdentifier("daily-insight-action")
             }
         }
-        .padding(.leading, 12).frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .leading) { Rectangle().fill(item.tint).frame(width: 2) }
+        .padding(Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.inset))
     }
 }
 

@@ -22,6 +22,7 @@ struct InboxView: View {
     @State private var detailID: Int?
     @State private var scrollTarget: Int?
     @AppStorage("inboxPinned") private var pinnedText = ""
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
 
     static let page = 40
 
@@ -163,14 +164,12 @@ struct InboxView: View {
         .onAppear { takeRequest() }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
         .safeAreaInset(edge: .top, spacing: 0) {
-            VStack(spacing: Theme.Space.xs) {
-                searchField
-                SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
-                    .pulseOnce(when: waitingCount)
-            }
-            .padding(.vertical, Theme.Space.xs).background(P.ground)
+            SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
+                .pulseOnce(when: waitingCount)
+                .padding(.vertical, Theme.Space.xs).background(P.ground)
         }
-        .onChange(of: tab) { _, _ in limit = Self.page }
+        // Search lives on the All page only, so another page is never filtered by a query that is not on screen.
+        .onChange(of: tab) { _, now in limit = Self.page; if now != .all { query = "" } }
         .onChange(of: query) { _, _ in limit = Self.page }
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
         .onChange(of: store.phonePath.count) { _, _ in detailID = nil }
@@ -194,6 +193,10 @@ struct InboxView: View {
     private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int), _ k: Tab) -> some View {
         let week: Int = e.state.week
         return List {
+            if !list.isEmpty || k == .all {
+                hero(e, k, list).mailRowStyle().listRowSeparator(.hidden)
+            }
+            if k == .all { searchField.padding(.bottom, Theme.Space.s).mailRowStyle().listRowSeparator(.hidden) }
             if companyFilter != nil { filterLine(e).mailRowStyle() }
             if list.isEmpty { empty(e, k).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
@@ -260,6 +263,35 @@ struct InboxView: View {
         }
     }
 
+    /// The page's hero: how many messages it holds, in words, and one line that matters (the first expiry, who answered, what is unread).
+    private func hero(_ e: GameEngine, _ k: Tab, _ list: [Message]) -> some View {
+        let n: Int = list.count
+        let title: String
+        var note: String = ""
+        switch k {
+        case .decisions:
+            title = n == 1 ? "decision needs you" : "decisions need you"
+            let soonest: Int? = list.compactMap { (m: Message) -> Int? in m.expiresWeek.map { $0 - e.state.week } }.min()
+            if let left = soonest { note = left <= 0 ? "The first one expires this week." : "The first one expires in \(left) week\(left == 1 ? "" : "s")." }
+        case .handled:
+            title = "handled by your team"
+            note = "Managers, your accountant and desks answered these for you."
+        case .all:
+            title = n == 1 ? "message" : "messages"
+            let unread: Int = store.unreadCount
+            note = unread > 0 ? "\(unread) unread" : "All read"
+        }
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text("\(n)").font(.hero(heroSize)).foregroundStyle(P.ink).lineLimit(1)
+            Text(title).textStyle(.body, tint: P.inkSoft)
+            if !note.isEmpty { Text(note).textStyle(.caption, tint: k == .decisions ? P.caution : P.inkFaint) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.l)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("inbox-hero")
+    }
+
     /// The search box (the system search field needs a navigation bar, which the app header replaces).
     private var searchField: some View {
         HStack(spacing: Theme.Space.s) {
@@ -269,9 +301,8 @@ struct InboxView: View {
                 Button { query = "" } label: { LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 44, height: 36).contentShape(Rectangle()) }.buttonStyle(PressableStyle()).accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, Theme.Space.m).frame(minHeight: 36)
+        .padding(.horizontal, Theme.Space.m).frame(minHeight: 40)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
-        .padding(.horizontal, Theme.Space.page)
     }
 
     private var optionsMenu: some View {
@@ -377,6 +408,9 @@ struct MessageCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(P.card.opacity(0.6)))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(P.line.opacity(0.7), lineWidth: 1))
+        } else if full {
+            detail(open: open)
+                .onAppear { if !open { store.markRead(message.id) } }
         } else {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .bottom, spacing: 8) {
@@ -387,6 +421,47 @@ struct MessageCard: View {
                 if open { decision }
             }
             .onAppear { if !open { store.markRead(message.id) } }
+        }
+    }
+
+    /// The opened message: who sent it and when, the subject as the title, the text, what came of it, the company link, then the choices.
+    private func detail(open: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            HStack(spacing: Theme.Space.m) {
+                InboxAvatar(initial: message.inboxInitial, glyph: glyph, tint: tint, size: 40, face: message.inboxFace(store.engine))
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(message.from).textStyle(.headline, tint: P.ink).lineLimit(1)
+                    Text(age).textStyle(.caption, tint: P.inkFaint)
+                }
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text(text(message.title)).textStyle(.title, tint: P.ink).fixedSize(horizontal: false, vertical: true)
+                Text(text(message.body)).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                if let o = store.engine?.answeredOutcome(message) {
+                    Text(o).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
+                }
+                if !message.handledBy.isEmpty {
+                    Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium)
+                }
+                companyLink
+            }
+            if open { decision }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var companyLink: some View {
+        if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
+            let sec = Self.section(for: message)
+            let app = store.applicantLink(message)
+            Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
+                LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
+            }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
+        } else if message.companyID == 0, let app = PhoneApp(rawValue: message.appLink) {
+            Button { store.openApp(app) } label: { LinkLabel(text: "Open \(app.title)") }
+                .buttonStyle(PressableStyle()).accessibilityIdentifier("open-app-link")
         }
     }
 
@@ -457,7 +532,8 @@ struct MessageCard: View {
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(.vertical, Theme.Space.s).padding(.leading, Theme.Space.m).padding(.trailing, Theme.Space.xxl)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(idx == 0 ? P.accentWash : P.inset))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(idx == 0 ? P.accent.opacity(0.7) : Color.clear, lineWidth: 1))
             .overlay(alignment: .trailing) { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).padding(.trailing, Theme.Space.m) }
             .contentShape(Rectangle())
         }.buttonStyle(PressableStyle()).accessibilityIdentifier("inbox-option")

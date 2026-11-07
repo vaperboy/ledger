@@ -42,10 +42,13 @@ struct InsightsView: View {
             Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
             Text("Net worth over time, which company is pulling ahead, and how many days of cash you have left.")
                 .popupText(.caption).multilineTextAlignment(.center)
-            QuietButton(title: "Unlock with Ledger Pro") {
+            Button("Unlock with Ledger Pro") {
+                Haptics.tap()
                 popupClose?()
                 ent.paywall = PaywallRequest(title: "Insights")
             }
+            .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+            .accessibilityIdentifier("insights-unlock")
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: 320)

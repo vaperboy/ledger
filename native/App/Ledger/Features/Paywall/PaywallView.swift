@@ -1,8 +1,8 @@
 import SwiftUI
 import Simulation
 
-/// The one paywall. The item that triggered it on top, three option cards (yearly Plus preselected, monthly Plus, Pro once),
-/// Founder's as a text link, then Restore and the legal links. No timers, no fake discounts. Shown in a `.centerSheet` by `PaywallHost`.
+/// The one paywall. The item that triggered it as the title, three plans as a radio list (yearly Plus preselected, monthly Plus, Pro
+/// once), one primary buy button, Founder's as a text link, then Restore and the legal links. No timers, no fake discounts. Shown in a `.centerSheet` by `PaywallHost`.
 struct PaywallView: View {
     let request: PaywallRequest
     @Environment(Entitlements.self) private var ent
@@ -10,7 +10,7 @@ struct PaywallView: View {
     @State private var choice: LedgerProduct = .plusYearly
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
             header
             options
             buyButton
@@ -26,16 +26,18 @@ struct PaywallView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             if !request.lead.isEmpty { Text(request.lead).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
-            Text(request.title).textStyle(.figure, weight: .semibold).fixedSize(horizontal: false, vertical: true)
+            Text(request.title).textStyle(.title).fixedSize(horizontal: false, vertical: true)
             Text("No purchase changes a number in the game. Pro unlocks more of it and removes ads.")
                 .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     @ViewBuilder private var options: some View {
-        VStack(spacing: Theme.Space.s) {
+        VStack(spacing: 0) {
             planCard(.plusYearly, title: "Ledger Plus, yearly", badge: ent.yearlySaving, detail: "Everything in Pro, plus Advisor, auto-week, cloud backup and early access.")
+            Hairline().padding(.leading, 22 + Theme.Space.m)
             planCard(.plusMonthly, title: "Ledger Plus, monthly", badge: "", detail: "Same as yearly, billed monthly.")
+            Hairline().padding(.leading, 22 + Theme.Space.m)
             if ent.ownsPro {
                 ownedRow
             } else {
@@ -55,23 +57,31 @@ struct PaywallView: View {
 
     private func planCard(_ p: LedgerProduct, title: String, badge: String, detail: String) -> some View {
         let on: Bool = choice == p
-        return Button { choice = p } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(title).textStyle(.headline, weight: .semibold)
-                    if !badge.isEmpty { Text(badge).textStyle(.caption, tint: Theme.gain, weight: .semibold) }
-                    Spacer(minLength: 8)
-                    Text(priceLine(p)).textStyle(.body, tint: on ? Theme.accent : Theme.inkSoft, numeric: true)
+        return Button { Haptics.choose(); choice = p } label: {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                ZStack {
+                    Circle().strokeBorder(on ? Theme.accent : Theme.lineStrong, lineWidth: 1.5)
+                    if on { Circle().fill(Theme.accent).padding(5) }
                 }
-                Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-                if p.isPlus && ent.trialEligible { Text("7 days free, then \(ent.price(p))").textStyle(.caption, tint: Theme.accent) }
+                .frame(width: 22, height: 22)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        Text(title).textStyle(.headline)
+                        Spacer(minLength: Theme.Space.s)
+                        Text(priceLine(p)).textStyle(.body, tint: on ? Theme.ink : Theme.inkSoft, numeric: true, weight: on ? .semibold : nil)
+                    }
+                    if !badge.isEmpty { Text(badge).textStyle(.caption, tint: Theme.gain, weight: .semibold) }
+                    Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    if p.isPlus && ent.trialEligible { Text("7 days free, then \(ent.price(p))").textStyle(.caption, tint: Theme.inkSoft) }
+                }
             }
-            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(on ? Theme.goldSelected : Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).strokeBorder(on ? Theme.gold : Theme.border, lineWidth: on ? 1.5 : 1))
+            .padding(.vertical, Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
+        .accessibilityAddTraits(on ? .isSelected : [])
         .accessibilityIdentifier("paywall-\(p.rawValue)")
     }
 
@@ -86,10 +96,10 @@ struct PaywallView: View {
     }
 
     private var buyButton: some View {
-        Button { Task { await ent.purchase(choice) } } label: {
-            Text(buyLabel).frame(maxWidth: .infinity)
+        Button { Haptics.tap(); Task { await ent.purchase(choice) } } label: {
+            Text(buyLabel)
         }
-        .buttonStyle(ImportantButtonStyle())
+        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
         .disabled(ent.isBusy || ent.price(choice).isEmpty)
         .accessibilityIdentifier("paywall-buy")
     }
@@ -106,7 +116,7 @@ struct PaywallView: View {
             Button { Task { if await ads.watchForPass() { ent.paywall = nil } } } label: {
                 Text("Try Pro for a day: watch an ad")
             }
-            .buttonStyle(PlainTextButtonStyle(tint: Theme.gold))
+            .buttonStyle(TertiaryButtonStyle(fullWidth: true))
             .accessibilityIdentifier("paywall-pass")
         }
     }
