@@ -26,8 +26,8 @@ enum ApplicantSort: String, CaseIterable, Hashable {
     case best = "Best match", wage = "Lowest wage ask", newest = "Newest"
 }
 
-/// Everyone who answered a job ad or agency search, in one page: a company picker and a role filter in a fixed header, then one `ApplicantRow`
-/// per applicant (the same row as the hire page). "Talk terms" opens the same terms page as the hire flow (`HireOnePage`). Reached from the inbox, Team, the hire page and Group Management
+/// Everyone who answered a job ad or agency search, in one page: how many wait (the hero), company and role filters with a sort menu, then one
+/// `ApplicantRow` per applicant (the same row as the hire page). "Talk terms" opens the same terms page as the hire flow (`HireOnePage`). Reached from the inbox, Team, the hire page and Group Management
 /// through `GameStore.openApplicants`; Back returns to where the player came from (the page is a route on the tab's stack).
 struct ApplicantsView: View {
     @EnvironmentObject var store: GameStore
@@ -108,18 +108,29 @@ struct ApplicantsView: View {
         var roles: [String] = []
         for r in all where !roles.contains(r.applicant.role) { roles.append(r.applicant.role) }
         let shown: [ApplicantRowItem] = sorted(all.filter { (r: ApplicantRowItem) -> Bool in roleSel.isEmpty || r.applicant.role == roleSel })
-        return VStack(spacing: 0) {
-            header(e, cos, all, roles)
-            if shown.isEmpty {
-                emptyState(e, cos)
-            } else {
-                list(e, shown)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                hero(e, cos, shown)
+                filters(e, cos, all, roles)
+                if shown.isEmpty { emptyState(e, cos) } else { list(e, shown) }
             }
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xl)
+            .frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
+        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
         .confirmAction($pending)
         .navigationDestination(item: $talk) { (t: ApplicantTalk) -> HireOnePageHost in HireOnePageHost(companyID: t.companyID, personID: t.personID) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: hireTarget(cos)) }
         .appScreen(title: "Applicants", tab: store.tab)
+    }
+
+    /// How many people wait to talk terms, and where.
+    private func hero(_ e: GameEngine, _ cos: [Company], _ shown: [ApplicantRowItem]) -> some View {
+        let n: Int = shown.count
+        let place: String = companySel == 0 ? (cos.count == 1 ? cos[0].name : "\(cos.count) companies") : (e.state.company(companySel)?.name ?? "")
+        let ads: Int = cos.filter { (c: Company) -> Bool in (companySel == 0 || c.id == companySel) && hasAd(c) }.count
+        let context: String = place + (ads > 0 ? " \u{00B7} \(ads) \(ads == 1 ? "ad" : "ads") running" : " \u{00B7} no ad running")
+        return TeamHero(value: "\(n)", unit: n == 1 ? "applicant waiting" : "applicants waiting", context: cos.isEmpty ? "No ad running" : context)
     }
 
     private func hireTarget(_ cos: [Company]) -> Int {
@@ -127,9 +138,9 @@ struct ApplicantsView: View {
         return cos.first?.id ?? 0
     }
 
-    // MARK: Header
+    // MARK: Filters
 
-    private func header(_ e: GameEngine, _ cos: [Company], _ all: [ApplicantRowItem], _ roles: [String]) -> some View {
+    private func filters(_ e: GameEngine, _ cos: [Company], _ all: [ApplicantRowItem], _ roles: [String]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if cos.count > 1 || companySel != 0 {
                 chipRow {
@@ -147,13 +158,25 @@ struct ApplicantsView: View {
                     }
                 }
             }
-            chipRow {
-                ForEach(ApplicantSort.allCases, id: \.self) { (s: ApplicantSort) in
-                    chip(s.rawValue, on: sort == s) { sort = s }
+            if all.count > 1 {
+                Menu {
+                    ForEach(ApplicantSort.allCases, id: \.self) { (s: ApplicantSort) in
+                        Button { Haptics.choose(); sort = s } label: {
+                            if sort == s { Label(s.rawValue, systemImage: "checkmark") } else { Text(s.rawValue) }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: Theme.Space.xs) {
+                        Text("Sort: " + sort.rawValue)
+                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                    }
                 }
+                .menuStyle(.button)
+                .buttonStyle(TertiaryButtonStyle(size: .compact))
+                .padding(.leading, -Theme.Space.s)
+                .accessibilityIdentifier("applicants-sort")
             }
         }
-        .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -173,22 +196,17 @@ struct ApplicantsView: View {
     // MARK: List
 
     private func list(_ e: GameEngine, _ rows: [ApplicantRowItem]) -> some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(Array(rows.prefix(limit).enumerated()), id: \.element.id) { n, r in
-                    if n > 0 { Hairline() }
-                    row(e, r)
-                }
-                if rows.count > limit {
-                    Button("Show \(min(40, rows.count - limit)) more") { limit += 40 }
-                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                        .padding(.top, Theme.Space.m)
-                }
+        LazyVStack(spacing: 0) {
+            ForEach(Array(rows.prefix(limit).enumerated()), id: \.element.id) { n, r in
+                if n > 0 { PersonRowRule() }
+                row(e, r)
             }
-            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.xl)
-            .frame(maxWidth: 760).frame(maxWidth: .infinity)
+            if rows.count > limit {
+                Button("Show \(min(40, rows.count - limit)) more") { limit += 40 }
+                    .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+                    .padding(.top, Theme.Space.m)
+            }
         }
-        .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
     }
 
     private func row(_ e: GameEngine, _ r: ApplicantRowItem) -> some View {
@@ -208,17 +226,15 @@ struct ApplicantsView: View {
 
     private func emptyState(_ e: GameEngine, _ cos: [Company]) -> some View {
         let canHire: Bool = hireTarget(cos) != 0
-        return VStack(spacing: 0) {
-            EmptyState(glyph: Glyph.inbox, title: "No applicants yet",
-                       message: "People answer a job ad or an agency search over the following weeks. Each reply also arrives as a message.")
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            Text("People answer a job ad or an agency search over the following weeks. Each reply also arrives as a message.")
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             if canHire {
                 Button("Post a job ad") { Haptics.tap(); showHire = true }
-                    .buttonStyle(SecondaryButtonStyle(tint: Theme.accent))
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("applicants-post-ad")
             }
         }
-        .padding(.horizontal, Theme.Space.xxl).padding(.top, Theme.Space.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 

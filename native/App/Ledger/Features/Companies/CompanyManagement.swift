@@ -66,8 +66,13 @@ struct CompanyManagement: View {
         let cur: Currency = engine.currency(for: company)
         let nodes = thinNodes(cur)
         let rows: [OrgNode] = nodes.shown + (showVacant ? nodes.hidden : [])
-        VStack(spacing: 6) {
-            ForEach(rows) { (node: OrgNode) -> AnyView in AnyView(thinRow(node)) }
+        VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, node: OrgNode) -> AnyView in
+                AnyView(VStack(spacing: 0) {
+                    if n > 0 { PersonRowRule() }
+                    thinRow(node)
+                })
+            }
             if !nodes.hidden.isEmpty {
                 Button { Haptics.tap(); Motion.animate(Motion.quickAnimation) { showVacant.toggle() } } label: {
                     Text(showVacant ? "Hide other posts" : "Other posts (\(nodes.hidden.count) open) \u{203A}")
@@ -89,7 +94,9 @@ struct CompanyManagement: View {
         } else if let target = node.sheet {
             Button { Haptics.tap(); sheet = target } label: {
                 ThinPersonRow(name: r.name, title: r.role, note: open ? "" : (tinted ? r.line : ""), noteTint: r.lineTint, wage: r.wage, cue: open ? "Appoint" : nil, chevron: !open, roleKey: r.role, face: r.face)
-            }.buttonStyle(PressableStyle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("mgmt-row-" + node.id)
         } else {
             ThinPersonRow(name: r.name, title: r.role, chevron: false, roleKey: r.role, face: r.face)
         }
@@ -102,7 +109,6 @@ struct CompanyManagement: View {
                 Text(works ? "Works here" : "Not here").textStyle(.caption, tint: works ? Theme.ink : Theme.inkSoft, weight: .medium)
             }
             .padding(.horizontal, Theme.Space.s).frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
         }
         .buttonStyle(PressableStyle())
         .accessibilityLabel(works ? "You work here. Tap to step out." : "You do not work here. Tap to step in.")
