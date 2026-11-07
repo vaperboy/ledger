@@ -16,6 +16,11 @@ public enum SalesItems {
     /// Price elasticity of one item's demand, and the clamps on price ratio and on the demand multiplier.
     public static let elasticity = -1.5
     public static let ratioRange = 0.3...3.0
+    /// The range a player price may take against the market price. The ceiling is well under what the demand curve is clamped at: no customer
+    /// pays three times the going price, and a price that far out only sells through the clamp.
+    public static let priceFloor = 0.3
+    public static let priceCeiling = 1.8
+    public static let priceRange = priceFloor...priceCeiling
     static let demandRange = 0.4...2.5
     public static let maxItems = 12
     static let key = "items27"
@@ -37,6 +42,47 @@ public enum SalesItems {
         /// Price against market after the discount.
         public var effectiveMultiplier: Double { priceMultiplier * (1 - discountPercent / 100) }
     }
+
+    // MARK: Who sets prices
+
+    /// The owner sets item prices unless someone is hired to: a market advisor first (it is their job), else the manager.
+    public enum PriceSetter: Equatable, Sendable {
+        case owner
+        case advisor
+        case manager(name: String)
+
+        public var isOwner: Bool { self == .owner }
+        /// "You", "Market advisor", or the manager's name.
+        public var label: String {
+            switch self { case .owner: return "You"; case .advisor: return "Market advisor"; case .manager(let n): return n }
+        }
+    }
+
+    public static func priceSetter(_ s: GameState, _ co: Company) -> PriceSetter {
+        if RoleEffects.filled(co, NewItemOptions.advisorRole) { return .advisor }
+        if let m = co.managerID { return .manager(name: s.people[m]?.name ?? "Manager") }
+        return .owner
+    }
+
+    // MARK: First choice
+
+    /// A company started by the player has no products until the player chooses: while `pick1` says so, the item list the player sees is
+    /// empty and the trade's starter items are offered as the first choice. Companies without the key (older saves, test setups) show everything.
+    static let pickKey = "pick1"
+
+    public static func firstChoicePending(_ co: Company) -> Bool { co.value(pickKey)["p"].bool }
+
+    public static func markFirstChoicePending(_ s: inout GameState, _ i: Int) { s.companies[i].set(pickKey, .object(["p": .bool(true)])) }
+
+    /// The first choice is made: every starter item except `keeping` (nil: all of them) stays out of the player's list.
+    static func settlePick(_ s: inout GameState, companyID: Int, keeping: String?, data: GameData) {
+        guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], firstChoicePending(s.companies[i]) else { return }
+        let hide = items(s.companies[i], bd).map(\.id).filter { $0 != keeping }
+        s.companies[i].set(pickKey, .object(["p": .bool(false), "hide": .array(hide.map { .string($0) })]))
+    }
+
+    /// Ids the player does not see (starter items left unchosen).
+    static func hiddenIDs(_ co: Company) -> Set<String> { Set(co.value(pickKey)["hide"].array.map(\.string)) }
 
     // MARK: Defaults from trade data
 

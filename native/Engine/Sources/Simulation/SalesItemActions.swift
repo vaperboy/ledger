@@ -7,7 +7,39 @@ import Businesses
 /// Per-item prices, discounts, company-specific items and selling to your other companies (`SalesItems`, `OwnListings`).
 /// Prices are in accounting units, like `Pricing.ticket`.
 public extension GameEngine {
-    func salesItems(companyID: Int) -> [SalesItem] { SalesItems.rows(state, companyID: companyID, data: data) }
+    /// The items the player sees. Empty while the first choice of what to sell is still open (`needsFirstItemChoice`); starter items the
+    /// player did not choose stay out of the list.
+    func salesItems(companyID: Int) -> [SalesItem] {
+        guard let co = state.company(companyID) else { return [] }
+        if SalesItems.firstChoicePending(co) { return [] }
+        let hidden = SalesItems.hiddenIDs(co)
+        let rows = SalesItems.rows(state, companyID: companyID, data: data)
+        return hidden.isEmpty ? rows : rows.filter { !hidden.contains($0.id) }
+    }
+
+    /// True for a company the player started that still has nothing on sale: the item page asks what to sell first.
+    func needsFirstItemChoice(companyID: Int) -> Bool { state.company(companyID).map(SalesItems.firstChoicePending) ?? false }
+
+    /// What the trade can start with, to choose the first product or service from. Empty once the choice is made; a custom first item is
+    /// added with `addSalesItem` or `addNewItem`.
+    func firstItemChoices(companyID: Int) -> [SalesItem] {
+        guard let co = state.company(companyID), SalesItems.firstChoicePending(co) else { return [] }
+        return SalesItems.rows(state, companyID: companyID, data: data)
+    }
+
+    /// Choose the first item to sell from `firstItemChoices`; the other starter items stay out of the list.
+    @discardableResult
+    mutating func chooseFirstItem(companyID: Int, itemID: String) -> SettingResult {
+        let data = self.data
+        return applySetting(refuse: { s in
+            guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
+            guard co.status == .open else { return "Only an open company sells things." }
+            guard SalesItems.firstChoicePending(co) else { return "You have already chosen what to sell." }
+            return SalesItems.items(co, bd).contains { $0.id == itemID } ? nil : "That choice is not on offer."
+        }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
+            SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
+        }
+    }
 
     /// Pure: units, revenue and profit change per week for a price (and discount percent) on one item.
     func itemForecast(companyID: Int, itemID: String, price: Double, discountPercent: Double) -> ItemForecast {
@@ -20,7 +52,7 @@ public extension GameEngine {
         return SalesItems.suggestedName(co, bd, isService: isService, seed: state.seed)
     }
 
-    /// Any real number is kept as typed; the price must lie between 30% and 300% of the market price.
+    /// Any real number is kept as typed; the price must lie between 30% and 180% of the market price (`SalesItems.priceRange`).
     @discardableResult
     mutating func setItemPrice(companyID: Int, itemID: String, price: Double) -> SettingResult {
         let data = self.data
@@ -28,7 +60,9 @@ public extension GameEngine {
             if let why = SalesItems.refusal(s, companyID: companyID, itemID: itemID, data: data) { return why }
             guard price.isFinite else { return "Enter a price." }
             let r = SalesItems.rows(s, companyID: companyID, data: data).first { $0.id == itemID }
-            guard let m = r?.marketPrice, m > 0, price >= m * SalesItems.ratioRange.lowerBound, price <= m * SalesItems.ratioRange.upperBound else { return "That price is too far from the market price." }
+            guard let m = r?.marketPrice, m > 0 else { return "That price is too far from the market price." }
+            guard price >= m * SalesItems.priceFloor else { return "That price is too far below the market price." }
+            guard price <= m * SalesItems.priceCeiling else { return "Customers will not pay that: the most this sells for is about \(Int((SalesItems.priceCeiling * 100).rounded()))% of the market price." }
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setPrice(&s, companyID: companyID, itemID: itemID, price: price, data: d)

@@ -210,7 +210,7 @@ public enum ProfessionalServices {
         let jobs = goods ? f.units : (sp.hours > 0 ? hours / sp.hours : 0)
         let util = utilisation(co)
         let cap = co.value("lastW")["cap"].double * hpb
-        let low = row.marketPrice * SalesItems.ratioRange.lowerBound / perHour, high = row.marketPrice * SalesItems.ratioRange.upperBound / perHour
+        let low = row.marketPrice * SalesItems.priceRange.lowerBound / perHour, high = row.marketPrice * SalesItems.priceRange.upperBound / perHour
         let rate = p / perHour
         return Economics(name: sp.name, text: sp.text, unit: sp.unit, model: sp.model, isGoods: goods, hoursPerJob: sp.hours, hoursPerBlock: hpb,
                          blockPrice: p, hourlyRate: rate, jobPrice: goods ? p : rate * sp.hours, fairHourly: row.marketPrice / perHour,
