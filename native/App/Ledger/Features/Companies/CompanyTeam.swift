@@ -112,9 +112,6 @@ struct CompanyTeam: View {
                 LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: "Monthly targets and bonus", value: goals, identifier: "team-goals") { page = .targets }
                 Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
                 LedgerRow(leading: .glyph(Glyph.person), title: "Perks", subtitle: "Cars and benefits for every worker", value: perksValue, valueNote: perksNote, identifier: "team-perks") { showPerks = true }
-                Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-                LedgerRow(leading: .glyph(Glyph.group), title: "Managers and executives", subtitle: "In Group, under this company's Management",
-                          identifier: "team-open-management") { store.openGroupEntity(companyID: company.id, section: "management") }
             }
         }
     }

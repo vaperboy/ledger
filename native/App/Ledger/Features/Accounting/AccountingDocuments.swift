@@ -106,21 +106,9 @@ struct AcctDocuments: View {
     }
 
     private func plainRow(_ d: AccountingDocument, _ co: Company, _ sub: String, _ value: String, _ identifier: String) -> AnyView {
-        // Records that are managed somewhere else link there (read-only here).
-        if d.kind == "financing" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: value, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
-                store.openBank(.company(co.id), tab: .loans)
-            })
-        }
-        if d.kind == "insurance" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
-                store.openAtlas(companyID: co.id)
-            })
-        }
-        if d.kind == "chain" {
-            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {
-                store.openCompany(co.id, section: .chain)
-            })
+        // Records managed in another app are shown read-only here.
+        if d.kind == "financing" || d.kind == "insurance" || d.kind == "chain" {
+            return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, value: d.kind == "financing" ? value : "", pill: d.status, pillTone: tone(d.status), identifier: identifier))
         }
         if d.kind == "franchise" {
             return AnyView(AcctRow(glyph: glyph(d), title: d.title, subtitle: sub, pill: d.status, pillTone: tone(d.status), identifier: identifier) {

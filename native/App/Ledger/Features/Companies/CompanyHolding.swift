@@ -77,8 +77,6 @@ struct CompanyHolding: View {
                             if amount > 0, store.act({ $0.putMoneyInto(companyID: company.id, amount: amount) }) == true { Haptics.success(); store.show("Moved in.", tone: "good") }
                             else { Haptics.warning(); store.show(amount > 0 ? "You don't have that much available." : "Enter an amount first.", tone: "warn") }
                         }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                        LedgerRow(leading: .glyph(Glyph.bank), title: "Dividends to you", subtitle: "Paying yourself, in Group under Money",
-                                  action: { store.openGroupEntity(companyID: company.id, section: "money") })
                         Text("Dividends flow up from the companies into the holding, and down to you. A holding that runs short of cash takes a dividend from a company by itself.")
                             .textStyle(.caption, tint: Theme.inkFaint)
                     }

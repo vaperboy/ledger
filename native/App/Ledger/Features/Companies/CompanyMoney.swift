@@ -113,15 +113,10 @@ struct CompanyMoneySummary: View {
 
     /// One row per area of the company's money; each opens a full page (the decisions there are big: closing, winding up).
     private func settingsTable(_ cur: Currency) -> some View {
-        let canSell = CompanySale.canSell(engine.state, companyID: company.id)
-        let whole: Double = CompanySale.estimatedValue(engine.state, companyID: company.id, data: engine.data)
-        let share: String = "You own \(Int(company.ownership.rounded()))%" + (canSell ? ", worth about " + cur.tidyShort(whole * company.ownership / 100) : "")
         let form: String = company.form == .limited ? "Limited company" : "Sole trader"
         let closed: Bool = company.status == .closed
         return SharpTable {
-            SettingsTableRow(title: "Ownership", note: "Owners, selling and shares are in the Group tab", value: share) { store.openGroupEntity(companyID: company.id, section: "ownership") }
             SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
-            SettingsTableRow(title: "Statements", note: "Balance sheet and cash flow, in Accounting", value: "Open") { store.openAccountingReports(companyID: company.id) }
         }
     }
 }

@@ -18,7 +18,6 @@ struct CompanyCustomers: View {
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             mood
             segments
-            reviewsLink
             accounts
             creditCheck
             CompanyContracts(engine: engine, company: company)
@@ -88,12 +87,6 @@ struct CompanyCustomers: View {
             .chartXAxis { AxisMarks { (_: AxisValue) in AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
             .frame(height: 110)
         }
-    }
-
-    /// A link to everything customers wrote (the Reviews app, on this company).
-    private var reviewsLink: some View {
-        LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "What customers wrote", subtitle: "Reviews app",
-                  identifier: "customers-reviews") { store.openReviews(companyID: company.id) }
     }
 
     // MARK: Buyers

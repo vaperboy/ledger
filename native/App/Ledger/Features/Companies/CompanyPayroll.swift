@@ -18,8 +18,6 @@ struct CompanyPayroll: View {
         let o = engine.financeOverview(companyID: company.id)
         let due = o.upcoming.filter { $0.id == "pay\(company.id)" || $0.id == "bills\(company.id)" }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            LedgerRow(leading: .glyph(Glyph.accounting), title: "Run payroll in Accounting", subtitle: "Timesheets, payslips and the run",
-                      identifier: "bills-open-accounting-payroll") { store.openAccounting(companyID: company.id, payroll: true) }
             LedgerSection("What falls due") {
                 VStack(alignment: .leading, spacing: 0) {
                     if due.isEmpty {

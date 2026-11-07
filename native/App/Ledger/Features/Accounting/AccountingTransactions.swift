@@ -247,7 +247,7 @@ struct AcctTransactionDetail: View {
                 AcctPanel {
                     switch l.kind {
                     case "loan":
-                        AcctRow(glyph: BankGlyph.transfer, title: l.title, subtitle: "Loan \u{00B7} open in the Bank", identifier: "acct-tx-link") { store.openBank(.company(m.companyID), tab: .loans) }
+                        AcctRow(glyph: BankGlyph.transfer, title: l.title, subtitle: "Loan", identifier: "acct-tx-link")
                     case "supplier":
                         AcctRow(glyph: Glyph.projects, title: l.title, subtitle: "Supplier record", identifier: "acct-tx-link") { m.push(.supplier(l.id)) }
                     case "payroll":
