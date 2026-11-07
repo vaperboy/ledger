@@ -143,4 +143,51 @@ final class SalesItemsTests: XCTestCase {
         // the licence just bought is not offered again: the next listing (if any) fills a different need
         XCTAssertNotEqual(e.ownCompanyListings(forBuyer: buyer).first?.equipmentID, listing.equipmentID)
     }
+
+    // MARK: Price ceiling, first choice, price setter
+
+    func testPriceCeilingIsRealistic() throws {
+        let (e, id) = try engine("estate", weeks: 2)
+        let it = e.salesItems(companyID: id)[0]
+        var b = e
+        XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 2.5).isRefused, "2.5x the market is above the ceiling")
+        XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 0.1).isRefused)
+        XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * SalesItems.priceCeiling), .applied)
+        XCTAssertLessThanOrEqual(SalesItems.priceCeiling, SalesItems.ratioRange.upperBound)
+        // a forecast for an absurd price is held at the ceiling
+        let top = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * SalesItems.priceCeiling, discountPercent: 0)
+        let wild = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 50, discountPercent: 0)
+        XCTAssertEqual(wild.units, top.units, accuracy: 1e-9)
+    }
+
+    func testPlayerStartedCompanyChoosesFirstItem() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "estate", cityID: e.state.player.cityID, form: .limited, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        let id = out.companyID
+        XCTAssertTrue(e.needsFirstItemChoice(companyID: id))
+        XCTAssertTrue(e.salesItems(companyID: id).isEmpty, "nothing is chosen for the player")
+        e.update { s, _, _ in let i = s.companyIndex(id)!; s.companies[i].status = .open }
+        let starters = e.firstItemChoices(companyID: id)
+        XCTAssertGreaterThanOrEqual(starters.count, 2)
+        XCTAssertTrue(e.setItemPrice(companyID: id, itemID: starters[0].id, price: starters[0].marketPrice).isRefused, "no price before the first choice")
+        XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: starters[1].id), .applied)
+        XCTAssertFalse(e.needsFirstItemChoice(companyID: id))
+        XCTAssertEqual(e.salesItems(companyID: id).map { $0.id }, [starters[1].id])
+        XCTAssertTrue(e.chooseFirstItem(companyID: id, itemID: starters[0].id).isRefused, "the choice is made once")
+        XCTAssertEqual(e.addSalesItem(companyID: id, name: "Own item", isService: true), .applied)
+        XCTAssertEqual(e.salesItems(companyID: id).count, 2)
+    }
+
+    func testPriceSetterIsOwnerUnlessSomeoneIsHired() throws {
+        let (e, id) = try engine("estate", weeks: 1)
+        XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter.isOwner })
+        var b = e
+        b.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            var m = StaffMember(raw: [:]); m.id = 9_999; m.role = NewItemOptions.advisorRole
+            s.companies[i].staff = s.companies[i].staff + [m]
+        }
+        XCTAssertTrue(b.salesItems(companyID: id).allSatisfy { $0.priceSetter == .advisor })
+    }
 }
