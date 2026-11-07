@@ -18,11 +18,10 @@ struct CustomTabView: View {
     @EnvironmentObject var store: GameStore
 
     var body: some View {
-        NavigationStack(path: Binding<[PhoneHome.Page]>(get: { store.customPath }, set: { store.setCustomPath($0) })) {
+        NavigationStack(path: Binding<[NavRoute]>(get: { store.customPath }, set: { store.setCustomPath($0) })) {
             root
                 .environment(\.hidesRootBack, true)
                 .id(rootIdentity)
-                .navigationDestination(for: PhoneHome.Page.self) { (page: PhoneHome.Page) in destination(page) }
                 .companyRouteDestinations()
         }
         .accessibilityIdentifier("custom-tab")
@@ -38,13 +37,6 @@ struct CustomTabView: View {
             }
         } else {
             CustomTabEmpty()
-        }
-    }
-
-    @ViewBuilder private func destination(_ page: PhoneHome.Page) -> some View {
-        switch page {
-        case .app(let app): PhoneAppScreen(app: app)
-        case .company(let route): CompanyRouteDestination(route: route)
         }
     }
 }

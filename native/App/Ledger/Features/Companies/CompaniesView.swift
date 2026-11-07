@@ -3,39 +3,6 @@ import GameCore
 import Businesses
 import Simulation
 
-enum CompanyRoute: Hashable {
-    /// The company screen: its Overview with the fixed section bar Overview | Team | Manage | Sales | Stats.
-    case company(Int)
-    case newCompany, market
-    /// One screen of a company (a section of the hub, or a trade's own page), opened from the hub, Team, Projects, the Inbox or a deep link.
-    case companyAt(Int, CompanySection)
-    /// The same screen opened on one of its parts (the Finances page on Ownership, Operations on Premises): `part` is the part's title.
-    case companyPart(Int, CompanySection, String)
-    /// The Applicants page: company id (0 = all companies) and role id ("" = all roles).
-    case applicants(Int, String)
-
-    /// What makes two routes "the same record" for the navigation stack: the company, and for the trade pages that are their own screen
-    /// (Marketing, Customers, Market, Plant, Fish, Club, Chain, Book, Setup) the page too. The five sections of the company screen
-    /// (Overview, Team, Manage, Sales, Stats) are one record: a link to another of them changes the section shown, it never stacks a copy.
-    var key: String {
-        switch self {
-        case .company(let id): return "company.\(id)"
-        case .companyAt(let id, let s), .companyPart(let id, let s, _): return CompanyDetailView.isLeaf(s) ? "company.\(id).\(s.rawValue)" : "company.\(id)"
-        case .newCompany: return "newCompany"
-        case .applicants: return "applicants"
-        case .market: return "market"
-        }
-    }
-
-    /// The route for `openCompany(id, section:, part:)`. A link without a section opens the hub. Premises are a part of Operations.
-    static func make(_ id: Int, _ section: CompanySection?, _ part: String?) -> CompanyRoute {
-        guard let section else { return .company(id) }
-        if section == .properties { return .companyPart(id, .operations, OpsPart.premises.rawValue) }
-        if let part, !part.isEmpty { return .companyPart(id, section, part) }
-        return .companyAt(id, section)
-    }
-}
-
 /// The Home tab: one scrolling page with net worth, what needs the owner, every company in one comparable list (a table on iPad),
 /// then rank and shortcuts. The Next day bar stays pinned at the bottom.
 struct CompaniesView: View {

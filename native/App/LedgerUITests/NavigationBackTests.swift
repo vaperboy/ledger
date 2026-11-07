@@ -1,7 +1,7 @@
 import XCTest
 
 /// Navigation: a company opened from Home, Projects or Inbox returns to that screen on Back; choosing the open tab again
-/// returns it to its root; a link that crosses tabs returns to its origin and leaves nothing behind; a link to a company screen that is
+/// returns it to its root; a link to a Phone app is pushed on the tab it was tapped on; a link to a company screen that is
 /// already open never stacks a copy (that one is a unit test: LedgerTests/NavigationStackTests). Run by CI with the screenshot tests. An entry point that the prepared game does not have (the
 /// showcase game has no project company) is reported as skipped, never as a pass.
 final class NavigationBackTests: TourCase {
@@ -151,18 +151,19 @@ final class NavigationBackTests: TourCase {
         }
     }
 
-    /// A link that crosses tabs (Home to the Bank app on the Phone tab): Back returns to Home, and the Phone tab keeps no Bank screen.
-    func testBackFromACrossTabLinkReturnsToTheOriginAndLeavesNothingBehind() throws {
+    /// A link to a Phone app from Home (the Bank shortcut) pushes the app on Home: the tab stays Home, Back returns to Home, and the Phone
+    /// tab keeps its app grid.
+    func testAPhoneAppLinkFromHomeStaysOnHome() throws {
         open("Home")
         let bank = app.buttons["home-bank"]
         guard bank.waitForExistence(timeout: 3) else { throw XCTSkip("no Bank shortcut on Home") }
         bank.tap()
-        XCTAssertTrue(app.buttons["tab-Phone"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 3) || app.buttons["Back to Phone"].waitForExistence(timeout: 1), "the Bank app should be pushed with a Back button")
+        XCTAssertTrue(app.buttons["tab-Home"].isSelected, "a link never changes tab")
         XCTAssertTrue(tapRoundBack(), "the Bank app should have a Back button")
-        XCTAssertTrue(waitForHome(5), "Back from a link opened on another tab should return to Home, where the link was")
-        // Nothing of the link stays on the Phone tab: its first page is the app grid.
+        XCTAssertTrue(waitForHome(5), "Back from the Bank should return to Home, where the link was")
         open("Phone")
-        XCTAssertTrue(app.buttons["phone-app-Bank"].waitForExistence(timeout: 3), "the Phone tab should show its app grid, not the Bank app")
+        XCTAssertTrue(app.buttons["phone-app-Bank"].waitForExistence(timeout: 3), "the Phone tab should show its app grid")
     }
 
     /// Opening a company lands on its Overview; the five sections switch in place, so ONE Back leaves the company.

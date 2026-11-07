@@ -118,8 +118,7 @@ struct InboxView: View {
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // A decision answered in the detail returns to Home with a one-line toast; one answered in the list stays on the list.
-            if !inline { store.selectTab(.company) }
+            // The answer is told in a one-line toast; the player stays on the Inbox.
             store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
         } else {
             store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
@@ -173,7 +172,7 @@ struct InboxView: View {
         .onChange(of: tab) { _, _ in limit = Self.page }
         .onChange(of: query) { _, _ in limit = Self.page }
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
-        .onChange(of: store.phonePath.count) { _, _ in detailID = nil }
+        .onChange(of: store.depth(store.tab)) { _, _ in detailID = nil }
         .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
         .confirmAction(listPending)
         .ledgerBackground()
