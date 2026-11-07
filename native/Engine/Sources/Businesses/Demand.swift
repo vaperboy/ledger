@@ -150,6 +150,9 @@ public enum DemandModel {
         if homeKind && !(co.value("prem")["m2"].double > 0) && r.customers != 0 {
             r.customers *= max(0.72, min(0.95, 0.72 + co.awareness * 0.005))
         }
+        // 140: customers who need what a machine in repair makes or does go elsewhere (EquipmentOutage)
+        let kept = EquipmentOutage.compute(co, bd, w).kept
+        if kept < 1 && r.customers != 0 { r.customers *= kept; r.parts.append(("machines in repair", kept)) }
     }
 
     /// A manager nobody has met for months works a little worse. Original: `OA59.drift`.

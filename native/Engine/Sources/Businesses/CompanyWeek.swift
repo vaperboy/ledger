@@ -194,6 +194,7 @@ public enum CompanyWeek {
         if bd.hasTrait("excise") { cogs += units * 8.5 * w.country(co).costIndex * w.inflationIndex }
         var ctx = WeekContext(units: units, rev: rev, cogs: cogs, D: D, cap: cap, util: util, price: price, paidDuringWeek: paidDuringWeek)
         ctx.bottleneck = cp.bottleneck?.label
+        ctx.outage = cp.outage?.note
         ctx.acct = acctOrders.perAccount.filter { $0.units > 0 }.map { (id: $0.id, rev: $0.units * price * $0.pm) }
         // Family-specific adjustments (stock, returns, casino luck, subsidies)
         applyFamilyPost(&s, i, bd, &ctx, data: data)
@@ -252,6 +253,8 @@ public enum CompanyWeek {
         var acct: [(id: Int, rev: Double)] = []
         /// What limited the week's capacity (a role, a machine, the space), kept so the app can say why a week went badly.
         var bottleneck: String?
+        /// What machines in repair took away this week ("Display fridge in repair: chilled items off sale, about 36% fewer customers served.").
+        var outage: String?
     }
 
     /// Supplier class: cost and quality of goods. Original: `goodsEff` (default class; vendor choice not yet ported).
@@ -378,6 +381,7 @@ public enum CompanyWeek {
         if ctx.stockChange != 0 { co.inventory += jsRound(ctx.stockChange) }
         co.set("lastW", .object(["units": .number(ctx.units), "rev": .number(rev), "cogs": .number(cogs), "D": .number(ctx.D), "cap": .number(ctx.cap), "util": .number(ctx.util),
                                   "bot": ctx.bottleneck.map { .string($0) } ?? .null]))
+        if let out = ctx.outage { var lw = co.value("lastW"); lw["out"] = .string(out); co.set("lastW", lw) }
         // Demand and capacity of the last 8 weeks, for the Operations chart (display only; nothing reads it back into the economy).
         var hist: [JSONValue] = co.value("wkHist").array
         hist.append(.object(["w": .number(Double(s.week)), "D": .number(ctx.D), "cap": .number(ctx.cap)]))

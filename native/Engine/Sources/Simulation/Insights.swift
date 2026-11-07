@@ -15,7 +15,7 @@ public struct Insight: Identifiable, Equatable, Sendable {
     /// The part of the company screen where the player can act on it ("operations", "staff", "finances", "marketing", "setup"), if any.
     public var section: String? {
         switch id {
-        case "cap", "rivals": return "operations"
+        case "cap", "rivals", "repair": return "operations"
         case "slack", "mkt": return "marketing"
         case "wages", "paper": return "staff"
         case "rent", "cash", "overdrawn", "bigpay", "cashprofit", "margin": return "finances"
@@ -84,8 +84,8 @@ public extension GameEngine {
         if !lw.isNull { h.servedLastWeek = lw["units"].double; h.capacityLastWeek = lw["cap"].double }
         if co.status == .open, let bd = data.catalog[co.type], !SpecialFamilies.handles(bd) {
             h.bottleneck = CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label
-            // A week that served no one is explained by what stopped it then, which may since have been fixed.
-            if lw["cap"].double == 0, case let then = lw["bot"].string, !then.isEmpty { h.bottleneck = then }
+            // A week that served no one, or lost customers to a repair, is explained by what held it back then, which may since have been fixed.
+            if lw["cap"].double == 0 || !lw["out"].string.isEmpty, case let then = lw["bot"].string, !then.isEmpty { h.bottleneck = then }
         }
         let months = hist.count
         if months < 3 { h.label = co.status == .open ? "New" : "Setting up" }
@@ -112,6 +112,8 @@ public extension GameEngine {
         if special { out += specialInsights(for: co) }
         if co.status == .open, !lw.isNull, !special {
             let cap = lw["cap"].double, D = lw["D"].double, util = lw["util"].double
+            // Machines in repair last week, and what they cost in customers: a repair is worth chasing.
+            if !lw["out"].string.isEmpty { out.append(Insight(id: "repair", symbol: "wrench.and.screwdriver", text: lw["out"].string, tone: .warn)) }
             if cap > 0, D > cap * 1.12, util > 0.93 { out.append(Insight(id: "cap", symbol: "gauge.with.dots.needle.100percent", text: "Capacity is limiting sales: about \(Int(jsRound(D - cap))) customers a week are turned away. More staff or equipment would add revenue.", tone: .warn)) }
             else if cap > 0, util < 0.5 { out.append(Insight(id: "slack", symbol: "person.3", text: "Only \(Int(jsRound(util * 100)))% of capacity is used. Demand is the limit: price, marketing and reputation matter more than hiring.", tone: .neutral)) }
         }

@@ -254,9 +254,12 @@ public enum EquipmentUnits {
         s.companies[i].set("veh", .array(vehicles))
         if !reports.isEmpty && open {
             let co = s.companies[i]
+            let breakdowns = reports.count
+            // What the repairs cost while they last, so the player knows what is at stake.
+            if let note = EquipmentOutage.compute(co, bd, World(state: s, data: data)).note { reports.append(note) }
             let mgrName = co.managerID.flatMap { s.people[$0]?.name }
             // Addressed to the ops desk only when somebody sits there; with nobody it is the owner's own notice.
-            s.addDeskNotice("ops", company: co, data: data, from: mgrName ?? "Workshop", title: reports.count > 1 ? "\(reports.count) breakdowns at \(co.name)" : "Breakdown at \(co.name)",
+            s.addDeskNotice("ops", company: co, data: data, from: mgrName ?? "Workshop", title: breakdowns > 1 ? "\(breakdowns) breakdowns at \(co.name)" : "Breakdown at \(co.name)",
                             body: reports.joined(separator: " "), tone: "bad", sev: 1)
         }
     }
