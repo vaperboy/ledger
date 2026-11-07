@@ -90,10 +90,10 @@ struct ContractDiscussionView: View {
     @ViewBuilder private func open(_ e: GameEngine, _ co: Company, _ n: Person, _ talk: ContractTalk.Talk, _ cur: Currency) -> some View {
         if talk.isRequest {
             let pv = e.contractPreview(companyID: companyID, personID: personID, proposal: talk.proposal, asRequest: true)
-            TeamBlock("\(first(n)) asks") {
+            TeamBlock("Their request") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(talk.reason.isEmpty ? "A request about \(talk.proposal.topic.title.lowercased())." : talk.reason).popupText(.body)
-                    AskOfferCard(label: "\(first(n).uppercased()) ASKS", figure: requestFigure(talk, cur), note: talk.proposal.topic.title, outlined: true)
+                    AskOfferCard(label: talk.proposal.topic.title, figure: requestFigure(talk, cur), note: "What \(first(n)) asks for", outlined: true)
                     if talk.delayUntil > 0 { Text("You said you would answer by week \(talk.delayUntil). If you do not, \(first(n)) feels turned down.").popupText(.risk) }
                     consequenceLines(pv, cur)
                     partWay(talk, cur)

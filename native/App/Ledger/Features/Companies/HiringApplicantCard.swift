@@ -44,12 +44,12 @@ struct ApplicantRow: View {
 
     /// Likely ask in words against the going rate, else the going rate (the figure itself is the row's value).
     private var wageWords: String {
-        guard let ask, ask.market > 0 else { return "Going rate" }
+        guard let ask, ask.market > 0 else { return "going rate" }
         let ratio: Double = ask.ask / ask.market
-        if ratio < 0.95 { return "Asks below the going rate" }
-        if ratio <= 1.05 { return "Asks about the going rate" }
-        if ratio <= 1.2 { return "Asks a little above the going rate" }
-        return "Asks well above the going rate"
+        if ratio < 0.95 { return "below the rate" }
+        if ratio <= 1.05 { return "about the rate" }
+        if ratio <= 1.2 { return "a bit above" }
+        return "well above"
     }
 
     private var wageFigure: Double { ask.map { $0.ask } ?? applicant.marketMonthly }
@@ -69,7 +69,7 @@ struct ApplicantRow: View {
                         Spacer(minLength: Theme.Space.s)
                         VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
                             Text(currency.tidyShort(wageFigure)).textStyle(.headline, numeric: true).lineLimit(1)
-                            Text(wageWords).textStyle(.caption, tint: P.inkFaint).lineLimit(2).multilineTextAlignment(.trailing)
+                            Text(wageWords).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
                         }
                         .frame(maxWidth: 120, alignment: .trailing)
                     }

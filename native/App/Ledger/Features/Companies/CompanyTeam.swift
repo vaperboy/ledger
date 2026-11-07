@@ -39,11 +39,8 @@ struct CompanyTeam: View {
 
     // MARK: Hero
 
-    /// What the whole team costs, read once per engine change (it walks every contract).
-    private var metrics: TeamMetrics? {
-        let cid: Int = company.id
-        return (store.memo("team-metrics-\(cid)") { (e: GameEngine) -> TeamMetrics? in e.teamMetrics(companyID: cid) } ?? nil)
-    }
+    /// What the whole team costs (this company's contracts only).
+    private var metrics: TeamMetrics? { engine.teamMetrics(companyID: company.id) }
 
     /// The head count and the monthly cost side by side, one context line, then Hire full width with why it is blocked or the free places.
     private var hero: some View {
@@ -59,11 +56,10 @@ struct CompanyTeam: View {
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
-                        heroFigure(n == 1 ? "1" : "\(n)", n == 1 ? "person" : "people")
-                        if let t {
-                            Spacer(minLength: Theme.Space.s)
-                            heroFigure(cur.tidyShort(t.totalMonthlyCost), "a month", trailing: true)
-                        }
+                        heroFigure("\(n)", n == 1 ? "person" : "people")
+                        Rectangle().fill(P.hairline).frame(width: 0.5, height: 44)
+                        heroFigure(t.map { cur.tidyShort($0.totalMonthlyCost) } ?? "\u{2014}", "a month")
+                        Spacer(minLength: 0)
                     }
                     if let t {
                         Text("Wages \(cur.tidyShort(t.grossMonthlyWages)) plus taxes and cover \u{00B7} \(cur.tidyShort(t.totalAnnualCost)) a year \u{00B7} \(Int(t.totalHoursPerWeek.rounded())) h a week")

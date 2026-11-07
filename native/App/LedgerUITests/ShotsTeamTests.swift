@@ -200,7 +200,7 @@ final class ShotsTeamTests: FeatureTourCase {
 
         // Paperwork: Manage > Licences > the signing form
         toRoot()
-        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), scrolledDown(), tapText("Licences", wait: 3) {
+        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), scrolledDown(), tapWhere(wait: 3, { $0.label.hasPrefix("Licences") && $0.type != .staticText }) {
             pause(0.8)
             shot("35-licences")
             if tapText("Fill in and apply", wait: 2) || tapText("Apply again", wait: 2) || tapText("Apply", wait: 2) {

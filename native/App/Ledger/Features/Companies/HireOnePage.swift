@@ -173,19 +173,63 @@ struct HireOnePage: View {
 
     // MARK: Page 1: the going rate
 
-    /// Page 1: what they ask as the one big figure, the going rate and the start date as its context line.
+    /// Page 1: what they ask as the one big figure (the going rate and start date as its line), then what you know about them and what
+    /// the hire costs in all, so the decision is on one screen.
     private func quickStage(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
-        let startText: String = GameCalendar.dateString(week: s.startWeek)
-        if let ask = s.ask {
-            let gap: Double = ask - s.market
-            let near: Bool = abs(gap) < max(1, s.market * 0.02)
-            let words: String = near ? "about the going rate" : (gap > 0 ? "\(cur.tidyShort(gap)) above" : "\(cur.tidyShort(-gap)) below") + " the going rate of \(cur.tidyShort(s.market))"
-            return TeamHero(label: "\(first) asks", value: cur.tidyShort(ask), unit: "a month",
-                            context: (near ? "About the going rate of \(cur.tidyShort(s.market))" : words.prefix(1).uppercased() + words.dropFirst()) + " \u{00B7} starts \(startText)",
-                            contextTint: gap > 0 && !near ? P.caution : nil)
+        let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: s.market)
+        return VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            askHero(s, cur)
+            knownBlock(e)
+            if let talk {
+                TeamBlock("At the going rate") {
+                    VStack(spacing: 0) {
+                        FlatRow(label: "Costs you in all", value: cur.tidyShort(talk.monthlyEmployerCost) + " a month",
+                                sub: "Wage plus employer charges \u{00B7} \(cur.tidyShort(talk.annualEmployerCost)) a year", rule: false)
+                        FlatRow(label: "By the hour", value: HireWords.hourly(talk.hourlyWage, cur), sub: HireWords.hours(talk.hoursPerWeek))
+                    }
+                }
+            }
         }
-        return TeamHero(label: "Going rate", value: cur.tidyShort(s.market), unit: "a month",
-                        context: "\(first) names a figure when you offer \u{00B7} starts \(startText)")
+    }
+
+    private func askHero(_ s: HirePay, _ cur: Currency) -> TeamHero {
+        let startText: String = GameCalendar.dateString(week: s.startWeek)
+        guard let ask = s.ask else {
+            return TeamHero(label: "Going rate", value: cur.tidyShort(s.market), unit: "a month",
+                            context: "\(first) names a figure when you offer \u{00B7} starts \(startText)")
+        }
+        let gap: Double = ask - s.market
+        let near: Bool = abs(gap) < max(1, s.market * 0.02)
+        let line: String = near ? "About the going rate of \(cur.tidyShort(s.market))"
+            : (gap > 0 ? "\(cur.tidyShort(gap)) above" : "\(cur.tidyShort(-gap)) below") + " the going rate of \(cur.tidyShort(s.market))"
+        return TeamHero(label: "\(first) asks", value: cur.tidyShort(ask), unit: "a month", context: line + " \u{00B7} starts \(startText)",
+                        contextTint: gap > 0 && !near ? P.caution : nil)
+    }
+
+    /// What the CV, the first impression, the references and a trial week say, for a worker who answered an ad. Words only, never a skill figure.
+    @ViewBuilder private func knownBlock(_ e: GameEngine) -> some View {
+        if isWorker, let cid = request.companyID, let a = e.applicants(companyID: cid).first(where: { (x: Applicant) -> Bool in x.personID == request.personID }) {
+            TeamBlock("What you know") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    fact("CV", a.cvImpression)
+                    fact("First impression", a.seems)
+                    fact("References", a.referencesChecked ? "Checked" : "Not checked yet")
+                    ForEach(Array(a.trialObservations.prefix(2).enumerated()), id: \.offset) { (_: Int, line: String) in fact("Trial week", line) }
+                    if !a.resume.isEmpty {
+                        Text("\u{201C}\(a.resume)\u{201D}").textStyle(.caption).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func fact(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Text(label).textStyle(.caption, tint: P.inkFaint).frame(width: 104, alignment: .leading)
+            Text(value.tidyText).textStyle(.body).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     /// Page 1's actions: offer the going rate (the one button), or change the offer.

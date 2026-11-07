@@ -26,15 +26,12 @@ struct WorkerGrowthSection: View {
 
     private func card(_ g: GrowthPath) -> some View {
         let tint: Color = g.isReady ? Theme.gain : Theme.gold
-        return Card(padding: 12, radius: Theme.Radius.row) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Growth").capsLabel()
-                    Spacer(minLength: 6)
-                    Text(g.currentRoleName + " \u{2192} " + g.nextRoleName).textStyle(.caption, tint: Theme.ink, weight: .medium).lineLimit(1)
-                }
+        return TeamBlock(title: "Growth", trailing: {
+            Text(g.currentRoleName + " \u{2192} " + g.nextRoleName).textStyle(.caption, tint: Theme.ink, weight: .medium).lineLimit(1)
+        }) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 readinessBar(g, tint)
-                Text(missingLine(g)).font(.system(size: 11.5)).foregroundStyle(g.isReady ? Theme.gain : Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
+                Text(missingLine(g)).textStyle(.caption, tint: g.isReady ? Theme.gain : Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 buttons(g)
                 successorRow(g)
             }
@@ -74,13 +71,17 @@ struct WorkerGrowthSection: View {
     }
 
     private func buttons(_ g: GrowthPath) -> some View {
-        WrapRow {
-            if let tid = g.suggestedTrainingID, let name = g.suggestedTraining {
-                TeamAction(title: "Train: " + name, tint: Theme.ivoryMuted) { askTraining(tid, name) }
+        // Promote shows only when they are ready; until then the line above says what is missing.
+        HStack(spacing: Theme.Space.xs) {
+            if g.isReady {
+                Button("Promote to " + g.nextRoleName.lowercased()) { Haptics.tap(); promote(g) }.buttonStyle(TertiaryButtonStyle(size: .compact))
             }
-            TeamAction(title: "Promote", tint: g.isReady ? Theme.gold : Theme.ivoryFaint) { promote(g) }
-                .disabled(!g.isReady)
+            if let tid = g.suggestedTrainingID, let name = g.suggestedTraining {
+                Button("Train: " + name) { Haptics.tap(); askTraining(tid, name) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft))
+            }
+            Spacer(minLength: 0)
         }
+        .padding(.leading, -Theme.Space.s)
     }
 
     @ViewBuilder private func successorRow(_ g: GrowthPath) -> some View {
