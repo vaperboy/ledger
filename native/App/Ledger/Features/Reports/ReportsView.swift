@@ -251,7 +251,7 @@ struct ReportsPage: View {
         let order = r.ranking + r.companies.map { $0.id }.filter { !r.ranking.contains($0) }
         let rows = order.compactMap { r.company($0) }
         return CardSection(title: kind == .year ? "Ranking" : "Companies", trailing: {
-            Text("Net profit  ·  change  ·  tap to open").textStyle(.caption, tint: Theme.inkFaint)
+            Text("Net profit · change").textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if rows.isEmpty {
                 Text("No company has figures for this period.").font(.caption).foregroundStyle(Theme.ivoryFaint)
@@ -259,7 +259,7 @@ struct ReportsPage: View {
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { i, c in
                     let before = r.previous?.companies.first(where: { $0.id == c.id })?.pnl.netProfit
-                    Button { store.go(.openCompany(c.id)) } label: {
+                    VStack(spacing: 0) {
                         HStack(spacing: 10) {
                             if kind == .year { Text("\(i + 1)").textStyle(.caption, tint: Theme.inkFaint, numeric: true).frame(width: 16) }
                             VStack(alignment: .leading, spacing: 2) {
@@ -278,11 +278,9 @@ struct ReportsPage: View {
                                     Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).textStyle(.caption, tint: Theme.change(c.pnl.netProfit - b), numeric: true)
                                 }
                             }
-                            GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim)
                         }
                         .padding(.vertical, 9)
-                        .contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
+                    }
                     if i < rows.count - 1 { CardLine() }
                 }
             }

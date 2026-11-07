@@ -23,7 +23,8 @@ func itemProfitReading(_ lp: ItemModels.LiveProfit, _ cur: Currency) -> (text: S
 
 // MARK: List
 
-/// The items of a company: a titled list with the count and weekly sales at the right, one row per item (price, live profit or loss).
+/// The items of a company: "Products" (or "Services") with Add at the right, one row per item (price, live profit or loss) that opens its
+/// item page. The weekly total is the Sales hero, so it is not repeated here.
 struct ItemsList: View {
     var engine: GameEngine
     var company: Company
@@ -31,28 +32,36 @@ struct ItemsList: View {
     var service: Bool
     var onOpen: (String) -> Void
     var onAdd: () -> Void
+    @Environment(\.outsidePalette) private var P
 
     var body: some View {
         let cur: Currency = engine.currency(for: company)
-        let total: Double = items.reduce(0) { (a: Double, i: SalesItem) -> Double in a + i.weeklyRevenue }
         let noun: String = service ? "service" : "product"
-        return LedgerSection(title: "Items", rule: false, trailing: {
-            Text("\(items.count) \(items.count == 1 ? "item" : "items") \u{00B7} \(cur.tidyShort(total)) a week").textStyle(.caption)
-        }) {
-            VStack(spacing: 0) {
-                if items.isEmpty {
-                    EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Nothing is on sale yet",
-                               message: company.status == .open ? "Add a \(noun) to start selling." : "", centered: false)
-                }
+        return PageGroup(service ? "Services" : "Products") {
+            if items.isEmpty && company.status == .open && engine.needsFirstItemChoice(companyID: company.id) {
+                FirstItemPicker(engine: engine, company: company, noun: noun, onAddOwn: onAdd)
+            } else if items.isEmpty {
+                EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Nothing is on sale yet",
+                           message: company.status == .open ? "Add what you sell." : "", centered: false)
+            }
+            LazyVStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
-                    if i > 0 { Hairline() }
+                    if i > 0 { RowRule(inset: 52) }
                     row(it, cur)
                 }
             }
-            if company.status == .open {
-                Button("Add \(noun)") { Haptics.tap(); onAdd() }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
-                    .accessibilityIdentifier("sales-add-item")
+            if company.status == .open && !items.isEmpty {
+                Hairline()
+                Button { Haptics.tap(); onAdd() } label: {
+                    HStack(spacing: Theme.Space.m) {
+                        Image(systemName: "plus").font(.body.weight(.medium)).foregroundStyle(P.accent).frame(width: 40)
+                        Text("Add a \(noun)").textStyle(.headline, tint: P.accent)
+                        Spacer()
+                    }
+                    .frame(minHeight: 52).contentShape(Rectangle())
+                }
+                .buttonStyle(AcctPressStyle())
+                .accessibilityIdentifier("sales-add-item")
             }
         }
     }
@@ -65,7 +74,7 @@ struct ItemsList: View {
         let id: String = it.id
         return LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: it.name, glyph: it.isService ? Glyph.opsWrench : Glyph.opsBox)),
                          title: it.name, subtitle: word + off, value: itemAmount(it.price, cur),
-                         valueNote: reading.text, valueNoteTint: reading.tint, lineLimit: 1) { onOpen(id) }
+                         valueNote: reading.text, valueNoteTint: reading.tint, lineLimit: 1, identifier: "sales-item-\(id)") { onOpen(id) }
     }
 }
 
@@ -100,8 +109,9 @@ struct ProfitBand: View {
 
 // MARK: Page
 
-/// One item as a scroll of sections: Price (the one place the price shows), Promotion, Sales and demand, Supply, Plans and promises,
-/// History, Documents, Actions. A section with nothing to show is left out; an old titles-only item has no Supply, History or Documents.
+/// One item: the price as the hero with what each one earns at it, the price slider right under it (an exact price can be typed), then what
+/// the price does to sales, the promotion, supply, the trade's own blocks, plans, history and how the company sells. A part with nothing to
+/// show is left out; an old titles-only item has no Supply, History or Details.
 struct ItemPageView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -110,6 +120,8 @@ struct ItemPageView: View {
     @State private var weeks = 4
     /// The discount being chosen; nil until the player picks one (then the live discount shows).
     @State private var draftPercent: Int?
+    @State private var typing = false
+    @State private var showWeeks = false
     @Environment(\.outsidePalette) private var P
 
     private static let listingTrades: Set<String> = ["webdev", "gamestudio", "startup", "mktg", "furniture", "factory", "hardware", "electrician", "plumber", "handy"]
@@ -122,19 +134,18 @@ struct ItemPageView: View {
             let pg: ItemPageData = draftPrice == nil ? base : (e.itemPage(companyID: companyID, itemID: itemID, price: price) ?? base)
             let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    priceBlock(pg, co, cur, price, f)
-                    promotionBlock(co, pg.item)
+                VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                    priceBlock(pg, co, cur, price, f, setBy: pg.item.priceSetter.isOwner ? nil : pg.item.priceSetter.label)
                     demandBlock(pg, f, cur)
+                    promotionBlock(co, pg.item)
                     supplyBlock(pg, cur)
                     TradeItemBlocks(e: e, companyID: companyID, itemID: itemID, price: price, cur: cur)
                     plansBlock(pg)
                     historyBlock(pg, cur)
-                    documentsBlock(pg, cur)
-                    actionsBlock(pg, cur)
+                    detailsBlock(pg, cur)
                     soldBlock(e, co)
                 }
-                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.l)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xl)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden)
@@ -148,19 +159,31 @@ struct ItemPageView: View {
 
     // MARK: Price
 
-    /// The margin is the lead figure; the price itself shows once, in the typed field under the slider (as a figure when it cannot move).
-    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast) -> some View {
-        let lo: Double = p.item.marketPrice * SalesItems.ratioRange.lowerBound
-        let hi: Double = p.item.marketPrice * SalesItems.ratioRange.upperBound
+    /// The price is the hero and follows the slider; the line under it says what each one earns and how many sell. The slider and its
+    /// profit band sit right under it; quick prices and the typed price are text actions under the slider.
+    /// `setBy`: who sets this price when it is not the owner (a manager within the owner's price position); nil: the owner sets it here.
+    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast, setBy: String? = nil) -> some View {
+        let range: ClosedRange<Double> = store.engine?.itemPriceRange(companyID: co.id) ?? SalesItems.priceRange
+        let lo: Double = p.item.marketPrice * range.lowerBound
+        let hi: Double = p.item.marketPrice * range.upperBound
         let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
         let reading = itemProfitReading(p.live, cur)
-        let margin: String = p.live.outcome == .breakEven ? p.live.word : p.live.word + " " + itemAmount(p.live.amount, cur) + " each"
-        let facts: [String] = ["cost " + itemAmount(p.unitCost, cur) + (p.record == nil ? " (typical)" : ""),
-                               "market " + itemAmount(p.item.marketPrice, cur),
-                               String(format: "about %.0f sold a week", f.units)]
-        return LedgerSection("Price", rule: false) {
-            Figure(label: "Margin", value: margin, note: facts.joined(separator: " \u{00B7} "), tint: reading.tint, size: .figure)
-            if hi > lo {
+        let each: String = p.live.outcome == .breakEven ? "break-even on each" : reading.text + " each"
+        let facts: String = String(format: "about %.0f sold a week", f.units)
+        let costLine: String = "cost " + itemAmount(p.unitCost, cur) + (p.record == nil ? " (typical)" : "") + "  \u{00B7}  market " + itemAmount(p.item.marketPrice, cur)
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            Button {
+                guard hi > lo, setBy == nil else { return }
+                Haptics.tap()
+                Motion.animate(Motion.quickAnimation) { typing.toggle() }
+            } label: {
+                CompanyHero(label: "Price " + (p.item.isService ? "per service" : "each"), value: itemAmount(price, cur), change: each, changeTint: reading.tint, context: facts)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Type an exact price")
+            if let who = setBy {
+                Text("Set by \(who)").textStyle(.caption, tint: P.inkFaint)
+            } else if hi > lo {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
                         if !editing { commitPrice(draftPrice ?? p.item.price) }
@@ -168,16 +191,39 @@ struct ItemPageView: View {
                     .tint(P.accent)
                     .accessibilityIdentifier("sales-item-price")
                     ProfitBand(lo: lo, hi: hi, cost: p.unitCost, price: price)
+                    Text(costLine.tidyText).textStyle(.caption, tint: P.inkFaint, numeric: true)
                 }
-                TypedPriceField(price: price, range: lo...hi, cur: cur, unit: p.item.isService ? "per service" : "each",
-                                hint: { (v: Double) -> String? in
-                    let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
-                    return lp.outcome == .breakEven ? "At this price you break even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
-                }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
-            } else {
-                Figure(label: "Price", value: itemAmount(price, cur), size: .inline)
+                if typing {
+                    TypedPriceField(price: price, range: lo...hi, cur: cur, unit: p.item.isService ? "per service" : "each",
+                                    hint: { (v: Double) -> String? in
+                        let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
+                        return lp.outcome == .breakEven ? "At this price you break even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
+                    }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
+                }
+                quickPrices(p, cur, lo: lo, hi: hi)
             }
             listToggle(co, p.item)
+        }
+    }
+
+    /// Text actions under the slider: price at cost, at fair value, or type an exact price.
+    private func quickPrices(_ p: ItemPageData, _ cur: Currency, lo: Double, hi: Double) -> some View {
+        let cost: Double = p.unitCost
+        let fair: Double = p.fairValue
+        return WrapRow {
+            if !typing {
+                Button("Type a price") { Haptics.tap(); Motion.animate(Motion.quickAnimation) { typing = true } }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("item-type-price")
+            }
+            if fair >= lo && fair <= hi {
+                Button("Fair value \(itemAmount(fair, cur))") { Haptics.tap(); commitPrice(fair) }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
+            }
+            if cost >= lo && cost <= hi {
+                Button("At cost \(itemAmount(cost, cur))") { Haptics.tap(); commitPrice(cost) }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.inkSoft))
+            }
         }
     }
 
@@ -201,23 +247,27 @@ struct ItemPageView: View {
             let chosen: Int = draftPercent ?? live
             let pick = Binding<Int>(get: { chosen }, set: { (v: Int) in Haptics.choose(); draftPercent = v })
             let changed: Bool = chosen != live || (chosen > 0 && weeks != it.discountWeeksLeft)
-            let title: String = chosen == 0 ? "End promotion" : (live > 0 ? "Change promotion" : "Start promotion")
-            let blocked: String? = chosen == 0 && live == 0 ? "Pick a discount to start a promotion." : nil
-            LedgerSection(title: "Promotion", trailing: {
+            let title: String = chosen == 0 ? "End promotion" : (live > 0 ? "Change promotion" : "Start \(chosen)% off for \(weeks.weeksText)")
+            PageGroup(title: "Promotion", trailing: {
                 if live > 0 {
                     Text("\(live)% off \u{00B7} \(it.discountWeeksLeft.weeksText) left").textStyle(.caption, tint: P.gain)
                 }
             }) {
-                SegmentedPill(items: [0] + options, title: { (pc: Int) -> String in pc == 0 ? "None" : "\(pc)%" }, selection: pick)
-                if chosen > 0 {
-                    Stepper(value: $weeks, in: 1...26) {
-                        Text("For \(weeks.weeksText)").textStyle(.body, tint: P.ink)
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    SegmentedPill(items: [0] + options, title: { (pc: Int) -> String in pc == 0 ? "None" : "\(pc)%" }, selection: pick)
+                    if chosen > 0 {
+                        Stepper(value: $weeks, in: 1...26) {
+                            Text("For \(weeks.weeksText)").textStyle(.body, tint: P.ink)
+                        }
+                        .frame(minHeight: 44)
                     }
-                    .frame(minHeight: 44)
+                    if changed && !(chosen == 0 && live == 0) {
+                        Button(title) { Haptics.tap(); commitDiscount(Double(chosen)) }
+                            .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                            .accessibilityIdentifier("item-promotion-go")
+                    }
                 }
-                if changed || live == 0 {
-                    PrimaryAction(title: title, blockedReason: blocked) { commitDiscount(Double(chosen)) }
-                }
+                .padding(.top, Theme.Space.xs)
             }
             .onAppear { if live > 0 { weeks = max(1, it.discountWeeksLeft) } }
         }
@@ -241,8 +291,6 @@ struct ItemPageView: View {
             Toggle(isOn: on) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("List for my other companies").textStyle(.headline)
-                    Text("Your other companies in this country can buy it in TechPro. The profit stays with this company.").textStyle(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .tint(P.accent)
@@ -257,18 +305,21 @@ struct ItemPageView: View {
         else if r?.didChange == true { store.saved(v ? "listed for your companies" : "no longer listed") }
     }
 
-    // MARK: Sales and demand
+    // MARK: What the price does
 
     private func demandBlock(_ p: ItemPageData, _ f: ItemForecast, _ cur: Currency) -> some View {
-        let profit: String = (f.profitChange >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(f.profitChange)) + " a week"
+        let profit: String = (f.profitChange >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(f.profitChange))
         let chance: String = String(format: "%.0f%%", p.saleProbability * 100)
-        return LedgerSection("Sales and demand") {
-            VStack(spacing: 0) {
-                FlatRow(label: "Revenue", value: cur.tidyShort(f.revenue) + " a week", rule: false)
-                FlatRow(label: "Profit change", value: profit, tint: f.profitChange >= 0 ? P.gain : P.loss)
-                FlatRow(label: "Demand against market price", value: String(format: "%+.0f%%", f.demandChange * 100), tint: f.demandChange >= 0 ? P.gain : P.loss)
-                FlatRow(label: "Chance an interested buyer buys this week", value: chance, sub: "Fair value \(itemAmount(p.fairValue, cur))")
+        return PageGroup("At this price, a week") {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                FigureRow(items: [
+                    KeyFigures.Item(label: "Revenue", value: cur.tidyShort(f.revenue)),
+                    KeyFigures.Item(label: "Profit change", value: profit, tint: f.profitChange >= 0 ? P.gain : P.loss),
+                    KeyFigures.Item(label: "Demand", value: String(format: "%+.0f%%", f.demandChange * 100), tint: f.demandChange >= 0 ? P.gain : P.loss, sub: "vs market price"),
+                ], combineCells: true)
+                Text("\(chance) of interested buyers buy \u{00B7} fair value \(itemAmount(p.fairValue, cur))").textStyle(.caption, tint: P.inkFaint, numeric: true)
             }
+            .padding(.top, Theme.Space.xs)
         }
     }
 
@@ -276,36 +327,36 @@ struct ItemPageView: View {
 
     @ViewBuilder private func supplyBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
         if let r = p.record {
-            LedgerSection("Supply") {
-                // The current supplier shows as the "In use" row below when it is one of the offers; otherwise here.
-                let listed: Bool = p.offers.prefix(4).contains { $0.vendorID == r.supplierID }
-                VStack(spacing: 0) {
-                    if !listed {
-                        if let s = p.supply {
-                            FlatRow(label: "Comes from", value: s.vendorName, sub: s.relationshipWord, rule: false)
-                            FlatRow(label: "You pay", value: itemAmount(s.buyPrice, cur), sub: s.discount > 0 ? "\(Int((s.discount * 100).rounded()))% off for the relationship" : "")
-                        } else {
-                            FlatRow(label: "Comes from", value: "No supplier chosen", rule: false)
-                        }
+            // The current supplier shows as the "In use" row below when it is one of the offers; otherwise here.
+            let listed: Bool = p.offers.prefix(4).contains { $0.vendorID == r.supplierID }
+            let facts: [String] = supplyFacts(r)
+            PageGroup(title: "Supply", trailing: {
+                if !facts.isEmpty { Text(facts.joined(separator: " \u{00B7} ")).textStyle(.caption, tint: P.inkFaint).lineLimit(1).minimumScaleFactor(0.8) }
+            }) {
+                if !listed {
+                    if let s = p.supply {
+                        SupplierRow(name: s.vendorName, detail: "You pay \(itemAmount(s.buyPrice, cur))" + (s.discount > 0 ? " \u{00B7} \(Int((s.discount * 100).rounded()))% off for the relationship" : ""),
+                                    badge: s.relationshipWord, current: true)
+                    } else {
+                        LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.warn, title: "No supplier chosen", subtitle: "Pick one below")
                     }
-                    if r.leadDays > 0 { FlatRow(label: "Lead time", value: "\(r.leadDays) days", rule: !listed) }
-                    if r.model.holdsStock {
-                        FlatRow(label: "In stock", value: "\(r.stock)", sub: r.onOrder > 0 ? "\(r.onOrder) on order" : "")
-                    }
-                    if r.capacity > 0 { FlatRow(label: "Capacity", value: String(format: "%.0f a week", r.capacity)) }
                 }
-                if !p.offers.isEmpty {
-                    VStack(spacing: 0) {
-                        ForEach(Array(p.offers.prefix(4).enumerated()), id: \.element.vendorID) { (n: Int, o: ItemModels.SupplyLine) in
-                            let current: Bool = o.vendorID == r.supplierID
-                            if n > 0 { Hairline() }
-                            SupplierRow(name: o.vendorName, detail: "You pay \(itemAmount(o.buyPrice, cur))" + (o.leadDays > 0 ? " \u{00B7} \(o.leadDays) days" : ""),
-                                        badge: o.relationshipWord, current: current, action: current ? nil : { choose(o.vendorID, o.vendorName) })
-                        }
-                    }
+                ForEach(Array(p.offers.prefix(4).enumerated()), id: \.element.vendorID) { (n: Int, o: ItemModels.SupplyLine) in
+                    let current: Bool = o.vendorID == r.supplierID
+                    if n > 0 || !listed { RowRule() }
+                    SupplierRow(name: o.vendorName, detail: "You pay \(itemAmount(o.buyPrice, cur))" + (o.leadDays > 0 ? " \u{00B7} \(o.leadDays) days" : ""),
+                                badge: o.relationshipWord, current: current, action: current ? nil : { choose(o.vendorID, o.vendorName) })
                 }
             }
         }
+    }
+
+    private func supplyFacts(_ r: ItemModels.Record) -> [String] {
+        var facts: [String] = []
+        if r.leadDays > 0 { facts.append("\(r.leadDays) days lead time") }
+        if r.model.holdsStock { facts.append("\(r.stock) in stock" + (r.onOrder > 0 ? ", \(r.onOrder) on order" : "")) }
+        if r.capacity > 0 { facts.append(String(format: "makes %.0f a week", r.capacity)) }
+        return facts
     }
 
     private func choose(_ vendorID: String, _ name: String) {
@@ -323,72 +374,60 @@ struct ItemPageView: View {
         let plans: [ItemModels.Plan] = p.record?.plans ?? []
         let reserved: Int = p.record?.reserved ?? 0
         if !plans.isEmpty || reserved > 0 {
-            LedgerSection("Plans and promises") {
+            PageGroup("Plans and promises") {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     if reserved > 0 { Text("\(reserved) reserved for customers.").textStyle(.body, tint: P.ink) }
                     ForEach(Array(plans.enumerated()), id: \.offset) { pair in
                         Text(pair.element.text).textStyle(.body, tint: P.ink).fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .padding(.top, Theme.Space.xs)
             }
         }
     }
 
     // MARK: History
 
+    /// Profit so far as a figure with the weekly profit as a sparkline; the week-by-week rows open under it.
     @ViewBuilder private func historyBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
-        let weeksList: [ItemModels.Week] = Array((p.record?.history ?? []).suffix(8).reversed())
+        let all: [ItemModels.Week] = p.record?.history ?? []
+        let weeksList: [ItemModels.Week] = Array(all.suffix(8).reversed())
         if !weeksList.isEmpty {
-            let total: Double = (p.record?.history ?? []).reduce(0) { (a: Double, w: ItemModels.Week) -> Double in a + w.profit }
-            LedgerSection(title: "History", trailing: {
-                Text("last \(weeksList.count) weeks").textStyle(.caption)
+            let total: Double = all.reduce(0) { (a: Double, w: ItemModels.Week) -> Double in a + w.profit }
+            PageGroup(title: "So far", trailing: {
+                Button {
+                    Haptics.choose()
+                    Motion.animate(Motion.quickAnimation) { showWeeks.toggle() }
+                } label: {
+                    Text(showWeeks ? "Hide weeks" : "Week by week").textStyle(.caption, tint: P.accent).frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("item-history-weeks")
             }) {
-                VStack(spacing: 0) {
-                    ForEach(Array(weeksList.enumerated()), id: \.offset) { pair in
-                        FlatRow(label: "Week \(pair.element.week)", value: String(format: "%.0f sold", pair.element.units),
-                                sub: (pair.element.profit >= 0 ? "profit " : "loss ") + itemAmount(pair.element.profit, cur), tint: nil, rule: pair.offset > 0)
+                HStack(alignment: .center, spacing: Theme.Space.m) {
+                    Figure(label: "", value: (total >= 0 ? "profit " : "loss ") + usedCarMoney(total, cur), note: "over \(all.count.weeksText)", tint: total >= 0 ? P.gain : P.loss)
+                    Spacer(minLength: 0)
+                    Sparkline(values: all.suffix(16).map { $0.profit }, tint: total >= 0 ? P.gain : P.loss, filled: false).frame(width: 110, height: 36)
+                }
+                if showWeeks {
+                    VStack(spacing: 0) {
+                        ForEach(Array(weeksList.enumerated()), id: \.offset) { pair in
+                            FlatRow(label: "Week \(pair.element.week)", value: String(format: "%.0f sold", pair.element.units),
+                                    sub: (pair.element.profit >= 0 ? "profit " : "loss ") + itemAmount(pair.element.profit, cur), tint: nil, rule: pair.offset > 0)
+                        }
                     }
-                    FlatRow(label: "Profit or loss so far", value: (total >= 0 ? "profit " : "loss ") + itemAmount(total, cur), tint: total >= 0 ? P.gain : P.loss)
                 }
             }
         }
     }
 
-    // MARK: Documents
+    // MARK: Details
 
-    @ViewBuilder private func documentsBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
+    @ViewBuilder private func detailsBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
         if let r = p.record {
-            LedgerSection("Documents") {
-                VStack(spacing: 0) {
-                    FlatRow(label: "Kind", value: r.model.label, rule: false)
-                    FlatRow(label: "Cost basis", value: itemAmount(r.cost, cur), sub: r.prep > 0 ? "plus \(itemAmount(r.prep, cur)) preparation" : "")
-                }
-            }
-        }
-    }
-
-    // MARK: Actions
-
-    /// Quick prices; a discount is started or ended under Promotion.
-    @ViewBuilder private func actionsBlock(_ p: ItemPageData, _ cur: Currency) -> some View {
-        let cost: Double = p.unitCost
-        let fair: Double = p.fairValue
-        let lo: Double = p.item.marketPrice * SalesItems.ratioRange.lowerBound
-        let hi: Double = p.item.marketPrice * SalesItems.ratioRange.upperBound
-        let atCost: Bool = cost >= lo && cost <= hi
-        let atFair: Bool = fair >= lo && fair <= hi
-        if atCost || atFair {
-            LedgerSection("Quick prices") {
-                WrapRow {
-                    if atCost {
-                        Button("Price at cost \u{00B7} \(itemAmount(cost, cur))") { Haptics.tap(); commitPrice(cost) }
-                            .buttonStyle(SecondaryButtonStyle(size: .compact))
-                    }
-                    if atFair {
-                        Button("Price at fair value \u{00B7} \(itemAmount(fair, cur))") { Haptics.tap(); commitPrice(fair) }
-                            .buttonStyle(SecondaryButtonStyle(size: .compact))
-                    }
-                }
+            PageGroup("Details") {
+                FlatRow(label: "Kind", value: r.model.label, rule: false)
+                FlatRow(label: "Cost basis", value: itemAmount(r.cost, cur), sub: r.prep > 0 ? "plus \(itemAmount(r.prep, cur)) preparation" : "")
             }
         }
     }
@@ -400,9 +439,11 @@ struct ItemPageView: View {
         let hasKnobs: Bool = !(trade?.knobs.isEmpty ?? true)
         let hasWays: Bool = e.waysToSell(companyID: co.id).contains { $0.canSwitch }
         if hasKnobs || hasWays {
-            LedgerSection("How it is sold") {
-                Text("These choices apply to the whole company, not only this item.").textStyle(.caption)
-                HowYouSellSheet(companyID: co.id, embedded: true)
+            PageGroup("How the company sells") {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("For the whole company, not only this item.").textStyle(.caption, tint: P.inkFaint)
+                    HowYouSellSheet(companyID: co.id, embedded: true)
+                }
             }
         }
     }

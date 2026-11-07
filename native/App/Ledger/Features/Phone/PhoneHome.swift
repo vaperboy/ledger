@@ -174,18 +174,14 @@ struct PhoneAppScreen: View {
             GoalsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .achievements:
             AchievementsView().appScreen(title: app.title, subtitle: app.subtitle)
-        case .world:
-            WorldMapApp()
         case .luxury:
             LuxuryView()
         case .ventures:
             VenturesFeedApp()
-        case .richList:
-            RichListView()
         case .reports:
             ReportsScreen()
         case .market:
-            // The Market app draws its own header, with the business selector under it.
+            // The Market app draws its own header, with its five parts under it.
             MarketApp()
         case .reviews:
             ReviewsApp()

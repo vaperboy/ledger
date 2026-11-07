@@ -3,8 +3,8 @@ import GameCore
 import Countries
 import Simulation
 
-/// The first page of the Bank app: whose account to open. Lists the accounts the bank already has (the player personally, the investments
-/// account, each company); choosing one opens it. Back from there leads to the full list, where every account can be opened.
+/// The first page of the Bank app: whose account to open. Lists the accounts the bank already has (the player personally, each company);
+/// choosing one opens it. Back from there leads to the full list, where every account can be opened.
 struct BankPickerScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -14,12 +14,10 @@ struct BankPickerScreen: View {
         if let e = store.engine {
             let rows: [BankAccountRow] = e.bankAccounts().rows
             let you: [BankAccountRow] = rows.filter { $0.kind == .personal }
-            let group: [BankAccountRow] = rows.filter { $0.kind == .investments }
             let companies: [BankAccountRow] = rows.filter { $0.kind == .company }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     section("YOU", you, e)
-                    section("GROUP", group, e)
                     section("YOUR COMPANIES", companies, e)
                     Text("Choose an account. Back from it shows every account and the totals.")
                         .textStyle(.caption, tint: P.inkFaint).padding(.horizontal, 4)
@@ -43,8 +41,8 @@ struct BankPickerScreen: View {
 
     private func row(_ r: BankAccountRow, _ e: GameEngine) -> some View {
         let co: Company? = r.companyID.flatMap { e.state.company($0) }
-        let glyph: String = r.kind == .personal ? Glyph.person : r.kind == .investments ? Glyph.invest : BankGlyph.company
-        let sub: String = r.hasAlert ? (r.alertNote ?? r.detail) : r.kind == .investments ? "Shares · crypto · funds" : r.kind == .personal ? "Personal accounts" : r.detail
+        let glyph: String = r.kind == .personal ? Glyph.person : BankGlyph.company
+        let sub: String = r.hasAlert ? (r.alertNote ?? r.detail) : r.kind == .personal ? "Personal accounts" : r.detail
         return Button { Haptics.tap(); onPick(r.id) } label: {
             CardRow(glyph: glyph, title: r.name, subtitle: sub, badge: r.hasAlert ? 1 : 0,
                     thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })

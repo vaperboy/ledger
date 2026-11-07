@@ -21,8 +21,10 @@ public struct SetupChoices: Equatable, Sendable {
     public var team: CompanySetup.SetupOptions.Team = .minimum
     /// Money to move into the company; nil: the recommended amount that keeps your personal reserve.
     public var putInto: Double? = nil
-    public init(stock: Stock = .full, optionalEquipment: Bool = false, team: CompanySetup.SetupOptions.Team = .minimum, putInto: Double? = nil) {
-        self.stock = stock; self.optionalEquipment = optionalEquipment; self.team = team; self.putInto = putInto
+    /// The owner chooses what the company sells first (the item list starts empty). False keeps the trade's starter items on the list.
+    public var chooseFirstItem = true
+    public init(stock: Stock = .full, optionalEquipment: Bool = false, team: CompanySetup.SetupOptions.Team = .minimum, putInto: Double? = nil, chooseFirstItem: Bool = true) {
+        self.stock = stock; self.optionalEquipment = optionalEquipment; self.team = team; self.putInto = putInto; self.chooseFirstItem = chooseFirstItem
     }
 }
 
@@ -350,6 +352,7 @@ public extension GameEngine {
                 var f = s.companies[i].value("flags")
                 f["stockShare"] = .number(choices.stock.share)
                 s.companies[i].set("flags", f)
+                if choices.chooseFirstItem { SalesItems.markFirstChoicePending(&s, i) }
             }
             var options = CompanySetup.SetupOptions(team: choices.team, optionalEquipment: choices.optionalEquipment, payrollMonthsReserve: 2, equipmentInPlace: true, teamInPlace: true)
             // Nothing is filled in for the player: documents are signed on the Setup screen, the place and the equipment are chosen in AirStay and TechPro.

@@ -57,7 +57,7 @@ enum LifeStories {
     /// The new-player start: the chosen trade is created, set up to the cheapest option that opens it, and opened on day 1.
     /// The starting cash is the cost of all that plus `startRunwayWeeks` weeks of fixed costs and payroll, rounded up to the next 1,000. It is
     /// measured on a copy of the game (set up with plenty of money) and then paid for real, so it follows every trade and country by itself.
-    static func applyFresh(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, name: String) -> Bool {
+    static func applyFresh(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, name: String, chooseFirstItem: Bool = false) -> Bool {
         guard let bd = data.catalog[tradeID], SpecialFamilies.isStartable(bd), let country = data.countries[s.homeCountryCode],
               let city = country.city(s.player.cityID) ?? country.cities.first else { return false }
         let form: LegalForm = bd.needsLimitedCompany ? .limited : .soleTrader
@@ -75,6 +75,8 @@ enum LifeStories {
         guard let id = build(&s, data: data, context: context, tradeID: tradeID, cityID: city.id, form: form, size: size, name: name),
               let i = s.companyIndex(id) else { return false }
         s.rest["start"] = .object(["story": .string(LifeStory.fresh.rawValue), "cash": .number(cash)])
+        // With `chooseFirstItem` the first company sells only what the player picks (`GameEngine.chooseFirstItem`); nothing sells until then.
+        if chooseFirstItem { SalesItems.markFirstChoicePending(&s, i) }
         return s.companies[i].status == .open
     }
 

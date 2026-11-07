@@ -65,7 +65,7 @@ final class CompanyStatsTourTests: CompanyBatchTourCase {
     }
 }
 
-/// The Reviews app (yours and the rivals') and the Market app (all markets, then one business chosen in the selector).
+/// The Reviews app (yours and the rivals') and the Market app (its Overview, then one company's market).
 final class ReviewsAndMarketTourTests: CompanyBatchTourCase {
     func testReviewsApp() {
         guard openPhoneApp("Reviews") else { return }
@@ -76,13 +76,13 @@ final class ReviewsAndMarketTourTests: CompanyBatchTourCase {
 
     func testMarketApp() {
         guard openPhoneApp("Market") else { return }
-        XCTAssertTrue(app.buttons["market-business-picker"].waitForExistence(timeout: 5), "the Market app shows the business selector")
-        shot("98-market-all")
-        if tapID("market-business-picker") {
-            shot("98-market-selector")
-            let option = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
-            if option.waitForExistence(timeout: 3) && option.isHittable { option.tap(); sleep(1); shot("99-market-company") }
-            else { note("no company in the Market selector") }
+        XCTAssertTrue(app.buttons["market-tab-Overview"].waitForExistence(timeout: 5), "the Market app shows its five parts")
+        shot("98-market-overview")
+        if tapID("market-tab-Companies") {
+            shot("98-market-companies")
+            let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'market-company-'")).firstMatch
+            if row.waitForExistence(timeout: 3) && row.isHittable { row.tap(); sleep(1); shot("99-market-company") }
+            else { note("no company in Market > Companies") }
         }
     }
 }

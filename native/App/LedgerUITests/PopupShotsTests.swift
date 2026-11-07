@@ -180,11 +180,11 @@ final class PopupShotsTests: CompanyBatchTourCase {
         }
         goBackToHome()
         site("acquisition") {
-            guard openPhoneApp("Market") else { return false }
-            let l = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'mk-listing-'")).firstMatch
-            guard l.waitForExistence(timeout: 4) else { return false }
-            l.tap(); sleep(1)
-            guard tapID("mk-buy", wait: 2) || tapID("mk-discuss", wait: 2) else { return false }
+            guard openPhoneApp("Market"), tapID("market-tab-Rivals") else { return false }
+            let r = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'market-rival-co'")).firstMatch
+            guard r.waitForExistence(timeout: 4) else { return false }
+            r.tap(); sleep(1)
+            guard tapID("rival-make-offer", wait: 2) else { return false }
             popup("acquisition"); closeAny(); return true
         }
         goBackToHome()

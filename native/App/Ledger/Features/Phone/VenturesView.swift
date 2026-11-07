@@ -245,7 +245,6 @@ private struct FoundedCard: View {
                             if p.phase == "live" {
                                 Button("Change the price") { launching = true }.buttonStyle(SecondaryButtonStyle(size: .compact))
                             }
-                            Button("Open the company") { store.openCompany(f.companyID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
                             Button(p.selfHours > 0 ? "Stop working on it" : "Work on it yourself") {
                                 let ok = store.act { $0.toggleOwnerHoursOnProduct(startupID: f.id) } ?? false
                                 store.show(ok ? (p.selfHours > 0 ? "You stopped working on the product." : "You now put your free hours into the product.") : "You cannot build this product yourself.", tone: ok ? "good" : "warn")

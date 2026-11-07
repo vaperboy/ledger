@@ -83,18 +83,7 @@ struct BankApp: View {
     private var header: some View {
         let t: (String, String) = titles
         let label: String = account == nil ? "Back to Phone" : "Back to accounts"
-        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label) {
-            // A company account links to its company, pushed on this same stack.
-            if let cid = account?.companyID {
-                Button { Haptics.tap(); store.openCompany(cid) } label: {
-                    LedgerGlyph(glyph: Glyph.home, size: Theme.Icon.medium, tint: P.isLight ? OutsidePalette.forest.accent : P.accent)
-                        .frame(width: 44, height: 44).contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityLabel("Open the company")
-                .accessibilityIdentifier("bank-open-company")
-            }
-        }
+        return AppHeader(title: t.0, subtitle: t.1, onBack: { back() }, backLabel: label)
     }
 
     private var titles: (String, String) {

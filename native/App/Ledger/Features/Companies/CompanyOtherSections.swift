@@ -35,7 +35,7 @@ struct CompanyOtherSections: View {
     @ViewBuilder private var complaints: some View {
         let open: [Complaint] = complaintItems
         if !open.isEmpty {
-            TeamGroup(title: "Complaints", trailing: {
+            PageGroup(title: "Complaints", spacing: Theme.Space.s, trailing: {
                 HStack(spacing: 6) {
                     RedBubble(count: open.count, size: .small)
                     Text("answer within two weeks").textStyle(.caption, tint: Theme.inkFaint)
@@ -116,7 +116,7 @@ struct ChainStaffShortages: View {
     var body: some View {
         let list: [Gap] = gaps
         if !list.isEmpty {
-            TeamGroup(title: "Short of staff", trailing: {
+            PageGroup(title: "Short of staff", trailing: {
                 Text(list.count == 1 ? "1 place" : "\(list.count) places").textStyle(.caption, tint: Theme.warn)
             }) {
                 ForEach(list) { g in gapCard(g) }

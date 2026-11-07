@@ -34,12 +34,16 @@ struct CompanySourcing: View {
         if company.status.isLive, !inputs.isEmpty || !sells.isEmpty {
             let cur = engine.currency(for: company)
             let both: Bool = !inputs.isEmpty && !sells.isEmpty
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                if !inputs.isEmpty {
+                    let current: [String] = inputs.compactMap { (i: SupplierInput) -> String? in i.options.first { $0.isCurrent }?.name }
+                    CompanyHero(label: "What this company buys", value: "\(inputs.count) \(inputs.count == 1 ? "input" : "inputs")",
+                                context: current.isEmpty ? "No supplier chosen yet" : "from " + current.prefix(3).joined(separator: ", "))
+                }
                 note(inputs)
                 if both {
-                    SharpTable {
-                        SettingsTableRow(title: "Supplying", note: "Companies you sell to", value: "\(sells.count) \(sells.count == 1 ? "company" : "companies")") { showSupplying = true }
-                    }
+                    LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Supplying", subtitle: "Companies you sell to",
+                              value: "\(sells.count)", valueNote: sells.count == 1 ? "company" : "companies", identifier: "suppliers-supplying") { showSupplying = true }
                 }
                 if inputs.isEmpty { supplying(sells, cur: cur) } else { inputsList(inputs, cur: cur) }
             }
@@ -47,8 +51,8 @@ struct CompanySourcing: View {
                 SettingsPage(title: "Supplying", subtitle: company.name) { supplying(engine.supplyLinks().filter { $0.supplierID == company.id }, cur: cur) }
             }
             .confirmAction($pending)
-            .centerSheet(item: $popup) { (pick: SupplierPick) in popupContent(pick) }
-            .centerSheet(isPresented: $showDebtInfo, title: "Buying on credit") { debtInfo }
+            .centerSheet(item: $popup, category: .medium, tone: .info) { (pick: SupplierPick) in popupContent(pick) }
+            .centerSheet(isPresented: $showDebtInfo, title: "Buying on credit", category: .compact, tone: .info) { debtInfo }
         }
     }
 
@@ -66,7 +70,7 @@ struct CompanySourcing: View {
     // MARK: Inputs
 
     private func inputsList(_ inputs: [SupplierInput], cur: Currency) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             ForEach(inputs) { input in
                 inputSection(input, cur: cur)
             }
@@ -89,17 +93,21 @@ struct CompanySourcing: View {
         let ordered: [SupplierOption] = input.options.filter { $0.isCurrent } + input.options.filter { !$0.isCurrent }
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                GlyphView(glyph: inputGlyph(input), size: 15, weight: 1.6)
-                Text(input.title).capsLabel()
+                GlyphView(glyph: inputGlyph(input), size: 15, weight: 1.6, tint: Theme.inkFaint)
+                Text(input.title).textStyle(.label, tint: Theme.inkFaint)
                 Spacer(minLength: 0)
             }.padding(.horizontal, 2)
             if input.id == "goods" {
                 SegmentedPill(items: [0, 1, 2], title: { classNames[$0] }, selection: goodsClassBinding)
-                Text("Quality class: sets the cost and quality of all goods.").textStyle(.caption, tint: Theme.inkFaint).padding(.horizontal, 2)
             }
             if let why = input.governedBy { notice(why, tint: Theme.caution) }
             if let none = input.noOwnProvider { notice(none, tint: Theme.ivoryMuted) }
-            ForEach(ordered) { o in optionRow(input, o) }
+            VStack(spacing: 0) {
+                ForEach(Array(ordered.enumerated()), id: \.element.id) { (n: Int, o: SupplierOption) in
+                    if n > 0 { RowRule() }
+                    optionRow(input, o)
+                }
+            }
             if !input.paymentTerms.isEmpty { paymentTermsBlock(input) }
         }
     }
@@ -289,7 +297,7 @@ struct CompanySourcing: View {
         lines.append("Delivery: \(o.delivery). Reliability: \(o.reliability).")
         for r in o.risks { lines.append("Risk: \(r)") }
         lines.append("Estimates from the last three months; no guarantee.")
-        pending = PendingAction(title: "Use \(o.name) for \(input.title.lowercased())?", message: lines.joined(separator: "\n"), button: "Switch provider") {
+        pending = PendingAction(title: "Use \(o.name) for \(input.title.lowercased())?", message: lines.joined(separator: "\n"), button: "Switch provider", tone: .info, icon: "arrow.left.arrow.right") {
             switch store.act({ $0.switchSupplier(companyID: company.id, input: input.id, to: o.change) }) {
             case .ok?: Haptics.success(); store.show("\(o.name) now provides \(input.title.lowercased()).", tone: "good")
             case .notKnownWell?: Haptics.warning(); store.show("They do not know you well enough yet. Get to know them better first.", tone: "warn")
@@ -351,13 +359,13 @@ struct CompanySourcing: View {
 
     private var debtInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Buying on credit is a debt: it falls due on its date and shows under what falls due. If the account cannot cover it, it carries interest, the supplier trusts you less, and repeated lateness cuts you off.")
+            Text("A debt with a due date: paying late costs interest and, repeated, the supplier.")
                 .popupText(.body)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func confirmTerms(_ input: SupplierInput, _ t: PaymentTermChoice) {
-        pending = PendingAction(title: "Pay by \(t.name.lowercased()) for \(input.title.lowercased())?", message: t.detail, button: "Use these terms") {
+        pending = PendingAction(title: "Pay by \(t.name.lowercased()) for \(input.title.lowercased())?", message: t.detail, button: "Use these terms", tone: .info, icon: "creditcard") {
             let ok: Bool? = input.id == "goods"
                 ? store.act({ $0.setGoodsPaymentTerms(companyID: company.id, term: t.id) })
                 : input.id == "repair" ? store.act({ $0.setRepairPaymentTerms(companyID: company.id, term: t.id) })
@@ -426,7 +434,7 @@ struct CompanySourcing: View {
 
     private func lunch(_ vendorID: String, name: String) {
         let cost = engine.homeCurrency.tidyShort(engine.homeCurrency.scaledPrice(5000))
-        pending = PendingAction(title: "Take \(name) to lunch?", message: "About \(cost). It warms the relationship, which becomes a better discount on every order. You can only do this every four weeks, and relationships fade if you stop buying.", button: "Go to lunch", amount: engine.homeCurrency.scaledPrice(5000), currency: engine.homeCurrency) {
+        pending = PendingAction(title: "Take \(name) to lunch?", message: "About \(cost). It warms the relationship, which becomes a better discount on every order. You can only do this every four weeks, and relationships fade if you stop buying.", button: "Go to lunch", amount: engine.homeCurrency.scaledPrice(5000), currency: engine.homeCurrency, tone: .info, icon: "fork.knife") {
             switch store.act({ $0.lunchWithSupplier(vendorID: vendorID) }) {
             case .ok?: Haptics.success(); store.show("A good lunch. The relationship is warmer.", tone: "good")
             case .wait?: Haptics.warning(); store.show("You met recently. Wait a few weeks.", tone: "warn")

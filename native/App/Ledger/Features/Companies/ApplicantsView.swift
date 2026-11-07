@@ -261,12 +261,4 @@ extension GameStore {
         let route: CompanyRoute = .applicants(companyID ?? 0, role ?? "")
         Task { @MainActor [weak self] in self?.push(route) }
     }
-
-    /// For an inbox message "<name> applied for <role>": the company and role it is about, else nil.
-    func applicantLink(_ m: Message) -> (companyID: Int, role: String)? {
-        guard m.companyID != 0, m.title.contains(" applied for ") else { return nil }
-        let pid: Int = m.value("data")["pid"].int
-        let role: String = engine?.state.people[pid]?.role ?? ""
-        return (m.companyID, role)
-    }
 }

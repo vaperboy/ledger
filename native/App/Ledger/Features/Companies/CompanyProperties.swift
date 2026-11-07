@@ -72,7 +72,7 @@ struct CompanyProperties: View {
             }
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) {
+        .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } }), category: .medium, tone: .investment) {
             propertySheet(cur)
         }
     }
@@ -80,19 +80,19 @@ struct CompanyProperties: View {
     private func askToSell(_ p: PropertyRow, _ cur: Currency) {
         let tail: String = p.mortgage > 0 ? ", repay the mortgage" : ""
         pending = PendingAction(title: "Sell this property?", message: "Selling on the market costs 2.5% of the value. \(p.name)",
-                                button: "Sell for about " + cur.tidyShort(p.value * 0.975) + tail, destructive: true) { detailID = nil; sell(p) }
+                                button: "Sell for about " + cur.tidyShort(p.value * 0.975) + tail, destructive: true, tone: .danger, icon: "house") { detailID = nil; sell(p) }
     }
 
     private func askToRenovate(_ p: PropertyRow, _ cur: Currency) {
         let cost: Double = engine.renovationCost(companyID: company.id, propertyID: p.id) ?? 0
         pending = PendingAction(title: "Renovate this property?", message: "The work is paid from company cash. Better condition raises its value and rent.",
-                                button: "Renovate for \(cur.tidyShort(cost))", amount: cost, currency: cur) { detailID = nil; renovate(p) }
+                                button: "Renovate for \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .investment, icon: "paintbrush") { detailID = nil; renovate(p) }
     }
 
     private func askToBuy(_ L: PropertyListing, _ cur: Currency) {
         let loan: String = Currency.percent(loanToValue, decimals: 0)
         pending = PendingAction(title: "Buy this property?", message: "\(L.name)\nPlus 2.5% costs, \(loan) loan.",
-                                button: "Buy for " + cur.tidyShort(L.price), amount: L.price, currency: cur) { buy(L) }
+                                button: "Buy for " + cur.tidyShort(L.price), amount: L.price, currency: cur, tone: .investment, icon: "house") { buy(L) }
     }
 
     /// One property in a sheet: its figures and its actions. Renovate and Sell close the sheet and ask on the page.
@@ -177,7 +177,7 @@ struct CompanyProperties: View {
                             Text("Offers " + cur.tidyShort(p.value * o.buyMultiple) + " (\(Currency.percent(o.buyMultiple - 1, decimals: 0)) over value)").popupText(.caption)
                         }
                         Spacer()
-                        Button("Sell to them") { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true) { detailID = nil; sellBuilding(p, o) } }.popupText(.risk, variant: .destructive).buttonStyle(PressableStyle())
+                        Button("Sell to them") { pending = PendingAction(title: "Sell the building to this tenant?", message: "The sale is final. The tenant takes over the building and your rental income from it ends.", button: "Sell to them", destructive: true, tone: .danger, icon: "house") { detailID = nil; sellBuilding(p, o) } }.popupText(.risk, variant: .destructive).buttonStyle(PressableStyle())
                     }
                 }
             }
@@ -193,7 +193,7 @@ struct CompanyProperties: View {
         return LedgerSection(title: "For sale in \(engine.cityName(company))", trailing: { Text("new list every month").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
             Text("Mortgage").font(.caption).foregroundStyle(Theme.ivoryMuted)
             SegmentedPill(items: [0.0, 0.4, 0.6], title: { $0 == 0 ? "No loan" : Currency.percent($0, decimals: 0) + " loan" }, selection: $loanToValue)
-            Text("Rate \(Currency.percent(engine.state.economy.policyRate, decimals: 1)) plus a margin. Rents that return less than the loan costs make a mortgage lose money until prices rise.")
+            Text("Rate \(Currency.percent(engine.state.economy.policyRate, decimals: 1)) plus a margin.")
                 .font(.caption2).foregroundStyle(Theme.ivoryFaint)
             SettingsTable(heading: "Listing") {
                 ForEach(listings, id: \.id) { (L: PropertyListing) in

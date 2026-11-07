@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// A page of a company that is its own screen, pushed on top of the company screen: Marketing, Customers, Market, Setup, and a trade's
+/// A page of a company that is its own screen, pushed on top of the company screen: Marketing, Customers, Setup, and a trade's
 /// own page (Plant, Fish, Club, Chain, Book). The five sections of the company itself (Overview, Team, Manage, Sales, Stats) are not
 /// here: they are the fixed bar of `CompanyDetailView`.
 struct CompanySectionScreen: View {
@@ -36,7 +36,6 @@ struct CompanySectionScreen: View {
         switch section {
         case .setup:
             CompanySetupScreen(engine: e, company: co)
-        case .market: CompanyMarket(engine: e, company: co)
         case .book: CompanyFinanceBook(engine: e, company: co)
         case .energy: CompanyEnergy(engine: e, company: co)
         case .salmon: CompanySalmon(engine: e, company: co)
@@ -53,28 +52,30 @@ struct CompanyMorePages: View {
     var engine: GameEngine
     var company: Company
     var pages: [CompanySection]
+    /// Rows inside a group that already has rows above (each row gets a rule above it), instead of a group of their own.
+    var ruled = false
+    @Environment(\.outsidePalette) private var P
 
     var body: some View {
         let available: [CompanySection] = CompanyDetailView.availableSections(company, engine)
         let list: [CompanySection] = pages.filter { available.contains($0) }
         if !list.isEmpty {
-            OverviewSettingsCard(heading: "More for this business") {
-                ForEach(list, id: \.self) { (s: CompanySection) in
-                    SettingsTableRow(title: s.rawValue, note: Self.note(s), value: "", glyph: Glyph.opsBox) { store.openCompany(company.id, section: s) }
-                }
+            if ruled {
+                rows(list)
+            } else {
+                PageGroup("More for this business") { rows(list) }
             }
         }
     }
 
-    private static func note(_ s: CompanySection) -> String {
-        switch s {
-        case .energy: return "Plant, output and sales of power"
-        case .salmon: return "Pens, feed and harvest"
-        case .club: return "Squad, matches and club finances"
-        case .book: return "Policies, loans and funds"
-        default: return ""
+    @ViewBuilder private func rows(_ list: [CompanySection]) -> some View {
+        ForEach(Array(list.enumerated()), id: \.element) { (n: Int, s: CompanySection) in
+            if ruled || n > 0 { RowRule() }
+            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: s.rawValue,
+                      identifier: "company-page-\(s)") { store.openCompany(company.id, section: s) }
         }
     }
+
 }
 
 /// Projects of one project business (builders, developers, event firms): its running jobs and developments with their stages, and its order

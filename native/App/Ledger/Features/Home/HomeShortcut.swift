@@ -79,4 +79,6 @@ struct DayChip: Equatable, Identifiable {
     var day: Int
     var netWorthChange: Double
     var cashChange: Double
+    /// The group's profit on that day (nil when it could not be measured).
+    var profit: Double? = nil
 }

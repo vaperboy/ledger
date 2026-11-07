@@ -4,9 +4,9 @@ import Countries
 import Finance
 import Simulation
 
-/// One account (BankAccount.dc.html): the payroll alert, the tabs, the balance with the available / overdraft / rate strip, the action
-/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a toast. The investments
-/// account has no tabs: its holdings sit under the balance, one level less to reach a name.
+/// One account (BankAccount.dc.html): the tabs, the balance with the available / overdraft / rate strip, the action
+/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a toast. Investing is in the
+/// Market app, so the Bank opens cash accounts only.
 struct BankAccountScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -19,8 +19,7 @@ struct BankAccountScreen: View {
     private var tabs: [BankTab] {
         switch id {
         case .personal: return [.account, .bills, .loans, .deposits, .statements]
-        case .investments: return [.account]
-        case .company: return [.account, .bills, .loans, .statements]
+        case .company, .investments: return [.account, .bills, .loans, .statements]
         }
     }
 
@@ -30,7 +29,6 @@ struct BankAccountScreen: View {
             let pagerSelection: Binding<BankTab> = Binding(get: { tabs.contains(tab) ? tab : BankTab.account }, set: { tab = $0 })
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    if let a = d.alert { alertBanner(a, fmt) }
                     if tabs.count > 1 { tabRow(d, pagerSelection) }
                 }
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
@@ -62,25 +60,6 @@ struct BankAccountScreen: View {
         content(e, d, fmt, t)
     }
 
-    // MARK: Alert
-
-    /// Payroll that needs the player: run in Accounting, which owns payroll; the Bank only says it and links there.
-    private func alertBanner(_ a: PayrollAlert, _ fmt: BankFmt) -> some View {
-        let text: String = a.isLate ? "Payroll \(fmt.short(a.amount)) is late. \(a.reason)"
-                                    : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason)"
-        return HStack(alignment: .center, spacing: Theme.Space.m) {
-            LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.medium, tint: a.isLate ? P.loss : P.warn)
-            Text(text.tidyText).textStyle(.caption, tint: P.ink).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: Theme.Space.xs)
-            Button("Run payroll") { store.openAccounting(companyID: a.companyID, payroll: true) }
-                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
-                .accessibilityIdentifier("bank-alert-payroll")
-        }
-        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill((a.isLate ? P.loss : P.warn).opacity(0.10)))
-        .accessibilityElement(children: .contain)
-    }
-
     // MARK: Tabs
 
     /// The company behind this account (0 for the player's own accounts), to find its Bank messages.
@@ -110,8 +89,10 @@ struct BankAccountScreen: View {
 
     /// The balance leads; change this month beside it, then one strip of what can be spent. No box: the page is the surface.
     private func balanceCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        let label: String = id == .personal ? "Current account" : id == .investments ? "Value of what you hold" : "Company account"
+        let label: String = id == .personal ? "Current account" : "Company account"
         let tint: Color = d.balance < 0 ? P.loss : P.ink
+        let overdraft: String = d.overdraftUsed > 0 ? fmt.short(d.overdraftUsed) + " used" : fmt.short(d.overdraftLimit)
+        let rate: String = d.overdraftRate.map { Currency.percent($0, decimals: 2) } ?? "–"
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             HStack(alignment: .top, spacing: Theme.Space.s) {
                 Figure(label: label, value: fmt.full(d.balance), tint: tint, size: .display, live: d.balance)
@@ -123,15 +104,11 @@ struct BankAccountScreen: View {
                     }
                 }
             }
-            if id != .investments {
-                let overdraft: String = d.overdraftUsed > 0 ? fmt.short(d.overdraftUsed) + " used" : fmt.short(d.overdraftLimit)
-                let rate: String = d.overdraftRate.map { Currency.percent($0, decimals: 2) } ?? "–"
-                FigureRow(items: [
-                    KeyFigures.Item(label: "Available", value: fmt.short(d.available), tint: d.available <= 0 ? P.loss : P.ink),
-                    KeyFigures.Item(label: "Overdraft", value: overdraft, tint: d.overdraftUsed > 0 ? P.warn : P.ink),
-                    KeyFigures.Item(label: "Overdraft rate", value: rate),
-                ])
-            }
+            FigureRow(items: [
+                KeyFigures.Item(label: "Available", value: fmt.short(d.available), tint: d.available <= 0 ? P.loss : P.ink),
+                KeyFigures.Item(label: "Overdraft", value: overdraft, tint: d.overdraftUsed > 0 ? P.warn : P.ink),
+                KeyFigures.Item(label: "Overdraft rate", value: rate),
+            ])
             if let s = d.savings {
                 let r: String = d.savingsRate.map { " at " + Currency.percent($0, decimals: 2) } ?? ""
                 Text("Savings \(fmt.short(s))\(r)").textStyle(.caption)
@@ -142,18 +119,12 @@ struct BankAccountScreen: View {
     // MARK: Tiles
 
     /// Pay bill opens the Bills tab: one place for bills instead of a second list in a sheet.
-    @ViewBuilder private func tiles(_ d: BankAccountDetail) -> some View {
-        if id == .investments {
-            HStack(spacing: Theme.Space.s) {
-                ActionTile(glyph: BankGlyph.transfer, title: "Cash to invest") { move = .transfer }
-            }
-        } else {
-            HStack(spacing: Theme.Space.s) {
-                ActionTile(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
-                ActionTile(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
-                ActionTile(glyph: BankGlyph.withdraw, title: "Withdraw") { move = .withdraw }
-                ActionTile(glyph: BankGlyph.bill, title: "Pay bill", badge: !d.upcoming.isEmpty && d.alert != nil ? 1 : 0) { tab = .bills }
-            }
+    private func tiles(_ d: BankAccountDetail) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            ActionTile(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
+            ActionTile(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
+            ActionTile(glyph: BankGlyph.withdraw, title: "Withdraw") { move = .withdraw }
+            ActionTile(glyph: BankGlyph.bill, title: "Pay bill", badge: !d.upcoming.isEmpty && d.alert != nil ? 1 : 0) { tab = .bills }
         }
     }
 
@@ -171,15 +142,10 @@ struct BankAccountScreen: View {
 
     private func accountTab(_ e: GameEngine, _ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            if id == .investments {
-                InvestContent()
-            }
             if let cid = id.companyID, let reserves = e.companyReserves(companyID: cid) {
                 BankReservesCard(reserves: reserves, fmt: fmt)
             }
-            if id != .investments {
-                comingUp(d, fmt)
-            }
+            comingUp(d, fmt)
             recent(d, fmt)
             if let cid = id.companyID, let co = e.state.company(cid), co.form == .limited {
                 BankOwnerSalary(company: co)

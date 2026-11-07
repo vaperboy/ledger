@@ -160,9 +160,6 @@ struct WorldRecordsView: View {
                     }
                 }
             }
-            Button { store.openCompany(chosen.id) } label: {
-                LinkLabel(text: "Open \(chosen.name)")
-            }.buttonStyle(PressableStyle())
         }
     }
 

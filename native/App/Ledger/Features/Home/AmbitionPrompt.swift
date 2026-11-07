@@ -26,7 +26,6 @@ struct AmbitionPrompt: View {
 
     private var card: some View {
         VStack(alignment: .leading, spacing: PopupSpace.row) {
-            Text("Pick an ambition. You can change it freely during your first four weeks.").popupText(.subtitle)
             ForEach(Ambitions.paths, id: \.id) { p in
                 row(p.id, p.name)
             }

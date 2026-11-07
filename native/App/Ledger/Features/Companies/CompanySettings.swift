@@ -31,7 +31,7 @@ struct CompanySettings: View {
             documents(cur)
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $converting, title: "Limited company") { ConversionSheet(companyID: company.id).environmentObject(store) }
+        .centerSheet(isPresented: $converting, title: "Limited company", category: .detail, tone: .investment) { ConversionSheet(companyID: company.id).environmentObject(store) }
     }
 
     // MARK: Legal form
@@ -40,7 +40,7 @@ struct CompanySettings: View {
         CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").textStyle(.caption) }) {
             if let cost = engine.convertToLimitedCost(companyID: company.id) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
+                    Text("Sole trader: you are liable for every debt.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
                     FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
@@ -48,7 +48,7 @@ struct CompanySettings: View {
                         .accessibilityIdentifier("company-convert-review")
                 }
             } else {
-                Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")
+                Text("Limited: debts stay with the company unless you guaranteed them.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -66,7 +66,7 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     TextField("New name", text: $newName).textStyle(.body).autocorrectionDisabled()
                         .padding(.horizontal, 10).padding(.vertical, 8).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
-                    Text("New signs and paperwork cost \(cur.tidyDisplay(cost)) from company cash. About a third of the people who knew the old name lose track of you.")
+                    Text("Costs \(cur.tidyDisplay(cost)); about a third of customers lose track of you.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     Button("Rename…") { confirmRename(cost, cur) }.buttonStyle(QuietButtonStyle()).disabled(newName.trimmingCharacters(in: .whitespaces).count < 2)
                 }
@@ -76,7 +76,7 @@ struct CompanySettings: View {
 
     private func confirmRename(_ cost: Double, _ cur: Currency) {
         let name = newName.trimmingCharacters(in: .whitespaces)
-        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur) {
+        pending = PendingAction(title: "Rename to \u{201C}\(name)\u{201D}?", message: "Costs \(cur.tidyDisplay(cost)) and some awareness: customers have to learn the new name.", button: "Rename", amount: cost, currency: cur, tone: .info, icon: "pencil") {
             switch store.act({ $0.renameCompany(companyID: company.id, to: name) }) {
             case .ok?: Haptics.success(); newName = ""; store.show("Now called \(name).", tone: "good")
             case .tooShort?: Haptics.warning(); store.show("Choose a different name of at least two letters.", tone: "warn")
@@ -98,7 +98,7 @@ struct CompanySettings: View {
                 Text(left > 0 && left < 999 ? "reopens in \(left) week\(left == 1 ? "" : "s")" : "until you reopen").textStyle(.caption, tint: Theme.warn)
             }) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("No sales while closed. Rent, the accountant and part of the running costs continue; wages are paid in full for two weeks, then 40%.")
+                    Text("No sales; rent continues, wages drop to 40% after two weeks.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     Button("Reopen now") {
                         switch store.act({ $0.reopenCompany(companyID: company.id) }) {
@@ -113,7 +113,7 @@ struct CompanySettings: View {
             let notice = engine.closeNoticeTerms(companyID: company.id)
             CardSection("Close for a while") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("For a refit, a quiet season or to stop losses. It reopens by itself after the weeks you choose. Rent and the accountant continue; wages are paid in full for two weeks, then 40%.")
+                    Text("Reopens by itself; rent continues, wages drop to 40% after two weeks.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     SegmentedChoice(items: [2, 4, 8, 13, 26], title: { "\($0) weeks" }, selection: $closeWeeks)
                     if let notice {
@@ -141,7 +141,7 @@ struct CompanySettings: View {
 
     private func confirmClose(_ notice: (notice: Double, depositBack: Double)?, _ cur: Currency) {
         let weeks = closeWeeks, giveUp = giveUpRent && notice != nil
-        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: true) {
+        pending = PendingAction(title: "Close \(company.name) for \(weeks) weeks?", message: "No sales until it reopens; customers drift away the longer it is shut." + (giveUp ? " The lease ends now: \(cur.tidyDisplay(notice?.notice ?? 0)) notice." : ""), button: "Close", destructive: false, tone: .warning, icon: "pause.circle") {
             switch store.act({ $0.closeCompany(companyID: company.id, weeks: weeks, giveUpRent: giveUp, pauseSubscriptions: pauseSubscriptions) }) {
             case .ok?: Haptics.warning(); giveUpRent = false; store.show("\(company.name) is closed for \(weeks) weeks.", tone: "n")
             case .notOpen?: Haptics.warning(); store.show("Only an open company can be closed.", tone: "warn")
@@ -161,7 +161,7 @@ struct CompanySettings: View {
             let debts = CompanyFigures.debts(company, loans: engine.state.loans)
             CardSection("Close down for good") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Everything is sold at about 55% of its book value, loans and unpaid bills are paid first, and everyone who works here is let go." + (company.form == .soleTrader ? " As a sole trader you cover any shortfall yourself." : " Loans you guaranteed become yours."))
+                    Text("Assets sell at about 55% of book value; everyone is let go." + (company.form == .soleTrader ? " You cover any shortfall." : " Guaranteed loans become yours."))
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
                     FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
@@ -179,7 +179,7 @@ struct CompanySettings: View {
         let plan = engine.branchClosurePlan(storeID: company.id), quote = engine.branchSaleQuote(storeID: company.id)
         CardSection("Close or sell this branch") {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("A branch is part of the chain, not a company of its own. Close it (the lease is given up, staff move to other branches or are made redundant, stock moves) or sell it to a buyer who takes the site and the staff. The money stays in the chain.")
+                Text("Close the branch or sell it with its site and staff; the money stays in the chain.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if let p = plan {
                     FlatRow(label: "Closing: cash in less costs", value: cur.tidyShort(p.net), tint: p.net >= 0 ? Theme.gain : Theme.loss, rule: false)
@@ -211,7 +211,7 @@ struct CompanySettings: View {
 
     private func confirmWindUp(_ back: Double, _ cur: Currency) {
         let name = company.name, staff = company.staff.count
-        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true) {
+        pending = PendingAction(title: "Wind up \(name)?", message: "This is final. \(staff) \(staff == 1 ? "person loses their job" : "people lose their jobs"), the assets are sold off and you receive about \(cur.tidyDisplay(back)).", button: "Wind up for good", destructive: true, tone: .danger, icon: "xmark.octagon") {
             // Closing against every other owner and board seat: they remember it (their mood drops, the Inbox gets a line).
             let alone = engine.boardVote(kind: "close", companyID: company.id).pushedThroughAlone
             if store.act({ $0.windUpCompany(companyID: company.id) }) == true {

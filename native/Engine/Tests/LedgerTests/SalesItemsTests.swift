@@ -143,4 +143,137 @@ final class SalesItemsTests: XCTestCase {
         // the licence just bought is not offered again: the next listing (if any) fills a different need
         XCTAssertNotEqual(e.ownCompanyListings(forBuyer: buyer).first?.equipmentID, listing.equipmentID)
     }
+
+    // MARK: Price ceiling, first choice, price setter
+
+    func testPriceCeilingIsRealistic() throws {
+        let (e, id) = try engine("estate", weeks: 2)
+        let it = e.salesItems(companyID: id)[0]
+        var b = e
+        let ceiling = e.itemPriceRange(companyID: id).upperBound
+        XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 2.5).isRefused, "2.5x the market is above the ceiling")
+        XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 0.1).isRefused)
+        XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * ceiling), .applied)
+        XCTAssertLessThanOrEqual(ceiling, SalesItems.ratioRange.upperBound)
+        // a forecast for an absurd price is held at the ceiling
+        let top = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * ceiling, discountPercent: 0)
+        let wild = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 50, discountPercent: 0)
+        XCTAssertEqual(wild.units, top.units, accuracy: 1e-9)
+    }
+
+    func testPlayerStartedCompanyChoosesFirstItem() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "estate", cityID: e.state.player.cityID, form: .limited, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        let id = out.companyID
+        XCTAssertTrue(e.needsFirstItemChoice(companyID: id))
+        XCTAssertTrue(e.salesItems(companyID: id).isEmpty, "nothing is chosen for the player")
+        e.update { s, _, _ in let i = s.companyIndex(id)!; s.companies[i].status = .open }
+        let starters = e.firstItemChoices(companyID: id)
+        XCTAssertGreaterThanOrEqual(starters.count, 2)
+        XCTAssertTrue(e.setItemPrice(companyID: id, itemID: starters[0].id, price: starters[0].marketPrice).isRefused, "no price before the first choice")
+        XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: starters[1].id), .applied)
+        XCTAssertFalse(e.needsFirstItemChoice(companyID: id))
+        XCTAssertEqual(e.salesItems(companyID: id).map { $0.id }, [starters[1].id])
+        XCTAssertTrue(e.chooseFirstItem(companyID: id, itemID: starters[0].id).isRefused, "the choice is made once")
+        XCTAssertEqual(e.addSalesItem(companyID: id, name: "Own item", isService: true), .applied)
+        XCTAssertEqual(e.salesItems(companyID: id).count, 2)
+    }
+
+    func testPriceSetterIsOwnerUnlessSomeoneIsHired() throws {
+        let (e, id) = try engine("estate", weeks: 1)
+        XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter.isOwner })
+        var b = e
+        b.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            var m = StaffMember(raw: [:]); m.id = 9_999; m.role = NewItemOptions.advisorRole
+            s.companies[i].staff = s.companies[i].staff + [m]
+        }
+        XCTAssertTrue(b.salesItems(companyID: id).allSatisfy { $0.priceSetter == .advisor })
+        // information only: the owner can still set the price
+        let it = b.salesItems(companyID: id)[0]
+        XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 1.1), .applied)
+        XCTAssertEqual(b.salesItems(companyID: id).first { $0.id == it.id }?.price ?? 0, it.marketPrice * 1.1, accuracy: 1e-6)
+    }
+
+    func testPriceCeilingVariesByTrade() throws {
+        let e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        let cat = e.data.catalog
+        let bakery = try XCTUnwrap(cat["bakery"]), cons = try XCTUnwrap(cat["cons"])
+        XCTAssertLessThan(SalesItems.ceiling(for: bakery), SalesItems.priceCeiling)
+        XCTAssertGreaterThan(SalesItems.ceiling(for: cons), SalesItems.priceCeiling)
+        XCTAssertGreaterThan(SalesItems.ceiling(for: cons), SalesItems.ceiling(for: bakery))
+        XCTAssertEqual(SalesItems.range(for: bakery).lowerBound, SalesItems.priceFloor)
+        for id in ["bakery", "cafe", "cons", "hotel", "estate", "taxi"] {
+            guard let bd = cat[id] else { continue }
+            let c = SalesItems.ceiling(for: bd)
+            XCTAssertGreaterThan(c, 1)
+            XCTAssertLessThanOrEqual(c, SalesItems.ratioRange.upperBound)
+        }
+    }
+
+    func testSetItemPriceUsesTheTradeCeiling() throws {
+        let (e, id) = try engine("bakery", weeks: 2)
+        let ceiling = e.itemPriceRange(companyID: id).upperBound
+        XCTAssertEqual(ceiling, SalesItems.ceiling(for: e.data.catalog["bakery"]!))
+        let it = e.salesItems(companyID: id)[0]
+        XCTAssertEqual(it.priceCeiling, ceiling)
+        XCTAssertEqual(it.maxPrice, it.marketPrice * ceiling, accuracy: 1e-9)
+        var b = e
+        XCTAssertTrue(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * (ceiling + 0.05)).isRefused)
+        XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * ceiling), .applied)
+        // the forecast is held at the same ceiling
+        let top = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * ceiling, discountPercent: 0)
+        let wild = b.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 9, discountPercent: 0)
+        XCTAssertEqual(wild.units, top.units, accuracy: 1e-9)
+    }
+
+    /// A company the player started: nothing sells until the choice, and then only the chosen item has customers.
+    func testOnlyTheChosenItemDrivesDemand() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
+        e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, form: .limited, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        let id = out.companyID
+        e.update { s, _, _ in let i = s.companyIndex(id)!; s.companies[i].status = .open }
+        func customers() -> Double {
+            let co = e.state.company(id)!
+            return DemandModel.compute(co, e.data.catalog[co.type]!, World(state: e.state, data: e.data)).customers
+        }
+        XCTAssertEqual(customers(), 0, "nothing is on sale before the choice")
+        // chosen before any weekly step: the module's own starter items are what is offered
+        let starters = e.firstItemChoices(companyID: id)
+        XCTAssertGreaterThanOrEqual(starters.count, 2)
+        let pick = starters[1]
+        XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: pick.id), .applied)
+        XCTAssertGreaterThan(customers(), 0)
+        for _ in 0..<2 { e.week() }
+        XCTAssertEqual(e.salesItems(companyID: id).map { $0.id }, [pick.id], "starters the module installs later stay out")
+        let co = e.state.company(id)!, bd = e.data.catalog[co.type]!
+        let list = SalesItems.items(co, bd)
+        XCTAssertEqual(list.first { $0.id == pick.id }?.unitShare ?? 0, 1, accuracy: 1e-9)
+        XCTAssertEqual(list.filter { $0.id != pick.id }.reduce(0.0) { $0 + $1.unitShare }, 0, accuracy: 1e-9, "hidden starters have no customers")
+        let rows = SalesItems.rows(e.state, companyID: id, data: e.data)
+        XCTAssertTrue(rows.filter { $0.id != pick.id }.allSatisfy { $0.weeklyUnits == 0 && $0.weeklyRevenue == 0 })
+        // a price change on a hidden starter is refused; on the chosen item it works
+        let hidden = try XCTUnwrap(rows.first { $0.id != pick.id })
+        XCTAssertTrue(e.setItemPrice(companyID: id, itemID: hidden.id, price: hidden.marketPrice).isRefused)
+        XCTAssertEqual(e.setItemPrice(companyID: id, itemID: pick.id, price: pick.marketPrice * 0.9), .applied)
+        XCTAssertLessThan(SalesItems.demandFactor(e.state.company(id)!), 1.5)
+        XCTAssertGreaterThan(SalesItems.demandFactor(e.state.company(id)!), 1)
+    }
+
+    func testOnboardingCompanyHasTheFirstChoice() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "bakery", companyName: "Test Bakery", chooseFirstItem: true)
+        let id = try XCTUnwrap(e.state.companies.first).id
+        XCTAssertTrue(e.needsFirstItemChoice(companyID: id))
+        XCTAssertTrue(e.salesItems(companyID: id).isEmpty)
+        let co = e.state.company(id)!
+        XCTAssertEqual(DemandModel.compute(co, e.data.catalog[co.type]!, World(state: e.state, data: e.data)).customers, 0)
+        let pick = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
+        XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: pick.id), .applied)
+        XCTAssertEqual(e.salesItems(companyID: id).map { $0.id }, [pick.id])
+        // without the flag (engine tests, older starts) all starters are visible as before
+        let plain = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "bakery", companyName: "Test Bakery")
+        XCTAssertFalse(plain.needsFirstItemChoice(companyID: try XCTUnwrap(plain.state.companies.first).id))
+    }
 }

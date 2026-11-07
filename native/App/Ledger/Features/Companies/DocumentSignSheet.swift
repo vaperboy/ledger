@@ -119,8 +119,6 @@ struct CompanyLicences: View {
                 Spacer(minLength: Theme.Space.s)
                 if ["", "rejected", "lapsed"].contains(l.form.status) {
                     Button(l.form.status == "" ? "Fill in and apply" : "Apply again") { Haptics.tap(); signing = l.id }.buttonStyle(TertiaryButtonStyle(size: .compact))
-                } else if l.form.status == "ok" {
-                    Button("Add it in How you sell") { store.openCompany(company.id, section: .salesMarket) }.buttonStyle(TertiaryButtonStyle(size: .compact))
                 }
             }
         }

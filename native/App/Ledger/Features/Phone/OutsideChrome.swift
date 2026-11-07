@@ -3,7 +3,7 @@ import SwiftUI
 import UIKit
 #endif
 
-/// Shared chrome for the "outside world" phone apps (Weather, News, Luxury, Ventures, World, Rich list, the shops). Each of them draws its own
+/// Shared chrome for the "outside world" phone apps (Weather, News, Luxury, Ventures, the shops). Each of them draws its own
 /// interface and its own masthead; this only hides the system bar, sets the page and offers the round back button wired to `dismiss`.
 /// The app's own palette (`OutsidePalette`) goes into the environment here, so the shared cards, lines, icons and the back button
 /// inside it use that palette instead of the game's champagne-on-charcoal. A light palette also turns the status bar dark.

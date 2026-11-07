@@ -126,9 +126,6 @@ struct AcctPayroll: View {
                     AcctNotice(glyph: Glyph.warning, title: "Cash does not cover the next payroll yet",
                                message: "Put in \(fmt.short(o.estimate - o.companyCash)) more before pay day, or part of the wages stays unpaid.", tint: P.caution)
                 }
-                Button("Move money in the Bank") { store.openBank(.company(co.id)) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
-                    .accessibilityIdentifier("acct-payroll-move-money")
             }
         }
     }
@@ -170,21 +167,18 @@ struct AcctPayroll: View {
         let fee: String = c.monthlyFee > 0.5 ? fmt.short(c.monthlyFee) + " a month" : "No extra fee"
         var title: String = "You"
         var note: String = "You approve each payroll yourself."
-        var go: (() -> Void)? = nil
         switch c.mode {
         case .manual:
             break
         case .accountant, .inHouse:
             title = "Accountant"
-            note = o.responsibility?.who == .accountant ? (o.responsibility?.name ?? "") + " runs it." : "Appoint an accountant in Atlas to hand payroll over."
-            go = { store.openAtlas(companyID: id) }
+            note = o.responsibility?.who == .accountant ? (o.responsibility?.name ?? "") + " runs it." : "An appointed accountant can take payroll over."
         case .manager:
             title = "Manager"
             note = "A manager who decides on their own runs it at no extra fee."
-            go = { store.openGroupEntity(companyID: id, section: "management") }
         }
         if let why = c.unavailable { note = why }
-        return AcctRow(title: title, subtitle: note, value: fee, pill: c.isCurrent ? "Now" : nil, pillTone: .good, identifier: "acct-payroll-who-" + c.mode.rawValue, action: go)
+        return AcctRow(title: title, subtitle: note, value: fee, pill: c.isCurrent ? "Now" : nil, pillTone: .good, identifier: "acct-payroll-who-" + c.mode.rawValue)
     }
 
     @ViewBuilder private func recent(_ e: GameEngine, _ co: Company, _ fmt: BankFmt) -> some View {
@@ -343,8 +337,6 @@ struct AcctPayroll: View {
                 if !enough {
                     Text("The account does not cover this yet. Move money in through the Bank first, or part of the wages stays unpaid.").textStyle(.caption, tint: P.caution)
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 6)
-                    Button("Move money in the Bank") { store.openBank(.company(m.companyID)) }
-                        .buttonStyle(SecondaryButtonStyle(size: .compact)).padding(.top, Theme.Space.xs)
                 }
             }
         }

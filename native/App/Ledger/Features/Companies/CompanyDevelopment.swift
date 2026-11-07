@@ -36,7 +36,7 @@ struct CompanyDevelopment: View {
             finishedCard
         }
         .confirmAction($pending)
-        .centerSheet(item: $formFor) { c in ExpansionForm(engine: engine, company: company, project: c.project, onStarted: { formFor = nil }) }
+        .centerSheet(item: $formFor, category: .medium, tone: .investment) { c in ExpansionForm(engine: engine, company: company, project: c.project, onStarted: { formFor = nil }) }
     }
 
     private static func kindGlyph(_ kind: String) -> String {
@@ -115,7 +115,7 @@ struct CompanyDevelopment: View {
     private func confirmCancel(_ p: Development.Project, cost: Double, left: Int, _ cur: Currency) {
         let refund: Double = p.weeks > 0 ? cost * Double(min(left, p.weeks)) / Double(p.weeks) : 0
         let message: String = "\(cur.tidyShort(refund)) of the \(cur.tidyShort(cost)) comes back to the company, for the \(left.weeksText) that will not be run. The rest is spent. Nothing else changes."
-        pending = PendingAction(title: "Cancel \(p.name.lowercased())?", message: message, button: "Cancel it and take \(cur.tidyShort(refund)) back") {
+        pending = PendingAction(title: "Cancel \(p.name.lowercased())?", message: message, button: "Cancel it and take \(cur.tidyShort(refund)) back", tone: .warning, icon: "arrow.uturn.backward") {
             if let back = store.act({ $0.cancelDevelopment(companyID: company.id) }) ?? nil {
                 Haptics.success(); store.show("Cancelled. \(cur.tidyShort(back)) came back.", tone: "good")
             } else { store.show("Nothing to cancel.", tone: "warn") }
@@ -125,7 +125,7 @@ struct CompanyDevelopment: View {
     /// Spending real money on something that can fail: the question says what it costs and how long it takes.
     private func confirm(_ p: Development.Project, cost: Double, _ cur: Currency) {
         let message: String = "Costs \(cur.tidyShort(cost)), paid now. Takes \(p.weeks.weeksText). The team's skill and your quality decide how well it works; it can work fully, partly or not at all."
-        pending = PendingAction(title: "Start \(p.name.lowercased())?", message: message, button: "Start for \(cur.tidyShort(cost))", amount: cost, currency: cur) { start(p) }
+        pending = PendingAction(title: "Start \(p.name.lowercased())?", message: message, button: "Start for \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .investment, icon: "hammer") { start(p) }
     }
 
     private func start(_ p: Development.Project) {
@@ -188,7 +188,7 @@ struct ExpansionForm: View {
             ForEach(plan.requirements, id: \.self) { r in Text(r).popupText(.subtitle) }
             if let why = plan.blockedReason { Text(why).popupText(.risk) }
         }
-        Text("Closing this sheet changes nothing. A running project can be cancelled later and the part not yet spent comes back.").popupText(.caption)
+        Text("Cancelling later refunds what is not yet spent.").popupText(.caption)
     }
 
     private func start() {

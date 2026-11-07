@@ -191,13 +191,15 @@ struct InboxView: View {
 
     private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int), _ k: Tab) -> some View {
         let week: Int = e.state.week
+        let alerts: [PayrollAlert] = payrollAlerts(e, k)
         return List {
-            if !list.isEmpty || k == .all {
-                hero(e, k, list).mailRowStyle().listRowSeparator(.hidden)
+            if !list.isEmpty || !alerts.isEmpty || k == .all {
+                hero(e, k, list, extra: alerts.count).mailRowStyle().listRowSeparator(.hidden)
             }
             if k == .all { searchField.padding(.bottom, Theme.Space.s).mailRowStyle().listRowSeparator(.hidden) }
             if companyFilter != nil { filterLine(e).mailRowStyle() }
-            if list.isEmpty { empty(e, k).mailRowStyle() }
+            if list.isEmpty && alerts.isEmpty { empty(e, k).mailRowStyle() }
+            ForEach(alerts) { (a: PayrollAlert) in payrollRow(a).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
                 ForEach(b.messages) { (m: Message) in
                     mailRow(m, week: week, inline: k == .decisions).transition(.opacity)
@@ -229,11 +231,53 @@ struct InboxView: View {
                 if m.status != "open" && !m.isRead {
                     Button { store.markRead(m.id) } label: { Label("Read", systemImage: "envelope.open") }.tint(P.lineStrong)
                 }
-                if m.companyID != 0, store.engine?.state.company(m.companyID) != nil {
-                    Button { store.openCompany(m.companyID, section: MessageCard.section(for: m)) } label: { Label("Company", systemImage: "building.2") }
-                        .tint(P.accent2)
-                }
             }
+    }
+
+    // MARK: Payroll
+
+    /// Payroll that waits for the owner (no manager or accountant approves it): a needs-you item answered here, on the Needs you tab.
+    private func payrollAlerts(_ e: GameEngine, _ k: Tab) -> [PayrollAlert] {
+        guard k == .decisions, query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        return e.payrollAlerts().filter { companyFilter == nil || $0.companyID == companyFilter }
+    }
+
+    private func payrollRow(_ a: PayrollAlert) -> some View {
+        let fmt = BankFmt(store: store, company: store.engine?.state.company(a.companyID))
+        let text: String = a.isLate ? "Payroll \(fmt.short(a.amount)) is late. \(a.reason)" : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason)"
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(a.companyName).textStyle(.caption, tint: P.inkFaint)
+            Text(text.tidyText).textStyle(.body, tint: P.ink).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer(minLength: 0)
+                Button(a.isLate ? "Pay now" : "Approve payroll") { runPayroll(a, fmt) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
+                    .accessibilityIdentifier("inbox-payroll-\(a.companyID)")
+            }
+        }
+        .padding(.vertical, Theme.Space.s)
+    }
+
+    private func runPayroll(_ a: PayrollAlert, _ fmt: BankFmt) {
+        let outcome: PayrollAlertOutcome? = store.act { (e: inout GameEngine) -> PayrollAlertOutcome in e.resolvePayrollAlert(companyID: a.companyID) }
+        switch outcome {
+        case .approved?:
+            Haptics.success()
+            store.show("Payroll approved: about \(fmt.short(a.amount)) goes out on \(a.dateText).", tone: "good")
+        case .paidLate(let paid, let short)?:
+            if short > 0.5 {
+                Haptics.warning()
+                store.show("Paid \(fmt.short(paid)). Still short \(fmt.short(short)): put money into the company and run it again.", tone: "warn")
+            } else {
+                Haptics.success()
+                store.show("Late payroll paid: \(fmt.short(paid)).", tone: "good")
+            }
+        case .notNeeded(let why)?:
+            Haptics.warning()
+            store.show(why, tone: "warn")
+        case nil:
+            break
+        }
     }
 
     // MARK: Pinning (a view preference kept on the device, not game state)
@@ -263,8 +307,8 @@ struct InboxView: View {
     }
 
     /// The page's hero: how many messages it holds, in words, and one line that matters (the first expiry, who answered, what is unread).
-    private func hero(_ e: GameEngine, _ k: Tab, _ list: [Message]) -> some View {
-        let n: Int = list.count
+    private func hero(_ e: GameEngine, _ k: Tab, _ list: [Message], extra: Int = 0) -> some View {
+        let n: Int = list.count + extra
         let title: String
         var note: String = ""
         switch k {
@@ -274,7 +318,6 @@ struct InboxView: View {
             if let left = soonest { note = left <= 0 ? "The first one expires this week." : "The first one expires in \(left) week\(left == 1 ? "" : "s")." }
         case .handled:
             title = "handled by your team"
-            note = "Managers, your accountant and desks answered these for you."
         case .all:
             title = n == 1 ? "message" : "messages"
             let unread: Int = store.unreadCount
@@ -349,9 +392,9 @@ struct InboxView: View {
     private func empty(_ e: GameEngine, _ k: Tab) -> some View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
-            : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
+            : e.state.inbox.isEmpty ? "Nothing here yet."
             : k == .decisions ? "Nothing needs you right now."
-            : k == .handled ? "Decisions your managers answer for you are listed here." : "Nothing here yet."
+            : k == .handled ? "Nothing handled for you yet." : "Nothing here yet."
         return EmptyState(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, title: text)
             .padding(.top, Theme.Space.xxl)
     }
@@ -383,20 +426,6 @@ struct MessageCard: View {
         let hold: Bool = need.irreversible && ["sell", "fire", "dismiss", "sack", "let go", "wind up", "terminate"].contains { words.contains($0) }
         return PendingAction(title: title, message: message, button: button, destructive: hold, alwaysAsk: need.irreversible && !hold,
                              tone: hold ? nil : .warning, run: run)
-    }
-
-    /// The part of the company a message is about, where that is clear from what it asks.
-    static func section(for m: Message) -> CompanySection? {
-        let a = m.actionID
-        let key: String?
-        if a.hasPrefix("pay29") { key = "finances" }
-        else if ["staffx", "mgrraise", "mgrpoach", "prop", "mprop", "mfind11"].contains(a) || a.hasPrefix("tg58") { key = "staff" }
-        else if a == "ctv" || a == "acct" { key = "customers" }
-        else if a == "oil24" { key = "energy" }
-        else if a == "club24" || a == "fb24" { key = "club" }
-        else if a == "wx56prep" { key = "operations" }
-        else { key = nil }
-        return key.flatMap { CompanySection(key: $0) }
     }
 
     private var glyph: String { message.inboxGlyph }
@@ -459,27 +488,13 @@ struct MessageCard: View {
                 if !message.handledBy.isEmpty {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium)
                 }
-                companyLink
             }
             if open { decision }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder private var companyLink: some View {
-        if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
-            let sec = Self.section(for: message)
-            let app = store.applicantLink(message)
-            Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
-                LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
-        } else if message.companyID == 0, let app = PhoneApp(rawValue: message.appLink) {
-            Button { store.openApp(app) } label: { LinkLabel(text: "Open \(app.title)") }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("open-app-link")
-        }
-    }
-
-    /// The message as a chat bubble: sender and age on top, the subject, the text, what it means, and the link to the company.
+    /// The message as a chat bubble: sender and age on top, the subject, the text, what it means, and what it means.
     private func bubble(open: Bool) -> some View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         return VStack(alignment: .leading, spacing: 4) {
@@ -496,16 +511,6 @@ struct MessageCard: View {
             }
             if !message.handledBy.isEmpty {
                 Text("Handled by " + message.handledBy).font(.caption2.weight(.medium)).foregroundStyle(P.accent)
-            }
-            if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
-                let sec = Self.section(for: message)
-                let app = store.applicantLink(message)
-                Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
-                    LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
-                }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
-            } else if message.companyID == 0, let app = PhoneApp(rawValue: message.appLink) {
-                Button { store.openApp(app) } label: { LinkLabel(text: "Open \(app.title)") }
-                    .buttonStyle(PressableStyle()).accessibilityIdentifier("open-app-link")
             }
         }
         .padding(.horizontal, full ? 0 : 14).padding(.vertical, full ? 0 : 11)
@@ -527,7 +532,7 @@ struct MessageCard: View {
         }
         let opts = Array(message.options.enumerated())
         if opts.isEmpty {
-            Text("Nothing to choose here. This is dealt with in the company it concerns.").popupText(.caption)
+            Text("Dealt with in the company.").popupText(.caption)
         }
         VStack(spacing: Theme.Space.s) {
             ForEach(opts, id: \.offset) { idx, opt in

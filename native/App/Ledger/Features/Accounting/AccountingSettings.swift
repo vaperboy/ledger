@@ -80,7 +80,6 @@ struct AcctSettings: View {
                 FlatRow(label: "Accountant fee", value: fee, sub: rating)
                 FlatRow(label: "Owner access", value: AccountingLevel.owner.title)
             }
-            AcctSecondaryButton(title: "Change accountant", identifier: "acct-change-accountant") { store.openAtlas(companyID: co.id) }
         }
     }
 }

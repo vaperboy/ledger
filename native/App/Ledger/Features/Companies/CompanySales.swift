@@ -6,20 +6,20 @@ import Simulation
 
 /// Sales of one company: "Your products" (or "Your services") as a list, one row per item with its name, how demand is, its price and how far
 /// that is from the market. Tapping an item opens its item page. Marketing is a popup (`MarketingSheet`); a trade that
-/// can develop new things also has that row (a timed project on its own page, `CompanyDevelopment`). Customers are in Stats, the Market is a Phone app, and Projects
-/// are a part of this section only for project businesses (`CompanyDetailView`). There is no Pricing screen any more: prices are set per item.
+/// can develop new things also has that row (a timed project on its own page, `CompanyDevelopment`). Customers are in Stats; the market, its
+/// rivals and market research are in the Market app; Projects are a part of this section only for project businesses (`CompanyDetailView`).
+/// There is no Pricing screen any more: prices are set per item.
 struct CompanySales: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     @Binding var part: OpsPart
-    /// The last opened page, kept while the page slides away so it does not flash the settings list.
-    @State private var heldPart: OpsPart = .setup
     @State private var showMarketing = false
     @State private var openItem: SalesItemPick?
     @State private var addingService: Bool?
     @State private var showHire = false
     @State private var showAddons = false
+    @Environment(\.outsidePalette) private var P
 
     /// A tapped item, for the popup.
     private struct SalesItemPick: Identifiable, Hashable { var id: String }
@@ -28,19 +28,17 @@ struct CompanySales: View {
     var body: some View {
         let items: [SalesItem] = engine.salesItems(companyID: company.id)
         let service: Bool = !items.isEmpty && items.allSatisfy { (i: SalesItem) -> Bool in i.isService }
-        return VStack(spacing: Theme.Space.l) {
-            CompanyBrandLine(engine: engine, companyID: company.id)
+        return VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            hero(items)
             productsArea(items, service)
             addonsCard
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
                 developRow
-                ResearchRow(engine: engine, company: company)
             }
-            trendCard
         }
-        .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
-        .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id })) { (p: NewItemPick) in
+        .centerSheet(isPresented: $showMarketing, title: "Marketing", category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
+        .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id }), category: .medium, tone: .info) { (p: NewItemPick) in
             NewItemSheet(companyID: company.id, isService: p.id, onClose: { addingService = nil },
                          onHireAdvisor: { addingService = nil; showHire = true },
                          onAdded: { (name: String) in
@@ -51,10 +49,19 @@ struct CompanySales: View {
         .navigationDestination(item: $openItem) { (p: SalesItemPick) in ItemPageView(companyID: company.id, itemID: p.id) }
         .navigationDestination(isPresented: $showHire) { HireWorkersView(companyID: company.id, startRole: "advisor") }
         .navigationDestination(isPresented: $showAddons) { DealerAddonsPage(companyID: company.id) }
-        .navigationDestination(isPresented: Binding(get: { part != .setup }, set: { if !$0 { part = .setup } })) {
-            OpsPageDestination(part: part == .setup ? heldPart : part, companyID: company.id)
-        }
-        .onChange(of: part) { (_: OpsPart, new: OpsPart) in if new != .setup { heldPart = new } }
+    }
+
+    /// Sales last week, the brand's standing and the best seller; the sparkline is revenue by month.
+    private func hero(_ items: [SalesItem]) -> some View {
+        let co: Company = company
+        let h: CompanyHealth = store.memo("coHealth\(co.id)") { $0.companyHealth(co) } ?? engine.companyHealth(co)
+        let week: Double = co.lastWeekRevenue
+        let best: SalesItem? = items.max { (a: SalesItem, b: SalesItem) -> Bool in a.weeklyRevenue < b.weeklyRevenue }
+        let brand: String = "Brand " + BrandWords.label(score: engine.brandValue(companyID: co.id)).lowercased()
+        let noCap: Bool = engine.operationsFigures(companyID: co.id)?.weeks.last.map { $0.capacity <= 0 && $0.demand > 0 } ?? false
+        let bestText: String = noCap ? "no one could be served" : ((best?.weeklyRevenue ?? 0) > 0 ? "best seller " + (best?.name ?? "") : "")
+        return CompanyHero(label: "Sales last week", value: store.money(week, in: co), change: brand, changeTint: P.accent,
+                           context: bestText, trend: Array(h.revenueSeries.suffix(12)), live: week)
     }
 
     /// The used car yard and the new car showroom have their own pages (real cars, one price each); every other trade lists its items.
@@ -69,18 +76,14 @@ struct CompanySales: View {
         }
     }
 
-    /// Dealer warranty, car loans and insurance at the sale, for both car dealers.
+    /// Dealer add-ons (warranty, loans, insurance), only for trades that sell them.
     @ViewBuilder private var addonsCard: some View {
         if DealerAddons.supports(company) {
-            OverviewSettingsCard(heading: "Sale add-ons") {
-                SettingsTableRow(title: "Warranty, loans and insurance", note: "Set up, switch on, and see what each sale brings", value: "", glyph: Glyph.opsBox) { showAddons = true }
+            PageGroup("Add-ons") {
+                LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Warranty, loans and insurance",
+                          identifier: "sales-addons") { showAddons = true }
             }
         }
-    }
-
-    @ViewBuilder private var trendCard: some View {
-        let trend: MarketTrend = engine.marketTrend(companyID: company.id)
-        if trend.points.count >= 2 { MarketTrendCard(trend: trend) }
     }
 
     /// New products or services written for this trade ("New menu item"): a timed project with its cost, on its own page.

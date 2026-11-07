@@ -4,17 +4,17 @@ import Countries
 import Businesses
 import Simulation
 
-/// Marketing as a popup: one compact list of channels, each with a live weekly-budget slider, an on/off switch and what that budget is
-/// expected to do (`Marketing.estimate`), so a budget is never set blind.
+/// Marketing as a popup: one compact row per channel with its switch; a running channel also shows its weekly budget as a step control
+/// over the engine's own budget levels (no slider, so a scroll or swipe never sets a budget) and what that budget is expected to do.
+/// A big rise asks first; every change can be undone from its toast.
 struct MarketingSheet: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
-    /// Budget being dragged, per channel; absent = the running budget.
-    @State private var draft: [String: Double] = [:]
+    @State private var pending: PendingAction?
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
-            content(e, co)
+            content(e, co).confirmAction($pending)
         } else {
             EmptyState(glyph: Glyph.opsMega, title: "This company no longer exists")
         }
@@ -24,8 +24,8 @@ struct MarketingSheet: View {
         let cur: Currency = e.currency(for: co)
         let mkt: JSONValue = co.value("mkt")
         let channels: [MarketingChannel] = e.marketingChannels(companyID: companyID)
-        let total: Double = channels.reduce(0) { $0 + spend($1, mkt: mkt) }
-        let active: Int = channels.filter { spend($0, mkt: mkt) > 0 }.count
+        let total: Double = channels.reduce(0) { $0 + running($1, mkt: mkt) }
+        let active: Int = channels.filter { running($0, mkt: mkt) > 0 }.count
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             header(active: active, total: total, cur: cur)
             if channels.isEmpty {
@@ -37,20 +37,20 @@ struct MarketingSheet: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// "Marketing", how many campaigns run and the total weekly budget; 
+    /// The total weekly budget as the one figure, and how many channels run.
     private func header(active: Int, total: Double, cur: Currency) -> some View {
-        let sub: String = active == 0 ? "No campaigns" : "\(active) active \u{00B7} " + cur.tidyDisplay(total) + " a week"
-        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("Marketing").popupText(.figure).accessibilityAddTraits(.isHeader)
-            Text(sub).popupText(active > 0 ? .effect : .subtitle)
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(cur.tidyDisplay(total) + " a week").popupText(.figure)
+            Text(active == 0 ? "No campaigns running" : "\(active.countText("channel")) running").popupText(active > 0 ? .effect : .subtitle)
         }
+        .padding(.bottom, Theme.Space.s)
     }
 
     private func channelList(_ e: GameEngine, _ channels: [MarketingChannel], cur: Currency, mkt: JSONValue) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(channels.enumerated()), id: \.element.id) { (n: Int, ch: MarketingChannel) in
                 if n > 0 { Hairline() }
-                row(e, ch, cur: cur, mkt: mkt)
+                row(e, ch, channels, cur: cur, mkt: mkt)
             }
         }
     }
@@ -60,41 +60,50 @@ struct MarketingSheet: View {
         return r.isNull ? 0 : r["b"].double
     }
 
-    private func spend(_ ch: MarketingChannel, mkt: JSONValue) -> Double { draft[ch.id] ?? running(ch, mkt: mkt) }
-
-    private func row(_ e: GameEngine, _ ch: MarketingChannel, cur: Currency, mkt: JSONValue) -> some View {
-        let budgets: [Double] = ch.budgets(in: cur).filter { $0 > 0 }
-        let top: Double = budgets.max() ?? 1
-        let first: Double = budgets.min() ?? top
-        let value: Double = spend(ch, mkt: mkt)
+    private func row(_ e: GameEngine, _ ch: MarketingChannel, _ all: [MarketingChannel], cur: Currency, mkt: JSONValue) -> some View {
+        let levels: [Double] = ch.budgets(in: cur).filter { $0 > 0 }.sorted()
+        let first: Double = levels.first ?? 0
+        let value: Double = running(ch, mkt: mkt)
+        let total: Double = all.reduce(0) { $0 + running($1, mkt: mkt) }
         let plan: CampaignPlan? = e.campaignPlan(companyID: companyID, channel: ch.id, weeklyBudget: 1, weeks: nil)
         let blockedText: String? = plan?.blocked.map { $0.prefix(1).uppercased() + $0.dropFirst() + "." }
         let reason: String? = plan?.runByChain == true ? "Run by the chain." : blockedText
-        let on = Binding<Bool>(get: { value > 0 }, set: { (v: Bool) in commit(ch, v ? first : 0, cur: cur) })
-        let amount = Binding<Double>(get: { value }, set: { (v: Double) in draft[ch.id] = v })
-        return VStack(alignment: .leading, spacing: 0) {
+        let on = Binding<Bool>(get: { value > 0 }, set: { (v: Bool) in change(ch, from: value, to: v ? first : 0, total: total, cur: cur) })
+        let lower: Double? = levels.last { $0 < value - 0.001 } ?? (value > 0 ? 0 : nil)
+        let higher: Double? = levels.first { $0 > value + 0.001 }
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(spacing: Theme.Space.xs) {
                 Text(ch.name).popupText(.rowValue)
                     .lineLimit(2).minimumScaleFactor(0.8).fixedSize(horizontal: false, vertical: true)
                 InfoPopoverButton(title: ch.name, text: ch.note.tidyMoney)
                 Spacer(minLength: Theme.Space.xs)
-                if reason == nil {
-                    Text(cur.tidyDisplay(value) + " a week").popupText(value > 0 ? .effect : .caption).lineLimit(1).minimumScaleFactor(0.8)
-                }
                 LedgerSwitch(isOn: on).disabled(reason != nil)
             }
+            .frame(minHeight: 44)
             if let why = reason {
                 Text(why).popupText(.risk).padding(.bottom, Theme.Space.xs)
-            } else {
-                if value > 0, let line = effectLine(e, ch, budget: value, cur: cur) {
+            } else if value > 0 {
+                HStack(spacing: Theme.Space.s) {
+                    stepButton("minus", enabled: lower != nil, id: "marketing-less-" + ch.id) { if let l = lower { change(ch, from: value, to: l, total: total, cur: cur) } }
+                    Text(cur.tidyDisplay(value) + " a week").popupText(.effect).frame(maxWidth: .infinity)
+                    stepButton("plus", enabled: higher != nil, id: "marketing-more-" + ch.id) { if let h = higher { change(ch, from: value, to: h, total: total, cur: cur) } }
+                }
+                if let line = effectLine(e, ch, budget: value, cur: cur) {
                     Text(line.text).textStyle(.caption, tint: line.tint, numeric: true).fixedSize(horizontal: false, vertical: true)
                 }
-                LedgerSlider(value: amount, in: 0...top, onEditingChanged: { (editing: Bool) in
-                    if !editing { commit(ch, draft[ch.id] ?? value, cur: cur) }
-                })
             }
         }
         .padding(.vertical, Theme.Space.xxs)
+    }
+
+    /// A round minus or plus with a 44 pt target.
+    private func stepButton(_ symbol: String, enabled: Bool, id: String, _ run: @escaping () -> Void) -> some View {
+        Button { Haptics.choose(); run() } label: {
+            Image(systemName: symbol).font(.body.weight(.semibold)).frame(width: 44, height: 44).contentShape(Circle())
+        }
+        .buttonStyle(SecondaryButtonStyle(size: .compact))
+        .disabled(!enabled)
+        .accessibilityIdentifier(id)
     }
 
     /// What this budget is expected to do once the name has settled: more customers and the weekly profit after the budget, or that the
@@ -109,11 +118,34 @@ struct MarketingSheet: View {
         return (customers + " \u{00B7} " + net + payback, est.netPerWeek >= 0 ? Theme.gain : Theme.loss)
     }
 
-    /// Applies the budget (0 stops it); a refusal (lock, chain) is shown and the slider snaps back, a change is confirmed.
-    private func commit(_ ch: MarketingChannel, _ budget: Double, cur: Currency) {
-        let r = store.act { $0.setCampaign(companyID: companyID, channel: ch.id, weeklyBudget: budget, weeks: nil) }
-        draft[ch.id] = nil
-        if case .refused(let why)? = r { Haptics.warning(); store.show(why.prefix(1).uppercased() + why.dropFirst(), tone: "warn") }
-        else if r != nil { store.saved(budget > 0 ? ch.name + " at " + cur.tidyDisplay(budget) + " a week" : ch.name + " stopped") }
+    /// A rise to more than twice the current weekly total, or above a quarter of a normal week's revenue, asks first (it is paid every week).
+    private func change(_ ch: MarketingChannel, from old: Double, to new: Double, total: Double, cur: Currency) {
+        let newTotal: Double = total - old + new
+        let weekRevenue: Double = store.engine?.state.company(companyID).map { (co: Company) -> Double in
+            max(co.lastWeekRevenue, (co.monthlyHistory.last?.revenue ?? 0) / 4.33) } ?? 0
+        let big: Bool = new > old && ((total > 0 && newTotal > total * 2) || (weekRevenue > 0 && newTotal > weekRevenue * 0.25))
+        if big {
+            pending = PendingAction(title: "Spend \(cur.tidyDisplay(newTotal)) a week on marketing?",
+                                    message: "\(ch.name) at \(cur.tidyDisplay(new)) a week: \(cur.tidyDisplay(newTotal - total)) a week more than now, from company cash.",
+                                    button: "Spend it", alwaysAsk: true, tone: .warning, icon: "megaphone") { commit(ch, new, undo: old, cur: cur) }
+        } else {
+            commit(ch, new, undo: old, cur: cur)
+        }
+    }
+
+    /// Applies the budget (0 stops it). A refusal (lock, chain) is a toast; a change is a banner whose tap puts the old budget back.
+    private func commit(_ ch: MarketingChannel, _ budget: Double, undo old: Double, cur: Currency) {
+        let id: Int = companyID
+        let channel: String = ch.id
+        let r = store.act { $0.setCampaign(companyID: id, channel: channel, weeklyBudget: budget, weeks: nil) }
+        if case .refused(let why)? = r { Haptics.warning(); store.show(why.prefix(1).uppercased() + why.dropFirst(), tone: "warn"); return }
+        guard r != nil else { return }
+        let text: String = budget > 0 ? ch.name + " at " + cur.tidyDisplay(budget) + " a week" : ch.name + " stopped"
+        let s: GameStore = store
+        s.banners.post(BannerItem(key: "mkt-undo-" + channel, source: "Marketing", title: text, body: "Tap to undo", glyph: Glyph.opsMega, severity: 1, lifetime: 6,
+                                  target: .place("Undo", {
+            _ = s.act { $0.setCampaign(companyID: id, channel: channel, weeklyBudget: old, weeks: nil) }
+            s.show(old > 0 ? "Back to \(cur.tidyDisplay(old)) a week" : ch.name + " stopped again", tone: "n")
+        })))
     }
 }

@@ -79,10 +79,7 @@ struct ProjectsRunningTab: View {
             VStack(spacing: 0) {
                 ForEach(Array(rows.sorted { $0.board.outstandingPayments > $1.board.outstandingPayments }.enumerated()), id: \.element.co.id) { (n: Int, r: (co: Company, board: ProjectBoard)) in
                     if n > 0 { Hairline() }
-                    Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
-                        ProjectCardRow(title: r.co.name, sub: companyLine(r.board) + (!r.board.isDeveloper && r.board.outstandingPayments > 0 ? " · owed \(store.short(r.board.outstandingPayments, in: r.co))" : ""))
-                    }
-                    .buttonStyle(PressableStyle()).accessibilityIdentifier("open-project-company")
+                    ProjectCardRow(title: r.co.name, sub: companyLine(r.board) + (!r.board.isDeveloper && r.board.outstandingPayments > 0 ? " · owed \(store.short(r.board.outstandingPayments, in: r.co))" : ""))
                 }
             }
         }
@@ -299,28 +296,10 @@ struct ProjectsBidsTab: View {
         }
     }
 
-    // START SOMETHING: four tiles; each goes to the company section that does it (a menu when several companies could).
+    // START SOMETHING: a venture. Company projects are started in the company's own Projects section, not from here.
     private var startTiles: some View {
-        let developers = rows.filter { $0.board.isDeveloper }.map(\.co)
-        let contractors = rows.filter { !$0.board.isDeveloper }.map(\.co)
-        let landlords = engine.state.companies.filter { $0.status.isLive && engine.tradeInfo(companyID: $0.id)?.family == "rent" }
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible(), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
-            startTile("Refurbishment", "improve a property", "M4 20 H20 M6 20 V10 L12 5 L18 10 V20", landlords, .properties, none: "No company owns property yet.")
-            startTile("Developer project", "build and sell", "M5 21 V4 H15 V21 M15 9 H19 V21", developers, .projects, none: "No developer company yet.")
-            startTile("Event or contract", "one-off work", "M5 5 H19 V20 H5 Z M5 10 H19 M9 3 V7 M15 3 V7", contractors, .projects, none: "No contracting or events company yet.")
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible(), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
             Button { Haptics.tap(); openVentures() } label: { tile("Venture", "back a startup", "M12 3 C16 6 17 11 14 16 L12 20 L10 16 C7 11 8 6 12 3") }.buttonStyle(PressableStyle())
-        }
-    }
-
-    @ViewBuilder private func startTile(_ name: String, _ note: String, _ icon: String, _ cos: [Company], _ section: CompanySection, none: String) -> some View {
-        if cos.isEmpty {
-            Button { Haptics.warning(); store.show(none, tone: "warn") } label: { tile(name, note, icon).opacity(0.6) }.buttonStyle(PressableStyle())
-        } else if cos.count == 1, let c = cos.first {
-            Button { Haptics.tap(); store.openCompany(c.id, section: section) } label: { tile(name, note, icon) }.buttonStyle(PressableStyle())
-        } else {
-            Menu {
-                ForEach(cos, id: \.id) { c in Button(c.name) { store.openCompany(c.id, section: section) } }
-            } label: { tile(name, note, icon) }
         }
     }
 
@@ -373,9 +352,7 @@ struct ProjectsFinishedTab: View {
         if !jobsDone.isEmpty {
             ProjectCaps(title: "Jobs and events done")
             ForEach(jobsDone, id: \.co.id) { r in
-                Button { Haptics.tap(); store.openCompany(r.co.id, section: .projects) } label: {
-                    ProjectCardRow(title: r.co.name, sub: "\(r.board.finishedCount) finished")
-                }.buttonStyle(PressableStyle())
+                ProjectCardRow(title: r.co.name, sub: "\(r.board.finishedCount) finished")
             }
         }
         if !results.isEmpty {

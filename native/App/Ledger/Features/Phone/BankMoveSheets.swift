@@ -131,10 +131,8 @@ struct BankMoveSheet: View {
         if let cid = account.companyID, let co = e.state.company(cid), co.form == .limited, kind != .deposit {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text("A limited company cannot hand its cash to you directly.").popupText(.button)
-                Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid from the company's Ownership section.")
+                Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid by the company.")
                     .popupText(.subtitle)
-                Button("Open the company") { dismiss(); store.openCompany(cid, section: .finances) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
             }
         } else {
             Text("There is nowhere to move money to yet. Start a company first.").popupText(.subtitle)
@@ -152,13 +150,13 @@ struct BankMoveSheet: View {
         switch account {
         case .personal, .investments:
             let s = e.state
-            if kind == .deposit || (kind == .transfer && account == .investments) {
+            if kind == .deposit {
                 add("Current account to savings", "Earns interest; comes back any day.", s.cash, home) { a in
                     self.store.act({ $0.moveToSavings(a) }) == true ? "\(home.tidyShort(a)) moved to savings." : nil
                 }
             }
-            if kind == .withdraw || (kind == .transfer && account == .investments) {
-                add("Savings to current account", "For bills, loans and buying investments.", s.savings, home) { a in
+            if kind == .withdraw {
+                add("Savings to current account", "For bills and loans.", s.savings, home) { a in
                     self.store.act({ $0.moveToSavings(-a) }) == true ? "\(home.tidyShort(a)) moved to the current account." : nil
                 }
             }

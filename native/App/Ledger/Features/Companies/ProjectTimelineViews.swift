@@ -50,9 +50,6 @@ struct ProjectTimelineDetail: View {
                             if let a = line.atStake, a > 0 { FlatRow(label: line.atStakeLabel, value: store.short(a, in: co)) }
                         }
                     }
-                    Button { Haptics.tap(); store.openCompany(co.id, section: .projects) } label: {
-                        GroupLinkRow(title: "Open \(co.name) > Projects", sub: line.kind == .tender ? "Bid, or withdraw a bid, there." : "Hold, price or review the order book there.")
-                    }.buttonStyle(PressableStyle())
                 }
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 900).frame(maxWidth: .infinity)

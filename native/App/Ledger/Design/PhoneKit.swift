@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Shared pieces for the pages of the Phone apps (Inbox, News, Stats, Goals, World, Luxury, Ventures, Rich list, Settings), built on
+// Shared pieces for the pages of the Phone apps (Inbox, News, Stats, Goals, Market, Luxury, Ventures, Settings), built on
 // NewLook.swift: a titled card section, a figure card, an icon row, and a few extra house icons in the same 24 x 24 style.
 
 extension Glyph {

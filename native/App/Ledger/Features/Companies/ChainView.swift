@@ -70,7 +70,7 @@ struct ChainView: View {
     private func renamePopup(_ sum: Chains.Summary, _ cur: Currency) -> some View {
         PopupBody {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
-                Text("Every store takes the new name and pays for its own new signs (about \(cur.tidyShort(cur.scaledPrice(40000))) for a standard store). Awareness of the old name is not carried over in full.")
+                Text("New signs about \(cur.tidyShort(cur.scaledPrice(40000))) a store \u{00B7} some awareness is lost")
                     .popupText(.subtitle)
                 TextField("New name", text: $newName)
                     .popupField()
@@ -417,7 +417,6 @@ struct ChainRulesSection: View {
     var body: some View {
         MoreBlock("Chain rules") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Set once for every store. A store can take its own price step, local marketing and pay under Own rules.").textStyle(.caption, tint: Theme.inkSoft)
                 priceRule
                 Text("Ordering").textStyle(.caption, tint: Theme.inkSoft)
                 orderingRule
@@ -425,8 +424,6 @@ struct ChainRulesSection: View {
                 payRule
                 Text("Marketing").textStyle(.caption, tint: Theme.inkSoft)
                 marketingRule
-                Text("Brand marketing takes a share of each store's sales for the two channels that suit the trade best. Pay is checked every month and anyone below the level gets a raise.")
-                    .textStyle(.caption, tint: Theme.inkFaint)
                 knobRules
             }
         }

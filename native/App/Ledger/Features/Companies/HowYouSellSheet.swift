@@ -157,7 +157,7 @@ struct HowYouSellSheet: View {
             report(store.act { $0.changeKnob(companyID: id, knob: knob.id, option: option) }, cur)
         }
         pending = PendingAction(title: "Sell by \(q.optionName)?", message: costLines(q, cur), button: q.totalCost > 0 ? "Change for \(cur.tidyShort(q.totalCost))" : "Change",
-                                amount: q.totalCost, currency: cur, run: run)
+                                amount: q.totalCost, currency: cur, tone: .info, icon: "arrow.triangle.branch", run: run)
     }
 
     private func toggle(_ e: GameEngine, _ co: Company, _ knob: Knob, _ option: Int, _ on: Bool, _ cur: Currency) {
@@ -170,7 +170,7 @@ struct HowYouSellSheet: View {
             else { Haptics.tap(); store.show(on ? "\(q.optionName) is on." : "\(q.optionName) is off.", tone: "good") }
         }
         let button: String = on ? (q.totalCost > 0 ? "Add for \(cur.tidyShort(q.totalCost))" : "Add") : "Drop"
-        pending = PendingAction(title: on ? "Add \(q.optionName)?" : "Drop \(q.optionName)?", message: costLines(q, cur), button: button, amount: q.totalCost, currency: cur, run: run)
+        pending = PendingAction(title: on ? "Add \(q.optionName)?" : "Drop \(q.optionName)?", message: costLines(q, cur), button: button, amount: q.totalCost, currency: cur, tone: .info, icon: "arrow.triangle.branch", run: run)
     }
 
     private func report(_ r: KnobChangeOutcome?, _ cur: Currency) {

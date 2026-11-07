@@ -106,7 +106,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     func testT02_PhoneAppsA() {
-        for t in ["Bank", "Accounting", "Inbox", "News", "Weather", "Stats", "World", "Luxury", "Rich list"] { tourApp(t) }
+        for t in ["Bank", "Accounting", "Inbox", "News", "Weather", "Stats", "Luxury"] { tourApp(t) }
     }
 
     func testT03_PhoneAppsB() {
@@ -117,7 +117,7 @@ final class FeatureToursTests: FeatureTourCase {
 
     /// The Group entity to work on: the café (it has the co-owner of the board game), else the first one.
     private func groupEntity() -> String {
-        guard goTab("Group") else { return "" }
+        guard goGroup("Companies") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-co", wait: 1).first ?? ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
@@ -142,14 +142,21 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     private func openEntityTab(_ entity: String, _ name: String) -> Bool {
-        guard !entity.isEmpty, goTab("Group") else { return false }
+        guard !entity.isEmpty, goGroup("Companies") else { return false }
         guard tapID(entity, wait: 4) else { return false }
         return tapGroupTab(name)
     }
 
     func testT04_Group() {
-        step("group tab: opens on the picker") { goTab("Group") ? (ids(prefix: "group-entity-").isEmpty ? .fail("no group-entity-* rows: " + tabState()) : .pass(signature().text)) : .fail("no Group tab") }
+        step("group tab: opens on Overview") { goTab("Group") ? (isSelected("group-home-tab-Overview") ? .pass(signature().text) : .fail("Overview not selected: " + tabState())) : .fail("no Group tab") }
         step("group tab: health") { health("Group", title: false) }
+        for home in ["Companies", "Staff", "Suppliers"] {
+            step("group tab: \(home) opens and is clean") {
+                guard goGroup(home) else { return .fail("no \(home) tab") }
+                if home == "Companies" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
+                return health("Group \(home)", title: false)
+            }
+        }
         let entity: String = groupEntity()
         step("group entity page: opens, Back returns to the picker") {
             guard !entity.isEmpty, tapID(entity, wait: 3) else { return .skip("no entity in the Group picker") }
@@ -172,14 +179,7 @@ final class FeatureToursTests: FeatureTourCase {
             return cut.isEmpty ? .pass() : .fail("cut: " + cut.joined(separator: ","))
         }
         roundTrip("group money: Policy popup closes and keeps the page", prepare: { openEntityTab(entity, "Money") }) { tapID("money-policy") }
-        step("group: Suppliers directory opens and Back returns") {
-            guard goTab("Group") else { return .fail("no Group tab") }
-            guard tapID("group-suppliers") else { return .skip("no group-suppliers link") }
-            let h: R = health("group suppliers")
-            _ = tapBack()
-            return find(wait: 3, { $0.id.hasPrefix("group-entity-") }) != nil ? h : .fail("Back did not return to the picker")
-        }
-        roundTrip("group: Add menu opens and closes back to the picker", prepare: { goTab("Group") }) { tapID("group-add") }
+        roundTrip("group: Add menu opens and closes back to Overview", prepare: { goGroup("Overview") }) { tapID("group-add") }
         roundTrip("boardroom: Talk to a manager opens the talk and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-talk-", wait: 4) }
         step("boardroom: talk goes through a choice and ends with a result") {
             guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-talk-", wait: 4) else { return .skip("nobody to talk to") }
@@ -283,7 +283,7 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             return homeVisible(4) ? .pass() : .fail("after switching section an edge swipe did not return to Home (\(signature().text))")
         }
-        for name in ["Inbox", "Settings", "Reviews", "Rich list"] {
+        for name in ["Inbox", "Settings", "Reviews", "Market"] {
             step("swipe back: Phone app \(name) returns to the grid") {
                 guard openPhoneApp(name), lastOpenWhy != "pick" else { return .skip("no tile on the grid") }
                 swipeBackFromEdge()

@@ -92,8 +92,7 @@ struct ReportMovements: View {
     }
 
     private func row(_ m: CompanyMovement, _ fmt: MoneyText) -> some View {
-        Button { store.openCompany(m.companyID, section: .finances) } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.label).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
                     Text((companyID == nil ? m.companyName + " · " : "") + GameCalendar.dateString(week: m.week))
@@ -101,13 +100,8 @@ struct ReportMovements: View {
                 }
                 Spacer(minLength: 8)
                 Text(fmt.signed(m.amount, company: m.companyID)).textStyle(.body, tint: m.amount > 0 ? Theme.gain : Theme.ink, numeric: true)
-                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
-            .padding(.vertical, 8).contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .disabled(engine.state.company(m.companyID) == nil)
-        .accessibilityHint("Opens the company's finances")
+            .padding(.vertical, 8)
     }
 }
 
@@ -135,7 +129,7 @@ struct ReportBills: View {
                     VStack(spacing: 0) {
                         ForEach(Array(o.upcoming.enumerated()), id: \.element.id) { i, u in
                             if i > 0 { CardLine() }
-                            Button { if u.companyID != 0 { store.openCompany(u.companyID, section: .finances) } } label: {
+                            VStack(spacing: 0) {
                                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(u.title.tidyMoney).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
@@ -147,12 +141,9 @@ struct ReportBills: View {
                                         Text(u.daysAway <= 0 ? "Due now" : u.daysAway == 1 ? "Tomorrow" : "\(u.dateText) · \(u.daysAway) days")
                                             .textStyle(.caption, tint: u.daysAway <= 7 ? Theme.caution : Theme.ivoryFaint)
                                     }
-                                    if u.companyID != 0 { GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: Theme.ivoryDim) }
                                 }
-                                .padding(.vertical, 8).contentShape(Rectangle())
+                                .padding(.vertical, 8)
                             }
-                            .buttonStyle(PressableStyle())
-                            .disabled(u.companyID == 0 || engine.state.company(u.companyID) == nil)
                         }
                     }
                 }

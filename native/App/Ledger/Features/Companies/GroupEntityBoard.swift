@@ -40,7 +40,7 @@ struct GroupEntityBoard: View {
                 }
             }
             if !active {
-                Text("Nobody else owns part of this company, so there are no seats to fill and no binding votes. A full board forms once you register a chain or a co-owner joins; until then your managers advise and you decide.")
+                Text("Advisory: no co-owner, no binding votes.")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -193,7 +193,7 @@ struct SeatPickerSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(r?.text ?? "").popupText(.caption).lineLimit(2)
             if cands.isEmpty {
-                EmptyState(glyph: Glyph.person, title: "Nobody lined up for this seat yet", message: "A search finds candidates; it costs a fee.", centered: false)
+                EmptyState(glyph: Glyph.person, title: "Nobody lined up for this seat yet", message: "Search to find candidates.", centered: false)
             }
             ForEach(cands) { (p: Person) in
                 candidateRow(p)

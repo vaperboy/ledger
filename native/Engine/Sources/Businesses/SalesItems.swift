@@ -16,6 +16,27 @@ public enum SalesItems {
     /// Price elasticity of one item's demand, and the clamps on price ratio and on the demand multiplier.
     public static let elasticity = -1.5
     public static let ratioRange = 0.3...3.0
+    /// The range a player price may take against the market price. The ceiling is well under what the demand curve is clamped at: no customer
+    /// pays three times the going price, and a price that far out only sells through the clamp.
+    public static let priceFloor = 0.3
+    /// The default ceiling, for a trade with none of its own (see `ceiling(for:)`).
+    public static let priceCeiling = 1.8
+    public static let priceRange = priceFloor...priceCeiling
+
+    /// Ceiling per trade, as a multiple of the market price: commodity and food trades sell close to the going price, luxury and professional trades
+    /// can charge far above it. Trades not listed use their family's ceiling, then `priceCeiling`.
+    static let tradeCeilings: [String: Double] = [
+        "bakery": 1.5, "cafe": 1.5, "restaurant": 1.8, "foodtruck": 1.4, "grocery": 1.4, "kiosk": 1.4, "hardware": 1.5, "taxi": 1.4, "courier": 1.5,
+        "parking": 1.5, "brewery": 1.6, "barber": 1.6, "carclean": 1.5, "cleaning": 1.5, "handy": 1.6, "gym": 1.7,
+        "hotel": 2.2, "nightclub": 2.2, "boutique": 2.2, "cardealer": 1.6, "airline": 2.0, "event": 2.2, "photo": 2.2, "vineyard": 2.2,
+        "law": 2.5, "acctfirm": 2.2, "cons": 2.5, "mktg": 2.3, "webdev": 2.2, "dental": 2.2, "physio": 2.0, "security": 1.8, "gamestudio": 2.2,
+    ]
+    static let familyCeilings: [String: Double] = ["prod": 1.6, "venue": 1.7, "project": 2.0, "logi": 1.5]
+
+    /// The most a trade's item may be priced at, against its market price.
+    public static func ceiling(for bd: Trade) -> Double { tradeCeilings[bd.id] ?? familyCeilings[bd.family] ?? priceCeiling }
+    /// The range of price against market that the slider and the checks allow for a trade (floor 0.3).
+    public static func range(for bd: Trade) -> ClosedRange<Double> { priceFloor...ceiling(for: bd) }
     static let demandRange = 0.4...2.5
     public static let maxItems = 12
     static let key = "items27"
@@ -37,6 +58,73 @@ public enum SalesItems {
         /// Price against market after the discount.
         public var effectiveMultiplier: Double { priceMultiplier * (1 - discountPercent / 100) }
     }
+
+    // MARK: Who sets prices
+
+    /// The owner sets item prices unless someone is hired to: a market advisor first (it is their job), else the manager.
+    public enum PriceSetter: Equatable, Sendable {
+        case owner
+        case advisor
+        case manager(name: String)
+
+        public var isOwner: Bool { self == .owner }
+        /// "You", "Market advisor", or the manager's name.
+        public var label: String {
+            switch self { case .owner: return "You"; case .advisor: return "Market advisor"; case .manager(let n): return n }
+        }
+    }
+
+    public static func priceSetter(_ s: GameState, _ co: Company) -> PriceSetter {
+        if RoleEffects.filled(co, NewItemOptions.advisorRole) { return .advisor }
+        if let m = co.managerID { return .manager(name: s.people[m]?.name ?? "Manager") }
+        return .owner
+    }
+
+    // MARK: First choice
+
+    /// A company started by the player has no products until the player chooses: while `pick1` says so, the item list the player sees is
+    /// empty and the trade's starter items are offered as the first choice. Companies without the key (older saves, test setups) show everything.
+    static let pickKey = "pick1"
+
+    public static func firstChoicePending(_ co: Company) -> Bool { co.value(pickKey)["p"].bool }
+
+    public static func markFirstChoicePending(_ s: inout GameState, _ i: Int) { s.companies[i].set(pickKey, .object(["p": .bool(true)])) }
+
+    /// Lets the trade's item module install its own starter items now instead of at the first weekly step, so the choice is made from, and
+    /// hides, the list the company will really have. Idempotent (the modules install once); it moves no money.
+    public static func seedStarters(_ s: inout GameState, _ i: Int, data: GameData) {
+        let status = s.companies[i].status
+        s.companies[i].status = .open
+        ItemHooks.weekly(&s, i, data: data)
+        s.companies[i].status = status
+    }
+
+    /// The first choice is made: every starter item except `keeping` (nil: all of them) stays out of the player's list, and the customers
+    /// (unit shares, see `shaped`) go to what is left.
+    public static func settlePick(_ s: inout GameState, companyID: Int, keeping: String?, data: GameData) {
+        guard let i = s.companyIndex(companyID), firstChoicePending(s.companies[i]) else { return }
+        seedStarters(&s, i, data: data)
+        guard let bd = data.catalog[s.companies[i].type] else { return }
+        let all = items(s.companies[i], bd)
+        let hide = all.map(\.id).filter { $0 != keeping }
+        store(&s, i, all)   // a trade with no module of its own now has a stored list to hide from
+        s.companies[i].set(pickKey, .object(["p": .bool(false), "hide": .array(hide.map { .string($0) })]))
+    }
+
+    /// While the first choice is open nothing is on sale: 0 (customers), else 1.
+    static func demandGate(_ co: Company) -> Double { firstChoicePending(co) ? 0 : 1 }
+
+    /// Hidden starters sell nothing and their customers go to the items left: shares of the visible items add up to 1 again.
+    static func shaped(_ co: Company, _ list: [Item]) -> [Item] {
+        let hidden = hiddenIDs(co)
+        guard !hidden.isEmpty else { return list }
+        let total = list.filter { !hidden.contains($0.id) }.reduce(0.0) { $0 + $1.unitShare }
+        guard total > 0 else { return list }
+        return list.map { var it = $0; it.unitShare = hidden.contains(it.id) ? 0 : it.unitShare / total; return it }
+    }
+
+    /// Ids the player does not see (starter items left unchosen).
+    public static func hiddenIDs(_ co: Company) -> Set<String> { Set(co.value(pickKey)["hide"].array.map(\.string)) }
 
     // MARK: Defaults from trade data
 
@@ -110,7 +198,7 @@ public enum SalesItems {
     /// The company's items: the stored list, or the default list while nothing has been changed.
     public static func items(_ co: Company, _ bd: Trade) -> [Item] {
         let raw = co.value(key)
-        return raw.isNull ? defaults(co, bd) : raw.array.map(decode)
+        return shaped(co, raw.isNull ? defaults(co, bd) : raw.array.map(decode))
     }
 
     static func store(_ s: inout GameState, _ i: Int, _ items: [Item]) { s.companies[i].set(key, .array(items.map(encode))) }
@@ -125,20 +213,23 @@ public enum SalesItems {
 
     static func isNeutral(_ items: [Item]) -> Bool { items.allSatisfy { $0.effectiveMultiplier == 1 } }
 
+    /// The stored list as the sales maths see it (hidden starters carry no customers).
+    static func loaded(_ co: Company) -> [Item]? {
+        let raw = co.value(key)
+        return raw.isNull ? nil : shaped(co, raw.array.map(decode))
+    }
+
     /// The company-wide demand multiplier from its items (sum of unit share times item demand). Exactly 1 at market prices.
     public static func demandFactor(_ co: Company) -> Double {
-        let raw = co.value(key)
-        guard !raw.isNull else { return 1 }
-        let items = raw.array.map(decode)
+        guard let items = loaded(co) else { return 1 }
         return isNeutral(items) ? 1 : items.reduce(0.0) { $0 + $1.unitShare * demandMultiplier(priceRatio: $1.effectiveMultiplier) }
     }
 
     /// The multiplier on the average ticket: revenue per customer after the mix shifts towards the cheaper items. Exactly 1 at market prices.
     public static func ticketFactor(_ co: Company) -> Double {
-        let raw = co.value(key)
-        guard !raw.isNull else { return 1 }
-        let items = raw.array.map(decode)
-        guard !isNeutral(items) else { return 1 }
+        guard let items = loaded(co) else { return 1 }
+        // With starters hidden the mix itself moves the average ticket, even at market prices.
+        guard !isNeutral(items) || !hiddenIDs(co).isEmpty else { return 1 }
         var g = 0.0, rev = 0.0
         for it in items {
             let d = it.unitShare * demandMultiplier(priceRatio: it.effectiveMultiplier)

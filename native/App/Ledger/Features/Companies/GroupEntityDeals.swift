@@ -38,7 +38,7 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func branchNote(_ cos: [Company]) -> some View {
         let n: Int = cos.filter { (c: Company) -> Bool in engine.isBranch(companyID: c.id) }.count
         if n > 0 {
-            Text(n == cos.count ? "A branch has no shares of its own. Close or sell it on the chain page." : "\(n) \(n == 1 ? "branch has" : "branches have") no shares of their own. Close or sell one on the chain page.")
+            Text(n == cos.count ? "A branch has no shares: close or sell it on the chain page." : "\(n) \(n == 1 ? "branch has" : "branches have") no shares: close or sell on the chain page.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -76,7 +76,7 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func raise(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
         if list.isEmpty {
-            EmptyState(glyph: Glyph.lock, title: "Nothing to raise here", message: "Only a limited company or a holding can raise money from investors.", centered: false)
+            EmptyState(glyph: Glyph.lock, title: "Nothing to raise here", message: "Only a limited company or a holding can raise money.", centered: false)
         }
         ForEach(list) { (c: Company) in
             if list.count > 1 { Text(c.name.uppercased()).capsLabel() }
@@ -93,7 +93,7 @@ struct GroupEntityOwnership: View {
         let asks: [Message] = engine.state.inbox.filter { (m: Message) -> Bool in m.status == "open" && ids.contains(m.companyID) && Self.isOwnerOffer(m) }
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if asks.isEmpty && franchisors.isEmpty {
-                EmptyState(glyph: Glyph.inbox, title: "No offers right now", message: "Bids, owners' demands and franchise applicants show here. Bids on a company you listed show under Sell.")
+                EmptyState(glyph: Glyph.inbox, title: "No offers right now")
             }
             if !asks.isEmpty { bids(asks) }
             if !franchisors.isEmpty { applicants(franchisors) }
@@ -163,27 +163,17 @@ struct GroupEntityOwnership: View {
     }
 }
 
-// MARK: - Buying (Expansion tab)
+// MARK: - Franchise brands (Expansion tab)
 
-/// What you could buy: a rival in the market, or a franchise brand to join. Shown under the Expansion tab; selling and owning are under Ownership.
+/// Joining a franchise brand: shown under the Expansion tab. Buying a rival is in Market > Rivals; selling and owning are under Ownership.
 struct GroupBuyRows: View {
-    @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var entity: GroupEntity
 
     var body: some View {
-        let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
-        let open: [Company] = cos.filter { (c: Company) -> Bool in c.status == .open }
         let brands = engine.franchiseBrands()
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("BUY").capsLabel()
-            if open.isEmpty {
-                Text("Open this company to look at rivals you could buy.").textStyle(.caption, tint: Theme.inkSoft)
-            } else {
-                Button { Haptics.tap(); store.openMarket(companyID: entity.companyID) } label: {
-                    CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
-                }.buttonStyle(PressableStyle())
-            }
+            Text("FRANCHISE BRANDS").capsLabel()
             NavigationLink { FranchisesView() } label: {
                 CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
                         subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") \u{00B7} apply, meet them, agree terms",

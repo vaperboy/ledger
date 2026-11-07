@@ -21,7 +21,6 @@ struct AcctSuppliers: View {
                     AcctSearchField(text: $m.supplierSearch, prompt: "Search suppliers", identifier: "acct-supplier-search")
                     if let records {
                         list(records, fmt)
-                        addBlock(co)
                     } else {
                         AcctLocked(section: "Suppliers")
                     }
@@ -59,17 +58,6 @@ struct AcctSuppliers: View {
         let note: String = s.openInvoices > 0.5 ? "open invoices" : (s.purchasesTotal > 0.5 ? fmt.short(s.purchasesTotal) + " bought" : "")
         return SupplierRow(name: s.name, detail: sub, value: value, valueTint: P.caution, valueNote: note,
                            current: s.isCurrentGoodsSupplier || s.isCurrentRepairSupplier, identifier: "acct-supplier-row") { m.push(.supplier(s.id)) }
-    }
-
-    /// Records only: choosing or switching a supplier happens on the company's Suppliers screen, which this links to.
-    private func addBlock(_ co: Company) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Records only. To choose or switch a supplier, compare them in \(co.name)'s Suppliers.")
-                .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
-            AcctSecondaryButton(title: "Compare suppliers", identifier: "acct-supplier-purchasing") {
-                store.openCompany(co.id, section: .operations, part: OpsPart.suppliers.rawValue)
-            }
-        }
     }
 }
 

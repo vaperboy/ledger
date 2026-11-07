@@ -4,9 +4,8 @@ import Countries
 import Finance
 import Simulation
 
-/// The Deposits tab. Personal account: the savings account and fixed deposits (the engine's `moveToSavings`, `openDeposit`). Investments
-/// account: shares, crypto and funds with the trade sheet, the fund manager and the ventures link (`InvestContent`). A company account has
-/// neither savings nor deposits.
+/// The Deposits tab. Personal account: the savings account and fixed deposits (the engine's `moveToSavings`, `openDeposit`). A company
+/// account has neither savings nor deposits.
 struct BankDepositsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -15,9 +14,8 @@ struct BankDepositsTab: View {
 
     var body: some View {
         switch account {
-        case .investments: InvestContent()
         case .personal: BankSavingsAndDeposits()
-        case .company:
+        case .company, .investments:
             Text("A company account has no savings or fixed deposits. Spare cash can be moved to your own account, or the company can pay it out.")
                 .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
         }

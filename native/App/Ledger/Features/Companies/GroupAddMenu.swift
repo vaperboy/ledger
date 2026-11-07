@@ -18,7 +18,7 @@ enum GroupAddDestination: String, Identifiable, Hashable {
     }
 }
 
-/// The centred popup of the Group landing: the four ways to grow the group, each with one line of explanation. A tap closes the popup and
+/// The centred popup of Group > Overview: the four ways to grow the group, each with a few words. A tap closes the popup and
 /// opens the flow (the Group tab pushes it).
 struct GroupAddMenu: View {
     @EnvironmentObject var store: GameStore
@@ -27,11 +27,10 @@ struct GroupAddMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Pick how the group grows.").popupText(.subtitle)
-            row(.newCompany, title: "New company", line: "Start a business from scratch in a trade and city of your choice.", id: "group-add-company")
-            row(.holding, title: "Holding company", line: "Owns your other companies and collects their dividends.", id: "group-add-holding")
-            row(.franchise, title: "Join a franchise", line: "Run a known brand under its rules, for a fee.", id: "group-add-franchise")
-            row(.club, title: "Buy or found a football club", line: "Buy a club in a top league, or found a new one.", id: "group-add-club")
+            row(.newCompany, title: "New company", line: "Any trade, any city", id: "group-add-company")
+            row(.holding, title: "Holding company", line: "Owns your companies, collects their dividends", id: "group-add-holding")
+            row(.franchise, title: "Join a franchise", line: "A known brand, for a fee", id: "group-add-franchise")
+            row(.club, title: "Buy or found a football club", line: "Buy one or found one", id: "group-add-club")
         }
         .centerSheetTitle("Add to group")
     }

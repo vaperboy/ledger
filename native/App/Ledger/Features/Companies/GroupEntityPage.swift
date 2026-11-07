@@ -140,19 +140,7 @@ struct GroupEntityOverview: View {
                 }
             }
             if entity.isHolding { subsidiaries }
-            VStack(spacing: 0) {
-                LedgerRow(leading: .glyph(Glyph.team), title: "Staff", subtitle: "Workers, hiring, job ads and perks",
-                          identifier: "group-entity-team", action: { store.openCompany(entity.companyID, section: .staff) })
-                Hairline()
-                LedgerRow(leading: .glyph(Glyph.home), title: entity.isChain ? "Open the flagship store" : "Open the company",
-                          subtitle: "Manage, sales, stats and the rest of its screens", action: { openEntityCompany() })
-            }
-            .overlay(alignment: .top) { Hairline() }
         }
-    }
-
-    private func openEntityCompany() {
-        if entity.isHolding { store.openCompany(entity.companyID, section: CompanySection.holding) } else { store.openCompany(entity.companyID) }
     }
 
     private func stats(_ cos: [Company]) -> [Stat] {
@@ -211,8 +199,7 @@ struct GroupEntityOverview: View {
                     ForEach(Array(subs.enumerated()), id: \.element.id) { (n: Int, c: Company) in
                         if n > 0 { Hairline() }
                         LedgerRow(leading: .glyph(Glyph.home), title: c.name, subtitle: "\(engine.tradeName(c)) \u{00B7} \(engine.cityName(c))",
-                                  value: store.short(Valuation.companyValue(c, state: engine.state, trades: engine.data.catalog), in: c),
-                                  action: { store.openCompany(c.id) })
+                                  value: store.short(Valuation.companyValue(c, state: engine.state, trades: engine.data.catalog), in: c))
                     }
                 }
             }
