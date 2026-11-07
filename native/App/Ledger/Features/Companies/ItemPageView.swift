@@ -163,8 +163,9 @@ struct ItemPageView: View {
     /// profit band sit right under it; quick prices and the typed price are text actions under the slider.
     /// `setBy`: who sets this price when it is not the owner (a manager within the owner's price position); nil: the owner sets it here.
     private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast, setBy: String? = nil) -> some View {
-        let lo: Double = p.item.marketPrice * SalesItems.priceRange.lowerBound
-        let hi: Double = p.item.marketPrice * SalesItems.priceRange.upperBound
+        let range: ClosedRange<Double> = store.engine?.itemPriceRange(companyID: co.id) ?? SalesItems.priceRange
+        let lo: Double = p.item.marketPrice * range.lowerBound
+        let hi: Double = p.item.marketPrice * range.upperBound
         let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
         let reading = itemProfitReading(p.live, cur)
         let each: String = p.live.outcome == .breakEven ? "break-even on each" : reading.text + " each"
