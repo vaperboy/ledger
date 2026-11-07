@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Simulation
 
-/// One account (BankAccount.dc.html): the payroll alert, the tabs, the balance with the available / overdraft / rate strip, the action
+/// One account (BankAccount.dc.html): the tabs, the balance with the available / overdraft / rate strip, the action
 /// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a toast. Investing is in the
 /// Market app, so the Bank opens cash accounts only.
 struct BankAccountScreen: View {
@@ -29,7 +29,6 @@ struct BankAccountScreen: View {
             let pagerSelection: Binding<BankTab> = Binding(get: { tabs.contains(tab) ? tab : BankTab.account }, set: { tab = $0 })
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    if let a = d.alert { alertBanner(a, fmt) }
                     if tabs.count > 1 { tabRow(d, pagerSelection) }
                 }
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
@@ -59,25 +58,6 @@ struct BankAccountScreen: View {
             tiles(d)
         }
         content(e, d, fmt, t)
-    }
-
-    // MARK: Alert
-
-    /// Payroll that needs the player: run in Accounting, which owns payroll; the Bank only says it and links there.
-    private func alertBanner(_ a: PayrollAlert, _ fmt: BankFmt) -> some View {
-        let text: String = a.isLate ? "Payroll \(fmt.short(a.amount)) is late. \(a.reason)"
-                                    : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason)"
-        return HStack(alignment: .center, spacing: Theme.Space.m) {
-            LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.medium, tint: a.isLate ? P.loss : P.warn)
-            Text(text.tidyText).textStyle(.caption, tint: P.ink).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: Theme.Space.xs)
-            Button("Run payroll") { store.openAccounting(companyID: a.companyID, payroll: true) }
-                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
-                .accessibilityIdentifier("bank-alert-payroll")
-        }
-        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill((a.isLate ? P.loss : P.warn).opacity(0.10)))
-        .accessibilityElement(children: .contain)
     }
 
     // MARK: Tabs

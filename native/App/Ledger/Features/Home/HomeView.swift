@@ -223,16 +223,14 @@ extension HomeGroupLabel where Trailing == EmptyView {
 }
 
 extension GameStore {
-    /// Hire: the Team section of the first company with an open post (posts that are needed now first), else the first company's Group
-    /// entity page on Management (where manager posts are), pushed on the open tab.
+    /// Hire: the Team section of the first company with an open post (posts that are needed now first), else the Team of the first live company,
+    /// pushed on the open tab.
     func openHiring() {
         let posts = (engine?.teamOverview().vacancies ?? []).filter { $0.companyID != nil && $0.scope != "chain" }
         if let id = (posts.first(where: { $0.needed }) ?? posts.first)?.companyID {
             push(.companyAt(id, .staff))
         } else if let id = engine?.state.companies.first(where: { $0.status.isLive && $0.type != "hold" })?.id {
-            openGroupEntity(companyID: id, section: "management")
-        } else {
-            push(.newCompany)
+            push(.companyAt(id, .staff))
         }
     }
 }

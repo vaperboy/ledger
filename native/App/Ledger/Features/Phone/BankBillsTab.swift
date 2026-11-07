@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Simulation
 
-/// A list of coming payments, each with Pay now: payroll is run in Accounting (a link opens it there); a loan
+/// A list of coming payments, each with Pay now: payroll is run by a manager or accountant, or answered in the Inbox; a loan
 /// instalment is paid now with `payLoanInstalmentNow`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
 /// `payObligationNow`, the same payment the due date makes, so nothing is charged again on the date.
 struct BankBillsList: View {
@@ -16,18 +16,17 @@ struct BankBillsList: View {
 
     var body: some View {
         if let e = store.engine {
-            let alerts: [PayrollAlert] = e.payrollAlerts()
             VStack(alignment: .leading, spacing: 0) {
                 if upcoming.isEmpty { EmptyState(glyph: BankGlyph.bill, title: "Nothing is due.", centered: false) }
                 ForEach(Array(upcoming.enumerated()), id: \.element.id) { n, u in
                     if n > 0 { Hairline() }
-                    row(u, alerts, e)
+                    row(u, e)
                 }
             }
         }
     }
 
-    private func row(_ u: Obligation, _ alerts: [PayrollAlert], _ e: GameEngine) -> some View {
+    private func row(_ u: Obligation, _ e: GameEngine) -> some View {
         let co: Company? = u.companyID == 0 ? nil : e.state.company(u.companyID)
         let fmt = BankFmt(store: store, company: co)
         let short: Bool = cash < u.amount
@@ -36,7 +35,7 @@ struct BankBillsList: View {
             HStack(spacing: 8) {
                 Text(u.detail.tidyText).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                action(u, alerts, e)
+                action(u, e)
             }
             if short && u.daysAway <= 30 && account != .investments {
                 Text("The account does not hold this much yet. Move money in first.").textStyle(.caption, tint: P.caution)
@@ -45,14 +44,10 @@ struct BankBillsList: View {
         .padding(.bottom, 6)
     }
 
-    @ViewBuilder private func action(_ u: Obligation, _ alerts: [PayrollAlert], _ e: GameEngine) -> some View {
+    @ViewBuilder private func action(_ u: Obligation, _ e: GameEngine) -> some View {
         switch u.kind {
         case .payroll:
-            if alerts.contains(where: { $0.companyID == u.companyID }) {
-                Button("Open Accounting") { store.openAccounting(companyID: u.companyID, payroll: true) }.buttonStyle(SecondaryButtonStyle(size: .compact))
-            } else {
-                Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
-            }
+            Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
                 Button("Pay now") { BankPay.instalment(store, loanID: loanID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
