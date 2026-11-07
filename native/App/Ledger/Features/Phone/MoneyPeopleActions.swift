@@ -123,7 +123,7 @@ struct LendPieceSection: View {
     }
 }
 
-/// Your own fund manager (Bank app, Investments account): hire one with a mandate, add or take out money, let them go.
+/// Your own fund manager (Market > Invest): hire one with a mandate, add or take out money, let them go.
 struct FundManagerCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

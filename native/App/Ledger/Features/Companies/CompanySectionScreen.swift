@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// A page of a company that is its own screen, pushed on top of the company screen: Marketing, Customers, Market, Setup, and a trade's
+/// A page of a company that is its own screen, pushed on top of the company screen: Marketing, Customers, Setup, and a trade's
 /// own page (Plant, Fish, Club, Chain, Book). The five sections of the company itself (Overview, Team, Manage, Sales, Stats) are not
 /// here: they are the fixed bar of `CompanyDetailView`.
 struct CompanySectionScreen: View {
@@ -36,7 +36,6 @@ struct CompanySectionScreen: View {
         switch section {
         case .setup:
             CompanySetupScreen(engine: e, company: co)
-        case .market: CompanyMarket(engine: e, company: co)
         case .book: CompanyFinanceBook(engine: e, company: co)
         case .energy: CompanyEnergy(engine: e, company: co)
         case .salmon: CompanySalmon(engine: e, company: co)

@@ -5,7 +5,7 @@ import Businesses
 import Simulation
 
 /// Minimal screens for the 2 Nov 2026 systems, each inside an existing screen: a Growth block in the worker profile, one Brand line
-/// (Group overview, company Sales), and a Research row with its popup (company Sales, Market app).
+/// (Group overview, company Sales), and a Research row with its popup (a company's page in the Market app).
 
 // MARK: - Growth (worker profile)
 
@@ -172,7 +172,7 @@ struct CompanyBrandLine: View {
 
 // MARK: - Research
 
-/// A "Research" row that opens the research popup. Used in the Sales card and in the Market app.
+/// A "Research" row that opens the research popup, on a company's page of the Market app.
 struct ResearchRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

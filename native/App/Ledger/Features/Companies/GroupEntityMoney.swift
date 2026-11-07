@@ -7,7 +7,8 @@ import Simulation
 
 // MARK: - Money
 
-/// An entity's money as one vertical list: cash with Put in and Take out, group loans, dividends, and (a holding) its treasury.
+/// An entity's money as one vertical list: cash with Put in and Take out, group loans, dividends, and (a holding) a dividend to you.
+/// A holding invests its treasury in the Market app.
 struct GroupEntityMoney: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -62,12 +63,12 @@ struct GroupEntityMoney: View {
         }
     }
 
-    /// The holding's treasury: an amount, then one main action (a dividend to you) and a menu for the index fund.
+    /// The holding pays you a dividend: an amount and one action.
     private var treasuryBox: some View {
         let main: Company? = engine.state.company(entity.companyID)
         let cur: Currency = main.map { (c: Company) -> Currency in engine.currency(for: c) } ?? engine.homeCurrency
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Treasury").textStyle(.label, tint: Theme.inkFaint)
+            Text("Dividend to you").textStyle(.label, tint: Theme.inkFaint)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 AmountField(title: "Amount", currency: cur, amount: $amount)
                 HStack(spacing: Theme.Space.s) {
@@ -85,23 +86,6 @@ struct GroupEntityMoney: View {
                 Text("Index fund: 0.66% to sell \u{00B7} dividends taxed as your income")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
-        }
-    }
-
-    private func investIndex() {
-        let id: Int = entity.companyID
-        let amt: Double = amount
-        if amt > 0, store.act({ $0.holdingInvest(holdingID: id, amount: amt) }) == true { Haptics.success(); store.show("Invested.", tone: "good") }
-        else { Haptics.warning(); store.show(amt > 0 ? "Not enough cash in the holding." : "Enter an amount first.", tone: "warn") }
-    }
-
-    private func askSellIndex(_ cur: Currency) {
-        guard amount > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        let id: Int = entity.companyID
-        let sold: Double = amount
-        pending = PendingAction(title: "Sell \(cur.tidyShort(sold)) of the index fund?", message: "The holding sells index holdings worth this much. The fund charges 0.66% to sell.", button: "Sell index", destructive: true) {
-            if store.act({ $0.holdingDivest(holdingID: id, amount: sold) }) == true { Haptics.success(); store.show("Sold.", tone: "good") }
-            else { Haptics.warning(); store.show("Nothing to sell.", tone: "warn") }
         }
     }
 

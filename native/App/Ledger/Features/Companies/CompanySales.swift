@@ -4,9 +4,11 @@ import Countries
 import Businesses
 import Simulation
 
-/// Sales of one company: what it sells in a week as the hero (with the monthly trend), then the products (or services) as rows with price
-/// and live profit, each opening its item page; car dealers show their showroom or yard instead. Below, how it grows: Marketing (a
-/// popup with a budget per channel), developing something new, research and dealer add-ons, and the market's price trend.
+/// Sales of one company: "Your products" (or "Your services") as a list, one row per item with its name, how demand is, its price and how far
+/// that is from the market. Tapping an item opens its item page. Marketing is a popup (`MarketingSheet`); a trade that
+/// can develop new things also has that row (a timed project on its own page, `CompanyDevelopment`). Customers are in Stats; the market, its
+/// rivals and market research are in the Market app; Projects are a part of this section only for project businesses (`CompanyDetailView`).
+/// There is no Pricing screen any more: prices are set per item.
 struct CompanySales: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -29,8 +31,11 @@ struct CompanySales: View {
         return VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             hero(items)
             productsArea(items, service)
-            growRows
-            trendLine
+            addonsCard
+            OverviewSettingsCard(heading: "Marketing and more") {
+                marketingRow
+                developRow
+            }
         }
         .centerSheet(isPresented: $showMarketing, title: "Marketing", category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id }), category: .medium, tone: .info) { (p: NewItemPick) in
@@ -71,34 +76,31 @@ struct CompanySales: View {
         }
     }
 
-    /// How the company grows its sales: marketing, something new, research, and the car dealers' add-ons.
-    private var growRows: some View {
-        let cur: Currency = engine.currency(for: company)
-        let spend: Double = company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
-        let running: Int = company.value("mkt").object.values.filter { $0["b"].double > 0 }.count
-        return PageGroup("Grow") {
-            LedgerRow(leading: .glyph(Glyph.opsMega), leadingTint: P.inkSoft, title: "Marketing",
-                      subtitle: running > 0 ? "\(running.countText("campaign")) running" : "",
-                      value: spend > 0 ? cur.tidyShort(spend) : "", valueNote: spend > 0 ? "a week" : "Off", identifier: "sales-marketing") { showMarketing = true }
-            if CompanyDevelopment.isAvailable(company, engine) {
-                let developing: Bool = Development.running(company) != nil
-                RowRule()
-                LedgerRow(leading: .glyph(Glyph.invest), leadingTint: P.inkSoft, title: CompanyDevelopment.title(company, engine),
-                          valueNote: developing ? "In progress" : "Start", valueNoteTint: developing ? P.gain : P.accent, identifier: "sales-develop") { part = .develop }
-            }
-            RowRule()
-            ResearchRow(engine: engine, company: company)
-            if DealerAddons.supports(company) {
-                RowRule()
+    /// Dealer add-ons (warranty, loans, insurance), only for trades that sell them.
+    @ViewBuilder private var addonsCard: some View {
+        if DealerAddons.supports(company) {
+            PageGroup("Add-ons") {
                 LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Warranty, loans and insurance",
                           identifier: "sales-addons") { showAddons = true }
             }
         }
     }
 
-    /// The market's price index this month, one line with its sparkline.
-    @ViewBuilder private var trendLine: some View {
-        let trend: MarketTrend = engine.marketTrend(companyID: company.id)
-        if trend.points.count >= 2 { MarketTrendCard(trend: trend) }
+    /// New products or services written for this trade ("New menu item"): a timed project with its cost, on its own page.
+    @ViewBuilder private var developRow: some View {
+        if CompanyDevelopment.isAvailable(company, engine) {
+            let running: Bool = Development.running(company) != nil
+            SettingsTableRow(title: CompanyDevelopment.title(company, engine), note: "Develop something new to sell; it takes weeks and costs money up front",
+                             value: running ? "In progress" : "Start", valueTint: running ? Theme.gain : Theme.ink, glyph: Glyph.invest) { part = .develop }
+        }
     }
+
+    // MARK: Marketing (a popup)
+
+    private var marketingRow: some View {
+        let cur: Currency = engine.currency(for: company)
+        let spend: Double = company.value("mkt").object.values.reduce(0) { $0 + $1["b"].double }
+        return SettingsTableRow(title: "Marketing", value: spend > 0 ? cur.tidyShort(spend) + " a week" : "No campaigns", opens: .sheet, glyph: Glyph.opsMega) { showMarketing = true }
+    }
+
 }

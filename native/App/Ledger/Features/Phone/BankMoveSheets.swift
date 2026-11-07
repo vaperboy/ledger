@@ -152,13 +152,13 @@ struct BankMoveSheet: View {
         switch account {
         case .personal, .investments:
             let s = e.state
-            if kind == .deposit || (kind == .transfer && account == .investments) {
+            if kind == .deposit {
                 add("Current account to savings", "Earns interest; comes back any day.", s.cash, home) { a in
                     self.store.act({ $0.moveToSavings(a) }) == true ? "\(home.tidyShort(a)) moved to savings." : nil
                 }
             }
-            if kind == .withdraw || (kind == .transfer && account == .investments) {
-                add("Savings to current account", "For bills, loans and buying investments.", s.savings, home) { a in
+            if kind == .withdraw {
+                add("Savings to current account", "For bills and loans.", s.savings, home) { a in
                     self.store.act({ $0.moveToSavings(-a) }) == true ? "\(home.tidyShort(a)) moved to the current account." : nil
                 }
             }
