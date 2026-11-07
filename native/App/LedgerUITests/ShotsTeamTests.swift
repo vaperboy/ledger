@@ -53,6 +53,12 @@ final class ShotsTeamTests: FeatureTourCase {
         return played
     }
 
+    /// Scrolls the page down so rows under the tab bar can be tapped; always true, for use in a condition list.
+    func scrolledDown() -> Bool {
+        dragPage(-600)
+        return true
+    }
+
     func scrollShot(_ name: String) {
         dragPage(-420)
         shot(name)
@@ -162,7 +168,7 @@ final class ShotsTeamTests: FeatureTourCase {
         }
 
         // Management (Group > company > Management) and the manager / assistant sheets
-        if openTeam(), { dragPage(-600); return true }(), tapID("team-open-management", wait: 4) {
+        if openTeam(), scrolledDown(), tapID("team-open-management", wait: 4) {
             pause(1)
             shot("27-management")
             scrollShot("28-management-lower")
@@ -194,7 +200,7 @@ final class ShotsTeamTests: FeatureTourCase {
 
         // Paperwork: Manage > Licences > the signing form
         toRoot()
-        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), { dragPage(-600); return true }(), tapText("Licences", wait: 3) {
+        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), scrolledDown(), tapText("Licences", wait: 3) {
             pause(0.8)
             shot("35-licences")
             if tapText("Fill in and apply", wait: 2) || tapText("Apply again", wait: 2) || tapText("Apply", wait: 2) {
