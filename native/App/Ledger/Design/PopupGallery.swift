@@ -46,8 +46,8 @@ struct PopupGallery: View {
     private var mediumBody: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Nordic Beans will only deliver if you pay up front from next week.").font(.system(size: 16)).foregroundStyle(Theme.inkSoft)
-            ForEach(["Pay up front (keeps stock)", "Switch to Oslo Roasters (+6% cost)", "Negotiate 14-day terms"], id: \.self) { (o: String) in
-                Button(o) { medium = false }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
+            ForEach(Array(["Pay up front (keeps stock)", "Switch to Oslo Roasters (+6% cost)", "Negotiate 14-day terms"].enumerated()), id: \.offset) { (i: Int, o: String) in
+                Button(o) { medium = false }.buttonStyle(SecondaryButtonStyle(fullWidth: true)).accessibilityIdentifier("gallery-option-\(i)")
             }
         }
     }
@@ -65,7 +65,7 @@ struct PopupGallery: View {
             Text("The seller's manager stays for a year. Two rivals are bidding.").font(.system(size: 15)).foregroundStyle(Theme.inkSoft)
         }
         .popupFooter {
-            Button("Make an offer") { detail = false }.buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment))
+            Button("Make an offer") { detail = false }.buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment)).accessibilityIdentifier("gallery-offer")
         }
     }
 }
