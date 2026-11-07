@@ -5,6 +5,7 @@ import UIKit
 struct LedgerApp: App {
     @StateObject private var store = GameStore()
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var statusBar = StatusBarScheme.shared
     @State private var entitlements: Entitlements
     @State private var ads: AdCoordinator
 
@@ -48,7 +49,8 @@ struct LedgerApp: App {
                 .environment(entitlements)
                 .environment(ads)
                 .task { entitlements.start() }
-                .preferredColorScheme(.dark)
+                // Dark everywhere, except while a light outside app is on screen: then the status bar text turns dark too.
+                .preferredColorScheme(statusBar.light ? .light : .dark)
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in

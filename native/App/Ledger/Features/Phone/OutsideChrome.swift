@@ -27,37 +27,33 @@ extension View {
     func outsideScreen(_ palette: OutsidePalette) -> some View { modifier(OutsideScreen(palette: palette)) }
 }
 
-/// Dark status bar text while a light app is on screen. The game's root asks for the dark look, which keeps the status bar white over a
-/// light page; this lightens the window's root controller while at least one light screen is visible and gives the dark look back after.
+/// Dark status bar text while a light app is on the selected tab. The app root follows `StatusBarScheme.shared.light`; each light app
+/// screen registers itself while it is shown on the active tab page (hidden tab pages stay alive, so the tab's activity counts too).
 struct LightStatusBar: ViewModifier {
     var on: Bool
+    @Environment(\.markerPageActive) private var activePage
+    @State private var id = UUID()
 
     func body(content: Content) -> some View {
-        if on {
-            content
-                .onAppear { StatusBarStyle.lightScreens += 1; StatusBarStyle.apply() }
-                .onDisappear { StatusBarStyle.lightScreens = max(0, StatusBarStyle.lightScreens - 1); StatusBarStyle.apply() }
-        } else {
-            content
-        }
+        content
+            .onAppear { StatusBarScheme.shared.set(id, on && activePage) }
+            .onChange(of: activePage) { _, now in StatusBarScheme.shared.set(id, on && now) }
+            .onChange(of: on) { _, now in StatusBarScheme.shared.set(id, now && activePage) }
+            .onDisappear { StatusBarScheme.shared.set(id, false) }
     }
 }
 
-/// How many light screens are visible now, and the window style that follows from it.
+/// Which light screens are showing now; the app root asks for the light scheme (dark status bar text) while any is.
 @MainActor
-enum StatusBarStyle {
-    static var lightScreens = 0
+final class StatusBarScheme: ObservableObject {
+    static let shared = StatusBarScheme()
+    @Published private(set) var light = false
+    private var shown: Set<UUID> = []
 
-    static func apply() {
-        #if canImport(UIKit)
-        let windows: [UIWindow] = UIApplication.shared.connectedScenes.compactMap { (s: UIScene) -> UIWindowScene? in s as? UIWindowScene }.flatMap { (w: UIWindowScene) -> [UIWindow] in w.windows }
-        guard let root = (windows.first { (w: UIWindow) -> Bool in w.isKeyWindow } ?? windows.first)?.rootViewController else { return }
-        let style: UIUserInterfaceStyle = lightScreens > 0 ? .light : .dark
-        if root.overrideUserInterfaceStyle != style {
-            root.overrideUserInterfaceStyle = style
-            root.setNeedsStatusBarAppearanceUpdate()
-        }
-        #endif
+    func set(_ id: UUID, _ on: Bool) {
+        if on { shown.insert(id) } else { shown.remove(id) }
+        let now: Bool = !shown.isEmpty
+        if now != light { light = now }
     }
 }
 
