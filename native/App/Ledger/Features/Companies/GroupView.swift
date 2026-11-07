@@ -27,7 +27,10 @@ struct GroupView: View {
             .centerSheet(isPresented: $showAddMenu) {
                 GroupAddMenu(onPick: { (d: GroupAddDestination) in
                     showAddMenu = false
-                    if let g = d.gate { ent.run(g, "Add to group") { addDestination = d } } else { addDestination = d }
+                    // The push (or the paywall) waits until the popup has gone, or it would be dropped while the popup closes.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        if let g = d.gate { ent.run(g, "Add to group") { addDestination = d } } else { addDestination = d }
+                    }
                 })
                 .environmentObject(store)
             }
@@ -40,9 +43,9 @@ struct GroupView: View {
         VStack(spacing: 0) {
             header
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
-            ScrollScreen(top: Theme.Space.l) {
-                GroupLanding(engine: e, onPick: { (g: GroupEntity) in Haptics.tap(); store.push(.entity(g.id, .overview), on: .group) },
-                             onSuppliers: { store.push(.suppliers, on: .group) }, onAdd: { showAddMenu = true })
+            ScrollScreen(top: Theme.Space.m) {
+                GroupLanding(engine: e, onPick: { (g: GroupEntity, s: GroupSection) in Haptics.tap(); store.push(.entity(g.id, s), on: .group) },
+                             onSuppliers: { store.push(.suppliers, on: .group) })
             }
         }
     }
@@ -56,15 +59,23 @@ struct GroupView: View {
         }
     }
 
+    /// The tab's name and, at the right, the one way to grow the group (a popup of the four routes).
     private var header: some View {
-        HStack(spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Group").textStyle(.title).lineLimit(1)
-                Text("Choose a company, holding or chain").textStyle(.caption).lineLimit(2)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            Text("Group").textStyle(.title).lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
+            Button { Haptics.tap(); showAddMenu = true } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Theme.inset))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityLabel("Add to group")
+            .accessibilityIdentifier("group-add")
         }
     }
 }

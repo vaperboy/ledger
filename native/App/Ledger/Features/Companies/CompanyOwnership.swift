@@ -116,6 +116,7 @@ struct CompanyOwnershipSection: View {
             }
         } else {
             ForEach(Array(list.enumerated()), id: \.element.id) { n, h in
+                if n > 0 { Hairline() }
                 holderCard(h, tint: all[n + 1].tint, cur: cur)
             }
         }
@@ -182,7 +183,9 @@ struct CompanyOwnershipSection: View {
                             Text(engine.investorInterest(companyID: id).word).textStyle(.body, tint: Theme.ink, weight: .medium)
                         }
                     }
-                    QuietButton(title: "Pitch for " + cur.tidyShort(amount), fullWidth: true) { pitch(amount) }
+                    Button("Pitch for " + cur.tidyShort(amount)) { Haptics.tap(); pitch(amount) }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("raise-pitch")
                     Text("A pitch brings offers over the coming weeks. Nothing is taken until you accept.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             }

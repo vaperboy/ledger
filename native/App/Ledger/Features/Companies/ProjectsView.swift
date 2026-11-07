@@ -72,17 +72,21 @@ struct ProjectsView: View {
             guard let co = e.state.company(l.companyID) else { return acc }
             return acc + l.value * e.currency(for: co).rate / max(home.rate, 0.000001)
         }
-        // Portfolio first: what is running and the value committed to it, then the one action.
+        // The value committed to running work is the hero; how many are running sits under it; New project is a text action.
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             AppHeader(title: "Ventures") {
                 Button("New project") { Haptics.tap(); part = .running; runPart = .bids }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
                     .accessibilityLabel("New project")
             }
-            FigureRow(items: [
-                KeyFigures.Item(label: "Running", value: running.isEmpty ? "None" : "\(running.count)"),
-                KeyFigures.Item(label: "Committed", value: running.isEmpty ? "None" : store.short(committed)),
-            ], columns: 2, combineCells: true)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Committed to running work").textStyle(.label, tint: Theme.inkFaint)
+                Text(running.isEmpty ? "Nothing yet" : store.short(committed)).textStyle(.display, tint: running.isEmpty ? Theme.inkSoft : nil)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(running.isEmpty ? "No job, event or development is running" : "\(running.count) running \(running.count == 1 ? "project" : "projects")")
+                    .textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
         }
     }
 }

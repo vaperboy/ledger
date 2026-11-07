@@ -69,7 +69,8 @@ struct BoardView: View {
         if let engine = store.engine, engine.boardIsActive(key: key) {
             let companies: [Company] = ManagerModel.boardCompanies(engine.state, key: key)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                    hero(engine)
                     if !message.isEmpty { NoteCard(text: message) }
                     agenda(engine)
                     followUps(engine)
@@ -79,7 +80,9 @@ struct BoardView: View {
                     minutes(engine)
                     ownersLink(companies)
                 }
-                .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
+                // Blocks sit on the page; only the open meetings keep a surface (they wait for you).
+                .environment(\.insideCard, true)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .scrollIndicators(.hidden).noSidewaysDrag()
@@ -101,6 +104,21 @@ struct BoardView: View {
         }
     }
 
+    // MARK: Hero
+
+    /// How many points wait for the board is the one figure of the page.
+    private func hero(_ engine: GameEngine) -> some View {
+        let n: Int = engine.boardOpenDecisions(key: key)
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text("To decide").textStyle(.label, tint: Theme.inkFaint)
+            Text(n == 0 ? "Nothing waits" : "\(n) \(n == 1 ? "point" : "points")").textStyle(.display, tint: n == 0 ? Theme.inkSoft : nil)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(n == 0 ? "The board meets when a seat brings a proposal or a concern." : "Approve or decline each point below.")
+                .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: To decide
 
     /// Concerns are answered with "Act on it" / "Leave it"; proposals with "Approve" / "Decline".
@@ -111,13 +129,12 @@ struct BoardView: View {
     @ViewBuilder private func agenda(_ engine: GameEngine) -> some View {
         let open: [ManagerModel.BoardMeeting] = engine.boardMeetings(key: key).filter { $0.isOpen }
         let preview: [ManagerModel.MeetingItem] = engine.boardAgendaPreview(key: key)
-        MoreBlock(title: "To decide", card: false, trailing: { RedBubble(count: engine.boardOpenDecisions(key: key), size: .small) }) {
-            if open.isEmpty { NoteCard(text: "Nothing waits for the board.", glyph: Glyph.check) }
+        MoreBlock("Agenda", card: false) {
             ForEach(open) { m in meeting(m, engine) }
             if preview.isEmpty {
-                Text("No meeting is due: the board meets when a seat brings a proposal or a concern.").textStyle(.caption, tint: Theme.inkFaint)
+                if open.isEmpty { Text("No meeting is due.").textStyle(.caption, tint: Theme.inkFaint) }
             } else {
-                QuietButton(title: "Hold a board meeting · \(preview.count) \(preview.count == 1 ? "point" : "points")") {
+                PrimaryAction(title: "Hold a board meeting \u{00B7} \(preview.count) \(preview.count == 1 ? "point" : "points")", identifier: "board-hold-meeting") {
                     let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
                     if id == nil { message = "Nothing to meet about right now." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
                 }
@@ -202,7 +219,7 @@ struct BoardView: View {
     }
 
     @ViewBuilder private func meeting(_ m: ManagerModel.BoardMeeting, _ engine: GameEngine) -> some View {
-        Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
+        Card(padding: Theme.Space.l, radius: Theme.Radius.hero, fill: Theme.surface) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .top, spacing: Theme.Space.m) {
                     IconCircle(glyph: m.isEmergency ? Glyph.warning : Glyph.calendar, size: 36, tint: m.isEmergency ? Theme.caution : Theme.gold)
@@ -304,12 +321,19 @@ struct BoardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(v.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
                 Text("\(v.title) · \(v.votes ? "votes" : "advises")").textStyle(.caption, tint: Theme.inkSoft).lineLimit(2)
+                // An adviser's fee and record sit under their own name.
+                if let pid = v.personID, let a = seats.first(where: { $0.id == pid && $0.isAdviser }) {
+                    Text("Fee \(store.short(a.monthlyFee)) a month \u{00B7} took \(a.adviceTaken) of your calls, refused \(a.adviceRefused)")
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 8)
             if let pid = v.personID, seats.contains(where: { $0.id == pid }) {
-                Button("Remove from board") {
+                Button("Remove") {
                     if let ask = store.removeSeatPrompt(key: key, personID: pid, name: v.name) { pending = ask }
-                }.buttonStyle(TinyButtonStyle(tint: Theme.loss)).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
+                .accessibilityLabel("Remove \(v.name) from the board")
             }
         }
     }
@@ -327,17 +351,23 @@ struct BoardView: View {
             SegmentedPill(items: [false, true], title: { (own: Bool) -> String in own ? "Your people" : "Search" }, selection: $ownTab)
             Text(ownTab ? "Employees and managers keep their job. One from the board's own company sits for half the fee." : "Add to the board (a search costs a fee)")
                 .textStyle(.caption, tint: Theme.inkSoft)
-            WrapRow {
-                Group {
-                    ForEach(engine.seatRoles) { r in
-                        Button(r.title) {
-                            if ownTab { loadOwn(engine, seat: r.id); return }
-                            let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
-                            if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
-                        }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
+            // One row opens the list of seats; picking a seat searches for it (or lists your own people for it).
+            Menu {
+                ForEach(engine.seatRoles) { r in
+                    Button(r.title) {
+                        if ownTab { loadOwn(engine, seat: r.id); return }
+                        let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
+                        if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
                     }
                 }
+            } label: {
+                LedgerRow(leading: .symbol(ownTab ? "person.2" : "magnifyingglass"), title: ownTab ? "Pick a seat for one of your people" : "Search for a seat",
+                          subtitle: "Chair, directors, CFO, advisers", chevron: true)
+                    .contentShape(Rectangle())
             }
+            .menuStyle(.button)
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("board-seat-finder")
         }
     }
 
@@ -389,9 +419,6 @@ struct BoardView: View {
                 ForEach(Array(engine.boardVoters(key: key).enumerated()), id: \.element.id) { (n: Int, v: ManagerModel.Voter) in
                     if n > 0 { CardLine() }
                     voterCard(v, seats: seats).transition(AnyTransition.orgNode)
-                }
-                ForEach(seats.filter { $0.isAdviser }) { s in
-                    Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 CardLine()
                 seatFinder(engine)

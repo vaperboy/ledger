@@ -15,14 +15,19 @@ struct CompanyProjects: View {
     var body: some View {
         if let board = engine.projectBoard(companyID: company.id) {
             if board.isDeveloper {
-                DevelopmentList(engine: engine, company: company, board: board)
+                DevelopmentList(engine: engine, company: company, board: board).modifier(FlatBlocks())
             } else {
-                JobList(engine: engine, company: company, board: board)
+                JobList(engine: engine, company: company, board: board).modifier(FlatBlocks())
             }
         } else {
             Text("This business does not take projects.").textStyle(.body, tint: Theme.inkSoft)
         }
     }
+}
+
+/// The projects section's blocks sit on the page: plain cards inside draw flat.
+private struct FlatBlocks: ViewModifier {
+    func body(content: Content) -> some View { content.environment(\.insideCard, true) }
 }
 
 // MARK: Jobs, tenders

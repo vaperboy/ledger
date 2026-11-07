@@ -22,7 +22,7 @@ struct ChainView: View {
     @ViewBuilder private func partBody(_ p: ChainPart, _ e: GameEngine, _ sum: Chains.Summary, _ cur: Currency) -> some View {
         switch p {
         case .stores:
-            ChainFigures(summary: sum, currency: cur)
+            ChainFigures(summary: sum, currency: cur, cash: e.chainCash(chainID: sum.id))
             ChainAttention(engine: e, summary: sum, currency: cur, pending: $pending)
             ChainStoreComparison(engine: e, summary: sum, currency: cur)
         case .people:
@@ -42,10 +42,12 @@ struct ChainView: View {
         if let e = store.engine, let sum = e.chainSummary(id: chainID), let first = sum.stores.first.flatMap({ e.state.company($0.id) }) {
             let cur = e.currency(for: first)
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     SegmentedPill(items: ChainPart.allCases, title: { $0.rawValue }, selection: $part)
                     partBody(part, e, sum, cur)
                 }
+                // The chain's blocks sit on the page: plain cards draw flat.
+                .environment(\.insideCard, true)
                 .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 1100).frame(maxWidth: .infinity)
             }
@@ -116,14 +118,13 @@ struct ChainView: View {
 struct ChainFigures: View {
     var summary: Chains.Summary
     var currency: Currency
+    /// The chain's combined cash (one company: the stores share it) and how many weeks in a row it has been below zero.
+    var cash: (cash: Double, weeksOverdrawn: Int)? = nil
 
     private var items: [KeyFigures.Item] {
         let r = summary.reach
-        let profitTint: Color = summary.profit < 0 ? Theme.loss : Theme.ivory
         let rebate: String = String(format: "%.1f%%", r.rebate * 100)
         return [
-            .init(label: "Revenue / mo", value: currency.tidyShort(summary.revenue)),
-            .init(label: "Profit / mo", value: currency.tidyShort(summary.profit), tint: profitTint),
             .init(label: "Staff", value: "\(summary.staff)"),
             .init(label: "Reach", value: r.label, sub: "\(r.outlets) outlets"),
             .init(label: "Buying discount", value: rebate, sub: "of cost of sales"),
@@ -134,9 +135,27 @@ struct ChainFigures: View {
     var body: some View {
         let r = summary.reach
         let reachNote: String = r.nextAt > 0 ? "At \(r.nextAt) outlets: wider name, more demand, cheaper goods." : "A worldwide name."
-        Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                FigureStrip(items: items)
+        // The chain's monthly profit is the hero; revenue sits under it, the reach and buying figures follow in one strip.
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Profit a month").textStyle(.label, tint: Theme.inkFaint)
+                Text(currency.tidyShort(summary.profit)).textStyle(.display, tint: summary.profit < 0 ? Theme.loss : nil)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text("on revenue of \(currency.tidyShort(summary.revenue)) a month").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+                if let c = cash {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                        Text("Chain cash").textStyle(.caption, tint: Theme.inkFaint)
+                        Text(currency.tidyShort(c.cash)).textStyle(.caption, tint: c.cash < 0 ? Theme.loss : Theme.ink, numeric: true)
+                        if c.weeksOverdrawn > 0 {
+                            Text("\u{00B7} overdrawn \(c.weeksOverdrawn) \(c.weeksOverdrawn == 1 ? "week" : "weeks")").textStyle(.caption, tint: Theme.warn)
+                        }
+                    }
+                    .padding(.top, Theme.Space.xs)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            FigureRow(items: items, columns: 2, combineCells: true)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
                 Text(reachNote).textStyle(.caption, tint: Theme.inkFaint)
             }
@@ -230,6 +249,8 @@ struct ChainAttention: View {
 /// Every store side by side: sort, search, group by city, and open any store's company. Each store can take its own rules.
 struct ChainStoreComparison: View {
     enum Sort: String, CaseIterable, Hashable { case profit = "Profit", revenue = "Revenue", city = "City", name = "Name" }
+    @EnvironmentObject var store: GameStore
+    @State private var pending: PendingAction?
     var engine: GameEngine
     var summary: Chains.Summary
     var currency: Currency
@@ -250,7 +271,7 @@ struct ChainStoreComparison: View {
                     SegmentedPill(items: Sort.allCases, title: { $0.rawValue }, selection: $sort)
                 }
                 if summary.stores.count > pageSize {
-                    Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
+                    Card(padding: Theme.Space.m, radius: Theme.Radius.table, fill: Theme.inset) {
                         HStack(spacing: Theme.Space.s) {
                             GlyphView(glyph: Glyph.search, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
                             TextField("Search stores or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14))
@@ -277,6 +298,54 @@ struct ChainStoreComparison: View {
                 }
             }
             .orgArrivals(summary.stores.map { $0.id }, fresh: $freshStores)
+        }
+        .confirmAction($pending)
+    }
+
+    // MARK: A branch leaves the chain
+
+    /// Closing or selling one branch, behind a "…" menu; each asks first with a hold-to-confirm.
+    private func branchMenu(_ s: Chains.StoreLine) -> some View {
+        let id: Int = s.id
+        return Menu {
+            Button("Sell as a going concern\u{2026}") { askSell(id) }
+            Button("Close this branch\u{2026}", role: .destructive) { askClose(id) }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Close or sell \(s.name)")
+        .accessibilityIdentifier("chain-branch-\(id)")
+    }
+
+    private func askClose(_ id: Int) {
+        guard let p = engine.branchClosurePlan(storeID: id) else { store.show("This store cannot be closed as a branch.", tone: "warn"); return }
+        var lines: [String] = ["Stock and equipment go to \(p.receiverName)."]
+        if !p.transfers.isEmpty { lines.append("\(p.transfers.count.peopleText) move to other stores.") }
+        if p.redundancies > 0 { lines.append("\(p.redundancies.peopleText) made redundant (\(currency.tidyShort(p.redundancyPay))).") }
+        let net: String = p.net >= 0 ? "The chain gets about \(currency.tidyShort(p.net))." : "It costs the chain about \(currency.tidyShort(-p.net))."
+        lines.append(net)
+        pending = PendingAction(title: "Close \(p.storeName)?", message: lines.joined(separator: " "), button: "close the branch", destructive: true) {
+            switch store.act({ $0.closeBranch(storeID: id) }) {
+            case .success(let done)?: Haptics.success(); store.show("\(done.storeName) is closed. Its people and stock went to \(done.receiverName).", tone: "good")
+            case .failure(let why)?: Haptics.warning(); store.show(why.text, tone: "warn")
+            case nil: break
+            }
+        }
+    }
+
+    private func askSell(_ id: Int) {
+        guard let q = engine.branchSaleQuote(storeID: id) else { store.show("This store cannot be sold as a branch.", tone: "warn"); return }
+        let msg: String = "A buyer pays \(currency.tidyShort(q.price)) into \(q.receiverName). \(q.staffGoing.peopleText) go with it; it made \(currency.tidyShort(q.yearlyProfit)) in the last year."
+        pending = PendingAction(title: "Sell \(q.storeName)?", message: msg, button: "sell the branch", destructive: true) {
+            switch store.act({ $0.sellBranch(storeID: id) }) {
+            case .success(let done)?: Haptics.success(); store.show("\(done.storeName) is sold for \(currency.tidyShort(done.price)).", tone: "good")
+            case .failure(let why)?: Haptics.warning(); store.show(why.text, tone: "warn")
+            case nil: break
+            }
         }
     }
 
@@ -322,8 +391,9 @@ struct ChainStoreComparison: View {
                 }
                 RateBar(label: s.profit < 0 ? "Loss vs best" : "Profit vs best", fraction: profitShare(s), tint: s.profit < 0 ? Theme.loss : Theme.gold)
                 HStack {
-                    Button(rulesTitle) { openRulesFor = openRulesFor == s.id ? nil : s.id }.buttonStyle(TinyButtonStyle())
+                    Button(rulesTitle) { openRulesFor = openRulesFor == s.id ? nil : s.id }.buttonStyle(TertiaryButtonStyle(size: .compact))
                     Spacer()
+                    if engine.isBranch(companyID: s.id) { branchMenu(s) }
                 }
                 if openRulesFor == s.id { StoreRules(engine: engine, storeID: s.id) }
             }

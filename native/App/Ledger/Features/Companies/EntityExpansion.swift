@@ -26,7 +26,7 @@ struct EntityExpansionView: View {
         let franchisee: Bool = !co.value("franchise").isNull
         let live: Bool = co.status == .open || co.status == .closed
         let relevant: Bool = CompanyChain.isRelevant(co, e)
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             statusHeader(e, co, chain: chain, franchisee: franchisee)
             if relevant && live {
                 stage(e, co, chain: chain, franchisee: franchisee)
@@ -59,28 +59,27 @@ struct EntityExpansionView: View {
     }
 
     private func statusHeader(_ e: GameEngine, _ co: Company, chain: Chains.Summary?, franchisee: Bool) -> some View {
-        var title: String = "Not a chain"
-        var tint: Color = Theme.ivoryMuted
+        var title: String = "One company, not a chain yet"
         if let chain {
             let n: Int = chain.stores.count
-            title = "\(chain.name): chain with \(n) \(n == 1 ? "store" : "stores")"
-            tint = Theme.gold
+            title = "Chain of \(n) \(n == 1 ? "store" : "stores")"
             if e.isFranchisor(companyID: co.id) {
                 let units: Int = e.franchiseSystem(companyID: co.id)["units"].array.count
-                title += " · franchisor with \(units) \(units == 1 ? "franchisee" : "franchisees")"
+                title += " \u{00B7} franchisor with \(units) \(units == 1 ? "franchisee" : "franchisees")"
             }
         } else if franchisee {
             title = "Franchisee of \(co.value("franchise")["brandName"].string)"
-            tint = Theme.gold
         } else if e.isFranchisor(companyID: co.id) {
             let units: Int = e.franchiseSystem(companyID: co.id)["units"].array.count
             title = "Franchisor with \(units) \(units == 1 ? "franchisee" : "franchisees")"
-            tint = Theme.gold
         }
-        return HStack(spacing: Theme.Space.s) {
-            GlyphView(glyph: Glyph.group, size: 16, weight: 1.5, tint: tint).frame(width: 20)
-            Text(title.tidyText).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(2)
-            Spacer(minLength: 0)
+        // The stage the company is at is the lead line of the tab; the steps for the next stage follow under it.
+        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text("Stage").textStyle(.label, tint: Theme.inkFaint)
+            Text(title.tidyText).textStyle(.figure)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

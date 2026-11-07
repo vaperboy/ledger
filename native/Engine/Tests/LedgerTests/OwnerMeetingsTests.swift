@@ -89,6 +89,23 @@ final class OwnerMeetingsTests: XCTestCase {
         XCTAssertFalse(e.ceoVote(companyID: id).active)
     }
 
+    func testBoardSeatHoldersCanBeTalkedToAndSpeakInTheRound() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 47)
+        e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 6_000_000) else { throw XCTSkip("start") }
+        e.update { s, d, _ in _ = CompanySetup.quickSetup(&s, companyID: id, data: d) }
+        e.addShowcaseBoard()
+        let key = try XCTUnwrap(e.boardKey(companyID: id))
+        let seated = e.boardSeats(key: key)
+        guard let cfo = seated.first(where: { $0.role == "cfo" }) else { throw XCTSkip("no CFO candidate in this seed") }
+        let who = e.ownerCounterparts(companyID: id)
+        let c = try XCTUnwrap(who.first { $0.id == cfo.id }, "the CFO in a board seat is someone to talk to")
+        XCTAssertEqual(c.position, "fin")
+        let topic = try XCTUnwrap(e.ownerTopics(companyID: id, personID: cfo.id).first)
+        XCTAssertNotNil(e.ownerScene(companyID: id, personID: cfo.id, topic: topic.id))
+        XCTAssertTrue(e.boardRound(companyID: id).contains { $0.id == cfo.id }, "the CFO speaks in the board round")
+    }
+
     func testSoleOwnerReplacesTheCEOAtOnce() throws {
         var (e, id, _) = try setup(seed: 46)
         XCTAssertEqual(e.proposeCEOChange(companyID: id), .dismissed)
