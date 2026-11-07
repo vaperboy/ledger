@@ -80,8 +80,8 @@ struct PopupCloseButton: View {
 ///   medium   header row, as high as the content, scrolls past 70% of the screen.
 ///   detail   header row and pinned footer, as high as the content up to 92% of the screen; fixed at that height only when the content
 ///            scrolls by itself (`size: .tall`).
-/// No minimum height and no stretching: a short popup is short. On a phone the card is docked 8pt above the bottom edge and rises in;
-/// on a wide screen it is a centred card of the category's width.
+/// No minimum height and no stretching: a short popup is short. Every card is centred on the screen at its category's width and
+/// arrives with a short scale and fade.
 struct CenterSheetFrame<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -130,16 +130,13 @@ struct CenterSheetFrame<Content: View>: View {
     }
 
     private func layout(screen: CGSize) -> some View {
-        let regular: Bool = screen.width >= PopupLayout.regularWidth
-        let width: CGFloat = regular ? PopupLayout.regularCardWidth(cat) : screen.width - 2 * PopupLayout.dockMargin
-        let hidden: CGFloat = reduceMotion ? 0 : (regular ? 24 : 120)
-        return ZStack(alignment: regular ? .center : .bottom) {
+        let width: CGFloat = PopupLayout.cardWidth(cat, screenWidth: screen.width)
+        return ZStack {
             backdrop
             card(screen: screen)
                 .frame(width: width)
-                .padding(.bottom, regular ? 0 : PopupLayout.dockMargin)
-                .offset(y: (shown ? 0 : hidden) + drag)
-                .scaleEffect(shown || reduceMotion ? 1 : 0.97, anchor: .bottom)
+                .offset(y: drag)
+                .scaleEffect(shown || reduceMotion ? 1 : 0.94)
                 .opacity(shown ? 1 : 0)
         }
         .frame(width: screen.width, height: screen.height)
