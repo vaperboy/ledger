@@ -193,6 +193,7 @@ public enum CompanyWeek {
         if let ota = bd.trait("ota") { cogs += rev * ota * Knobs.effect(co, bd, "ota", w) }
         if bd.hasTrait("excise") { cogs += units * 8.5 * w.country(co).costIndex * w.inflationIndex }
         var ctx = WeekContext(units: units, rev: rev, cogs: cogs, D: D, cap: cap, util: util, price: price, paidDuringWeek: paidDuringWeek)
+        ctx.bottleneck = cp.bottleneck?.label
         ctx.acct = acctOrders.perAccount.filter { $0.units > 0 }.map { (id: $0.id, rev: $0.units * price * $0.pm) }
         // Family-specific adjustments (stock, returns, casino luck, subsidies)
         applyFamilyPost(&s, i, bd, &ctx, data: data)
@@ -249,6 +250,8 @@ public enum CompanyWeek {
         var retentionReleased: [Int] = []
         /// What each business customer ordered this week at the prices they pay (net of VAT): they pay on the trade's terms, some of them late.
         var acct: [(id: Int, rev: Double)] = []
+        /// What limited the week's capacity (a role, a machine, the space), kept so the app can say why a week went badly.
+        var bottleneck: String?
     }
 
     /// Supplier class: cost and quality of goods. Original: `goodsEff` (default class; vendor choice not yet ported).
@@ -373,7 +376,8 @@ public enum CompanyWeek {
         books.add("rev", rev)
         books.add("cogs", cogs - jsRound(ctx.stockChange))
         if ctx.stockChange != 0 { co.inventory += jsRound(ctx.stockChange) }
-        co.set("lastW", .object(["units": .number(ctx.units), "rev": .number(rev), "cogs": .number(cogs), "D": .number(ctx.D), "cap": .number(ctx.cap), "util": .number(ctx.util)]))
+        co.set("lastW", .object(["units": .number(ctx.units), "rev": .number(rev), "cogs": .number(cogs), "D": .number(ctx.D), "cap": .number(ctx.cap), "util": .number(ctx.util),
+                                  "bot": ctx.bottleneck.map { .string($0) } ?? .null]))
         // Demand and capacity of the last 8 weeks, for the Operations chart (display only; nothing reads it back into the economy).
         var hist: [JSONValue] = co.value("wkHist").array
         hist.append(.object(["w": .number(Double(s.week)), "D": .number(ctx.D), "cap": .number(ctx.cap)]))

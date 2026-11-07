@@ -84,6 +84,8 @@ public extension GameEngine {
         if !lw.isNull { h.servedLastWeek = lw["units"].double; h.capacityLastWeek = lw["cap"].double }
         if co.status == .open, let bd = data.catalog[co.type], !SpecialFamilies.handles(bd) {
             h.bottleneck = CapacityModel.compute(co, bd, World(state: state, data: data)).bottleneck?.label
+            // A week that served no one is explained by what stopped it then, which may since have been fixed.
+            if lw["cap"].double == 0, case let then = lw["bot"].string, !then.isEmpty { h.bottleneck = then }
         }
         let months = hist.count
         if months < 3 { h.label = co.status == .open ? "New" : "Setting up" }
