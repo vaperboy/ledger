@@ -41,7 +41,7 @@ struct ItemsList: View {
             if items.isEmpty {
                 // A company with nothing on sale starts here: the first choice is what it sells.
                 EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Choose what you sell",
-                           message: company.status == .open ? "Nothing is on sale yet." : "", centered: false)
+                           message: company.status == .open ? (engine.needsFirstItemChoice(companyID: company.id) ? "Pick your first \(noun) to put on sale." : "Nothing is on sale yet.") : "", centered: false)
             }
             LazyVStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
@@ -134,7 +134,7 @@ struct ItemPageView: View {
             let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-                    priceBlock(pg, co, cur, price, f)
+                    priceBlock(pg, co, cur, price, f, setBy: pg.item.priceSetter.isOwner ? nil : pg.item.priceSetter.label)
                     demandBlock(pg, f, cur)
                     promotionBlock(co, pg.item)
                     supplyBlock(pg, cur)
@@ -162,8 +162,8 @@ struct ItemPageView: View {
     /// profit band sit right under it; quick prices and the typed price are text actions under the slider.
     /// `setBy`: who sets this price when it is not the owner (a manager within the owner's price position); nil: the owner sets it here.
     private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast, setBy: String? = nil) -> some View {
-        let lo: Double = p.item.marketPrice * SalesItems.ratioRange.lowerBound
-        let hi: Double = p.item.marketPrice * SalesItems.ratioRange.upperBound
+        let lo: Double = p.item.marketPrice * SalesItems.priceRange.lowerBound
+        let hi: Double = p.item.marketPrice * SalesItems.priceRange.upperBound
         let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
         let reading = itemProfitReading(p.live, cur)
         let each: String = p.live.outcome == .breakEven ? "break-even on each" : reading.text + " each"
