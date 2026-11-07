@@ -518,6 +518,13 @@ class FeatureTourCase: XCTestCase {
         return true
     }
 
+    /// Opens the Group tab on one of its own tabs (Overview, Companies, Staff, Suppliers).
+    @discardableResult
+    func goGroup(_ home: String) -> Bool {
+        guard goTab("Group") else { return false }
+        return tapID("group-home-tab-\(home)", wait: 3)
+    }
+
     /// True while the Phone app grid is on screen (any launcher tile).
     func gridUp(_ t: TimeInterval = 0) -> Bool { find(wait: t) { $0.id.hasPrefix("phone-app-") && $0.type == .button } != nil }
 

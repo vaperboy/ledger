@@ -3,14 +3,14 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab: the picker of companies, holdings and chains (with the group Overview above it and the Suppliers row under it). Tapping
-/// an entity pushes its own page (`NavRoute.entity`) with Overview, Management, Board, Money, Expansion and Ownership; any other tab can
-/// push the same page (`GameStore.openGroupEntity`). Choosing the Group tab again returns to the picker.
+/// The Group tab: its title, then four tabs (Overview, Companies, Staff, Suppliers; `GroupHome`). A company, holding or chain pushes its own
+/// page (`NavRoute.entity`); any other tab can push the same page (`GameStore.openGroupEntity`). Choosing the Group tab again returns to Overview.
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
     @State private var showAddMenu = false
     @Environment(Entitlements.self) private var ent
     @State private var addDestination: GroupAddDestination?
+    @State private var tab: GroupHomeTab = .overview
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .group) }, set: { store.setPath($0, for: .group) })) {
@@ -34,19 +34,19 @@ struct GroupView: View {
                 })
                 .environmentObject(store)
             }
-            // Choosing Group again: back to the picker.
-            .onChange(of: store.rootToken(.group)) { _, _ in showAddMenu = false; addDestination = nil }
+            // Choosing Group again: back to Overview.
+            .onChange(of: store.rootToken(.group)) { _, _ in showAddMenu = false; addDestination = nil; tab = .overview }
         }
     }
 
     private func landing(_ e: GameEngine) -> some View {
         VStack(spacing: 0) {
-            header
+            Text("Group").textStyle(.title).lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)
-            ScrollScreen(top: Theme.Space.m) {
-                GroupLanding(engine: e, onPick: { (g: GroupEntity, s: GroupSection) in Haptics.tap(); store.push(.entity(g.id, s), on: .group) },
-                             onSuppliers: { store.push(.suppliers, on: .group) })
-            }
+            GroupHome(engine: e, tab: $tab, onAdd: { showAddMenu = true },
+                      onPick: { (g: GroupEntity, s: GroupSection) in Haptics.tap(); store.push(.entity(g.id, s), on: .group) })
         }
     }
 
@@ -56,26 +56,6 @@ struct GroupView: View {
         case .holding: NewHoldingView()
         case .franchise: FranchisesView()
         case .club: ClubMarketView()
-        }
-    }
-
-    /// The tab's name and, at the right, the one way to grow the group (a popup of the four routes).
-    private var header: some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
-            Text("Group").textStyle(.title).lineLimit(1)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            Button { Haptics.tap(); showAddMenu = true } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Theme.inset))
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("Add to group")
-            .accessibilityIdentifier("group-add")
         }
     }
 }

@@ -98,7 +98,11 @@ final class MainScreensTests: TourCase {
         open("Group"); sleep(1); shot("45-group")
         scrollDown(); shot("46-group-lower")
         scrollUp()
-        // The picker: open the first entity, then its Management, Board, Money (with Dividends inside) and Expansion tabs.
+        for home in ["Staff", "Suppliers", "Companies"] {
+            let t = app.buttons["group-home-tab-\(home)"]
+            if t.waitForExistence(timeout: 2), t.isHittable { t.tap(); sleep(1); shot("46-group-\(home.lowercased())") } else { note("no \(home) tab on Group") }
+        }
+        // Companies: open the first entity, then its Management, Board, Money (with Dividends inside) and Expansion tabs.
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         if entity.waitForExistence(timeout: 3), entity.isHittable {
             entity.tap(); sleep(1); shot("47-group-entity")
@@ -116,8 +120,6 @@ final class MainScreensTests: TourCase {
             let back = app.buttons["group-back"]
             if back.exists && back.isHittable { back.tap(); sleep(1) }
         } else { note("no entity in the Group picker") }
-        let suppliers = app.buttons["group-suppliers"]
-        if suppliers.waitForExistence(timeout: 2), suppliers.isHittable { suppliers.tap(); sleep(1); shot("49-group-suppliers"); ensureTabBar() }
     }
 
     /// Projects, the Phone grid and the Inbox.
@@ -144,6 +146,8 @@ final class BoardTourTests: TourCase {
         let group = app.buttons["tab-Group"]
         if group.waitForExistence(timeout: 3) { group.tap(); sleep(1) } else { note("no Group tab"); return }
         shot("60-group-with-board-point")
+        let companies = app.buttons["group-home-tab-Companies"]
+        if companies.waitForExistence(timeout: 2), companies.isHittable { companies.tap(); sleep(1) }
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         guard entity.waitForExistence(timeout: 2), entity.isHittable else { note("no entity in the Group picker"); return }
         entity.tap(); sleep(1)

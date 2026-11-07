@@ -62,7 +62,7 @@ struct GroupBoardroom: View {
             // The people come first: a talk is the main thing to do here; the board round follows as one row.
             Text("Talk to").textStyle(.label, tint: Theme.inkFaint).padding(.top, Theme.Space.s)
             if people.isEmpty {
-                EmptyState(glyph: Glyph.person, title: "Nobody runs \(c.name) but you", message: "Appoint a manager or department heads under Management to talk with them.", centered: false)
+                EmptyState(glyph: Glyph.person, title: "Nobody runs \(c.name) but you", message: "Appoint a manager under Management.", centered: false)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(people.enumerated()), id: \.element.id) { (n: Int, p: OwnerMeetings.Counterpart) in
@@ -73,7 +73,7 @@ struct GroupBoardroom: View {
             }
             VStack(spacing: 0) {
                 Hairline().padding(.leading, 28 + Theme.Space.m)
-                LedgerRow(leading: .glyph(Glyph.achievements), title: "Call the board", subtitle: "Everyone reports from their seat; ask what they think of a big move",
+                LedgerRow(leading: .glyph(Glyph.achievements), title: "Call the board",
                           identifier: "boardroom-call-\(c.id)", action: { round = RoundRef(companyID: c.id) })
             }
         }
@@ -169,14 +169,13 @@ struct OwnerTalkSheet: View {
         let topics: [OwnerMeetings.Topic] = e.ownerTopics(companyID: companyID, personID: personID)
         let isCEO: Bool = e.state.company(companyID)?.managerID == personID
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("What do you want to talk about?").popupText(.subtitle)
             VStack(spacing: 0) {
                 ForEach(topics) { (t: OwnerMeetings.Topic) in
-                    PopupChoiceRow(title: t.label, subtitle: t.waitWeeks > 0 ? "You talked about this lately. Again in \(t.waitWeeks) \(t.waitWeeks == 1 ? "week" : "weeks")." : t.hint,
+                    PopupChoiceRow(title: t.label, subtitle: t.waitWeeks > 0 ? "Again in \(t.waitWeeks) \(t.waitWeeks == 1 ? "week" : "weeks")" : "",
                                    enabled: t.waitWeeks == 0) { topic = t.id }
                 }
                 if isCEO {
-                    PopupChoiceRow(title: "Replace them as CEO", subtitle: "See what the board and co-owners think first") { voting = true }
+                    PopupChoiceRow(title: "Replace them as CEO") { voting = true }
                 }
             }
         }
@@ -250,15 +249,15 @@ struct BoardRoundSheet: View {
                     } else {
                         let lines: [OwnerMeetings.RoundLine] = e.boardRound(companyID: companyID)
                         if lines.isEmpty {
-                            EmptyState(glyph: Glyph.person, title: "Nobody sits at this table yet", message: "Appoint a manager or department heads under Management.", centered: false)
+                            EmptyState(glyph: Glyph.person, title: "Nobody sits at this table yet", message: "Appoint a manager under Management.", centered: false)
                         }
                         ForEach(lines) { (l: OwnerMeetings.RoundLine) in
                             DialogueQuote(speaker: "\(l.name) \u{00B7} \(l.title)", lines: [l.text])
                         }
                         Text("Ask the board").popupText(.subtitle).padding(.top, Theme.Space.xs)
                         VStack(spacing: 0) {
-                            PopupChoiceRow(title: "Should we sell it?", subtitle: "Each seat gives an opinion", identifier: "board-ask-sell") { kind = "sell" }
-                            PopupChoiceRow(title: "Should we close it?", subtitle: "Each seat gives an opinion", identifier: "board-ask-close") { kind = "close" }
+                            PopupChoiceRow(title: "Should we sell it?", identifier: "board-ask-sell") { kind = "sell" }
+                            PopupChoiceRow(title: "Should we close it?", identifier: "board-ask-close") { kind = "close" }
                             PopupChoiceRow(title: "Should we replace the CEO?", subtitle: "Managers advise; co-owners vote by shares", identifier: "board-ask-ceo") { kind = "ceo" }
                         }
                     }
@@ -279,13 +278,13 @@ struct BoardVoteLines: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(question).popupText(.subtitle)
-            Text(vote.active ? "Co-owners vote by their shares; the board advises." : "You own it alone: everyone advises and you decide.").popupText(.caption)
+            Text(vote.active ? "Co-owners vote by shares." : "You decide alone.").popupText(.caption)
             ForEach(vote.advice + vote.board) { (l: ManagerModel.VoteLine) in line(l, shares: false) }
             ForEach(vote.owners.filter { (l: ManagerModel.VoteLine) -> Bool in !l.isYou }) { (l: ManagerModel.VoteLine) in line(l, shares: true) }
             if vote.active {
                 Text(vote.passes ? "It would pass with \(Int(vote.percentYes.rounded()))% of the shares." : "It would fail: only \(Int(vote.percentYes.rounded()))% of the shares are for it.")
                     .popupText(vote.passes ? .effect : .risk)
-                if vote.pushedThroughAlone { Text("Everyone else is against it. Going ahead alone upsets the board and the owners.").popupText(.risk) }
+                if vote.pushedThroughAlone { Text("Everyone else is against it: going ahead upsets the board.").popupText(.risk) }
             }
         }
     }

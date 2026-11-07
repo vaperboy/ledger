@@ -9,9 +9,10 @@ import Simulation
 /// spend first. Read from the same data as each company's Suppliers section (`supplierInputs`): the provider in use per input.
 /// A row (`SupplierRow`): name, what it supplies and for which companies, relationship badge, rating. A tap opens its profile in a centred
 /// popup with one line per fact and a button to the Suppliers section of one of the companies. Your own companies that supply others
-/// are marked "Own company". Scrolls vertically only (it owns its scroll area: embed it in a page that does not scroll).
+/// are marked "Own company". It owns its scroll area unless `embedded` (the Suppliers tab of Group, inside that tab's own scroll).
 struct GroupSupplierDirectory: View {
     @EnvironmentObject var store: GameStore
+    var embedded: Bool = false
     @State private var picked: DirectoryPick?
 
     /// One use of a supplier by one company for one input.
@@ -41,21 +42,28 @@ struct GroupSupplierDirectory: View {
     var body: some View {
         if let e = store.engine {
             let entries: [Entry] = Self.entries(e)
-            ScrollScreen {
-                if entries.isEmpty {
-                    EmptyState(glyph: Glyph.suppliers, title: "No named suppliers yet",
-                               message: "A supplier shows here once a company of the group buys from one.")
+            Group {
+                if embedded {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) { list(entries, e) }
                 } else {
-                    Text("\(entries.count) \(entries.count == 1 ? "supplier" : "suppliers") across the group").capsLabel(Theme.ivoryFaint)
-                    VStack(spacing: 0) {
-                        ForEach(Array(entries.enumerated()), id: \.element.id) { n, en in
-                            if n > 0 { Hairline() }
-                            row(en, e)
-                        }
-                    }
+                    ScrollScreen { list(entries, e) }
                 }
             }
             .centerSheet(item: $picked) { (p: DirectoryPick) in profile(p.id) }
+        }
+    }
+
+    @ViewBuilder private func list(_ entries: [Entry], _ e: GameEngine) -> some View {
+        if entries.isEmpty {
+            EmptyState(glyph: Glyph.suppliers, title: "No named suppliers yet")
+        } else {
+            Text("\(entries.count) \(entries.count == 1 ? "supplier" : "suppliers")").capsLabel(Theme.ivoryFaint)
+            VStack(spacing: 0) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { n, en in
+                    if n > 0 { Hairline() }
+                    row(en, e)
+                }
+            }
         }
     }
 
@@ -115,7 +123,7 @@ struct GroupSupplierDirectory: View {
         let stars: String = Self.starText(first.reliability)
         let detail: String = [Self.whatText(en) + " for " + users, stars].filter { !$0.isEmpty }.joined(separator: "  ")
         let own: Bool = en.ownCompanyID != nil
-        return SupplierRow(name: en.name, detail: detail, badge: Self.badge(first, own: own), badgeTone: own ? .good : .neutral) {
+        return SupplierRow(name: en.name, detail: detail, badge: Self.badge(first, own: own), badgeTone: own ? .good : .neutral, identifier: "group-supplier-\(en.id)") {
             picked = DirectoryPick(id: en.id)
         }
     }

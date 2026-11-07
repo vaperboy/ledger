@@ -99,7 +99,7 @@ struct BoardView: View {
     @ViewBuilder private func ownersLink(_ companies: [Company]) -> some View {
         if key.hasPrefix("co:"), let co = companies.first {
             Button { Haptics.tap(); store.openGroupEntity(companyID: co.id, section: "ownership") } label: {
-                CardRow(glyph: Glyph.reports, title: "Owners and shares of \(co.name)", subtitle: "Who owns what, selling and raising money, in Group \u{203A} Ownership.")
+                CardRow(glyph: Glyph.reports, title: "Owners and shares of \(co.name)")
             }.buttonStyle(PressableStyle())
         }
     }
@@ -306,7 +306,7 @@ struct BoardView: View {
         let jobs: [ManagerModel.FollowUp] = Array(closedJobs.suffix(4).reversed())
         let empty: Bool = done.isEmpty && jobs.isEmpty
         MoreBlock("Minutes and outcomes", card: false) {
-            if empty { NoteCard(text: "The minutes of each meeting are kept here once its points are decided.") }
+            if empty { NoteCard(text: "No minutes yet.") }
             ForEach(done) { m in minutesCard(m) }
             ForEach(jobs) { f in closedJobLine(f) }
         }
@@ -349,7 +349,7 @@ struct BoardView: View {
     private func seatFinder(_ engine: GameEngine) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             SegmentedPill(items: [false, true], title: { (own: Bool) -> String in own ? "Your people" : "Search" }, selection: $ownTab)
-            Text(ownTab ? "Employees and managers keep their job. One from the board's own company sits for half the fee." : "Add to the board (a search costs a fee)")
+            Text(ownTab ? "Staff of this company sit for half the fee" : "A search costs a fee")
                 .textStyle(.caption, tint: Theme.inkSoft)
             // One row opens the list of seats; picking a seat searches for it (or lists your own people for it).
             Menu {
@@ -362,7 +362,7 @@ struct BoardView: View {
                 }
             } label: {
                 LedgerRow(leading: .symbol(ownTab ? "person.2" : "magnifyingglass"), title: ownTab ? "Pick a seat for one of your people" : "Search for a seat",
-                          subtitle: "Chair, directors, CFO, advisers", chevron: true)
+                          chevron: true)
                     .contentShape(Rectangle())
             }
             .menuStyle(.button)

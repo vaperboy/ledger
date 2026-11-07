@@ -97,7 +97,7 @@ final class ShotsNavTests: FeatureTourCase {
 
     /// Group > entity > its company > another company through the switcher > Back to the entity; the entity switcher; Back to the picker.
     private func groupToCompanyAndSwitch() {
-        guard goTab("Group") else { expect(false, "no Group tab"); return }
+        guard goGroup("Companies") else { expect(false, "no Group tab"); return }
         shot("B0-group")
         guard tapPrefix("group-entity-co", wait: 4) || tapPrefix("group-entity-", wait: 2) else { expect(false, "Group: no entity row"); return }
         expect(has("group-back", wait: 4), "Group > entity: the entity page did not open")
