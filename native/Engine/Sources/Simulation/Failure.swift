@@ -11,8 +11,11 @@ import Businesses
 /// A *limited company's* owner loses what was put in (unless they signed a personal guarantee); a *sole trader*
 /// is personally liable for everything.
 public enum Failure {
-    public static func bankrupt(_ s: inout GameState, companyIndex i: Int, reason: String, data: GameData, context: FinanceContext) {
-        guard s.companies[i].status.isLive else { return }
+    /// `announce` false: one store of a chain that fails as a whole (`chainBankrupt` sends the one message, counts it once and hits credit once).
+    /// Returns what lands on the owner personally.
+    @discardableResult
+    public static func bankrupt(_ s: inout GameState, companyIndex i: Int, reason: String, data: GameData, context: FinanceContext, announce: Bool = true) -> Double {
+        guard s.companies[i].status.isLive else { return 0 }
         HeldMoney.settle(&s, companyID: s.companies[i].id)   // the rest of this week's money is the company's to settle with
         let co = s.companies[i]
         let cur = context.homeCurrency(s)
@@ -56,32 +59,96 @@ public enum Failure {
         EquipmentMarket.endAllLeases(&s, companyIndex: i)   // the lessors take their things back
         s.companies[i].status = .bust
         Ledger.set(&s, .company(co.id), to: 0)
+        HoldingModel.holdingFailed(&s, holdingID: co.id)
+        guard announce else { return personalHit }
         s.stats.bankruptcies += 1
         s.credit = clamp(s.credit - (co.form == .soleTrader ? 22 : 14), 0, 100)
-        let why = reason == "unpaid" ? "Bills went unpaid for months. " : reason == "insolvent" ? "The regulator closed it: its capital was gone. " : reason == "loan" ? "The bank called its loan after missed instalments. " : "Cash ran out. "
-        let liability = personalHit > 0
-            ? "About \(cur.display(personalHit)) lands on you personally (\(co.form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
-            : "As a limited company, your loss is limited to what you put in. "
-        s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why + liability + "Credit score hit.", companyID: co.id, tone: "bad")
+        s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why(reason) + liability(personalHit, co.form, cur) + "Credit score hit.", companyID: co.id, tone: "bad")
         s.news("\(co.name) files for bankruptcy.", tone: "bad", companyID: co.id)
-        HoldingModel.holdingFailed(&s, holdingID: co.id)
+        return personalHit
+    }
+
+    static func why(_ reason: String) -> String {
+        reason == "unpaid" ? "Bills went unpaid for months. " : reason == "insolvent" ? "The regulator closed it: its capital was gone. " : reason == "loan" ? "The bank called its loan after missed instalments. " : "Cash ran out. "
+    }
+    static func liability(_ personalHit: Double, _ form: LegalForm, _ cur: Currency) -> String {
+        personalHit > 0
+            ? "About \(cur.display(personalHit)) lands on you personally (\(form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
+            : "As a limited company, your loss is limited to what you put in. "
+    }
+
+    // MARK: A chain fails as one company
+
+    /// A branch never fails alone. The chain does, by the same rules as any company, judged on all its branches together: the combined account
+    /// overdrawn past twice its limit for more than 12 weeks, a called loan not caught up, bills unpaid for months while the chain has no cash,
+    /// or (a financial chain) its capital gone.
+    public static func chainChecks(_ s: inout GameState, data: GameData, context: FinanceContext, insolvent: Set<Int>) {
+        for ch in Chains.all(s) {
+            let L = Chains.stores(s, ch)
+            guard L.count >= 2 else { continue }
+            let cash = L.reduce(0) { $0 + $1.cash }, room = L.reduce(0) { $0 + context.overdraftRoom($1, s) }
+            let today = Payday.dayNumber(week: s.week, day: s.day)
+            let running = L.filter { $0.status == .open || $0.status == .closed }
+            if running.isEmpty { continue }
+            var reason: String?
+            if ch["neg"].int > 12 && cash < -room * 2 { reason = "cash" }
+            else if running.contains(where: { $0.int("loanCall") > 0 && s.week >= $0.int("loanCall") }) { reason = "loan" }
+            else if cash < 0 && running.contains(where: { Payday.unpaidForMonths($0, today: today) }) { reason = "unpaid" }
+            else if L.contains(where: { insolvent.contains($0.id) }) { reason = "insolvent" }
+            if let r = reason { chainBankrupt(&s, chainID: ch["id"].int, reason: r, data: data, context: context) }
+        }
+    }
+
+    /// Every branch of the chain goes down together under the company failure rules, with one message, one count and one credit hit.
+    public static func chainBankrupt(_ s: inout GameState, chainID: Int, reason: String, data: GameData, context: FinanceContext) {
+        guard let ch = Chains.chain(s, id: chainID) else { return }
+        let L = Chains.stores(s, ch)
+        guard let head = L.first else { return }
+        var hit = 0.0
+        for c in L { if let i = s.companyIndex(c.id) { hit += bankrupt(&s, companyIndex: i, reason: reason, data: data, context: context, announce: false) } }
+        let name = ch["name"].string
+        s.stats.bankruptcies += 1
+        s.credit = clamp(s.credit - (head.form == .soleTrader ? 22 : 14), 0, 100)
+        s.addMessage(from: name, title: "\(name) has gone bankrupt", body: why(reason) + "All \(L.count) branches close with the chain. " + liability(hit, head.form, context.homeCurrency(s)) + "Credit score hit.",
+                     companyID: head.id, tone: "bad")
+        s.news("\(name) files for bankruptcy and closes its \(L.count) branches.", tone: "bad", companyID: head.id)
     }
 
     /// The bank sells a company at a discount to cover an overdraft. Original: `forcedSale`.
+    /// A branch is not sold alone: the bank sells your chain, every branch of it, as the one company it is.
     static func forcedSale(_ s: inout GameState, companyIndex i: Int, data: GameData, context: FinanceContext) {
+        let br = s.chainStores(of: s.companies[i])
+        if br.count >= 2, let chainID = Optional(s.companies[i].value("chain").int) {
+            for c in br { HeldMoney.settle(&s, companyID: c.id) }
+            let parts = br.map { c in (c, s.company(c.id).map { jsRound(Valuation.companyValue($0, state: s, trades: data.catalog) * $0.ownership / 100 * 0.6) } ?? 0) }
+            let v = parts.reduce(0) { $0 + $1.1 }
+            if v <= 0 { chainBankrupt(&s, chainID: chainID, reason: "cash", data: data, context: context); return }
+            for (c, _) in parts { if let k = s.companyIndex(c.id) { sellToCreditors(&s, companyIndex: k) } }
+            let name = Chains.chain(s, id: chainID)?["name"].string ?? br[0].name
+            Ledger.move(&s, .me, v, why: "Forced sale of \(name)")
+            s.stats.companiesSold += 1
+            s.addMessage(from: "Bank", title: "\(name) was sold by creditors",
+                         body: "You could not cover your overdraft. The bank forced a sale of the whole chain (\(br.count) branches) at a discount: \(context.homeCurrency(s).display(v)).",
+                         companyID: br[0].id, tone: "bad")
+            return
+        }
         HeldMoney.settle(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
         let v = jsRound(Valuation.companyValue(co, state: s, trades: data.catalog) * co.ownership / 100 * 0.6)
         if v <= 0 { bankrupt(&s, companyIndex: i, reason: "cash", data: data, context: context); return }
-        for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
+        sellToCreditors(&s, companyIndex: i)
         Ledger.move(&s, .me, v, why: "Forced sale of \(co.name)")
-        for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
-        s.companies[i].staff = []
-        s.companies[i].status = .sold
         s.stats.companiesSold += 1
         s.addMessage(from: "Bank", title: "\(co.name) was sold by creditors",
                      body: "You could not cover your overdraft. The bank forced a sale at a discount: \(context.homeCurrency(s).display(v)).",
                      companyID: co.id, tone: "bad")
+    }
+    /// The company leaves your hands: loans settled from the price, staff released.
+    static func sellToCreditors(_ s: inout GameState, companyIndex i: Int) {
+        for l in s.loans.filter({ $0.companyID == s.companies[i].id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
+        for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
+        s.companies[i].staff = []
+        s.companies[i].status = .sold
     }
 
     /// Sole traders are the same person as their business: spare business cash covers a negative private account.

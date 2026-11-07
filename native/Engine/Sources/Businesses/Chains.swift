@@ -25,7 +25,7 @@ public enum Chains {
     public static func stores(_ s: GameState, _ ch: JSONValue) -> [Company] {
         s.companies.filter { $0.status.isLive && !$0.value("chain").isNull && $0.value("chain").int == ch["id"].int }
     }
-    static func save(_ s: inout GameState, _ ch: JSONValue) {
+    public static func save(_ s: inout GameState, _ ch: JSONValue) {
         var L = list(s)
         if let k = L.firstIndex(where: { $0["id"].int == ch["id"].int }) { L[k] = ch } else { L.append(ch) }
         s.rest["chains"] = .array(L)

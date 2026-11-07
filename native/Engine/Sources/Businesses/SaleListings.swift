@@ -9,10 +9,13 @@ public enum SaleListings {
         guard let co = s.company(companyID) else { return false }
         return (co.status == .open || co.status == .closed) && co.type != "hold" && s.companies.filter { $0.status.isLive }.count > 0
     }
+    /// A branch is not a company of its own: it has no shares, and it is sold as a business (`ChainBranches.sell`) or closed.
+    public static let branchNote = "A branch has no shares of its own: sell it as a going concern or close it from the chain."
     public static func isListed(_ s: GameState, companyID: Int) -> Bool { (s.rest["sales"]?.array ?? []).contains { $0["co"].int == companyID } }
 
     /// Why a route cannot be used for this company (nil when it can).
     public static func routeProblem(_ s: GameState, companyID: Int, route: String, pct: Int) -> String? {
+        if let co = s.company(companyID), s.isBranch(co) { return branchNote }
         guard let co = s.company(companyID), canSell(s, companyID: companyID) else { return "This company cannot be sold now." }
         if isListed(s, companyID: companyID) { return "It is already on the market." }
         if pct < 100 {

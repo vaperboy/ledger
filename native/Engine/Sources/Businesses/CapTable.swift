@@ -124,7 +124,7 @@ public enum CapTable {
     /// 1. New shares are issued to `name`; the money for them is the company's (the caller books it). Everybody is diluted pro rata.
     @discardableResult
     public static func issue(_ s: inout GameState, _ i: Int, newShares n: Int, to name: String, paid: Double, extra: [String: JSONValue] = [:]) -> Int {
-        guard n > 0 else { return 0 }
+        guard n > 0, !s.isBranch(s.companies[i]) else { return 0 }   // a branch has no shares of its own: the chain has one cap table
         normalise(&s, i)
         let t = read(s.companies[i])
         var list = s.companies[i].value("holders").array
@@ -142,6 +142,7 @@ public enum CapTable {
     /// 3. The founder (you) sells `n` of your own shares to `name`; the money is personal (the caller books it).
     @discardableResult
     public static func sellFromYou(_ s: inout GameState, _ i: Int, shares n: Int, to name: String, paid: Double, extra: [String: JSONValue] = [:]) -> Int {
+        if s.isBranch(s.companies[i]) { return 0 }   // a branch has no shares of its own: the chain has one cap table
         normalise(&s, i)
         let t = read(s.companies[i])
         let k = min(max(0, n), max(0, t.you - 1))
