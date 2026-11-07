@@ -181,11 +181,12 @@ struct CenterSheetFrame<Content: View>: View {
         .environment(\.insidePopup, true)
         .environment(\.popupTone, shade)
         .environment(\.popupCategory, cat)
-        .environment(\.colorScheme, P.isLight ? .light : .dark)
         .frame(height: size == .tall ? cardMax : nil)
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
         .modifier(PopupGlass(tone: shade, light: P.isLight))
         .overlay { celebration }
+        // The scheme wraps the glass too, so a light palette gets light material behind its dark text.
+        .environment(\.colorScheme, P.isLight ? .light : .dark)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("popup-card")
     }
