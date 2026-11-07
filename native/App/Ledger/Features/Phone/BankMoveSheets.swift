@@ -131,10 +131,8 @@ struct BankMoveSheet: View {
         if let cid = account.companyID, let co = e.state.company(cid), co.form == .limited, kind != .deposit {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text("A limited company cannot hand its cash to you directly.").popupText(.button)
-                Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid from the company's Ownership section.")
+                Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid by the company.")
                     .popupText(.subtitle)
-                Button("Open the company") { dismiss(); store.openCompany(cid, section: .finances) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
             }
         } else {
             Text("There is nowhere to move money to yet. Start a company first.").popupText(.subtitle)

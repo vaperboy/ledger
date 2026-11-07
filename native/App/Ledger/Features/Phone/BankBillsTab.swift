@@ -76,24 +76,14 @@ struct BankBillsTab: View {
         if let e = store.engine {
             let o = e.financeOverview(companyID: account.companyID)
             let fmt = BankFmt.make(store, account)
-            let co: Company? = account.companyID.flatMap { e.state.company($0) }
             VStack(alignment: .leading, spacing: 12) {
                 dueCard(detail, fmt)
                 BankCard(title: "Coming up", trailing: "\(detail.upcoming.count) payment\(detail.upcoming.count == 1 ? "" : "s")") {
                     BankBillsList(account: account, upcoming: detail.upcoming, cash: detail.balance)
                 }
-                if let co { payrollLink(co) }
                 taxCard(o, fmt)
                 rulesCard(o)
             }
-        }
-    }
-
-    /// Payroll and pay day are kept in Accounting; the Bank pays them and links there.
-    private func payrollLink(_ co: Company) -> some View {
-        CardSection("Payroll") {
-            LedgerRow(leading: .glyph(Glyph.accounting), title: "Payroll and pay day", subtitle: "Run payroll and choose the pay day in Accounting",
-                      identifier: "bills-open-accounting-payroll", action: { store.openAccounting(companyID: co.id, payroll: true) })
         }
     }
 
