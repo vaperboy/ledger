@@ -17,6 +17,10 @@ final class ShotsHomeTests: FeatureTourCase {
         toRoot(); _ = goTab("Home")
         if bringAndTap("home-rank-ring") { pause(1); snap("rank-goals") }
         toRoot(); _ = goTab("Home")
+        if bringAndTap("home-mission") { pause(1.2); snap("mission-tapped") }
+        toRoot(); _ = goTab("Home")
+        if bringAndTap("home-milestone") { pause(1); snap("milestone-tapped") }
+        toRoot(); _ = goTab("Home")
         if bringAndTap("home-insights") {
             snap("insights")
             if tapLabel("Unlock with Ledger Pro") { pause(1); snap("paywall"); closePopup(prefer: ["paywall-pass"]) } else { closePopup() }
@@ -41,6 +45,7 @@ final class ShotsHomeTests: FeatureTourCase {
         for w in 1...5 {
             _ = goTab("Home")
             guard tapEnabled("play-week", wait: 4) else { break }
+            if w == 1 { pause(0.5); snap("skip-week-playing") }
             var month = false
             var n = 0
             while n < 6 && popupUp(n == 0 ? 25 : 2) {

@@ -14,16 +14,18 @@ struct HomeSummary<Companies: View>: View {
     var compact: Bool = false
     /// True when the page fills a fixed screen height: the free room is shared evenly between the groups instead of pooling at the end.
     var fills: Bool = false
+    /// False drops the net worth line, for the shortest screens.
+    var chart: Bool = true
     var onNewCompany: () -> Void
     @ViewBuilder var companies: () -> Companies
     @State private var showInsights = false
 
     var body: some View {
         let e = engine
-        VStack(alignment: .leading, spacing: compact ? Theme.Space.l : Theme.Space.xl) {
-            VStack(alignment: .leading, spacing: compact ? Theme.Space.m : Theme.Space.l) {
+        VStack(alignment: .leading, spacing: compact ? Theme.Space.m : Theme.Space.l) {
+            VStack(alignment: .leading, spacing: compact ? Theme.Space.s : Theme.Space.m) {
                 HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag)  Week \(e.state.week + 1) · \(e.date)", engine: e, onNewCompany: onNewCompany)
-                if fills { Spacer(minLength: 0).frame(maxHeight: Theme.Space.l) }
+                if fills { Spacer(minLength: 0).frame(maxHeight: Theme.Space.s) }
                 if e.cashIsTight { cashTightLine }
                 if ent.plusEndedNotice {
                     Text("Plus has ended. Your saves are safe.").textStyle(.caption)
@@ -35,9 +37,12 @@ struct HomeSummary<Companies: View>: View {
                         TopPriorities(engine: e).frame(maxWidth: .infinity)
                     }
                 } else {
-                    NetWorthCard(engine: e, chartHeight: compact ? 24 : 32) { showInsights = true }
+                    NetWorthCard(engine: e, chartHeight: chart ? (compact ? 24 : 32) : 0) { showInsights = true }
+                    HomeMilestoneLine(engine: e)
                 }
             }
+            if fills { Self.gap }
+            HomeProgressStrip(engine: e)
             if fills { Self.gap }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact) }
             if fills { Self.gap }
@@ -47,8 +52,8 @@ struct HomeSummary<Companies: View>: View {
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
     }
 
-    /// Spare height between two groups, at most 32 pt; whatever is left over gathers under the companies, above the day bar.
-    private static var gap: some View { Spacer(minLength: 0).frame(maxHeight: Theme.Space.xxl) }
+    /// Spare height between two groups, at most 16 pt over the stack's own spacing; whatever is left over gathers under the companies, above the day bar.
+    private static var gap: some View { Spacer(minLength: 0).frame(maxHeight: Theme.Space.l) }
 
     private var playerName: String {
         let n = engine.state.player.name
@@ -81,7 +86,6 @@ struct HomeTopLine: View {
                 Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
             }
             Spacer(minLength: Theme.Space.s)
-            HomeRankButton(engine: engine)
             Button { Haptics.tap(); onNewCompany() } label: {
                 LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.medium, tint: Theme.ink)
                     .frame(width: 40, height: 40)
@@ -148,7 +152,7 @@ struct NetWorthCard: View {
                         .minimumScaleFactor(0.5).lineLimit(1)
                         .moneyFlash(v)
                 }
-                changeLine(week: week, month: month)
+                changeLine(today: store.dayChip?.profit, week: week, month: month)
                 if series.count >= 2 && chartHeight > 0 {
                     // Scaled to the series' own range, so a year's real shape shows instead of a flat line on a band.
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
@@ -170,19 +174,21 @@ struct NetWorthCard: View {
         .onChange(of: blocked) { _, now in if !now { snap = takeSnap() } }
     }
 
-    /// "▲ 12.3k this week · ▲ 40k in 30 days" on one line, or two lines when it does not fit.
-    @ViewBuilder private func changeLine(week: Double?, month: Double?) -> some View {
+    /// "▲ 1.2k profit today · ▲ 12.3k this week" (30 days instead of today until a day has been played), on one line or two.
+    @ViewBuilder private func changeLine(today: Double?, week: Double?, month: Double?) -> some View {
+        let first: (Double?, String) = today != nil ? (today, "profit today") : (month, "in 30 days")
         ViewThatFits(in: .horizontal) {
             HStack(spacing: Theme.Space.s) {
-                changeText(week, "this week")
+                changeText(first.0, first.1)
                 Text("·").textStyle(.caption, tint: Theme.inkFaint)
-                changeText(month, "in 30 days")
+                changeText(week, "this week")
             }
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                changeText(first.0, first.1)
                 changeText(week, "this week")
-                changeText(month, "in 30 days")
             }
         }
+        .accessibilityIdentifier("home-today")
     }
 
     @ViewBuilder private func changeText(_ c: Double?, _ unit: String) -> some View {
@@ -397,8 +403,9 @@ struct TopPriorities: View {
 
 // MARK: Next day
 
-/// Pinned under Home: one short line with the day, what the last day did to net worth and the week's seven segments; under it the
-/// full-width champagne Next day with "Play to end of week" as a square button beside it. While a day runs the button shows progress.
+/// Pinned under Home: the day line (day, what the last day did to net worth, the week's seven segments), then Next day with a labelled
+/// "Skip week" beside it. Skip week is free in the first 12 weeks, then Pro (a lock on it, the paywall when tapped). While the week plays
+/// the two buttons give way to its progress (day n of 7) and a Stop.
 struct AdvanceBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -410,23 +417,24 @@ struct AdvanceBar: View {
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 caption
                 Spacer(minLength: Theme.Space.s)
-                if proTeaser {
-                    Text("End of week: Pro after week 12").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
-                } else {
-                    HStack(spacing: 3) {
-                        ForEach(0..<7, id: \.self) { d in
-                            Capsule().fill(d <= engine.state.day ? Theme.ink.opacity(0.85) : Theme.line).frame(width: 12, height: 3)
-                        }
+                HStack(spacing: 3) {
+                    ForEach(0..<7, id: \.self) { d in
+                        Capsule().fill(d <= engine.state.day ? Theme.ink.opacity(0.85) : Theme.line).frame(width: 12, height: 3)
                     }
-                    .accessibilityHidden(true)
-                    .animation(Motion.quick(reduceMotion), value: engine.state.day)
+                }
+                .accessibilityHidden(true)
+                .animation(Motion.quick(reduceMotion), value: engine.state.day)
+            }
+            if store.playingWeek {
+                playingRow
+            } else {
+                HStack(spacing: Theme.Space.s) {
+                    nextButton
+                    skipButton
                 }
             }
-            HStack(spacing: Theme.Space.s) {
-                nextButton
-                weekButton
-            }
         }
+        .animation(Motion.quick(reduceMotion), value: store.playingWeek)
         .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.s)
         .background(Theme.page)
         .overlay(alignment: .top) { Hairline() }
@@ -449,34 +457,48 @@ struct AdvanceBar: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// A free player in weeks 9 to 12 is told that the fast-forward becomes a Pro feature after week 12.
-    private var proTeaser: Bool {
-        let w: Int = engine.state.week + 1
-        return !ent.isPro && w >= 9 && w <= 12 && store.canPlayWeek
-    }
+    private var locked: Bool { !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) }
 
-    /// "Play to end of week": a square outline button beside Next day from week 2; off while a blocking Inbox item is open.
-    @ViewBuilder private var weekButton: some View {
+    /// "Skip week ▸▸": plays the rest of the week; with a lock (and the paywall on tap) once it needs Pro. Shown from week 2.
+    @ViewBuilder private var skipButton: some View {
         if store.canPlayWeek {
-            let locked: Bool = !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date())
-            Button { if ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { store.playToEndOfWeek() } else { ent.run(.playToEndOfWeek, "Play to end of week") {} } } label: {
-                Image(systemName: "forward.end.fill").font(.body.weight(.semibold)).foregroundStyle(locked ? Theme.inkSoft : Theme.ink)
-                    .frame(width: 44, height: 44)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(Theme.lineStrong, lineWidth: 1))
-                    .overlay(alignment: .topTrailing) {
-                        if locked {
-                            Image(systemName: "lock.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.accentInk)
-                                .frame(width: 18, height: 18).background(Circle().fill(Theme.accent))
-                                .offset(x: 6, y: -6)
-                        }
-                    }
-                    .contentShape(Rectangle())
+            let isLocked: Bool = locked
+            Button {
+                if isLocked { ent.run(.playToEndOfWeek, "Skip week") {} } else { store.playToEndOfWeek() }
+            } label: {
+                HStack(spacing: Theme.Space.xs) {
+                    if isLocked { Image(systemName: "lock.fill").font(.caption.weight(.bold)).accessibilityHidden(true) }
+                    Text("Skip week")
+                    Image(systemName: "forward.fill").font(.caption.weight(.semibold)).accessibilityHidden(true)
+                }
+                .fixedSize()
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(SecondaryButtonStyle(tint: isLocked ? Theme.inkSoft : Theme.ink))
             .disabled(store.isAdvancing || store.blockingMessageID != nil || store.reportSheet != nil)
-            .accessibilityLabel(locked ? "Play to end of week, needs Ledger Pro" : proTeaser ? "Play to end of week, Pro after week 12" : "Play to end of week")
+            .accessibilityLabel(isLocked ? "Skip week, needs Ledger Pro" : "Skip week")
             .accessibilityIdentifier("play-week")
         }
+    }
+
+    /// The week playing: which day it is on, a bar of the seven days, and Stop (the day already running finishes first).
+    private var playingRow: some View {
+        let day: Int = min(7, engine.state.day + 1)
+        return HStack(spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(spacing: Theme.Space.s) {
+                    ProgressView().controlSize(.small).tint(Theme.ink)
+                    Text("Skipping the week · day \(day) of 7").textStyle(.body, tint: Theme.ink, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                ProgressLine(fraction: Double(day) / 7, tint: Theme.accent, height: 3)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Stop") { Haptics.tap(); store.stopPlayingWeek() }
+                .buttonStyle(SecondaryButtonStyle())
+                .accessibilityIdentifier("stop-week")
+        }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("week-playing")
     }
 
     private var nextButton: some View {

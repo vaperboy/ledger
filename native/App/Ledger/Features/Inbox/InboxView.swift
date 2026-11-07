@@ -274,7 +274,6 @@ struct InboxView: View {
             if let left = soonest { note = left <= 0 ? "The first one expires this week." : "The first one expires in \(left) week\(left == 1 ? "" : "s")." }
         case .handled:
             title = "handled by your team"
-            note = "Managers, your accountant and desks answered these for you."
         case .all:
             title = n == 1 ? "message" : "messages"
             let unread: Int = store.unreadCount
@@ -349,9 +348,9 @@ struct InboxView: View {
     private func empty(_ e: GameEngine, _ k: Tab) -> some View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
-            : e.state.inbox.isEmpty ? "Nothing here yet. Offers, warnings and decisions arrive as the weeks go by."
+            : e.state.inbox.isEmpty ? "Nothing here yet."
             : k == .decisions ? "Nothing needs you right now."
-            : k == .handled ? "Decisions your managers answer for you are listed here." : "Nothing here yet."
+            : k == .handled ? "Nothing handled for you yet." : "Nothing here yet."
         return EmptyState(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, title: text)
             .padding(.top, Theme.Space.xxl)
     }
@@ -527,7 +526,7 @@ struct MessageCard: View {
         }
         let opts = Array(message.options.enumerated())
         if opts.isEmpty {
-            Text("Nothing to choose here. This is dealt with in the company it concerns.").popupText(.caption)
+            Text("Dealt with in the company.").popupText(.caption)
         }
         VStack(spacing: Theme.Space.s) {
             ForEach(opts, id: \.offset) { idx, opt in
