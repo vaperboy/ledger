@@ -47,7 +47,8 @@ private struct LedgerButtonBody: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
+        // Every button is a capsule (the same shape as the popup actions); the primary one is a little taller.
+        let shape: Capsule = Capsule(style: .continuous)
         let pressed: Bool = configuration.isPressed
         let step: TextStep = compact ? .body : .headline
         let weight: Font.Weight = tier == .primary ? .semibold : .medium
@@ -58,7 +59,7 @@ private struct LedgerButtonBody: View {
             .transformEnvironment(\.containerInk) { (ink: inout Color?) in if let fillInk { ink = fillInk } }
             .lineLimit(1).minimumScaleFactor(0.85)
             .padding(.horizontal, tier == .tertiary ? Theme.Space.s : (compact ? Theme.Space.m : Theme.Space.l))
-            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : 44)
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : (tier == .primary ? 50 : 44))
             .background(shape.fill(fillColor))
             .overlay(shape.strokeBorder(edgeColor, lineWidth: 1))
             .frame(minWidth: 44, minHeight: 44)

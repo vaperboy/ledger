@@ -5,7 +5,7 @@ import Combine
 /// How a registered popup is drawn: `.card` is wrapped in the standard centred card (header with x, scrolling body); `.raw` draws its own
 /// complete popup (a `GamePopup`, a report page).
 enum PopupDraw {
-    case card(title: String, size: CenterSheetSize, category: PopupCategory? = nil, tone: PopupTone? = nil)
+    case card(title: String, size: CenterSheetSize, category: PopupCategory? = nil, tone: PopupTone? = nil, palette: OutsidePalette? = nil)
     case raw
 }
 
@@ -133,8 +133,14 @@ struct PopupHostLayer: View {
 
     @ViewBuilder private func entryView(_ e: PopupEntry) -> some View {
         switch e.draw {
-        case .card(let title, let size, let category, let tone):
-            CenterSheetFrame(onClose: e.onClose, title: title, size: size, category: category, tone: tone) { e.content().environment(\.popupClose, e.onClose) }
+        case .card(let title, let size, let category, let tone, let palette):
+            // The card takes the palette of the screen that raised it, like its content does, so a light outside app gets a light card.
+            if let palette {
+                CenterSheetFrame(onClose: e.onClose, title: title, size: size, category: category, tone: tone) { e.content().environment(\.popupClose, e.onClose) }
+                    .environment(\.outsidePalette, palette)
+            } else {
+                CenterSheetFrame(onClose: e.onClose, title: title, size: size, category: category, tone: tone) { e.content().environment(\.popupClose, e.onClose) }
+            }
         case .raw:
             e.content().environment(\.popupClose, e.onClose)
         }
@@ -272,8 +278,10 @@ struct HostedPopupModifier<Card: View>: ViewModifier {
         let make: () -> Card = card
         let carried: PopupCarriedEnvironment = PopupCarriedEnvironment(insideCard: insideCard, markerBudget: markerBudget, markerPageActive: markerPageActive,
                                                                        tabBarClearance: tabBarClearance, openHire: openHire, hidesRootBack: hidesRootBack)
+        var drawn: PopupDraw = draw
+        if case .card(let t, let s, let c, let tn, _) = draw { drawn = .card(title: t, size: s, category: c, tone: tn, palette: p) }
         return view.background(
-            PopupRegistration(host: host, key: key, priority: priority, active: active, draw: draw,
+            PopupRegistration(host: host, key: key, priority: priority, active: active, draw: drawn,
                               content: { AnyView(make().environment(\.outsidePalette, p).modifier(carried)) },
                               onClose: onClose, onDismiss: onDismiss)
         )
