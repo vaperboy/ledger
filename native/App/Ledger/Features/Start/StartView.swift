@@ -75,7 +75,7 @@ struct StartView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Ledger").font(.serifTitle(heroSize)).foregroundStyle(Theme.ink)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Build companies. Keep the books. Grow your net worth.").textStyle(.body, tint: Theme.inkSoft)
+                    Text("A business tycoon game, played one day at a time.").textStyle(.body, tint: Theme.inkSoft)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.top, Theme.Space.xl)
@@ -83,6 +83,8 @@ struct StartView: View {
                     problemCard(problem)
                 } else if store.hasSavedGame {
                     saveSummary
+                } else {
+                    promises
                 }
             }
             .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xl)
@@ -115,6 +117,23 @@ struct StartView: View {
     }
 
     // MARK: States
+
+    /// A first launch: what the game is, in three lines, under the wordmark.
+    private var promises: some View {
+        let items: [(glyph: String, title: String, line: String)] = [
+            (Glyph.group, "Open a business", "Pick a trade and a city, see the full start-up cost first."),
+            (Glyph.reports, "Keep the books", "Every sale, wage and bill lands in a real double-entry ledger."),
+            (Glyph.invest, "Grow your net worth", "Hire, expand and invest until you top the rich list."),
+        ]
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { (i: Int, it: (glyph: String, title: String, line: String)) in
+                if i > 0 { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
+                LedgerRow(leading: .glyph(it.glyph), leadingTint: Theme.ink, title: it.title, subtitle: it.line, lineLimit: 3)
+                    .padding(.vertical, Theme.Space.xs)
+            }
+        }
+        .padding(.top, Theme.Space.xl)
+    }
 
     /// The saved game, unboxed: who and where, then week, companies and when it was saved.
     private var saveSummary: some View {

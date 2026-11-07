@@ -80,8 +80,8 @@ struct CompaniesView: View {
                 .scrollIndicators(.hidden)
         } else {
             ViewThatFits(in: .vertical) {
-                page(e, rows: rows, limit: 3, compact: false)
-                page(e, rows: rows, limit: 2, compact: true)
+                page(e, rows: rows, limit: 3, compact: false, fills: true)
+                page(e, rows: rows, limit: 2, compact: true, fills: true)
                 ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
                     .scrollIndicators(.hidden)
                     .scrollBounceBehavior(.basedOnSize)
@@ -89,8 +89,8 @@ struct CompaniesView: View {
         }
     }
 
-    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool) -> some View {
-        HomeSummary(engine: e, compact: compact, onNewCompany: { store.push(.newCompany, on: .company) }) {
+    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false) -> some View {
+        HomeSummary(engine: e, compact: compact, fills: fills, onNewCompany: { store.push(.newCompany, on: .company) }) {
             companiesBlock(e, rows: rows, limit: limit)
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, compact ? Theme.Space.xs : Theme.Space.s).padding(.bottom, Theme.Space.m)

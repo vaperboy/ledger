@@ -12,6 +12,8 @@ struct HomeSummary<Companies: View>: View {
     @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     var compact: Bool = false
+    /// True when the page fills a fixed screen height: the free room is shared evenly between the groups instead of pooling at the end.
+    var fills: Bool = false
     var onNewCompany: () -> Void
     @ViewBuilder var companies: () -> Companies
     @State private var showInsights = false
@@ -35,8 +37,11 @@ struct HomeSummary<Companies: View>: View {
                     NetWorthCard(engine: e, chartHeight: compact ? 24 : 32) { showInsights = true }
                 }
             }
+            if fills { Spacer(minLength: 0) }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact) }
+            if fills { Spacer(minLength: 0) }
             companies()
+            if fills { Spacer(minLength: 0) }
         }
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
     }
@@ -141,8 +146,11 @@ struct NetWorthCard: View {
                 }
                 changeLine(week: week, month: month)
                 if series.count >= 2 && chartHeight > 0 {
-                    NetWorthChart(engine: engine, days: Self.days, height: chartHeight, frozen: series)
-                        .allowsHitTesting(false)
+                    // Scaled to the series' own range, so a year's real shape shows instead of a flat line on a band.
+                    let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
+                    Sparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
+                        .frame(height: chartHeight)
+                        .accessibilityHidden(true)
                         .padding(.top, Theme.Space.xs)
                 }
             }
@@ -384,15 +392,21 @@ struct AdvanceBar: View {
         if store.canPlayWeek {
             let locked: Bool = !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date())
             Button { if ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) { store.playToEndOfWeek() } else { ent.run(.playToEndOfWeek, "Play to end of week") {} } } label: {
-                Image(systemName: "forward.end.fill").font(.body.weight(.semibold)).foregroundStyle(Theme.ink)
+                Image(systemName: "forward.end.fill").font(.body.weight(.semibold)).foregroundStyle(locked ? Theme.inkSoft : Theme.ink)
                     .frame(width: 44, height: 44)
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).strokeBorder(Theme.lineStrong, lineWidth: 1))
-                    .overlay(alignment: .topTrailing) { if locked { ProMark(feature: .playToEndOfWeek).offset(x: 6, y: -6) } }
+                    .overlay(alignment: .topTrailing) {
+                        if locked {
+                            Image(systemName: "lock.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.accentInk)
+                                .frame(width: 18, height: 18).background(Circle().fill(Theme.accent))
+                                .offset(x: 6, y: -6)
+                        }
+                    }
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
             .disabled(store.isAdvancing || store.blockingMessageID != nil || store.reportSheet != nil)
-            .accessibilityLabel(proTeaser ? "Play to end of week, Pro after week 12" : "Play to end of week")
+            .accessibilityLabel(locked ? "Play to end of week, needs Ledger Pro" : proTeaser ? "Play to end of week, Pro after week 12" : "Play to end of week")
             .accessibilityIdentifier("play-week")
         }
     }
