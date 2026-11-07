@@ -44,7 +44,19 @@ public enum FoodRecipes {
         public var inputShare: Double { inputs.reduce(0) { $0 + $1.share } }
     }
 
-    struct Spec { var shifts: Double; var products: [Recipe] }
+    /// A machine the named products cannot be made or sold without; `off` says what the customer misses.
+    struct MachineNeed { var off: String; var products: [String] }
+
+    struct Spec { var shifts: Double; var products: [Recipe]; var needs: [String: MachineNeed] = [:] }
+
+    /// The share of the trade's customers who buy what this machine makes, and what they miss while it is in repair; nil when no product is linked to it.
+    static func dependentShare(trade: String, equipmentID: String) -> (share: Double, off: String)? {
+        guard let spec = specs[trade], let need = spec.needs[equipmentID] else { return nil }
+        let total = spec.products.reduce(0) { $0 + $1.customers }
+        guard total > 0 else { return nil }
+        let linked = spec.products.filter { need.products.contains($0.id) }.reduce(0) { $0 + $1.customers }
+        return (linked / total, need.off)
+    }
 
     static let specs: [String: Spec] = {
         guard let url = Bundle.module.url(forResource: "food_recipes", withExtension: "json", subdirectory: "Resources"),
@@ -58,7 +70,9 @@ public enum FoodRecipes {
                        coverDays: p["cover"].int, leadDays: p["lead"].int, allergens: p["al"].string, boughtIn: p["model"].string == "stk",
                        harvestStart: p["season"].isNull ? nil : p["season"]["s"].int, harvestWeeks: p["season"]["h"].int)
             }
-            out[k] = Spec(shifts: t["shifts"].double, products: ps)
+            var needs: [String: MachineNeed] = [:]
+            for (eid, n) in t["eq"].object { needs[eid] = MachineNeed(off: n["off"].string, products: n["p"].array.map { $0.string }) }
+            out[k] = Spec(shifts: t["shifts"].double, products: ps, needs: needs)
         }
         return out
     }()

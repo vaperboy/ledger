@@ -92,9 +92,11 @@ public enum PersonalEquipment {
             let rp = parts.indices.filter { idx in parts[idx].kind == .staff && (rl.roles[0] == "*" || rl.roles.contains { parts[idx].key == "role:" + $0 }) }
             if rp.isEmpty { continue }
             let base = rp.map { parts[$0].capacity }.min() ?? 0
-            let have = CapacityModel.equipmentAvailable(co, e), cond = CapacityModel.equipmentCondition(co, e)
+            // Units in repair are counted by `EquipmentOutage`; here only what is owned limits the people.
+            let installed = CapacityModel.equipmentCount(co, e), cond = CapacityModel.equipmentCondition(co, e)
+            let have = EquipmentOutage.unitsCounted(installed: installed, available: CapacityModel.equipmentAvailable(co, e), need: need)
             let frac = min(1, have / need)
-            let gate = e.isRequired && have < 0.01
+            let gate = e.isRequired && installed < 0.01
             let eff = e.vehicleModels != nil && (bd.id == "courier" || bd.id == "trucking") ? fleetEfficiency(co, e, tables: tables) : 1
             let condF = cond >= 0.6 ? 1.002 : 0.7 + 0.5 * cond
             let cap = gate ? 0 : base * (frac + (1 - frac) * rl.workWithout) * condF * eff
