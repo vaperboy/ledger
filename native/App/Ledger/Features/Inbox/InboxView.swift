@@ -229,10 +229,6 @@ struct InboxView: View {
                 if m.status != "open" && !m.isRead {
                     Button { store.markRead(m.id) } label: { Label("Read", systemImage: "envelope.open") }.tint(P.lineStrong)
                 }
-                if m.companyID != 0, store.engine?.state.company(m.companyID) != nil {
-                    Button { store.openCompany(m.companyID, section: MessageCard.section(for: m)) } label: { Label("Company", systemImage: "building.2") }
-                        .tint(P.accent2)
-                }
             }
     }
 
@@ -384,20 +380,6 @@ struct MessageCard: View {
                              tone: hold ? nil : .warning, run: run)
     }
 
-    /// The part of the company a message is about, where that is clear from what it asks.
-    static func section(for m: Message) -> CompanySection? {
-        let a = m.actionID
-        let key: String?
-        if a.hasPrefix("pay29") { key = "finances" }
-        else if ["staffx", "mgrraise", "mgrpoach", "prop", "mprop", "mfind11"].contains(a) || a.hasPrefix("tg58") { key = "staff" }
-        else if a == "ctv" || a == "acct" { key = "customers" }
-        else if a == "oil24" { key = "energy" }
-        else if a == "club24" || a == "fb24" { key = "club" }
-        else if a == "wx56prep" { key = "operations" }
-        else { key = nil }
-        return key.flatMap { CompanySection(key: $0) }
-    }
-
     private var glyph: String { message.inboxGlyph }
     private var tint: Color { message.inboxTint(P) }
     private var age: String {
@@ -458,27 +440,13 @@ struct MessageCard: View {
                 if !message.handledBy.isEmpty {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium)
                 }
-                companyLink
             }
             if open { decision }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder private var companyLink: some View {
-        if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
-            let sec = Self.section(for: message)
-            let app = store.applicantLink(message)
-            Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
-                LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
-            }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
-        } else if message.companyID == 0, let app = PhoneApp(rawValue: message.appLink) {
-            Button { store.openApp(app) } label: { LinkLabel(text: "Open \(app.title)") }
-                .buttonStyle(PressableStyle()).accessibilityIdentifier("open-app-link")
-        }
-    }
-
-    /// The message as a chat bubble: sender and age on top, the subject, the text, what it means, and the link to the company.
+    /// The message as a chat bubble: sender and age on top, the subject, the text, what it means, and what it means.
     private func bubble(open: Bool) -> some View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         return VStack(alignment: .leading, spacing: 4) {
@@ -495,16 +463,6 @@ struct MessageCard: View {
             }
             if !message.handledBy.isEmpty {
                 Text("Handled by " + message.handledBy).font(.caption2.weight(.medium)).foregroundStyle(P.accent)
-            }
-            if message.companyID != 0, let co = store.engine?.state.company(message.companyID) {
-                let sec = Self.section(for: message)
-                let app = store.applicantLink(message)
-                Button { if let app { store.openApplicants(companyID: app.companyID, role: app.role.isEmpty ? nil : app.role) } else { store.openCompany(co.id, section: sec) } } label: {
-                    LinkLabel(text: app != nil ? "Open applicants" : "Open \(co.name)" + (sec.map { " · " + $0.rawValue } ?? ""))
-                }.buttonStyle(PressableStyle()).accessibilityIdentifier("open-company-link")
-            } else if message.companyID == 0, let app = PhoneApp(rawValue: message.appLink) {
-                Button { store.openApp(app) } label: { LinkLabel(text: "Open \(app.title)") }
-                    .buttonStyle(PressableStyle()).accessibilityIdentifier("open-app-link")
             }
         }
         .padding(.horizontal, full ? 0 : 14).padding(.vertical, full ? 0 : 11)
