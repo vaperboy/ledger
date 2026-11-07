@@ -1,4 +1,5 @@
 # What's new
+- Redesigned Home (one screen: net worth, what needs you or your next goal, top companies, Next day), Team (people and cost, one worker profile, offer page that shows what you know), Phone home, Bank and Accounting
 - A business that served no one last week now says why (e.g. a required machine in repair) and opens the fix
 - Popups on light screens (Bank, Accounting, outside apps) are readable: light glass with dark text; buttons are capsules everywhere
 - Chains work like one company: one board, one dividend from the whole chain, branches share cash; a losing branch is closed (lease, staff moved or paid off, stock moved) or sold as a going concern, never bankrupt on its own
