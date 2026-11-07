@@ -9,7 +9,7 @@ public extension Failure {
     static func warn(_ s: inout GameState, context: FinanceContext) {
         for i in s.companies.indices {
             let c = s.companies[i]
-            guard c.status == .open || c.status == .closed else { continue }
+            guard c.status == .open || c.status == .closed, !s.isBranch(c) else { continue }   // a chain is warned as a whole (warnChains)
             var left: Int? = nil
             var why = ""
             if c.weeksNegative > 8 && c.cash < -context.overdraftRoom(c, s) {
@@ -29,6 +29,23 @@ public extension Failure {
             let id = s.addMessage(from: "Creditors", title: "\(c.name) is about to be sold",
                                   body: "Unless something changes, its creditors will force a sale \(when): \(why). Put money in, cut costs or talk to the bank now.",
                                   companyID: c.id, tone: "bad")
+            if let k = s.inbox.firstIndex(where: { $0.id == id }) { s.inbox[k].isAlert = true }
+        }
+        warnChains(&s, context: context)
+    }
+
+    /// The same alert for a chain whose combined account has been overdrawn past its limit for weeks.
+    static func warnChains(_ s: inout GameState, context: FinanceContext) {
+        for ch in Chains.all(s) {
+            let L = Chains.stores(s, ch)
+            guard L.count >= 2, let head = L.first else { continue }
+            let neg = ch["neg"].int, room = L.reduce(0) { $0 + context.overdraftRoom($1, s) }
+            guard neg > 8, L.reduce(0, { $0 + $1.cash }) < -room else { continue }
+            if ch["warnW"].int != 0 && s.week + 1 - ch["warnW"].int < 4 { continue }
+            var c = ch; c["warnW"] = .number(Double(s.week + 1)); Chains.save(&s, c)
+            let id = s.addMessage(from: "Creditors", title: "\(ch["name"].string) is about to fail",
+                                  body: "The whole chain's account has been overdrawn past its limit for \(neg) weeks. Unless something changes, its creditors close every branch in about \(max(1, 13 - neg)) weeks. Put money in, close or sell a branch, or talk to the bank now.",
+                                  companyID: head.id, tone: "bad")
             if let k = s.inbox.firstIndex(where: { $0.id == id }) { s.inbox[k].isAlert = true }
         }
     }
