@@ -25,10 +25,10 @@ struct RootView: View {
         // Every scroll view and list in the app only bounces when its content is taller (or wider) than the screen: a page that fits stays still.
         .scrollBounceBehavior(.basedOnSize, axes: [.vertical, .horizontal])
         .transaction { t in if reduceMotion { t.animation = nil } }
-        .centerSheet(item: $store.workerPopup) { (w: WorkerPopupRef) -> AnyView in
+        .centerSheet(item: $store.workerPopup, category: .detail, tone: .info) { (w: WorkerPopupRef) -> AnyView in
             AnyView(WorkerProfileSheet(companyID: w.companyID, employeeID: w.id).environmentObject(store))
         }
-        .centerSheet(isPresented: $store.customPickerOpen) {
+        .centerSheet(isPresented: $store.customPickerOpen, category: .medium, tone: .info) {
             CustomTabPicker().environmentObject(store)
         }
         .modifier(PostM7Paywall())

@@ -28,7 +28,7 @@ struct WeekReportShell<More: View>: View {
     // MARK: Body
 
     var body: some View {
-        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, footer: AnyView(footer), onClose: { }) {
+        GamePopup(title: digest.title, showsClose: false, dismissOnBackdrop: false, footer: AnyView(footer), category: .detail, tone: .info, onClose: { }) {
             pageContent
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

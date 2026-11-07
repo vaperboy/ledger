@@ -85,20 +85,14 @@ struct WardrobeView: View {
         let badgeOK: Bool = Cosmetics.isBadgeUnlocked(previewBadge, earned: earned, pro: pro)
         let themeOK: Bool = Cosmetics.isThemeUnlocked(previewTheme, pro: pro)
         let accent: Color = Cosmetics.theme(previewTheme).accent
-        return VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    preview(accent: accent)
-                    themeSection(pro: pro)
-                    badgeSection(pro: pro)
-                    Text("Badges you earn in your career are yours to wear for ever. Extra badges and colours come with Ledger Pro. Looks only: nothing here changes your game.")
-                        .popupText(.caption)
-                }
-                .padding(.horizontal, 18).padding(.bottom, 24)
-            }
-            .scrollIndicators(.hidden)
-            if !(badgeOK && themeOK) { unlockBar }
+        let content = VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            preview(accent: accent)
+            themeSection(pro: pro)
+            badgeSection(pro: pro)
+            Text("Badges you earn in your career are yours to wear for ever. Extra badges and colours come with Ledger Pro. Looks only: nothing here changes your game.")
+                .popupText(.caption)
         }
+        return withUnlock(content, show: !(badgeOK && themeOK))
         .onAppear {
             previewBadge = Cosmetics.resolvedBadge(savedBadge, earned: earned, pro: pro).id
             previewTheme = Cosmetics.resolvedTheme(savedTheme, pro: pro).id
@@ -197,6 +191,11 @@ struct WardrobeView: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
+    /// Pins the unlock bar under the popup's body while the previewed look is locked.
+    @ViewBuilder private func withUnlock<V: View>(_ v: V, show: Bool) -> some View {
+        if show { v.popupFooter { unlockBar } } else { v }
+    }
+
     /// Shown while the previewed look is locked.
     private var unlockBar: some View {
         let lockedByPro: Bool = (Cosmetics.badge(previewBadge).premium && !ent.isPro) || (Cosmetics.theme(previewTheme).premium && !ent.isPro)
@@ -207,14 +206,13 @@ struct WardrobeView: View {
                     popupClose?()
                     ent.paywall = PaywallRequest(title: "Wardrobe")
                 }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .buttonStyle(PopupPrimaryCapsuleStyle(tone: .prestige))
                 .accessibilityIdentifier("wardrobe-unlock")
             } else {
                 Text("This badge is won in your career. Keep playing to earn it.")
                     .popupText(.caption)
             }
         }
-        .padding(.horizontal, 18).padding(.vertical, Theme.Space.m)
-        .overlay(alignment: .top) { Hairline() }
+        .frame(maxWidth: .infinity)
     }
 }

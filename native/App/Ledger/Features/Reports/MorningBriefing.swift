@@ -124,7 +124,7 @@ struct DailyReportPopup: View {
         let list: [BriefingLine] = lines
         let total: Int = list.count + 2
         let canContinue: Bool = reduceMotion || showContinue
-        GamePopup(title: digest.dateLabel, showsClose: false, dismissOnBackdrop: false, onClose: { store.dismissDailySheet() }) {
+        GamePopup(title: digest.dateLabel, showsClose: false, dismissOnBackdrop: false, category: .medium, tone: .info, onClose: { store.dismissDailySheet() }) {
             VStack(alignment: .leading, spacing: PopupSpace.block) {
                 VStack(alignment: .leading, spacing: PopupSpace.block) {
                     Text("Morning briefing").textStyle(.label, tint: Theme.inkFaint)

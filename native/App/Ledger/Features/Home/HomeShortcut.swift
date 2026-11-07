@@ -98,7 +98,7 @@ struct HomeShortcutEditor: View {
                 }
             }
             Button("Save shortcuts") { Haptics.tap(); store.setHomeShortcuts(chosen); dismiss() }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .buttonStyle(PopupPrimaryCapsuleStyle(tone: .info))
         }
         .centerSheetTitle("Home shortcuts")
         .onAppear { chosen = store.homeShortcuts }

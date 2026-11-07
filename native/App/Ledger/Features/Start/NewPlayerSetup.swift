@@ -47,7 +47,7 @@ struct NewPlayerSetup: View {
         .padding(.horizontal, 18).padding(.top, 8).padding(.bottom, 12)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-        .centerSheet(item: $picked) { (t: StarterTrade) in tradeSheet(t) }
+        .centerSheet(item: $picked, category: .medium, tone: .investment) { (t: StarterTrade) in tradeSheet(t) }
     }
 
     private var header: some View {
@@ -189,7 +189,7 @@ struct NewPlayerSetup: View {
                 Text("You start with \(cur.tidyShort(cash)), enough for the set-up and the first eight weeks.").popupText(.caption)
             }
             Button("Open \(t.name)") { Haptics.tap(); open(t) }
-                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment))
                 .accessibilityIdentifier("trade-open")
         }
         .frame(maxWidth: .infinity, alignment: .leading)

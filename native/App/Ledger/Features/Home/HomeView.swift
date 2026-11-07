@@ -42,7 +42,7 @@ struct HomeSummary<Companies: View>: View {
             }
             HomeShortcutRow()
         }
-        .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall) { InsightsView(engine: e) }
+        .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
     }
 
     private var playerName: String {
@@ -283,7 +283,7 @@ struct HomeShortcutRow: View {
             }
             .contextMenu { Button("Edit shortcuts") { editing = true } }
         }
-        .centerSheet(isPresented: $editing) { HomeShortcutEditor() }
+        .centerSheet(isPresented: $editing, category: .medium, tone: .info) { HomeShortcutEditor() }
     }
 
     private func tile(_ item: HomeShortcut, badge: Int) -> some View {

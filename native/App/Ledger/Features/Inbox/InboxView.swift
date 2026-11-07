@@ -100,7 +100,7 @@ struct InboxView: View {
         let fallback: String = e.displayText(message.title, companyID: message.companyID)
         let title: String = label + (where_.isEmpty ? "" : " · " + where_)
         let body: String = lines.isEmpty ? fallback : lines.joined(separator: "\n")
-        var action = PendingAction(title: title, message: body, button: label, destructive: need.irreversible) { answer(message, index, label, inline: inline) }
+        var action = MessageCard.answerConfirm(title: title, message: body, button: label, need: need) { answer(message, index, label, inline: inline) }
         if !need.irreversible, let amount = need.amount {
             // A message about the group or you personally has no company: its money is in the home currency.
             action.amount = amount
@@ -173,7 +173,7 @@ struct InboxView: View {
         .onChange(of: query) { _, _ in limit = Self.page }
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
         .onChange(of: store.phonePath.count) { _, _ in detailID = nil }
-        .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } })) { detailSheet }
+        .centerSheet(isPresented: Binding(get: { detailID != nil }, set: { if !$0 { detailID = nil } }), category: .medium, tone: detailTone) { detailSheet }
         .confirmAction(listPending)
         .ledgerBackground()
         .appScreen(title: "Inbox", subtitle: waitingCount > 0 ? "\(waitingCount) waiting for you" : "Decisions, offers and warnings") { optionsMenu }
@@ -292,6 +292,12 @@ struct InboxView: View {
         .accessibilityIdentifier("inbox-hero")
     }
 
+    /// An open decision reads as a warning; anything else in the Inbox is information.
+    private var detailTone: PopupTone {
+        guard let id = detailID, let m = store.engine?.state.inbox.first(where: { $0.id == id }) else { return .info }
+        return m.status == "open" ? .warning : .info
+    }
+
     /// The search box (the system search field needs a navigation bar, which the app header replaces).
     private var searchField: some View {
         HStack(spacing: Theme.Space.s) {
@@ -370,6 +376,15 @@ struct MessageCard: View {
         return EffectPreview.lines(option["fx"], currency: cur)
     }
     private func preview(_ option: JSONValue) -> [String] { store.engine.map { Self.preview($0, message, option) } ?? [] }
+
+    /// The question before an answer: an irreversible sale or dismissal is held to confirm (red), any other irreversible answer is
+    /// always asked in the warning tone, and a spend is asked by its size (the caller sets the amount).
+    static func answerConfirm(title: String, message: String, button: String, need: DecisionConfirmation, run: @escaping () -> Void) -> PendingAction {
+        let words: String = button.lowercased()
+        let hold: Bool = need.irreversible && ["sell", "fire", "dismiss", "sack", "let go", "wind up", "terminate"].contains { words.contains($0) }
+        return PendingAction(title: title, message: message, button: button, destructive: hold, alwaysAsk: need.irreversible && !hold,
+                             tone: hold ? nil : .warning, run: run)
+    }
 
     /// The part of the company a message is about, where that is clear from what it asks.
     static func section(for m: Message) -> CompanySection? {

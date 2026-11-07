@@ -60,8 +60,8 @@ struct PaywallView: View {
         return Button { Haptics.choose(); choice = p } label: {
             HStack(alignment: .top, spacing: Theme.Space.m) {
                 ZStack {
-                    Circle().strokeBorder(on ? Theme.accent : Theme.lineStrong, lineWidth: 1.5)
-                    if on { Circle().fill(Theme.accent).padding(5) }
+                    Circle().strokeBorder(on ? PopupTone.prestige.color : Theme.lineStrong, lineWidth: 1.5)
+                    if on { Circle().fill(PopupTone.prestige.color).padding(5) }
                 }
                 .frame(width: 22, height: 22)
                 .padding(.top, 1)
@@ -99,7 +99,7 @@ struct PaywallView: View {
         Button { Haptics.tap(); Task { await ent.purchase(choice) } } label: {
             Text(buyLabel)
         }
-        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+        .buttonStyle(PopupPrimaryCapsuleStyle(tone: .prestige))
         .disabled(ent.isBusy || ent.price(choice).isEmpty)
         .accessibilityIdentifier("paywall-buy")
     }
@@ -116,7 +116,7 @@ struct PaywallView: View {
             Button { Task { if await ads.watchForPass() { ent.paywall = nil } } } label: {
                 Text("Try Pro for a day: watch an ad")
             }
-            .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+            .buttonStyle(PopupTextActionStyle(tint: PopupTone.prestige.color))
             .accessibilityIdentifier("paywall-pass")
         }
     }
@@ -156,7 +156,7 @@ struct PaywallHost: ViewModifier {
 
     func body(content: Content) -> some View {
         let binding: Binding<PaywallRequest?> = Binding(get: { ent.paywall }, set: { ent.paywall = $0 })
-        return content.centerSheet(item: binding, title: "Ledger Pro") { (request: PaywallRequest) in
+        return content.centerSheet(item: binding, title: "Ledger Pro", category: .detail, tone: .prestige) { (request: PaywallRequest) in
             PaywallView(request: request)
         }
     }

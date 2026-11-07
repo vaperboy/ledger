@@ -18,15 +18,11 @@ struct InsightsView: View {
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: pro).accent
         return VStack(spacing: 0) {
             ZStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        netWorthCard(accent: accent)
-                        companiesCard(accent: accent)
-                        runwayCard(accent: accent)
-                    }
-                    .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.xl)
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    netWorthCard(accent: accent)
+                    companiesCard(accent: accent)
+                    runwayCard(accent: accent)
                 }
-                .scrollIndicators(.hidden)
                 .blur(radius: pro ? 0 : 9)
                 .allowsHitTesting(pro)
                 .accessibilityHidden(!pro)
@@ -47,7 +43,7 @@ struct InsightsView: View {
                 popupClose?()
                 ent.paywall = PaywallRequest(title: "Insights")
             }
-            .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+            .buttonStyle(PopupPrimaryCapsuleStyle(tone: .prestige))
             .accessibilityIdentifier("insights-unlock")
         }
         .padding(Theme.Space.l)

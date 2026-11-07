@@ -33,7 +33,7 @@ struct StartView: View {
     private func replacingSave(_ title: String, button: String, _ body: @escaping () -> Void) {
         guard store.hasSavedGame else { body(); return }
         pending = PendingAction(title: title, message: replacedLine + " The copy before it is kept as a backup file, but the game will no longer open it.",
-                                button: button, destructive: true, run: body)
+                                button: button, alwaysAsk: true, tone: .warning, icon: "arrow.counterclockwise", run: body)
     }
 
     /// The new-player start: the company is created fully set up and open on day 1 (`LifeStory.fresh`).
@@ -55,7 +55,7 @@ struct StartView: View {
         .ledgerBackground()
         .onAppear { summary = store.currentSaveSummary() }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showSettings, title: "Settings", size: .tall) { SettingsView(embedded: true) }
+        .centerSheet(isPresented: $showSettings, title: "Settings", size: .tall, category: .detail, tone: .info) { SettingsView(embedded: true) }
     }
 
     /// The wordmark as the hero, the saved game (or why it could not be opened) under it, and one pinned primary action: Continue when
