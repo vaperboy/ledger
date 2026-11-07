@@ -39,6 +39,9 @@ struct LedgerApp: App {
 
     var body: some Scene {
         WindowGroup {
+            if ProcessInfo.processInfo.arguments.contains("-popupGallery") {
+                PopupGallery().popupHost().preferredColorScheme(.dark)
+            } else {
             RootView()
                 .modifier(PaywallHost())
                 .environmentObject(store)
@@ -52,6 +55,7 @@ struct LedgerApp: App {
                     if phase == .background { store.scheduleReminders() }
                     if phase == .active { Reminders.cancelAll(); Task { await entitlements.refresh() } }
                 }
+            }
         }
     }
 }
