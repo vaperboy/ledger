@@ -1,4 +1,6 @@
 # What's new
+- Sliders move only on a sideways drag, so scrolling never changes a value by accident
+- Group redesigned: group value and trend, what needs you, Boardroom where you can talk to every board member, sale routes, chain page with branch close/sell
 - No more jumping between tabs: links open inside the tab you are on with Back, a company switcher on company and group pages; outside apps redesigned (TechPro, AirStay, Atlas, Marketplace, Luxury, Reviews, Market, Ventures) with a readable status bar
 - Redesigned Home (one screen: net worth, what needs you or your next goal, top companies, Next day), Team (people and cost, one worker profile, offer page that shows what you know), Phone home, Bank and Accounting
 - A business that served no one last week now says why (e.g. a required machine in repair) and opens the fix
