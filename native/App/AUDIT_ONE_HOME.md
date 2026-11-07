@@ -22,22 +22,27 @@ Rules: managers live in Group (the Group row is the manager); employees live in 
 | Phone/BankBillsTab.swift:93 | "Payroll and pay day" card opened Accounting | Card removed |
 | Phone/BankMoveSheets.swift:136 | "Open the company" button | Button removed |
 
-## Left for the owner
+## Resolved by owner decisions
+
+| File:line | What | Resolution |
+|---|---|---|
+| Home/HomeView.swift:231 | `openHiring()` fell back to Group > Management | Opens the Team of the company with an open post, else the first live company; nothing otherwise |
+| Phone/BankAccountView.swift:74, BankBillsTab.swift:52 | Payroll alerts with "Run payroll" / "Open Accounting" | Removed from Bank; the Inbox "Needs you" tab lists them with "Approve payroll" / "Pay now" answered there |
+| Companies/CompanyManagement.swift:403 | "Talk in the Boardroom" | Button removed |
+| Companies/GroupHome.swift:383 | Unmanaged Group row opened Team | Row is plain |
+| Companies/GroupEntityPage.swift:145,155,215 | Staff, Open the company, subsidiary rows opened Company | Removed; subsidiaries are plain rows |
+| Companies/CompanySetupScreen.swift:68,70; CompanyOperations.swift:124-132; CompanyOperationsSheets.swift:39; CompanyEquipment.swift | Rows opened AirStay, TechPro, Atlas | Removed; the flows live only in the apps (rows are read-only, the Not insured and Outgrown-home fix cards are gone) |
+| Companies/DocumentSignSheet.swift:123, GroupSupplierDirectory.swift:200, ProjectsTabs.swift, ProjectTimelineViews.swift:53 | Redirects to company sections | Removed (project company rows are plain, the Start-something tiles keep only Venture) |
+| Market/MarketCompanies:258, MarketWorld:145, MarketRivals:313-453, WorldRecordsView:163 | Open Company after acquisitions and from lists | Removed; the post-purchase toast stays |
+| Phone/BankApp.swift:89, NewsView.swift:173, VenturesView.swift:248, StatsView.swift:241 | Phone apps opened Company or other apps | Removed (Stats keeps the Activity page) |
+| Reports/WeekReportShell.swift:93,113, ReportPrompt.swift:162 | "Next goal" link and "Full report" | Removed with `openReport` and the `openReports` parameter |
+
+## Still open
 
 | File:line | What | Question |
 |---|---|---|
-| Home/HomeView.swift:338,380 | "Inbox · N" link and "N decisions waiting" card open the Inbox | Keep as a badge-style entry, or drop for a number only? |
-| Home/HomeView.swift:327, HomeRankStrip, HomeShortcut | Goals card, rank strip, shortcuts open apps, hiring, market | Is Home allowed to launch apps, or numbers only? |
-| Home/HomeView.swift:231 | `openHiring()` falls back to Group > Management | Hiring entry point must be Team only |
-| Phone/BankAccountView.swift:74, BankBillsTab.swift:52 | Payroll alerts with "Run payroll" / "Open Accounting" | These are needs-you items: answer in the Inbox, or stay as Bank alerts? |
-| Companies/CompanyManagement.swift:403 | "Talk in the Boardroom" (inside Group, to another Group tab) | Same feature, or a duplicate home? |
-| Companies/GroupHome.swift:383 | Group row without a manager opens Team (staff) | The Group row should be the manager; what should an unmanaged row do? |
-| Companies/GroupEntityPage.swift:145,155,215; GroupBoards.swift:101 | Group pages link to Company Team and sections | Group-to-Company links, same question |
-| Companies/CompanySetupScreen.swift:68,70; CompanyOperations.swift:124-132; CompanyOperationsSheets.swift:39; CompanyEquipment.swift:189-408 | Company rows open AirStay, TechPro, Atlas (rent, buy, cover) | These are the purchase actions; need a home inside Company or remain in the apps |
-| Companies/DocumentSignSheet.swift:123, GroupSupplierDirectory.swift:200, ProjectsTabs.swift:82,319,376, ProjectTimelineViews.swift:53 | Redirects to company sections | Decide per screen |
-| Market/* (MarketCompanies:258, MarketWorld:145, MarketRivals:313-453), WorldRecordsView:163 | Open Company after acquisitions and from lists | Post-purchase navigation allowed? |
-| Phone/BankApp.swift:89, NewsView.swift:173, VenturesView.swift:248, StatsView.swift:241 | Phone apps open Company or other apps | Same |
-| Reports/WeekReportShell.swift:93,113, ReportPrompt.swift:162 | "Next goal" link and "Full report" open other places | Same |
-| Home dashboard duplicates | HomeInsights and Suggestions repeat per-feature facts | Needs a content review, not a code-only fix |
+| Home/* | Home launches apps and the Inbox; HomeInsights and Suggestions repeat per-feature facts | Home was not touched in this pass |
+| Companies/GroupBoards.swift:101 | "Owners and shares" opens Group > Ownership | Group to Group, left as is |
+| Companies/ProjectsTabs.swift (Venture tile) | Opens the Ventures app | Cross-app, not in the decisions |
 
 Not compiled here; CI is the compiler.

@@ -64,12 +64,6 @@ struct WeekReportShell<More: View>: View {
         return Array(store.celebrationQueue.prefix(while: { (c: Celebration) -> Bool in CelebrationPopup.foldsIntoReport(c, e) }))
     }
 
-    /// The goal after them, when it names a screen: its button opens that screen.
-    private var nextLadderGoal: PlayerGoals.LadderGoal? {
-        guard let e = store.engine, let g = PlayerGoals.currentLadderGoal(e.state), !g.link.isEmpty, !g.button.isEmpty else { return nil }
-        return g
-    }
-
     @ViewBuilder private var goalsBlock: some View {
         let goals: [Celebration] = foldedGoals
         if !goals.isEmpty {
@@ -84,16 +78,6 @@ struct WeekReportShell<More: View>: View {
                         }
                     }
                     .accessibilityElement(children: .combine)
-                }
-                if let next = nextLadderGoal {
-                    Button(next.button) {
-                        Haptics.tap()
-                        dismissFolded()
-                        store.dismissReportSheet()
-                        _ = store.openLadderLink(next.link)
-                    }
-                    .buttonStyle(TertiaryButtonStyle(size: .compact))
-                    .accessibilityIdentifier("report-next-goal")
                 }
             }
             .padding(.top, Theme.Space.m)
@@ -110,8 +94,6 @@ struct WeekReportShell<More: View>: View {
 
     private var footer: some View {
         PopupActionBar {
-            Button("Full report") { Haptics.tap(); dismissFolded(); store.dismissReportSheet(openReports: true) }
-                .buttonStyle(TertiaryButtonStyle()).accessibilityIdentifier("report-open")
             PopupOptionButton(title: "Continue", highlighted: true, identifier: "report-continue") { continueTapped() }
         }
     }

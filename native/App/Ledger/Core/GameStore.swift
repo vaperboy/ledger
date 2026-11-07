@@ -479,7 +479,7 @@ final class GameStore: ObservableObject {
     }
 
     /// The player has read the report sheet: the report (and the shorter ones that closed with it) are marked seen.
-    func dismissReportSheet(openReports: Bool = false) {
+    func dismissReportSheet() {
         guard let d = reportSheet else { return }
         act { e -> Bool in
             if let r = e.pendingReportPrompt() { e.dismissReportPrompt(r) }
@@ -488,7 +488,6 @@ final class GameStore: ObservableObject {
         reportSheet = nil
         if d.kind == .week { Reminders.askOnce() }   // The system prompt, once, after the first week report
         if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Home scrolls to Needs you and the expiry pill pulses once
-        if openReports { openReport(ReportRef(kind: d.kind, id: d.reportID)) }
     }
 
     func dismissDailySheet() { dailySheet = nil }
@@ -778,9 +777,6 @@ final class GameStore: ObservableObject {
 
     /// Opens one message in the Inbox app.
     func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
-
-    /// Opens the Reports app on one report.
-    func openReport(_ ref: ReportRef) { openApp(.reports, request: .report(ref)) }
 
     /// The apps take their request when they appear and when it changes. A request whose target is gone (a message that was removed) is dropped.
     func takeVenturesRequest() -> Bool {

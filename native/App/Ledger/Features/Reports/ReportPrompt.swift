@@ -158,11 +158,6 @@ struct CelebrationPopup: View {
                     .opacity(item.kind != "goal" || goalShown || reduceMotion ? 1 : 0)
             }
             claimArea
-            if let next = nextGoal {
-                Button(next.button) { dismiss(); _ = store.openLadderLink(next.link) }
-                    .buttonStyle(PressableStyle()).popupText(.effect)
-                    .padding(.top, 2).accessibilityIdentifier("celebration-next-goal")
-            }
             if !canClaim { dismissButton }
         }
         .frame(maxWidth: .infinity)
@@ -194,12 +189,6 @@ struct CelebrationPopup: View {
     /// A finished goal with nothing to claim: the week report tells it in a line instead of this popup.
     static func foldsIntoReport(_ item: Celebration, _ engine: GameEngine?) -> Bool {
         item.kind == "goal" && claimableStep(item, engine) == nil
-    }
-
-    /// The goal after a finished ladder goal, when it names a screen: its button opens that screen.
-    private var nextGoal: PlayerGoals.LadderGoal? {
-        guard item.kind == "goal", let e = store.engine, let g = PlayerGoals.currentLadderGoal(e.state), !g.link.isEmpty, !g.button.isEmpty else { return nil }
-        return g
     }
 
     /// Claiming is the only way out: a goal or mission is claimed here, a trophy or milestone (already paid) is claimed with one tap.
