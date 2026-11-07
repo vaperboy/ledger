@@ -137,6 +137,14 @@ public struct GameState: Codable, Equatable, Sendable {
     public func company(_ id: Int) -> Company? { companies.first { $0.id == id } }
     public func companyIndex(_ id: Int) -> Int? { companies.firstIndex { $0.id == id } }
     public var liveCompanies: [Company] { companies.filter { $0.status.isLive } }
+    /// The live stores of the registered chain `co` belongs to, oldest first (empty when it is in none). The first is the chain's head office.
+    public func chainStores(of co: Company) -> [Company] {
+        let id = co.value("chain")
+        guard !id.isNull, (rest["chains"]?.array ?? []).contains(where: { $0["id"].int == id.int }) else { return [] }
+        return companies.filter { $0.status.isLive && !$0.value("chain").isNull && $0.value("chain").int == id.int }
+    }
+    /// A store of a chain with two or more live stores is a branch: one company with the others, not a legal entity of its own.
+    public func isBranch(_ co: Company) -> Bool { chainStores(of: co).count >= 2 }
 
     /// A fresh unique id. Original: `uid()`.
     public mutating func makeID() -> Int {

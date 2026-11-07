@@ -456,7 +456,7 @@ public enum CompanySale {
         guard let co = s.company(companyID) else { return [] }
         let whole = SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: 100)
         func r(_ id: String, _ title: String, _ pitch: String, _ problem: String?) -> Route { Route(id: id, title: title, pitch: pitch, available: problem == nil, why: problem ?? "") }
-        let blocked: String? = Shareholders.isBlocked(s, companyID: companyID) ? "The other owners block big moves for now." : nil
+        let blocked: String? = s.isBranch(co) ? SaleListings.branchNote : Shareholders.isBlocked(s, companyID: companyID) ? "The other owners block big moves for now." : nil
         let hasGroup = !GroupStakes.groups(s, country: co.countryCode).isEmpty
         return [
             r("private", "Handshake", "Slow and quiet. One or two offers, nobody hears.", whole ?? blocked),
@@ -468,7 +468,7 @@ public enum CompanySale {
               co.status == .open ? (blocked ?? (mergeCandidates(s, companyID: companyID).isEmpty ? "No independent rival here is big enough to merge with." : nil)) : "The company must be open."),
             r("group", "Sell to a rival group", "Approach a group directly for a quick deal.", co.status.isLive && co.type != "hold" ? (blocked ?? (SaleListings.isListed(s, companyID: companyID) ? "It is already listed: withdraw the listing first." : (hasGroup ? nil : "No group is active in this country."))) : "This company cannot be sold."),
             r("stake", "Sell a stake", "Keep control and sell 10, 25, 34 or 49% of your shares.", SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: 10) ?? blocked),
-            r("ipo", "Go public", "List a holding on the exchange.", ipoProblem(s, companyID: companyID, data: data, context: fc)),
+            r("ipo", "Go public", "List a holding on the exchange.", blocked ?? ipoProblem(s, companyID: companyID, data: data, context: fc)),
             r("franchise", "Master franchise", "Sell the franchise rights of a country.", co.value("fr")["on"].bool ? nil : "Set up franchising for this company first."),
         ]
     }
@@ -518,6 +518,7 @@ public enum CompanySale {
     @discardableResult
     public static func mergeWithRival(_ s: inout GameState, companyID: Int, rivalID: Int, pct: Double, data: GameData, context fc: FinanceContext) -> MergeResult {
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { return .refused("The company must be open.") }
+        if s.isBranch(s.companies[i]) { return .refused(SaleListings.branchNote) }
         if Shareholders.isBlocked(s, companyID: companyID) { return .refused("The other owners block a merger for now.") }
         guard let r = mergeCandidates(s, companyID: companyID).first(where: { $0.id == rivalID }) else { return .refused("That rival is no longer there.") }
         let chance = min(1, 0.35 + (pct - 20) * 0.065)
@@ -535,7 +536,7 @@ public enum CompanySale {
     public struct GroupBuyer: Identifiable, Equatable { public var id: String; public var name: String; public var price: Double }
     /// What each active group would pay for the whole company now: about its value, a little either side by a hash of the group and the week.
     public static func groupBuyers(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> [GroupBuyer] {
-        guard let co = s.company(companyID), co.status.isLive, co.type != "hold", !Shareholders.isBlocked(s, companyID: companyID) else { return [] }
+        guard let co = s.company(companyID), co.status.isLive, co.type != "hold", !s.isBranch(co), !Shareholders.isBlocked(s, companyID: companyID) else { return [] }
         let v0 = max(0, Valuation.companyValue(co, state: s, trades: data.catalog)) * BrandValues.salePremium(BrandValues.company(s, co).score)
         return GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 }.map { g in
             GroupBuyer(id: g["id"].string, name: g["name"].string, price: (v0 * (0.9 + 0.15 * HashedRandom.first("grp:\(companyID):\(g["id"].string):\(s.week)")) / 1000).rounded() * 1000)

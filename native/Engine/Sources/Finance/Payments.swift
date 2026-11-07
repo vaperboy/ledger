@@ -156,6 +156,8 @@ public enum Payments {
     /// Most that can go out as a dividend now: retained profits (equity above share capital), leaving two weeks of
     /// costs in the account. Original: `divMax`.
     public static func maximumDividend(_ co: Company, state s: GameState, context: FinanceContext) -> Double {
+        let br = s.chainStores(of: co)
+        if br.count >= 2 { return max(0, min(chainEquity(br, s), br.reduce(0) { $0 + spare($1, s, context) }).rounded(.down)) }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans) - co.shareCapital
         return max(0, (min(equity, co.cash - context.weeklyCost(co, s) * 2)).rounded(.down))
     }
@@ -166,6 +168,9 @@ public enum Payments {
     public static func payDividend(_ s: inout GameState, companyID: Int, amount: Double, context: FinanceContext) -> DividendResult {
         guard let i = s.companyIndex(companyID) else { return .notEnoughCash }
         let co = s.companies[i]
+        // A store of a chain is a branch: the dividend is the chain's, declared once from all branches (whichever store it is asked of).
+        let br = s.chainStores(of: co)
+        if br.count >= 2 { return payChainDividend(&s, br, amount: amount, context: context) }
         guard co.form == .limited else { return .notLimitedCompany }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans) - co.shareCapital
         if amount > equity { return .noRetainedProfit }
@@ -174,20 +179,58 @@ public enum Payments {
         Ledger.moveRaw(&s, .company(companyID), -amount)
         s.companies[i].ownerNetFlow -= amount
         s.companies[i].addTransaction(week: s.week, amount: -amount, label: "Dividend")
+        receiveDividend(&s, from: co, amount: amount, name: co.name, context: context)
+        s.companies[i].distributed += amount
+        return .ok
+    }
+
+    /// A chain is one company: its retained profit is that of all its branches together, and its cash is pooled.
+    static func chainEquity(_ br: [Company], _ s: GameState) -> Double {
+        br.reduce(0) { $0 + CompanyFigures.assets($1) - CompanyFigures.debts($1, loans: s.loans) - $1.shareCapital }
+    }
+    /// Cash a branch can give up and keep two weeks of its costs.
+    static func spare(_ co: Company, _ s: GameState, _ context: FinanceContext) -> Double { co.cash - context.weeklyCost(co, s) * 2 }
+
+    /// The chain's one dividend: each branch pays a part in proportion to its spare cash, and the owners of the chain (the cap table of its
+    /// head office, the oldest store) receive it once.
+    static func payChainDividend(_ s: inout GameState, _ br: [Company], amount: Double, context: FinanceContext) -> DividendResult {
+        let head = br[0]
+        guard head.form == .limited else { return .notLimitedCompany }
+        if amount > chainEquity(br, s) { return .noRetainedProfit }
+        let spares = br.map { max(0, spare($0, s, context)) }
+        let total = spares.reduce(0, +)
+        if total <= 0 || amount > total { return .notEnoughCash }
+        var left = amount
+        let last = spares.lastIndex { $0 > 0 } ?? 0
+        for (k, co) in br.enumerated() where spares[k] > 0 && left > 0 {
+            let part = k == last ? left : min(left, jsRound(amount * spares[k] / total))
+            guard part > 0, let i = s.companyIndex(co.id) else { continue }
+            AccountingLedger.note(category: "owner", label: "Dividend")
+            Ledger.moveRaw(&s, .company(co.id), -part)
+            s.companies[i].ownerNetFlow -= part
+            s.companies[i].addTransaction(week: s.week, amount: -part, label: "Dividend (whole chain)")
+            s.companies[i].distributed += part
+            left -= part
+        }
+        let name = (s.rest["chains"]?.array ?? []).first { $0["id"].int == head.value("chain").int }?["name"].string ?? head.name
+        receiveDividend(&s, from: head, amount: amount - left, name: name, context: context)
+        return .ok
+    }
+
+    /// The owners' side of a dividend: the holding the company sits in, or you.
+    static func receiveDividend(_ s: inout GameState, from co: Company, amount: Double, name: String, context: FinanceContext) {
         let mine = amount * co.ownership / 100
         if co.holdingID != 0, let hi = s.companyIndex(co.holdingID), s.companies[hi].status.isLive {
             Ledger.moveRaw(&s, .company(co.holdingID), mine)
-            s.companies[hi].addTransaction(week: s.week, amount: mine, label: "Dividend from \(co.name)")
+            s.companies[hi].addTransaction(week: s.week, amount: mine, label: "Dividend from \(name)")
         } else {
-            playerReceives(&s, mine, label: "Dividend from \(co.name)")
+            playerReceives(&s, mine, label: "Dividend from \(name)")
             s.tax.dividends += mine
             s.stats.dividendsReceived += mine
         }
         let shield = context.homeCountry(s).dividendShield
         let injected = s.companies.filter { $0.status.isLive && $0.form == .limited }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }
         s.tax.dividendShield = max(s.tax.dividendShield, injected * shield)
-        s.companies[i].distributed += amount
-        return .ok
     }
 
     // MARK: Loan instalments

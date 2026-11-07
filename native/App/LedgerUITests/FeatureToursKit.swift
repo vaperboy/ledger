@@ -236,7 +236,9 @@ class FeatureTourCase: XCTestCase {
     @discardableResult
     func ctap(_ e: XCUIElement) -> Bool {
         guard visible(e) else { return false }
-        e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let c: XCUICoordinate = e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // The confirm action may be a press-and-hold button (irreversible actions): hold it; a plain button also fires on release.
+        if e.identifier == "confirm-go" { c.press(forDuration: 1.5) } else { c.tap() }
         return true
     }
 
@@ -433,6 +435,15 @@ class FeatureTourCase: XCTestCase {
     func closePopup(prefer: [String] = []) {
         let ids: [String] = prefer + Self.closeIDs
         func tapFirst() -> Bool {
+            // A plain element tap first: it reaches buttons inside the popup card reliably (coordinate taps can miss a card that is
+            // still settling); the coordinate tap stays as the fallback.
+            for id in ids {
+                let b: XCUIElement = app.buttons[id].firstMatch
+                if b.exists && b.isHittable {
+                    if id == "confirm-go" { b.press(forDuration: 1.5) } else { b.tap() }
+                    return true
+                }
+            }
             for id in prefer where ctap(button(id)) { return true }
             // One query for all close ids (tap order = tree order).
             let q: XCUIElementQuery = app.buttons.matching(NSPredicate(format: "identifier IN %@", ids))

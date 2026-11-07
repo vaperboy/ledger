@@ -151,7 +151,7 @@ struct FoilButtonStyle: ButtonStyle {
     }
 }
 
-/// The footer of a popup card: Cancel on the left, the action on the right, a hairline between them.
+/// The footer of a popup card: the action as one capsule, Cancel as quiet text under it.
 struct PopupFooter: View {
     @Environment(\.outsidePalette) private var P
     var cancel = "Cancel"
@@ -169,28 +169,31 @@ struct PopupFooter: View {
 
     enum Tone { case normal, expensive, destructive }
 
-    /// Both buttons are the same neutral outline; a passive label such as Not now / Skip is grayed.
+    /// The action as one capsule (the popup's tone; white for a neutral event), Cancel as quiet text under it. An irreversible action is a
+    /// red press-and-hold button instead, so it can never run from a slip of the finger.
     var body: some View {
-        HStack(spacing: 10) {
-            PopupOptionButton(title: cancel, identifier: cancelID, action: onCancel)
-                .disabled(!cancelEnabled)
+        VStack(spacing: 4) {
             actionButton.disabled(!actionEnabled)
+            Button(action: onCancel) { Text(cancel) }
+                .buttonStyle(PopupTextActionStyle(tint: P.inkSoft))
+                .accessibilityIdentifier(cancelID)
+                .disabled(!cancelEnabled)
         }
-        .padding(.top, 4)
+        .padding(.top, 8)
     }
 
+    @Environment(\.popupTone) private var popupTone
+
     @ViewBuilder private var actionButton: some View {
-        Group {
-            switch tone {
-            case .expensive:
-                Button(action: { Haptics.play(.tap); onAction() }) { Text(action) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.accent)).accessibilityIdentifier(actionID)
-            case .destructive:
-                Button(action: { Haptics.play(.warning); onAction() }) { Text(action) }
-                    .buttonStyle(SecondaryButtonStyle(fullWidth: true, tint: P.loss)).accessibilityIdentifier(actionID)
-            case .normal:
-                PopupOptionButton(title: action, identifier: actionID, action: onAction)
-            }
+        switch tone {
+        case .destructive:
+            HoldToConfirmButton(title: action, identifier: actionID, action: onAction)
+        case .expensive:
+            Button(action: { Haptics.play(.tap); onAction() }) { Text(action).lineLimit(1).minimumScaleFactor(0.8) }
+                .buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment, light: P.isLight)).accessibilityIdentifier(actionID)
+        case .normal:
+            Button(action: { Haptics.play(.tap); onAction() }) { Text(action).lineLimit(1).minimumScaleFactor(0.8) }
+                .buttonStyle(PopupPrimaryCapsuleStyle(tone: popupTone == .danger ? .neutral : popupTone, light: P.isLight)).accessibilityIdentifier(actionID)
         }
     }
 }
@@ -202,14 +205,11 @@ struct PopupActionBar<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(spacing: 0) {
-            Hairline()
-            VStack(spacing: PopupSpace.row) { content() }
-                .padding(.horizontal, PopupSpace.card)
-                .padding(.top, PopupSpace.block).padding(.bottom, PopupSpace.block)
-        }
-        .frame(maxWidth: .infinity)
-        .background(P.surfaceRaised)
+        VStack(spacing: PopupSpace.row) { content() }
+            .padding(.horizontal, PopupLayout.inset)
+            .padding(.top, PopupSpace.block).padding(.bottom, PopupLayout.inset)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial)
     }
 }
 
