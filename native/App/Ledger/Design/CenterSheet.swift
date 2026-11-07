@@ -80,8 +80,8 @@ struct PopupCloseButton: View {
 ///   medium   header row, as high as the content, scrolls past 70% of the screen.
 ///   detail   header row and pinned footer, as high as the content up to 92% of the screen; fixed at that height only when the content
 ///            scrolls by itself (`size: .tall`).
-/// No minimum height and no stretching: a short popup is short. On a phone the card is docked 8pt above the bottom edge and rises in;
-/// on a wide screen it is a centred card of the category's width.
+/// No minimum height and no stretching: a short popup is short. Every card is centred on the screen at its category's width and
+/// arrives with a short scale and fade.
 struct CenterSheetFrame<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -107,6 +107,8 @@ struct CenterSheetFrame<Content: View>: View {
     @State private var contentTitle = ""
     @State private var drag: CGFloat = 0
     @State private var keyboardUp = false
+    /// The content's natural height, measured from a hidden copy (0 until measured).
+    @State private var natural: CGFloat = 0
 
     private var cat: PopupCategory { category ?? PopupLayout.category(for: size) }
     private var shade: PopupTone { tone ?? PopupTone(variant: variant) }
@@ -130,16 +132,13 @@ struct CenterSheetFrame<Content: View>: View {
     }
 
     private func layout(screen: CGSize) -> some View {
-        let regular: Bool = screen.width >= PopupLayout.regularWidth
-        let width: CGFloat = regular ? PopupLayout.regularCardWidth(cat) : screen.width - 2 * PopupLayout.dockMargin
-        let hidden: CGFloat = reduceMotion ? 0 : (regular ? 24 : 120)
-        return ZStack(alignment: regular ? .center : .bottom) {
+        let width: CGFloat = PopupLayout.cardWidth(cat, screenWidth: screen.width)
+        return ZStack {
             backdrop
             card(screen: screen)
                 .frame(width: width)
-                .padding(.bottom, regular ? 0 : PopupLayout.dockMargin)
-                .offset(y: (shown ? 0 : hidden) + drag)
-                .scaleEffect(shown || reduceMotion ? 1 : 0.97, anchor: .bottom)
+                .offset(y: drag)
+                .scaleEffect(shown || reduceMotion ? 1 : 0.94)
                 .opacity(shown ? 1 : 0)
         }
         .frame(width: screen.width, height: screen.height)
@@ -187,6 +186,8 @@ struct CenterSheetFrame<Content: View>: View {
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
         .modifier(PopupGlass(tone: shade, light: P.isLight))
         .overlay { celebration }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("popup-card")
     }
 
     private var hasHeader: Bool { !shownTitle.isEmpty || showsClose }
@@ -238,21 +239,29 @@ struct CenterSheetFrame<Content: View>: View {
         if variant == .reward && !reduceMotion { ConfettiBurst() }
     }
 
-    /// The body: exactly as high as the content when it fits the category's room, otherwise a scroll view of that room. `ViewThatFits`
-    /// decides from the content's own size, so nothing is measured afterwards and no fallback height can stretch a short popup.
-    /// A detail panel whose content scrolls by itself (`.tall`) fills the panel instead.
+    /// The body: exactly as high as the content, scrolling only past the category's room. A hidden copy of the content at its natural
+    /// height (outside any scroll view) is measured, and the scroll view gets exactly that height; until then it is invisible, never a
+    /// guessed height. A detail panel whose content scrolls by itself (`.tall`) fills the panel instead.
     @ViewBuilder private func inner(bodyMax: CGFloat) -> some View {
         if size == .tall {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ViewThatFits(in: .vertical) {
-                padded
-                ScrollView(.vertical) { padded }
-                    .scrollBounceBehavior(.basedOnSize)
-                    .scrollDismissesKeyboard(.interactively)
-            }
-            .frame(maxHeight: bodyMax)
+            ScrollView(.vertical) { padded }
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.interactively)
+                .frame(height: natural > 0 ? min(natural, bodyMax) : 1)
+                .opacity(natural > 0 ? 1 : 0)
+                .background(alignment: .top) {
+                    padded
+                        .hidden()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                        .onGeometryChange(for: CGFloat.self, of: { (g: GeometryProxy) -> CGFloat in g.size.height }) { (h: CGFloat) in
+                            if abs(h - natural) > 0.5 { natural = h }
+                        }
+                }
+                .clipped()
         }
     }
 
