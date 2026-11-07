@@ -240,7 +240,10 @@ public enum MonthEnd {
         let weeks = s.policy.autoDividendWeeks
         guard weeks > 0 else { return }
         for co in s.companies where co.status == .open && co.form == .limited {
-            let buffer = context.weeklyCost(co, s) * weeks
+            // A chain pays once, at its head office, keeping the buffer for all its branches.
+            let br = s.chainStores(of: co)
+            if br.count >= 2 && br[0].id != co.id { continue }
+            let buffer = (br.count >= 2 ? br : [co]).reduce(0) { $0 + context.weeklyCost($1, s) } * weeks
             let surplus = (Payments.maximumDividend(co, state: s, context: context) - buffer).rounded(.down)
             if surplus > 0 { _ = Payments.payDividend(&s, companyID: co.id, amount: surplus, context: context) }
         }

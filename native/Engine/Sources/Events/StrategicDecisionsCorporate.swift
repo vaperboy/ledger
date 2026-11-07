@@ -149,7 +149,7 @@ extension StrategicDecisions {
 
         // A rival proposes a merger.
         L.append(Def(id: "e_merger", cls: "opp", stages: ["est", "grow"], w: 1, def: 2,
-                     cond: { s, co, data in isLocalTrade(co, data) && rivals(s, co).contains { independent($0) && $0["size"].double < co.size * 1.4 } },
+                     cond: { s, co, data in isLocalTrade(co, data) && !s.isBranch(co) && rivals(s, co).contains { independent($0) && $0["size"].double < co.size * 1.4 } },
                      make: { s, i, _, _ in
                          guard let r = rivals(s, s.companies[i]).filter({ independent($0) }).max(by: { $0["size"].double < $1["size"].double }) else { return nil }
                          return .object(["r": r["id"], "n": r["name"], "o": r["owner"]]) },
@@ -337,7 +337,7 @@ extension StrategicDecisions {
                          let k = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
                          let c = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode)
                          let wk = EventEngine.context(for: co, data: data, country: c).wk
-                         return co.form == .limited && co.ownership > 80 && s.week - co.foundedWeek < 156 && wk * 52 > k.scaledPrice(2e6) },
+                         return co.form == .limited && !s.isBranch(co) && co.ownership > 80 && s.week - co.foundedWeek < 156 && wk * 52 > k.scaledPrice(2e6) },
                      make: { s, i, data, _ in .object(["v": .number((value(s.companies[i], s, data) * 1.6 / 1000).rounded() * 1000)]) },
                      title: { co, _, _ in "Venture capital wants to invest in \(co.name)" },
                      body: { co, d, cur in "A fund values \(co.name) at \(cur.display(d["v"].double)) and wants 20% in new shares. Money to grow fast, a board seat for them, and less of the company for you." },
@@ -360,7 +360,7 @@ extension StrategicDecisions {
     // MARK: Who the corporate decisions are about
 
     static func peTarget(_ s: GameState, _ data: GameData) -> Company? {
-        liveCompanies(s, data).map { s.companies[$0] }.filter { $0.form == .limited && ebit12($0, s) > scaled(s, $0, data, 1e6) && $0.ownership >= 90 }
+        liveCompanies(s, data).map { s.companies[$0] }.filter { $0.form == .limited && !s.isBranch($0) && ebit12($0, s) > scaled(s, $0, data, 1e6) && $0.ownership >= 90 }
             .max { value($0, s, data) < value($1, s, data) }
     }
     static func activistTarget(_ s: GameState, _ data: GameData) -> Company? {

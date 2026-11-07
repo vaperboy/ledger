@@ -63,12 +63,10 @@ enum PopupTone: Equatable, CaseIterable {
 enum PopupLayout {
     /// Corner radius of every card.
     static let radius: CGFloat = 34
-    /// Gap between a docked card and the screen edges on a phone.
-    static let dockMargin: CGFloat = 8
     /// Inner padding of the card body.
     static let inset: CGFloat = 20
-    /// From this width up (iPad, landscape) cards are centred, not docked.
-    static let regularWidth: CGFloat = 600
+    /// The smallest gap between a card and the screen edges.
+    static let screenMargin: CGFloat = 16
 
     /// The tallest a card of the category may be; compact gets a safety cap only so text can never be cut off.
     static func maxHeight(_ c: PopupCategory, screenHeight: CGFloat) -> CGFloat {
@@ -79,13 +77,18 @@ enum PopupLayout {
         }
     }
 
-    /// Card width on a regular-width screen (a phone uses the screen width minus the dock margins).
-    static func regularCardWidth(_ c: PopupCategory) -> CGFloat {
+    /// The widest a card of the category gets: a compact card stays narrow, a detail panel uses the room it is given.
+    static func maxCardWidth(_ c: PopupCategory) -> CGFloat {
         switch c {
-        case .compact: return 400
-        case .medium: return 480
+        case .compact: return 340
+        case .medium: return 440
         case .detail: return 600
         }
+    }
+
+    /// The card's width on a screen: the category's width, never closer than the margin to the screen edges.
+    static func cardWidth(_ c: PopupCategory, screenWidth: CGFloat) -> CGFloat {
+        min(maxCardWidth(c), screenWidth - 2 * screenMargin)
     }
 
     /// The category a size request stands for when a call site has not chosen one.
