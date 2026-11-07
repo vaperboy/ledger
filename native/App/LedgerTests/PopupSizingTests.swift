@@ -2,108 +2,46 @@ import XCTest
 import SwiftUI
 @testable import Ledger
 
-/// The pure rules behind the five popup size classes: which class a measured card gets, hysteresis, widths, swipe-to-dismiss, confetti.
+/// The popup rules: three categories, content-driven heights with no minimum, one tone per event, swipe-to-close, confetti.
 final class PopupSizingTests: XCTestCase {
-    private let phone: CGFloat = 800
+    private let phone: CGFloat = 852
 
-    private func pick(_ h: CGFloat, requested: CenterSheetSize = .fit, previous: PopupSizeClass? = nil, screen: CGFloat? = nil) -> PopupSizeClass {
-        PopupSizing.sizeClass(requested: requested, cardHeight: h, screenHeight: screen ?? phone, previous: previous)
+    func testThereAreExactlyThreeCategories() {
+        XCTAssertEqual(PopupCategory.allCases, [.compact, .medium, .detail])
     }
 
-    func testOneLineAndAButtonIsAToast() {
-        XCTAssertEqual(pick(130), .toast)
-        XCTAssertEqual(pick(PopupSizing.toastMaxHeight), .toast)
+    func testCategoryRoomsGrowAndNeverFillTheScreen() {
+        let c: CGFloat = PopupLayout.maxHeight(.compact, screenHeight: phone)
+        let m: CGFloat = PopupLayout.maxHeight(.medium, screenHeight: phone)
+        let d: CGFloat = PopupLayout.maxHeight(.detail, screenHeight: phone)
+        XCTAssertLessThan(c, m)
+        XCTAssertLessThan(m, d)
+        XCTAssertLessThan(d, phone)
     }
 
-    func testAFewRowsAreCompact() {
-        XCTAssertEqual(pick(PopupSizing.toastMaxHeight + 1), .compact)
-        XCTAssertEqual(pick(300), .compact)
-        XCTAssertEqual(pick(PopupSizing.compactMaxHeight), .compact)
+    func testOnlyASelfScrollingRequestIsADetailPanelByDefault() {
+        XCTAssertEqual(PopupLayout.category(for: .tall), .detail)
+        XCTAssertEqual(PopupLayout.category(for: .fit), .medium)
+        XCTAssertEqual(PopupLayout.category(for: .fitBleed), .medium)
     }
 
-    func testAnOrdinaryCardIsStandard() {
-        XCTAssertEqual(pick(PopupSizing.compactMaxHeight + 1), .standard)
-        XCTAssertEqual(pick(400), .standard)
-        XCTAssertEqual(pick(phone * PopupSizing.standardFraction), .standard)
+    func testWideScreenWidthsFollowTheCategory() {
+        XCTAssertLessThan(PopupLayout.regularCardWidth(.compact), PopupLayout.regularCardWidth(.medium))
+        XCTAssertLessThan(PopupLayout.regularCardWidth(.medium), PopupLayout.regularCardWidth(.detail))
     }
 
-    func testTallContentIsTall() {
-        XCTAssertEqual(pick(phone * PopupSizing.standardFraction + 1), .tall)
-        XCTAssertEqual(pick(2000), .tall)
+    func testOldVariantsMapToTones() {
+        XCTAssertEqual(PopupTone(variant: .destructive), .danger)
+        XCTAssertEqual(PopupTone(variant: .alert), .danger)
+        XCTAssertEqual(PopupTone(variant: .expensive), .investment)
+        XCTAssertEqual(PopupTone(variant: .reward), .investment)
+        XCTAssertEqual(PopupTone(variant: .report), .info)
+        XCTAssertEqual(PopupTone(variant: .standard), .neutral)
     }
 
-    func testRequestedTallIsAlwaysFull() {
-        XCTAssertEqual(pick(100, requested: .tall), .full)
-        XCTAssertEqual(pick(0, requested: .tall), .full)
-        XCTAssertEqual(pick(2000, requested: .tall, previous: .toast), .full)
-    }
-
-    func testFitBleedClassifiesLikeFit() {
-        XCTAssertEqual(pick(200, requested: .fitBleed), pick(200, requested: .fit))
-        XCTAssertEqual(pick(500, requested: .fitBleed), pick(500, requested: .fit))
-    }
-
-    func testUnmeasuredIsStandardOrKeepsThePreviousClass() {
-        XCTAssertEqual(pick(0), .standard)
-        XCTAssertEqual(pick(-1), .standard)
-        XCTAssertEqual(pick(0, previous: .compact), .compact)
-    }
-
-    func testHysteresisKeepsTheClassJustPastItsBound() {
-        let past: CGFloat = PopupSizing.toastMaxHeight + PopupSizing.hysteresis - 1
-        XCTAssertEqual(pick(past, previous: .toast), .toast)
-        XCTAssertEqual(pick(past), .compact)
-        let well: CGFloat = PopupSizing.toastMaxHeight + PopupSizing.hysteresis + 1
-        XCTAssertEqual(pick(well, previous: .toast), .compact)
-    }
-
-    func testHysteresisHoldsAtTheLowerBoundToo() {
-        let under: CGFloat = PopupSizing.toastMaxHeight - PopupSizing.hysteresis + 1
-        XCTAssertEqual(pick(under, previous: .compact), .compact)
-        XCTAssertEqual(pick(under), .toast)
-    }
-
-    func testClassesGrowWithHeight() {
-        var last: PopupSizeClass = .toast
-        var h: CGFloat = 40
-        while h <= 1200 {
-            let c: PopupSizeClass = pick(h)
-            XCTAssertGreaterThanOrEqual(c, last)
-            last = c
-            h += 10
-        }
-        XCTAssertEqual(last, .tall)
-    }
-
-    func testShortScreenKeepsStandardUpToItsFraction() {
-        let screen: CGFloat = 390
-        XCTAssertEqual(PopupSizing.upperBound(of: .standard, screenHeight: screen), PopupSizing.compactMaxHeight)
-        XCTAssertEqual(pick(340, screen: screen), .tall)
-        XCTAssertEqual(pick(PopupSizing.compactMaxHeight, screen: screen), .compact)
-    }
-
-    func testWidthsGrowWithTheClass() {
-        var last: CGFloat = 0
-        for c in PopupSizeClass.allCases {
-            XCTAssertGreaterThan(PopupSizing.maxWidth(of: c), last)
-            last = PopupSizing.maxWidth(of: c)
-        }
-        XCTAssertLessThanOrEqual(last, 600)
-    }
-
-    func testRoomAndFullHeight() {
-        XCTAssertEqual(PopupSizing.room(screenHeight: 800), 640, accuracy: 0.01)
-        XCTAssertEqual(PopupSizing.room(screenHeight: 400), 376, accuracy: 0.01)
-        XCTAssertEqual(PopupSizing.fullHeight(screenHeight: 800), 736, accuracy: 0.01)
-        XCTAssertEqual(PopupSizing.fullHeight(screenHeight: 200), 260, accuracy: 0.01)
-    }
-
-    func testOnlyTallAndFullSwipe() {
-        XCTAssertFalse(PopupSizeClass.toast.isSwipeable)
-        XCTAssertFalse(PopupSizeClass.compact.isSwipeable)
-        XCTAssertFalse(PopupSizeClass.standard.isSwipeable)
-        XCTAssertTrue(PopupSizeClass.tall.isSwipeable)
-        XCTAssertTrue(PopupSizeClass.full.isSwipeable)
+    func testEveryToneHasItsOwnColourAndSymbol() {
+        let symbols: [String] = PopupTone.allCases.map { (t: PopupTone) -> String in t.defaultSymbol }
+        XCTAssertEqual(Set(symbols).count, PopupTone.allCases.count)
     }
 
     func testSwipeDownDismissRule() {
@@ -119,14 +57,6 @@ final class PopupSizingTests: XCTestCase {
         XCTAssertEqual(PopupSizing.dragDimFactor(offset: 0), 1, accuracy: 0.001)
         XCTAssertEqual(PopupSizing.dragDimFactor(offset: 400), 0.4, accuracy: 0.001)
         XCTAssertEqual(PopupSizing.dragDimFactor(offset: 4000), 0.4, accuracy: 0.001)
-    }
-
-    func testReduceMotionRemovesTheEntrance() {
-        for c in PopupSizeClass.allCases {
-            XCTAssertEqual(PopupSizing.entryScale(of: c, reduceMotion: true), 1)
-            XCTAssertEqual(PopupSizing.entryRise(of: c, reduceMotion: true), 0)
-            XCTAssertLessThan(PopupSizing.entryScale(of: c, reduceMotion: false), 1)
-        }
     }
 
     func testVariantCues() {
