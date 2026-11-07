@@ -164,6 +164,8 @@ struct CompanyOverview: View {
     var company: Company
     @Binding var section: CompanySection
     @Binding var moneyPart: CompanyMoneyPart
+    /// Opens a page of Manage (Equipment, Suppliers ...) on top of the company screen.
+    var openOps: (OpsPart) -> Void = { _ in }
     @State private var months = 12
     @Environment(\.outsidePalette) private var P
 
@@ -262,9 +264,16 @@ struct CompanyOverview: View {
         // Open, with customers asking, but it could serve no one last week: nothing comes in until that is fixed.
         let lastWeek: OperationsFigures.Week? = ops?.weeks.last
         if co.status == .open, co.type != "hold", let w = lastWeek, w.capacity <= 0, w.demand > 0 {
-            let limit: String = h.bottleneck.map { "No \($0.lowercased()) to serve them: hire one or work the role yourself" } ?? "Staff or equipment is missing: nothing comes in"
-            out.append(CompanyIssue(id: "nocap", glyph: Glyph.capacity, tint: P.loss, title: "Served no one last week", sub: "\(Int(w.demand.rounded())) customers wanted to buy. " + limit,
-                                    action: h.bottleneck != nil ? "Open Team" : "Open Manage") { go(h.bottleneck != nil ? .staff : .operations) })
+            // The engine keeps what limited that week: a required machine in repair goes to Equipment, a missing role to Team.
+            let label: String = h.bottleneck ?? ""
+            let machine: Bool = label.localizedCaseInsensitiveContains("repair") || label.localizedCaseInsensitiveContains("broken")
+            let limit: String = label.isEmpty ? "Staff or equipment is missing: nothing comes in"
+                : machine ? "\(label) stopped the work" : "No \(label.lowercased()) to serve them: hire one or work the role yourself"
+            out.append(CompanyIssue(id: "nocap", glyph: machine ? Glyph.opsWrench : Glyph.capacity, tint: P.loss, title: "Served no one last week",
+                                    sub: "\(Int(w.demand.rounded())) customers wanted to buy. " + limit,
+                                    action: machine ? "Open Equipment" : (label.isEmpty ? "Open Manage" : "Open Team")) {
+                if machine { openOps(.equipment) } else if label.isEmpty { go(.operations) } else { go(.staff) }
+            })
         }
         let asks = engine.state.inbox.filter { $0.companyID == co.id && $0.status == "open" }.sorted { $0.week > $1.week }
         let people = co.staff.filter { !$0.value("flag").isNull || $0.noticeWeeks > 0 || $0.sickUntilWeek != nil }.count

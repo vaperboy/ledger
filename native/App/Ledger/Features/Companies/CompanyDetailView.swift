@@ -120,7 +120,7 @@ struct CompanyDetailView: View {
         let a: [CompanySection] = Self.availableSections(co, e)
         switch tab {
         case .overview:
-            CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
+            CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, openOps: { (p: OpsPart) in opsPart = p })
         case .team:
             if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
         case .manage:

@@ -19,7 +19,8 @@ struct CompanyPerformance: View {
         let weeks: [OperationsFigures.Week] = f?.weeks ?? []
         let full: Bool = f?.demandIsLimit == false
         let none: Bool = use == nil && (weeks.last.map { $0.capacity <= 0 && $0.demand > 0 } ?? false)
-        let note: String = none ? "Served no one last week: staff or equipment is missing"
+        let why: String? = none ? engine.companyHealth(company).bottleneck : nil
+        let note: String = none ? "Served no one last week: " + (why.map { "\($0.prefix(1).lowercased() + $0.dropFirst())" } ?? "staff or equipment is missing")
             : use == nil ? "Shows after the first trading week" : (full ? "Capacity is the limit: customers are turned away" : "Demand is the limit: there is room for more customers")
         let trend: [Double] = weeks.map { (w: OperationsFigures.Week) -> Double in w.capacity > 0 ? min(w.demand, w.capacity) / w.capacity : 0 }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
