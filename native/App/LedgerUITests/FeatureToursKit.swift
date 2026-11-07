@@ -439,7 +439,8 @@ class FeatureTourCase: XCTestCase {
             // still settling); the coordinate tap stays as the fallback.
             for id in ids {
                 let b: XCUIElement = app.buttons[id].firstMatch
-                if b.exists && b.isHittable {
+                // `isHittable` can raise an XCTest failure for an element without an activation point: check the frame instead.
+                if visible(b) {
                     if id == "confirm-go" { b.press(forDuration: 1.5) } else { b.tap() }
                     return true
                 }
