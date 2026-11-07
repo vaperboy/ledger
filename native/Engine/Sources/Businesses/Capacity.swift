@@ -26,6 +26,8 @@ public struct CapacityResult: Equatable {
     /// The part that limits capacity
     public var bottleneck: CapacityPart?
     public var ownerFTE: Double
+    /// Machines in repair this week and what they take away (`EquipmentOutage`); nil when every machine works.
+    public var outage: EquipmentOutage.Result? = nil
 }
 
 /// How much a company can serve in a week. Original: `capacityCore` (engine/company/model.js) and its
@@ -58,6 +60,7 @@ public enum CapacityModel {
         if !(f == 1 || co.managerID != nil || co.ownerHours == 0) { c.ownerHours = co.ownerHours * f }
         var res = core(c, bd, w, originalOwnerHours: co.ownerHours)
         applySteps(&res, co, bd, w)
+        applyOutage(&res, co, bd, w)
         return res
     }
 
@@ -144,20 +147,17 @@ public enum CapacityModel {
             parts[mi].ownerFTE += step
             left -= step
         }
-        var availability = 1.0   // a required machine in repair for part of the week: the business works the rest
         for e in bd.equipment {
-            let n = equipmentAvailable(co, e)
-            let cond = equipmentCondition(co, e)
-            if e.isRequired && n < 1 && n > 0.01 && equipmentCount(co, e) >= 1 {
-                availability = min(availability, n)
-            } else if e.isRequired && n < 1 {
-                // A machine that is only in for repair is not the same problem as one never bought: say which.
-                let inRepair = equipmentCount(co, e) >= 1
-                parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name + (inRepair ? " (broken, in repair)" : " (required)"), kind: .gate, have: 0, need: 1, capacity: 0, capacityPerUnit: 0))
+            let installed = equipmentCount(co, e)
+            if e.isRequired && installed < 1 {
+                // Never bought (or sold): the business cannot open its doors without it. A machine in repair is `EquipmentOutage` instead.
+                parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name + " (required)", kind: .gate, have: installed, need: 1, capacity: 0, capacityPerUnit: 0))
             } else if e.limitsCapacity && e.standardCount > 0 {
+                let need = max(1, jsRound(e.standardCount * co.size))
+                let n = EquipmentOutage.unitsCounted(installed: installed, available: equipmentAvailable(co, e), need: need)
                 let cp = capD / e.standardCount
                 parts.append(CapacityPart(key: "eq:\(e.id)", label: e.name, kind: .equip, have: n,
-                                          need: max(1, jsRound(e.standardCount * co.size)), capacity: n * cp * (0.7 + 0.3 * cond), capacityPerUnit: cp))
+                                          need: need, capacity: n * cp * (0.7 + 0.3 * equipmentCondition(co, e)), capacityPerUnit: cp))
             }
         }
         if let kind = bd.premisesKind, bd.premisesM2 > 0, tables.premises[kind] != nil, co.value("prem")["m2"].double > 0 {
@@ -171,9 +171,21 @@ public enum CapacityModel {
         var bot: CapacityPart? = nil
         for p in parts where p.capacity < cap { cap = p.capacity; bot = p }
         if !cap.isFinite { cap = capD }
-        cap *= Knobs.effect(co, bd, "k", w, sum: false) * DemandModel.modifier(co, "cap") * (over > 0 ? 1 + over * 0.2 : 1) * availability
+        cap *= Knobs.effect(co, bd, "k", w, sum: false) * DemandModel.modifier(co, "cap") * (over > 0 ? 1 + over * 0.2 : 1)
         // Capacity held back for your other companies (IntercompanySupply): original step 'capacity' 30, `co.int27u`.
         return CapacityResult(capacity: max(0, cap - (cap.isFinite ? IntercompanySupply.heldBack(co) : 0)), parts: parts, bottleneck: bot, ownerFTE: ownerTotal)
+    }
+
+    /// Machines in repair cut the share of the work that depends on them, and the worst of them is named as what held the week back.
+    static func applyOutage(_ r: inout CapacityResult, _ co: Company, _ bd: Trade, _ w: World) {
+        let o = EquipmentOutage.compute(co, bd, w)
+        guard let worst = o.worst, o.lost > 0 else { return }
+        // Something else that stops trading (no staff, a machine never bought) stays the reason.
+        guard r.capacity > 0 else { return }
+        r.outage = o
+        r.capacity *= o.kept
+        r.bottleneck = CapacityPart(key: "eq:\(worst.id)", label: worst.name + " (broken, in repair)", kind: .gate, have: Double(worst.units - worst.unitsDown),
+                                    need: Double(worst.units), capacity: r.capacity, capacityPerUnit: 0)
     }
 
     // MARK: Steps (original `addStep('capacity', ...)`)

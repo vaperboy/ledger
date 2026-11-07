@@ -40,6 +40,9 @@ public enum Brokerage {
         var pos = bag[sym].isNull ? JSONValue.object(["q": 0, "cost": 0]) : bag[sym]
         pos["q"] = .number(pos["q"].double + amt / px)
         pos["cost"] = .number(pos["cost"].double + amt + fee)   // the buy fee is part of the cost base, so a round trip is not taxed as a gain
+        // Units bought this week have not lived through the week's price move (portfolio day and week results).
+        let lb = pos["buy"]
+        pos["buy"] = .object(["w": .number(Double(s.week)), "q": .number((!lb.isNull && lb["w"].int == s.week ? lb["q"].double : 0) + amt / px)])
         bag[sym] = pos
         inv[bagKey(kind)] = bag
         s.rest["inv"] = inv

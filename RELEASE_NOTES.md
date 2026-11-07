@@ -1,4 +1,5 @@
 # What's new
+- One broken machine no longer stops a business: it cuts only what depends on it (a café without its display fridge stops chilled items, about a third fewer customers), and the weekly note says what was lost
 - Sliders move only on a sideways drag, so scrolling never changes a value by accident
 - Group redesigned: group value and trend, what needs you, Boardroom where you can talk to every board member, sale routes, chain page with branch close/sell
 - No more jumping between tabs: links open inside the tab you are on with Back, a company switcher on company and group pages; outside apps redesigned (TechPro, AirStay, Atlas, Marketplace, Luxury, Reviews, Market, Ventures) with a readable status bar

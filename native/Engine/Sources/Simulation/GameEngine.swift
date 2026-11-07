@@ -37,6 +37,7 @@ public struct GameEngine {
     public init(state: GameState, data: GameData, events: EventLibrary, marketing: MarketingTables) {
         var state = state
         Markets.refreshNames(&state, country: data.countries.resolve(state.homeCountryCode, orHome: state.homeCountryCode))
+        MarketBook.backfillCostBases(&state)
         self.state = state
         self.data = data
         self.events = events
@@ -136,6 +137,7 @@ public struct GameEngine {
         state.netWorthHistory.append(jsRound(nw))
         if state.netWorthHistory.count > 520 { state.netWorthHistory.remove(at: 1) }
         state.stats.peakNetWorth = max(state.stats.peakNetWorth, nw)
+        MarketBook.recordHistory(&state, data: data)
     }
 
     /// Replace the state, e.g. after the player acts through a service in a view model.

@@ -71,7 +71,7 @@ public enum OpeningChecklist {
                 out.append(Item(id: "prem", title: "Premises", isDone: m2 > 0, detail: m2 > 0 ? "\(Int(m2)) m²" : (cheapest.map { "From \(w.currency(co).display($0)) up front" } ?? "Not chosen"), cost: cheapest ?? 0))
             }
             for e in bd.equipment where e.isRequired {
-                let done = CapacityModel.equipmentAvailable(co, e) >= 1
+                let done = CapacityModel.equipmentCount(co, e) >= 1   // bought: one in repair is still bought
                 let (price, financed) = done ? (0.0, false) : equipmentCost(e, co, bd, w)
                 let how = financed ? "Down payment \(w.currency(co).display(price)), the rest financed" : "From \(w.currency(co).display(price))"
                 out.append(Item(id: "eq:\(e.id)", title: e.name, isDone: done, detail: done ? "" : how, cost: price))

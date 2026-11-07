@@ -144,5 +144,19 @@ public enum Markets {
         F["bond"] = .number(F["bond"].double * (1 + (policy + 0.008) / 52 - dr * 6 + s.random.gauss() * 0.0015))
         s.economy.set("rate0", s.economy.policyRate)
         s.rest["fundPx"] = F
+        // Weekly closes of each fund (newest last, two years kept) for charts; written from the first week this was kept.
+        var H = s.rest["fundH"] ?? .object([:])
+        for k in fundSymbols {
+            var h = H[k].array
+            h.append(.number((F[k].double * 1e4).rounded() / 1e4))
+            if h.count > 104 { h.removeFirst(h.count - 104) }
+            H[k] = .array(h)
+        }
+        s.rest["fundH"] = H
     }
+
+    public static let fundSymbols = ["idx", "bond", "mm"]
+
+    /// Weekly closes of a fund, oldest first (empty until a week has passed).
+    public static func fundHistory(_ s: GameState, _ sym: String) -> [Double] { (s.rest["fundH"]?[sym].array ?? []).map { $0.double } }
 }

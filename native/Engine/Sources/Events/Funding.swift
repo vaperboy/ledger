@@ -253,11 +253,11 @@ public enum Funding {
 
     public static let listingMinimumValue = 30_000_000.0
     public static let listingFee = 1_500_000.0
-    /// What a holding is worth: its companies by your share, its cash and its index fund. Original: `holdValue`.
+    /// What a holding is worth: its companies by your share, its cash and its treasury funds. Original: `holdValue`.
     public static func holdingValue(_ s: GameState, holdingID: Int, data: GameData) -> Double {
         guard let h = s.company(holdingID) else { return 0 }
         let kids = HoldingModel.subsidiaries(of: holdingID, in: s).reduce(0) { $0 + max(0, Valuation.companyValue($1, state: s, trades: data.catalog)) * $1.ownership / 100 }
-        return kids + h.cash + HoldingModel.indexValue(h, s)
+        return kids + h.cash + HoldingModel.treasuryValue(h, s)
     }
     public static func isListed(_ co: Company) -> Bool { co.type == "hold" && co.flag("listed") }
     public static func listingMinimum(_ s: GameState, _ fc: FinanceContext) -> Double { fc.homeCurrency(s).scaledPrice(listingMinimumValue) }

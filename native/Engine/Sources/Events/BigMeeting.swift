@@ -67,7 +67,7 @@ public enum BigMeeting {
         }
         Payments.transferFromSavings(&s, need: o.price)
         Payments.playerPays(&s, o.price, label: "Bought \(o.pct)% of \(o.target)")
-        s.rest["stakes"] = .array((s.rest["stakes"]?.array ?? []) + [.object(["id": .number(Double(s.makeID())), "name": .string(o.target), "pct": .number(Double(o.pct)), "val": .number(o.price), "yld": .number(o.yield), "w0": .number(Double(s.week))])])
+        s.rest["stakes"] = .array((s.rest["stakes"]?.array ?? []) + [.object(["id": .number(Double(s.makeID())), "name": .string(o.target), "pct": .number(Double(o.pct)), "val": .number(o.price), "cost": .number(o.price), "yld": .number(o.yield), "w0": .number(Double(s.week))])])
         s.rest["bigOff"] = .null
         s.note("You bought \(o.pct)% of \(o.target).", tone: "good")
         return .ok
