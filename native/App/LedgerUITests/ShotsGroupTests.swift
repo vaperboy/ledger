@@ -95,7 +95,14 @@ final class ShotsGroupTests: FeatureTourCase {
                 closeAll()
             }
         }
-        if openTab(entity, "Boardroom"), tapPrefix("boardroom-call-", wait: 4) { popupShot("board-round") }
+        if openTab(entity, "Boardroom"), tapPrefix("boardroom-call-", wait: 4) {
+            if popupUp(3) {
+                snap("board-round")
+                if tapID("board-ask-sell", wait: 2) { pause(0.6); snap("board-round-sell") }
+                closeAll()
+            }
+        }
+        if openTab(entity, "Boardroom"), tapID("board-open-seats", wait: 4) { pause(0.6); snapPage("board-open-seats", lower: 1) }
         if openTab(entity, "Boardroom"), tapID("group-board-room", wait: 4) { pause(0.8); snapPage("board-room", lower: 1); _ = tapBack() }
 
         // Chain page (when the company is in a chain)

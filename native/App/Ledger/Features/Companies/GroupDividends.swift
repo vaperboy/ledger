@@ -21,7 +21,8 @@ struct GroupDividendsPage: View {
     }
 
     private var compactBody: some View {
-        let rows: [DividendRow] = engine.dividendRows().filter { (r: DividendRow) -> Bool in scope == nil || scope!.contains(r.id) }
+        // A branch of a chain pays nothing on its own: dividends come from the chain company.
+        let rows: [DividendRow] = engine.dividendRows().filter { (r: DividendRow) -> Bool in (scope == nil || scope!.contains(r.id)) && !engine.isBranch(companyID: r.id) }
         let hold: Company? = holding.flatMap { (id: Int) -> Company? in engine.state.company(id) }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             if let h = hold {

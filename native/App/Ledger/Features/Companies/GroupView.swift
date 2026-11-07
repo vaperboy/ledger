@@ -39,7 +39,10 @@ struct GroupView: View {
             .centerSheet(isPresented: $showAddMenu) {
                 GroupAddMenu(onPick: { (d: GroupAddDestination) in
                     showAddMenu = false
-                    if let g = d.gate { ent.run(g, "Add to group") { addDestination = d } } else { addDestination = d }
+                    // The push (or the paywall) waits until the popup has gone, or it would be dropped while the popup closes.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        if let g = d.gate { ent.run(g, "Add to group") { addDestination = d } } else { addDestination = d }
+                    }
                 })
                 .environmentObject(store)
             }

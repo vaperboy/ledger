@@ -31,6 +31,10 @@ struct GroupSectionBar: View {
                 }
                 .scrollIndicators(.hidden)
                 .contentMargins(.horizontal, Theme.Space.page, for: .scrollContent)
+                // The strip fades out at both edges, so a tab cut by the edge reads as "more this way", not as clipped text.
+                .mask(LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.06),
+                                             .init(color: .black, location: 0.94), .init(color: .clear, location: 1)],
+                                     startPoint: .leading, endPoint: .trailing))
                 .onAppear { reader.scrollTo(tab, anchor: .center) }
                 .onChange(of: tab) { _, now in Motion.animate(Motion.quickAnimation) { reader.scrollTo(now, anchor: .center) } }
             }

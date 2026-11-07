@@ -29,8 +29,19 @@ struct GroupEntityOwnership: View {
         }
     }
 
-    /// The companies that have owners to show: limited companies and holdings, one block each.
-    private func ownable(_ cos: [Company]) -> [Company] { cos.filter { (c: Company) -> Bool in c.form == .limited || c.type == "hold" } }
+    /// The companies that have owners to show: limited companies and holdings, one block each. A branch of a chain has no shares of its own.
+    private func ownable(_ cos: [Company]) -> [Company] {
+        cos.filter { (c: Company) -> Bool in (c.form == .limited || c.type == "hold") && !engine.isBranch(companyID: c.id) }
+    }
+
+    /// One line under a chain's ownership parts: its branches are part of the chain company, not companies with shares.
+    @ViewBuilder private func branchNote(_ cos: [Company]) -> some View {
+        let n: Int = cos.filter { (c: Company) -> Bool in engine.isBranch(companyID: c.id) }.count
+        if n > 0 {
+            Text(n == cos.count ? "A branch has no shares of its own. Close or sell it on the chain page." : "\(n) \(n == 1 ? "branch has" : "branches have") no shares of their own. Close or sell one on the chain page.")
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+        }
+    }
 
     // MARK: Owners
 
@@ -43,17 +54,20 @@ struct GroupEntityOwnership: View {
             if list.count > 1 { Text(c.name.uppercased()).capsLabel() }
             CompanyOwnershipSection(engine: engine, company: c, mode: .owners)
         }
+        branchNote(cos)
     }
 
     // MARK: Sell
 
     @ViewBuilder private func sell(_ cos: [Company]) -> some View {
+        let sellable: [Company] = cos.filter { (c: Company) -> Bool in !engine.isBranch(companyID: c.id) }
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            ForEach(cos) { (c: Company) in
-                if cos.count > 1 { Text(c.name.uppercased()).capsLabel() }
+            ForEach(sellable) { (c: Company) in
+                if sellable.count > 1 { Text(c.name.uppercased()).capsLabel() }
                 CompanySaleSection(engine: engine, company: c, onGoRaise: { part = .raise })
                 if c.form == .limited && c.type != "hold" { CompanyOwnershipSection(engine: engine, company: c, mode: .shares) }
             }
+            branchNote(cos)
         }
     }
 
@@ -68,6 +82,7 @@ struct GroupEntityOwnership: View {
             if list.count > 1 { Text(c.name.uppercased()).capsLabel() }
             CompanyOwnershipSection(engine: engine, company: c, mode: .raise)
         }
+        branchNote(cos)
     }
 
     // MARK: Offers
@@ -78,14 +93,12 @@ struct GroupEntityOwnership: View {
         let asks: [Message] = engine.state.inbox.filter { (m: Message) -> Bool in m.status == "open" && ids.contains(m.companyID) && Self.isOwnerOffer(m) }
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if asks.isEmpty && franchisors.isEmpty {
-                Text("No bids or demands right now. Bids on listed companies show under Sell.").textStyle(.caption, tint: Theme.inkSoft)
+                EmptyState(glyph: Glyph.inbox, title: "No offers right now", message: "Bids, owners' demands and franchise applicants show here. Bids on a company you listed show under Sell.")
             }
             if !asks.isEmpty { bids(asks) }
             if !franchisors.isEmpty { applicants(franchisors) }
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("HOSTING").capsLabel()
-                HostingSection(engine: engine)
-            }
+            // Hosting a deal carries its own title, and shows only when there is a venue and a guest.
+            HostingSection(engine: engine)
         }
     }
 
@@ -101,7 +114,7 @@ struct GroupEntityOwnership: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("BIDS AND DEMANDS").capsLabel()
             ForEach(asks) { (m: Message) in
-                Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
+                Card(padding: Theme.Space.m, radius: Theme.Radius.row, fill: Theme.surface) {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text(engine.displayText(m.title, companyID: m.companyID)).textStyle(.body, tint: Theme.ink, weight: .medium).fixedSize(horizontal: false, vertical: true)
                         Text(engine.displayText(m.body, companyID: m.companyID)).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)

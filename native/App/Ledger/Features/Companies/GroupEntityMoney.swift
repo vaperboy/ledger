@@ -41,12 +41,13 @@ struct GroupEntityMoney: View {
 
     /// The cash leads as a figure; moving money in or out are rows under it.
     private var cashBox: some View {
-        let cash: Double = cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
+        // A chain is one company: its stores share one combined cash.
+        let cash: Double = entity.chainID.map { (id: Int) -> Double in engine.chainCash(chainID: id).cash } ?? cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
         let main: Company? = engine.state.company(entity.companyID)
         let canTake: Bool = main.map { (c: Company) -> Bool in c.form != .limited && c.type != "hold" } ?? false
         let id: Int = entity.companyID
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text(entity.isHolding ? "Group cash" : "Cash").textStyle(.label, tint: Theme.inkFaint)
+            Text(entity.isHolding ? "Group cash" : (entity.isChain ? "Chain cash" : "Cash")).textStyle(.label, tint: Theme.inkFaint)
             LiveFigure(value: cash, text: store.short(cash)).textStyle(.figure, tint: cash < 0 ? Theme.loss : nil)
                 .lineLimit(1).minimumScaleFactor(0.6)
             VStack(spacing: 0) {

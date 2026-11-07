@@ -26,7 +26,7 @@ struct EntityExpansionView: View {
         let franchisee: Bool = !co.value("franchise").isNull
         let live: Bool = co.status == .open || co.status == .closed
         let relevant: Bool = CompanyChain.isRelevant(co, e)
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             statusHeader(e, co, chain: chain, franchisee: franchisee)
             if relevant && live {
                 stage(e, co, chain: chain, franchisee: franchisee)

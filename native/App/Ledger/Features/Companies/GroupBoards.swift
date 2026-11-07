@@ -321,12 +321,19 @@ struct BoardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(v.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
                 Text("\(v.title) · \(v.votes ? "votes" : "advises")").textStyle(.caption, tint: Theme.inkSoft).lineLimit(2)
+                // An adviser's fee and record sit under their own name.
+                if let pid = v.personID, let a = seats.first(where: { $0.id == pid && $0.isAdviser }) {
+                    Text("Fee \(store.short(a.monthlyFee)) a month \u{00B7} took \(a.adviceTaken) of your calls, refused \(a.adviceRefused)")
+                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 8)
             if let pid = v.personID, seats.contains(where: { $0.id == pid }) {
-                Button("Remove from board") {
+                Button("Remove") {
                     if let ask = store.removeSeatPrompt(key: key, personID: pid, name: v.name) { pending = ask }
-                }.buttonStyle(TinyButtonStyle(tint: Theme.loss)).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                .buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
+                .accessibilityLabel("Remove \(v.name) from the board")
             }
         }
     }
@@ -344,17 +351,23 @@ struct BoardView: View {
             SegmentedPill(items: [false, true], title: { (own: Bool) -> String in own ? "Your people" : "Search" }, selection: $ownTab)
             Text(ownTab ? "Employees and managers keep their job. One from the board's own company sits for half the fee." : "Add to the board (a search costs a fee)")
                 .textStyle(.caption, tint: Theme.inkSoft)
-            WrapRow {
-                Group {
-                    ForEach(engine.seatRoles) { r in
-                        Button(r.title) {
-                            if ownTab { loadOwn(engine, seat: r.id); return }
-                            let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
-                            if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
-                        }.buttonStyle(TinyButtonStyle()).lineLimit(1).minimumScaleFactor(0.8)
+            // One row opens the list of seats; picking a seat searches for it (or lists your own people for it).
+            Menu {
+                ForEach(engine.seatRoles) { r in
+                    Button(r.title) {
+                        if ownTab { loadOwn(engine, seat: r.id); return }
+                        let found: [Person]? = store.act { $0.searchForSeat(key: key, role: r.id) } ?? nil
+                        if let found { candidates = found; message = found.isEmpty ? "Nobody suitable answered." : "" } else { message = "Not enough cash for a search." }
                     }
                 }
+            } label: {
+                LedgerRow(leading: .symbol(ownTab ? "person.2" : "magnifyingglass"), title: ownTab ? "Pick a seat for one of your people" : "Search for a seat",
+                          subtitle: "Chair, directors, CFO, advisers", chevron: true)
+                    .contentShape(Rectangle())
             }
+            .menuStyle(.button)
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("board-seat-finder")
         }
     }
 
@@ -406,9 +419,6 @@ struct BoardView: View {
                 ForEach(Array(engine.boardVoters(key: key).enumerated()), id: \.element.id) { (n: Int, v: ManagerModel.Voter) in
                     if n > 0 { CardLine() }
                     voterCard(v, seats: seats).transition(AnyTransition.orgNode)
-                }
-                ForEach(seats.filter { $0.isAdviser }) { s in
-                    Text("\(s.title) · fee \(store.short(s.monthlyFee)) a month · took \(s.adviceTaken) of your calls, refused \(s.adviceRefused)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 CardLine()
                 seatFinder(engine)
