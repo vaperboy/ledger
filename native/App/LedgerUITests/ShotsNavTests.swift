@@ -23,6 +23,16 @@ final class ShotsNavTests: FeatureTourCase {
         expect(isSelected("tab-\(tab)"), "\(at): the selected tab is no longer \(tab) (\(tabState()))")
     }
 
+    /// The tab that is selected now ("Phone", or the Pick tab's app when an app was opened there).
+    private func selectedTab() -> String {
+        let tabs: XCUIElementQuery = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'"))
+        for i in 0..<tabs.count {
+            let t: XCUIElement = tabs.element(boundBy: i)
+            if t.isSelected { return String(t.identifier.dropFirst(4)) }
+        }
+        return "Phone"
+    }
+
     private func companyShowing(_ wait: TimeInterval = 4) -> Bool { has("company-tab-overview", wait: wait) || has("company-tab-manage") }
 
     /// Opens a switcher menu and taps the first item whose identifier starts with `prefix`, else the first whose label passes `label`.
@@ -125,30 +135,33 @@ final class ShotsNavTests: FeatureTourCase {
     /// Phone > Inbox > a message's company > Back to the Inbox, on the Phone tab.
     private func inboxToCompanyAndBack() {
         guard openPhoneApp("Inbox") else { expect(false, "no Inbox app"); return }
+        // The app may open on the Phone tab or, when the unlock ladder keeps it off the grid, in the Pick tab: that tab must stay.
+        let home: String = selectedTab()
         shot("C0-inbox")
         guard tapWhere(wait: 4, { $0.id == "open-company-link" && $0.type == .button }) else { shot("C1-no-company-link"); return }
         expect(companyShowing() || has("back-button", wait: 2), "Inbox > company link: no company page")
         shot("C1-inbox-company")
-        sameTab("Phone", "Inbox > company")
+        sameTab(home, "Inbox > company")
         expect(tapBack(), "Inbox > company: no Back")
         expect(app.textFields["Search messages"].waitForExistence(timeout: 4) || has("inbox-row", wait: 2), "Inbox > company > Back: not on the Inbox")
         shot("C2-inbox-back")
-        sameTab("Phone", "Inbox > company > Back")
+        sameTab(home, "Inbox > company > Back")
     }
 
     /// Phone > Bank > a company account > its company > Back to the account, on the Phone tab.
     private func bankToCompanyAndBack() {
         guard openPhoneApp("Bank") else { expect(false, "no Bank app"); return }
+        let home: String = selectedTab()
         shot("D0-bank")
         guard tapPrefix("bank-pick-company", wait: 4) || tapPrefix("bank-account-company", wait: 3) else { shot("D1-no-company-account"); return }
         shot("D1-bank-company-account")
         expect(tapID("bank-open-company", wait: 3), "Bank > company account: no link to the company")
         expect(companyShowing(), "Bank > company account > company: no company page")
         shot("D2-bank-company")
-        sameTab("Phone", "Bank > company")
+        sameTab(home, "Bank > company")
         expect(tapBack(), "Bank > company: no Back")
         expect(has("bank-open-company", wait: 4), "Bank > company > Back: not on the company account")
         shot("D3-bank-back")
-        sameTab("Phone", "Bank > company > Back")
+        sameTab(home, "Bank > company > Back")
     }
 }
