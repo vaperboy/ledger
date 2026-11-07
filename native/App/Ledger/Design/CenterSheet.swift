@@ -186,6 +186,8 @@ struct CenterSheetFrame<Content: View>: View {
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
         .modifier(PopupGlass(tone: shade, light: P.isLight))
         .overlay { celebration }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("popup-card")
     }
 
     private var hasHeader: Bool { !shownTitle.isEmpty || showsClose }
