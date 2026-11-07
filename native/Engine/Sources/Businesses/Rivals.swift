@@ -186,7 +186,7 @@ public enum Rivals {
             riv.append(.object(["id": .number(Double(id)), "name": .string(name), "owner": .string(owner), "size": .number(size),
                                 "rel": .number(rel), "listed": .bool(listed), "ign": 0, "lock": 0, "meet": -99,
                                 "pm16": .number(clamp(jsRound(initialPrice(seed: s.seed, id: id) * bias * 1000) / 1000, 0.7, 1.6)), "ig16": 1, "nx16": .number(nx),
-                                "st": .string(st), "fort": .number(fort)]))
+                                "st": .string(st), "fort": .number(fort), "w0": .number(Double(s.week))]))
         }
         if riv.count > want + 1 { riv.removeLast(riv.count - (want + 1)) }
         let added = riv.count > before ? riv[before...].map { $0["name"].string } : []
