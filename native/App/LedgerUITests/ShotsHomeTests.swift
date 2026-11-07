@@ -5,16 +5,18 @@ import XCTest
 /// start. Every step is optional: a control that is not there is skipped and the next screen is still taken.
 final class ShotsHomeTests: FeatureTourCase {
     func testShots() {
-        snap("home-top")
-        dragPage(-360); snap("home-companies")
-        dragPage(-500); snap("home-bottom")
-        dragPage(1400)
+        snap("home")
+        // Home fits one screen: a drag must not move it.
+        dragPage(-360); snap("home-after-drag")
 
         // Needs you: the first item opens its popup right on Home.
         if tapPrefix("suggestion-", wait: 2) { snap("needs-you-popup"); closePopup() }
 
-        // Shortcut editor and Insights (the paywall behind it for a free player).
-        if bringAndTap("edit-home-shortcuts") { snap("shortcut-editor"); closePopup() }
+        // All companies (the Group tab's list), the rank button (Goals), Insights and the paywall behind it for a free player.
+        if bringAndTap("show-all-companies") { pause(1); snap("all-companies") }
+        toRoot(); _ = goTab("Home")
+        if bringAndTap("home-rank-ring") { pause(1); snap("rank-goals") }
+        toRoot(); _ = goTab("Home")
         if bringAndTap("home-insights") {
             snap("insights")
             if tapLabel("Unlock with Ledger Pro") { pause(1); snap("paywall"); closePopup(prefer: ["paywall-pass"]) } else { closePopup() }
@@ -54,8 +56,7 @@ final class ShotsHomeTests: FeatureTourCase {
         toRoot()
 
         // The Reports app (week, month, year).
-        _ = goTab("Home")
-        if bringAndTap("home-reports") || openPhoneApp("reports") {
+        if openPhoneApp("reports") {
             pause(1); snap("reports-week")
             dragPage(-500); snap("reports-week-more")
             if tapText("Month") { pause(0.8); snap("reports-month") }
