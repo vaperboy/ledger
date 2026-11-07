@@ -7,7 +7,7 @@ import Simulation
 // The Group tab works like Banking: pressing it opens the picker of companies, holdings and chains; everything else is managed per
 // entity on its own page (GroupEntityPage.swift and the GroupEntity*.swift files). Every figure comes from the engine.
 
-/// The tabs of an entity page. `key` is the name other screens use to ask for one (`GroupRouteBox.Request.section`).
+/// The tabs of an entity page. `key` is the name other screens use to ask for one (`GameStore.openGroupEntity(companyID:section:)`).
 enum GroupSection: String, CaseIterable, Hashable {
     case overview = "Overview", management = "Management", board = "Boardroom", money = "Money", expansion = "Expansion", deals = "Ownership"
     var key: String { rawValue.lowercased() }

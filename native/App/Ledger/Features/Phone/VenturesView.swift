@@ -523,7 +523,7 @@ private struct SoftwarePart: View {
             if builders.isEmpty {
                 CardSection("Software of your own") {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Button("Start a company") { store.open(.newCompany, on: .company) }.buttonStyle(SecondaryButtonStyle(size: .compact))
+                        Button("Start a company") { store.push(.newCompany) }.buttonStyle(SecondaryButtonStyle(size: .compact))
                     }
                 }
             }

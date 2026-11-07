@@ -163,7 +163,7 @@ struct VenturesLinkRow: View {
         let groups = engine.bigMeetingStakes.reduce(0) { $0 + $1.value } + engine.groupStakes.reduce(0) { $0 + $1.value }
         let total = founded + stakes + pe + groups
         CardSection("Ventures") {
-            Button { store.jump(to: .projects); Haptics.tap() } label: {
+            Button { store.openApp(.ventures); Haptics.tap() } label: {
                 RowLine(glyph: Glyph.ventures, title: "Startups, private equity and stakes",
                         subtitle: total > 0 ? "Managed in Projects > Ventures" : "Found or back a startup, commit to a fund: Projects > Ventures",
                         trailing: total > 0 ? cur.tidyShort(total) : "", chevron: true)

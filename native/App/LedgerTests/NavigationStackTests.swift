@@ -2,7 +2,7 @@ import XCTest
 @testable import Ledger
 
 /// The navigation rules, on the store that owns every tab's stack (no engine needed): a link to a record already on a stack
-/// never stacks a copy, Back from a cross-tab link returns to its origin and leaves nothing behind, choosing the open tab pops to root.
+/// never stacks a copy, a link pushes on the open tab and never changes tab, the switcher swaps the top screen, choosing the open tab pops to root.
 @MainActor
 final class NavigationStackTests: XCTestCase {
 
@@ -44,49 +44,66 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertEqual(store.path(for: .group), [.company(1)])
     }
 
-    func testBackFromACrossTabLinkReturnsToTheOriginAndLeavesNothingBehind() {
+    func testALinkPushesOnTheOpenTabAndNeverChangesTab() {
         let store = GameStore()
         store.tab = .company
-        store.open(.companyAt(2, .staff), on: .group)
-        XCTAssertEqual(store.tab, .group)
-        XCTAssertEqual(store.path(for: .group), [.companyAt(2, .staff)])
-        XCTAssertEqual(store.returnTab, .company)
-        // The player presses Back: the Team stack shrinks to what it held before the link.
-        store.setPath([], for: .group)
+        store.push(.companyAt(2, .staff))
+        store.push(.entity("co2", .management))
         XCTAssertEqual(store.tab, .company)
+        XCTAssertEqual(store.path(for: .company), [.companyAt(2, .staff), .entity("co2", .management)])
         XCTAssertTrue(store.path(for: .group).isEmpty)
-        XCTAssertNil(store.returnTab)
+        // Back pops to the company, still on Home.
+        store.setPath([.companyAt(2, .staff)], for: .company)
+        XCTAssertEqual(store.tab, .company)
+        XCTAssertEqual(store.depth(.company), 1)
     }
 
-    func testPhoneAppOpenedFromAnotherTabLeavesNoAppBehind() {
+    func testAPhoneAppOpenedFromAnotherTabIsPushedThere() {
         let store = GameStore()
+        store.tab = .group
         store.openApp(.bank)
-        XCTAssertEqual(store.tab, .phone)
-        XCTAssertEqual(store.phonePath, [.app(.bank)])
-        store.setPhonePath([])
-        XCTAssertEqual(store.tab, .company)
+        XCTAssertEqual(store.tab, .group)
+        XCTAssertEqual(store.path(for: .group), [.app(.bank)])
         XCTAssertTrue(store.phonePath.isEmpty)
     }
 
-    func testLeavingALinkedTabByHandRemovesTheLinkedScreen() {
+    func testMarketRouteBecomesTheMarketAppOnTheSameStack() {
         let store = GameStore()
-        store.open(.companyAt(2, .staff), on: .group)
-        store.selectTab(.group)
-        XCTAssertTrue(store.path(for: .group).isEmpty)
-        XCTAssertNil(store.returnTab)
-    }
-
-    func testMarketRouteOpensThePhoneMarketAppWithTheCompanyChosen() {
-        let store = GameStore()
+        store.tab = .group
         store.push(.market, on: .group)
-        XCTAssertTrue(store.path(for: .group).isEmpty, "the Market route is never stacked on a tab")
-        XCTAssertEqual(store.tab, .phone)
-        XCTAssertEqual(store.phonePath, [.app(.market)])
+        XCTAssertEqual(store.tab, .group)
+        XCTAssertEqual(store.path(for: .group), [.app(.market)])
         XCTAssertEqual(store.takeMarketRequest(), 0, "no company chosen: all markets")
         store.openCompany(7, section: .market)
-        XCTAssertEqual(store.phonePath, [.app(.market)], "already open: not stacked twice")
+        XCTAssertEqual(store.path(for: .group), [.app(.market)], "already open: not stacked twice")
         XCTAssertEqual(store.takeMarketRequest(), 7)
         XCTAssertNil(store.takeMarketRequest(), "a request is taken once")
+    }
+
+    func testTheSwitcherSwapsTheTopScreenAndBackReturnsUnderIt() {
+        let store = GameStore()
+        store.tab = .group
+        store.setPath([.entity("co1", .overview), .company(1)], for: .group)
+        store.replaceTop(with: .company(2))
+        XCTAssertEqual(store.path(for: .group), [.entity("co1", .overview), .company(2)])
+        store.replaceTop(with: .companyAt(1, .operations))
+        XCTAssertEqual(store.path(for: .group), [.entity("co1", .overview), .companyAt(1, .operations)])
+        store.setPath([.company(3), .company(4)], for: .group)
+        store.replaceTop(with: .company(3))
+        XCTAssertEqual(store.path(for: .group), [.company(3)], "a company already under it is gone back to")
+    }
+
+    func testVenturesSwitchesTheProjectsRootAndIsPushedElsewhere() {
+        let store = GameStore()
+        store.tab = .projects
+        store.openApp(.ventures)
+        XCTAssertTrue(store.path(for: .projects).isEmpty)
+        XCTAssertTrue(store.takeVenturesRequest())
+        store.tab = .company
+        store.openApp(.ventures)
+        XCTAssertEqual(store.tab, .company)
+        XCTAssertEqual(store.path(for: .company), [.app(.ventures)])
+        XCTAssertFalse(store.takeVenturesRequest())
     }
 
     func testChoosingTheOpenTabPopsItToItsRoot() {
@@ -105,5 +122,7 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .overview).key)
         XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .marketing).key)
         XCTAssertEqual(CompanyRoute.make(1, .properties, nil), .companyPart(1, .operations, "Premises"))
+        XCTAssertEqual(NavRoute.entity("ch1", .overview).key, NavRoute.entity("ch1", .deals).key)
+        XCTAssertNotEqual(NavRoute.entity("co1", .overview).key, NavRoute.company(1).key)
     }
 }

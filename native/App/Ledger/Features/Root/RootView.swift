@@ -53,7 +53,8 @@ struct GameShell: View {
 }
 
 /// iPhone: the floating pill tab bar (Ventures, Group, Home, Custom, Phone) over the pages. The system tab bar is hidden; the pages stay
-/// alive in a sliding `TabPager`, so each tab keeps its navigation stack and scroll position. The Phone tab's bubble is the total waiting count.
+/// alive in a sliding `TabPager`. The tab bar is the only thing that changes tab: every link pushes on the tab it was tapped on.
+/// The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
 
@@ -87,7 +88,7 @@ struct PhoneShell: View {
 /// iPad: a sidebar with the same five destinations (the Custom row has a "Change destination" menu) as the iPhone tab bar and a wide detail area. The Phone destination holds the apps.
 /// Only the chosen tab is in the detail column: keeping hidden tabs alive made every visited tab's toolbar items, title and search
 /// field pile up in the split view's one navigation bar (two More buttons, a stray "+" and the Team search on Group and Inbox).
-/// Each tab's navigation stack lives in the store, so a company opened in Team never appears in Home and survives a switch of tab.
+/// Each tab's navigation stack lives in the store, so what a link pushed on one tab never appears on another.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
 
