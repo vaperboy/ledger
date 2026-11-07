@@ -66,7 +66,7 @@ struct CompanyCoverageScreen: View {
                         }.padding(.vertical, 9).contentShape(Rectangle())
                     }.buttonStyle(PressableStyle())
                 }
-                Text("A covered loss is paid after a deductible of about \(cur.tidyShort(cur.scaledPrice(10000))); now and then the insurer pays only part. Premiums scale with revenue (property cover with what you own) and with your insurer's price factor. Anything uninsured comes out of company cash.")
+                Text("Deductible about \(cur.tidyShort(cur.scaledPrice(10000))) a claim; uninsured losses come out of company cash.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
             }
         }

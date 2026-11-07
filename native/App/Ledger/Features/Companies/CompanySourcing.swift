@@ -99,7 +99,6 @@ struct CompanySourcing: View {
             }.padding(.horizontal, 2)
             if input.id == "goods" {
                 SegmentedPill(items: [0, 1, 2], title: { classNames[$0] }, selection: goodsClassBinding)
-                Text("Quality class: sets the cost and quality of all goods.").textStyle(.caption, tint: Theme.inkFaint).padding(.horizontal, 2)
             }
             if let why = input.governedBy { notice(why, tint: Theme.caution) }
             if let none = input.noOwnProvider { notice(none, tint: Theme.ivoryMuted) }
@@ -360,7 +359,7 @@ struct CompanySourcing: View {
 
     private var debtInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Buying on credit is a debt: it falls due on its date and shows under what falls due. If the account cannot cover it, it carries interest, the supplier trusts you less, and repeated lateness cuts you off.")
+            Text("A debt with a due date: paying late costs interest and, repeated, the supplier.")
                 .popupText(.body)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

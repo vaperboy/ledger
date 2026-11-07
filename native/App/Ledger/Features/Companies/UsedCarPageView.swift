@@ -107,11 +107,11 @@ struct UsedCarPageView: View {
         FlatRow(label: "Sells in a week", value: oddsText(q.weeklyOdds), sub: q.priceVsFair > 0 ? percentVsFair(q.priceVsFair) : "")
         FlatRow(label: "Expected wait", value: waitText(q.expectedWeeks))
         if !q.repairsKnown {
-            Text("The faults come out when the yard has looked at the car, so repairs are not in this figure yet.")
+            Text("Repairs not known yet.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
         if car.stuck {
-            Text("This car has sat for a long time. It loses value faster and sells slower, and a wholesaler may offer for it.")
+            Text("Stuck: losing value faster.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
         if car.reserved {
@@ -158,7 +158,7 @@ struct UsedCarPageView: View {
             }
         } else if car.status == "new" {
             PageGroup("Inspection") {
-                Text("The yard cleans and looks at the car next week. Hidden faults come out then, with a repair quote.")
+                Text("Inspected next week, with a repair quote.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }

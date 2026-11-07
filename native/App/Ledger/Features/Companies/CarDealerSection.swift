@@ -80,7 +80,7 @@ struct CarDealerSection: View {
                 Text("\(sp.used) of \(sp.total) spaces").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 if rows.isEmpty {
-                    Text("The showroom is empty. Cars only arrive when you order them from your supplier.")
+                    Text("The showroom is empty.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.vertical, Theme.Space.s)
                 } else {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { (n: Int, r: CarDealerRow) in
@@ -113,11 +113,11 @@ struct CarDealerSection: View {
         let margin: String = Currency.percent(con?.margin ?? CarBrands.distributorMargin, decimals: 1)
         return PageGroup("Supplier") {
             LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: engine.carDealerSupplier(companyID: company.id),
-                      subtitle: con == nil ? "Distributor: any brand, but it keeps most of the margin" : "Brand contract: the margin is in every invoice price",
+                      subtitle: con == nil ? "Distributor" : "Brand contract",
                       value: margin, valueNote: "dealer margin", identifier: "dealer-brand") { brandScreen = true }
             RowRule()
             LedgerRow(leading: .glyph(Glyph.person), leadingTint: buyer ? Theme.inkSoft : Theme.warn, title: buyer ? "A buyer or manager orders" : "You order by hand",
-                      subtitle: buyer ? "Orders when the showroom runs thin" : "Hire a buyer, or a manager, to keep the showroom stocked")
+                      subtitle: buyer ? "" : "Hire a buyer to keep the showroom stocked")
         }
     }
 }

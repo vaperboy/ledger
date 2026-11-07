@@ -234,14 +234,14 @@ struct CompanySalmon: View {
                             }
                         }.padding(.top, Theme.Space.s)
                     }
-                    Text("Fish grow for about 18 months, then are sold at the market price. Lice, storms and algae can cost a cohort.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
+                    Text("About 18 months to harvest.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
                 }
             }
             PageGroup("Routine") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) }; store.saved(v ? "new fish are stocked automatically" : "automatic stocking is off") })).tint(Theme.gold)
                     Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) }; store.saved(v ? "ripe fish are harvested" : "harvesting is off") })).tint(Theme.gold)
-                    Text("A new cohort needs cash for the young fish (a few million) and then feed every week for over a year before anything is sold.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                    Text("A cohort costs a few million up front, then feed every week.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

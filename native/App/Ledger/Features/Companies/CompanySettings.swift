@@ -40,7 +40,7 @@ struct CompanySettings: View {
         CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").textStyle(.caption) }) {
             if let cost = engine.convertToLimitedCost(companyID: company.id) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("As a sole trader the profit is yours and taxed on your personal return, and you are liable for every debt. A limited company pays company tax, pays you by salary or dividends, and its debts stay with it unless you guarantee them.")
+                    Text("Sole trader: you are liable for every debt.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
                     FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
@@ -48,7 +48,7 @@ struct CompanySettings: View {
                         .accessibilityIdentifier("company-convert-review")
                 }
             } else {
-                Text("A limited company: debts stay with the company unless you guaranteed them; you are paid by salary or dividends (Ownership).")
+                Text("Limited: debts stay with the company unless you guaranteed them.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -66,7 +66,7 @@ struct CompanySettings: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     TextField("New name", text: $newName).textStyle(.body).autocorrectionDisabled()
                         .padding(.horizontal, 10).padding(.vertical, 8).background(RoundedRectangle(cornerRadius: Theme.Radius.s).fill(Color.white.opacity(0.05)))
-                    Text("New signs and paperwork cost \(cur.tidyDisplay(cost)) from company cash. About a third of the people who knew the old name lose track of you.")
+                    Text("Costs \(cur.tidyDisplay(cost)); about a third of customers lose track of you.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
                     Button("Rename…") { confirmRename(cost, cur) }.buttonStyle(QuietButtonStyle()).disabled(newName.trimmingCharacters(in: .whitespaces).count < 2)
                 }
@@ -98,7 +98,7 @@ struct CompanySettings: View {
                 Text(left > 0 && left < 999 ? "reopens in \(left) week\(left == 1 ? "" : "s")" : "until you reopen").textStyle(.caption, tint: Theme.warn)
             }) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("No sales while closed. Rent, the accountant and part of the running costs continue; wages are paid in full for two weeks, then 40%.")
+                    Text("No sales; rent continues, wages drop to 40% after two weeks.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     Button("Reopen now") {
                         switch store.act({ $0.reopenCompany(companyID: company.id) }) {
@@ -113,7 +113,7 @@ struct CompanySettings: View {
             let notice = engine.closeNoticeTerms(companyID: company.id)
             CardSection("Close for a while") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("For a refit, a quiet season or to stop losses. It reopens by itself after the weeks you choose. Rent and the accountant continue; wages are paid in full for two weeks, then 40%.")
+                    Text("Reopens by itself; rent continues, wages drop to 40% after two weeks.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     SegmentedChoice(items: [2, 4, 8, 13, 26], title: { "\($0) weeks" }, selection: $closeWeeks)
                     if let notice {
@@ -161,7 +161,7 @@ struct CompanySettings: View {
             let debts = CompanyFigures.debts(company, loans: engine.state.loans)
             CardSection("Close down for good") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Everything is sold at about 55% of its book value, loans and unpaid bills are paid first, and everyone who works here is let go." + (company.form == .soleTrader ? " As a sole trader you cover any shortfall yourself." : " Loans you guaranteed become yours."))
+                    Text("Assets sell at about 55% of book value; everyone is let go." + (company.form == .soleTrader ? " You cover any shortfall." : " Guaranteed loans become yours."))
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
                     FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)
@@ -179,7 +179,7 @@ struct CompanySettings: View {
         let plan = engine.branchClosurePlan(storeID: company.id), quote = engine.branchSaleQuote(storeID: company.id)
         CardSection("Close or sell this branch") {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("A branch is part of the chain, not a company of its own. Close it (the lease is given up, staff move to other branches or are made redundant, stock moves) or sell it to a buyer who takes the site and the staff. The money stays in the chain.")
+                Text("Close the branch or sell it with its site and staff; the money stays in the chain.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if let p = plan {
                     FlatRow(label: "Closing: cash in less costs", value: cur.tidyShort(p.net), tint: p.net >= 0 ? Theme.gain : Theme.loss, rule: false)

@@ -147,7 +147,7 @@ struct UsedCarYardSection: View {
             Text(count).textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if cars.isEmpty {
-                Text("The yard is empty. Cars only come from the Marketplace app on your Phone, bought by you or by a buyer.")
+                Text("The yard is empty: buy cars in Marketplace.")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
             ForEach(Array(cars.enumerated()), id: \.element.id) { (n: Int, c: UsedCarStockItem) -> AnyView in
@@ -175,7 +175,7 @@ struct UsedCarYardSection: View {
         let used: Int = lot?.used ?? 0
         let free: Int = lot?.free ?? 0
         let full: Color? = free == 0 ? Theme.loss : nil
-        let sub: String = spaces == 0 ? "These premises have no space for cars. Buying a car needs a free space." : (free == 0 ? "The lot is full. Sell a car before you buy another." : "Premises decide how many cars you can hold.")
+        let sub: String = spaces == 0 ? "No space for cars here" : (free == 0 ? "Full: sell one before buying" : "")
         return PageGroup("Lot") {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Spaces used", value: "\(used) of \(spaces)", sub: sub, tint: full, rule: false)
@@ -191,14 +191,12 @@ struct UsedCarYardSection: View {
         return PageGroup("Buyers") {
             VStack(alignment: .leading, spacing: 0) {
                 if recs.isEmpty {
-                    Text("Nobody buys cars for you. You buy by hand on the Marketplace. A hired buyer or a manager buys for you when the lot has room.")
+                    Text("You buy by hand in Marketplace.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.bottom, 8)
                 }
                 ForEach(Array(recs.enumerated()), id: \.offset) { (i: Int, r: UsedCarBuyerRecord) in
                     FlatRow(label: r.name + " (" + roleWord(r.role) + ")", value: "Skill \(Int(r.rating.rounded()))", sub: track(r), rule: i > 0)
                 }
-                Text("Skill comes from the deals he got against fair value. A better record means better cars at lower prices.")
-                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.vertical, 6)
                 if company.status == .open {
                     Button("Hire a buyer") { Haptics.tap(); showHire = true }
                         .buttonStyle(TertiaryButtonStyle(size: .compact))
@@ -233,7 +231,7 @@ struct UsedCarYardSection: View {
         return PageGroup("Repairs") {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Send every repair to the garage at once", isOn: binding).tint(Theme.gold).textStyle(.headline)
-                Text("Off: each quoted car waits for you to send it to repair or sell it as it is. Your own mechanic company is used first, at the group price.")
+                Text("Off: you decide car by car.")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }

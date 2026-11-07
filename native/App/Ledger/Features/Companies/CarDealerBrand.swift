@@ -50,7 +50,7 @@ struct CarBrandList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("A brand contract replaces the distributor: you sell only that brand, at the brand's dealer margin, for the whole term. Leaving early costs a penalty. The brand reviews you every year and offers a renewal only if it is happy.")
+            Text("One brand only, at its margin, for the term; leaving early costs a penalty.")
                 .popupText(.subtitle)
             ForEach(terms, id: \.brand.id) { (t: CarBrandContract.Terms) in
                 NavigationLink(value: t.brand.id) { card(t) }.buttonStyle(PressableStyle())

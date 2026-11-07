@@ -92,7 +92,7 @@ struct CompanyCustomers: View {
 
     /// A link to everything customers wrote (the Reviews app, on this company).
     private var reviewsLink: some View {
-        LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "What customers wrote", subtitle: "Yours and your rivals', in the Reviews app",
+        LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "What customers wrote", subtitle: "Reviews app",
                   identifier: "customers-reviews") { store.openReviews(companyID: company.id) }
     }
 
@@ -127,7 +127,7 @@ struct CompanyCustomers: View {
             }) {
                 VStack(alignment: .leading, spacing: 10) {
                     if info.accounts.isEmpty {
-                        Text("Larger buyers ask to place regular orders once you are known and well regarded. A manager signs them; otherwise the offer waits in the inbox.")
+                        Text("None yet.")
                             .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(info.accounts, id: \.id) { (a: KeyAccounts.Account) in
@@ -149,7 +149,7 @@ struct CompanyCustomers: View {
                 })) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Check buyers before selling on account").textStyle(.body)
-                        Text("Costs about 0.4% of what you invoice to businesses. Benefit: unpaid invoices become about 70% less likely. Risk of leaving it off: a bad debt is written off in full.")
+                        Text("About 0.4% of business invoices; about 70% fewer unpaid ones.")
                             .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }.tint(Theme.gold)

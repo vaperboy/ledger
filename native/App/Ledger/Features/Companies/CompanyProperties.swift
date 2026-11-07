@@ -193,7 +193,7 @@ struct CompanyProperties: View {
         return LedgerSection(title: "For sale in \(engine.cityName(company))", trailing: { Text("new list every month").font(.caption2).foregroundStyle(Theme.ivoryFaint) }) {
             Text("Mortgage").font(.caption).foregroundStyle(Theme.ivoryMuted)
             SegmentedPill(items: [0.0, 0.4, 0.6], title: { $0 == 0 ? "No loan" : Currency.percent($0, decimals: 0) + " loan" }, selection: $loanToValue)
-            Text("Rate \(Currency.percent(engine.state.economy.policyRate, decimals: 1)) plus a margin. Rents that return less than the loan costs make a mortgage lose money until prices rise.")
+            Text("Rate \(Currency.percent(engine.state.economy.policyRate, decimals: 1)) plus a margin.")
                 .font(.caption2).foregroundStyle(Theme.ivoryFaint)
             SettingsTable(heading: "Listing") {
                 ForEach(listings, id: \.id) { (L: PropertyListing) in

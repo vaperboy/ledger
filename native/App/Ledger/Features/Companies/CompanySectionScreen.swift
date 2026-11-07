@@ -72,20 +72,11 @@ struct CompanyMorePages: View {
     @ViewBuilder private func rows(_ list: [CompanySection]) -> some View {
         ForEach(Array(list.enumerated()), id: \.element) { (n: Int, s: CompanySection) in
             if ruled || n > 0 { RowRule() }
-            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: s.rawValue, subtitle: Self.note(s),
+            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: s.rawValue,
                       identifier: "company-page-\(s)") { store.openCompany(company.id, section: s) }
         }
     }
 
-    private static func note(_ s: CompanySection) -> String {
-        switch s {
-        case .energy: return "Plant, output and sales of power"
-        case .salmon: return "Pens, feed and harvest"
-        case .club: return "Squad, matches and club finances"
-        case .book: return "Policies, loans and funds"
-        default: return ""
-        }
-    }
 }
 
 /// Projects of one project business (builders, developers, event firms): its running jobs and developments with their stages, and its order

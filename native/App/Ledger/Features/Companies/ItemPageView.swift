@@ -39,8 +39,9 @@ struct ItemsList: View {
         let noun: String = service ? "service" : "product"
         return PageGroup(service ? "Services" : "Products") {
             if items.isEmpty {
-                EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Nothing is on sale yet",
-                           message: company.status == .open ? "Add a \(noun) to start selling." : "", centered: false)
+                // A company with nothing on sale starts here: the first choice is what it sells.
+                EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Choose what you sell",
+                           message: company.status == .open ? "Nothing is on sale yet." : "", centered: false)
             }
             LazyVStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
@@ -159,7 +160,8 @@ struct ItemPageView: View {
 
     /// The price is the hero and follows the slider; the line under it says what each one earns and how many sell. The slider and its
     /// profit band sit right under it; quick prices and the typed price are text actions under the slider.
-    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast) -> some View {
+    /// `setBy`: who sets this price when it is not the owner (a manager within the owner's price position); nil: the owner sets it here.
+    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast, setBy: String? = nil) -> some View {
         let lo: Double = p.item.marketPrice * SalesItems.ratioRange.lowerBound
         let hi: Double = p.item.marketPrice * SalesItems.ratioRange.upperBound
         let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
@@ -169,7 +171,7 @@ struct ItemPageView: View {
         let costLine: String = "cost " + itemAmount(p.unitCost, cur) + (p.record == nil ? " (typical)" : "") + "  \u{00B7}  market " + itemAmount(p.item.marketPrice, cur)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             Button {
-                guard hi > lo else { return }
+                guard hi > lo, setBy == nil else { return }
                 Haptics.tap()
                 Motion.animate(Motion.quickAnimation) { typing.toggle() }
             } label: {
@@ -177,7 +179,9 @@ struct ItemPageView: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint("Type an exact price")
-            if hi > lo {
+            if let who = setBy {
+                Text("Set by \(who)").textStyle(.caption, tint: P.inkFaint)
+            } else if hi > lo {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
                         if !editing { commitPrice(draftPrice ?? p.item.price) }
@@ -285,8 +289,6 @@ struct ItemPageView: View {
             Toggle(isOn: on) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("List for my other companies").textStyle(.headline)
-                    Text("They can buy it in TechPro; the profit stays here.").textStyle(.caption)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .tint(P.accent)
@@ -437,7 +439,7 @@ struct ItemPageView: View {
         if hasKnobs || hasWays {
             PageGroup("How the company sells") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("These choices apply to the whole company, not only this item.").textStyle(.caption, tint: P.inkFaint)
+                    Text("For the whole company, not only this item.").textStyle(.caption, tint: P.inkFaint)
                     HowYouSellSheet(companyID: co.id, embedded: true)
                 }
             }

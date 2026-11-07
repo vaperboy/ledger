@@ -188,7 +188,7 @@ struct ExpansionForm: View {
             ForEach(plan.requirements, id: \.self) { r in Text(r).popupText(.subtitle) }
             if let why = plan.blockedReason { Text(why).popupText(.risk) }
         }
-        Text("Closing this sheet changes nothing. A running project can be cancelled later and the part not yet spent comes back.").popupText(.caption)
+        Text("Cancelling later refunds what is not yet spent.").popupText(.caption)
     }
 
     private func start() {

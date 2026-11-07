@@ -78,20 +78,19 @@ struct CompanySales: View {
         let running: Int = company.value("mkt").object.values.filter { $0["b"].double > 0 }.count
         return PageGroup("Grow") {
             LedgerRow(leading: .glyph(Glyph.opsMega), leadingTint: P.inkSoft, title: "Marketing",
-                      subtitle: running > 0 ? "\(running.countText("campaign")) running" : "Budgets per channel and what each brings",
+                      subtitle: running > 0 ? "\(running.countText("campaign")) running" : "",
                       value: spend > 0 ? cur.tidyShort(spend) : "", valueNote: spend > 0 ? "a week" : "Off", identifier: "sales-marketing") { showMarketing = true }
             if CompanyDevelopment.isAvailable(company, engine) {
                 let developing: Bool = Development.running(company) != nil
                 RowRule()
                 LedgerRow(leading: .glyph(Glyph.invest), leadingTint: P.inkSoft, title: CompanyDevelopment.title(company, engine),
-                          subtitle: "Something new to sell: takes weeks and costs money up front",
                           valueNote: developing ? "In progress" : "Start", valueNoteTint: developing ? P.gain : P.accent, identifier: "sales-develop") { part = .develop }
             }
             RowRule()
             ResearchRow(engine: engine, company: company)
             if DealerAddons.supports(company) {
                 RowRule()
-                LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Warranty, loans and insurance", subtitle: "Add-ons at the sale and what each brings",
+                LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Warranty, loans and insurance",
                           identifier: "sales-addons") { showAddons = true }
             }
         }

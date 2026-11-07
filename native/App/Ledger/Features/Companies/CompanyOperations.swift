@@ -67,13 +67,13 @@ struct CompanyOperations: View {
             if !licences.isEmpty {
                 let held: Int = licences.filter { $0.form.status == "ok" }.count
                 RowRule()
-                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Licences", subtitle: "New things to sell need a licence first",
+                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Licences",
                           value: "\(held) of \(licences.count)", valueNote: "held", identifier: "manage-licences") { part = .licences }
             }
             if rental {
                 let count: Int = engine.propertyPortfolio(companyID: company.id)?.rows.count ?? 0
                 RowRule()
-                LedgerRow(leading: .glyph(Glyph.opsPin), leadingTint: P.inkSoft, title: "Properties", subtitle: "What you own and let",
+                LedgerRow(leading: .glyph(Glyph.opsPin), leadingTint: P.inkSoft, title: "Properties",
                           value: "\(count)", valueNote: count == 1 ? "property" : "properties", identifier: "manage-properties") { part = .premises }
             }
             RowRule()
@@ -81,7 +81,7 @@ struct CompanyOperations: View {
             if sourcing {
                 let inputs: Int = engine.supplierInputs(companyID: company.id).count
                 RowRule()
-                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers", subtitle: "Who provides each input, and at what price",
+                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers",
                           value: "\(inputs)", valueNote: inputs == 1 ? "input" : "inputs", identifier: "manage-suppliers") { part = .suppliers }
             }
             CompanyMorePages(engine: engine, company: company, pages: [.energy, .salmon, .club], ruled: true)
@@ -89,7 +89,7 @@ struct CompanyOperations: View {
     }
 
     private var upkeepRow: some View {
-        let stockNote: String = company.inventory > 0 ? "Upkeep and stock \u{00B7} " + store.short(company.inventory, in: company) + " tied up in stock" : "Equipment upkeep and how much stock you keep"
+        let stockNote: String = company.inventory > 0 ? store.short(company.inventory, in: company) + " tied up in stock" : ""
         return LedgerRow(leading: .glyph(Glyph.opsWrench), leadingTint: P.inkSoft, title: "Upkeep", subtitle: stockNote,
                          value: OpsWords.name(OpsWords.maintenance, company.maintenance), valueNote: OpsWords.name(OpsWords.stock, company.int("stockPol", 1)).lowercased() + " stock",
                          identifier: "manage-upkeep") { sheet = .upkeep }
@@ -100,7 +100,7 @@ struct CompanyOperations: View {
         let needs: [EquipmentMarket.Need] = engine.equipmentNeeds(companyID: company.id)
         let missing: Int = needs.filter { !$0.isVehicle && !$0.isSoftware && $0.need > 0 && $0.have + $0.leased < $0.need }.count
         let owned: Int = engine.ownedEquipment(companyID: company.id).filter { $0.kind != "veh" }.count
-        return LedgerRow(leading: .glyph(Glyph.settings), leadingTint: missing > 0 ? P.warn : P.inkSoft, title: "Equipment", subtitle: "What you own, what is missing, selling and leases",
+        return LedgerRow(leading: .glyph(Glyph.settings), leadingTint: missing > 0 ? P.warn : P.inkSoft, title: "Equipment",
                          value: missing > 0 ? "\(missing)" : "\(owned)", valueTint: missing > 0 ? P.warn : nil, valueNote: missing > 0 ? "missing" : "owned",
                          identifier: "manage-equipment") { part = .equipment }
     }
@@ -124,7 +124,7 @@ struct CompanyOperations: View {
                                     sub: paper.count == 1 ? first.detail : "An inspection can fine you", action: "Open Team") { store.openCompany(id, section: .staff) })
         }
         if uninsured {
-            out.append(CompanyIssue(id: "cover", glyph: Glyph.opsShield, tint: P.warn, title: "Not insured", sub: "A bad week has nothing behind it: get the policies you want in Atlas",
+            out.append(CompanyIssue(id: "cover", glyph: Glyph.opsShield, tint: P.warn, title: "Not insured", sub: "Losses come out of company cash",
                                     action: "Get cover") { store.openAtlas(companyID: id) })
         }
         if outgrown {

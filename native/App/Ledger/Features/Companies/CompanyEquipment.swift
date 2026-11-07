@@ -270,7 +270,7 @@ struct CompanyEquipmentScreen: View {
             PageGroup("Condition") {
                 VStack(alignment: .leading, spacing: 4) {
                     Meter(label: "Equipment health, as far as you can tell", value: h * 100, scale: .condition)
-                    Text("Old equipment breaks more often. Under warranty the maker repairs it for free, but it is away for days. Servicing costs little; replacing costs a lot.")
+                    Text("Old equipment breaks more often; under warranty repairs are free.")
                         .font(.caption2).foregroundStyle(Theme.ivoryFaint)
                 }
             }
@@ -306,7 +306,7 @@ struct CompanyEquipmentScreen: View {
         perkCars(owned, cur)
         garageRepair(e, owned, cur)
         runningCosts(e, cur)
-        Text("Cash keeps you debt-free but drains the account. Finance builds ownership over four to five years. Leasing is a low monthly cost with service included, but you own nothing at the end.")
+        Text("Cash, finance over 4 to 5 years, or a lease you never own.")
             .font(.caption2).foregroundStyle(Theme.ivoryFaint)
     }
 
@@ -398,7 +398,7 @@ struct CompanyEquipmentScreen: View {
     @ViewBuilder private func software(_ e: GameEngine, _ co: Company, _ needs: [EquipmentMarket.Need]) -> some View {
         let cur = e.currency(for: co)
         let owned = e.ownedEquipment(companyID: companyID)
-        Text("Small programs are bought once. Bigger systems cost more up front plus yearly updates. Some are only sold as a subscription, priced by how many people use them. You have \(EquipmentMarket.users(co)) \(EquipmentMarket.users(co) == 1 ? "user" : "users").")
+        Text("Priced by users: you have \(EquipmentMarket.users(co)).")
             .font(.caption).foregroundStyle(Theme.ivoryMuted)
         PageGroup("Software") {
             VStack(spacing: 0) {

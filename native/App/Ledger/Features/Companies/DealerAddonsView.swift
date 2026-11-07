@@ -46,7 +46,7 @@ struct DealerAddonsView: View {
                     KeyFigures.Item(label: o.addon.title, value: o.active ? signed(o.expectedNet, cur) : "Off", tint: o.active ? (o.expectedNet >= 0 ? Theme.gain : Theme.loss) : Theme.ivoryFaint,
                                     sub: o.active ? percent(o.takeRate) + " take it" : (o.setUp ? "Switched off" : "Not set up"))
                 })
-                Text("Added to the margin of each car sold. Switched-off add-ons do not count. Figures are averages over many customers.")
+                Text("Added to each car's margin; averages.")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }

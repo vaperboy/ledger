@@ -351,17 +351,17 @@ struct CompanyOverview: View {
         case .manage:
             let use: String = ops?.capacityUse.map { "\(Int(($0 * 100).rounded()))%" } ?? ""
             let turnedAway: Bool = h.demandCoverage > 1.05
-            let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? "Premises, suppliers, equipment"
+            let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? ""
             LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Manage", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
                       identifier: "overview-open-manage") { go(.operations) }
         case .sales:
             let items: Int = engine.salesItems(companyID: co.id).count
             let week: Double = co.lastWeekRevenue
-            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Sales", subtitle: items == 0 ? "Products, prices and marketing" : "\(items.countText("item")) on sale \u{00B7} prices and marketing",
+            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Sales", subtitle: items == 0 ? "Nothing on sale yet" : "\(items.countText("item")) on sale",
                       value: week > 0 ? store.short(week, in: co) : "", valueNote: week > 0 ? "last week" : "", identifier: "overview-open-sales") { go(.salesMarket) }
         case .stats:
             let rated: String = h.rating > 0 ? StandingWords.ratingText(h.rating) : ""
-            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Stats", subtitle: "Costs, what is owed, customers \u{00B7} reputation " + StandingWords.reputation(co.reputation).lowercased(),
+            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Stats", subtitle: "Reputation " + StandingWords.reputation(co.reputation).lowercased(),
                       value: rated, valueNote: rated.isEmpty ? "" : "rating", identifier: "overview-open-stats") { go(.finances) }
         case .overview:
             EmptyView()

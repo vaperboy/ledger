@@ -193,7 +193,7 @@ struct ResearchRow: View {
         let reports: Int = engine.research(companyID: company.id).count
         let waiting: Int = MarketResearch.pending(company).count
         let value: String = waiting > 0 ? "\(waiting) on its way" : (reports > 0 ? "\(reports) delivered" : "Buy a report")
-        return LedgerRow(leading: .glyph(Glyph.stats), leadingTint: Theme.inkSoft, title: "Research", subtitle: "Reports on customers, rivals and prices",
+        return LedgerRow(leading: .glyph(Glyph.stats), leadingTint: Theme.inkSoft, title: "Research",
                          valueNote: value, valueNoteTint: waiting > 0 ? Theme.gain : nil, identifier: "sales-research") { open = true }
             .centerSheet(isPresented: $open, category: .medium, tone: .info) { ResearchSheet(companyID: company.id) }
     }
