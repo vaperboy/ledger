@@ -107,7 +107,7 @@ public enum Funding {
     }
     public static func canRaise(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return false }
-        return co.status.isLive && co.form == .limited && co.type != "hold"
+        return co.status.isLive && co.form == .limited && co.type != "hold" && !s.isBranch(co)   // a chain raises money as one company
     }
     /// The amount the original suggests asking for.
     public static func suggestedAmount(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> Double {
@@ -168,7 +168,7 @@ public enum Funding {
     @discardableResult
     public static func acceptOffer(_ s: inout GameState, companyID: Int, index: Int) -> Bool {
         let list = rawOffers(s, companyID)
-        guard list.indices.contains(index), let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return false }
+        guard list.indices.contains(index), let i = s.companyIndex(companyID), s.companies[i].status.isLive, !s.isBranch(s.companies[i]) else { return false }
         let o = list[index], co = s.companies[i]
         let amt = o["amt"].double, pct = o["pct"].double
         let shares = CapTable.sharesForPercent(pct, total: CapTable.table(co).total)
@@ -223,6 +223,7 @@ public enum Funding {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notLimited }
         let co = s.companies[i]
         guard co.form == .limited else { return .notLimited }
+        if s.isBranch(co) { return .blocked }
         let t = CapTable.table(co)
         // primary: pct is the buyer's share of the company AFTER the issue. secondary: pct is the share of YOUR holding you sell.
         let newPct = mode == "primary" ? t.youPct * (100 - pct) / 100 : t.youPct * (1 - pct / 100)

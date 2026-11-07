@@ -126,6 +126,7 @@ public extension GameEngine {
     /// What winding the company up would pay you: its assets fetch about 55%, debts and loans come first. Original: `windUp`.
     func windUpEstimate(companyID: Int) -> Double {
         guard let co = state.company(companyID), co.status.isLive else { return 0 }
+        if state.isBranch(co) { return 0 }   // closing a branch pays the chain, not you (branchClosurePlan)
         let (rest, _) = Self.windUpFigures(co, state)
         return max(0, rest) * co.ownership / 100
     }
@@ -143,6 +144,8 @@ public extension GameEngine {
 
     /// Everything sold at a discount, staff released, loans repaid as far as the money goes. Original: `ACT.winduo` / `windUp`.
     @discardableResult mutating func windUpCompany(companyID: Int) -> Bool {
+        // A branch is not wound up as a company: it is closed, and what is left goes to the chain.
+        if isBranch(companyID: companyID) { if case .success = closeBranch(storeID: companyID) { return true }; return false }
         var done = false
         update { s, _, _ in
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }

@@ -154,7 +154,9 @@ struct CompanySettings: View {
     // MARK: Winding up
 
     @ViewBuilder private func windUp(_ cur: Currency) -> some View {
-        if company.status.isLive {
+        if company.status.isLive && engine.isBranch(companyID: company.id) {
+            branchExit(cur)
+        } else if company.status.isLive {
             let back = engine.windUpEstimate(companyID: company.id)
             let debts = CompanyFigures.debts(company, loans: engine.state.loans)
             CardSection("Close down for good") {
@@ -169,6 +171,41 @@ struct CompanySettings: View {
                     Button("Wind up \(company.name)…") { confirmWindUp(back, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                 }
             }
+        }
+    }
+
+    /// A branch of a chain is not wound up as a company: it is closed into the chain or sold as a going concern, and the money stays in the chain.
+    @ViewBuilder private func branchExit(_ cur: Currency) -> some View {
+        let plan = engine.branchClosurePlan(storeID: company.id), quote = engine.branchSaleQuote(storeID: company.id)
+        CardSection("Close or sell this branch") {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("A branch is part of the chain, not a company of its own. Close it (the lease is given up, staff move to other branches or are made redundant, stock moves) or sell it to a buyer who takes the site and the staff. The money stays in the chain.")
+                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                if let p = plan {
+                    FlatRow(label: "Closing: cash in less costs", value: cur.tidyShort(p.net), tint: p.net >= 0 ? Theme.gain : Theme.loss, rule: false)
+                    FlatRow(label: "Move to other branches / redundant", value: "\(p.transfers.count) / \(p.redundancies)")
+                    Button("Close \(company.name)…") { confirmBranch(close: true, amount: p.net, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
+                }
+                if let q = quote {
+                    FlatRow(label: "A buyer pays", value: cur.tidyShort(q.price), tint: Theme.gain)
+                    Button("Sell \(company.name) as a going concern…") { confirmBranch(close: false, amount: q.price, cur) }.buttonStyle(QuietButtonStyle(tint: Theme.ivory))
+                }
+                if plan == nil && quote == nil {
+                    Text("This branch cannot leave the chain now.").font(.caption2).foregroundStyle(Theme.ivoryFaint)
+                }
+            }
+        }
+    }
+
+    private func confirmBranch(close: Bool, amount: Double, _ cur: Currency) {
+        let name = company.name, id = company.id
+        pending = PendingAction(title: close ? "Close \(name)?" : "Sell \(name)?",
+                                message: close ? "This is final. The branch is wound down into the chain (\(cur.tidyDisplay(amount)) net)." : "This is final. The buyer takes the site and the staff and pays the chain \(cur.tidyDisplay(amount)).",
+                                button: close ? "Close the branch" : "Sell the branch", destructive: true) {
+            let ok: Bool
+            if close { if case .success = store.act({ $0.closeBranch(storeID: id) }) { ok = true } else { ok = false } }
+            else { if case .success = store.act({ $0.sellBranch(storeID: id) }) { ok = true } else { ok = false } }
+            Haptics.warning(); store.show(ok ? (close ? "\(name) is closed." : "\(name) is sold.") : "\(name) could not leave the chain.", tone: ok ? "n" : "warn")
         }
     }
 

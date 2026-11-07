@@ -25,9 +25,11 @@ final class PopupSizingTests: XCTestCase {
         XCTAssertEqual(PopupLayout.category(for: .fitBleed), .medium)
     }
 
-    func testWideScreenWidthsFollowTheCategory() {
-        XCTAssertLessThan(PopupLayout.regularCardWidth(.compact), PopupLayout.regularCardWidth(.medium))
-        XCTAssertLessThan(PopupLayout.regularCardWidth(.medium), PopupLayout.regularCardWidth(.detail))
+    func testWidthsFollowTheCategoryAndKeepAMargin() {
+        XCTAssertLessThan(PopupLayout.maxCardWidth(.compact), PopupLayout.maxCardWidth(.medium))
+        XCTAssertLessThan(PopupLayout.maxCardWidth(.medium), PopupLayout.maxCardWidth(.detail))
+        XCTAssertEqual(PopupLayout.cardWidth(.compact, screenWidth: 393), 340)
+        XCTAssertEqual(PopupLayout.cardWidth(.detail, screenWidth: 393), 393 - 2 * PopupLayout.screenMargin)
     }
 
     func testOldVariantsMapToTones() {

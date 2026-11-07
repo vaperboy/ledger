@@ -43,19 +43,25 @@ public enum Valuation {
         let net = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans)
         // A startup is worth what an investor would pay for its product, never less than its net assets (see StartupModel.value).
         if bd.id == StartupModel.tradeID { return jsRound(co.form == .limited ? max(0, StartupModel.value(co, state: s, net: net)) : StartupModel.value(co, state: s, net: net)) }
+        let goodwill = goodwill(co, state: s, trades: trades)
+        // Value-neutral across a change of legal form: the old sole-trader goodwill discount of 0.85 is gone.
+        var v = jsRound(net + goodwill)
+        // Owners of a limited company cannot lose more than the company is worth; only a sole trader is personally liable for a negative value.
+        if co.form == .limited { v = max(0, v) }
+        return v
+    }
+
+    /// What a buyer pays for the business on top of its things: a multiple of yearly profit, earned over two years of accounts.
+    public static func goodwill(_ co: Company, state s: GameState, trades: any TradeCatalogProviding) -> Double {
+        guard let bd = trades.facts(for: co.type) else { return 0 }
         let mult: Double = bd.family == "fin" ? 1.0 : bd.family == "rent" ? 0.0 : bd.family == "energy" ? 5 : (bd.margin > 0.2 ? 5 : 4)
         // Profit that is really the owner's own pay is not goodwill: a buyer would have to hire someone to do that work.
         let ownerLabour = co.managerID == nil ? bd.ownerFTE * co.num("ownWage") * 12 : 0
         let prof = max(0, CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) - ownerLabour)
         // Buyers pay for a track record: goodwill counts fully after two years of accounts, a quarter after six months.
         let trust = min(1, Double(co.monthlyHistory.count) / 24)
-        let goodwill = (co.status == .open && (s.week - co.foundedWeek > 12))
+        return (co.status == .open && (s.week - co.foundedWeek > 12))
             ? prof * mult * (0.6 + co.reputation / 200) * (co.managerID != nil ? 0.85 : 1) * trust : 0
-        // Value-neutral across a change of legal form: the old sole-trader goodwill discount of 0.85 is gone.
-        var v = jsRound(net + goodwill)
-        // Owners of a limited company cannot lose more than the company is worth; only a sole trader is personally liable for a negative value.
-        if co.form == .limited { v = max(0, v) }
-        return v
     }
 
     /// Net worth with every part named. Original: `netWorthCore` + the 'netWorth' steps.
