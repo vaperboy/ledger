@@ -115,7 +115,6 @@ struct CenterSheetFrame<Content: View>: View {
         GeometryReader { (geo: GeometryProxy) in
             layout(screen: geo.size)
         }
-        .ignoresSafeArea(.container, edges: .bottom)
         .toggleStyle(LedgerToggleStyle())
         .onPreferenceChange(CenterSheetLockKey.self) { locked = $0 }
         .onPreferenceChange(CenterSheetTitleKey.self) { contentTitle = $0 }
@@ -239,22 +238,33 @@ struct CenterSheetFrame<Content: View>: View {
         if variant == .reward && !reduceMotion { ConfettiBurst() }
     }
 
-    /// The body: as high as the content (its ideal height, so a list or scroll view inside it does not collapse or stretch), scrolling only
-    /// past the category's room. A detail panel whose content scrolls by itself (`.tall`) fills the panel instead.
+    /// The body: exactly as high as the content when it fits the category's room, otherwise a scroll view of that room. `ViewThatFits`
+    /// decides from the content's own size, so nothing is measured afterwards and no fallback height can stretch a short popup.
+    /// A detail panel whose content scrolls by itself (`.tall`) fills the panel instead.
     @ViewBuilder private func inner(bodyMax: CGFloat) -> some View {
-        let pad: CGFloat = size == .fitBleed ? 0 : PopupLayout.inset
         if size == .tall {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            FitScroll(maxHeight: bodyMax, unmeasured: cat == .detail ? bodyMax : min(bodyMax, 240)) {
-                content()
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, pad)
-                    .padding(.top, cat == .compact ? 10 : (hasHeader ? 4 : pad))
-                    .padding(.bottom, pad)
+            ViewThatFits(in: .vertical) {
+                padded
+                ScrollView(.vertical) { padded }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollDismissesKeyboard(.interactively)
             }
+            .frame(maxHeight: bodyMax)
         }
+    }
+
+    /// The content at its natural height with the category's insets.
+    private var padded: some View {
+        let pad: CGFloat = size == .fitBleed ? 0 : PopupLayout.inset
+        return content()
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, pad)
+            .padding(.top, cat == .compact ? 10 : (hasHeader ? 4 : pad))
+            .padding(.bottom, pad)
     }
 
     /// Swipe down on the header closes a medium or detail card; a short pull springs back.
