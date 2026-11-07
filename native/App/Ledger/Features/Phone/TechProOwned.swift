@@ -79,12 +79,22 @@ struct TechProOwnedView: View {
                 itemThumb(o)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(o.name).textStyle(.headline).lineLimit(2)
-                    Text(summary(o, cur)).textStyle(.caption, tint: o.outdated ? P.caution : P.inkSoft).lineLimit(2)
+                    if let u = single(o) {
+                        Text(unitLine(u)).textStyle(.caption, tint: u.daysInRepair > 0 ? P.loss : P.inkSoft).lineLimit(2)
+                    } else {
+                        Text(summary(o, cur)).textStyle(.caption, tint: o.outdated ? P.caution : P.inkSoft).lineLimit(2)
+                    }
                 }
                 Spacer(minLength: Theme.Space.s)
-                ShopMoreMenu(label: "Actions for \(o.name)") { itemActions(o, cur) }
+                if let u = single(o) { Text(u.wear).textStyle(.caption, tint: tint(u.seenCondition), weight: .medium) }
+                ShopMoreMenu(label: "Actions for \(o.name)") {
+                    if let u = single(o) { Button("Sell", role: .destructive) { sellUnit(o, u) } }
+                    itemActions(o, cur)
+                }
             }
-            ForEach(o.units) { (u: EquipmentMarket.UnitRow) in unitRow(o, u) }
+            if single(o) == nil {
+                ForEach(Array(o.units.enumerated()), id: \.element.id) { (n: Int, u: EquipmentMarket.UnitRow) in unitRow(o, u, n + 1) }
+            }
             ForEach(o.vehicles) { (v: EquipmentMarket.VehicleRow) in vehicleRow(v, cur) }
         }
         .padding(.vertical, Theme.Space.m)
@@ -119,15 +129,23 @@ struct TechProOwnedView: View {
         return ShopThumb(glyph: o.kind == "veh" ? Glyph.vehicle : (o.kind == "soft" ? Glyph.software : Glyph.hardware), item: key)
     }
 
+    /// The one unit of an item that has a single unit and no vehicles: shown on the item's own row.
+    private func single(_ o: EquipmentMarket.Owned) -> EquipmentMarket.UnitRow? {
+        o.units.count == 1 && o.vehicles.isEmpty ? o.units.first : nil
+    }
+
+    private func unitLine(_ u: EquipmentMarket.UnitRow) -> String {
+        (u.year > 0 ? "\(u.year) \u{00B7} " : "") + (u.boughtUsed ? "bought used \u{00B7} " : "") + u.warranty + (u.daysInRepair > 0 ? " \u{00B7} in repair \(u.daysInRepair) days" : "")
+    }
+
     private func tint(_ c: Double) -> Color { c >= 0.8 ? P.gain : c >= 0.48 ? P.inkSoft : P.loss }
 
     /// A unit: name and year, warranty or repair, its wear on the right, and Sell in its own small menu.
-    private func unitRow(_ o: EquipmentMarket.Owned, _ u: EquipmentMarket.UnitRow) -> some View {
+    private func unitRow(_ o: EquipmentMarket.Owned, _ u: EquipmentMarket.UnitRow, _ number: Int) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(u.name + (u.year > 0 ? " \u{00B7} \(u.year)" : "")).textStyle(.body)
-                Text((u.boughtUsed ? "Bought used \u{00B7} " : "") + u.warranty + (u.daysInRepair > 0 ? " \u{00B7} in repair \(u.daysInRepair) days" : ""))
-                    .textStyle(.caption, tint: u.daysInRepair > 0 ? P.loss : P.inkFaint)
+                Text(u.name == o.name ? "Unit \(number)" : u.name).textStyle(.body)
+                Text(unitLine(u)).textStyle(.caption, tint: u.daysInRepair > 0 ? P.loss : P.inkFaint)
             }
             Spacer(minLength: Theme.Space.s)
             Text(u.wear).textStyle(.caption, tint: tint(u.seenCondition), weight: .medium)

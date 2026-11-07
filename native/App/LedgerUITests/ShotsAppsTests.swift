@@ -67,7 +67,7 @@ final class ShotsAppsTests: FeatureTourCase {
     private func airStay() {
         guard openPhoneApp("AirStay") else { shot("airstay-not-opened"); return }
         shotLong("airstay-search", drags: 2)
-        if tapPrefix("stay-listing-", wait: 4) {
+        if openPhoneApp("AirStay"), tapPrefix("stay-listing-", wait: 4) {
             shotLong("airstay-listing", drags: 2)
             if tapID("stay-rent", wait: 3) {
                 shotLong("airstay-rent")
@@ -91,7 +91,8 @@ final class ShotsAppsTests: FeatureTourCase {
     private func marketplace() {
         guard openPhoneApp("Marketplace") else { shot("marketplace-not-opened"); return }
         shotLong("marketplace-browse")
-        if tapPrefix("mk-listing-", wait: 4) {
+        // Reopen at the top: a tile scrolled under the pinned filters would take the tap on a chip.
+        if openPhoneApp("Marketplace"), tapPrefix("mk-listing-", wait: 4) {
             shotLong("marketplace-listing")
             if tapID("mk-discuss", wait: 3) { shot("marketplace-talk"); closeAnyPopup() }
             if tapID("mk-buy", wait: 3) { shot("marketplace-buy-confirm"); closeAnyPopup() }
@@ -99,25 +100,33 @@ final class ShotsAppsTests: FeatureTourCase {
     }
 
     private func luxury() {
-        guard openPhoneApp("Luxury") else { shot("luxury-not-opened"); return }
-        pause(1.5)
+        // The Phone tile tap does not always open Luxury; the Pick tab holds any app, so try it there when the app is not up.
+        func up() -> Bool { has("luxury-tab-showroom", wait: 3) || has("luxury-apply", wait: 1) }
+        if !(openPhoneApp("Luxury") && up()) {
+            guard openViaPickTab("Luxury"), up() else { shot("luxury-not-opened"); return }
+        }
         if has("luxury-apply", wait: 3) {
             shot("luxury-gate")
             _ = tapID("luxury-apply", wait: 2)
             closeAnyPopup()
-            _ = openPhoneApp("Luxury")
+            _ = goLuxury()
         }
         shotLong("luxury-showroom", drags: 2)
-        if openPhoneApp("Luxury"), tapID("luxury-hero", wait: 3) || tapPrefix("luxury-inspect-", wait: 2) {
+        if goLuxury(), tapID("luxury-hero", wait: 3) {
             shot("luxury-item")
             dragPage(-400)
             shot("luxury-item-2")
             closeAnyPopup()
         }
-        if openPhoneApp("Luxury"), tapID("luxury-tab-vault", wait: 3) {
+        if goLuxury(), tapID("luxury-tab-vault", wait: 3) {
             shotLong("luxury-vault")
             if tapPrefix("luxury-inspect-", wait: 2) { shot("luxury-inspect"); closeAnyPopup() }
         }
+    }
+
+    private func goLuxury() -> Bool {
+        if openPhoneApp("Luxury"), has("luxury-tab-showroom", wait: 3) { return true }
+        return openViaPickTab("Luxury") && has("luxury-tab-showroom", wait: 3)
     }
 
     private func others() {

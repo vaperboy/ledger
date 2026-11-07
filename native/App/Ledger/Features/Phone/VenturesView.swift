@@ -146,13 +146,13 @@ private struct FoundedStartups: View {
         let past = all.filter { !$0.live }
         let r = engine.founderRecord
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Your record: \(r.exits) exit\(r.exits == 1 ? "" : "s") · \(r.fails) failure\(r.fails == 1 ? "" : "s")").textStyle(.caption, tint: Theme.inkFaint)
-                Spacer()
-                HStack(spacing: Theme.Space.s) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Your record: \(r.exits) exit\(r.exits == 1 ? "" : "s") · \(r.fails) failure\(r.fails == 1 ? "" : "s")").textStyle(.caption, tint: Theme.inkFaint)
+                    Spacer(minLength: Theme.Space.s)
                     ProMark(feature: .ventures)
-                    Button("Found a startup") { ent.run(.ventures, "Found a startup") { founding = true } }.buttonStyle(SecondaryButtonStyle(size: .compact))
                 }
+                Button("Found a startup") { ent.run(.ventures, "Found a startup") { founding = true } }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
             }
             if live.isEmpty {
                 Text("You run no startup. Found one: you put in the seed money, hire builders, and raise rounds from investors as the product takes shape. Most fail; a few sell for many times what went in.")

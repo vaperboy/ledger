@@ -117,7 +117,8 @@ struct AtlasApp: View {
         let off: Int = o.policies.count - o.activeCount
         let next: InsurancePolicyRow? = o.policies.first { (p: InsurancePolicyRow) -> Bool in !p.isOn }
         let state: String = o.policies.isEmpty ? "No cover on offer" : (off == 0 ? "Fully covered" : "\(o.activeCount) of \(o.policies.count) covered")
-        let note: String = off == 0 ? "\(money(yearly, co)) a year, paid weekly from company cash" : "\(money(yearly, co)) a year \u{00B7} uninsured losses come out of company cash"
+        let note: String = off == 0 ? "\(money(yearly, co)) a year, paid weekly from company cash"
+            : (o.activeCount == 0 ? "Nothing is insured: every loss comes out of company cash" : "\(money(yearly, co)) a year \u{00B7} uninsured losses come out of company cash")
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             ShopHero(label: "Your cover", value: state, note: note, noteTint: off > 0 ? P.caution : nil, valueTint: off == 0 && !o.policies.isEmpty ? P.gain : nil)
             if !o.policies.isEmpty {

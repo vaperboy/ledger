@@ -569,6 +569,7 @@ struct TechProApp: View {
                     .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
+        .accessibilityIdentifier("tp-basket")
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !basket.isEmpty {
                 ShopBottomAction {
@@ -577,7 +578,6 @@ struct TechProApp: View {
                 .environment(\.outsidePalette, P)
             }
         }
-        .accessibilityIdentifier("tp-basket")
     }
 
     private func basketRow(_ e: GameEngine, _ co: Company, _ l: StoreOrders.Line, _ q: StoreOrders.Quote?) -> some View {
@@ -626,13 +626,13 @@ struct TechProApp: View {
             ShopReceiptPicker(companies: companies, selection: $receiptID, idPrefix: "tp")
             summarySection(co, chosen)
         }
+        .accessibilityIdentifier("tp-checkout-page")
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ShopBottomAction {
                 PrimaryAction(title: "Pay securely", blockedReason: chosen == nil ? "Something in the basket is not on offer any more." : nil, identifier: "tp-pay") { goPayment(e) }
             }
             .environment(\.outsidePalette, P)
         }
-        .accessibilityIdentifier("tp-checkout-page")
     }
 
     private func deliverySection(_ e: GameEngine, _ std: StoreOrders.Quote?) -> some View {
@@ -724,6 +724,7 @@ struct TechProApp: View {
                 }
             }
         }
+        .accessibilityIdentifier("tp-payment")
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ShopBottomAction {
                 PrimaryAction(title: "Continue", blockedReason: holder.isEmpty || number.isEmpty ? "Fill in the account holder and number, or use Autofill." : nil,
@@ -731,7 +732,6 @@ struct TechProApp: View {
             }
             .environment(\.outsidePalette, P)
         }
-        .accessibilityIdentifier("tp-payment")
     }
 
     private func savedAccount(_ d: BankPaymentDetails) -> some View {

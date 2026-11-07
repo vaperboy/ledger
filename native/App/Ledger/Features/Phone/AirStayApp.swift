@@ -137,10 +137,13 @@ struct AirStayApp: View {
 
     private func exploreView(_ e: GameEngine) -> some View {
         let all: [PlaceMarket.Offer] = visibleOffers(e)
-        let shown: [PlaceMarket.Offer] = all.filter { (o: PlaceMarket.Offer) -> Bool in o.category == category && matches(o) }
+        // Places are offered for the kinds of premises your companies use, so a kind none of them uses has no listings: only those with places show.
+        let present: [PlaceMarket.Category] = PlaceMarket.Category.allCases.filter { (c: PlaceMarket.Category) -> Bool in all.contains { (o: PlaceMarket.Offer) -> Bool in o.category == c } }
+        let cat: PlaceMarket.Category = present.contains(category) ? category : (present.first ?? category)
+        let shown: [PlaceMarket.Offer] = all.filter { (o: PlaceMarket.Offer) -> Bool in o.category == cat && matches(o) }
         return ShopPage(spacing: Theme.Space.l) {
             ShopSearchField(prompt: "Search offices, shops or spaces", text: $query, identifier: "stay-search")
-            chips
+            if present.count > 1 { chips(present, cat) }
             focusNote(e)
             resultsLine(e, shown)
             listings(e, shown)
@@ -179,10 +182,10 @@ struct AirStayApp: View {
     }
 
     /// The kinds of place as icon tabs with an underline under the chosen one, like a travel app's categories.
-    private var chips: some View {
+    private func chips(_ present: [PlaceMarket.Category], _ chosen: PlaceMarket.Category) -> some View {
         HStack(spacing: 0) {
-            ForEach(PlaceMarket.Category.allCases, id: \.self) { (c: PlaceMarket.Category) in
-                let on: Bool = category == c
+            ForEach(present, id: \.self) { (c: PlaceMarket.Category) in
+                let on: Bool = chosen == c
                 Button { Haptics.choose(); category = c } label: {
                     VStack(spacing: Theme.Space.xs) {
                         LedgerGlyph(glyph: chipGlyph(c), size: Theme.Icon.medium, tint: on ? P.ink : P.inkFaint)

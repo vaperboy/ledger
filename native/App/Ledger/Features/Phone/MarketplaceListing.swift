@@ -82,11 +82,11 @@ struct MarketplaceListingPage: View {
             }
             lotCard
         }
+        .accessibilityIdentifier("mk-listing")
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ShopBottomAction { action(notSelling) }
                 .environment(\.outsidePalette, P)
         }
-        .accessibilityIdentifier("mk-listing")
         .onAppear { blocked = store.marketRefused(listingID: listing.id, companyID: companyID) }
         .centerSheet(isPresented: $talking, title: "Message seller", category: .medium, tone: .info) {
             MarketplaceDealView(listing: listing, cur: cur, companyID: companyID, onRefused: { (id: String) in
