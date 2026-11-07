@@ -1,4 +1,5 @@
 # What's new
+- Choose what a new company sells first (only chosen products sell); price limit now depends on the trade; each screen shows only its own feature with no jump links; payroll approvals are answered in the Inbox; Group, Company, Market and Reports redirects removed; Market app, Home skip week, Group tabs and Company marketing steps added
 - One broken machine no longer stops a business: it cuts only what depends on it (a café without its display fridge stops chilled items, about a third fewer customers), and the weekly note says what was lost
 - Sliders move only on a sideways drag, so scrolling never changes a value by accident
 - Group redesigned: group value and trend, what needs you, Boardroom where you can talk to every board member, sale routes, chain page with branch close/sell
