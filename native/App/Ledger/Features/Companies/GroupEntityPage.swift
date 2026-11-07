@@ -141,11 +141,11 @@ struct GroupEntityOverview: View {
             }
             if entity.isHolding { subsidiaries }
             VStack(spacing: 0) {
-                LedgerRow(leading: .glyph(Glyph.team), title: "Staff", subtitle: "Workers, hiring, job ads and perks",
+                LedgerRow(leading: .glyph(Glyph.team), title: "Staff",
                           identifier: "group-entity-team", action: { store.openCompany(entity.companyID, section: .staff) })
                 Hairline()
                 LedgerRow(leading: .glyph(Glyph.home), title: entity.isChain ? "Open the flagship store" : "Open the company",
-                          subtitle: "Manage, sales, stats and the rest of its screens", action: { openEntityCompany() })
+                          action: { openEntityCompany() })
             }
             .overlay(alignment: .top) { Hairline() }
         }

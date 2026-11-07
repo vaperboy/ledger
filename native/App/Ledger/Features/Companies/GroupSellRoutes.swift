@@ -25,13 +25,9 @@ struct SaleRoutePicker: View {
         let open: [CompanySale.Route] = routes.filter { (r: CompanySale.Route) -> Bool in r.available }
         let shut: [CompanySale.Route] = routes.filter { (r: CompanySale.Route) -> Bool in !r.available }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text("How to sell").textStyle(.label, tint: Theme.inkFaint)
-                Text("Nothing sells until you accept an offer or hammer a bid.")
-                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-            }
+            Text("How to sell").textStyle(.label, tint: Theme.inkFaint)
             if open.isEmpty {
-                EmptyState(glyph: Glyph.lock, title: "No way to sell is open now", message: "Each route below says what it needs.", centered: false)
+                EmptyState(glyph: Glyph.lock, title: "No way to sell is open now", centered: false)
             } else {
                 routeList(open)
             }
@@ -111,7 +107,7 @@ struct SaleRoutePicker: View {
         let mine: Double = company.ownership / 100
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Worth about " + cur.tidyShort(value * mine)).popupText(.figure)
-            Text("Name the lowest price you accept. Three weekly rounds of bids follow: bids rise about 7% a round, but a bidder may drop out. Hammer the top bid at any time, or wait. Fee 4%; staff hear about it.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
+            Text("3 weekly rounds \u{00B7} fee 4% \u{00B7} staff hear about it").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             ForEach([0.7, 0.85, 1.0], id: \.self) { (f: Double) in
                 let reserve: Double = (value * f / 1000).rounded() * 1000
                 PopupChoiceRow(title: "Reserve " + cur.tidyShort(reserve * mine), subtitle: f >= 1 ? "Bold: fewer bidders clear it" : f >= 0.85 ? "Balanced" : "Safe: most bidders clear it") {
@@ -128,8 +124,8 @@ struct SaleRoutePicker: View {
     private var mergerSheet: some View {
         let rivals: [CompanySale.MergeCandidate] = engine.mergeCandidates(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("The rival joins your company (more size, more customers). Its owner takes a share of the merged company; you keep the rest and the control. Less than 30% may be turned down.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-            if rivals.isEmpty { EmptyState(title: "No rival to merge with", message: "No rival in this trade and city is open to a merger now.", centered: false) }
+            Text("Under 30% may be turned down.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
+            if rivals.isEmpty { EmptyState(title: "No rival to merge with", centered: false) }
             ForEach(Array(rivals.enumerated()), id: \.element.id) { (n: Int, r: CompanySale.MergeCandidate) in
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     VStack(alignment: .leading, spacing: Theme.Space.xxs) {
@@ -169,8 +165,7 @@ struct SaleRoutePicker: View {
         let cur: Currency = engine.currency(for: company)
         let buyers: [CompanySale.GroupBuyer] = engine.groupBuyers(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("A rival group buys at its own quote and the company becomes one of its sites. Quotes move week to week.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-            if buyers.isEmpty { EmptyState(title: "No group is buying here", message: "No rival group is active in this country.", centered: false) }
+            if buyers.isEmpty { EmptyState(title: "No group is buying here", centered: false) }
             ForEach(buyers) { (b: CompanySale.GroupBuyer) in
                 let mine: Double = b.price * company.ownership / 100
                 PopupChoiceRow(title: b.name, subtitle: "Pays " + cur.tidyShort(mine) + " for your share") { sellToGroup(b, mine, cur) }
@@ -193,7 +188,6 @@ struct SaleRoutePicker: View {
     private var stakeSheet: some View {
         let tiers: [CompanySale.StakeTier] = engine.stakeTiers(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Sell part of your shares and keep running it. Each step gives the buyer more.").popupText(.caption)
             SegmentedPill(items: [false, true], title: { (b: Bool) -> String in b ? "Broker (4%)" : "Quietly" }, selection: $brokerStake)
             ForEach(tiers) { (t: CompanySale.StakeTier) in
                 PopupChoiceRow(title: "\(t.pct)% of your shares", subtitle: "You keep \(Int(t.youKeep.rounded()))%. " + t.unlocks.joined(separator: " ")) { listStake(t) }
@@ -216,8 +210,8 @@ struct SaleRoutePicker: View {
         let masters: [JSONValue] = company.value("fr")["masters"].array
         let countries: [Country] = engine.masterFranchiseCountries(companyID: company.id).filter { (c: Country) -> Bool in !masters.contains { (m: JSONValue) -> Bool in m["c"].string == c.code } }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Sign over the franchise rights of a country to a master franchisee. It costs legal work and cannot be undone.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-            if countries.isEmpty { EmptyState(title: "Nothing left to sign", message: "Every country you could sell is already taken.", centered: false) }
+            Text("Cannot be undone.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
+            if countries.isEmpty { EmptyState(title: "Nothing left to sign", centered: false) }
             ForEach(countries) { (c: Country) in
                 PopupChoiceRow(title: "\(c.flag) \(c.name)", subtitle: "Master franchise") { sellMaster(c) }
             }

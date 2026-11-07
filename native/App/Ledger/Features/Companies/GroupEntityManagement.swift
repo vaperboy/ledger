@@ -95,17 +95,11 @@ struct GroupEntityManagement: View {
 
     // MARK: Who may appoint
 
-    /// The owner appoints the general manager. The assistant is the general manager's own helper, so with a manager in place the hire needs the
-    /// role above (you) to confirm; the manager's proposals reach you in the Inbox.
+    /// With a manager in place, hiring the assistant needs the role above to confirm.
     @ViewBuilder private func approvalNote(_ co: Company) -> some View {
-        let asst: AppointmentAuthority = engine.appointmentAuthority(companyID: co.id, role: "assistant manager")
-        let gm: AppointmentAuthority = engine.appointmentAuthority(companyID: co.id, role: "general manager")
-        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text(gm.reason).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-            if let above = asst.needsConfirmationFrom {
-                Text(above == .ceo ? "Assistant manager: needs confirmation from the CEO" : "Assistant manager: needs your confirmation")
-                    .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-            }
+        if let above = engine.appointmentAuthority(companyID: co.id, role: "assistant manager").needsConfirmationFrom {
+            Text(above == .ceo ? "Assistant manager: needs confirmation from the CEO" : "Assistant manager: needs your confirmation")
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
 

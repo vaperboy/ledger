@@ -4,8 +4,8 @@ import Countries
 import Businesses
 import Simulation
 
-// The Group tab works like Banking: pressing it opens the picker of companies, holdings and chains; everything else is managed per
-// entity on its own page (GroupEntityPage.swift and the GroupEntity*.swift files). Every figure comes from the engine.
+// The Group tab has four tabs (GroupHome.swift); each company, holding and chain is managed on its own page (GroupEntityPage.swift and
+// the GroupEntity*.swift files). Every figure comes from the engine.
 
 /// The tabs of an entity page. `key` is the name other screens use to ask for one (`GameStore.openGroupEntity(companyID:section:)`).
 enum GroupSection: String, CaseIterable, Hashable {
@@ -13,13 +13,14 @@ enum GroupSection: String, CaseIterable, Hashable {
     var key: String { rawValue.lowercased() }
 }
 
-/// Text tabs with a champagne underline. When all six titles fit at their natural size they share the width equally; on a narrow
-/// phone or with larger text the row scrolls sideways and keeps the chosen tab in view, so a title is never shrunk or clipped.
-struct GroupSectionBar: View {
-    @Binding var tab: GroupSection
-    var badges: [GroupSection: Int] = [:]
-    /// The tabs shown (all six: the Boardroom always exists, advisory until a co-owner joins).
-    var sections: [GroupSection] = GroupSection.allCases
+/// Text tabs with a champagne underline, for the Group tab and for an entity page. When all titles fit at their natural size they share
+/// the width equally; on a narrow phone or with larger text the row scrolls sideways and keeps the chosen tab in view.
+struct GroupSectionBar<Tab: Hashable & RawRepresentable>: View where Tab.RawValue == String {
+    @Binding var tab: Tab
+    var badges: [Tab: Int] = [:]
+    var sections: [Tab]
+    /// Each tab's accessibility identifier is this prefix and its title.
+    var idPrefix: String = "group-tab-"
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -43,11 +44,11 @@ struct GroupSectionBar: View {
     }
 
     private func cells(equal: Bool) -> some View {
-        ForEach(sections, id: \.self) { (t: GroupSection) in
+        ForEach(sections, id: \.self) { (t: Tab) in
             Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0, equal: equal) }
                 .buttonStyle(PressableStyle())
                 .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
-                .accessibilityIdentifier("group-tab-\(t.rawValue)")
+                .accessibilityIdentifier(idPrefix + t.rawValue)
                 .id(t)
         }
     }
@@ -217,153 +218,5 @@ enum GroupFmt {
 
     static func change(_ g: GroupEntity, _ store: GameStore) -> (text: String, tint: Color) {
         change(g.changeAmount, g.changeShare, has: g.hasChange, store)
-    }
-}
-
-// MARK: - Landing
-
-/// The Group landing, a holding company's private dashboard: the group's value with its 30-day change and trend, what waits for you,
-/// then one row per company (value and this month's profit), who runs what, and the supplier directory.
-struct GroupLanding: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var onPick: (GroupEntity, GroupSection) -> Void
-    var onSuppliers: () -> Void
-    @Environment(\.outsidePalette) private var P
-
-    var body: some View {
-        let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
-        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-            hero
-            needsYou(list)
-            companies(list)
-            GroupWhoRunsWhat(engine: engine)
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Network").textStyle(.label, tint: P.inkFaint)
-                LedgerRow(leading: .glyph(Glyph.bank), title: "Suppliers", subtitle: "Every supplier your companies use",
-                          identifier: "group-suppliers", action: onSuppliers)
-            }
-        }
-    }
-
-    // MARK: Hero
-
-    /// The group's value is the one big number; its 30-day change, the cash inside the companies and the trend line sit under it.
-    private var hero: some View {
-        let value: Double = (store.netWorthNow ?? engine.netWorth).companies
-        let hist: DayHistory = store.dayHistoryNow ?? engine.dayHistory
-        let vc = DayHistory.change(hist.companies, days: 30)
-        let vt = GroupFmt.change(vc?.amount ?? 0, vc?.share, has: vc != nil, store)
-        var amount: String = ""
-        if let c = vc { amount = (c.amount >= 0 ? "+" : "\u{2212}") + store.short(abs(c.amount)) }
-        let trend: [Double] = Array(hist.companies.suffix(90))
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("Group value").textStyle(.label, tint: P.inkFaint)
-            LiveFigure(value: value, text: store.short(value)).textStyle(.display)
-                .lineLimit(1).minimumScaleFactor(0.6)
-                .accessibilityLabel("Group value " + store.short(value))
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Text(vc == nil ? vt.text : vt.text + "  " + amount).textStyle(.caption, tint: vt.tint, numeric: true).lineLimit(1)
-                Text("in 30 days").textStyle(.caption, tint: P.inkFaint).lineLimit(1)
-                Spacer(minLength: 0)
-            }
-            .accessibilityElement(children: .combine)
-            if trend.count >= 2 {
-                Sparkline(values: trend, tint: (trend.last ?? 0) >= (trend.first ?? 0) ? Theme.accent : Theme.loss)
-                    .frame(height: 44)
-                    .padding(.top, Theme.Space.xs)
-                    .accessibilityHidden(true)
-            }
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Text("Cash in the companies").textStyle(.caption, tint: P.inkFaint).lineLimit(1)
-                LiveFigure(value: engine.groupCash, text: store.short(engine.groupCash)).textStyle(.caption, tint: P.ink, numeric: true).lineLimit(1)
-                Spacer(minLength: 0)
-            }
-            .accessibilityElement(children: .combine)
-            .padding(.top, Theme.Space.xs)
-            GroupBrandLine(engine: engine)
-        }
-    }
-
-    // MARK: Needs you
-
-    /// Board decisions that wait for you, one tappable tile per entity; nothing when the boards are quiet.
-    @ViewBuilder private func needsYou(_ list: [GroupEntity]) -> some View {
-        let waiting: [Waiting] = list.compactMap { (g: GroupEntity) -> Waiting? in
-            let n: Int = boardWaiting(g)
-            return n > 0 ? Waiting(entity: g, count: n) : nil
-        }
-        if !waiting.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Needs you").textStyle(.label, tint: P.inkFaint)
-                ForEach(waiting) { (w: Waiting) in
-                    let g: GroupEntity = w.entity
-                    let n: Int = w.count
-                    Button { Haptics.tap(); onPick(g, .board) } label: {
-                        HStack(spacing: Theme.Space.m) {
-                            LedgerGlyph(glyph: Glyph.achievements, size: Theme.Icon.large, tint: P.accent)
-                            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                                Text("\(n) board \(n == 1 ? "decision" : "decisions") waiting").textStyle(.headline).lineLimit(2)
-                                Text(g.name).textStyle(.caption).lineLimit(1)
-                            }
-                            Spacer(minLength: Theme.Space.s)
-                            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
-                        }
-                        .padding(Theme.Space.l)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.card))
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressableStyle())
-                    .accessibilityIdentifier("group-needs-\(g.id)")
-                }
-            }
-        }
-    }
-
-    private struct Waiting: Identifiable {
-        var entity: GroupEntity
-        var count: Int
-        var id: String { entity.id }
-    }
-
-    private func boardWaiting(_ g: GroupEntity) -> Int {
-        guard !g.indent, let key = engine.boardKey(companyID: g.companyID), engine.boardIsActive(key: key) else { return 0 }
-        return engine.boardOpenDecisions(key: key)
-    }
-
-    // MARK: Companies
-
-    @ViewBuilder private func companies(_ list: [GroupEntity]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Companies").textStyle(.label, tint: P.inkFaint)
-                Spacer(minLength: Theme.Space.s)
-                if !list.isEmpty { Text("Value \u{00B7} profit this month").textStyle(.caption, tint: P.inkFaint).lineLimit(1) }
-            }
-            if list.isEmpty {
-                EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Start one with the plus above.")
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, g: GroupEntity) in
-                        if n > 0 { Hairline().padding(.leading, (g.indent ? Theme.Space.xl : 0) + Theme.Icon.medium + Theme.Space.m) }
-                        row(g)
-                    }
-                }
-            }
-        }
-    }
-
-    private func glyph(_ g: GroupEntity) -> String { g.isHolding ? Glyph.bank : (g.isChain ? Glyph.group : Glyph.home) }
-
-    /// One company: name over its kind, value over this month's profit (gain or loss colour).
-    private func row(_ g: GroupEntity) -> some View {
-        let sign: String = g.profit > 0.5 ? "+" : (g.profit < -0.5 ? "\u{2212}" : "")
-        return LedgerRow(leading: .glyph(glyph(g)), leadingTint: g.indent ? P.inkFaint : nil, title: g.name, subtitle: g.kind,
-                         value: store.short(g.value), valueTint: g.value < 0 ? Theme.loss : nil,
-                         valueNote: sign + store.short(abs(g.profit)), valueNoteTint: Theme.change(g.profit), badge: boardWaiting(g),
-                         lineLimit: 1, identifier: "group-entity-\(g.id)", action: { onPick(g, .overview) })
-            .padding(.leading, g.indent ? Theme.Space.xl : 0)
-            .frame(minHeight: 60)
     }
 }

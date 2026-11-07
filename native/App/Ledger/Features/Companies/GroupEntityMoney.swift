@@ -82,7 +82,7 @@ struct GroupEntityMoney: View {
                     .buttonStyle(SecondaryButtonStyle())
                     .accessibilityHint("Invest in or sell the index fund")
                 }
-                Text("The index fund costs 0.66% to sell. A dividend to you comes out of retained profit and is taxed as your income.")
+                Text("Index fund: 0.66% to sell \u{00B7} dividends taxed as your income")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }

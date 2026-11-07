@@ -1,6 +1,6 @@
 import XCTest
 
-/// Screenshots of every Group screen (landing, each entity tab and part, sale routes, Boardroom popups, chain, franchise, holding, Ventures)
+/// Screenshots of every Group screen (the four Group tabs, each entity tab and part, sale routes, Boardroom popups, chain, franchise, holding, Ventures)
 /// on the showcase game. Nothing asserts: a control that is not there is noted and the tour moves on.
 final class ShotsGroupTests: FeatureTourCase {
     private var count = 0
@@ -26,7 +26,7 @@ final class ShotsGroupTests: FeatureTourCase {
     private func closeAll() { var n = 0; while popupUp(0.5) && n < 4 { closePopup(); n += 1 } }
 
     private func entityID() -> String {
-        guard goTab("Group") else { return "" }
+        guard goGroup("Companies") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
@@ -51,7 +51,7 @@ final class ShotsGroupTests: FeatureTourCase {
 
     private func openTab(_ entity: String, _ name: String) -> Bool {
         closeAll()
-        guard !entity.isEmpty, goTab("Group"), tapID(entity, wait: 4) else { return false }
+        guard !entity.isEmpty, goGroup("Companies"), tapID(entity, wait: 4) else { return false }
         return groupTab(name)
     }
 
@@ -60,11 +60,16 @@ final class ShotsGroupTests: FeatureTourCase {
     }
 
     func testShots() {
-        // Landing
+        // The four Group tabs
         guard goTab("Group") else { snap("no-group-tab"); return }
         pause(1)
-        snapPage("landing", lower: 2)
+        snapPage("overview", lower: 2)
         if tapID("group-add") { popupShot("add-menu") }
+        for home in ["Companies", "Staff", "Suppliers"] {
+            if goGroup(home) { pause(0.8); snapPage("home-\(home)", lower: 2) } else { snap("home-\(home)-missing") }
+        }
+        if goGroup("Staff"), tapPrefix("group-who-", wait: 3) { popupShot("staff-manager") }
+        if goGroup("Overview"), tapID("group-who-runs-what", wait: 3) { pause(0.6); snap("overview-to-staff") }
         let entity: String = entityID()
         if entity.isEmpty { snap("no-entity"); return }
 
@@ -110,7 +115,7 @@ final class ShotsGroupTests: FeatureTourCase {
 
         // Suppliers directory, Join a franchise
         closeAll()
-        if goTab("Group"), tapID("group-suppliers") { pause(0.8); snap("suppliers"); _ = tapBack() }
+        if goGroup("Suppliers"), tapPrefix("group-supplier-", wait: 3) { popupShot("supplier-profile") }
         if goTab("Group"), tapID("group-add"), tapID("group-add-franchise", wait: 2) { pause(1); snapPage("franchises", lower: 1); _ = tapBack() }
 
         // Ventures
@@ -134,9 +139,9 @@ final class ShotsGroupTests: FeatureTourCase {
             for h in hits() where h.type == .button && h.value == "Not selected" { touch(h) }
             if tapText("Create the holding", wait: 3) { pause(1.5); closeAll(); snapPage("holding-company-page", lower: 1) }
         }
-        if goTab("Group") {
+        if goGroup("Companies") {
             pause(1)
-            snapPage("landing-with-holding", lower: 1)
+            snapPage("companies-with-holding", lower: 1)
             if let h = find(wait: 3, { $0.id.hasPrefix("group-entity-") && $0.type == .button && $0.label.contains("Holding") }) {
                 touch(h); pause(0.8); snapPage("holding-entity", lower: 1)
                 if groupTab("Money") { pause(0.6); snapPage("holding-money", lower: 1) }
