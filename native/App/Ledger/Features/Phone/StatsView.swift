@@ -28,13 +28,7 @@ struct StatsView: View {
                     documentsCard(e)
                 }
                 LedgerSection("More") {
-                    VStack(spacing: 0) {
-                        activityLink
-                        Hairline()
-                        pageLink(glyph: Glyph.goals, title: "Goals and awards", note: "Your goals, missions and rewards to claim", app: .goals)
-                        Hairline()
-                        pageLink(glyph: Glyph.reports, title: "Previous reports", note: "Weekly, monthly and yearly", app: .reports)
-                    }
+                    activityLink
                 }
                 if store.gateOpen(.bank) { TrophiesPreview() }
             }
@@ -234,11 +228,6 @@ struct StatsView: View {
             LedgerRow(leading: .glyph(Glyph.list), title: "Activity", subtitle: PhonePage.activity.note, chevron: true)
         }
         .buttonStyle(AcctPressStyle())
-    }
-
-    /// A row that opens a page that used to be its own Phone app (it is still pushed on the Phone stack, so Back returns here).
-    private func pageLink(glyph: String, title: String, note: String, app: PhoneApp) -> some View {
-        LedgerRow(leading: .glyph(glyph), title: title, subtitle: note, action: { store.openApp(app) })
     }
 
     private func pct(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }

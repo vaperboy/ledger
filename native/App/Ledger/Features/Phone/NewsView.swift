@@ -167,24 +167,9 @@ struct NewsView: View {
         }
     }
 
-    /// A story about one of your companies links to it.
-    @ViewBuilder private func companyLink(_ n: NewsItem) -> some View {
-        if n.companyID != 0, let name = store.engine?.state.company(n.companyID)?.name {
-            Button { Haptics.tap(); store.openCompany(n.companyID) } label: {
-                HStack(spacing: 4) {
-                    Text("Open " + name).font(.system(size: 12, weight: .semibold))
-                    GlyphView(glyph: Glyph.chevron, size: 10, weight: 2, tint: P.accent)
-                }
-                .foregroundStyle(P.accent).padding(.vertical, 2).contentShape(Rectangle())
-            }
-            .buttonStyle(PressableStyle())
-        }
-    }
-
     private func story(_ n: NewsItem) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             storyText(n)
-            companyLink(n)
         }
     }
 
@@ -217,7 +202,6 @@ struct NewsView: View {
                     }
                     .newMarker(.news, "n" + UpdateFeed.newsKey(n), style: .dot, important: n.tone == "bad", alignment: .topTrailing)
                     .accessibilityElement(children: .combine)
-                    companyLink(n).padding(.leading, 86)
                 }
                 .padding(.vertical, 9)
             }

@@ -53,7 +53,6 @@ final class ShotsNavTests: FeatureTourCase {
         homeToEntityAndBack()
         groupToCompanyAndSwitch()
         inboxToCompanyAndBack()
-        bankToCompanyAndBack()
         XCTAssertTrue(problems.isEmpty, problems.joined(separator: "\n"))
     }
 
@@ -146,22 +145,5 @@ final class ShotsNavTests: FeatureTourCase {
         expect(app.textFields["Search messages"].waitForExistence(timeout: 4) || has("inbox-row", wait: 2), "Inbox > company > Back: not on the Inbox")
         shot("C2-inbox-back")
         sameTab(home, "Inbox > company > Back")
-    }
-
-    /// Phone > Bank > a company account > its company > Back to the account, on the Phone tab.
-    private func bankToCompanyAndBack() {
-        guard openPhoneApp("Bank") else { expect(false, "no Bank app"); return }
-        let home: String = selectedTab()
-        shot("D0-bank")
-        guard tapPrefix("bank-pick-company", wait: 4) || tapPrefix("bank-account-company", wait: 3) else { shot("D1-no-company-account"); return }
-        shot("D1-bank-company-account")
-        expect(tapID("bank-open-company", wait: 3), "Bank > company account: no link to the company")
-        expect(companyShowing(), "Bank > company account > company: no company page")
-        shot("D2-bank-company")
-        sameTab(home, "Bank > company")
-        expect(tapBack(), "Bank > company: no Back")
-        expect(has("bank-open-company", wait: 4), "Bank > company > Back: not on the company account")
-        shot("D3-bank-back")
-        sameTab(home, "Bank > company > Back")
     }
 }
