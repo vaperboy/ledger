@@ -56,7 +56,7 @@ struct CompanySetupScreen: View {
     }
 
     /// Each missing item says where it is fixed and the row opens it: a document its form (check the terms, sign, send) unless it is
-    /// already in, premises AirStay, equipment TechPro Store. Opening stock cash has no action here.
+    /// already in. Premises and equipment are bought in their apps; they and opening stock cash have no action here.
     @ViewBuilder private func row(_ it: OpeningChecklist.Item) -> some View {
         let docID: String = it.id.hasPrefix("doc:") ? String(it.id.dropFirst(4)) : ""
         let st: String = docID.isEmpty ? "" : (engine.state.company(company.id)?.value("docs")[docID]["st"].string ?? "")
@@ -65,9 +65,9 @@ struct CompanySetupScreen: View {
         } else if !docID.isEmpty {
             rowBody(it, glyph: Glyph.reports, hint: "Under review", action: nil)
         } else if it.id == "prem" && needsPlace {
-            rowBody(it, glyph: Glyph.airStay, hint: "Rent in AirStay") { store.openAirStay(companyID: company.id) }
+            rowBody(it, glyph: Glyph.airStay, hint: "Rent in AirStay", action: nil)
         } else if it.id.hasPrefix("eq:") {
-            rowBody(it, glyph: Glyph.techPro, hint: "Buy in TechPro") { store.openTechPro(companyID: company.id) }
+            rowBody(it, glyph: Glyph.techPro, hint: "Buy in TechPro", action: nil)
         } else {
             rowBody(it, glyph: Glyph.cost, hint: "", action: nil)
         }

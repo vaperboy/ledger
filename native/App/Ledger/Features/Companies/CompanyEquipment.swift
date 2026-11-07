@@ -186,7 +186,7 @@ struct CompanyEquipmentScreen: View {
         PageGroup(title) {
             VStack(spacing: 0) {
                 ForEach(Array(list.enumerated()), id: \.element.id) { n, x in
-                    Button { store.openTechPro(companyID: companyID, equipmentID: x.equipmentID) } label: {
+                    Group {
                         VStack(spacing: 0) {
                             if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
@@ -197,10 +197,9 @@ struct CompanyEquipmentScreen: View {
                                 Spacer(minLength: 8)
                                 Text(x.have + x.leased > 0 && x.have + x.leased >= x.need ? "Owned" : x.subscription ? "from " + cur.tidyShort(x.fromPrice / max(1, x.lifeYears) / 12) + "/mo" : "from " + cur.tidyShort(x.fromPrice))
                                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(x.have + x.leased >= max(1, x.need) ? Theme.gain : Theme.ivoryMuted)
-                                MoreChevron()
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
-                    }.buttonStyle(PressableStyle())
+                    }
                 }
             }
         }
@@ -247,7 +246,6 @@ struct CompanyEquipmentScreen: View {
                         Button("End the lease…") { ask(.endLease(equipmentID: o.equipmentID, name: o.name.lowercased(), units: Int(o.leasedCount), monthly: cur.tidyShort(o.leaseMonthly))) }.buttonStyle(QuietButtonStyle(tint: Theme.loss))
                     }
                     HStack(spacing: Theme.Space.m) {
-                        Button { store.openTechPro(companyID: companyID, equipmentID: o.equipmentID) } label: { Text(o.subscription != nil ? "Plans" : "Buy more").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }.buttonStyle(PressableStyle())
                         if o.subscription != nil {
                             Button("Cancel plan") { ask(.cancelPlan(equipmentID: o.equipmentID, name: o.name.lowercased())) }.buttonStyle(PressableStyle()).font(.subheadline).foregroundStyle(Theme.loss)
                         } else if o.licence == nil {
@@ -299,7 +297,6 @@ struct CompanyEquipmentScreen: View {
                             Button(v.mode == "lease" ? "Return" : "Sell") { ask(.vehicle(id: v.id, name: v.name)) }.buttonStyle(QuietButtonStyle())
                         }.padding(.vertical, 8).overlay(alignment: .top) { if i > 0 { CardLine() } }
                     }
-                    Button { store.openTechPro(companyID: companyID, equipmentID: n.equipmentID) } label: { Text("Buy, buy used or lease").font(.subheadline.weight(.medium)).foregroundStyle(Theme.gold) }.buttonStyle(PressableStyle()).padding(.top, 8)
                 }
             }
         }
@@ -405,7 +402,7 @@ struct CompanyEquipmentScreen: View {
                 ForEach(Array(needs.filter { $0.isSoftware }.enumerated()), id: \.element.id) { n, x in
                     let o = owned.first { $0.equipmentID == x.equipmentID }
                     let mode = e.softwareMode(companyID: companyID, equipmentID: x.equipmentID)
-                    Button { store.openTechPro(companyID: companyID, equipmentID: x.equipmentID) } label: {
+                    Group {
                         VStack(spacing: 0) {
                             if n > 0 { CardLine() }
                             HStack(alignment: .firstTextBaseline) {
@@ -417,10 +414,9 @@ struct CompanyEquipmentScreen: View {
                                 Spacer(minLength: 8)
                                 Text(o?.subscription != nil ? cur.tidyShort(o?.subscriptionMonthly ?? 0) + "/mo" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Owned") : "from " + cur.tidyShort(mode == .subscription ? x.fromPrice / max(1, x.lifeYears) / 12 : x.fromPrice))
                                     .font(.system(size: 13).monospacedDigit()).foregroundStyle(o != nil ? Theme.gain : Theme.ivoryMuted)
-                                MoreChevron()
                             }.padding(.vertical, 9).contentShape(Rectangle())
                         }
-                    }.buttonStyle(PressableStyle())
+                    }
                 }
             }
         }

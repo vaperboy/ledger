@@ -111,25 +111,14 @@ struct CompanyOperations: View {
         (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == company.id && $0.kind == .paperwork }
     }
 
-    /// Paperwork that can bring a fine, no insurance, a team that has outgrown working from home: most urgent first.
+    /// Paperwork that can bring a fine.
     private var issues: [CompanyIssue] {
-        let o: CoverageOverview? = engine.coverageOverview(companyID: company.id)
-        let uninsured: Bool = (o?.activeCount ?? 1) == 0
-        let outgrown: Bool = engine.isHomeTrade(companyID: company.id) && engine.hasOutgrownHome(companyID: company.id)
         let paper: [TeamOverview.Issue] = paperworkIssues
         let id: Int = company.id
         var out: [CompanyIssue] = []
         if let first = paper.first {
             out.append(CompanyIssue(id: "paper", glyph: Glyph.reports, tint: P.warn, title: paper.count == 1 ? first.title : "\(paper.count) paperwork matters",
                                     sub: paper.count == 1 ? first.detail : "An inspection can fine you", action: "Open Team") { store.openCompany(id, section: .staff) })
-        }
-        if uninsured {
-            out.append(CompanyIssue(id: "cover", glyph: Glyph.opsShield, tint: P.warn, title: "Not insured", sub: "Losses come out of company cash",
-                                    action: "Get cover") { store.openAtlas(companyID: id) })
-        }
-        if outgrown {
-            out.append(CompanyIssue(id: "home", glyph: Glyph.home, tint: P.warn, title: "Outgrown working from home", sub: "Morale and quality slip every week",
-                                    action: "Find premises") { store.openAirStay(companyID: id) })
         }
         return out
     }

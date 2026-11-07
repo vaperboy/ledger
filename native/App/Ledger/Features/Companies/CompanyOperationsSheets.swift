@@ -35,8 +35,7 @@ struct OpsPageDestination: View {
             SettingsPage(title: "Properties", subtitle: co.name) { CompanyProperties(engine: e, company: co) }
         } else {
             // Premises are rented and bought in AirStay (Phone).
-            EmptyState(glyph: Glyph.airStay, title: "Premises are in AirStay", message: "Places to rent and buy are in AirStay.",
-                       actionTitle: "Open AirStay", action: { store.openAirStay(companyID: co.id) })
+            EmptyState(glyph: Glyph.airStay, title: "Premises are in AirStay", message: "Places to rent and buy are in AirStay.")
                 .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
