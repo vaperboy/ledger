@@ -38,10 +38,11 @@ struct ItemsList: View {
         let cur: Currency = engine.currency(for: company)
         let noun: String = service ? "service" : "product"
         return PageGroup(service ? "Services" : "Products") {
-            if items.isEmpty {
-                // A company with nothing on sale starts here: the first choice is what it sells.
-                EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Choose what you sell",
-                           message: company.status == .open ? (engine.needsFirstItemChoice(companyID: company.id) ? "Pick your first \(noun) to put on sale." : "Nothing is on sale yet.") : "", centered: false)
+            if items.isEmpty && company.status == .open && engine.needsFirstItemChoice(companyID: company.id) {
+                FirstItemPicker(engine: engine, company: company, noun: noun, onAddOwn: onAdd)
+            } else if items.isEmpty {
+                EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Nothing is on sale yet",
+                           message: company.status == .open ? "Add what you sell." : "", centered: false)
             }
             LazyVStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
@@ -49,7 +50,7 @@ struct ItemsList: View {
                     row(it, cur)
                 }
             }
-            if company.status == .open {
+            if company.status == .open && !items.isEmpty {
                 Hairline()
                 Button { Haptics.tap(); onAdd() } label: {
                     HStack(spacing: Theme.Space.m) {
