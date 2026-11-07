@@ -5,7 +5,7 @@ import Combine
 /// How a registered popup is drawn: `.card` is wrapped in the standard centred card (header with x, scrolling body); `.raw` draws its own
 /// complete popup (a `GamePopup`, a report page).
 enum PopupDraw {
-    case card(title: String, size: CenterSheetSize)
+    case card(title: String, size: CenterSheetSize, category: PopupCategory? = nil, tone: PopupTone? = nil)
     case raw
 }
 
@@ -133,8 +133,8 @@ struct PopupHostLayer: View {
 
     @ViewBuilder private func entryView(_ e: PopupEntry) -> some View {
         switch e.draw {
-        case .card(let title, let size):
-            CenterSheetFrame(onClose: e.onClose, title: title, size: size) { e.content().environment(\.popupClose, e.onClose) }
+        case .card(let title, let size, let category, let tone):
+            CenterSheetFrame(onClose: e.onClose, title: title, size: size, category: category, tone: tone) { e.content().environment(\.popupClose, e.onClose) }
         case .raw:
             e.content().environment(\.popupClose, e.onClose)
         }

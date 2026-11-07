@@ -236,7 +236,9 @@ class FeatureTourCase: XCTestCase {
     @discardableResult
     func ctap(_ e: XCUIElement) -> Bool {
         guard visible(e) else { return false }
-        e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let c: XCUICoordinate = e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // The confirm action may be a press-and-hold button (irreversible actions): hold it; a plain button also fires on release.
+        if e.identifier == "confirm-go" { c.press(forDuration: 1.5) } else { c.tap() }
         return true
     }
 

@@ -490,6 +490,10 @@ struct PendingAction: Identifiable {
     var currency: Currency? = nil
     /// What can go wrong, shown under the effect. Empty: nothing extra (an irreversible action says it cannot be undone).
     var risk = ""
+    /// The event's accent; nil: red when destructive, champagne for a spend, otherwise neutral.
+    var tone: PopupTone? = nil
+    /// SF Symbol of the popup's icon ring; nil: the tone's own symbol.
+    var icon: String? = nil
     var run: () -> Void
 }
 
