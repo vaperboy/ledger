@@ -78,22 +78,25 @@ final class ShotsCompanyTests: FeatureTourCase {
         }
     }
 
-    /// Opens a company from Home by a word of its row; true on its company screen (a company still being set up shows Setup).
+    /// Opens a company from the Group tab's list (rows "group-entity-<id>": name over its trade), then "Open the company" on its entity page.
+    /// True on its company screen (a company still being set up shows Setup).
     @discardableResult
     func openCo(_ words: [String]) -> Bool {
-        guard goTab("Home") else { return false }
-        _ = find(wait: 4) { $0.id == "home-companies-box" }
+        toRoot()
+        guard goTab("Group") else { return false }
         for w in words {
-            let pred: (Hit) -> Bool = { ($0.type == .button || $0.type == .cell) && $0.label.range(of: w, options: [.caseInsensitive, .diacriticInsensitive]) != nil && !$0.id.hasPrefix("home-") && !$0.id.hasPrefix("tab-") }
-            // Home lists the companies under its summary: scroll down to the row first.
+            let pred: (Hit) -> Bool = { $0.id.hasPrefix("group-entity-") && $0.id != "group-entity-team" && $0.type == .button && $0.label.range(of: w, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
             var tries = 0
             while find(wait: 1, pred) == nil && tries < 6 { dragPage(-400); tries += 1 }
-            if tapWhere(wait: 2, pred) {
+            guard tapWhere(wait: 2, pred) else { continue }
+            pause(1)
+            if has("company-tab-overview", wait: 1) { return true }
+            if tapWhere(wait: 3, { $0.type == .button && ($0.id.hasPrefix("entity-open-company-") || $0.label.hasPrefix("Open the company") || $0.label.hasPrefix("Open the flagship")) }) {
                 pause(1)
                 if has("company-tab-overview", wait: 3) || has("back-button", wait: 1) { return true }
             }
         }
-        log.note("no company row for \(words)")
+        log.note("no company row for \(words): " + hits().filter { $0.id.hasPrefix("group-entity-") }.prefix(8).map { String($0.label.prefix(40)) }.joined(separator: " | "))
         return false
     }
 

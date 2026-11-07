@@ -154,6 +154,32 @@ struct FixFirstCard: View {
     }
 }
 
+// MARK: Who runs it
+
+/// Who runs a company day to day, from the engine's facts only: the decision chain (a manager or executive), else the owner when the
+/// owner works there with hours left for it. Overview, its Team row and the screen header all read this, so they never disagree.
+enum CompanyRunner {
+    struct Reading { var short: String; var line: String; var nobody: Bool; var title: String; var why: String }
+
+    static func of(_ co: Company, _ e: GameEngine) -> Reading {
+        if let boss = e.decisionChain(companyID: co.id).first {
+            let role: String = GameEngine.bossTitle(boss.kind, trade: e.tradeInfo(companyID: co.id)).lowercased()
+            return Reading(short: "Run by \(boss.name), \(role)", line: "Run by \(boss.name)", nobody: false, title: "", why: "")
+        }
+        if co.type == "hold" || co.status != .open { return Reading(short: "", line: "", nobody: false, title: "", why: "") }
+        if co.managerID != nil { return Reading(short: "Has a manager", line: "Has a manager", nobody: false, title: "", why: "") }
+        if OwnerHours.works(co) && co.ownerHours > 0 {
+            return Reading(short: "Run by you", line: "You work here, \(Int(co.ownerHours.rounded())) h a week", nobody: false, title: "", why: "")
+        }
+        if OwnerHours.works(co) {
+            return Reading(short: "No one runs it", line: "You work here, but with no hours left for it", nobody: true,
+                           title: "No one runs it", why: "Your week is full in your other companies and there is no manager")
+        }
+        return Reading(short: "No one runs it", line: "No manager, and you do not work here", nobody: true,
+                       title: "No one runs it", why: "You do not work here and there is no manager")
+    }
+}
+
 // MARK: Overview
 
 /// One company at a glance, the same cockpit for every trade: profit a week with its trend, cash, revenue and margin; the one thing to
@@ -278,14 +304,14 @@ struct CompanyOverview: View {
         let asks = engine.state.inbox.filter { $0.companyID == co.id && $0.status == "open" }.sorted { $0.week > $1.week }
         let people = co.staff.filter { !$0.value("flag").isNull || $0.noticeWeeks > 0 || $0.sickUntilWeek != nil }.count
         let matters = staffMatters(co)
-        let nobody = co.status == .open && co.type != "hold" && co.managerID == nil && co.ownerHours == 0 && engine.decisionChain(companyID: co.id).isEmpty
+        let runner: CompanyRunner.Reading = CompanyRunner.of(co, engine)
         let setupLeft = co.status == .setup ? engine.openingChecklist(companyID: co.id).filter { !$0.isDone }.count : 0
         let behind = engine.state.loans.contains { $0.companyID == co.id && $0.int("miss") > 0 } || co.int("supCut") > 0 || co.num("vatOver") > 1 || co.int("loanCall") != 0
         if co.cash < 0 && co.status == .open {
             out.append(CompanyIssue(id: "cash", glyph: Glyph.warning, tint: P.loss, title: "Out of cash", sub: "Bills and wages are at risk: put money in or cut costs", action: "Open finances") { goMoney(.summary) })
         }
         if behind { out.append(CompanyIssue(id: "behind", glyph: Glyph.warning, tint: P.loss, title: "Behind on payments", sub: "Loans, VAT or suppliers", action: "Open finances") { goMoney(.summary) }) }
-        if nobody { out.append(CompanyIssue(id: "nobody", glyph: Glyph.person, tint: P.loss, title: "No one runs it", sub: "You do not work here and there is no manager", action: "Open Team") { go(.staff) }) }
+        if runner.nobody { out.append(CompanyIssue(id: "nobody", glyph: Glyph.person, tint: P.loss, title: runner.title, sub: runner.why, action: "Open Team") { go(.staff) }) }
         for m in asks.prefix(3) {
             let mid = m.id
             out.append(CompanyIssue(id: "ask\(m.id)", glyph: Glyph.inbox, tint: P.warn, title: m.title, sub: m.from.isEmpty ? "Waiting for your answer" : "From \(m.from)", action: "Decide") { store.openMessage(mid) })
@@ -319,7 +345,7 @@ struct CompanyOverview: View {
         switch t {
         case .team:
             let n: Int = co.staff.count
-            let boss: String = engine.decisionChain(companyID: co.id).first.map { "Run by \($0.name)" } ?? (OwnerHours.works(co) ? "You work here" : "No manager")
+            let boss: String = CompanyRunner.of(co, engine).line
             LedgerRow(leading: .glyph(Glyph.team), leadingTint: P.inkSoft, title: "Team", subtitle: boss, value: n == 0 ? "" : "\(n)", valueNote: n == 0 ? "" : (n == 1 ? "person" : "people"),
                       identifier: "overview-open-team") { go(.staff) }
         case .manage:

@@ -191,11 +191,8 @@ struct CompanyDetailView: View {
         var parts: [String] = []
         if let ch = e.chainOf(companyID: co.id) { parts.append("Store of " + (ch["name"].string.isEmpty ? "your chain" : ch["name"].string)) }
         if co.holdingID != 0, let h = e.state.company(co.holdingID) { parts.append("Under " + h.name) }
-        if let boss = e.decisionChain(companyID: co.id).first {
-            parts.append("Run by \(boss.name), \(GameEngine.bossTitle(boss.kind, trade: e.tradeInfo(companyID: co.id)).lowercased())")
-        } else if co.status == .open && co.type != "hold" {
-            parts.append(OwnerHours.works(co) ? "Run by you" : "No one runs it")
-        }
+        let runner: String = CompanyRunner.of(co, e).short
+        if !runner.isEmpty { parts.append(runner) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 

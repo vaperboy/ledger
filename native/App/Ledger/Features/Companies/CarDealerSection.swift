@@ -191,33 +191,35 @@ struct CarOrderSheet: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text("\(e.carDealerSupplier(companyID: companyID)). Paid on delivery. \(max(0, free.total - free.used)) free spaces.")
                 .popupText(.subtitle)
-            ForEach(offers) { (o: CarDealerOffer) in
-                Button { order(o) } label: { offerCard(o, cur) }.buttonStyle(PressableStyle())
+            VStack(spacing: 0) {
+                ForEach(Array(offers.enumerated()), id: \.element.id) { (n: Int, o: CarDealerOffer) in
+                    if n > 0 { Hairline().padding(.leading, 54) }
+                    Button { order(o) } label: { offerRow(o, cur) }
+                        .buttonStyle(AcctPressStyle())
+                        .accessibilityIdentifier("dealer-offer-\(o.id)")
+                }
             }
         }
     }
 
-    private func offerCard(_ o: CarDealerOffer, _ cur: Currency) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            IconCircle(glyph: Glyph.group, size: 42)
-            VStack(alignment: .leading, spacing: 4) {
+    /// One model on a plain row: photo, name, one line with class, fuel and arrival, what you pay at the right with the list price under it.
+    private func offerRow(_ o: CarDealerOffer, _ cur: Currency) -> some View {
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            UsedCarPhoto(family: o.body, title: o.modelName, size: 42)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(o.brandName + " " + o.modelName).popupText(.rowValue).lineLimit(1)
-                HStack(spacing: 5) {
-                    TeamBadge(text: o.body, tint: Theme.gold)
-                    TeamBadge(text: o.fuel)
-                }
-                Text("List \(cur.tidyShort(o.listPrice)). Arrives in about \(o.leadWeeks) weeks.").popupText(.caption)
+                Text("\(o.body.capitalized) \u{00B7} \(o.fuel) \u{00B7} in about \(o.leadWeeks) weeks").popupText(.caption).lineLimit(1).minimumScaleFactor(0.85)
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 1) {
+            Spacer(minLength: Theme.Space.s)
+            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
                 Text(cur.tidyShort(o.cost)).popupText(.rowValue)
-                Text("you pay").popupText(.caption)
+                Text("list " + cur.tidyShort(o.listPrice)).popupText(.caption)
             }
         }
-        .padding(.horizontal, PopupSpace.block + 2).padding(.vertical, PopupSpace.block)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(P.cardDeep))
+        .padding(.vertical, Theme.Space.m)
+        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 
     private func order(_ o: CarDealerOffer) {
