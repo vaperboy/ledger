@@ -223,8 +223,6 @@ extension PhoneApp {
         case .news: return .news
         case .luxury: return .luxury
         case .ventures: return .ventures
-        case .world: return .world
-        case .richList: return .richList
         case .bank: return ownBankIsMain ? nil : .forest
         case .accounting: return .forest
         case .inbox: return .inbox

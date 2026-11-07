@@ -5,13 +5,14 @@ import Businesses
 import Simulation
 
 /// The profile of one rival group (C5, original `grp27`): who owns it, its strategy and ambition, how big and how healthy it looks, where
-/// and in what trades it competes, the rivals of yours it owns, and its recent moves. Opened from the Market screen's group list.
-/// Read-only: what you can do about a rival (price war, buying a distressed one) stays on the rival's own page under Market.
+/// and in what trades it competes, the rivals of yours it owns, and its recent moves. Opened from Market > Rivals (Groups), a rival's
+/// profile or a country. Read-only: what you can do about a rival (an offer, its price cut) is on the rival's own profile.
 /// Laid out as a dossier: an identity card with the money figures, what it means for you, the strategy, tags for its trades and
 /// countries, and a timeline of its moves.
 struct RivalGroupProfileView: View {
     @EnvironmentObject var store: GameStore
     var groupID: String
+    @State private var next: MarketRoute?
 
     var body: some View {
         ScrollView {
@@ -33,7 +34,8 @@ struct RivalGroupProfileView: View {
         }
         .scrollIndicators(.hidden)
         .ledgerBackground()
-        .appScreen(title: "Rival group", subtitle: "Who owns it and how it competes", tab: .group)
+        .appScreen(title: "Rival group", subtitle: "Who owns it and how it competes")
+        .navigationDestination(item: $next) { (r: MarketRoute) in MarketDestination(route: r) }
     }
 
     // MARK: Identity and money
@@ -73,20 +75,22 @@ struct RivalGroupProfileView: View {
 
     @ViewBuilder private func meaning(_ e: GameEngine, _ g: RivalGroups.Group) -> some View {
         let mine = e.rivalsOfGroup(g.id)
-        let overlap: [Company] = e.state.companies.filter { $0.status.isLive && g.trades.contains($0.type) && g.countries.contains($0.countryCode) }
+        let overlap: [Company] = e.state.companies.filter { $0.status == .open && g.trades.contains($0.type) && g.countries.contains($0.countryCode) }
         MoreBlock("What it means for you", card: false) {
             if overlap.isEmpty && mine.isEmpty {
                 NoteCard(text: "It does not compete with any of your companies right now.", glyph: Glyph.check)
             }
             ForEach(overlap) { c in
-                Button { Haptics.tap(); store.openCompany(c.id, section: .market) } label: {
+                Button { Haptics.tap(); next = .company(c.id) } label: {
                     CardRow(glyph: Glyph.home, title: c.name, subtitle: "Same trade in \(e.cityName(c)): \(e.tradeName(c))")
                 }.buttonStyle(PressableStyle())
             }
             if !mine.isEmpty {
                 Text("Rivals it owns in your markets").capsLabel(Theme.ivoryFaint).padding(.horizontal, Theme.Space.xxs)
                 ForEach(Array(mine.enumerated()), id: \.offset) { _, m in
-                    CardRow(glyph: Glyph.market, title: m.rival.name, subtitle: "competes with \(m.company.name)", chevron: false)
+                    Button { Haptics.tap(); next = .rival(companyID: m.company.id, rivalID: m.rival.id) } label: {
+                        CardRow(glyph: Glyph.market, title: m.rival.name, subtitle: "competes with \(m.company.name)")
+                    }.buttonStyle(PressableStyle())
                 }
             }
         }

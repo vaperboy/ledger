@@ -11,8 +11,8 @@ import Simulation
 ///
 /// The company screen (`CompanyDetailView`) shows five of them as its fixed section bar: Overview, Team (`staff`), Manage (`operations`),
 /// Sales (`salesMarket`) and Stats (`finances`). `projects` is the last block of Sales, `holding` is the Team page of a holding company
-/// and `properties` is Premises inside Manage. `customers` is a part of Stats. The rest are pages pushed on top (Pricing, Marketing, Market
-/// (which opens the Phone's Market app), Setup, Plant, Fish, Club, Chain, Book): see `isLeaf`.
+/// and `properties` is Premises inside Manage. `customers` is a part of Stats. The rest are pages pushed on top (Pricing, Marketing, Setup,
+/// Plant, Fish, Club, Chain, Book): see `isLeaf`. A link to `market` opens the company's page in the Market app.
 enum CompanySection: String, CaseIterable, Hashable {
     case overview = "Overview", projects = "Projects", staff = "Team", finances = "Stats", operations = "Manage"
     case salesMarket = "Sales"

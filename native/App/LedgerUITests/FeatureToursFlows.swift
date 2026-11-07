@@ -234,7 +234,7 @@ extension FeatureToursTests {
             if picks.isEmpty { return .fail("no bank-pick-* rows: " + tabState()) }
             return .pass(picks.map { String($0.dropFirst(10)) }.joined(separator: ","))
         }
-        for acc in ["personal", "investments"] {
+        for acc in ["personal"] {
             step("bank: \(acc) account opens, health, Back returns to the chooser") {
                 guard openBankAccount(acc) else { return .skip("no bank-pick-\(acc)") }
                 let h: R = health("bank \(acc)")
@@ -276,23 +276,23 @@ extension FeatureToursTests {
             if !has("back-button", wait: 2) { problems.append("not on the account after closing: \(signature().text)") }
             return problems.isEmpty ? .pass("toast '\(toast.prefix(50))'") : .fail(problems.prefix(3).joined(separator: "; "))
         }
-        step("bank: investments -> asset -> Buy -> amount -> Review -> Confirm -> Done") {
-            guard openBankAccount("investments") else { return .skip("no investments account") }
-            // Asset rows carry the symbol and a price; pick the first row under the balance.
-            guard tapWhere(wait: 4, { $0.type == .button && $0.label.contains("%") && $0.frame.minY > self.win().minY + 200 }) else { return .skip("no asset row") }
-            guard tapLabel("Buy", wait: 3) else { _ = tapBack(); return .skip("the asset cannot be bought here (stock)") }
+        step("market invest: Buy -> asset -> amount -> Review -> Confirm -> Done") {
+            guard openPhoneApp("Market"), tapID("market-tab-Invest", wait: 4) else { return .skip("no Market app") }
+            guard tapID("invest-buy", wait: 4) else { return .fail("no Buy on Invest: \(signature().text)") }
+            guard tapPrefix("trade-asset-fund-", wait: 4) else { return .fail("no fund to buy: \(signature().text)") }
+            if tapID("trade-owner-you", wait: 1.5) { pause(0.3) }
             guard let field = find(wait: 3, { $0.type == .textField }) else { return .fail("the buy page has no amount field") }
             touch(field)
             pause(0.6)
             app.typeText("500")
             if let d = find({ $0.type == .button && $0.label == "Done" }) { touch(d) }
             var problems: [String] = []
-            if case .fail(let m) = primaryInView("bank-trade-review") { problems.append("step 1: " + m) }
-            guard tapEnabled("bank-trade-review", wait: 2) else { return .fail("Review not tappable after typing 500 (\(find({ $0.id == "bank-trade-review-blocked" }) != nil ? "blocked" : "missing"))") }
-            if case .fail(let m) = primaryInView("bank-trade-confirm") { problems.append("review: " + m) }
-            problems.append(contentsOf: rawProblems("bank trade review"))
-            guard tapEnabled("bank-trade-confirm", wait: 2) else { return .fail("Confirm purchase not tappable") }
-            guard tapID("bank-trade-done", wait: 4) else { return .fail("no Done after confirming: \(signature().text)") }
+            if case .fail(let m) = primaryInView("trade-review") { problems.append("amount: " + m) }
+            guard tapEnabled("trade-review", wait: 2) else { return .fail("Review not tappable after typing 500 (\(find({ $0.id == "trade-review-blocked" }) != nil ? "blocked" : "missing"))") }
+            if case .fail(let m) = primaryInView("trade-confirm") { problems.append("review: " + m) }
+            problems.append(contentsOf: rawProblems("market trade review"))
+            guard tapEnabled("trade-confirm", wait: 2) else { return .fail("Confirm purchase not tappable") }
+            guard tapID("trade-done", wait: 4) else { return .fail("no Done after confirming: \(signature().text)") }
             if !has("back-button", wait: 2) { problems.append("Done left no Back: \(signature().text)") }
             return problems.isEmpty ? .pass("now \(signature().text)") : .fail(problems.prefix(3).joined(separator: "; "))
         }

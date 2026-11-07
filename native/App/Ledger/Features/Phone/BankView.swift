@@ -32,7 +32,7 @@ struct BankLoansTab: View {
         case .personal:
             BankPersonalLoans(engine: e)
         case .investments:
-            Text("Loans are taken for your personal account or a company's, not for investments.").textStyle(.body, tint: P.inkSoft)
+            EmptyView()
         }
     }
 

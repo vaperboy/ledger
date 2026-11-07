@@ -4,40 +4,33 @@ import Businesses
 import Simulation
 
 /// The biggest companies, by sales, profit, value or growth: you, the rival groups and the rivals you face, among everyone in the
-/// business register. Original: R27.rankings (features/world/rival_groups.js).
-struct RankingView: View {
+/// business register. Part of Market > World > Rankings. Original: R27.rankings (features/world/rival_groups.js).
+struct CompanyRankingSection: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.outsidePalette) private var P
     @State private var scope: CompanyRanking.Scope = .country
     @State private var metric: CompanyRanking.Metric = .revenue
 
     var body: some View {
         if let e = store.engine {
             let board = e.rankingBoard(scope: scope, metric: metric)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    if let you = board.you {
-                        HeroFigure(label: "Your place by \(metric.title.lowercased())", value: "#\(you.rank) of \(board.total)", tint: Theme.gold)
-                    }
-                    SegmentedPill(items: CompanyRanking.Scope.allCases, title: { scopeName($0, e) }, selection: $scope)
-                    SegmentedPill(items: CompanyRanking.Metric.allCases, title: { $0.title }, selection: $metric)
-                    if board.you != nil {
-                        CardSection("The biggest") {
-                            VStack(spacing: 0) {
-                                ForEach(Array(board.entries.prefix(20).enumerated()), id: \.offset) { i, en in
-                                    if i > 0 { CardLine() }
-                                    row(en, e)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                SegmentedPill(items: CompanyRanking.Scope.allCases, title: { scopeName($0, e) }, selection: $scope,
+                              identifier: { (s: CompanyRanking.Scope) -> String in "ranking-scope-\(s.rawValue)" })
+                SegmentedPill(items: CompanyRanking.Metric.allCases, title: { $0.title }, selection: $metric,
+                              identifier: { (m: CompanyRanking.Metric) -> String in "ranking-metric-\(m.rawValue)" })
+                if let you = board.you {
+                    Text("You are #\(you.rank) of \(board.total) by \(metric.title.lowercased())").textStyle(.body, tint: P.accent, numeric: true)
+                    VStack(spacing: 0) {
+                        ForEach(Array(board.entries.prefix(20).enumerated()), id: \.offset) { i, en in
+                            if i > 0 { Hairline().padding(.leading, 38 + Theme.Space.m) }
+                            row(en, e)
                         }
-                    } else {
-                        NoteCard(text: "The ranking is locked until you run a business. Open or buy a company and you appear here.", glyph: Glyph.richList)
                     }
+                } else {
+                    EmptyState(glyph: Glyph.richList, title: "Not ranked yet", message: "Open or buy a company and you appear here.", centered: false)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.hidden)
-            .ledgerBackground()
         }
     }
 
@@ -58,25 +51,29 @@ struct RankingView: View {
     }
 
     private func row(_ en: CompanyRanking.Entry, _ e: GameEngine) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Text("\(en.rank)").font(.caption.monospacedDigit()).foregroundStyle(en.isYou ? Theme.gold : Theme.ivoryFaint).frame(width: 38, alignment: .leading)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            Text("\(en.rank)").textStyle(.headline, tint: en.isYou ? P.accent : P.inkFaint, numeric: true).frame(width: 38, alignment: .leading)
             ThumbnailView(kind: .logo, key: logoKey(en), size: 32, shape: .square, glyph: Glyph.group, initials: en.name)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(en.name + (en.isYou ? " (you)" : "")).textStyle(.body, tint: en.isYou ? Theme.accent : Theme.ink)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(en.name + (en.isYou ? " (you)" : "")).textStyle(.headline, tint: en.isYou ? P.accent : nil).lineLimit(1)
                 Text(en.isYou ? "\(en.companyCount) \(en.companyCount == 1 ? "company" : "companies")"
-                     : en.rivalID != nil ? "Your rival" : "\(en.companyCount) sites")
-                    .font(.caption).foregroundStyle(Theme.ivoryFaint)
+                     : en.rivalID != nil ? "Your rival" : "\(en.companyCount) sites").textStyle(.caption).lineLimit(1)
             }
-            Spacer(minLength: 8)
-            Text(en.movement > 0 ? "▲" : en.movement < 0 ? "▼" : "").font(.caption).foregroundStyle(en.movement > 0 ? Theme.gain : Theme.loss)
-            Text(figure(en)).textStyle(.body, numeric: true)
+            Spacer(minLength: Theme.Space.s)
+            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                Text(figure(en)).textStyle(.headline, numeric: true)
+                if en.movement != 0 {
+                    Text(en.movement > 0 ? "\u{2191} \(en.movement)" : "\u{2193} \(-en.movement)").textStyle(.caption, tint: en.movement > 0 ? P.gain : P.loss, numeric: true)
+                }
+            }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, Theme.Space.m)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// How people see you, the people you know with favours and promises, and the maps. Original: features/world/world_around_you.js.
+/// How people see you, the people you know with favours and promises, what you own and where (Market > World > People and reputation).
+/// Original: features/world/world_around_you.js.
 struct WorldAroundView: View {
     @EnvironmentObject var store: GameStore
     /// Tells the player what the engine answered; a nil result (no game) says so rather than staying silent.
@@ -96,27 +93,6 @@ struct WorldAroundView: View {
             let infl = e.mapInfluence()
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    CardSection("Records") {
-                        VStack(spacing: 0) {
-                            if store.gateOpen(.rivals) {
-                                recordLink(.rival, e.nemesis.map { "\($0.owner) of \($0.groupName): you \($0.wins), them \($0.losses)" } ?? "No rival has picked you yet")
-                                CardLine()
-                            }
-                            recordLink(.topFifty, e.topFifty.map { t in t.yourRank.map { "Last January: you were number \($0) of \(t.of)" } ?? "Last January you were not on it" } ?? "Printed every January")
-                            CardLine()
-                            recordLink(.months, "Income, costs and profit by month, per company")
-                            CardLine()
-                            recordLink(.crisis, "\(e.crisisCentre.filter { $0.status == "open" }.count) waiting")
-                            CardLine()
-                            recordLink(.hall, e.retirementHall.isEmpty ? "Nobody has retired yet" : "\(e.retirementHall.count) retired")
-                            CardLine()
-                            NavigationLink {
-                                NewsView()
-                            } label: {
-                                RowLine(glyph: Glyph.news, tint: Theme.gold, title: "Business paper", subtitle: "Front pages and headlines", chevron: true)
-                            }.buttonStyle(PressableStyle())
-                        }
-                    }
                     CardSection("Seen as") {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(img.label).textStyle(.headline, tint: Theme.accent, weight: .semibold)
@@ -215,14 +191,6 @@ struct WorldAroundView: View {
             .scrollIndicators(.hidden)
             .ledgerBackground()
         }
-    }
-
-    private func recordLink(_ page: WorldRecordsView.Page, _ preview: String) -> some View {
-        NavigationLink {
-            WorldRecordsView(page: page).appScreen(title: page.rawValue, subtitle: "Records of the world around you")
-        } label: {
-            RowLine(glyph: page.glyph, tint: Theme.gold, title: page.rawValue, subtitle: preview, chevron: true)
-        }.buttonStyle(PressableStyle())
     }
 
     private func circle(_ title: String, _ names: [String]) -> some View {

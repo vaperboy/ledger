@@ -1,10 +1,11 @@
 import SwiftUI
+import Charts
 import GameCore
 import Countries
 import Simulation
 
-/// Bank, pick an account (BankAccounts.dc.html): the all-accounts total with what is due in 30 days, then YOU (personal, investments) and
-/// YOUR COMPANIES. Loans are not an account: a row only says how many loans the account carries.
+/// Bank, pick an account (BankAccounts.dc.html): the cash total of every account with what is due in 30 days, then YOU (personal) and
+/// YOUR COMPANIES. Loans are not an account: a row only says how many loans the account carries. Investing is in the Market app.
 struct BankAccountsScreen: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -16,7 +17,7 @@ struct BankAccountsScreen: View {
     var body: some View {
         if let e = store.engine {
             let all = e.bankAccounts()
-            let you: [BankAccountRow] = all.rows.filter { $0.kind != .company }
+            let you: [BankAccountRow] = all.rows.filter { $0.kind == .personal }
             let companies: [BankAccountRow] = all.rows.filter { $0.kind == .company }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -82,19 +83,22 @@ struct BankAccountsScreen: View {
         .accessibilityIdentifier("bank-all-bills")
     }
 
-    /// The balance on warm ivory, as in the Banking mockup: the total of every account, what falls due in 30 days and whether it is covered.
+    /// The balance on warm ivory, as in the Banking mockup: the cash of every account (investments are in the Market app), what falls due
+    /// in 30 days and whether it is covered.
     private func totalCard(_ all: BankAccounts) -> some View {
-        let totalText: String = store.short(all.total)
+        let invested: Double = all.rows.filter { (r: BankAccountRow) -> Bool in r.kind == .investments }.reduce(0) { (a: Double, r: BankAccountRow) -> Double in a + r.balance }
+        let cash: Double = all.total - invested
+        let totalText: String = store.short(cash)
         let dueText: String = store.short(all.dueWithin30Days)
         return IvoryPanel {
-            BankTotalPanel(totalText: totalText, negative: all.total < 0, dueText: dueText, covered: all.isCovered)
+            BankTotalPanel(totalText: totalText, negative: cash < 0, dueText: dueText, covered: all.isCovered)
         }
     }
 
     private func row(_ r: BankAccountRow, _ e: GameEngine) -> some View {
         let co: Company? = r.companyID.flatMap { e.state.company($0) }
         let fmt = BankFmt(store: store, company: co)
-        let glyph: String = r.kind == .personal ? Glyph.person : r.kind == .investments ? Glyph.invest : BankGlyph.company
+        let glyph: String = r.kind == .personal ? Glyph.person : BankGlyph.company
         let note: String = rowNote(r, fmt)
         let value: String = fmt.short(r.balance)
         let tint: Color = r.balance < 0 ? P.loss : P.ink
@@ -113,7 +117,7 @@ struct BankAccountsScreen: View {
         case .personal:
             if let rate = r.savingsRate { parts.append("Savings \(Currency.percent(rate, decimals: 2))") }
             if let s = r.savings, s > 0 { parts.append(fmt.short(s) + " saved") }
-        case .investments: parts.append("Shares · crypto · funds")
+        case .investments: break
         case .company: parts.append(r.detail)
         }
         if r.loanCount > 0 { parts.append("\(r.loanCount) loan\(r.loanCount == 1 ? "" : "s")") }
@@ -121,7 +125,7 @@ struct BankAccountsScreen: View {
     }
 }
 
-/// Where the money is: a ring over the accounts that hold some (personal current account, savings, investments, each company), the five
+/// Where the money is: a ring over the accounts that hold some (personal current account, savings, each company), the five
 /// biggest named and the rest together. Only drawn when at least two places hold money; one place is not an allocation.
 struct BankHomeRing: View {
     @Environment(\.outsidePalette) private var P
@@ -140,7 +144,7 @@ struct BankHomeRing: View {
 
     private func slices() -> [PortfolioRingCard.Slice] {
         var raw: [(String, Double)] = []
-        for r in all.rows {
+        for r in all.rows where r.kind != .investments {
             if r.balance > 0 { raw.append((r.kind == .personal ? "Current account" : r.name, r.balance)) }
             if let s = r.savings, s > 0 { raw.append(("Savings", s)) }
         }
@@ -152,5 +156,56 @@ struct BankHomeRing: View {
         let rest: Double = raw.dropFirst(5).reduce(0) { $0 + $1.1 }
         if rest > 0 { out.append(PortfolioRingCard.Slice(id: "other", name: "Other", value: rest, tint: palette[5])) }
         return out
+    }
+}
+
+/// The ring of where the money is: a donut of the parts with the total in the middle, and the shares beside it.
+struct PortfolioRingCard: View {
+    @Environment(\.outsidePalette) private var P
+    struct Slice: Identifiable { var id: String; var name: String; var value: Double; var tint: Color }
+    var slices: [Slice]
+    var cur: Currency
+    var title = "PORTFOLIO"
+    var centerLabel = "Invested"
+
+    var body: some View {
+        let total: Double = slices.reduce(0) { $0 + max(0, $1.value) }
+        let live: [Slice] = slices.filter { $0.value > 0 }
+        Card(padding: 16, radius: Theme.Radius.hero) {
+            HStack(spacing: 18) {
+                ring(total, live)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title).capsLabel()
+                    ForEach(slices) { s in
+                        HStack(spacing: 8) {
+                            Circle().fill(s.tint).frame(width: 8, height: 8)
+                            Text(s.name).textStyle(.body, tint: P.inkSoft)
+                            Spacer(minLength: 4)
+                            Text(total > 0 ? String(format: "%.0f%%", s.value / total * 100) : "-").textStyle(.body, numeric: true)
+                        }
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func ring(_ total: Double, _ live: [Slice]) -> some View {
+        ZStack {
+            if live.isEmpty {
+                Circle().strokeBorder(P.line, lineWidth: 14)
+            } else {
+                Chart(live) { s in
+                    SectorMark(angle: .value("Value", s.value), innerRadius: .ratio(0.78), angularInset: 1.5).foregroundStyle(s.tint)
+                }
+                .chartLegend(.hidden)
+            }
+            VStack(spacing: 0) {
+                Text(centerLabel).textStyle(.caption, tint: P.inkFaint)
+                Text(cur.tidyShort(total)).textStyle(.figure, numeric: true).minimumScaleFactor(0.6).lineLimit(1)
+            }
+            .padding(.horizontal, 18)
+        }
+        .frame(width: 128, height: 128)
     }
 }

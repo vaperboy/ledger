@@ -3,11 +3,13 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Compact rows for the latest market events (Market section and Market app). Gold = opportunity, green = gain, red = loss.
+/// Compact rows for the latest market events (Market app). A dot carries the tone: gold = opportunity, green = gain, red = loss.
 /// A row that appears while the screen is open slides in and gets a brief edge; the first render never animates.
 struct MarketEventRows: View {
     @EnvironmentObject var store: GameStore
     var events: [MarketEvent]
+    /// The caps title above the rows; off when the screen labels the group itself.
+    var showsTitle = true
     @State private var known: Set<Int>? = nil
     @State private var fresh: Set<Int> = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -32,11 +34,12 @@ struct MarketEventRows: View {
     private var ids: [Int] { events.map { (m: MarketEvent) -> Int in m.id } }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             if !events.isEmpty {
-                Text("LATEST IN THE MARKET").capsLabel()
-                ForEach(events) { (m: MarketEvent) in
-                    row(m)
+                if showsTitle { Text("LATEST IN THE MARKET").capsLabel().padding(.bottom, Theme.Space.s) }
+                ForEach(Array(events.enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketEvent)) in
+                    if pair.offset > 0 { Hairline().padding(.leading, 17) }
+                    row(pair.element)
                         .transition(reduceMotion ? .opacity : .move(edge: .leading).combined(with: .opacity))
                 }
             }
@@ -63,7 +66,6 @@ struct MarketEventRows: View {
     private func row(_ m: MarketEvent) -> some View {
         let tint: Color = Self.tint(m)
         let flash: Color? = fresh.contains(m.id) ? tint : nil
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
         return HStack(alignment: .top, spacing: 10) {
             Circle().fill(tint).frame(width: 7, height: 7).padding(.top, 5)
             VStack(alignment: .leading, spacing: 1) {
@@ -80,38 +82,9 @@ struct MarketEventRows: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12).padding(.vertical, 9)
+        .padding(.vertical, Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(shape.fill(tint.opacity(0.08)))
-        .overlay(shape.strokeBorder(tint.opacity(0.28), lineWidth: 1))
         .orgEdge(flash, radius: Theme.Radius.row)
         .newMarker(.market, "e\(m.id)", style: .capsule, important: m.tone == "bad", alignment: .topTrailing)
-    }
-}
-
-/// A slim header on the Sales tab: how the trade's prices moved this month, with a line that draws itself once.
-struct MarketTrendCard: View {
-    var trend: MarketTrend
-
-    var body: some View {
-        let change: Double = trend.priceIndexChangeThisMonth
-        let pct: Double = abs(change) * 100
-        let steady: Bool = pct < 0.05
-        let tint: Color = steady ? Theme.ivoryMuted : (change > 0 ? Theme.gain : Theme.loss)
-        let word: String = change > 0 ? "up" : "down"
-        let figure: String = String(format: "%.1f%%", pct)
-        let text: String = steady ? "Prices are steady this month" : "Prices are \(word) \(figure) this month"
-        return Card(padding: 12, radius: Theme.Radius.hero) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("MARKET TREND").capsLabel()
-                    Text(text).textStyle(.headline, tint: tint).lineLimit(2)
-                }
-                Spacer(minLength: 6)
-                Sparkline(values: trend.points, tint: tint, filled: false)
-                    .frame(width: 96, height: 30)
-                    .drawsItself()
-            }
-        }
     }
 }

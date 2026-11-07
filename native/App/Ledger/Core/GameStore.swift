@@ -47,8 +47,10 @@ enum AppRequest: Equatable {
     case accounting(companyID: Int, payroll: Bool)
     /// Accounting on one company's Statements page (balance sheet and cash flow).
     case accountingReports(companyID: Int)
-    /// The Market app on one company (0 = all markets).
+    /// The Market app on one company (0 = the Overview).
     case market(companyID: Int)
+    /// The Market app on one of its five parts.
+    case marketTab(MarketUI.Tab)
     /// The Reviews app on one company.
     case reviews(companyID: Int)
     /// AirStay on one company (0 = all), at the places it could take or the one it works in.
@@ -210,7 +212,7 @@ final class GameStore: ObservableObject {
     @Published var customTarget: CustomTabTarget? = CustomTabTarget.stored()
     /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false
-    /// Set by a banner for the Market app: it shows its News segment when it takes the request.
+    /// Set by a banner for the Market app: it opens on its Overview, where the latest market events are.
     var marketNewsPending = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
@@ -736,9 +738,14 @@ final class GameStore: ObservableObject {
         openApp(.accounting, request: .accountingReports(companyID: companyID))
     }
 
-    /// Opens the Market app (the Phone), on one company when `companyID` is given, else on all markets.
+    /// Opens the Market app (the Phone), on one company's market when `companyID` is given, else on its Overview.
     func openMarket(companyID: Int? = nil) {
         openApp(.market, request: .market(companyID: companyID ?? 0))
+    }
+
+    /// Opens the Market app on one of its parts (Invest for a goal about investing).
+    func openMarket(tab: MarketUI.Tab) {
+        openApp(.market, request: .marketTab(tab))
     }
 
     /// Opens the Reviews app on one company.
@@ -792,6 +799,11 @@ final class GameStore: ObservableObject {
         appRequest = nil
         return id
     }
+    func takeMarketTabRequest() -> MarketUI.Tab? {
+        guard case .marketTab(let t)? = appRequest else { return nil }
+        appRequest = nil
+        return t
+    }
     func takeReviewsRequest() -> Int? {
         guard case .reviews(let id)? = appRequest else { return nil }
         appRequest = nil
@@ -831,7 +843,7 @@ final class GameStore: ObservableObject {
         case .openMessage(let id): openMessage(id)
         case .openCompany(let id, let key): openCompany(id, section: key.flatMap { CompanySection(key: $0) })
         case .openLoans: openBank(.personal, tab: .loans)
-        case .openInvest: openBank(.investments, tab: .deposits)
+        case .openInvest: openMarket(tab: .invest)
         case .openTax: openBank(.personal, tab: .bills)
         case .newCompany: push(.newCompany)
         }

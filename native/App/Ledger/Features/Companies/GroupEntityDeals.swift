@@ -163,27 +163,17 @@ struct GroupEntityOwnership: View {
     }
 }
 
-// MARK: - Buying (Expansion tab)
+// MARK: - Franchise brands (Expansion tab)
 
-/// What you could buy: a rival in the market, or a franchise brand to join. Shown under the Expansion tab; selling and owning are under Ownership.
+/// Joining a franchise brand: shown under the Expansion tab. Buying a rival is in Market > Rivals; selling and owning are under Ownership.
 struct GroupBuyRows: View {
-    @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var entity: GroupEntity
 
     var body: some View {
-        let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
-        let open: [Company] = cos.filter { (c: Company) -> Bool in c.status == .open }
         let brands = engine.franchiseBrands()
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("BUY").capsLabel()
-            if open.isEmpty {
-                Text("Open this company to look at rivals you could buy.").textStyle(.caption, tint: Theme.inkSoft)
-            } else {
-                Button { Haptics.tap(); store.openMarket(companyID: entity.companyID) } label: {
-                    CardRow(glyph: Glyph.market, title: "Rivals you could buy", subtitle: "Pick a rival in the market; the price and what it becomes are agreed there.")
-                }.buttonStyle(PressableStyle())
-            }
+            Text("FRANCHISE BRANDS").capsLabel()
             NavigationLink { FranchisesView() } label: {
                 CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
                         subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") \u{00B7} apply, meet them, agree terms",

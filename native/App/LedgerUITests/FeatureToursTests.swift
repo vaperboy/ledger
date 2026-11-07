@@ -106,7 +106,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     func testT02_PhoneAppsA() {
-        for t in ["Bank", "Accounting", "Inbox", "News", "Weather", "Stats", "World", "Luxury", "Rich list"] { tourApp(t) }
+        for t in ["Bank", "Accounting", "Inbox", "News", "Weather", "Stats", "Luxury"] { tourApp(t) }
     }
 
     func testT03_PhoneAppsB() {
@@ -283,7 +283,7 @@ final class FeatureToursTests: FeatureTourCase {
             swipeBackFromEdge()
             return homeVisible(4) ? .pass() : .fail("after switching section an edge swipe did not return to Home (\(signature().text))")
         }
-        for name in ["Inbox", "Settings", "Reviews", "Rich list"] {
+        for name in ["Inbox", "Settings", "Reviews", "Market"] {
             step("swipe back: Phone app \(name) returns to the grid") {
                 guard openPhoneApp(name), lastOpenWhy != "pick" else { return .skip("no tile on the grid") }
                 swipeBackFromEdge()

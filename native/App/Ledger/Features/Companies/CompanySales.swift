@@ -6,8 +6,9 @@ import Simulation
 
 /// Sales of one company: "Your products" (or "Your services") as a list, one row per item with its name, how demand is, its price and how far
 /// that is from the market. Tapping an item opens its item page. Marketing is a popup (`MarketingSheet`); a trade that
-/// can develop new things also has that row (a timed project on its own page, `CompanyDevelopment`). Customers are in Stats, the Market is a Phone app, and Projects
-/// are a part of this section only for project businesses (`CompanyDetailView`). There is no Pricing screen any more: prices are set per item.
+/// can develop new things also has that row (a timed project on its own page, `CompanyDevelopment`). Customers are in Stats; the market, its
+/// rivals and market research are in the Market app; Projects are a part of this section only for project businesses (`CompanyDetailView`).
+/// There is no Pricing screen any more: prices are set per item.
 struct CompanySales: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -35,9 +36,7 @@ struct CompanySales: View {
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
                 developRow
-                ResearchRow(engine: engine, company: company)
             }
-            trendCard
         }
         .centerSheet(isPresented: $showMarketing) { MarketingSheet(companyID: company.id) }
         .centerSheet(item: Binding(get: { addingService.map { (v: Bool) -> NewItemPick in NewItemPick(id: v) } }, set: { (v: NewItemPick?) in addingService = v?.id })) { (p: NewItemPick) in
@@ -76,11 +75,6 @@ struct CompanySales: View {
                 SettingsTableRow(title: "Warranty, loans and insurance", note: "Set up, switch on, and see what each sale brings", value: "", glyph: Glyph.opsBox) { showAddons = true }
             }
         }
-    }
-
-    @ViewBuilder private var trendCard: some View {
-        let trend: MarketTrend = engine.marketTrend(companyID: company.id)
-        if trend.points.count >= 2 { MarketTrendCard(trend: trend) }
     }
 
     /// New products or services written for this trade ("New menu item"): a timed project with its cost, on its own page.
