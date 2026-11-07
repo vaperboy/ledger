@@ -251,7 +251,7 @@ struct ReportsPage: View {
         let order = r.ranking + r.companies.map { $0.id }.filter { !r.ranking.contains($0) }
         let rows = order.compactMap { r.company($0) }
         return CardSection(title: kind == .year ? "Ranking" : "Companies", trailing: {
-            Text("Net profit  ·  change  ·  tap to open").textStyle(.caption, tint: Theme.inkFaint)
+            Text("Net profit · change").textStyle(.caption, tint: Theme.inkFaint)
         }) {
             if rows.isEmpty {
                 Text("No company has figures for this period.").font(.caption).foregroundStyle(Theme.ivoryFaint)

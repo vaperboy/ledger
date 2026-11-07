@@ -89,8 +89,6 @@ struct WardrobeView: View {
             preview(accent: accent)
             themeSection(pro: pro)
             badgeSection(pro: pro)
-            Text("Badges you earn in your career are yours to wear for ever. Extra badges and colours come with Ledger Pro. Looks only: nothing here changes your game.")
-                .popupText(.caption)
         }
         return withUnlock(content, show: !(badgeOK && themeOK))
         .onAppear {
@@ -209,7 +207,7 @@ struct WardrobeView: View {
                 .buttonStyle(PopupPrimaryCapsuleStyle(tone: .prestige))
                 .accessibilityIdentifier("wardrobe-unlock")
             } else {
-                Text("This badge is won in your career. Keep playing to earn it.")
+                Text("Earned in your career.")
                     .popupText(.caption)
             }
         }

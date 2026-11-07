@@ -36,8 +36,6 @@ struct InsightsView: View {
         VStack(spacing: 10) {
             Image(systemName: "lock.fill").font(.title2).foregroundStyle(Theme.accent).accessibilityHidden(true)
             Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
-            Text("Net worth over time, which company is pulling ahead, and how many days of cash you have left.")
-                .popupText(.caption).multilineTextAlignment(.center)
             Button("Unlock with Ledger Pro") {
                 Haptics.tap()
                 popupClose?()
@@ -94,7 +92,7 @@ struct InsightsView: View {
             VStack(alignment: .leading, spacing: 9) {
                 Text("Company value, last 30 days").capsLabel()
                 if list.isEmpty {
-                    Text("Play a few more days and your companies appear here.").popupText(.subtitle)
+                    Text("No company history yet.").popupText(.subtitle)
                 }
                 ForEach(list) { (m: CompanyMove) in
                     moveRow(m, top: top, accent: accent)

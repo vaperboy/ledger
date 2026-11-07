@@ -186,7 +186,7 @@ struct NewPlayerSetup: View {
                 PopupRow(label: "Start-up cost", value: cur.tidyShort(cost))
             }
             if let cash = startCash, let cur = currency {
-                Text("You start with \(cur.tidyShort(cash)), enough for the set-up and the first eight weeks.").popupText(.caption)
+                Text("You start with \(cur.tidyShort(cash)).").popupText(.caption)
             }
             Button("Open \(t.name)") { Haptics.tap(); open(t) }
                 .buttonStyle(PopupPrimaryCapsuleStyle(tone: .investment))
@@ -229,7 +229,6 @@ struct NewPlayerSetup: View {
                 .textStyle(.figure)
                 .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
-            Text("You can rename the company later.").textStyle(.caption, tint: Theme.inkFaint)
             Spacer(minLength: 0)
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))

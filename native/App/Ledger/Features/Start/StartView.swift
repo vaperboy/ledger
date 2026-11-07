@@ -121,9 +121,9 @@ struct StartView: View {
     /// A first launch: what the game is, in three lines, under the wordmark.
     private var promises: some View {
         let items: [(glyph: String, title: String, line: String)] = [
-            (Glyph.group, "Open a business", "Pick a trade and a city, see the full start-up cost first."),
-            (Glyph.reports, "Keep the books", "Every sale, wage and bill lands in a real double-entry ledger."),
-            (Glyph.invest, "Grow your net worth", "Hire, expand and invest until you top the rich list."),
+            (Glyph.group, "Open a business", ""),
+            (Glyph.reports, "Keep the books", ""),
+            (Glyph.invest, "Top the rich list", ""),
         ]
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.offset) { (i: Int, it: (glyph: String, title: String, line: String)) in
@@ -168,8 +168,6 @@ struct StartView: View {
                 Text("Your save could not be opened").textStyle(.headline)
             }
             Text(problem).textStyle(.body).fixedSize(horizontal: false, vertical: true)
-            Text("The file stays on this device untouched until you start or import another game, which replaces it.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             Button("Try again") { Haptics.tap(); store.loadCurrent(); summary = store.currentSaveSummary() }
                 .buttonStyle(TertiaryButtonStyle(size: .compact))
                 .padding(.leading, -Theme.Space.s)

@@ -51,9 +51,6 @@ struct GameOverView: View {
                 Button("Back to the start screen") { Haptics.tap(); store.quitToMenu() }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("game-over-start")
-                Text("This run stays saved until you start a new game.")
-                    .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)
             .frame(maxWidth: 560)

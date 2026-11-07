@@ -27,8 +27,6 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: 4) {
             if !request.lead.isEmpty { Text(request.lead).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
             Text(request.title).textStyle(.title).fixedSize(horizontal: false, vertical: true)
-            Text("No purchase changes a number in the game. Pro unlocks more of it and removes ads.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -36,7 +34,7 @@ struct PaywallView: View {
         VStack(spacing: 0) {
             planCard(.plusYearly, title: "Ledger Plus, yearly", badge: ent.yearlySaving, detail: "Everything in Pro, plus Advisor, auto-week, cloud backup and early access.")
             Hairline().padding(.leading, 22 + Theme.Space.m)
-            planCard(.plusMonthly, title: "Ledger Plus, monthly", badge: "", detail: "Same as yearly, billed monthly.")
+            planCard(.plusMonthly, title: "Ledger Plus, monthly", badge: "", detail: "")
             Hairline().padding(.leading, 22 + Theme.Space.m)
             if ent.ownsPro {
                 ownedRow
@@ -73,7 +71,7 @@ struct PaywallView: View {
                         Text(priceLine(p)).textStyle(.body, tint: on ? Theme.ink : Theme.inkSoft, numeric: true, weight: on ? .semibold : nil)
                     }
                     if !badge.isEmpty { Text(badge).textStyle(.caption, tint: Theme.gain, weight: .semibold) }
-                    Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    if !detail.isEmpty { Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
                     if p.isPlus && ent.trialEligible { Text("7 days free, then \(ent.price(p))").textStyle(.caption, tint: Theme.inkSoft) }
                 }
             }

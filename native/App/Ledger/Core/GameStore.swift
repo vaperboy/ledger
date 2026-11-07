@@ -362,17 +362,24 @@ final class GameStore: ObservableObject {
     func playToEndOfWeek() {
         guard canPlayWeek, !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt else { return }
         isAdvancing = true
+        playingWeek = true
         let startWeek: Int = engine?.state.week ?? 0
         Task { @MainActor [weak self] in
-            while let self, let e = self.engine, e.state.week == startWeek, !e.state.isGameOver {
+            while let self, let e = self.engine, e.state.week == startWeek, !e.state.isGameOver, self.playingWeek {
                 try? await Task.sleep(nanoseconds: 400_000_000)
+                guard self.playingWeek else { break }
                 self.advanceOneDay()
                 if self.reportSheet != nil || !self.celebrationQueue.isEmpty || !self.unlockQueue.isEmpty || self.engine?.state.day == 0 { break }
                 self.dailySheet = nil
             }
             self?.isAdvancing = false
+            self?.playingWeek = false
         }
     }
+
+    /// True while "Skip week" plays the days one after another; `stopPlayingWeek` ends it after the day that is running.
+    @Published private(set) var playingWeek = false
+    func stopPlayingWeek() { playingWeek = false }
 
     /// Group books profit at the end of the last day played (week, day, value); used as the start of the next day's "Profit today".
     private var profitMark: (week: Int, day: Int, value: Double)?
@@ -430,7 +437,7 @@ final class GameStore: ObservableObject {
         dailySheet = (digest == nil && !out.gameOver) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
             let cashAfter: Double = e.dayHistory.cash.last ?? 0
-            dayChip = DayChip(id: UUID(), day: e.state.day + 1, netWorthChange: nwAfter - nwBefore, cashChange: cashAfter - (cashBefore ?? cashAfter))
+            dayChip = DayChip(id: UUID(), day: e.state.day + 1, netWorthChange: nwAfter - nwBefore, cashChange: cashAfter - (cashBefore ?? cashAfter), profit: daily.profit)
         } else {
             dayChip = nil
         }
