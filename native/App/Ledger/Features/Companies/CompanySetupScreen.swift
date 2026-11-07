@@ -18,23 +18,34 @@ struct CompanySetupScreen: View {
         let items: [OpeningChecklist.Item] = engine.openingChecklist(companyID: company.id)
         let missing: [OpeningChecklist.Item] = items.filter { !$0.isDone }
         let done: Int = items.count - missing.count
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            ProgressLine(fraction: items.isEmpty ? 1 : Double(done) / Double(items.count), tint: missing.isEmpty ? P.gain : nil,
-                         label: missing.isEmpty ? "Ready to open" : "Before opening", value: "\(done) of \(items.count) done")
-            LedgerSection(title: missing.isEmpty ? "Ready" : "Still missing", rule: false, trailing: { EmptyView() }) {
-                VStack(spacing: 0) {
-                    if missing.isEmpty {
-                        EmptyState(glyph: Glyph.check, title: "Everything is in place", message: "It opens as soon as the paperwork is approved.", tint: P.gain, centered: false)
-                    }
+        let cost: Double = missing.reduce(0) { (a: Double, it: OpeningChecklist.Item) -> Double in a + it.cost }
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                CompanyHero(label: missing.isEmpty ? "Ready to open" : "Before opening", value: "\(done) of \(items.count)",
+                            change: missing.isEmpty ? "Everything is in place" : "\(missing.count) left", changeTint: missing.isEmpty ? P.gain : P.warn,
+                            context: missing.isEmpty ? "it opens once the paperwork is approved" : (cost > 0.5 ? "about \(store.short(cost, in: company)) still to spend" : "it opens by itself when all are done"))
+                ProgressLine(fraction: items.isEmpty ? 1 : Double(done) / Double(items.count), tint: missing.isEmpty ? P.gain : nil)
+            }
+            if !missing.isEmpty {
+                PageGroup("Still missing") {
                     ForEach(Array(missing.enumerated()), id: \.element.id) { (n: Int, it: OpeningChecklist.Item) in
-                        if n > 0 { Hairline() }
+                        if n > 0 { RowRule() }
                         row(it)
+                    }
+                }
+            }
+            let ready: [OpeningChecklist.Item] = items.filter { $0.isDone }
+            if !ready.isEmpty {
+                PageGroup("Done") {
+                    ForEach(Array(ready.enumerated()), id: \.element.id) { (n: Int, it: OpeningChecklist.Item) in
+                        if n > 0 { RowRule() }
+                        LedgerRow(leading: .glyph(Glyph.check), leadingTint: P.gain, title: it.title.tidyMoney, subtitle: it.detail.tidyMoney, density: .compact)
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } })) {
+        .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } }), category: .detail, tone: .investment) {
             if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
         }
     }

@@ -34,12 +34,13 @@ struct CompanyContracts: View {
 
     var body: some View {
         let open: [ProjectTenders.Tender] = openVolumeTenders
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            summary
+        let any: Bool = !engine.volumeContracts(companyID: company.id).isEmpty || !engine.bookedOrders(companyID: company.id).isEmpty
+        PageGroup(title: "Volume contracts", spacing: Theme.Space.m, trailing: { EmptyView() }) {
+            // The weekly promise only means something once there is a contract.
+            if any { summary }
             if !open.isEmpty {
-                SettingsTable(heading: "Contracts") {
-                    SettingsTableRow(title: "Tenders", note: "Volume contracts you can bid for", value: "\(open.count) open") { showTenders = true }
-                }
+                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "Tenders", subtitle: "Volume contracts you can bid for",
+                          value: "\(open.count)", valueNote: "open", identifier: "contracts-tenders") { showTenders = true }
             }
             running
         }
@@ -88,17 +89,12 @@ struct CompanyContracts: View {
         let list = engine.volumeContracts(companyID: company.id).sorted { $0.endWeek < $1.endWeek }
         let orders = engine.bookedOrders(companyID: company.id)
         if list.isEmpty && orders.isEmpty {
-            Card(padding: 14, radius: Theme.Radius.row) {
-                HStack(alignment: .top, spacing: 12) {
-                    IconCircle(glyph: Glyph.calendar)
-                    Text("No volume contracts yet. Offers from business customers arrive in the Inbox.")
-                        .font(.bodyText).foregroundStyle(Theme.ivoryMuted).fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            Text("None yet. Offers from business customers arrive in the Inbox.")
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
         if !list.isEmpty {
             timelineCard(list)
-            Text("Promised units are a duty: a shop that cannot serve them gets warnings, then a penalty, and in the end loses the contract.")
+            Text("Units not served bring warnings, then a penalty.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
             ForEach(list) { c in contractCard(c) }
         }
@@ -207,7 +203,7 @@ struct CompanyContracts: View {
             row("Customer pays after", c.paymentWeeks.weeksText)
             row("Unpaid invoices", store.short(d.outstanding, in: company))
             row("Warnings", "\(Int(c.warnings)) of 12" + (c.higherQuality ? " · higher quality promised" : ""))
-            Text("Risks: a customer can go under (its unpaid invoices are lost), walk away from poor quality or not renew. Below 85% served, warnings build up: a penalty at six, the contract is cancelled at twelve.")
+            Text("Below 85% served: a penalty at 6 warnings, cancelled at 12.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             if ending == c.id {
                 Text("Ending it now costs a penalty of about \(store.short(0.4 * d.price * c.units, in: company)) (10% of four weeks' business) and hurts your name.")
@@ -232,7 +228,7 @@ struct CompanyContracts: View {
 
     private func tenders(_ open: [ProjectTenders.Tender]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Buyers want a set volume every week. Bid a price against your list price; the best score on price and quality wins. Writing a bid costs money even when you lose.")
+            Text("Best price and quality wins; a bid costs money even when it loses.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 2)
             ForEach(open, id: \.id) { t in tenderCard(t) }
         }
@@ -300,7 +296,7 @@ struct CompanyContracts: View {
             row("Writing the bid costs", store.money(t.bidCost, in: company))
             Text(riskText(t, overCapacity: overCapacity)).font(.system(size: 11)).foregroundStyle(overCapacity ? Theme.caution : Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true)
             if hasBid {
-                Text("Your bid is in. You can take it back until the bids close; sending a new one costs the writing fee again.").textStyle(.caption, tint: Theme.inkFaint)
+                Text("Bid sent.").textStyle(.caption, tint: Theme.inkFaint)
                 QuietButton(title: "Take the bid back") { store.settle(store.act { $0.withdrawBid(companyID: company.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.") }
             } else if !qualifies {
                 Text("The firm does not meet the buyer's requirements yet.").textStyle(.caption, tint: Theme.warn)
@@ -313,7 +309,7 @@ struct CompanyContracts: View {
                 QuietButton(title: "Send the bid…") {
                     let hq = higherQuality
                     pending = PendingAction(title: "Bid \(Int((pf * 100).rounded()))% of list?", message: "Writing the bid costs \(store.money(t.bidCost, in: company)) even if you lose. Worth about \(store.short(t.worth * pf / years, in: company)) a year if you win; the result comes on \(GameCalendar.dateString(week: t.awardWeek)).",
-                                            button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company)) {
+                                            button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company), tone: .warning, icon: "doc.text") {
                         let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: pf, higherQuality: hq) }
                         switch r {
                         case .sent?: Haptics.success(); store.show("Bid sent at \(Int((pf * 100).rounded()))% of list. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil

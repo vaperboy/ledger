@@ -56,7 +56,7 @@ struct CompanyEnergy: View {
         let cur = engine.currency(for: company)
         let perMW = engine.turbinePrice(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreBlock("Power plant") {
+            PageGroup("Power plant") {
                 VStack(alignment: .leading, spacing: 0) {
                     FigureStrip(items: [
                         .init(label: "Producing", value: "\(Int((p?.megawatts ?? 0).rounded())) MW", sub: p?.source ?? ""),
@@ -68,7 +68,7 @@ struct CompanyEnergy: View {
                             tint: engine.state.economy.power < 0.85 ? Theme.loss : engine.state.economy.power > 1.15 ? Theme.gain : Theme.ivory)
                 }
             }
-            MoreBlock("Build more") {
+            PageGroup("Build more") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     HStack {
                         Text("\(Int(megawatts)) MW").textStyle(.headline, numeric: true)
@@ -79,7 +79,7 @@ struct CompanyEnergy: View {
                         .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     Button("Order \(Int(megawatts)) MW…") {
                         let mw = megawatts
-                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order", amount: perMW * mw, currency: cur) {
+                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order", amount: perMW * mw, currency: cur, tone: .investment, icon: "bolt") {
                             if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
                             else { Haptics.warning(); store.show("The company does not have \(cur.tidyShort(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
                         }
@@ -123,7 +123,7 @@ struct CompanyEnergy: View {
                 Spacer()
                 Button("Buy…") {
                     let message: String = "\(cur.tidyDisplay(cost)) from company cash (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time."
-                    pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: message, button: "Buy stake", amount: cost, currency: cur) {
+                    pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: message, button: "Buy stake", amount: cost, currency: cur, tone: .investment, icon: "drop") {
                         switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
                         case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
                         default: Haptics.warning(); store.show("The company needs \(cur.tidyShort(cost)) in cash.", tone: "warn")
@@ -144,7 +144,7 @@ struct CompanyEnergy: View {
         let price = engine.oilPricePerBarrel(companyID: company.id)
         let drill = engine.explorationCost()
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreBlock("Production") {
+            PageGroup("Production") {
                 VStack(alignment: .leading, spacing: 0) {
                     FigureStrip(items: [
                         .init(label: "Fields", value: "\(fields.filter { $0.state != "depleted" }.count)", sub: "\(fields.filter { $0.state == "dev" }.count) in development"),
@@ -156,7 +156,7 @@ struct CompanyEnergy: View {
                             tint: engine.state.economy.oil < 0.85 ? Theme.loss : engine.state.economy.oil > 1.15 ? Theme.gain : Theme.ivory).padding(.top, 8)
                 }
             }
-            MoreBlock("Fields", card: false) {
+            PageGroup("Fields") {
                 VStack(spacing: 10) {
                     if fields.isEmpty {
                         Card(padding: 12, radius: Theme.Radius.row) {
@@ -166,7 +166,7 @@ struct CompanyEnergy: View {
                     ForEach(fields, id: \.id) { (f: EnergyModel.FieldInfo) in fieldCard(f) }
                 }
             }
-            MoreBlock("Grow", card: false) {
+            PageGroup("Grow") {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach([2000.0, 5000, 10000], id: \.self) { (k: Double) in stakeCard(k, cur) }
                     EntityCard {
@@ -188,7 +188,7 @@ struct CompanyEnergy: View {
     private func askToDrill(_ drill: Double, _ cur: Currency) {
         let message: String = "The well costs \(cur.tidyShort(drill)) from company cash. A discovery takes about three years to produce."
         pending = PendingAction(title: "Drill an exploration well?", message: message, button: "Drill for \(cur.tidyShort(drill))",
-                                amount: drill, currency: cur, risk: "Most wells find nothing.") {
+                                amount: drill, currency: cur, risk: "Most wells find nothing.", tone: .investment, icon: "drop") {
             switch store.act({ $0.exploreForOil(companyID: company.id) }) {
             case .hit?: Haptics.success(); store.show("Discovery. Check your inbox.", tone: "good")
             case .dry?: Haptics.warning(); store.show("A dry well.", tone: "bad")
@@ -212,7 +212,7 @@ struct CompanySalmon: View {
         let harvesting = company.value("flags")["harvest"].isNull || company.value("flags")["harvest"].double != 0
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             MoreHeader(glyph: Glyph.world, title: "Fish", blurb: "The salmon in your pens, the price per kilo and whether to keep stocking and harvesting.")
-            MoreBlock("In the pens") {
+            PageGroup("In the pens") {
                 VStack(alignment: .leading, spacing: 0) {
                     FigureStrip(items: [
                         .init(label: "Fish", value: String(format: "%.0f k", cohorts.reduce(0) { $0 + $1.fish } / 1000)),
@@ -234,14 +234,14 @@ struct CompanySalmon: View {
                             }
                         }.padding(.top, Theme.Space.s)
                     }
-                    Text("Fish grow for about 18 months, then are sold at the market price. Lice, storms and algae can cost a cohort.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
+                    Text("About 18 months to harvest.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.top, Theme.Space.s)
                 }
             }
-            MoreBlock("Routine") {
+            PageGroup("Routine") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Toggle("Stock new fish automatically", isOn: Binding(get: { stocking }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: v, harvesting: harvesting) }; store.saved(v ? "new fish are stocked automatically" : "automatic stocking is off") })).tint(Theme.gold)
                     Toggle("Harvest when ripe", isOn: Binding(get: { harvesting }, set: { v in store.act { $0.setSalmonAutomation(companyID: company.id, stocking: stocking, harvesting: v) }; store.saved(v ? "ripe fish are harvested" : "harvesting is off") })).tint(Theme.gold)
-                    Text("A new cohort needs cash for the young fish (a few million) and then feed every week for over a year before anything is sold.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                    Text("A cohort costs a few million up front, then feed every week.").textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

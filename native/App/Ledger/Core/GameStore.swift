@@ -222,11 +222,18 @@ final class GameStore: ObservableObject {
     let saves: SaveStore?
     /// Launched with `-showcase` (screenshots, UI tests): a prepared game, and nothing is written to disk.
     private let isShowcase = ProcessInfo.processInfo.arguments.contains("-showcase")
+    /// `-showcase-trades boutique,cardealer`: extra trades for screenshot runs of the showcase game.
+    private static var showcaseTrades: [String] {
+        let a: [String] = ProcessInfo.processInfo.arguments
+        guard let i = a.firstIndex(of: "-showcase-trades"), i + 1 < a.count else { return [] }
+        return a[i + 1].split(separator: ",").map { String($0) }
+    }
 
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Ledger/Saves", isDirectory: true)
         saves = try? SaveStore(directory: base)
-        if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board")) { engine = e }
+        if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board"),
+                                                        extraTrades: Self.showcaseTrades) { engine = e }
         else if let saves, saves.hasSave() { loadCurrent() }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
     }

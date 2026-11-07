@@ -66,7 +66,7 @@ struct CompanyCoverageScreen: View {
                         }.padding(.vertical, 9).contentShape(Rectangle())
                     }.buttonStyle(PressableStyle())
                 }
-                Text("A covered loss is paid after a deductible of about \(cur.tidyShort(cur.scaledPrice(10000))); now and then the insurer pays only part. Premiums scale with revenue (property cover with what you own) and with your insurer's price factor. Anything uninsured comes out of company cash.")
+                Text("Deductible about \(cur.tidyShort(cur.scaledPrice(10000))) a claim; uninsured losses come out of company cash.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
             }
         }
@@ -83,11 +83,11 @@ struct CompanyCoverageScreen: View {
             }
         }
         if p.isOn {
-            pending = PendingAction(title: "Switch off \(name)?", message: "You save about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month, but losses of this kind are no longer covered and come out of company cash.", button: "Switch off", run: run)
+            pending = PendingAction(title: "Switch off \(name)?", message: "You save about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month, but losses of this kind are no longer covered and come out of company cash.", button: "Switch off", tone: .warning, icon: "shield.slash", run: run)
         } else if !hasInsurer {
             Haptics.warning(); store.show("Choose an insurer first.", tone: "warn")
         } else {
-            pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from company cash, starting this week, until you switch it off.", button: "Switch on", amount: p.weeklyPremium * 52 / 12, currency: cur, run: run)
+            pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from company cash, starting this week, until you switch it off.", button: "Switch on", amount: p.weeklyPremium * 52 / 12, currency: cur, tone: .info, icon: "shield", run: run)
         }
     }
 
@@ -152,7 +152,7 @@ struct CompanyCoverageScreen: View {
         let id = companyID
         let cost = a.kind == .insurer ? "Premiums change with the insurer's price factor." : "\(cur.tidyShort(a.monthlyFee)) a month from company cash."
         let verb = current == nil ? "Hire" : "Switch to"
-        pending = PendingAction(title: "\(verb) \(a.name)?", message: cost + (current != nil ? " \(current!.name) is dropped." : "") + (a.ownFirmID != nil ? " Your fees go to your own firm." : ""), button: current == nil ? "Hire" : "Switch", amount: a.kind == .insurer ? 0 : a.monthlyFee, currency: cur) {
+        pending = PendingAction(title: "\(verb) \(a.name)?", message: cost + (current != nil ? " \(current!.name) is dropped." : "") + (a.ownFirmID != nil ? " Your fees go to your own firm." : ""), button: current == nil ? "Hire" : "Switch", amount: a.kind == .insurer ? 0 : a.monthlyFee, currency: cur, tone: .info, icon: "person.badge.plus") {
             let r = store.act { (e: inout GameEngine) -> Advisers.Result in
                 if let firm = a.ownFirmID { return e.chooseOwnAdviser(companyID: id, kind: a.kind, firmID: firm) }
                 return e.chooseAdviser(companyID: id, kind: a.kind, providerID: a.id)
@@ -165,7 +165,7 @@ struct CompanyCoverageScreen: View {
     private func drop(_ kind: Advisers.Kind, _ title: String, _ current: AdviserOption, _ cur: Currency) {
         let id = companyID
         let tail = kind == .insurer ? " Policies stay switched on but are no longer backed by a named insurer: claims are paid less reliably (93%) and at standard premiums." : " You save the monthly fee, and legal matters cost more."
-        pending = PendingAction(title: "Drop \(current.name)?", message: "The \(title.lowercased()) leaves.\(tail)", button: "Drop", destructive: true) {
+        pending = PendingAction(title: "Drop \(current.name)?", message: "The \(title.lowercased()) leaves.\(tail)", button: "Drop", destructive: false, tone: .warning, icon: "person.badge.minus") {
             if store.act({ $0.chooseAdviser(companyID: id, kind: kind, providerID: 0) }) == .removed { store.show("\(current.name) dropped.", tone: "n") }
             else { store.show("Could not drop it.", tone: "warn") }
         }

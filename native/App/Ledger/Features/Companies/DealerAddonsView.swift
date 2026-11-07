@@ -27,7 +27,7 @@ struct DealerAddonsView: View {
             }
             recordsBlock(cur)
         }
-        .centerSheet(item: $applying, title: "Apply") { (a: DealerAddon) in
+        .centerSheet(item: $applying, title: "Apply", category: .compact, tone: .info) { (a: DealerAddon) in
             applyPopup(a, cur)
         }
     }
@@ -37,7 +37,7 @@ struct DealerAddonsView: View {
     private func previewBlock(_ cur: Currency) -> some View {
         let offers: [DealerAddonOffer] = engine.dealerAddonPreview(companyID: company.id, priceFactor: Self.factors[priceStep])
         let total: Double = offers.filter { $0.active }.reduce(0) { $0 + $1.expectedNet }
-        return MoreBlock(title: "Expected per sale", trailing: {
+        return PageGroup(title: "Expected per sale", trailing: {
             Text(total >= 0 ? "+" + cur.tidyShort(total) : "-" + cur.tidyShort(-total)).font(.system(size: 12).monospacedDigit()).foregroundStyle(total >= 0 ? Theme.gain : Theme.loss)
         }) {
             VStack(alignment: .leading, spacing: 10) {
@@ -46,7 +46,7 @@ struct DealerAddonsView: View {
                     KeyFigures.Item(label: o.addon.title, value: o.active ? signed(o.expectedNet, cur) : "Off", tint: o.active ? (o.expectedNet >= 0 ? Theme.gain : Theme.loss) : Theme.ivoryFaint,
                                     sub: o.active ? percent(o.takeRate) + " take it" : (o.setUp ? "Switched off" : "Not set up"))
                 })
-                Text("Added to the margin of each car sold. Switched-off add-ons do not count. Figures are averages over many customers.")
+                Text("Added to each car's margin; averages.")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -57,7 +57,7 @@ struct DealerAddonsView: View {
     private func addonBlock(_ a: DealerAddon, _ cur: Currency) -> some View {
         let setup: DealerSetupStatus? = engine.dealerAddonSetup(companyID: company.id, addon: a)
         let offer: DealerAddonOffer? = engine.dealerAddonPreview(companyID: company.id, priceFactor: Self.factors[priceStep]).first { $0.addon == a }
-        return MoreBlock(title: a.title, trailing: { statusLabel(setup) }) {
+        return PageGroup(title: a.title, trailing: { statusLabel(setup) }) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(blurb(a)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 if let s = setup {
@@ -248,7 +248,7 @@ struct DealerAddonsView: View {
     private func recordsBlock(_ cur: Currency) -> some View {
         let t: DealerAddonTotals = engine.dealerAddonTotals(companyID: company.id) ?? DealerAddonTotals()
         let reserve: Double = engine.dealerWarrantyReserve(companyID: company.id)
-        return MoreBlock("So far") {
+        return PageGroup("So far") {
             VStack(alignment: .leading, spacing: 8) {
                 FigureStrip(items: [
                     KeyFigures.Item(label: "Warranty reserve", value: cur.tidyShort(reserve), sub: "owed for claims"),

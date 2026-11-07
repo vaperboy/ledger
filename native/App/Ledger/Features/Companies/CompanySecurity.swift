@@ -14,7 +14,7 @@ struct CompanySecurityCard: View {
     var body: some View {
         let c = engine.cyberInfo(company)
         let cur = engine.currency(for: company)
-        return MoreBlock(title: "IT security", trailing: {
+        return PageGroup(title: "IT security", trailing: {
             Text("1 in \(Int((1 / max(0.002, c.yearOdds)).rounded())) a year").font(.system(size: 11)).foregroundStyle(c.yearOdds > 0.1 ? Theme.loss : Theme.ivoryFaint)
         }) {
             VStack(alignment: .leading, spacing: 8) {

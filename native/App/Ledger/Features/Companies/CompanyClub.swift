@@ -99,7 +99,7 @@ struct CompanyClub: View {
     }
 
     private func season(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
-        MoreBlock(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").textStyle(.caption, tint: Theme.inkFaint) }) {
+        PageGroup(title: "\(c.leagueName) · season \(c.season)", trailing: { Text(c.division == 1 ? "Top flight" : "Second tier").textStyle(.caption, tint: Theme.inkFaint) }) {
             VStack(alignment: .leading, spacing: 0) {
                 FigureStrip(items: seasonItems(c, cur))
                 FlatRow(label: "Recent form", value: c.form.isEmpty ? "Season not started" : "", sub: "").padding(.top, 8)
@@ -137,7 +137,7 @@ struct CompanyClub: View {
 
     private func budget(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreBlock("Budget") {
+            PageGroup("Budget") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Player wages, share of revenue").font(.caption).foregroundStyle(Theme.ivoryMuted)
                     SegmentedChoice(items: [0.55, 0.65, 0.8], title: { "\(Int($0 * 100))%" },
@@ -147,7 +147,7 @@ struct CompanyClub: View {
                                 selection: ticketBinding(c))
                 }
             }
-            MoreBlock("A normal week") {
+            PageGroup("A normal week") {
                 VStack(spacing: 0) {
                     FlatRow(label: "Television", value: cur.tidyShort(c.weekly["tv"] ?? 0), rule: false)
                     FlatRow(label: "Sponsors", value: cur.tidyShort(c.weekly["spons"] ?? 0))
@@ -165,14 +165,14 @@ struct CompanyClub: View {
 
     private func people(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            MoreBlock("Football staff", card: false) {
+            PageGroup("Football staff") {
                 VStack(alignment: .leading, spacing: 10) {
                     person(c.coach, kind: "coach", title: "Manager", cur)
                     person(c.assistant, kind: "asst", title: "Assistant manager", cur)
                 }
             }
             if !candidates.isEmpty {
-                MoreBlock("Candidates", card: false) {
+                PageGroup("Candidates") {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(candidates, id: \.id) { (cd: FootballModel.Coach) in candidateCard(cd, cur) }
                         HStack { Button("Cancel") { candidates = [] }.buttonStyle(TinyButtonStyle(tint: Theme.ivoryMuted)); Spacer() }
@@ -201,7 +201,7 @@ struct CompanyClub: View {
         let kind: String = hiringKind
         let post: String = kind == "coach" ? "manager" : "assistant manager"
         let message: String = "\(cur.tidyDisplay(cd.wage)) a week for a \(post) of quality \(cd.quality). Whoever holds the post now is replaced."
-        pending = PendingAction(title: "Hire \(cd.name)?", message: message, button: "Hire", amount: cd.wage * 52, currency: cur) {
+        pending = PendingAction(title: "Hire \(cd.name)?", message: message, button: "Hire", amount: cd.wage * 52, currency: cur, tone: .info, icon: "person.badge.plus") {
             if store.act({ $0.hireCoach(companyID: company.id, coach: cd, kind: kind) }) == true {
                 candidates = []; Haptics.success(); store.show("\(cd.name) is the new \(post).", tone: "good")
             } else { Haptics.warning(); store.show("\(cd.name) could not be hired: the club is not able to take on a \(post) now.", tone: "warn") }
@@ -235,7 +235,7 @@ struct CompanyClub: View {
 
     private func askDismiss(_ p: FootballModel.Coach, kind: String) {
         let message: String = kind == "coach" ? "The assistant steps in until you hire a new manager. Results can suffer in between." : "The club has no assistant until you hire one."
-        pending = PendingAction(title: "Dismiss \(p.name)?", message: message, button: "Dismiss", destructive: true) {
+        pending = PendingAction(title: "Dismiss \(p.name)?", message: message, button: "Dismiss", destructive: true, tone: .danger, icon: "person.badge.minus") {
             if store.act({ $0.dismissCoach(companyID: company.id, kind: kind) }) == true { Haptics.warning(); store.show("\(p.name) has gone.", tone: "n") }
             else { store.show("\(p.name) is no longer in post.", tone: "warn") }
         }
@@ -249,7 +249,7 @@ struct CompanyClub: View {
             .init(label: "Bought", value: cur.tidyShort(c.tradedIn)),
             .init(label: "Sold", value: cur.tidyShort(c.tradedOut)),
         ]
-        return MoreBlock("Transfers", card: false) {
+        return PageGroup("Transfers") {
             VStack(alignment: .leading, spacing: 10) {
                 Card(padding: 14, radius: Theme.Radius.hero) { FigureStrip(items: windowItems) }
                 ForEach(0..<FootballModel.tiers.count, id: \.self) { (i: Int) in tierCard(i, windowOpen: w.name != nil, cur) }
@@ -277,7 +277,7 @@ struct CompanyClub: View {
 
     private func askSign(_ i: Int, _ tierName: String, _ fee: Double, _ cur: Currency) {
         let message: String = "\(cur.tidyDisplay(fee)) fee now, written off over three years, and higher wages from then on. The club has \(cur.tidyShort(company.cash))."
-        pending = PendingAction(title: "Sign a \(tierName.lowercased())?", message: message, button: "Sign", amount: fee, currency: cur) {
+        pending = PendingAction(title: "Sign a \(tierName.lowercased())?", message: message, button: "Sign", amount: fee, currency: cur, tone: .investment, icon: "signature") {
             switch store.act({ $0.signPlayer(companyID: company.id, tier: i) }) {
             case .ok?: Haptics.success(); store.show("Signed.", tone: "good")
             case .closed?: store.show("The transfer window is closed.", tone: "warn")
@@ -295,7 +295,7 @@ struct CompanyClub: View {
     }
 
     private func sponsorSlot(_ c: FootballModel.Summary, _ key: String, _ title: String, _ cur: Currency) -> some View {
-        MoreBlock(title, card: false) {
+        PageGroup(title) {
             VStack(alignment: .leading, spacing: 10) {
                 if let s = c.sponsors.first(where: { $0.slot == key }) {
                     let line: String = String(format: "%.1f years left", s.yearsLeft)
@@ -334,7 +334,7 @@ struct CompanyClub: View {
                 Spacer()
                 Button("Sign…") {
                     let message: String = "\(cur.tidyDisplay(o.weekly)) a week for \(o.years) year\(plural) as your \(title.lowercased()). You cannot take another offer for this slot until it ends."
-                    pending = PendingAction(title: "Sign \(o.name)?", message: message, button: "Sign", alwaysAsk: true) {
+                    pending = PendingAction(title: "Sign \(o.name)?", message: message, button: "Sign", alwaysAsk: true, tone: .investment, icon: "signature") {
                         if store.act({ $0.signSponsor(companyID: company.id, slot: key, offerID: o.id) }) == .ok { Haptics.success(); store.show("\(o.name) signed.", tone: "good") }
                         else { store.show("That offer is no longer available.", tone: "warn") }
                     }
@@ -345,7 +345,7 @@ struct CompanyClub: View {
 
     private func table(_ c: FootballModel.Summary) -> some View {
         let cols: [TableColumn] = [TableColumn(title: "Club"), TableColumn(title: "P", width: 30), TableColumn(title: "Pts", width: 36)]
-        return MoreBlock("Table", card: false) {
+        return PageGroup("Table") {
             SharpTable {
                 TableHeader(columns: cols)
                 ForEach(c.table) { (r: FootballModel.TableRow) in
@@ -375,19 +375,19 @@ struct ClubMarketView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     MoreHeader(glyph: Glyph.achievements, title: "A professional club",
                                blurb: "You own it and set the budget, sponsors and ticket prices; the manager picks the players. Many owners will not sell at any price, and clubs come with debt. Most clubs lose money or break even.")
-                    MoreBlock("League") {
+                    PageGroup("League") {
                         VStack(alignment: .leading, spacing: 6) {
                             Picker("Country", selection: Binding(get: { code }, set: { country = $0 })) { ForEach(countries) { Text("\($0.flag) \($0.name)").tag($0.code) } }.pickerStyle(.menu)
                             if let info { Text("\(info.name) · \(info.clubs) clubs. Values are rough market estimates.").font(.caption2).foregroundStyle(Theme.ivoryFaint) }
                         }
                     }
-                    MoreBlock("Clubs", card: false) {
+                    PageGroup("Clubs") {
                         VStack(spacing: 10) {
                             ForEach(e.clubsForSale(countryCode: code), id: \.id) { (c: FootballModel.ClubInfo) in clubCard(c, cur) }
                         }
                     }
                     if let cost = e.foundingCost(countryCode: code) {
-                        MoreBlock("Found a new club") {
+                        PageGroup("Found a new club") {
                             VStack(alignment: .leading, spacing: Theme.Space.s) {
                                 Text("Start a club in the second tier. It costs about \(cur.tidyShort(cost)) and must earn promotion to the top league (finish in the top three).").font(.caption).foregroundStyle(Theme.ivoryMuted)
                                 Button("Found a club") { askToFound(code, cost, cur) }.buttonStyle(TinyButtonStyle())
@@ -400,14 +400,14 @@ struct ClubMarketView: View {
             }
             .ledgerBackground()
             .appScreen(title: "Football clubs", subtitle: "Buy a club or found a new one.")
-            .centerSheet(item: $offerFor) { c in offerSheet(c, cur) }
+            .centerSheet(item: $offerFor, category: .medium, tone: .investment) { c in offerSheet(c, cur) }
             .confirmAction($pending)
         }
     }
 
     private func askToFound(_ code: String, _ cost: Double, _ cur: Currency) {
         pending = PendingAction(title: "Found a new club?", message: "You pay about 40% of its starting value and fund the early seasons yourself.", button: "Found it",
-                                amount: cost, currency: cur, risk: "Most clubs lose money or break even.") {
+                                amount: cost, currency: cur, risk: "Most clubs lose money or break even.", tone: .investment, icon: "sportscourt") {
             switch store.act({ $0.foundClub(countryCode: code) }) {
             case .ok(let id)?: Haptics.success(); store.openCompany(id)
             case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in your account.", tone: "warn")

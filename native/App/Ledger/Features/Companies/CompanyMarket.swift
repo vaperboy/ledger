@@ -60,7 +60,7 @@ struct CompanyMarket: View {
         }
         .onAppear { if baseline.isEmpty { baseline = shareNow } }
         .onChange(of: rivalSignals) { old, new in flashRivals(old: old, new: new) }
-        .centerSheet(item: rivalBinding, title: "Rival") { r in
+        .centerSheet(item: rivalBinding, title: "Rival", category: .detail, tone: .info) { r in
             RivalSheet(engine: engine, companyID: company.id, rivalID: r.id)
         }
     }
@@ -76,7 +76,7 @@ struct CompanyMarket: View {
         case .competitors: rankedRivals
         case .prices: priceRows
         case .news: MarketEventRows(events: MarketEventRows.relevant(engine, companyID: company.id, limit: 12))
-        case .research: Card(padding: 4, radius: Theme.Radius.hero) { ResearchRow(engine: engine, company: company) }
+        case .research: VStack(alignment: .leading, spacing: Theme.Space.s) { ResearchRow(engine: engine, company: company) }
         }
     }
 
@@ -84,7 +84,7 @@ struct CompanyMarket: View {
     @ViewBuilder private var analystRow: some View {
         let v: MarketMap.HireVerdict = engine.marketAnalystVerdict(companyID: company.id)
         if v.ok {
-            Card(padding: 12, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 FlatRow(label: v.title, value: "", sub: v.text, rule: false)
             }
         }
@@ -110,7 +110,7 @@ struct CompanyMarket: View {
                 Text("Green: losing ground").textStyle(.caption, tint: Theme.inkFaint)
             }.padding(.horizontal, 2)
             if rows.isEmpty {
-                Card(padding: 12, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Rivals appear once the business has opened.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             } else {
@@ -138,7 +138,7 @@ struct CompanyMarket: View {
         return VStack(alignment: .leading, spacing: 8) {
             Text("Their prices against yours").capsLabel().padding(.horizontal, 2)
             if rows.isEmpty {
-                Card(padding: 12, radius: Theme.Radius.row) {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Prices appear once the business has opened.").textStyle(.caption, tint: Theme.inkFaint)
                 }
             } else {
@@ -186,7 +186,7 @@ struct CompanyMarket: View {
             shareHero(row, detail)
             fieldBlock(row, detail)
         } else {
-            Card(padding: 12, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("The market map fills in once the business has opened.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
@@ -207,7 +207,7 @@ struct CompanyMarket: View {
         let changeText: String = moved.map { String(format: "%+.1f points on last month", $0) } ?? "Monthly points appear as months close"
         let changeTint: Color = (moved ?? 0) < 0 ? Theme.loss : ((moved ?? 0) > 0 ? Theme.gain : Theme.ivoryFaint)
         return NavigationLink { MarketDetailView(marketKey: row.id) } label: {
-            Card(padding: 14, radius: Theme.Radius.hero) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 10) {
                         IconCircle(glyph: Glyph.stats, size: 34)
@@ -266,7 +266,7 @@ struct CompanyMarket: View {
     @ViewBuilder private func fieldBlock(_ row: MarketRow, _ detail: MarketDetail?) -> some View {
         let bars: [FieldBar] = fieldBars(detail, row.shareText)
         if row.level.canDrawShareGraph, bars.count >= 2 {
-            MoreBlock(title: "Against the field", trailing: {
+            PageGroup(title: "Against the field", trailing: {
                 Text("\(max(0, bars.count - 1)) rivals sized").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 fieldChart(bars)
@@ -319,7 +319,7 @@ struct RivalSheet: View {
                 Text("This rival is gone.").foregroundStyle(Theme.ivoryMuted)
             }
         }
-        .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price }), title: "Acquisition") { p in
+        .centerSheet(item: Binding(get: { pendingPrice.map { PriceID(price: $0) } }, set: { pendingPrice = $0?.price }), title: "Acquisition", category: .detail, tone: .investment) { p in
                 AcquisitionSheet(companyID: companyID, rivalID: rivalID, price: p.price) { kind in
                     switch kind {
                     case .own: pendingPrice = nil; buy(p.price)
@@ -355,7 +355,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func factsSection(_ d: RivalDetail) -> some View {
-            MoreBlock(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
+            PageGroup(d.analyst.map { "\($0), your analyst" } ?? "Your feeling") {
                 VStack(spacing: 0) {
                     ForEach(Array(d.facts.enumerated()), id: \.element.id) { n, f in
                         if n > 0 { CardLine() }
@@ -366,7 +366,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func ownerSection(_ d: RivalDetail) -> some View {
-            MoreBlock("The owner") {
+            PageGroup("The owner") {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(d.moodWord) · \(d.temperament)").popupText(.body)
                     Text(d.nextMove).popupText(.caption)
@@ -383,7 +383,7 @@ struct RivalSheet: View {
 
     @ViewBuilder private func groupSection(_ d: RivalDetail) -> some View {
             if let g = d.group {
-                MoreBlock("Group behind it") {
+                PageGroup("Group behind it") {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(g.name).popupText(.body)
                         Text("\(g.strategyName): \(g.strategyText)").popupText(.caption)
@@ -394,7 +394,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func reviewsSection(_ d: RivalDetail) -> some View {
-            MoreBlock(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).popupText(.caption) }) {
+            PageGroup(title: "Reviews", trailing: { Text(String(format: "%.1f ★ · %d", d.reviewRating, d.reviewCount)).popupText(.caption) }) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(d.reviews) { r in
                         Text("\(String(repeating: "★", count: r.stars)) \(r.text)").popupText(.subtitle)
@@ -405,7 +405,7 @@ struct RivalSheet: View {
 
     @ViewBuilder private func cutSection(_ e: GameEngine, _ d: RivalDetail) -> some View {
             if let cut = e.rivalPriceCut(companyID: companyID, rivalID: rivalID), cut.answered == nil {
-                MoreBlock("\(d.rival.name) cut prices \(cut.pct)%") {
+                PageGroup("\(d.rival.name) cut prices \(cut.pct)%") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Some of your customers are trying them. It runs until about week \(cut.end).").popupText(.caption)
                         Button("Match their price") { answerCut(.match) }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
@@ -419,7 +419,7 @@ struct RivalSheet: View {
     }
 
     @ViewBuilder private func actionsSection(_ e: GameEngine, _ co: Company, _ d: RivalDetail, _ cur: Currency) -> some View {
-            MoreBlock("What you can do") {
+            PageGroup("What you can do") {
                 VStack(alignment: .leading, spacing: 10) {
                     Button("Meet the owner · " + cur.tidyShort(cur.scaledPrice(4000))) {
                         let r = store.act { $0.meetRival(companyID: companyID, rivalID: rivalID) }
@@ -554,7 +554,7 @@ struct MarketView: View {
         case .overview?: shares(e, compact: true)
         case .competitors?: groups(e)
         case .prices?:
-            Card(padding: 12, radius: Theme.Radius.row) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Choose a business above to compare its prices with its rivals.").textStyle(.caption, tint: Theme.inkFaint)
             }
         case .news?: MarketEventRows(events: MarketEventRows.relevant(e, companyID: nil, limit: 12))
@@ -566,7 +566,7 @@ struct MarketView: View {
         let rows = e.marketRows()
         let weight = e.economyWeight()
         let note: String = weight.biggestShare >= 0.35 ? "You hold over a third of a market. A price war now can bring a fine for abusing a dominant position." : "At about a third of a local market, the competition authority starts to watch your pricing."
-        return VStack(alignment: .leading, spacing: Theme.Space.l) { MoreBlock("Your share of each market") {
+        return VStack(alignment: .leading, spacing: Theme.Space.l) { PageGroup("Your share of each market") {
             VStack(spacing: 0) {
                 if rows.isEmpty { Text("Your share shows up here once one of your businesses is open.").textStyle(.caption, tint: Theme.inkFaint) }
                 ForEach(Array(rows.enumerated()), id: \.element.id) { n, r in
@@ -583,7 +583,7 @@ struct MarketView: View {
             }
         }
             if !compact { DataAnalystCard() }
-            MoreBlock("Your weight in the economy") {
+            PageGroup("Your weight in the economy") {
                 VStack(spacing: 6) {
                     weightRow("Share of all business loans", weight.debt > 0 ? String(format: "%.2f%%", weight.loanShare * 100) : "None")
                     weightRow("Jobs you provide", "\(weight.jobs)")
@@ -605,7 +605,7 @@ struct MarketView: View {
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             if gs.isEmpty { Text("Groups that compete near you appear once a business is open.").textStyle(.caption, tint: Theme.inkFaint) }
             ForEach(gs.prefix(12)) { g in
-                MoreBlock(title: g.name, card: true, trailing: { Text(g.strategyName).textStyle(.caption, tint: Theme.inkFaint) }) {
+                PageGroup(title: g.name, trailing: { Text(g.strategyName).textStyle(.caption, tint: Theme.inkFaint) }) {
                     VStack(alignment: .leading, spacing: 6) {
                         ThumbnailView(kind: .logo, key: "group|\(g.id)", size: 40, shape: .square, glyph: Glyph.group, initials: g.name)
                         Text("\(g.owner) · \(g.branches) sites · cash \(g.cashWord.lowercased()) · debt \(g.debtWord.lowercased())" + (g.inTrouble ? " · in money trouble" : ""))
@@ -634,15 +634,15 @@ struct MarketDetailView: View {
         ScrollView {
             if let e = store.engine, let d = e.marketDetail(key: marketKey) {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    Card(padding: 14, radius: Theme.Radius.hero) {
+                    VStack(alignment: .leading, spacing: Theme.Space.s) {
                         FigureStrip(items: [
                             .init(label: "Your share", value: d.shareText),
                             .init(label: "Market a year", value: d.sizeText ?? "Not known"),
                             .init(label: "Your sales", value: store.short(d.yourSales)),
                         ])
                     }
-                    if d.history.count >= 3, d.level.canDrawShareGraph { MoreBlock("Your share, month by month") { Sparkline(values: d.history).frame(height: 54).orgRedraw(d.history) } }
-                    MoreBlock("Who has the market") {
+                    if d.history.count >= 3, d.level.canDrawShareGraph { PageGroup("Your share, month by month") { Sparkline(values: d.history).frame(height: 54).orgRedraw(d.history) } }
+                    PageGroup("Who has the market") {
                         VStack(spacing: 0) {
                             ForEach(Array(d.players.enumerated()), id: \.element.id) { n, p in
                                 if n > 0 { CardLine() }
@@ -664,7 +664,7 @@ struct MarketDetailView: View {
                         }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
                     }
                     if !d.report.isEmpty {
-                        MoreBlock(d.analystName.isEmpty ? "Report" : "\(d.analystName)'s report") {
+                        PageGroup(d.analystName.isEmpty ? "Report" : "\(d.analystName)'s report") {
                             VStack(alignment: .leading, spacing: 5) { ForEach(d.report, id: \.self) { Text($0).textStyle(.caption).fixedSize(horizontal: false, vertical: true) } }
                         }
                     } else {

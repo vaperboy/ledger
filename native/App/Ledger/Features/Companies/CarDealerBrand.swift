@@ -50,7 +50,7 @@ struct CarBrandList: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("A brand contract replaces the distributor: you sell only that brand, at the brand's dealer margin, for the whole term. Leaving early costs a penalty. The brand reviews you every year and offers a renewal only if it is happy.")
+            Text("One brand only, at its margin, for the term; leaving early costs a penalty.")
                 .popupText(.subtitle)
             ForEach(terms, id: \.brand.id) { (t: CarBrandContract.Terms) in
                 NavigationLink(value: t.brand.id) { card(t) }.buttonStyle(PressableStyle())
@@ -109,7 +109,7 @@ struct CarBrandTermsView: View {
     @ViewBuilder private func content(_ t: CarBrandContract.Terms, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             Text(t.brand.blurb).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-            MoreBlock("Terms") {
+            PageGroup("Terms") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "Term", value: "\(t.years) years", rule: false)
                     FlatRow(label: "Dealer margin", value: Currency.percent(t.margin, decimals: 1), sub: "Taken off the list price on every invoice.")
@@ -118,14 +118,14 @@ struct CarBrandTermsView: View {
                     FlatRow(label: "Leaving early", value: cur.tidyShort(t.exitPenalty), sub: "Less the later you leave.")
                 }
             }
-            MoreBlock("Minimum standards") {
+            PageGroup("Minimum standards") {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(t.standards.enumerated()), id: \.element.id) { (item: (offset: Int, element: CarBrandContract.Standard)) in
                         CarStandardRow(standard: item.element, rule: item.offset > 0)
                     }
                 }
             }
-            MoreBlock("Range", card: false) {
+            PageGroup("Range") {
                 Text(t.brand.models.map { $0.name }.joined(separator: ", ")).textStyle(.body, tint: Theme.inkSoft)
             }
             Button { ask(t) } label: { Text(t.allMet ? "Sign the contract" : "Standards not met").frame(maxWidth: .infinity) }
@@ -135,7 +135,7 @@ struct CarBrandTermsView: View {
 
     private func ask(_ t: CarBrandContract.Terms) {
         let message: String = "You sell only \(t.brand.name) for \(t.years) years at a \(Currency.percent(t.margin, decimals: 1)) dealer margin, with a target of \(t.target) cars a year. The distributor is closed to you until the contract ends. Leaving early costs a penalty."
-        pending = PendingAction(title: "Sign with \(t.brand.name)?", message: message, button: "Sign", alwaysAsk: true) {
+        pending = PendingAction(title: "Sign with \(t.brand.name)?", message: message, button: "Sign", alwaysAsk: true, tone: .investment, icon: "signature") {
             let r = store.act { $0.carBrandSign(companyID: companyID, brandID: brandID) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show("Signed with \(t.brand.name).", tone: "good"); dismiss() }
@@ -155,7 +155,7 @@ struct CarContractView: View {
         let a = active
         VStack(alignment: .leading, spacing: 18) {
             if let o = a.offer { renewal(o) }
-            MoreBlock("Contract") {
+            PageGroup("Contract") {
                 VStack(alignment: .leading, spacing: 0) {
                     FlatRow(label: "Brand", value: a.brand.name, rule: false)
                     FlatRow(label: "Ends", value: GameCalendar.dateString(week: a.end, dayOffset: 0), sub: "\(a.weeksLeft) weeks left")
@@ -164,7 +164,7 @@ struct CarContractView: View {
                 }
             }
             results(a)
-            MoreBlock("Standards") {
+            PageGroup("Standards") {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(a.standards.enumerated()), id: \.element.id) { (item: (offset: Int, element: CarBrandContract.Standard)) in
                         CarStandardRow(standard: item.element, rule: item.offset > 0)
@@ -177,7 +177,7 @@ struct CarContractView: View {
     }
 
     private func results(_ a: CarBrandContract.Active) -> some View {
-        MoreBlock("Results this year") {
+        PageGroup("Results this year") {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Cars sold", value: "\(a.sold) of \(a.target)", sub: "Year began \(GameCalendar.dateString(week: a.yearStart, dayOffset: 0)). 1.00 pace is on target.", rule: false)
                 FlatRow(label: "Pace", value: String(format: "%.2f", a.pace), tint: a.pace >= 1 ? Theme.gain : (a.pace >= 0.6 ? Theme.ivory : Theme.loss))
@@ -191,7 +191,7 @@ struct CarContractView: View {
     }
 
     private func renewal(_ o: CarBrandContract.Offer) -> some View {
-        MoreBlock("Renewal offer") {
+        PageGroup("Renewal offer") {
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(active.brand.name) is happy with your results and offers a new term.").textStyle(.body, tint: Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true).padding(.bottom, 6)
@@ -214,7 +214,7 @@ struct CarContractView: View {
 
     private func askToLeave(_ a: CarBrandContract.Active) {
         let message: String = "You pay \(currency.tidyShort(a.exitPenalty)) and the contract with \(a.brand.name) ends now. Cars you already have stay yours. You can order from the distributor again."
-        pending = PendingAction(title: "Leave the brand contract?", message: message, button: "Pay \(currency.tidyShort(a.exitPenalty)) and leave", destructive: true) {
+        pending = PendingAction(title: "Leave the brand contract?", message: message, button: "Pay \(currency.tidyShort(a.exitPenalty)) and leave", destructive: true, tone: .danger, icon: "xmark.octagon") {
             let r = store.act { $0.carBrandLeave(companyID: companyID) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show("You left the contract.", tone: "warn") }

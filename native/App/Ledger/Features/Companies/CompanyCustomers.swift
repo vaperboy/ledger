@@ -15,9 +15,9 @@ struct CompanyCustomers: View {
     var company: Company
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            segments
+        VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             mood
+            segments
             reviewsLink
             accounts
             creditCheck
@@ -35,31 +35,16 @@ struct CompanyCustomers: View {
         if r.count > 0 {
             loyaltyStrip(r)
             starsBlock(r)
-        } else {
-            Card(padding: 12, radius: Theme.Radius.row) {
-                Text("Reviews arrive once customers come.").textStyle(.caption, tint: Theme.inkFaint)
-            }
         }
     }
 
+    /// The rating as the hero: the stars' figure, the word, how many reviews and the reputation.
     private func moodHero(_ r: ReviewSummary) -> some View {
-        let items: [KeyFigures.Item] = [
-            .init(label: "Reviews", value: "\(r.count)"),
-            .init(label: "Reputation", value: StandingWords.reputation(company.reputation)),
-        ]
-        return Card(padding: 14, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    if r.enough {
-                        StarRatingView(rating: r.rating, size: 22)
-                    } else {
-                        Text("No rating yet").font(.serifTitle(22)).foregroundStyle(Theme.ivoryMuted)
-                    }
-                    Spacer()
-                    if r.enough { Text(r.word).textStyle(.caption, tint: Theme.accent, weight: .medium) }
-                }
-                FigureStrip(items: items, columns: 2)
-            }
+        let context: String = r.count == 0 ? "Reviews arrive once customers come" : "\(r.count.countText("review")) \u{00B7} reputation " + StandingWords.reputation(company.reputation).lowercased()
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            CompanyHero(label: "Customer rating", value: r.enough ? String(format: "%.1f", r.rating) : "\u{2013}",
+                        change: r.enough ? r.word : "No rating yet", changeTint: r.enough ? Theme.accent : Theme.inkSoft, context: context)
+            if r.enough { StarRatingView(rating: r.rating, size: 18) }
         }
     }
 
@@ -70,7 +55,7 @@ struct CompanyCustomers: View {
         let happy: Double = Double((h.count > 4 ? h[3] + h[4] : 0)) / total
         let neutral: Double = Double(h.count > 2 ? h[2] : 0) / total
         let unhappy: Double = Double((h.count > 1 ? h[0] + h[1] : 0)) / total
-        return MoreBlock(title: "Happy and unhappy", trailing: {
+        return PageGroup(title: "Happy and unhappy", trailing: {
             Text("of reviews written").textStyle(.caption, tint: Theme.inkFaint)
         }) {
             VStack(alignment: .leading, spacing: 10) {
@@ -92,7 +77,7 @@ struct CompanyCustomers: View {
 
     private func starsBlock(_ r: ReviewSummary) -> some View {
         let bars: [StarBar] = r.histogram.enumerated().map { (i: Int, c: Int) in StarBar(id: i + 1, count: c) }
-        return MoreBlock("Stars given") {
+        return PageGroup("Stars given") {
             Chart(bars) { (b: StarBar) in
                 BarMark(x: .value("Stars", "\(b.id)★"), y: .value("Reviews", b.count))
                     .foregroundStyle(b.id >= 4 ? Theme.gain : (b.id == 3 ? Theme.gold : Theme.loss))
@@ -107,9 +92,8 @@ struct CompanyCustomers: View {
 
     /// A link to everything customers wrote (the Reviews app, on this company).
     private var reviewsLink: some View {
-        SettingsTable(heading: "Reviews") {
-            SettingsTableRow(title: "What customers wrote", note: "Yours and your rivals'", value: "Reviews app") { store.openReviews(companyID: company.id) }
-        }
+        LedgerRow(leading: .glyph(Glyph.reports), leadingTint: Theme.inkSoft, title: "What customers wrote", subtitle: "Reviews app",
+                  identifier: "customers-reviews") { store.openReviews(companyID: company.id) }
     }
 
     // MARK: Buyers
@@ -118,7 +102,7 @@ struct CompanyCustomers: View {
     @ViewBuilder private var segments: some View {
         if let t = engine.tradeInfo(companyID: company.id) {
             let biz: Double = min(1, max(0, t.businessShare))
-            MoreBlock("Who buys") {
+            PageGroup("Who buys") {
                 VStack(alignment: .leading, spacing: 10) {
                     GeometryReader { g in
                         HStack(spacing: 2) {
@@ -138,15 +122,13 @@ struct CompanyCustomers: View {
     @ViewBuilder private var accounts: some View {
         let info = engine.keyAccountInfo(company)
         if info.allowed || !info.accounts.isEmpty {
-            MoreBlock(title: "Key accounts", card: false, trailing: {
+            PageGroup(title: "Key accounts", trailing: {
                 Text("\(info.accounts.count) of \(info.limit)").textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 VStack(alignment: .leading, spacing: 10) {
                     if info.accounts.isEmpty {
-                        Card(padding: 12, radius: Theme.Radius.row) {
-                            Text("Larger buyers ask to place regular orders once you are known and well regarded. A manager signs them; otherwise the offer waits in the inbox.")
-                                .textStyle(.caption, tint: Theme.inkFaint)
-                        }
+                        Text("None yet.")
+                            .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(info.accounts, id: \.id) { (a: KeyAccounts.Account) in
                         EntityCard { AccountRow(engine: engine, company: company, account: a) }
@@ -160,14 +142,14 @@ struct CompanyCustomers: View {
     @ViewBuilder private var creditCheck: some View {
         if let t = engine.tradeInfo(companyID: company.id), t.businessShare > 0, company.status.isLive {
             let on = company.value("flags")["ccheck"].bool
-            MoreBlock(title: "Credit check", trailing: { Text(on ? "on" : "off").font(.system(size: 11)).foregroundStyle(on ? Theme.gain : Theme.ivoryFaint) }) {
+            PageGroup(title: "Credit check", trailing: { Text(on ? "on" : "off").font(.system(size: 11)).foregroundStyle(on ? Theme.gain : Theme.ivoryFaint) }) {
                 Toggle(isOn: Binding(get: { on }, set: { v in
                     _ = store.act { $0.setCreditCheck(companyID: company.id, on: v) }
                     store.show(v ? "Buyers' credit is checked before you sell on account." : "Credit checks switched off.", tone: "n")
                 })) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Check buyers before selling on account").textStyle(.body)
-                        Text("Costs about 0.4% of what you invoice to businesses. Benefit: unpaid invoices become about 70% less likely. Risk of leaving it off: a bad debt is written off in full.")
+                        Text("About 0.4% of business invoices; about 70% fewer unpaid ones.")
                             .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     }
                 }.tint(Theme.gold)
@@ -225,7 +207,7 @@ private struct AccountRow: View {
                 Button("End contract…") {
                     pending = PendingAction(title: "End the contract with \(account.name)?",
                                             message: "Their regular orders stop at once and you would have to win them over again to get them back." + (account.owed > 0 ? " They still owe you \(cur.tidyShort(account.owed)) on invoices." : ""),
-                                            button: "End contract", destructive: true) {
+                                            button: "End contract", destructive: false, tone: .warning, icon: "xmark.circle") {
                         if store.act({ $0.dropAccount(companyID: company.id, accountID: account.id) }) == true { Haptics.warning(); store.show("Contract with \(account.name) ended.", tone: "n") }
                         else { store.show("That contract is already gone.", tone: "warn") }
                     }

@@ -61,6 +61,8 @@ struct CompanyDetailView: View {
     @State private var salesPart: SalesPart = .sales
     @State private var moneyPart: CompanyMoneyPart = .summary
     @State private var opsPart: OpsPart = .setup
+    /// The last opened Manage or Sales page, kept while it slides away.
+    @State private var heldOpsPart: OpsPart = .setup
     @State private var appliedPart = false
 
     init(companyID: Int, initial: CompanyTab? = nil, part: String? = nil) {
@@ -104,6 +106,11 @@ struct CompanyDetailView: View {
                 if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
             }
             .onAppear { applyPart(tabs) }
+            // One destination for the pages Manage and Sales open (licences, suppliers, equipment, develop ...): both sections live in the pager at once.
+            .navigationDestination(isPresented: Binding(get: { opsPart != .setup }, set: { if !$0 { opsPart = .setup } })) {
+                OpsPageDestination(part: opsPart == .setup ? heldOpsPart : opsPart, companyID: companyID)
+            }
+            .onChange(of: opsPart) { (_: OpsPart, new: OpsPart) in if new != .setup { heldOpsPart = new } }
         } else {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
@@ -113,13 +120,12 @@ struct CompanyDetailView: View {
         let a: [CompanySection] = Self.availableSections(co, e)
         switch tab {
         case .overview:
-            CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart)
+            CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, openOps: { (p: OpsPart) in opsPart = p })
         case .team:
             if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
         case .manage:
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
-                CompanyMorePages(engine: e, company: co, pages: [.energy, .salmon, .club])
             } else {
                 CompanyClub(engine: e, company: co)
             }
@@ -185,11 +191,8 @@ struct CompanyDetailView: View {
         var parts: [String] = []
         if let ch = e.chainOf(companyID: co.id) { parts.append("Store of " + (ch["name"].string.isEmpty ? "your chain" : ch["name"].string)) }
         if co.holdingID != 0, let h = e.state.company(co.holdingID) { parts.append("Under " + h.name) }
-        if let boss = e.decisionChain(companyID: co.id).first {
-            parts.append("Run by \(boss.name), \(GameEngine.bossTitle(boss.kind, trade: e.tradeInfo(companyID: co.id)).lowercased())")
-        } else if co.status == .open && co.type != "hold" {
-            parts.append(OwnerHours.works(co) ? "Run by you" : "No one runs it")
-        }
+        let runner: String = CompanyRunner.of(co, e).short
+        if !runner.isEmpty { parts.append(runner) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
