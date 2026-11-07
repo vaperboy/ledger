@@ -1,1 +1,0 @@
-ShotsNavTests/testShots

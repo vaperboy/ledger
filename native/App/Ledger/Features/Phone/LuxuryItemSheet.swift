@@ -47,31 +47,14 @@ struct LuxuryItemSheet: View {
     private func settlementChoice(_ e: GameEngine, _ it: Luxury.Item) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Settlement").textStyle(.label)
-            HStack(spacing: Theme.Space.s) {
-                option(.cash, "Cash", "Paid in full from your cash")
-                option(.financed, "Financed", "20% down, the bank lends the rest")
-            }
+            SegmentedPill(items: [Settlement.cash, Settlement.financed], title: { (s: Settlement) -> String in s == .cash ? "Cash" : "Financed" },
+                          selection: Binding<Settlement>(get: { settlement }, set: { (s: Settlement) in settlement = s; problem = nil }),
+                          identifier: { (s: Settlement) -> String in "luxury-settle-" + (s == .cash ? "cash" : "financed") })
+            Text(settlement == .cash ? "Paid in full from your cash." : "20% down; the bank lends the rest.").textStyle(.caption)
             if settlement == .financed { financeLines(e, it) }
             if let p = problem { Text(p).popupText(.risk) }
         }
         .padding(.horizontal, Theme.Space.page)
-    }
-
-    private func option(_ s: Settlement, _ title: String, _ sub: String) -> some View {
-        let on: Bool = settlement == s
-        return Button { Haptics.choose(); settlement = s; problem = nil } label: {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title).textStyle(.headline, tint: on ? P.accent : P.ink)
-                Text(sub).textStyle(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
-            .padding(Theme.Space.m)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(on ? P.accentWash : P.surface))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("luxury-settle-" + (s == .cash ? "cash" : "financed"))
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     @ViewBuilder private func financeLines(_ e: GameEngine, _ it: Luxury.Item) -> some View {

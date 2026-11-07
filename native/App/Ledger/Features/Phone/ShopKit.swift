@@ -4,9 +4,10 @@ import GameCore
 import UIKit
 #endif
 
-/// The one shop kit of the outside shopping apps (AirStay, TechPro Store, Atlas Insurance, Marketplace): band, page, sections, product card,
-/// choice rows, facts, checkout pieces and the success page. Each app keeps its own palette (`OutsidePalette.airStay`, `.techPro`, `.atlas`,
-/// `.marketplace`); every piece reads its colours from `\.outsidePalette` and its type, spacing and buttons from the design system.
+/// The one shop kit of the outside shopping apps (AirStay, TechPro Store, Atlas Insurance, Marketplace): top bar, page, hero, sections,
+/// product card, choice rows, facts, checkout pieces and the success page. Each app keeps its own palette (`OutsidePalette.airStay`,
+/// `.techPro`, `.atlas`, `.marketplace`); every piece reads its colours from `\.outsidePalette` and its type, spacing and buttons from the
+/// design system. Content sits on the page: no boxes, hierarchy by type and space.
 extension Glyph {
     static let airStay = "M3 11 L12 4 L21 11 M5.5 9.5 V20 H18.5 V9.5 M9.5 20 V14 H14.5 V20"
     static let techPro = "M5 8 H19 L18 21 H6 Z M9 8 V6.5 A3 3 0 0 1 15 6.5 V8 M9.5 13 H14.5"
@@ -26,7 +27,8 @@ enum ShopMetrics {
 
 // MARK: Chrome
 
-/// The brand band at the top of an app: back button, the app's mark and name in the brand colour, and a trailing control.
+/// The app's top bar: back, the brand mark and name, a trailing control. On the page colour like a real app's navigation bar; the brand
+/// colour is only in the mark. `color` tints the mark.
 struct ShopBand<Trailing: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -37,13 +39,13 @@ struct ShopBand<Trailing: View>: View {
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
-        HStack(spacing: Theme.Space.s) {
+        HStack(spacing: Theme.Space.xs) {
             if let onBack {
                 Button {
                     Haptics.tap()
                     onBack()
                 } label: {
-                    LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: P.onAccent)
+                    LedgerGlyph(glyph: Glyph.back, size: Theme.Icon.medium, tint: P.ink)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -51,18 +53,21 @@ struct ShopBand<Trailing: View>: View {
                 .accessibilityLabel(backLabel)
                 .accessibilityIdentifier("back-button")
             }
-            LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: P.onAccent)
-            Text(title)
-                .textStyle(.figure, tint: P.onAccent, weight: .semibold)
-                .lineLimit(1).minimumScaleFactor(0.7)
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: glyph, size: Theme.Icon.medium, tint: color)
+                Text(title)
+                    .textStyle(.headline, tint: P.ink, weight: .semibold)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Theme.Space.s)
             trailing()
         }
         .padding(.leading, onBack == nil ? Theme.Space.l : Theme.Space.xs).padding(.trailing, Theme.Space.s)
-        .padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
+        .frame(minHeight: 48)
         .frame(maxWidth: .infinity)
-        .background(color.ignoresSafeArea(edges: .top))
+        .background(P.page.ignoresSafeArea(edges: .top))
     }
 }
 
@@ -72,7 +77,7 @@ extension ShopBand where Trailing == EmptyView {
     }
 }
 
-/// The in-app tabs under the band (Store, Products, My items ...): the one segment control, with a marker on a tab holding something new.
+/// The in-app tabs under the bar (Store, Products, My items ...): the one segment control, with a marker on a tab holding something new.
 struct ShopTabs<T: Hashable>: View {
     @Environment(\.outsidePalette) private var P
     var items: [T]
@@ -83,7 +88,7 @@ struct ShopTabs<T: Hashable>: View {
 
     var body: some View {
         SegmentTrack(items: items, title: title, selection: $selection, identifier: identifier, badges: badges)
-            .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
+            .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.s)
             .frame(maxWidth: ShopMetrics.maxWidth).frame(maxWidth: .infinity)
             .background(P.page)
     }
@@ -105,20 +110,56 @@ struct ShopScroll<Content: View>: View {
     }
 }
 
-/// A shop page: the scroll, the page margins and one rhythm between its sections.
+/// A shop page: the scroll, the page margins and one rhythm between its sections (28 pt).
 struct ShopPage<Content: View>: View {
-    var spacing: CGFloat = Theme.Space.xl
+    var spacing: CGFloat = 28
     @ViewBuilder var content: () -> Content
 
     var body: some View {
         ShopScroll {
             VStack(alignment: .leading, spacing: spacing) { content() }
-                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.l).padding(.bottom, Theme.Space.xl)
+                .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.xxl)
         }
     }
 }
 
 // MARK: Headings and sections
+
+/// The opening of a screen: a small label, the one figure or state that matters (large serif), one line of context, and an optional
+/// control under it (the screen's action).
+struct ShopHero<Action: View>: View {
+    @Environment(\.outsidePalette) private var P
+    var label: String = ""
+    var value: String
+    var note: String = ""
+    var noteTint: Color? = nil
+    var valueTint: Color? = nil
+    @ViewBuilder var action: () -> Action
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            if !label.isEmpty { Text(label.tidyText).capsLabel(P.inkFaint).lineLimit(1) }
+            Text(value.tidyText)
+                .font(.system(size: heroSize, weight: .medium, design: .serif).monospacedDigit())
+                .foregroundStyle(valueTint ?? P.ink)
+                .lineLimit(2).minimumScaleFactor(0.5)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            if !note.isEmpty {
+                Text(note.tidyText).textStyle(.body, tint: noteTint ?? P.inkSoft).fixedSize(horizontal: false, vertical: true)
+            }
+            action().padding(.top, Theme.Space.m)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension ShopHero where Action == EmptyView {
+    init(label: String = "", value: String, note: String = "", noteTint: Color? = nil, valueTint: Color? = nil) {
+        self.init(label: label, value: value, note: note, noteTint: noteTint, valueTint: valueTint, action: { EmptyView() })
+    }
+}
 
 /// A page title with an optional line under it (Checkout, Payment details, Choose company).
 struct ShopPageTitle: View {
@@ -138,21 +179,21 @@ struct ShopPageTitle: View {
     }
 }
 
-/// The title above a block ("Deals this week", "Delivery method"): the caps section label, with a count or note on the right.
+/// The title above a block ("Deals this week", "Delivery"): the caps section label in faint ink, with a count or note on the right.
 struct ShopHeading: View {
     @Environment(\.outsidePalette) private var P
     var text: String
     var trailing: String = ""
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-            Text(text.tidyText).capsLabel().accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
+            Text(text.tidyText).capsLabel(P.inkFaint).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: Theme.Space.s)
             if !trailing.isEmpty { Text(trailing.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1) }
         }
     }
 }
 
-/// A block of a shop page: heading, an optional explaining line, the content. No box: spacing and type carry it.
+/// A block of a shop page: heading, an optional one-line note, the content. No box: spacing and type carry it.
 struct ShopSection<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String = ""
@@ -172,7 +213,7 @@ struct ShopSection<Content: View>: View {
     }
 }
 
-/// A short titled paragraph with an optional action under it ("Or buy it", "Space in your own building", "Condition").
+/// A short titled paragraph with an optional text action under it ("Or buy it", "Space in your own building").
 struct ShopNote: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -182,14 +223,14 @@ struct ShopNote: View {
     var action: () -> Void = {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(title.tidyText).textStyle(.headline)
             Text(text.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
             if let actionTitle {
                 Button(actionTitle) { Haptics.tap(); action() }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
                     .modifier(OptionalIdentifier(identifier: identifier))
-                    .padding(.top, Theme.Space.xs)
+                    .padding(.leading, -Theme.Space.s)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -209,7 +250,7 @@ struct ShopEmptyNote: View {
             EmptyState(glyph: glyph, title: text)
             if let buttonTitle {
                 Button(buttonTitle) { Haptics.tap(); action() }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .buttonStyle(TertiaryButtonStyle(size: .compact))
                     .accessibilityIdentifier("shop-empty-action")
             }
         }
@@ -226,7 +267,7 @@ struct ShopPhoto: View {
     var name: String
     var glyph: String
     var height: CGFloat = 150
-    var cornerRadius: CGFloat = Theme.Radius.medium
+    var cornerRadius: CGFloat = Theme.Radius.large
     /// A cell key of the items sheet (`ArtLibrary.itemKey`); wins over `name` when the cell exists.
     var item: String = ""
 
@@ -262,14 +303,27 @@ struct ShopPhoto: View {
     }
 }
 
-/// The one product card of the shops: picture, name, grey lines, the price (with a unit and a discount) and a status note. Grids use it
-/// at a small picture height, listings at a tall one. The caller wraps it in a button.
+/// A small square picture for a list row (48 pt, rounded).
+struct ShopThumb: View {
+    var photo: String = ""
+    var glyph: String
+    var item: String = ""
+    var size: CGFloat = 48
+
+    var body: some View {
+        ShopPhoto(name: photo, glyph: glyph, height: size, cornerRadius: Theme.Radius.small, item: item)
+            .frame(width: size, height: size)
+    }
+}
+
+/// The one product card of the shops: the picture on its own, then the name, grey lines, the price (with a unit and a discount) and a
+/// status note straight on the page. Grids use it at a small picture height, listings at a tall one. The caller wraps it in a button.
 struct ShopProductCard: View {
     @Environment(\.outsidePalette) private var P
     var photo: String = ""
     var glyph: String
     var item: String = ""
-    var photoHeight: CGFloat = 96
+    var photoHeight: CGFloat = 120
     var title: String
     var lines: [String] = []
     var price: String = ""
@@ -280,9 +334,17 @@ struct ShopProductCard: View {
     var noteTint: Color? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            ShopPhoto(name: photo, glyph: glyph, height: photoHeight, cornerRadius: Theme.Radius.small, item: item)
-                .padding(.bottom, Theme.Space.xs)
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            ShopPhoto(name: photo, glyph: glyph, height: photoHeight, cornerRadius: Theme.Radius.medium, item: item)
+                .overlay(alignment: .topLeading) {
+                    if deal > 0 {
+                        Text("-\(deal)%").textStyle(.caption, weight: .semibold).containerInk(Color.white)
+                            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
+                            .background(Capsule().fill(P.loss))
+                            .padding(Theme.Space.s)
+                    }
+                }
+                .padding(.bottom, Theme.Space.s)
             Text(title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
             ForEach(Array(lines.enumerated()), id: \.offset) { (_: Int, line: String) in
                 Text(line.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading)
@@ -291,16 +353,14 @@ struct ShopProductCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
                     Text(price.tidyText).textStyle(.headline, tint: priceTint, numeric: true, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
                     if !priceUnit.isEmpty { Text(priceUnit.tidyText).textStyle(.caption).lineLimit(1) }
-                    if deal > 0 { Text("-\(deal)%").textStyle(.caption, tint: P.loss, weight: .semibold) }
                 }
+                .padding(.top, Theme.Space.xxs)
             }
             if !note.isEmpty {
                 Text(note.tidyText).textStyle(.caption, tint: noteTint ?? P.inkFaint, weight: .medium).lineLimit(2).multilineTextAlignment(.leading)
             }
         }
-        .padding(Theme.Space.s)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.surface))
         .contentShape(Rectangle())
     }
 }
@@ -310,8 +370,8 @@ struct ShopGrid<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible(), spacing: Theme.Space.m)],
-                  alignment: .leading, spacing: Theme.Space.m, content: content)
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.l), GridItem(.flexible(), spacing: Theme.Space.l)],
+                  alignment: .leading, spacing: Theme.Space.xl, content: content)
     }
 }
 
@@ -324,7 +384,7 @@ struct ShopFilledButtonStyle: ButtonStyle {
     }
 }
 
-/// A chip of a row of choices (Offices, Shops, Retail; a sort order). The chosen one is filled in the app's colour.
+/// A chip of a row of choices (a department, a filter). The chosen one is filled in ink, like a real store's filter pills.
 struct ShopChip: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -333,18 +393,19 @@ struct ShopChip: View {
     var action: () -> Void
 
     var body: some View {
+        let ink: Color = selected ? P.page : P.ink
         Button {
             Haptics.choose()
             action()
         } label: {
             HStack(spacing: Theme.Space.xs) {
-                if let glyph { LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: selected ? P.onAccent : P.inkSoft) }
-                Text(title.tidyText).textStyle(.body, tint: selected ? P.onAccent : P.ink, weight: .medium).lineLimit(1)
+                if let glyph { LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: selected ? P.page : P.inkSoft) }
+                Text(title.tidyText).textStyle(.body, tint: ink, weight: .medium).lineLimit(1)
             }
             .padding(.horizontal, Theme.Space.m)
-            .frame(minHeight: 36)
-            .environment(\.containerInk, selected ? P.onAccent : nil)
-            .background(Capsule().fill(selected ? P.accent : P.inset))
+            .frame(minHeight: 34)
+            .environment(\.containerInk, selected ? P.page : nil)
+            .background(Capsule().fill(selected ? P.ink : P.inset))
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
@@ -353,7 +414,7 @@ struct ShopChip: View {
     }
 }
 
-/// A sideways row of chips (filters, sort orders): a carousel, the one place a shop scrolls sideways.
+/// A sideways row of chips (filters): a carousel, the one place a shop scrolls sideways.
 struct ShopChipRow<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
@@ -365,7 +426,45 @@ struct ShopChipRow<Content: View>: View {
     }
 }
 
-/// The search field of a shop: a magnifier, the words, a clear button while there are words.
+/// A sort or filter menu shown as a small icon and the current choice ("Needed first").
+struct ShopMenuLabel: View {
+    @Environment(\.outsidePalette) private var P
+    var text: String
+    var glyph: String = Glyph.sort
+
+    var body: some View {
+        HStack(spacing: Theme.Space.xs) {
+            LedgerGlyph(glyph: glyph, size: Theme.Icon.small, tint: P.accent)
+            Text(text.tidyText).textStyle(.body, tint: P.accent, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+}
+
+/// "…": the secondary actions of a row or a screen, in a menu.
+struct ShopMoreMenu<Content: View>: View {
+    @Environment(\.outsidePalette) private var P
+    var label = "More actions"
+    var identifier = ""
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        Menu {
+            content()
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(P.inkSoft)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(label)
+        .modifier(OptionalIdentifier(identifier: identifier))
+    }
+}
+
+/// The search field of a shop: a magnifier, the words, a clear button while there are words. A soft capsule.
 struct ShopSearchField: View {
     @Environment(\.outsidePalette) private var P
     var prompt: String
@@ -374,7 +473,7 @@ struct ShopSearchField: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.s) {
-            LedgerGlyph(glyph: Glyph.search, size: Theme.Icon.small, tint: P.inkFaint)
+            LedgerGlyph(glyph: Glyph.search, size: Theme.Icon.small, tint: P.ink)
             TextField(prompt, text: $text)
                 .textStyle(.body)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -391,13 +490,14 @@ struct ShopSearchField: View {
                 .accessibilityLabel("Clear search")
             }
         }
-        .padding(.leading, Theme.Space.m)
-        .frame(minHeight: 44)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(P.inset))
+        .padding(.leading, Theme.Space.l)
+        .frame(minHeight: 48)
+        .background(Capsule().fill(P.surface))
+        .overlay(Capsule().strokeBorder(P.line, lineWidth: 1))
     }
 }
 
-/// A row of a list the player chooses one from: a selection mark, a title, a grey line and a trailing text. Flat: the chosen row takes
+/// A row of a list the player chooses one from: a selection mark, a title, a grey line and a trailing text. Flat; the chosen row takes
 /// the app's wash.
 struct ShopChoiceRow: View {
     @Environment(\.outsidePalette) private var P
@@ -417,7 +517,7 @@ struct ShopChoiceRow: View {
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 LedgerGlyph(glyph: selected ? Glyph.check : Glyph.ring, size: Theme.Icon.medium, tint: selected ? P.accent : P.inkDim)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text(title.tidyText).textStyle(.headline).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    Text(title.tidyText).textStyle(.headline, weight: selected ? .semibold : .medium).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                     if !subtitle.isEmpty {
                         Text(subtitle.tidyText).textStyle(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                     }
@@ -426,8 +526,8 @@ struct ShopChoiceRow: View {
                 if !trailing.isEmpty { Text(trailing.tidyText).textStyle(.headline, numeric: true).lineLimit(1) }
             }
             .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.m)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(selected ? P.accentWash : P.surface))
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(selected ? P.accentWash : Color.clear))
             .opacity(enabled ? 1 : 0.5)
             .contentShape(Rectangle())
         }
@@ -438,31 +538,47 @@ struct ShopChoiceRow: View {
     }
 }
 
-/// Who the app is working for (shopping for, insured company): the name and a line, with Change when there is more than one company.
-struct ShopCompanyBar: View {
+/// Who the app is working for (shopping for, insured company): a caps caption and the company's name, a menu when there is a choice.
+struct ShopCompanyMenu: View {
     @Environment(\.outsidePalette) private var P
+    struct Choice: Identifiable { var id: Int; var name: String; var detail: String }
     var caption: String
-    var name: String
-    var detail: String
-    var canChange: Bool
-    @Binding var open: Bool
+    var choices: [Choice]
+    var selected: Int
     var identifier: String
+    var idPrefix: String
+    var onPick: (Int) -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(caption.tidyText).capsLabel(P.inkFaint)
-                Text(name.tidyText).textStyle(.headline).lineLimit(1)
-                Text(detail.tidyText).textStyle(.caption).lineLimit(1)
-            }
-            Spacer(minLength: Theme.Space.s)
-            if canChange {
-                Button(open ? "Close" : "Change") { Haptics.tap(); open.toggle() }
-                    .buttonStyle(TertiaryButtonStyle(size: .compact))
-                    .accessibilityIdentifier(identifier)
+        let chosen: Choice? = choices.first { (c: Choice) -> Bool in c.id == selected } ?? choices.first
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(caption.tidyText).capsLabel(P.inkFaint)
+            if choices.count > 1 {
+                Menu {
+                    ForEach(choices) { (c: Choice) in
+                        Button { Haptics.choose(); onPick(c.id) } label: {
+                            if c.id == chosen?.id { Label(c.name, systemImage: "checkmark") } else { Text(c.name) }
+                        }
+                        .accessibilityIdentifier("\(idPrefix)-\(c.id)")
+                    }
+                } label: { nameLine(chosen, chevron: true) }
+                .accessibilityIdentifier(identifier)
+            } else {
+                nameLine(chosen, chevron: false)
             }
         }
-        .accessibilityElement(children: .contain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func nameLine(_ c: Choice?, chevron: Bool) -> some View {
+        HStack(alignment: .center, spacing: Theme.Space.xs) {
+            Text((c?.name ?? "").tidyText).textStyle(.headline, weight: .semibold).lineLimit(1)
+            if chevron { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(90)) }
+            if let d = c?.detail, !d.isEmpty { Text(d.tidyText).textStyle(.caption).lineLimit(1) }
+            Spacer(minLength: 0)
+        }
+        .frame(minHeight: 32)
+        .contentShape(Rectangle())
     }
 }
 
@@ -487,6 +603,7 @@ struct ShopFact: View {
                 Text(value.tidyText).textStyle(.body, tint: tint ?? P.ink, numeric: true, weight: .medium).multilineTextAlignment(.trailing)
             }
         }
+        .padding(.vertical, Theme.Space.xs)
         .accessibilityElement(children: .combine)
     }
 }
@@ -498,7 +615,7 @@ struct ShopFacts: View {
     var tints: [Int: Color] = [:]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
             ForEach(Array(facts.enumerated()), id: \.offset) { (i: Int, f: (label: String, value: String)) in
                 if i > 0 { Hairline() }
                 ShopFact(label: f.label, value: f.value, tint: tints[i])
@@ -511,16 +628,20 @@ struct ShopFacts: View {
     }
 }
 
-/// "Receipt goes to": which company's accounting records file the receipt. Said once above the list, not on every row.
+/// "Receipt goes to": which company's accounting records file the receipt. Only asked when there is more than one company.
 struct ShopReceiptPicker: View {
     var companies: [Company]
     @Binding var selection: Int
     var idPrefix: String
 
     var body: some View {
-        ShopSection(title: "Receipt goes to", note: "The accounting records that file the receipt.") {
-            ForEach(companies, id: \.id) { (c: Company) in
-                ShopChoiceRow(title: c.name, selected: selection == c.id, identifier: "\(idPrefix)-receipt-\(c.id)") { selection = c.id }
+        if companies.count > 1 {
+            ShopSection(title: "Receipt goes to") {
+                VStack(spacing: Theme.Space.xxs) {
+                    ForEach(companies, id: \.id) { (c: Company) in
+                        ShopChoiceRow(title: c.name, selected: selection == c.id, identifier: "\(idPrefix)-receipt-\(c.id)") { selection = c.id }
+                    }
+                }
             }
         }
     }
@@ -534,13 +655,13 @@ struct ShopPriceTag: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(value.tidyText).textStyle(.figure).lineLimit(1).minimumScaleFactor(0.7)
-            Text(caption.tidyText).textStyle(.caption).lineLimit(1)
+            Text(caption.tidyText).textStyle(.caption).lineLimit(1).minimumScaleFactor(0.8)
         }
         .accessibilityElement(children: .combine)
     }
 }
 
-/// The big tick screen at the end of a flow (Rent confirmed, Order placed, Insurance active): a check, a title, a line, facts and two buttons.
+/// The end of a flow (Rent confirmed, Order placed, Insurance active): a tick, the title large, one line, the facts and two buttons.
 struct ShopSuccess<Extra: View>: View {
     @Environment(\.outsidePalette) private var P
     var title: String
@@ -551,18 +672,23 @@ struct ShopSuccess<Extra: View>: View {
     var onPrimary: () -> Void
     var onSecondary: () -> Void
     @ViewBuilder var extra: () -> Extra
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
 
     var body: some View {
         ShopPage {
-            VStack(spacing: Theme.Space.m) {
-                LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.large, tint: P.gain)
-                    .frame(width: 64, height: 64)
-                    .background(Circle().fill(P.gain.opacity(0.14)))
-                Text(title.tidyText).textStyle(.title).multilineTextAlignment(.center)
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.large, tint: Color.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(P.gain))
+                    .padding(.bottom, Theme.Space.s)
+                Text(title.tidyText)
+                    .font(.system(size: heroSize, weight: .medium, design: .serif))
+                    .foregroundStyle(P.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
-                Text(message.tidyText).textStyle(.body, tint: P.inkSoft).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                Text(message.tidyText).textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, Theme.Space.l)
             extra()
             ShopFacts(facts: facts)
@@ -596,8 +722,23 @@ struct ShopActionBar<Left: View, Action: View>: View {
         .padding(.horizontal, Theme.Space.page).padding(.vertical, Theme.Space.s)
         .frame(maxWidth: ShopMetrics.maxWidth)
         .frame(maxWidth: .infinity)
-        .background(P.surfaceRaised.ignoresSafeArea(edges: [.horizontal, .bottom]))
+        .background(P.page.ignoresSafeArea(edges: [.horizontal, .bottom]))
         .overlay(alignment: .top) { Hairline() }
+    }
+}
+
+/// The page's one action pinned at the bottom at full width, with an optional line above it.
+struct ShopBottomAction<Content: View>: View {
+    @Environment(\.outsidePalette) private var P
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(spacing: Theme.Space.xs) { content() }
+            .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.s)
+            .frame(maxWidth: ShopMetrics.maxWidth)
+            .frame(maxWidth: .infinity)
+            .background(P.page.ignoresSafeArea(edges: [.horizontal, .bottom]))
+            .overlay(alignment: .top) { Hairline() }
     }
 }
 
