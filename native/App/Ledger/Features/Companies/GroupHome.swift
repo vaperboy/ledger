@@ -368,8 +368,7 @@ struct GroupStaffTab: View {
         }
     }
 
-    /// One company: who runs it and how far they may decide, its headcount and wages. Opens the manager's profile, or the company's team
-    /// when you run it yourself.
+    /// One company: who runs it and how far they may decide, its headcount and wages. Opens the manager's profile; a company you run yourself has no manager to open.
     private func companyRow(_ l: TeamOverview.CompanyLine, passedUp: Int) -> some View {
         let managerID: Int? = engine.state.company(l.id)?.managerID
         let who: String = l.managerTitle.map { (t: String) -> String in l.managedBy + ", " + t.lowercased() } ?? "You run it"
@@ -379,9 +378,7 @@ struct GroupStaffTab: View {
         return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: l.managerTitle ?? "owner", initials: l.managedBy, face: face(managerID))),
                          title: l.name, subtitle: parts.joined(separator: " \u{00B7} "),
                          value: "\(l.staff) staff", valueNote: l.monthlyWages > 0 ? store.short(l.monthlyWages) : "", lineLimit: 2,
-                         identifier: "group-who-\(l.id)", action: {
-                             if managerID != nil { sheet = .manager(id) } else { store.openCompany(id, section: .staff) }
-                         })
+                         identifier: "group-who-\(l.id)", action: managerID == nil ? nil : { sheet = .manager(id) })
     }
 
     /// A board seat: the person, the seat and its fee. Opens the entity's Boardroom.

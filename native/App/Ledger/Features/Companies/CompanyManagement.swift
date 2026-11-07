@@ -400,7 +400,6 @@ struct ManagerSheet: View {
         TeamBlock("Talk and pay") {
             VStack(alignment: .leading, spacing: 12) {
                 WrapRow {
-                    Button("Talk in the Boardroom") { store.openGroupEntity(companyID: co.id, section: "boardroom") }.buttonStyle(TertiaryButtonStyle(size: .compact))
                     Menu {
                         ForEach(Array(ManagerModel.askOptions.enumerated()), id: \.offset) { _, o in
                             Button(o.label) {
