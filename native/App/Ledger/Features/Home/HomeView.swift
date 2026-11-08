@@ -42,7 +42,6 @@ struct HomeSummary<Companies: View>: View {
                 }
             }
             if fills { Self.gap }
-            DayReportBar()
             HomeProgressStrip(engine: e)
             if fills { Self.gap }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact) }
