@@ -19,6 +19,12 @@ struct CompanyHero: View {
     var context: String = ""
     var trend: [Double] = []
     var live: Double? = nil
+    /// With `live`: how the figure reads (the amount without a sign when `gain` gives the arrow), and the signed result for the arrow.
+    var liveFormat: ((Double) -> String)? = nil
+    var gain: Double? = nil
+    /// The figure against the period before, shown in words under it ("up 12% on last month").
+    var compareBefore: Double? = nil
+    var compareAgainst: String = ""
     @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 42
     @Environment(\.outsidePalette) private var P
 
@@ -32,13 +38,33 @@ struct CompanyHero: View {
                     Sparkline(values: trend, tint: changeTint ?? P.accent).frame(width: 88, height: 36).accessibilityHidden(true)
                 }
             }
-            if !change.isEmpty || !context.isEmpty { contextLine }
+            if compareBefore != nil, let live {
+                HStack(spacing: Theme.Space.s) {
+                    ChangeNote(now: live, before: compareBefore, against: compareAgainst, format: liveFormat ?? { (v: Double) -> String in String(Int(v)) }, step: .body)
+                    if !context.isEmpty { Text(context.tidyText).textStyle(.body, tint: P.inkSoft) }
+                }
+            } else if !change.isEmpty || !context.isEmpty { contextLine }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private var figure: some View {
+        if let live, let liveFormat {
+            HStack(spacing: Theme.Space.s) {
+                if let gain, abs(gain) >= 0.5 { StockArrow(up: gain > 0, good: gain > 0, side: size * 0.4) }
+                RollingMoney(value: live, format: liveFormat)
+                    .font(.system(size: size, weight: .medium, design: .serif))
+                    .foregroundStyle(tint ?? P.ink).lineLimit(2).minimumScaleFactor(0.8)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(((gain ?? 0) > 0.5 ? "up " : (gain ?? 0) < -0.5 ? "down " : "") + liveFormat(live))
+        } else {
+            plainFigure
+        }
+    }
+
+    @ViewBuilder private var plainFigure: some View {
         let t = Text(value.tidyText).font(.system(size: size, weight: .medium, design: .serif).monospacedDigit())
             .foregroundStyle(tint ?? P.ink).lineLimit(2).minimumScaleFactor(0.8)
         if let live { t.moneyFlash(live) } else { t }
@@ -205,6 +231,7 @@ struct CompanyOverview: View {
                 strip(co, h, ops)
                 structureStrip(co)
             }
+            CompanyLiveFigures(engine: engine, company: co)
             let list: [CompanyIssue] = issues(co, h, ops)
             if list.isEmpty {
                 if co.status == .open { allClear(h) }
@@ -228,16 +255,17 @@ struct CompanyOverview: View {
     /// Profit a week (last closed month) with the change against the month before; before the first month closes, the cash.
     @ViewBuilder private func hero(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
         if co.status == .open, let pw = ops?.profitPerWeek {
-            let change: String = ops?.profitChangePerWeek.map { (d: Double) -> String in
-                (d >= 0 ? "\u{25B2} " : "\u{25BC} ") + store.short(abs(d), in: co) + " vs the month before"
-            } ?? ""
-            let tint: Color? = (ops?.profitChangePerWeek ?? 0) >= 0 ? P.gain : P.loss
-            CompanyHero(label: "Profit a week", value: (pw < 0 ? "\u{2212}" : "") + store.money(abs(pw), in: co), tint: pw < 0 ? P.loss : nil,
-                        change: change, changeTint: tint, context: change.isEmpty ? "last full month" : "",
-                        trend: Array(h.profitSeries.suffix(12)), live: pw)
+            let delta: Double? = ops?.profitChangePerWeek
+            let tint: Color? = (delta ?? 0) >= 0 ? P.gain : P.loss
+            CompanyHero(label: "Profit a week", value: store.money(abs(pw), in: co), tint: pw < 0 ? P.loss : (pw > 0.5 ? P.gain : nil),
+                        changeTint: tint, context: delta == nil ? "last full month" : "",
+                        trend: Array(h.profitSeries.suffix(12)), live: pw,
+                        liveFormat: { (v: Double) -> String in store.money(abs(v), in: co) }, gain: pw,
+                        compareBefore: delta.map { (d: Double) -> Double in pw - d }, compareAgainst: "last month")
         } else {
             CompanyHero(label: "Cash", value: store.money(co.cash, in: co), tint: co.cash < 0 ? P.loss : nil,
-                        context: verdict(co, h), trend: Array(h.cashSeries.suffix(12)), live: co.cash)
+                        context: verdict(co, h), trend: Array(h.cashSeries.suffix(12)), live: co.cash,
+                        liveFormat: { (v: Double) -> String in store.money(v, in: co) })
         }
     }
 

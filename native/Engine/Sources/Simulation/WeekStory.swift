@@ -126,6 +126,13 @@ public struct WeekMover: Equatable, Sendable {
     public var isCost: Bool
 }
 
+/// One entry of the best / slowest line of a report: a heading, the period it names and that period's profit.
+public struct WeekExtreme: Equatable, Sendable {
+    public var heading: String
+    public var title: String
+    public var profit: Double
+}
+
 /// Everything the week, month or year report shell shows, from the real reports.
 public struct WeekRecap: Equatable, Sendable {
     public var kind: ReportKind
@@ -144,6 +151,8 @@ public struct WeekRecap: Equatable, Sendable {
     public var movers: [WeekMover] = []
     /// Month: the best and the slowest week of the month in one line. Year: the best month in one line.
     public var extremes: String? = nil
+    /// The same facts as `extremes`, split so the screen can draw the profit with an arrow: "Best" / "Slowest" / "Best month", the period and its profit.
+    public var extremeItems: [WeekExtreme] = []
     /// Year only: the profit of each month of the year, oldest first (at most 12).
     public var monthStrip: [Double] = []
     /// Year only: tax paid in cash and the change in net worth over the year.
@@ -219,6 +228,7 @@ public extension GameEngine {
         if kind != .week {
             recap.movers = movers(of: r)
             recap.extremes = extremesLine(for: r)
+            recap.extremeItems = extremeItems(for: r)
         }
         if kind == .year { recap.monthStrip = monthProfits(in: r) }
         return recap
@@ -262,6 +272,19 @@ public extension GameEngine {
         let months: [PeriodReport] = reports(.month).filter { $0.id >= r.firstWeek && $0.id <= r.lastWeek }
         guard let best = months.max(by: { $0.group.pnl.netProfit < $1.group.pnl.netProfit }) else { return nil }
         return "Best month: \(best.title) \(signedAmount(best.group.pnl.netProfit))."
+    }
+
+    private func extremeItems(for r: PeriodReport) -> [WeekExtreme] {
+        if r.kind == .month {
+            let weeks: [PeriodReport] = reports(.week).filter { $0.id >= r.firstWeek && $0.id <= r.lastWeek }
+            guard weeks.count >= 2, let best = weeks.max(by: { $0.group.pnl.netProfit < $1.group.pnl.netProfit }),
+                  let low = weeks.min(by: { $0.group.pnl.netProfit < $1.group.pnl.netProfit }), best.id != low.id else { return [] }
+            return [WeekExtreme(heading: "Best", title: best.title, profit: best.group.pnl.netProfit),
+                    WeekExtreme(heading: "Slowest", title: low.title, profit: low.group.pnl.netProfit)]
+        }
+        let months: [PeriodReport] = reports(.month).filter { $0.id >= r.firstWeek && $0.id <= r.lastWeek }
+        guard let best = months.max(by: { $0.group.pnl.netProfit < $1.group.pnl.netProfit }) else { return [] }
+        return [WeekExtreme(heading: "Best month", title: best.title, profit: best.group.pnl.netProfit)]
     }
 
     private func monthProfits(in r: PeriodReport) -> [Double] {

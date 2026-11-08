@@ -152,7 +152,7 @@ struct DailyReportPopup: View {
     private var headline: some View {
         VStack(alignment: .leading, spacing: 10) {
             headlineFigures
-            DayCloseView(profit: digest.profit, daysDone: store.engine?.state.day ?? 0, instant: instant, format: signedText,
+            DayCloseView(profit: digest.profit, daysDone: store.engine?.state.day ?? 0, instant: instant, format: { (v: Double) -> String in store.short(v) },
                          newInboxTitle: digest.newInboxTitle, bestDay: digest.bestDayOfWeek, briefing: lines.first?.text)
         }
     }
@@ -161,27 +161,22 @@ struct DailyReportPopup: View {
         if let n = digest.netWorthChange {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Net worth today").popupText(.rowLabel)
-                CountedFigure(value: n, format: signedText, tint: Theme.change(n), instant: instant)
-                    .font(PopupVariant.report.figureFont).lineLimit(2).minimumScaleFactor(0.8)
+                ArrowAmount(gain: n, format: { (v: Double) -> String in store.short(v) }, live: true, instant: instant, font: PopupVariant.report.figureFont, arrowSide: 18)
+                    .lineLimit(2).minimumScaleFactor(0.8)
                 if let c = digest.cashChange {
                     HStack(spacing: Theme.Space.xs) {
                         Text("Cash").popupText(.caption)
-                        CountedFigure(value: c, format: signedText, tint: Theme.change(c), instant: instant)
-                            .textStyle(.caption, numeric: true, weight: .medium).lineLimit(1)
+                        ArrowAmount(gain: c, format: { (v: Double) -> String in store.short(v) }, live: true, instant: instant, step: .caption, weight: .medium).lineLimit(1)
                     }
                 }
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Taken today").popupText(.rowLabel)
-                CountedFigure(value: digest.revenue, format: signedText, tint: Theme.change(digest.revenue), instant: instant)
-                    .font(PopupVariant.report.figureFont).lineLimit(2).minimumScaleFactor(0.8)
+                ArrowAmount(gain: digest.revenue, format: { (v: Double) -> String in store.short(v) }, live: true, instant: instant, font: PopupVariant.report.figureFont, arrowSide: 18)
+                    .lineLimit(2).minimumScaleFactor(0.8)
             }
         }
-    }
-
-    private func signedText(_ v: Double) -> String {
-        abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "−") + store.short(abs(v))
     }
 
     private func row(_ line: BriefingLine) -> some View {

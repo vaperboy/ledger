@@ -175,10 +175,10 @@ struct NetWorthCard: View {
                 if series.count >= 2 && chartHeight > 0 {
                     // Scaled to the series' own range, so a year's real shape shows instead of a flat line on a band.
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
-                    Sparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
+                    // Drawn left to right once; each new day only extends the line (see LiveSparkline).
+                    LiveSparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
                         .frame(height: chartHeight)
                         .drawsItself()
-                        .revealOnChange(of: series.last)
                         .accessibilityHidden(true)
                         .padding(.top, Theme.Space.xs)
                 }
@@ -248,7 +248,7 @@ struct NetWorthCard: View {
     @ViewBuilder private func changeText(_ c: Double?, _ unit: String) -> some View {
         if let c {
             HStack(spacing: Theme.Space.xs) {
-                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c))).textStyle(.body, tint: Theme.change(c), numeric: true, weight: .medium)
+                ArrowAmount(gain: c, format: { (v: Double) -> String in store.short(v) }, live: true, roll: true, step: .body, weight: .medium)
                 Text(unit).textStyle(.body, tint: Theme.inkSoft)
             }
             .lineLimit(1)

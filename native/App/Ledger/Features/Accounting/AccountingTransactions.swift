@@ -98,7 +98,10 @@ struct AcctTransactions: View {
             Spacer(minLength: 8)
             Text("In " + fmt.short(page.income)).textStyle(.caption, tint: P.gain, numeric: true)
             Text("Out " + fmt.short(page.expenses)).textStyle(.caption, tint: P.loss, numeric: true)
-            Text("Net " + fmt.signed(net)).textStyle(.caption, tint: net >= 0 ? P.ink : P.loss, numeric: true, weight: .medium)
+            HStack(spacing: Theme.Space.xs) {
+                Text("Net").textStyle(.caption, tint: P.inkFaint)
+                ArrowAmount(gain: net, format: { (v: Double) -> String in fmt.short(v) }, step: .caption, weight: .medium)
+            }
         }
         .padding(.horizontal, 2)
         .accessibilityElement(children: .combine)
@@ -139,8 +142,8 @@ struct AcctTransactions: View {
         var sub: String = t.category
         if !t.counterparty.isEmpty { sub += " \u{00B7} " + t.counterparty }
         if t.count > 1 { sub += " \u{00B7} \(t.count) items" }
-        let tint: Color = t.isIncome ? P.gain : P.ink
-        return AcctRow(glyph: AcctGlyphs.category(t.categoryID), title: t.label, subtitle: sub, value: fmt.signed(t.amount), valueTint: tint, valueNote: t.dateText,
+        return AcctRow(glyph: AcctGlyphs.category(t.categoryID), title: t.label, subtitle: sub, valueNote: t.dateText,
+                       gain: t.amount, gainFormat: { (v: Double) -> String in fmt.short(v) },
                        identifier: "acct-tx-row") { m.push(.transaction(t.id)) }
     }
 }
@@ -188,7 +191,7 @@ struct AcctTransactionDetail: View {
                     Text(t.category + " \u{00B7} " + t.dateText).textStyle(.caption, tint: P.inkFaint)
                 }
                 Spacer(minLength: 8)
-                Text(fmt.signed(t.amount)).textStyle(.figure, tint: t.isIncome ? P.gain : P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                ArrowAmount(gain: t.amount, format: { (v: Double) -> String in fmt.short(v) }, step: .figure).minimumScaleFactor(0.6).lineLimit(1)
             }
         }
     }

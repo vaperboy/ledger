@@ -254,13 +254,12 @@ struct ReportLineDetail: View {
     }
 
     private func companyRow(_ e: Entry) -> some View {
-        let c = ReportChangeText(now: e.now, before: e.before, isCost: key.isCost, format: format)
         return HStack {
             Text(e.name).textStyle(.body).lineLimit(1)
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(format.short(e.now)).textStyle(.body, numeric: true)
-                if !c.text.isEmpty { Text(c.text).textStyle(.caption, tint: c.tint, numeric: true) }
+                ArrowAmount(gain: key.isCost ? -e.now : e.now, amount: e.now, format: format.short)
+                ChangeNote(now: e.now, before: e.before, isCost: key.isCost, against: "last " + report.kind.noun, format: format.short)
             }
         }
         .padding(.vertical, 6)

@@ -50,7 +50,11 @@ struct ReportDigestSheet: View {
             VStack(spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
                     figure("Revenue", digest.revenue, Theme.ivory) { store.short($0) }
-                    figure("Profit", profit, Theme.change(profit)) { signed($0) }.profitGlow(profit)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Profit").popupText(.rowLabel)
+                        ArrowAmount(gain: profit, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack(alignment: .top, spacing: 12) {
                     figure("Cash", digest.cashEnd, digest.cashEnd < 0 ? Theme.loss : Theme.ivory) { store.short($0) }
@@ -65,7 +69,7 @@ struct ReportDigestSheet: View {
                     Text("Net worth").popupText(.rowLabel)
                     Spacer()
                     CountedFigure(value: digest.netWorthEnd, format: { (v: Double) -> String in store.short(v) }, tint: Theme.ivory).font(PopupVariant.standard.valueFont)
-                    CountedFigure(value: digest.netWorthChange, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(digest.netWorthChange)).font(PopupVariant.standard.valueFont)
+                    ArrowAmount(gain: digest.netWorthChange, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.valueFont)
                 }
             }
         }
@@ -103,7 +107,6 @@ struct ReportDigestSheet: View {
         }
     }
 
-    private func signed(_ v: Double) -> String { abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "−") + store.short(abs(v)) }
 }
 
 /// A reward popup: a trophy, a milestone or a finished ladder goal. One at a time, from the queue the store holds after a day;

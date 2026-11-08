@@ -38,9 +38,13 @@ struct ReportTableRow: View {
     /// The numbers behind the three columns (start, end, change) and their format: when given they count up instead of showing at once.
     var nums: [Double] = []
     var fmt: ReportFormat? = nil
+    /// The change column as an arrow and amount: positive is good news (green up), negative bad (red down). Needs `nums` and `fmt`.
+    var gain: Double? = nil
 
     @ViewBuilder private func cell(_ index: Int, _ text: String, tint: Color) -> some View {
-        if nums.count == 3, let fmt {
+        if index == 2, nums.count == 3, let fmt, let gain {
+            ArrowAmount(gain: gain, amount: nums[2], format: fmt.short, live: true, step: .caption)
+        } else if nums.count == 3, let fmt {
             let render: (Double) -> String = index == 2 ? { (v: Double) -> String in fmt.signed(v) } : { (v: Double) -> String in fmt.short(v) }
             CountedFigure(value: nums[index], format: render, tint: tint)
         } else {
@@ -100,9 +104,13 @@ struct ReportLine: View {
     /// The number behind `value` and its text: the figure counts up to it (see `CountedFigure`).
     var live: Double? = nil
     var liveText: ((Double) -> String)? = nil
+    /// Show `live` as an arrow and amount (green up for money in, red down for money out); `liveText` then formats the positive size.
+    var arrow: Bool = false
 
     @ViewBuilder private var figure: some View {
-        if let live, let liveText {
+        if arrow, let live, let liveText {
+            ArrowAmount(gain: live, format: liveText, live: true)
+        } else if let live, let liveText {
             CountedFigure(value: live, format: liveText, tint: tint)
         } else {
             Text(value).foregroundStyle(tint)
