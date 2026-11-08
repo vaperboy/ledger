@@ -230,7 +230,7 @@ struct SettingsView: View {
         guard case .success(let url) = result else { return }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { store.errorText = "That file could not be read as text."; return }
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { store.notify("That file could not be read as text.", tone: "bad"); return }
         // Ask once the file picker has gone: an import replaces the game you are playing.
         DispatchQueue.main.async {
             pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",

@@ -239,6 +239,7 @@ final class GameStore: ObservableObject {
         if isShowcase, let e = try? GameEngine.showcase(wealthy: ProcessInfo.processInfo.arguments.contains("-showcase-rich"), board: ProcessInfo.processInfo.arguments.contains("-showcase-board"),
                                                         extraTrades: Self.showcaseTrades) { engine = e }
         else if let saves, saves.hasSave() { loadCurrent() }
+        PendingAction.onChosen = { [weak self] (label: String) -> Void in self?.chose(label) }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
     }
 
@@ -309,7 +310,7 @@ final class GameStore: ObservableObject {
         guard !isShowcase, let saves else { return }
         save(backup: true)
         do { try start(with: saves.load(slot: slot)); loadProblem = nil; resetNavigation(); save() }
-        catch { errorText = "That slot could not be opened. " + Self.describe(error) }
+        catch { notify("That slot could not be opened. " + Self.describe(error), tone: "bad") }
     }
 
     func deleteSlot(_ slot: String) { try? saves?.delete(slot: slot) }
@@ -327,7 +328,7 @@ final class GameStore: ObservableObject {
     func importLegacy(text: String) {
         guard let saves else { return }
         do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save(); tell("Save imported", "The original file is kept untouched.", tone: "good") }
-        catch { errorText = "That save could not be imported. " + Self.describe(error) }
+        catch { notify("That save could not be imported. " + Self.describe(error), tone: "bad") }
     }
 
     /// Set once the new-player ladder reaches its last goal: the classic loan start and the family café become selectable under Settings > Saves > New game.
@@ -569,21 +570,14 @@ final class GameStore: ObservableObject {
     /// For a setting the engine applies without a result of its own (a limit, a duty, a slider): a short "Saved" with what it is now.
     func saved(_ what: String) { show("Saved: \(what)", tone: "n") }
 
-    /// A result line from an action. A refusal or a minor warning (tone "warn") is a toast: one compact line that leaves by itself and
-    /// never stops the game. A problem the player must read (tone "bad") is a popup; a plain confirmation ("Saved", "Hired") is a banner.
+    /// A result line from an action: always a top toast (tone "good", "warn", "bad", or "n" for a plain confirmation).
     func show(_ text: String, tone: String = "n") {
-        switch tone {
-        case "bad": tell("", text, tone: tone)
-        case "warn": notify(text, tone: tone)
-        default: banner(text)
-        }
+        notify(text, tone: tone == "n" ? "good" : tone)
     }
 
-    /// Important information, always told in the popup (an answer with an immediate effect, a result the player waits for).
+    /// A titled notification ("Save imported", "Not applied"): a top toast with the title and the text in one line.
     func tell(_ title: String, _ text: String, tone: String = "n") {
-        let t = Toast(title: title, text: text.tidyText, tone: tone)
-        if notices.last?.text == t.text && notices.last?.title == t.title { return }
-        notices.append(t)
+        notify(title.isEmpty ? text : (text.isEmpty ? title : title + ". " + text), tone: tone == "n" ? "good" : tone)
     }
 
     /// A luxury purchase is confirmed on a gold-edged reveal card (see `GoldReveal`).

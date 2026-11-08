@@ -785,7 +785,7 @@ class FeatureTourCase: XCTestCase {
             var problems: [String] = rawProblems(name)
             closePopup(prefer: closeWith)
             guard waitPopupGone(3) else { return .fail("the popup did not close with its button") }
-            // A closing action may show a notice (Done / Something went wrong): read and close it, up to twice.
+            // A closing action tells its result in a top toast; only a luxury reveal or a save error is still a popup: read and close it, up to twice.
             var extra = 0
             while extra < 2, popupUp(1) { problems.append(contentsOf: rawProblems(name + " (notice)")); closePopup(); extra += 1 }
             if popupUp(1) { return .fail("a popup is still up after closing it \(extra + 1) times") }

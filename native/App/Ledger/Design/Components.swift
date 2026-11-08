@@ -508,7 +508,17 @@ struct PendingAction: Identifiable {
     var tone: PopupTone? = nil
     /// SF Symbol of the popup's icon ring; nil: the tone's own symbol.
     var icon: String? = nil
+    /// The words of the "Chosen: ..." toast; nil: the button's.
+    var chosen: String? = nil
     var run: () -> Void
+    /// Set by the game store: tells the player which answer was taken ("Chosen: <button>") in a top toast.
+    static var onChosen: ((String) -> Void)?
+    /// Runs the action and confirms the choice; every path that answers a `PendingAction` goes through here.
+    func execute() {
+        let label: String = chosen ?? button
+        if !label.isEmpty { PendingAction.onChosen?(label) }
+        run()
+    }
 }
 
 /// The one money-size rule for confirmations. A device preference, not game state: it is not in the save and never travels with it.
@@ -571,7 +581,7 @@ private struct ConfirmActionModifier: ViewModifier {
         guard let p = pending else { asked = nil; return }
         if ConfirmThreshold.skips(p) {
             pending = nil
-            p.run()
+            p.execute()
         } else {
             asked = p
         }
@@ -581,7 +591,7 @@ private struct ConfirmActionModifier: ViewModifier {
         asked = nil
         pending = nil
         // Once the popup is gone, so the action may open or close screens without clashing with it.
-        if go { DispatchQueue.main.async { p.run() } }
+        if go { DispatchQueue.main.async { p.execute() } }
     }
 }
 

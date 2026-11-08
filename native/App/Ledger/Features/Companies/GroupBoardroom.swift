@@ -192,7 +192,7 @@ struct OwnerTalkSheet: View {
             Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
             VStack(spacing: 0) {
                 ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
-                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(sc.topic, c.id) }
+                    PopupChoiceRow(title: c.label, subtitle: c.preview) { store.chose(c.label); choose(sc.topic, c.id) }
                 }
             }
             Button("Back") { Haptics.tap(); topic = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
