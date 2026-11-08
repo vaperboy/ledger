@@ -1,4 +1,5 @@
 # What's new
+- Boards: a branch shares its parent company board, managers are no longer seated as directors, and directors decide the CEO when an outside owner sits on the board
 - Fixes: a holding loan always covers the full price, and a fund commitment at exactly the shown minimum is accepted
 - Interface polish: cards have a soft edge and top highlight, sliders have a larger thumb with a ring and only snap when close to a stop, popup corners are tighter, corner radii are slightly rounder, and screens that do not fit now scroll instead of cropping
 - Ventures quotes come from the engine; set your own asking price when selling a stake (counter-offers and declines are shown); holdings can buy stakes in other founders' startups; Group stakes can be bought
