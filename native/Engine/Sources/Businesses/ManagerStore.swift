@@ -12,8 +12,13 @@ enum ManagerStore {
     static let reviewWeeks = 4
     /// One price step against the market price (0.05 = 5%); the band is one step either side.
     static let priceStep = 0.05
-    /// Awareness from which a manager stops buying more of it.
-    static let knownEnough = 70.0
+    /// Awareness from which a manager stops buying more of it: a name that is not unknown (the old manager's own bar), or 70 when the owner asked for growth.
+    static let steadyKnownEnough = 26.0
+    static let knownEnoughGrowing = 70.0
+    /// Weekly ad budget (in the base currency) a manager does not go above on their own unless the owner asked for growth.
+    static let steadyAdBudget = 1500.0
+
+    static func awarenessGoal(_ co: Company) -> Double { ManagerModel.direction(of: co) == .grow ? knownEnoughGrowing : steadyKnownEnough }
 
     static func week(_ s: inout GameState, _ ci: Int, manager n: Person, quality q: Double, _ bd: Trade, utilisation util: Double, data: GameData) {
         guard s.companies[ci].status == .open else { return }
@@ -88,7 +93,9 @@ enum ManagerStore {
             s.companies[ci].set("mkt", mkt)
             return
         }
-        guard co.awareness < knownEnough, util < 0.95, co.cash > ManagerModel.weekCost(s, co, data: data) * 6, let next = steps.first(where: { $0 > now }), next <= room else { return }
+        // Without a growth order the manager stays at one modest campaign: unbounded ads would turn a thinly known, capacity-light trade into a get-rich path.
+        let top = ManagerModel.direction(of: co) == .grow ? Double.infinity : cur.scaledPrice(steadyAdBudget)
+        guard co.awareness < awarenessGoal(co), util < 0.95, co.cash > ManagerModel.weekCost(s, co, data: data) * 6, let next = steps.first(where: { $0 > now }), next <= room, next <= top else { return }
         if mkt[ch].isNull { mkt[ch] = .object(["b": .number(next), "since": .number(Double(s.week)), "lock": .number(Double(s.week + 4))]) } else { mkt[ch]["b"] = .number(next) }
         s.companies[ci].set("mkt", mkt)
         ManagerVoice.record(&s, companyIndex: ci, "\(now > 0 ? "Raised" : "Started") \(name) ads\(now > 0 ? " to" : " at") \(cur.display(next)) a week because only \(Int(co.awareness))% of people know us and the ceiling is \(share)% of revenue\(tag).")
