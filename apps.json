@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.93",
+          "buildVersion": "93",
+          "date": "2026-11-08T09:50:14Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v93/Ledger-unsigned.ipa",
+          "size": 30156651,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Ventures quotes come from the engine; set your own asking price when selling a stake (counter-offers and declines are shown); holdings can buy stakes in other founders' startups; Group stakes can be bought\n- Holdings can borrow to buy a stake, turn a fully owned company into a division, sell shares you moved in, and hold board talks; a single chosen first product no longer sells like a full range\n- Ventures is one portfolio page inside Projects: your startups, backing others, funds, group stakes and software, with a cost summary before founding and buy/sell popups; the Venture tile opens it in place\n- Holding companies can buy full or partial stakes in your companies and in rivals (passive, influence, control, squeeze-out), take board seats, sell and merge stakes\n- Home: net worth counts up after a report closes and shows your personal account with last week and last month; \"All\" opens every company in a popup; more companies fit on screen; the yearly tax note itemises each charge\n- Choose what a new company sells first (only chosen products sell); price limit now depends on the trade; each screen shows only its own feature with no jump links; payroll approvals are a"
+        },
+        {
           "version": "1.0.92",
           "buildVersion": "92",
           "date": "2026-11-08T00:21:00Z",
@@ -187,22 +196,13 @@
           "size": 29286218,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades\n\n# Missing / coming next\n- Wider skilled-vs-idle gap; screen-tour fixes"
-        },
-        {
-          "version": "1.0.73",
-          "buildVersion": "73",
-          "date": "2026-11-06T07:26:35Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v73/Ledger-unsigned.ipa",
-          "size": 29284450,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades\n\n# Missing / coming next\n- Wider skilled-vs-idle gap; screen-tour fixes"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.92",
-      "versionDate": "2026-11-08T00:21:00Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v92/Ledger-unsigned.ipa",
-      "size": 29644509
+      "version": "1.0.93",
+      "versionDate": "2026-11-08T09:50:14Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v93/Ledger-unsigned.ipa",
+      "size": 30156651
     }
   ]
 }
