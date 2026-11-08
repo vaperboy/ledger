@@ -1,4 +1,5 @@
 # What's new
+- Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
 - Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them
 - Home sits clear of the island, Next day sits above the tab bar, empty space is shared evenly, a single company shows a richer card, and the app has a soft gradient background with glass-style cards, tab bar and day button
 - Fix for the crash on opening an older save: saved numbers can no longer overflow a conversion, duplicate names no longer break lookups, the first-run tour only starts in a new game, and the zoom transitions are off until they are proven safe
