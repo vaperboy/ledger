@@ -6,7 +6,7 @@ import Finance
 import Simulation
 
 /// The Statements tab: the account's week, month or year statement (opening and closing balance, money in and out, the movements), where
-/// the business money went (the old Costs page), and the full Reports. A statement exists once a period has closed.
+/// the business money went (the old Costs page). A statement exists once a period has closed.
 struct BankStatementsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -34,13 +34,6 @@ struct BankStatementsTab: View {
                     }
                 }
                 costs(e, fmt)
-                NavigationLink { ReportsScreen(companyID: account.companyID).environment(\.outsidePalette, OutsidePalette.game) } label: {
-                    HStack {
-                        Text("Full reports: profit, costs, people").textStyle(.body, tint: P.accent)
-                        Spacer()
-                        GlyphView(glyph: Glyph.chevron, size: 12, weight: 2, tint: P.accent)
-                    }.padding(.vertical, 10).contentShape(Rectangle())
-                }.buttonStyle(PressableStyle())
             }
         }
     }

@@ -153,7 +153,7 @@ struct BankAccountScreen: View {
             }
             if id == .personal {
                 NavigationLink { ActivityView().environment(\.outsidePalette, OutsidePalette.game) } label: {
-                    LedgerRow(title: "Every movement on your account", chevron: true)
+                    LedgerRow(title: "Why did my money move?", chevron: true)
                 }
                 .buttonStyle(AcctPressStyle())
             }
