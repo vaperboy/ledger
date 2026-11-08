@@ -115,7 +115,7 @@ public enum Chains {
 
     /// Name the chain: every store carries it. Original: `makeChain` (`ACT.ch12make`).
     @discardableResult
-    public static func make(_ s: inout GameState, companyID: Int, name: String) -> Int? {
+    public static func make(_ s: inout GameState, companyID: Int, name: String, data: GameData? = nil) -> Int? {
         guard let i = s.companyIndex(companyID) else { return nil }
         let co = s.companies[i]
         if let existing = chain(s, of: co) { return existing["id"].int }
@@ -123,19 +123,18 @@ public enum Chains {
         let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? co.name : name.trimmingCharacters(in: .whitespaces)
         let id = s.makeID()
         let rules: JSONValue = .object(["price": .number(co.priceLevel), "knob": co.value("knob").isNull ? .object([:]) : co.value("knob"), "stockPol": .number(co.num("stockPol", 1)), "pay": 0, "mkt": "own"])
-        let ch: JSONValue = .object(["id": .number(Double(id)), "name": .string(nm), "type": .string(co.type), "w0": .number(Double(s.week)), "rules": rules])
+        let ch: JSONValue = .object(["id": .number(Double(id)), "name": .string(nm), "type": .string(co.type), "w0": .number(Double(s.week)), "rules": rules, "hq": .object(["w0": .number(Double(s.week))])])
         save(&s, ch)
         join(&s, chainID: id, companyID: companyID, rename: false)
+        // The brand belongs to the chain's head office, not to its first store: that store becomes one location like the rest.
+        if let d = data, let i = s.companyIndex(companyID) { s.companies[i].name = storeName(s, chain: ch, s.companies[i], data: d) }
         return id
     }
 
-    static func storeName(_ s: GameState, chain ch: JSONValue, _ co: Company, data: GameData) -> String {
+    /// The name of a location: the brand and the place (the city for the first one there, then districts), never a number.
+    public static func storeName(_ s: GameState, chain ch: JSONValue, _ co: Company, data: GameData) -> String {
         let city = data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? ""
-        let taken: (String) -> Bool = { n in s.companies.contains { $0.id != co.id && $0.name == n } }
-        let base = ch["name"].string + " " + city
-        if !taken(base) { return base }
-        for i in 2..<40 where !taken("\(base) \(i)") { return "\(base) \(i)" }
-        return "\(ch["name"].string) \(s.nextID)"
+        return LocationNames.locationName(s, brand: ch["name"].string, countryCode: co.countryCode, cityID: co.cityID, cityName: city, excluding: co.id, data: data)
     }
 
     /// A store joins a chain and follows its rules. Original: `joinChain`.

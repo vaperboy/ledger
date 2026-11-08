@@ -16,7 +16,7 @@ final class ChainBranchesTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(a) { s.companies[i].set("mgr", 0) } }
         let id = try XCTUnwrap(e.makeChain(companyID: a, name: "Test Cafe"))
         XCTAssertFalse(e.isBranch(companyID: a), "a chain of one store is just the company")
-        guard case .success(let b) = e.openChainStore(chainID: id, cityID: e.state.player.cityID, size: 1) else { throw XCTSkip("store not opened") }
+        guard case .success(let b) = e.openLocation(chainID: id, cityID: e.state.player.cityID) else { throw XCTSkip("store not opened") }
         _ = e.openCompany(companyID: b)
         XCTAssertTrue(e.isBranch(companyID: a) && e.isBranch(companyID: b))
         return (e, id, a, b)

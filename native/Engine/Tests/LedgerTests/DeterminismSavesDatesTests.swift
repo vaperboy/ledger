@@ -67,7 +67,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(cafe) { s.companies[i].set("mgr", 0) } }
         if let chain = e.makeChain(companyID: cafe, name: "Rich Cafe") {
             e.setChainRule(chainID: chain, rule: .price(1))
-            _ = e.openChainStore(chainID: chain, cityID: e.state.player.cityID, size: 1)
+            _ = e.openLocation(chainID: chain, cityID: e.state.player.cityID)
         }
         // A franchisor
         e.update { s, _, _ in

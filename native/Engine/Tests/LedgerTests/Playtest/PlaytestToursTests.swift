@@ -353,7 +353,7 @@ final class PlaytestToursTests: XCTestCase {
         ex(e.chainOf(companyID: id) != nil, "chain is recorded on the company")
         var opened: [Int] = []
         for c in e.homeCountry.cities.prefix(3) {
-            if case .success(let sid) = e.openChainStore(chainID: cid, cityID: c.id, size: 1) { opened.append(sid) }
+            if case .success(let sid) = e.openLocation(chainID: cid, cityID: c.id) { opened.append(sid) }
         }
         ex(!opened.isEmpty, "at least one chain store opens in a home city", sev: 2)
         for sid in opened { openUp(&e, sid) }

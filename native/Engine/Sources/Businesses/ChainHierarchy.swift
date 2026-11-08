@@ -234,7 +234,7 @@ extension ManagerModel {
             if x > 1000 { parts[st.id] = x; need -= x }
         }
         if need > 1000 { return nil }
-        if case .success(let id) = Chains.openStore(&s, chainID: chainID, cityID: cityID, size: 1, data: data, context: fc, fundedBy: parts) {
+        if case .success(let id) = ChainLocations.open(&s, chainID: chainID, cityID: cityID, size: 1, data: data, context: fc, fundedBy: parts) {
             s.note("\(s.company(id)?.name ?? "A new store") opens in about three weeks.", tone: "good", companyID: id)
             return id
         }

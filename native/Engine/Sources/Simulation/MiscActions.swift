@@ -58,7 +58,7 @@ public extension GameEngine {
     @discardableResult mutating func renameChain(chainID: Int, to newName: String) -> RenameResult {
         let n = newName.trimmingCharacters(in: .whitespaces)
         var r = RenameResult.unknown
-        update { s, _, ctx in
+        update { s, d, ctx in
             guard var ch = Chains.chain(s, id: chainID) else { return }
             if n.count < 2 || n == ch["name"].string { r = .tooShort; return }
             if Chains.all(s).contains(where: { $0["id"].int != chainID && $0["name"].string.lowercased() == n.lowercased() }) { r = .nameTaken; return }
@@ -76,9 +76,7 @@ public extension GameEngine {
             for c in stores {
                 guard let i = s.companyIndex(c.id) else { continue }
                 _ = Payments.companyPays(&s, companyID: c.id, amount: cost(c), category: "oth", label: "Rebranding to \(n)")
-                var nm = stores.count == 1 ? n : "\(n) \(c.cityID)", k = 2
-                while s.companies.contains(where: { $0.status.isLive && $0.id != c.id && $0.name.lowercased() == nm.lowercased() }) { nm = "\(n) \(c.cityID) \(k)"; k += 1 }
-                s.companies[i].name = nm
+                s.companies[i].name = Chains.storeName(s, chain: ch, c, data: d)
                 s.companies[i].awareness = jsRound(s.companies[i].awareness * 0.75 * 10) / 10
                 s.companies[i].set("hype", min(100, s.companies[i].num("hype") + 12))
                 s.companies[i].reputation = jsRound((s.companies[i].reputation + (55 - s.companies[i].reputation) * 0.35) * 10) / 10

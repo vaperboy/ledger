@@ -41,7 +41,7 @@ struct EntityExpansionView: View {
         if let sum = chain {
             let cur: Currency = e.currency(for: co)
             StoreInChainCard(engine: e, company: co, summary: sum)
-            ChainNewStore(engine: e, summary: sum, currency: cur)
+            ChainAddLocation(engine: e, summary: sum, currency: cur)
             ChainJoin(engine: e, summary: sum)
             ChainSupplyOverview(engine: e, summary: sum, currency: cur)
             if sum.franchisingCompanyID == co.id { FranchisorCard(engine: e, company: co) }

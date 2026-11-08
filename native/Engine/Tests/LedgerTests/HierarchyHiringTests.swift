@@ -15,7 +15,7 @@ final class HierarchyHiringTests: XCTestCase {
         ChainsTests.season(&e, first)
         let id = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         var stores = [first]
-        for _ in 1..<count { if case .success(let s) = e.openChainStore(chainID: id, cityID: e.state.player.cityID, size: 1) { stores.append(s) } }
+        for _ in 1..<count { if case .success(let s) = e.openLocation(chainID: id, cityID: e.state.player.cityID) { stores.append(s) } }
         guard stores.count == count else { throw XCTSkip("chain stores could not be opened") }
         e.update { s, _, _ in
             for sid in stores {

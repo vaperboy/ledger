@@ -22,6 +22,7 @@ struct ChainView: View {
     @ViewBuilder private func partBody(_ p: ChainPart, _ e: GameEngine, _ sum: Chains.Summary, _ cur: Currency) -> some View {
         switch p {
         case .stores:
+            ChainHeadOffice(engine: e, chainID: sum.id)
             ChainFigures(summary: sum, currency: cur, cash: e.chainCash(chainID: sum.id))
             ChainAttention(engine: e, summary: sum, currency: cur, pending: $pending)
             ChainStoreComparison(engine: e, summary: sum, currency: cur)
@@ -33,7 +34,7 @@ struct ChainView: View {
         case .growth:
             if let fid = sum.franchisingCompanyID, let fco = e.state.company(fid) { FranchisorCard(engine: e, company: fco) }
             ChainSupplyOverview(engine: e, summary: sum, currency: cur)
-            ChainNewStore(engine: e, summary: sum, currency: cur)
+            ChainAddLocation(engine: e, summary: sum, currency: cur)
             ChainJoin(engine: e, summary: sum)
         }
     }
@@ -549,57 +550,6 @@ struct ChainRulesSection: View {
     }
 }
 
-
-/// A new store under the chain's name and rules.
-struct ChainNewStore: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var summary: Chains.Summary
-    var currency: Currency
-    @State private var newCity = ""
-    @State private var newSize = 1.0
-    @State private var pending: PendingAction?
-
-    var body: some View {
-        let cities = engine.state.company(summary.stores.first?.id ?? 0).flatMap { engine.data.countries[$0.countryCode] }?.cities ?? []
-        let cityID = newCity.isEmpty ? (cities.first?.id ?? "") : newCity
-        let cityName = cities.first { $0.id == cityID }?.name ?? ""
-        let cost = engine.chainCost(chainID: summary.id, cityID: cityID, size: newSize)
-        MoreBlock("New store") {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Picker("City", selection: Binding(get: { cityID }, set: { newCity = $0 })) {
-                    ForEach(cities) { c in
-                        let n = summary.stores.filter { $0.cityName == c.name }.count
-                        Text(c.name + (n > 0 ? " · \(n) \(n == 1 ? "store" : "stores")" : "")).tag(c.id)
-                    }
-                }.pickerStyle(.menu)
-                Picker("Size", selection: $newSize) { Text("Small").tag(0.7); Text("Standard").tag(1.0); Text("Large").tag(1.4) }.pickerStyle(.segmented)
-                if let cost {
-                    FigureStrip(items: [
-                        .init(label: "Cost", value: currency.tidyShort(cost)),
-                        .init(label: "You have available", value: store.money(Payments.liquid(engine.state))),
-                    ], columns: 2)
-                    QuietButton(title: "Open \(summary.name) \(cityName)", fullWidth: true) {
-                        pending = PendingAction(title: "Open \(summary.name) \(cityName)?",
-                                                message: "About \(currency.tidyShort(cost)) now for premises, equipment and the first staff. The store takes a few weeks to set up and earns nothing until it opens; new stores start with fewer customers than the established ones.",
-                                                button: "Open the store", amount: cost, currency: currency) { open(cityID: cityID) }
-                    }
-                } else {
-                    Text("A new store is not possible in that city.").textStyle(.caption, tint: Theme.inkFaint)
-                }
-            }
-        }
-        .confirmAction($pending)
-    }
-
-    private func open(cityID: String) {
-        switch store.act({ $0.openChainStore(chainID: summary.id, cityID: cityID, size: newSize) }) {
-        case .success?: Haptics.success(); store.show("The new store is being set up.", tone: "good")
-        case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You don't have enough for a new store.", tone: "warn")
-        default: Haptics.warning(); store.show("A new store is not possible here.", tone: "warn")
-        }
-    }
-}
 
 /// Your other companies of the same trade that could join the chain.
 struct ChainJoin: View {

@@ -531,12 +531,12 @@ final class PlayBot {
                 let cities = e.homeCountry.cities.map { $0.id }
                 var opened = 0
                 for c in cities.prefix(3) {
-                    switch e.openChainStore(chainID: cid, cityID: c, size: 1) {
+                    switch e.openLocation(chainID: cid, cityID: c) {
                     case .success: opened += 1
-                    case .failure(let err): find(3, "chain-store:\(err)", "openChainStore failed: \(err)", "Chains.swift / ChainActions.swift", "city \(c)")
+                    case .failure(let err): find(3, "chain-store:\(err)", "openLocation failed: \(err)", "Chains.swift / ChainActions.swift", "city \(c)")
                     }
                 }
-                if opened == 0 { find(2, "chain-no-store", "Chain made but no store could be opened in any city", "ChainActions.openChainStore", "") }
+                if opened == 0 { find(2, "chain-no-store", "Chain made but no store could be opened in any city", "ChainLocationActions.openLocation", "") }
             } else if week == 30 { find(2, "chain-make", "makeChain returned nil at week 30 for an open company after all chain papers were applied for", "Chains.make", "") }
         case .chain where week > 30 && week % 4 == 0:
             for v in e.teamOverview().vacancies where v.needed && (v.chainID != nil || v.companyID != nil) {
