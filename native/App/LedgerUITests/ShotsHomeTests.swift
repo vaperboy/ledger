@@ -44,9 +44,13 @@ final class ShotsHomeTests: FeatureTourCase {
         // Week and month reports: play to the end of the week until a month closes (at most five weeks).
         for w in 1...5 {
             _ = goTab("Home")
-            _ = tapID("skip-menu", wait: 3)
-            guard tapEnabled("play-week", wait: 4) else { break }
-            if w == 1 { pause(0.5); snap("skip-week-playing") }
+            var played = 0
+            while played < 7, tapEnabled("next-day", wait: 4) {
+                played += 1
+                var k = 0
+                while k < 3 && popupUp(played == 7 ? 25 : 3) && played < 7 { closePopup(prefer: ["report-continue"]); k += 1 }
+            }
+            guard played > 0 else { break }
             var month = false
             var n = 0
             while n < 6 && popupUp(n == 0 ? 25 : 2) {

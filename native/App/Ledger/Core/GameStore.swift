@@ -375,36 +375,6 @@ final class GameStore: ObservableObject {
         return id == Int.min ? nil : id
     }
 
-    /// "Skip week" is free and available from the first day, until the game ends.
-    var canPlayWeek: Bool {
-        guard let e = engine else { return false }
-        return !e.state.isGameOver
-    }
-
-    /// Runs the days left in this week one by one, 0.4 s apart, then leaves the week report. Stops early when a report, a reward or a
-    /// popup is waiting, or the game ends. The per-day sheets of the days in between are dropped; the last day's report stays.
-    func playToEndOfWeek() {
-        guard canPlayWeek, !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt else { return }
-        isAdvancing = true
-        playingWeek = true
-        let startWeek: Int = engine?.state.week ?? 0
-        Task { @MainActor [weak self] in
-            while let self, let e = self.engine, e.state.week == startWeek, !e.state.isGameOver, self.playingWeek {
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                guard self.playingWeek else { break }
-                self.advanceOneDay()
-                if self.reportSheet != nil || !self.celebrationQueue.isEmpty || !self.unlockQueue.isEmpty || self.engine?.state.day == 0 { break }
-                self.dailySheet = nil
-            }
-            self?.isAdvancing = false
-            self?.playingWeek = false
-        }
-    }
-
-    /// True while "Skip week" plays the days one after another; `stopPlayingWeek` ends it after the day that is running.
-    @Published private(set) var playingWeek = false
-    func stopPlayingWeek() { playingWeek = false }
-
     /// Group books profit at the end of the last day played (week, day, value); used as the start of the next day's "Profit today".
     private var profitMark: (week: Int, day: Int, value: Double)?
 

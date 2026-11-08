@@ -62,8 +62,11 @@ extension FeatureToursTests {
         step("home: Play week: week report pages close and Home stays") {
             guard goTab("Home") else { return .fail("no Home tab") }
             let before: TourSig = signature()
-            _ = tapID("skip-menu", wait: 3)
-            guard tapID("play-week", wait: 5) else { return .skip("no play-week button") }
+            guard tapID("next-day", wait: 5) else { return .skip("no next-day button") }
+            for _ in 0..<6 {
+                _ = drainPopups(firstWait: 4, limit: 3)
+                guard tapID("next-day", wait: 4) else { break }
+            }
             let d = drainPopups(firstWait: 75, limit: 10)
             if let r = d.reward { reward = r }
             if d.seen.isEmpty { return .fail("no report or popup within 75 s of Play week (\(signature().text))") }

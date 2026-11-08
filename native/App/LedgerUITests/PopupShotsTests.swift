@@ -62,8 +62,13 @@ final class PopupShotsTests: CompanyBatchTourCase {
             return true
         }
         site("week-report") {
-            _ = tapID("skip-menu", wait: 3)
-            guard tapID("play-week", wait: 5) else { return false }
+            var played = 0
+            while played < 7, tapID("next-day", wait: 4) {
+                played += 1
+                sleep(1)
+                if played < 7, app.buttons["report-continue"].exists { tapID("report-continue", wait: 2) }
+            }
+            guard played > 0 else { return false }
             guard exists("report-open", 15) || exists("report-continue", 5) else { return false }
             popup("week-report-1")
             if tapID("report-open", wait: 2) {
