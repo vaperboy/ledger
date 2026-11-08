@@ -116,6 +116,11 @@ final class UnlockGatesTests: XCTestCase {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         Self.doneUpTo(&e, 2)
+        // The test purse is far above fifty median wages, which would open the luxury gate: bring net worth to half the limit.
+        e.update { s, d, _ in
+            let nw = Valuation.netWorth(s, trades: d.catalog).total
+            Ledger.move(&s, .me, Gates.netWorthLimit(s, data: d) * 0.5 - nw, why: "Test funds")
+        }
         let road = e.unlockRoadmap()
         let ids = road.map { $0.id }
         XCTAssertEqual(Set(ids).count, ids.count)

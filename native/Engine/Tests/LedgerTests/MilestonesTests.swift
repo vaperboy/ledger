@@ -31,7 +31,8 @@ final class MilestonesTests: XCTestCase {
     func testStreakResetsOnALossWeekAndKeepsBest() throws {
         var e = try game()
         week(&e)
-        give(&e, 1_000); week(&e)
+        // Enough cash that the loss does not end the game (a player with no company and a deep overdraft is out on the day the failure check runs).
+        give(&e, 10_000_000); week(&e)
         e.update { s, _, _ in var m = s.rest["miles"]!; m["s"] = .number(3); m["bs"] = .number(3); s.rest["miles"] = m }
         let loss = e.homeCurrency.scaledPrice(5_000_000)
         e.update { s, _, _ in Ledger.move(&s, .me, -loss, why: "Loss") }

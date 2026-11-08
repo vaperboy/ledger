@@ -66,6 +66,9 @@ final class EventRebalanceTests: XCTestCase {
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
         }
         for _ in 0..<(3 * 7) { e.nextDay() }
+        // The company's own weekday decides when its paperwork clears and it opens: play on until it has.
+        var extra = 0
+        while e.state.company(id)?.status != .open && extra < 14 { e.nextDay(); extra += 1 }
         let lib = e.events
         e.update { s, data, ctx in
             XCTAssertEqual(s.company(id)?.status, .open)

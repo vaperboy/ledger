@@ -149,7 +149,12 @@ final class RetailItemsTests: XCTestCase {
         guard e.state.company(dealer)?.status == .open else { throw XCTSkip("dealer did not open") }
         var gBefore = e.state.company(garage)!, dBefore = e.state.company(dealer)!
         XCTAssertEqual(e.carRepairGarages(for: dealer), [garage])
-        // a starting garage is full with its own customers: no spare capacity, so no job order and no money moves
+        // a garage that is full with its own customers has no spare capacity, so no job order and no money moves. Whether a young garage is
+        // full on the day depends on its weekday and first cycle, so the test makes it full rather than relying on that.
+        e.update { s, _, _ in
+            if let i = s.companyIndex(garage) { var lw = s.companies[i].value("lastW"); lw["units"] = lw["cap"]; s.companies[i].set("lastW", lw) }
+        }
+        gBefore = e.state.company(garage)!
         XCTAssertNil(e.carRepairQuote(garageID: garage, kind: "mechanical"))
         if case .ordered = e.orderCarRepair(garageID: garage, dealerID: dealer, kind: "mechanical") { XCTFail("fully booked") }
         XCTAssertEqual(e.state.company(garage)!.cash, gBefore.cash, accuracy: 1e-9)
