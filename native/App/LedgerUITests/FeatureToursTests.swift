@@ -248,7 +248,7 @@ final class FeatureToursTests: FeatureTourCase {
 
     func testT06_Ventures() {
         step("ventures tab: opens") { goTab("Ventures") ? .pass(signature().text) : .fail("no Ventures tab") }
-        for part in ["Running", "Ideas and startups", "Done"] {
+        for part in ["Running", "Portfolio", "Done"] {
             step("ventures: \(part) part opens and is clean") {
                 guard goTab("Ventures") else { return .fail("no Ventures tab") }
                 guard tapLabel(part, wait: 3) else { return .fail("no '\(part)' tab") }

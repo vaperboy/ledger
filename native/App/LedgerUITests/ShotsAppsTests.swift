@@ -135,7 +135,7 @@ final class ShotsAppsTests: FeatureTourCase {
         // The Ventures app is the Ventures tab's "Portfolio" part.
         if goTab("Ventures"), tapLabel("Portfolio", wait: 3) {
             shotLong("ventures-feed", drags: 2)
-            if tapPrefix("ventures-part-", wait: 3) { shotLong("ventures-portfolio") }
+            if tapPrefix("ventures-startup-", wait: 3) { shotLong("ventures-portfolio") }
         } else { shot("ventures-not-opened") }
     }
 }
