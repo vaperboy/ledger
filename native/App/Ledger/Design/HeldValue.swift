@@ -48,7 +48,7 @@ struct RollingMoney: View {
     }
 
     var body: some View {
-        CountingText(value: shown, format: format)
+        RollingText(value: shown, format: format)
             .onChange(of: value) { _, new in
                 if reduceMotion { shown = new } else { withAnimation(.easeOut(duration: 1.1)) { shown = new } }
             }
@@ -56,7 +56,7 @@ struct RollingMoney: View {
 }
 
 /// A `Text` whose number is the animated property: SwiftUI feeds it every in-between value while an animation runs.
-private struct CountingText: View, Animatable {
+private struct RollingText: View, Animatable {
     var value: Double
     var format: (Double) -> String
     var animatableData: Double {
