@@ -10,10 +10,10 @@ public struct PlayingRow: Identifiable, Equatable, Sendable {
     public var title: String
     /// The reading, in words where the thing cannot be measured exactly.
     public var value: String
-    /// One line on why it matters.
-    public var why: String
     /// "good", "ok" or "weak": how the lever looks now.
     public var tone: String
+    /// One line on why it matters.
+    public var why: String
 }
 
 /// The two-second card shown when the player comes back: what changed since the game was last seen.
@@ -68,7 +68,7 @@ public extension GameEngine {
                                    why: "A good manager decides as you would, so delegating costs little."))
         }
 
-        let brand = BrandValue.group(s).score
+        let brand = BrandValues.group(s).score
         rows.append(PlayingRow(id: "brand", title: "Brand value", value: brand < 20 ? "Unknown" : brand < 40 ? "Known locally" : brand < 60 ? "Respected" : brand < 80 ? "Trusted" : "A household name",
                                tone: brand >= 60 ? "good" : brand >= 30 ? "ok" : "weak", why: "A name people trust lifts prices, sale value and franchise fees."))
 
