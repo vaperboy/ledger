@@ -315,6 +315,7 @@ struct ChainStoreComparison: View {
         pending = PendingAction(title: "Close \(p.storeName)?", message: lines.joined(separator: " "), button: "close the branch", destructive: true) {
             switch store.act({ $0.closeBranch(storeID: id) }) {
             case .success(let done)?: Haptics.success(); store.show("\(done.storeName) is closed. Its people and stock went to \(done.receiverName).", tone: "good")
+            case .failure(.votedDown(let pct))?: Haptics.warning(); store.outcome(chosen: "Close the branch", result: "The co-owners voted it down: \(pct)% of the shares were for it. \(p.storeName) stays open.")
             case .failure(let why)?: Haptics.warning(); store.show(why.text, tone: "warn")
             case nil: break
             }

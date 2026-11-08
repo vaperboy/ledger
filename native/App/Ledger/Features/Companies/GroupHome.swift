@@ -44,7 +44,7 @@ struct GroupHome: View {
 @MainActor
 enum GroupWaiting {
     static func count(_ e: GameEngine, _ g: GroupEntity) -> Int {
-        guard !g.indent, let key = e.boardKey(companyID: g.companyID), e.boardIsActive(key: key) else { return 0 }
+        guard !g.indent, let key = e.boardKey(companyID: g.companyID) else { return 0 }
         return e.boardOpenDecisions(key: key)
     }
 }
@@ -336,8 +336,7 @@ struct GroupPeopleTab: View {
         let p = engine.state.people[s.id]
         let name: String = p?.name ?? s.title
         return LedgerRow(leading: .thumb(ThumbSpec(kind: .person, key: p?.role ?? "executive", initials: name, face: p?.faceKey)),
-                         title: name, subtitle: s.title + " \u{00B7} board",
-                         value: s.monthlyFee > 0 ? store.short(s.monthlyFee) : "", lineLimit: 1,
+                         title: name, subtitle: s.title + " \u{00B7} board", lineLimit: 1,
                          identifier: "group-seat-\(g.id)-\(s.id)", action: { onPick(g, .board) })
     }
 }

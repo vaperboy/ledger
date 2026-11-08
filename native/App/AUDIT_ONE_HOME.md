@@ -43,6 +43,5 @@ Rules: managers live in Group (the Group row is the manager); employees live in 
 | File:line | What | Question |
 |---|---|---|
 | Home/* | Home launches apps and the Inbox; HomeInsights and Suggestions repeat per-feature facts | Home was not touched in this pass |
-| Companies/GroupBoards.swift:101 | "Owners and shares" opens Group > Ownership | Group to Group, left as is |
 
 Not compiled here; CI is the compiler.

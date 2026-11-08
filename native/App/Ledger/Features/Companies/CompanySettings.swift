@@ -205,7 +205,15 @@ struct CompanySettings: View {
                                 message: close ? "This is final. The branch is wound down into the chain (\(cur.tidyDisplay(amount)) net)." : "This is final. The buyer takes the site and the staff and pays the chain \(cur.tidyDisplay(amount)).",
                                 button: close ? "Close the branch" : "Sell the branch", destructive: true) {
             let ok: Bool
-            if close { if case .success = store.act({ $0.closeBranch(storeID: id) }) { ok = true } else { ok = false } }
+            if close {
+                switch store.act({ $0.closeBranch(storeID: id) }) {
+                case .success?: ok = true
+                case .failure(.votedDown(let pct))?:
+                    Haptics.warning(); store.outcome(chosen: "Close the branch", result: "The co-owners voted it down: \(pct)% of the shares were for it. \(name) stays open.")
+                    return
+                default: ok = false
+                }
+            }
             else { if case .success = store.act({ $0.sellBranch(storeID: id) }) { ok = true } else { ok = false } }
             Haptics.warning(); store.show(ok ? (close ? "\(name) is closed." : "\(name) is sold.") : "\(name) could not leave the chain.", tone: ok ? "n" : "warn")
         }

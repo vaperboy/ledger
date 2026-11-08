@@ -250,7 +250,13 @@ struct ChainAddLocation: View {
         .confirmAction($pending)
     }
 
+    /// Opening goes to the chain's board: co-owners may vote it down, told in plain words; otherwise it opens as asked.
     private func open(_ q: ChainLocations.Quote) {
+        if let head = summary.stores.first, let pct = ManagerModel.boardGate(engine.state, kind: "open", companyID: head.id) {
+            Haptics.warning()
+            store.outcome(chosen: "Add \(q.name)", result: "The co-owners voted it down: \(pct)% of the shares were for it. Nothing was opened.")
+            return
+        }
         switch store.act({ $0.openLocation(chainID: q.chainID, cityID: q.cityID) }) {
         case .success?: Haptics.success(); store.show("\(q.name) is being set up.", tone: "good")
         case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You don't have enough for a new location.", tone: "warn")

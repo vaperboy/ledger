@@ -151,7 +151,7 @@ struct GroupStructureTab: View {
         let split: (control: Double, influence: Double, passive: Double) = tierShares(nodes)
         let managers: Int = mgmt?.managerCount ?? 0
         let byYou: Int = mgmt?.runByYou.count ?? 0
-        let waiting: Int = nodes.reduce(0) { (a: Int, n: StructureNode) -> Int in a + n.waitingDecisions }
+        let waiting: Int = engine.boardDecisionsWaiting
         let line: String = "\(managers) \(managers == 1 ? "manager" : "managers") \u{00B7} you run \(byYou) yourself \u{00B7} \(waiting) \(waiting == 1 ? "decision" : "decisions") waiting"
         return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {

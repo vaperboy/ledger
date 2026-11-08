@@ -136,8 +136,8 @@ final class MainScreensTests: TourCase {
     }
 }
 
-/// Group > Board with a meeting that has a point on its agenda (the `-showcase-board` game: a co-owner, a CFO and three loss months), and the
-/// board page with the point's effect, cost and risk, the seats, the rhythm and the minutes. The entity pages are toured in MainScreensTests.
+/// Group > Boardroom with a point on the decision list (the `-showcase-board` game: a co-owner and three loss months): who sits on the board,
+/// the point's recommendation, effect, cost and risk, and the quarterly review. The entity pages are toured in MainScreensTests.
 final class BoardTourTests: TourCase {
     override var extraLaunchArguments: [String] { ["-showcase-board"] }
 
@@ -154,10 +154,7 @@ final class BoardTourTests: TourCase {
         let board = app.buttons["group-tab-Boardroom"]
         guard board.waitForExistence(timeout: 2), board.isHittable else { note("no Board tab on the entity page"); return }
         board.tap(); sleep(1); shot("61-group-board-decision")
-        let open = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Boardroom")).firstMatch
-        guard open.waitForExistence(timeout: 2), open.isHittable else { note("no board decision card"); return }
-        open.tap(); sleep(1); shot("62-board-page-agenda")
-        app.swipeUp(); sleep(1); shot("63-board-page-lower")
-        app.swipeUp(); sleep(1); shot("64-board-page-minutes")
+        app.swipeUp(); sleep(1); shot("62-board-decision-list")
+        app.swipeUp(); sleep(1); shot("63-board-quarterly-review")
     }
 }

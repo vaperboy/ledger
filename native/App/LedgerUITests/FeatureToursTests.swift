@@ -180,32 +180,21 @@ final class FeatureToursTests: FeatureTourCase {
         }
         roundTrip("group money: Policy popup closes and keeps the page", prepare: { openEntityTab(entity, "Money") }) { tapID("money-policy") }
         roundTrip("group: Add menu opens and closes back to Overview", prepare: { goGroup("Overview") }) { tapID("group-add") }
-        roundTrip("boardroom: Talk to a manager opens the talk and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-talk-", wait: 4) }
-        step("boardroom: talk goes through a choice and ends with a result") {
-            guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-talk-", wait: 4) else { return .skip("nobody to talk to") }
-            guard popupUp(3) else { return .fail("the talk did not open") }
-            var picks = 0
-            // Answer the talk with the first option on each screen until it ends (at most 4 screens).
-            while picks < 4 && popupUp(1) {
-                let opts: [Hit] = hits().filter { $0.type == .button && !$0.label.isEmpty && !["popup-close", "popup-backdrop", "confirm-cancel"].contains($0.id) }
-                guard let first = opts.first(where: { !$0.label.lowercased().contains("close") }) else { break }
-                touch(first); picks += 1; pause(0.6)
-            }
-            let raw: [String] = rawProblems("boardroom talk")
+        roundTrip("boardroom: the quarterly review opens and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-review-", wait: 4) }
+        step("boardroom: the review settles a direction and a budget and ends with a result") {
+            guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-review-", wait: 4) else { return .skip("nobody to review with") }
+            guard popupUp(3) else { return .fail("the review did not open") }
+            // Pick a direction and a budget, then settle; the settle button stays off when both picks are already in force.
+            tapID("boardroom-choice-dir:lean", wait: 2)
+            tapID("boardroom-choice-bud:2", wait: 2)
+            let settled: Bool = tapID("boardroom-review-settle", wait: 2)
+            let raw: [String] = rawProblems("boardroom review")
             var n = 0
             while popupUp() && n < 3 { closePopup(); n += 1 }
-            if popupUp(1) { return .fail("the talk popup did not close") }
-            if !isSelected("group-tab-Boardroom") { return .fail("after the talk the Boardroom is not showing: \(signature().text)") }
-            return raw.isEmpty ? .pass("\(picks) taps") : .fail(raw.joined(separator: "; "))
+            if popupUp(1) { return .fail("the review popup did not close") }
+            if !isSelected("group-tab-Boardroom") { return .fail("after the review the Boardroom is not showing: \(signature().text)") }
+            return raw.isEmpty ? .pass(settled ? "settled" : "nothing to change") : .fail(raw.joined(separator: "; "))
         }
-        roundTrip("boardroom: Ask the board opens a popup and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-call-", wait: 4) }
-        step("board room: opens and Back returns to the Boardroom") {
-            guard openEntityTab(entity, "Boardroom"), tapID("group-board-room", wait: 4) else { return .skip("no board room (needs a co-owner)") }
-            let h: R = health("board room")
-            guard tapBack() else { return .fail("no Back in the board room") }
-            return isSelected("group-tab-Boardroom") ? h : .fail("Back did not return to the Boardroom: \(signature().text)")
-        }
-        roundTrip("board room: Remove from board -> Cancel keeps the screen", closeWith: ["confirm-cancel"], prepare: { openEntityTab(entity, "Boardroom") }) { tapID("board-remove-seat", wait: 4) }
     }
 
     // MARK: T07 Group > Ownership: parts and the sell route picker

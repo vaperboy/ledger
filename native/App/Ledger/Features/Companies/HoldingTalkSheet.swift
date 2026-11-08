@@ -5,42 +5,40 @@ import Finance
 import Businesses
 import Simulation
 
-/// A talk with someone at a company whose board the holding sits on: pick the person and the subject, hear them out, then answer.
-/// Same people, topics and dialogue as the owner's talks; the engine refuses it when the holding has no seat.
+/// The quarterly review with the CEO of a company whose board the holding sits on: the same report, direction and budget as the owner's
+/// review; the engine refuses it when the holding has no seat.
 struct HoldingTalkSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.popupClose) private var popupClose
     var holdingID: Int
     var companyID: Int
     @State private var personID: Int?
-    @State private var topic: String?
 
     var body: some View {
         let name: String = store.engine?.state.company(companyID)?.name ?? "Board"
         Group {
             if let e = store.engine {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    if let p = personID, let t = topic {
-                        sceneView(e, p, t)
-                    } else if let p = personID {
-                        topicList(e, p)
+                    if let p = personID {
+                        reviewView(e, p)
                     } else {
                         peopleList(e)
                     }
                 }
             }
         }
-        .centerSheetTitle("Talk at \(name)")
+        .centerSheetTitle("Review at \(name)")
     }
 
     @ViewBuilder private func peopleList(_ e: GameEngine) -> some View {
         switch e.holdingOwnerCounterparts(holdingID: holdingID, companyID: companyID) {
         case .success(let people):
-            if people.isEmpty {
-                Text("Nobody sits at this table yet.").popupText(.body)
+            let ceos: [OwnerMeetings.Counterpart] = people.filter { (c: OwnerMeetings.Counterpart) -> Bool in c.position == "ceo" }
+            if ceos.isEmpty {
+                Text("Nobody runs this company yet.").popupText(.body)
             }
             VStack(spacing: 0) {
-                ForEach(people) { (c: OwnerMeetings.Counterpart) in
+                ForEach(ceos) { (c: OwnerMeetings.Counterpart) in
                     PopupChoiceRow(title: c.name, subtitle: c.title, identifier: "holding-talk-\(c.id)") { personID = c.id }
                 }
             }
@@ -50,14 +48,13 @@ struct HoldingTalkSheet: View {
         }
     }
 
-    @ViewBuilder private func topicList(_ e: GameEngine, _ person: Int) -> some View {
+    @ViewBuilder private func reviewView(_ e: GameEngine, _ person: Int) -> some View {
         switch e.holdingOwnerTopics(holdingID: holdingID, companyID: companyID, personID: person) {
         case .success(let topics):
-            VStack(spacing: 0) {
-                ForEach(topics) { (t: OwnerMeetings.Topic) in
-                    PopupChoiceRow(title: t.label, subtitle: t.waitWeeks > 0 ? "Again in \(t.waitWeeks) \(t.waitWeeks == 1 ? "week" : "weeks")" : t.hint,
-                                   enabled: t.waitWeeks == 0) { topic = t.id }
-                }
+            if let t = topics.first {
+                scene(e, person, t.id)
+            } else {
+                Text("They hold no review.").popupText(.body)
             }
         case .failure(let f):
             Text(f.reason).popupText(.risk).fixedSize(horizontal: false, vertical: true)
@@ -65,37 +62,34 @@ struct HoldingTalkSheet: View {
         Button("Back") { Haptics.tap(); personID = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
     }
 
-    @ViewBuilder private func sceneView(_ e: GameEngine, _ person: Int, _ t: String) -> some View {
-        switch e.holdingOwnerScene(holdingID: holdingID, companyID: companyID, personID: person, topic: t) {
+    @ViewBuilder private func scene(_ e: GameEngine, _ person: Int, _ topic: String) -> some View {
+        switch e.holdingOwnerScene(holdingID: holdingID, companyID: companyID, personID: person, topic: topic) {
         case .success(let sc):
-            DialogueQuote(speaker: sc.speaker, lines: sc.lines)
-            Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
-            VStack(spacing: 0) {
-                ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
-                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(person, sc.topic, c.id, c.label) }
-                }
-            }
+            ReviewForm(scene: sc) { (picks: [OwnerMeetings.Choice]) in settle(person, topic, picks) }
         case .failure(let f):
             Text(f.reason).popupText(.risk).fixedSize(horizontal: false, vertical: true)
         }
-        Button("Back") { Haptics.tap(); topic = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
     }
 
-    private func choose(_ person: Int, _ topic: String, _ choice: String, _ label: String) {
+    private func settle(_ person: Int, _ topic: String, _ picks: [OwnerMeetings.Choice]) {
         let hid: Int = holdingID
         let cid: Int = companyID
-        let r: Result<OwnerMeetings.Outcome, HoldingStakes.Failure>? = store.act { (e: inout GameEngine) -> Result<OwnerMeetings.Outcome, HoldingStakes.Failure> in
-            e.holdingOwnerChoose(holdingID: hid, companyID: cid, personID: person, topic: topic, choice: choice)
+        var lines: [String] = []
+        var bad = false
+        for pick in picks {
+            let choice: String = pick.id
+            let r: Result<OwnerMeetings.Outcome, HoldingStakes.Failure>? = store.act { (e: inout GameEngine) -> Result<OwnerMeetings.Outcome, HoldingStakes.Failure> in
+                e.holdingOwnerChoose(holdingID: hid, companyID: cid, personID: person, topic: topic, choice: choice)
+            }
+            switch r {
+            case .success(let o)?: lines.append(o.text); if o.tone == "bad" { bad = true }
+            case .failure(let f)?: Haptics.warning(); store.show(f.reason, tone: "warn"); return
+            case nil: break
+            }
         }
-        switch r {
-        case .success(let o)?:
-            if o.tone == "bad" { Haptics.warning() } else { Haptics.success() }
-            popupClose?()
-            store.outcome(chosen: label, result: o.text)
-        case .failure(let f)?:
-            Haptics.warning(); store.show(f.reason, tone: "warn")
-        case nil:
-            break
-        }
+        guard !lines.isEmpty else { return }
+        if bad { Haptics.warning() } else { Haptics.success() }
+        popupClose?()
+        store.outcome(chosen: picks.map { (x: OwnerMeetings.Choice) -> String in x.label }.joined(separator: ", "), result: lines.joined(separator: "\n"))
     }
 }
