@@ -4,21 +4,49 @@ import Countries
 import Employees
 import Finance
 
-/// Board agendas, decisions and what they do.
-/// A meeting is held only when there is something to decide. Its agenda is built from what is true in the companies the board looks
-/// after: losses, thin margins, low awareness, missing paperwork, a company without a manager, sold-out days, a bottleneck, owners
-/// waiting for a dividend, and the signs of trouble among the people. Approving an item changes the game through the systems that already
-/// exist (prices, stock rules, the broker listing of a company, marketing through the manager, document applications, equipment and
-/// premises purchases, the manager search, dividend policy, the meeting with a manager). An item the board cannot carry out right now is
-/// refused with the reason and stays on the agenda. The answer to every item is kept as an outcome; a declined item is not raised again
-/// for a while; a meeting closes when its last item is decided or after `lapseWeeks`.
-/// Saved on the board `brd`: `mts[]` (meetings; items carry `key`, `eff`, `risk`, `cost?`, `by?`, `st`, `out`, `dw`), `memo` {key: week until
-/// which the same point is not raised again} and `fu[]` (follow-up actions). All keys are written only when set.
+/// The board's one decision list. What the owner can be asked to decide is fixed: sell a company, close it, start a dividend, replace the CEO,
+/// put in capital, and open or close a chain location. Each item appears when the numbers or a proposal call for it, with the recommendation of
+/// the person who knows the company (its manager, the chain's CEO or chain manager, else the board). Approving first puts the move to the
+/// shares through `boardVote` (a sole owner decides alone), then carries it out through the game's own systems; a refused item stays on the list with
+/// the reason. A declined item is not raised again for a while. Saved on the board `brd`: `memo` {item: week until which it is not raised
+/// again}, `locp[]` (location proposals, see `ChainLocations`), `fu[]` (follow-up jobs) and `mts[]` (emergency meetings, see `ManagerMeetings`).
 extension ManagerModel {
-    /// A regular meeting nobody decided is closed after this many weeks; its open points lapse.
-    public static let lapseWeeks = 4
-    static let declinedQuietWeeks = 12, approvedQuietWeeks = 8, lapsedQuietWeeks = 4
-    static let keptMeetings = 24, keptFollowUps = 20, maxAgenda = 5
+    static let declinedQuietWeeks = 12, approvedQuietWeeks = 8, locationQuietWeeks = 26
+    static let keptMeetings = 24, keptFollowUps = 20
+
+    // MARK: Types
+
+    public struct BoardDecision: Identifiable, Equatable, Sendable {
+        public var id: String
+        /// The board it belongs to (`boardKey`).
+        public var key: String
+        /// sell, close, dividend, ceo, inject, open (a chain location) or shut (close a chain location).
+        public var kind: String
+        public var companyID: Int
+        public var title: String
+        /// What approving does, what it costs once (0 if nothing), and what could go wrong.
+        public var effect: String
+        public var cost: Double
+        public var risk: String
+        /// "Name, Title" of who recommends, and what they recommend and why.
+        public var advisor: String
+        public var recommends: Bool
+        public var reason: String
+        /// For a location: the proposal's number and what it is about (a city id to open in, a store id to close).
+        public var proposalID: Int = 0
+        public var target: String = ""
+    }
+
+    public enum BoardDecisionResult: Equatable, Sendable {
+        /// Carried out, with what happened.
+        case done(String)
+        case declined
+        /// The shares voted it down: the percent that were for it.
+        case voteFailed(Int)
+        /// Could not be carried out now; the item stays on the list.
+        case refused(String)
+        case gone
+    }
 
     // MARK: Reading
 
@@ -41,115 +69,168 @@ extension ManagerModel {
     }
     public static func openFollowUps(_ s: GameState, key: String) -> [FollowUp] { followUps(s, key: key).filter { $0.status.isEmpty } }
 
-    /// Points waiting for the owner on one board: undecided items of open regular meetings, plus emergencies nobody has answered yet.
-    public static func openDecisionCount(_ s: GameState, key: String) -> Int {
-        meetings(s, key: key).reduce(0) { n, m in
-            if m.isEmergency { return n + (m.status.isEmpty ? 1 : 0) }
-            return n + (m.status.isEmpty ? m.items.filter { !$0.action.isEmpty && $0.status.isEmpty }.count : 0)
-        }
+    /// Who speaks for a company: its manager, else the board.
+    static func advisor(_ s: GameState, _ co: Company) -> String {
+        if let mid = co.managerID, let n = s.people[mid] { return "\(n.name), Manager" }
+        return "Your board"
     }
 
-    /// What a meeting called now would put on the agenda (empty when there is nothing to decide, so no meeting would be held).
-    public static func agendaPreview(_ s: GameState, key: String, data: GameData) -> [MeetingItem] {
+    /// Points waiting for the owner on one board: the decision list, plus emergencies nobody has answered yet.
+    public static func openDecisionCount(_ s: GameState, key: String, data: GameData) -> Int {
+        boardDecisions(s, key: key, data: data).count + meetings(s, key: key).filter { $0.isEmergency && $0.status.isEmpty }.count
+    }
+
+    /// Every board's decisions in one list, the ones their advisers recommend first.
+    public static func boardDecisions(_ s: GameState, data: GameData) -> [BoardDecision] {
+        let all = boardKeys(s).flatMap { boardDecisions(s, key: $0, data: data) }
+        return all.filter { $0.recommends } + all.filter { !$0.recommends }
+    }
+
+    public static func boardDecisions(_ s: GameState, key: String, data: GameData) -> [BoardDecision] {
         let cos = boardCompanies(s, key: key)
         guard !cos.isEmpty else { return [] }
-        return agendaItems(s, key: key, cos: cos, data: data).enumerated().map { itemFrom($0.element, index: $0.offset) }
-    }
-
-    // MARK: Building the agenda
-
-    static func missingDocs(_ s: GameState, _ c: Company, data: GameData) -> [String] {
-        guard let bd = data.catalog[c.type] else { return [] }
-        let w = World(state: s, data: data)
-        return Documents.needed(c, bd, w).filter { $0 != "vat_not_applicable" && !["ok", "applied"].contains(c.value("docs")[$0]["st"].string) }
-    }
-
-    /// Points that are still open in a meeting younger than the lapse time (they block a second copy of the same point).
-    static func pendingKeys(_ b: JSONValue, week: Int) -> Set<String> {
-        var out = Set<String>()
-        for m in b["mts"].array where !m["emg"].bool && m["st"].string.isEmpty && week - m["w"].int < lapseWeeks {
-            for it in m["items"].array where it["st"].string.isEmpty && !it["key"].string.isEmpty { out.insert(it["key"].string) }
+        let memo = board(s, key: key)["memo"]
+        var out: [BoardDecision] = []
+        for c in cos where c.status == .open && c.type != "hold" {
+            let cur = World(state: s, data: data).currency(c)
+            let h3 = Array(c.monthlyHistory.suffix(3)), h6 = Array(c.monthlyHistory.suffix(6))
+            let p3 = h3.reduce(0.0) { $0 + $1.profit }, r3 = h3.reduce(0.0) { $0 + $1.revenue }
+            let p6 = h6.reduce(0.0) { $0 + $1.profit }, r6 = h6.reduce(0.0) { $0 + $1.revenue }
+            let loss3 = h3.count == 3 && h3.allSatisfy { $0.profit < 0 }
+            let loss6 = h6.count == 6 && h6.allSatisfy { $0.profit < 0 }
+            let deep3 = r3 <= 0 || p3 < -r3 * 0.1, deep6 = r6 <= 0 || p6 < -r6 * 0.1
+            let adviser = advisor(s, c)
+            func add(_ kind: String, _ title: String, effect: String, cost: Double = 0, risk: String, advisor by: String? = nil, recommends: Bool, reason: String) {
+                let id = "\(kind):\(c.id)"
+                if !memo[id].isNull && memo[id].int > s.week { return }
+                out.append(BoardDecision(id: id, key: key, kind: kind, companyID: c.id, title: title, effect: effect, cost: cost, risk: risk, advisor: by ?? adviser, recommends: recommends, reason: reason))
+            }
+            if loss3, SaleListings.routeProblem(s, companyID: c.id, route: "broker", pct: 100) == nil {
+                add("sell", "Put \(c.name) up for sale", effect: "\(c.name) is listed with a broker. Offers reach you; nothing is sold until you accept one.",
+                    risk: "If you later accept an offer you stop owning the business.", recommends: deep3,
+                    reason: deep3 ? "It lost \(cur.short(-p3)) over three months, more than a tenth of what it took in." : "The loss is small against its sales. A change of course may be enough.")
+            }
+            if loss6 && !s.isBranch(c) {
+                add("close", "Close \(c.name)", effect: "\(c.name) is wound up: assets sold at a discount, staff let go, loans repaid as far as the money goes. You get what is left.",
+                    risk: "It cannot be undone, and notice and redundancy pay come first.", recommends: deep6,
+                    reason: deep6 ? "Six months of losses, \(cur.short(-p6)) in all." : "Six months of small losses. It may still turn.")
+            }
+            if c.form == .limited, c.str("dp27", "none") == "none", !c.value("holders").array.isEmpty, h3.count == 3, p3 > 0, c.cash > 0 {
+                add("dividend", "Start a regular dividend at \(c.name)", effect: "\(c.name) pays 25% of profit to its owners each quarter, when there is profit and cash after costs.",
+                    risk: "Cash leaves the company every quarter. You receive your share.", recommends: c.cash > p3,
+                    reason: "It made \(cur.short(p3)) over three months and pays its owners nothing." + (c.cash > p3 ? "" : " Cash is thin, so I would wait."))
+            }
+            let wk = c.num("wkD")
+            if c.cash < 0 || (wk < 0 && c.cash / -wk < 8) {
+                let x = cur.roundedStep(max(cur.scaledPrice(20000), abs(wk) * 8), about: 1000)
+                if Payments.liquid(s) >= x {
+                    let mild = p3 > -r3 * 0.1
+                    add("inject", "Put \(cur.short(x)) into \(c.name)", effect: "You move \(cur.short(x)) from your own cash into the company.", cost: x,
+                        risk: "It is your money; it only helps if the trouble is temporary.", recommends: mild,
+                        reason: mild ? "Cash would run out within weeks, but the business itself holds up." : "Cash is going and so is the business. The money would only cover losses.")
+                }
+            }
+            if let mid = c.managerID, let n = s.people[mid], loss3, s.week - c.int("mgrW0") >= 13, c.int("ceoBlk") <= s.week {
+                let director = seats(s, key: key).first { $0.role == "director" }.flatMap { s.people[$0.id] }
+                add("ceo", "Replace \(n.name) as manager of \(c.name)", effect: "The manager is dismissed under the notice and severance rules of the country.",
+                    risk: "The company has no manager until you appoint one.", advisor: director.map { "\($0.name), Director" } ?? "Your board", recommends: deep3,
+                    reason: deep3 ? "Three losing months in a row, \(cur.short(-p3)) in all. A new leader may turn it." : "Three losing months, but small ones. Give them time.")
+            }
+        }
+        if isChainKey(key) {
+            for p in ChainLocations.proposals(s, chainID: keyID(key)) {
+                let open = p.kind == "open"
+                out.append(BoardDecision(id: "\(p.kind):\(p.chainID):\(p.id)", key: key, kind: p.kind, companyID: p.storeID,
+                                         title: open ? "Open a location in \(p.cityName)" : "Close \(p.storeName)",
+                                         effect: open ? "A new location opens in \(p.cityName), built to the chain's standards and running about three weeks after it is set up."
+                                                      : "\(p.storeName) is closed: its stock and people move to sister locations as far as they fit, the rest are made redundant and the lease is given up.",
+                                         cost: p.cost, risk: open ? "The money is paid at once and the rent stays." : "It cannot be undone, and redundancy pay is due.",
+                                         advisor: p.by, recommends: true, reason: p.why, proposalID: p.id, target: p.target))
+            }
         }
         return out
     }
 
-    /// The points a meeting held now would deal with: what each seat brings up, minus what is already open and what was answered recently.
-    static func agendaItems(_ s: GameState, key: String, cos: [Company], data: GameData) -> [JSONValue] {
-        let vs = voters(s, key: key)
-        var raw: [JSONValue] = []
-        for v in vs { for r in recommendations(s, voter: v, cos: cos, data: data) where !raw.contains(where: { $0["text"].string == r["text"].string }) { raw.append(r) } }
-        for r in questionCEO(s, key: key, cos: cos) { raw.append(r) }
-        let b = board(s, key: key)
-        let pending = pendingKeys(b, week: s.week)
-        let memo = b["memo"]
-        var seen = Set<String>()
-        var out: [JSONValue] = []
-        for var it in raw {
-            guard let c = s.company(it["co"].int), c.status.isLive else { continue }
-            let k = "\(it["act"].string):\(c.id)"
-            if pending.contains(k) || (!memo[k].isNull && memo[k].int > s.week) || !seen.insert(k).inserted { continue }
-            let d = describe(s, act: it["act"].string, company: c, data: data)
-            it["key"] = .string(k)
-            it["eff"] = .string(d.effect)
-            it["risk"] = .string(d.risk)
-            if d.cost > 0 { it["cost"] = .number(d.cost) }
-            if !it["who"].isNull, let v = vs.first(where: { $0.personID == it["who"].int }) { it["by"] = .string("\(v.name), \(v.title)") }
-            out.append(it)
+    // MARK: Deciding
+
+    /// The kind of vote the shares hold on a decision (`boardVote`); nil where the owner decides alone or the vote is part of the move.
+    static func voteKind(_ kind: String) -> String? {
+        switch kind {
+        case "sell": return "sell"
+        case "close", "shut": return "close"
+        case "dividend": return "dividend"
+        case "open": return "open"
+        default: return nil
         }
-        return Array(out.prefix(maxAgenda))
     }
 
-    /// What approving a point does, what it costs once, and what could go wrong. Everything here is also what `applyItem` carries out.
-    static func describe(_ s: GameState, act: String, company c: Company, data: GameData) -> (cost: Double, effect: String, risk: String) {
-        let w = World(state: s, data: data)
-        let cur = w.currency(c)
-        switch act {
-        case "price":
-            return (0, "Prices at \(c.name) go up one step.", "Some price-sensitive customers may stop buying; every sale earns more.")
-        case "stock":
-            return (0, "\(c.name) orders plenty of stock from now on.", "More cash is tied up in stock; fewer sales are lost to empty shelves.")
-        case "sale":
-            return (0, "\(c.name) is listed with a broker. Offers reach you; nothing is sold until you accept one.", "If you later accept an offer you stop owning the business.")
-        case "marketing":
-            let ch = (data.catalog[c.type]?.audience ?? 0) > 0.5 ? "google" : "meta"
-            let now = c.value("mkt")[ch]["b"].double
-            let step = marketingSteps(ch, cur).first(where: { $0 > now }).map { $0 - now } ?? 0
-            let more = step > 0 ? " by about \(cur.short(step)) a week" : ""
-            let who = c.managerID != nil ? "The manager raises" : "You raise"
-            return (0, c.managerID != nil ? "\(who) the marketing budget one step\(more)." : "A job for you: raise the marketing budget\(more) under Sales and Market.",
-                    "The cost runs every week; awareness builds slowly and fades if you stop.")
-        case "hire":
-            return (0, "A search for a manager for \(c.name) starts. The best candidate, with pay already agreed, comes to you as an offer.", "Nothing is paid until you accept. A manager is a fixed monthly cost.")
-        case "paperwork":
-            let ids = missingDocs(s, c, data: data)
-            let bd = data.catalog[c.type]
-            let fees = bd.map { b in ids.reduce(0.0) { $0 + Documents.cost($1, company: c, b, w) } } ?? 0
-            return (fees, "\(c.name) applies for the \(ids.count) missing \(ids.count == 1 ? "document" : "documents") now.", "Fees are paid at once and approval takes some weeks.")
-        case "fireceo":
-            return (0, "The manager of \(c.name) is dismissed under the notice and severance rules of the country.", "The company has no manager until you appoint one.")
-        case "capacity":
-            if let bd = data.catalog[c.type], let p = bottleneckProposal(s, c, bd, data: data) {
-                let nm = bd.equipment.first(where: { $0.id == p.id })?.name ?? "equipment"
-                if p.kind == "space" { return (p.cost * 0.5, "\(c.name) takes about a quarter more space.", "Cash leaves the company now and the rent or fit-out cost stays.") }
-                return (p.cost, "\(c.name) buys \(nm.lowercased()).", "Cash leaves the company now; it only pays if demand stays high.")
-            }
-            return (0, "", "")
+    /// Does the board carry a move? Nil when it does (or when you own it alone); else the share of yes votes.
+    public static func boardGate(_ s: GameState, kind: String, companyID: Int) -> Int? {
+        let v = boardVote(s, kind: kind, companyID: companyID, advisory: true)
+        return v.active && !v.passes ? Int(jsRound(v.percentYes)) : nil
+    }
+
+    /// Put an item to the board and carry it out (`approve`), or turn it down. "close" ends in `GameEngine.windUpCompany`, which this model cannot reach:
+    /// the engine calls `boardGate` and `settleDecision` around it.
+    @discardableResult
+    public static func decideBoardItem(_ s: inout GameState, id: String, approve: Bool, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
+        guard let d = boardDecisions(s, data: data).first(where: { $0.id == id }) else { return .gone }
+        if !approve { settleDecision(&s, d, approved: false); return .declined }
+        if let vk = voteKind(d.kind), let pct = boardGate(s, kind: vk, companyID: d.companyID) { settleDecision(&s, d, approved: false); return .voteFailed(pct) }
+        let r = carryOut(&s, d, data: data, context: fc)
+        if case .refused = r { return r }
+        if case .voteFailed = r { settleDecision(&s, d, approved: false); return r }
+        settleDecision(&s, d, approved: true)
+        return r
+    }
+
+    /// A decision taken: it is not raised again for a while, and a location proposal leaves the list.
+    public static func settleDecision(_ s: inout GameState, _ d: BoardDecision, approved: Bool) {
+        var b = board(s, key: d.key)
+        var memo = b["memo"].isNull ? JSONValue.object([:]) : b["memo"]
+        for (k, v) in memo.object where v.int <= s.week { memo[k] = .null }   // forget what has run out
+        if d.proposalID != 0 {
+            b["locp"] = .array(b["locp"].array.filter { $0["id"].int != d.proposalID })
+            memo[ChainLocations.memoKey(kind: d.kind, target: d.target)] = .number(Double(s.week + locationQuietWeeks))
+        } else {
+            memo[d.id] = .number(Double(s.week + (approved ? approvedQuietWeeks : declinedQuietWeeks)))
+        }
+        b["memo"] = .object(memo.object.filter { !$0.value.isNull })
+        writeBoard(&s, key: d.key, b)
+    }
+
+    /// Do what an approved item says. Changes the game only when it can be carried out in full.
+    static func carryOut(_ s: inout GameState, _ d: BoardDecision, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
+        guard let co = s.company(d.companyID), co.status.isLive, let ci = s.companyIndex(d.companyID) else { return .refused("That company is no longer there.") }
+        switch d.kind {
+        case "sell":
+            if let why = SaleListings.routeProblem(s, companyID: co.id, route: "broker", pct: 100) { return .refused(why == "It is already on the market." ? "\(co.name) is already listed for sale." : why) }
+            guard listForSale(&s, companyID: co.id) else { return .refused("\(co.name) cannot be listed for sale now.") }
+            return .done("\(co.name) is listed with a broker. Offers will reach you.")
         case "dividend":
-            return (0, "\(c.name) pays 25% of profit to its owners each quarter, when there is profit and cash after costs.", "Cash leaves the company every quarter. You receive your share.")
-        case "morale":
-            return (0, "You talk with the manager of \(c.name) about how the work is going.", "The manager will expect you to keep listening.")
-        case "leaving":
-            return (0, "A follow-up goes to you: talk to the person at \(c.name) who is leaving.", "If nothing is done they leave when their notice ends.")
+            guard co.form == .limited else { return .refused("Only a limited company pays dividends.") }
+            if co.str("dp27", "none") != "none" { return .refused("\(co.name) already pays a dividend.") }
+            s.companies[ci].set("dp27", "low")
+            return .done("\(co.name) will pay 25% of profit each quarter.")
+        case "inject":
+            guard Payments.liquid(s) >= d.cost, Payments.injectCash(&s, companyID: co.id, amount: d.cost) else { return .refused("You do not have the money for that now.") }
+            return .done("You put \(World(state: s, data: data).currency(co).short(d.cost)) into \(co.name).")
+        case "ceo":
+            guard co.managerID != nil else { return .refused("\(co.name) has no manager to dismiss.") }
+            // With co-owners this is a vote by shares (you decide alone above half); a failed vote closes the point.
+            switch proposeCEOChange(&s, companyID: co.id, data: data) {
+            case .dismissed:
+                addFollowUp(&s, key: d.key, text: "Appoint a new manager for \(co.name) (Team).", companyID: co.id, check: "mgr")
+                return .done("The manager of \(co.name) was dismissed.")
+            case .voteFailed(let pct): return .voteFailed(pct)
+            case .blocked(let w): return .refused("Replacing the manager was put to the owners lately. Try again in \(w) \(w == 1 ? "week" : "weeks").")
+            case .refused(let why): return .refused(why)
+            }
+        case "open", "shut":
+            return ChainLocations.carryOut(&s, d, data: data, context: fc)
         default:
-            return (0, "", "")
+            return .refused("There is nothing the board can do about that.")
         }
-    }
-
-    // MARK: Carrying out a point
-
-    enum ItemEffect: Equatable {
-        case ok(String, followUp: String?, check: String?)
-        case refused(String)
     }
 
     /// Put the company up with a broker, as the emergency answer "put it up for sale" does: the same listing the owner's sale routes make
@@ -157,121 +238,7 @@ extension ManagerModel {
     @discardableResult
     static func listForSale(_ s: inout GameState, companyID: Int) -> Bool { SaleListings.start(&s, companyID: companyID, route: "broker") }
 
-    /// Do what an approved point says. Changes the game only when it can be carried out in full.
-    static func applyItem(_ s: inout GameState, item it: JSONValue, data: GameData, marketing: MarketingTables?) -> ItemEffect {
-        let cid = it["co"].int
-        guard let co = s.company(cid), co.status.isLive, let ci = s.companyIndex(cid) else { return .refused("That company is no longer there.") }
-        let w = World(state: s, data: data)
-        let cur = w.currency(co)
-        switch it["act"].string {
-        case "price":
-            if Chains.chain(s, of: co) != nil { Chains.setStoreRule(&s, companyID: cid, rule: .priceSteps(min(1, co.value("off")["price"].double + 1))) }
-            else {
-                guard co.priceLevel < 3 else { return .refused("Prices at \(co.name) are already at the top step.") }
-                s.companies[ci].priceLevel = co.priceLevel + 1
-            }
-            return .ok("Prices at \(co.name) went up one step.", followUp: nil, check: nil)
-        case "stock":
-            if Chains.chain(s, of: co) != nil { Chains.setStoreRule(&s, companyID: cid, rule: .ordering(2)) } else { s.companies[ci].set("stockPol", 2) }
-            return .ok("\(co.name) now orders plenty.", followUp: nil, check: nil)
-        case "sale":
-            if let why = SaleListings.routeProblem(s, companyID: cid, route: "broker", pct: 100) { return .refused(why == "It is already on the market." ? "\(co.name) is already listed for sale." : why) }
-            guard listForSale(&s, companyID: cid) else { return .refused("\(co.name) cannot be listed for sale now.") }
-            return .ok("\(co.name) is listed with a broker. Offers will reach you.", followUp: nil, check: nil)
-        case "fireceo":
-            guard co.managerID != nil else { return .refused("\(co.name) has no manager to dismiss.") }
-            // With co-owners this is a vote by shares (you decide alone above half); a failed vote closes the point.
-            switch proposeCEOChange(&s, companyID: cid, data: data) {
-            case .dismissed: return .ok("The manager of \(co.name) was dismissed.", followUp: "Appoint a new manager for \(co.name) (Team).", check: "mgr")
-            case .voteFailed(let pct): return .ok("The co-owners voted it down: \(pct)% of the shares were for it.", followUp: nil, check: nil)
-            case .blocked(let w): return .ok("Replacing the manager was put to the owners lately. Try again in \(w) \(w == 1 ? "week" : "weeks").", followUp: nil, check: nil)
-            case .refused(let why): return .refused(why)
-            }
-        case "marketing":
-            guard co.managerID != nil, let m = marketing else {
-                return .ok("Marketing at \(co.name) is yours to raise.", followUp: "Raise the marketing budget at \(co.name) (Sales and Market).", check: nil)
-            }
-            let before = co.value("mkt").object.values.reduce(0.0) { $0 + $1["b"].double }
-            let said = ask(&s, companyID: cid, key: "mkt_more", data: data, marketing: m) ?? ""
-            let after = s.companies[ci].value("mkt").object.values.reduce(0.0) { $0 + $1["b"].double }
-            guard after > before else { return .refused(said.isEmpty ? "The manager could not raise marketing now." : "The manager: \(said)") }
-            return .ok("The manager raised marketing at \(co.name) to \(cur.short(after)) a week.", followUp: nil, check: nil)
-        case "hire":
-            guard co.managerID == nil else { return .refused("\(co.name) already has a manager.") }
-            guard let bd = data.catalog[co.type] else { return .refused("Nobody can search for \(co.name).") }
-            let key = boardKey(s, co)
-            let by = it["who"].isNull ? nil : s.people[it["who"].int]
-            let seat = by ?? seats(s, key: key).compactMap { s.people[$0.id] }.first ?? Headquarters.rightHand(s).flatMap { s.people[$0.personID] }
-            guard let n = seat else { return .refused("Nobody at the table can run a search.") }
-            if offerManagerCandidate(&s, need: co, bd: bd, from: n, data: data) {
-                return .ok("\(n.name) found a candidate; the offer is in your Inbox.", followUp: "Answer the manager offer for \(co.name) (Inbox).", check: "mgr")
-            }
-            return .ok("\(n.name) found nobody suitable yet.", followUp: "Find a manager for \(co.name) (Team).", check: "mgr")
-        case "paperwork":
-            guard let bd = data.catalog[co.type] else { return .refused("No paperwork can be filed for \(co.name).") }
-            let ids = missingDocs(s, co, data: data)
-            guard !ids.isEmpty else { return .refused("Nothing is missing at \(co.name) now.") }
-            let fees = ids.reduce(0.0) { $0 + Documents.cost($1, company: co, bd, w) }
-            guard co.cash >= fees else { return .refused("\(co.name) has \(cur.short(co.cash)) and the fees come to \(cur.short(fees)). Put money in first.") }
-            var done = 0
-            for id in ids where Documents.apply(id, companyID: cid, state: &s, data: data) == .ok { done += 1 }
-            guard done > 0 else { return .refused("The applications could not be filed (an accountant agreement may be needed first).") }
-            return .ok("\(co.name) applied for \(done) of \(ids.count) missing \(ids.count == 1 ? "document" : "documents").", followUp: nil, check: nil)
-        case "capacity":
-            guard let bd = data.catalog[co.type], let p = bottleneckProposal(s, co, bd, data: data), p.kind == "eq" || p.kind == "space" else {
-                return .refused("The bottleneck at \(co.name) has changed; nothing to buy now.")
-            }
-            let price = p.kind == "space" ? p.cost * 0.5 : p.cost
-            guard co.cash >= price else { return .refused("\(co.name) has \(cur.short(co.cash)); this needs \(cur.short(price)).") }
-            var n = recommender(it, s) ?? Person(raw: [:])
-            if n.name.isEmpty { n.name = "The board" }
-            let cash0 = co.cash, m20 = co.value("prem")["m2"].double
-            buyForProposal(&s, ci, p, n, data: data)
-            let after = s.companies[ci]
-            guard after.cash < cash0 || after.value("prem")["m2"].double > m20 else { return .refused("The purchase could not be made.") }
-            return .ok(p.kind == "space" ? "\(co.name) took more space." : "\(co.name) bought the equipment.", followUp: nil, check: nil)
-        case "dividend":
-            guard co.form == .limited else { return .refused("Only a limited company pays dividends.") }
-            if co.str("dp27", "none") != "none" { return .refused("\(co.name) already pays a dividend.") }
-            s.companies[ci].set("dp27", "low")
-            return .ok("\(co.name) will pay 25% of profit each quarter.", followUp: nil, check: nil)
-        case "morale":
-            guard let mid = co.managerID, let mg = s.people[mid], let m = marketing else { return .refused("\(co.name) has no manager to talk to.") }
-            if CounterpartMeeting.isCoolingDown(lastWeek: co.value("meetW").isNull ? nil : co.num("meetW"), now: s.week) { return .refused("You met \(mg.name) a few days ago. Give it a week or two.") }
-            meetOne(&s, companyID: cid, goal: "morale", tone: "casual", data: data, marketing: m)
-            return .ok("You talked with \(mg.name); morale is better.", followUp: nil, check: nil)
-        case "leaving":
-            return .ok("Noted.", followUp: "Talk to the person leaving \(co.name) (Team).", check: "notice")
-        default:
-            return .refused("There is nothing the board can do about that.")
-        }
-    }
-    private static func recommender(_ it: JSONValue, _ s: GameState) -> Person? { it["who"].isNull ? nil : s.people[it["who"].int] }
-
-    // MARK: Deciding
-
-    /// A point decided: kept on the meeting with its outcome, remembered so it is not raised again soon, and the meeting closes with its last point.
-    static func recordDecision(_ b: inout JSONValue, meeting k: Int, item idx: Int, status: String, outcome: String, week: Int, quiet: Int) {
-        var mts = b["mts"].array
-        guard mts.indices.contains(k), mts[k]["items"].array.indices.contains(idx) else { return }
-        var items = mts[k]["items"].array
-        items[idx]["st"] = .string(status)
-        items[idx]["out"] = .string(outcome)
-        items[idx]["dw"] = .number(Double(week))
-        let key = items[idx]["key"].string
-        if !key.isEmpty {
-            var memo = b["memo"].isNull ? JSONValue.object([:]) : b["memo"]
-            // forget what has run out, so the record stays small
-            for (mk, mv) in memo.object where mv.int <= week { memo[mk] = .null }
-            memo[key] = .number(Double(week + quiet))
-            b["memo"] = .object(memo.object.filter { !$0.value.isNull })
-        }
-        mts[k]["items"] = .array(items)
-        if !mts[k]["emg"].bool, mts[k]["st"].string.isEmpty, !items.contains(where: { !$0["act"].string.isEmpty && $0["st"].string.isEmpty }) {
-            mts[k]["st"] = "closed"; mts[k]["cw"] = .number(Double(week))
-        }
-        b["mts"] = .array(mts)
-    }
+    // MARK: Follow-up jobs
 
     static func addFollowUp(_ s: inout GameState, key: String, text: String, companyID: Int, check: String?) {
         var b = board(s, key: key)
@@ -300,28 +267,11 @@ extension ManagerModel {
         return true
     }
 
-    // MARK: Weekly: lapse, close, check the follow-ups
-
-    /// Regular meetings that nobody finished lapse after `lapseWeeks`; follow-ups with a check close when the check is true; old ones lapse.
+    /// Weekly: follow-ups with a check close when the check is true; old ones lapse.
     static func sweepBoards(_ s: inout GameState) {
         for key in boardKeys(s) {
             var b = board(s, key: key)
             var changed = false
-            var mts = b["mts"].array
-            for k in mts.indices where !mts[k]["emg"].bool && mts[k]["st"].string.isEmpty {
-                var items = mts[k]["items"].array
-                let open = items.indices.filter { !items[$0]["act"].string.isEmpty && items[$0]["st"].string.isEmpty }
-                if open.isEmpty { mts[k]["st"] = "closed"; mts[k]["cw"] = .number(Double(s.week)); changed = true; continue }
-                guard s.week - mts[k]["w"].int >= lapseWeeks else { continue }
-                var memo = b["memo"].isNull ? JSONValue.object([:]) : b["memo"]
-                for i in open {
-                    items[i]["st"] = "late"; items[i]["out"] = "No decision was taken."; items[i]["dw"] = .number(Double(s.week))
-                    if !items[i]["key"].string.isEmpty { memo[items[i]["key"].string] = .number(Double(s.week + lapsedQuietWeeks)) }
-                }
-                b["memo"] = memo
-                mts[k]["items"] = .array(items); mts[k]["st"] = "lapsed"; mts[k]["cw"] = .number(Double(s.week)); changed = true
-            }
-            if changed { b["mts"] = .array(mts) }
             var fu = b["fu"].array
             for i in fu.indices where fu[i]["st"].string.isEmpty {
                 let co = s.company(fu[i]["co"].int)

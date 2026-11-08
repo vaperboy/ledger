@@ -320,18 +320,14 @@ final class PlaytestToursTests: XCTestCase {
         var (e, id) = try fixture()
         weeks(&e, 8)
         guard let key = e.boardKey(companyID: id) else { return ex(false, "company has a board key", sev: 3) }
-        let seats = e.boardSeats(key: key)
         ex(e.boardName(key: key).count > 0, "board has a name")
-        let cands = e.searchForSeat(key: key, role: seats.first?.role ?? "chair")
-        ex(cands != nil, "searchForSeat answers")
-        if let p = cands?.first {
-            let r = e.fillSeat(key: key, personID: p.id, monthlyFee: cur.scaledPrice(1000))
-            ex(r == .ok || r == .refused || r == .full, "fillSeat answers a defined result: \(r)")
-            if r == .ok {
-                ex(e.boardSeats(key: key).contains(where: { $0.id == p.id }), "seat holder visible on the board")
-                e.removeFromBoard(key: key, personID: p.id)
-                ex(!e.boardSeats(key: key).contains(where: { $0.id == p.id }), "seat holder removed")
-            }
+        let list = e.boardDecisionList(key: key)
+        ex(list.allSatisfy { !$0.title.isEmpty && !$0.effect.isEmpty && !$0.advisor.isEmpty }, "every decision says what it is, what it does and who advises")
+        ex(e.boardOpenDecisions(key: key) >= list.count, "the badge counts the decision list")
+        if let d = list.first {
+            let r = e.decideBoardItem(id: d.id, approve: false)
+            ex(r == .declined, "a decision can be declined: \(r)")
+            ex(!e.boardDecisionList(key: key).contains { $0.id == d.id }, "a declined decision is not raised again at once")
         }
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }

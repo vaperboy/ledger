@@ -72,12 +72,9 @@ public enum Unlocks {
     /// Closed months on record, up to twelve (the progress towards a profitable year).
     public static func monthsClosed(_ co: Company) -> Int { min(12, co.monthlyHistory.count) }
 
-    /// Someone could sit on the board now: a board exists (a chain, or co-owners), a search already lined up candidates, or a limited company
-    /// has a manager who could take a seat.
+    /// The board matters now: it exists (a chain, or co-owners), or a limited company has a manager who advises it.
     static func boardPossible(_ s: GameState, _ co: Company) -> Bool {
-        let k = ManagerModel.boardKey(s, co)
-        if ManagerModel.boardActive(s, key: k) { return true }
-        if !ManagerModel.board(s, key: k)["cands"].array.isEmpty { return true }
+        if ManagerModel.boardActive(s, key: ManagerModel.boardKey(s, co)) { return true }
         return co.form == .limited && co.managerID != nil
     }
 

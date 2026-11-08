@@ -75,6 +75,119 @@ public enum ChainLocations {
         return r
     }
 
+    /// You propose a location and the chain's board votes at once: a chain nobody else owns part of is yours to decide, so it opens as asked.
+    /// With co-owners the shares may vote it down (`BoardVote`, kind "open"), and then nothing opens.
+    public static func openByVote(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, data: GameData, context fc: FinanceContext) -> Result<Int, CompanySetup.StartError> {
+        guard let ch = Chains.chain(s, id: chainID), let first = Chains.stores(s, ch).first else { return .failure(.notAllowedHere) }
+        if ManagerModel.boardGate(s, kind: "open", companyID: first.id) != nil { return .failure(.notAllowedHere) }
+        return open(&s, chainID: chainID, cityID: cityID, size: size, data: data, context: fc)
+    }
+
+    // MARK: Proposals to the chain's board
+
+    /// A location the chain's CEO or chain manager (or the owner) put to the board: to open one in a city, or to close one. Saved on the chain's
+    /// board as `brd.locp`; the board decision list shows it with the proposer's recommendation, and the owner or the shares decide.
+    public struct LocationProposal: Identifiable, Equatable, Sendable {
+        public var id: Int
+        public var chainID: Int
+        /// "open" or "shut".
+        public var kind: String
+        public var cityID: String
+        public var cityName: String
+        public var size: Double
+        /// The location to close; for an opening, the chain's first location (the board votes on the chain through it).
+        public var storeID: Int
+        public var storeName: String
+        /// "Name, Title" of the proposer.
+        public var by: String
+        public var why: String
+        public var week: Int
+        /// What it costs once: the opening bill, or the closing costs after what the closure brings in.
+        public var cost: Double
+        /// What the proposal is about: the city to open in, or the store to close.
+        public var target: String { kind == "open" ? cityID : String(storeID) }
+    }
+
+    static func memoKey(kind: String, target: String) -> String { "loc:\(kind):\(target)" }
+
+    public static func proposals(_ s: GameState, chainID: Int) -> [LocationProposal] {
+        ManagerModel.board(s, key: "ch:\(chainID)")["locp"].array.map { p in
+            LocationProposal(id: p["id"].int, chainID: chainID, kind: p["k"].string, cityID: p["city"].string, cityName: p["cn"].string, size: p["size"].isNull ? 1 : p["size"].double,
+                             storeID: p["co"].int, storeName: p["sn"].string, by: p["by"].string, why: p["why"].string, week: p["w"].int, cost: p["cost"].double)
+        }
+    }
+
+    /// "Name, CEO" or "Name, Chain manager" of whoever stands above the store managers, for a proposal in their name.
+    public static func leadLabel(_ s: GameState, chainID: Int) -> String? {
+        guard let ch = Chains.chain(s, id: chainID), let n = chainLead(s, chainID: chainID) else { return nil }
+        return "\(n.name), \(ch["ceo56"].isNull ? "Chain manager" : "CEO")"
+    }
+
+    /// Put opening a location in a city to the board. Nil when it cannot be quoted, is on the list already, or was turned down lately.
+    @discardableResult
+    public static func proposeOpen(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, by: String, why: String, data: GameData) -> Int? {
+        guard let ch = Chains.chain(s, id: chainID), let first = Chains.stores(s, ch).first, let q = quote(s, chainID: chainID, cityID: cityID, size: size, data: data) else { return nil }
+        return addProposal(&s, chainID: chainID, by: by, why: why, ["k": "open", "city": .string(cityID), "cn": .string(q.cityName), "size": .number(size),
+                                                                      "co": .number(Double(first.id)), "sn": .string(first.name), "cost": .number(q.total)])
+    }
+
+    /// Put closing a location to the board. Nil when it is not a location that can be closed, is on the list already, or was turned down lately.
+    @discardableResult
+    public static func proposeClosure(_ s: inout GameState, storeID: Int, by: String, why: String, data: GameData) -> Int? {
+        guard let co = s.company(storeID), let ch = Chains.chain(s, of: co), ChainBranches.refusal(s, co) == nil,
+              let plan = ChainBranches.closurePlan(s, storeID: storeID, data: data) else { return nil }
+        return addProposal(&s, chainID: ch["id"].int, by: by, why: why, ["k": "shut", "co": .number(Double(storeID)), "sn": .string(co.name), "city": .string(co.cityID),
+                                                                         "cn": .string(cityName(co, data: data)), "cost": .number(max(0, -plan.net))])
+    }
+
+    private static func addProposal(_ s: inout GameState, chainID: Int, by: String, why: String, _ fields: [String: JSONValue]) -> Int? {
+        let key = "ch:\(chainID)"
+        var b = ManagerModel.board(s, key: key)
+        var list = b["locp"].array
+        let kind = fields["k"]?.string ?? ""
+        let target = kind == "open" ? (fields["city"]?.string ?? "") : String(fields["co"]?.int ?? 0)
+        if list.contains(where: { $0["k"].string == kind && ($0["k"].string == "open" ? $0["city"].string : String($0["co"].int)) == target }) { return nil }
+        let quiet = b["memo"][memoKey(kind: kind, target: target)]
+        if !quiet.isNull && quiet.int > s.week { return nil }
+        let id = s.makeID()
+        var rec = fields
+        rec["id"] = .number(Double(id)); rec["w"] = .number(Double(s.week)); rec["why"] = .string(why); rec["by"] = .string(by)
+        list.append(.object(rec))
+        b["locp"] = .array(list)
+        ManagerModel.writeBoard(&s, key: key, b)
+        return id
+    }
+
+    /// A decided proposal carried out: the location opens or closes.
+    static func carryOut(_ s: inout GameState, _ d: ManagerModel.BoardDecision, data: GameData, context fc: FinanceContext) -> ManagerModel.BoardDecisionResult {
+        guard let p = proposals(s, chainID: ManagerModel.keyID(d.key)).first(where: { $0.id == d.proposalID }) else { return .gone }
+        if p.kind == "open" {
+            switch open(&s, chainID: p.chainID, cityID: p.cityID, size: p.size, data: data, context: fc) {
+            case .success(let id): return .done("\(s.company(id)?.name ?? "A new location") is being set up in \(p.cityName).")
+            case .failure(.notEnoughCash): return .refused("There is not enough cash to open it now.")
+            case .failure(.banned(let why)): return .refused(why)
+            case .failure(.notAllowedHere): return .refused("This trade cannot open there.")
+            case .failure(.notYetAvailable): return .refused("It is not available yet.")
+            }
+        }
+        switch ChainBranches.close(&s, storeID: p.storeID, data: data) {
+        case .success(let plan): return .done("\(plan.storeName) is closed. Its people and stock went to \(plan.receiverName).")
+        case .failure(let why): return .refused(why.text)
+        }
+    }
+
+    /// Monthly: a chain's CEO or chain manager proposes closing a location that has lost money for half a year. (Opening is proposed through
+    /// `proposeOpen` by whoever grows the chain.)
+    static func leadProposals(_ s: inout GameState, chainID: Int, data: GameData) {
+        guard GameCalendar.isMonthEnd(week: s.week), let ch = Chains.chain(s, id: chainID), let label = leadLabel(s, chainID: chainID) else { return }
+        for st in Chains.stores(s, ch) where st.status == .open {
+            let h = Array(st.monthlyHistory.suffix(6))
+            guard h.count == 6, h.allSatisfy({ $0.profit < 0 }) else { continue }
+            let loss = -h.reduce(0.0) { $0 + $1.profit }
+            proposeClosure(&s, storeID: st.id, by: label, why: "\(st.name) has lost money six months in a row, \(World(state: s, data: data).currency(st).short(loss)) in all.", data: data)
+        }
+    }
+
     // MARK: Managers from the chain level
 
     /// The chain CEO, else the chain manager: whoever stands above the store managers and appoints them.
@@ -103,7 +216,7 @@ public enum ChainLocations {
         guard let top = ranked.first, top.skill >= promotionSkill,
               let c = ManagerModel.candidate(s, companyID: storeID, personID: top.id, data: data),
               let post = ManagerModel.promotionPosts(s, companyID: storeID, personID: top.id, data: data).first(where: { $0.id == "mgr@\(storeID)" }), post.blocked.isEmpty else { return false }
-        _ = ManagerModel.applyPromotion(&s, c, post: post, wage: post.ask, terms: ManagerModel.PromotionTerms(duties: ["hire"], authority: 1, report: "month"), data: data)
+        _ = ManagerModel.applyPromotion(&s, c, post: post, wage: post.ask, terms: ManagerModel.PromotionTerms(authority: 1), data: data)
         return s.company(storeID)?.managerID != nil
     }
 

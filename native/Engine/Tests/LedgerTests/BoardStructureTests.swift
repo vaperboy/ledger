@@ -52,11 +52,10 @@ final class BoardStructureTests: XCTestCase {
 
     /// You hold 70% and an outside owner sits as director: you and that director are two votes, so you cannot dismiss the CEO alone.
     func testDirectorsDecideTheCEOWhenAnOutsideOwnerHasASeat() throws {
-        var (e, a, _) = try twoCafes(seed: 64)
+        var (e, a, b) = try twoCafes(seed: 64)
         let cands = try XCTUnwrap(e.searchManagers(companyID: a))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: a, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)
-        let key = try XCTUnwrap(e.boardKey(companyID: a))
-        let pick = try XCTUnwrap(e.searchForSeat(key: key, role: "director")?.first)
+        let pick = try XCTUnwrap(e.searchManagers(companyID: b)?.first)
         e.update { s, _, _ in
             guard let i = s.companyIndex(a), var p = s.people[pick.id] else { return }
             p.employerID = -4; s.people[pick.id] = p
@@ -64,8 +63,8 @@ final class BoardStructureTests: XCTestCase {
             s.companies[i].set("holders", .array([.object(["name": .string(p.name), "pct": 30, "in": 0, "k27": "div", "sat": 60, "w0": 0, "npc": .number(Double(pick.id))])]))
             s.companies[i].monthlyHistory = (0..<6).map { MonthRecord(monthIndex: $0, revenue: 50_000, profit: 9_000, cash: 10_000) }
             s.companies[i].set("brd", .object(["seats": .array([.object(["id": .number(Double(pick.id)), "kind": "adv", "r": "director", "t": "Director", "owner": true,
-                                                                         "w0": 0, "fee": 0, "ok": 0, "no": 0, "mood": 60])]),
-                                               "mode": "needed", "freq": 4, "last": -99, "mts": .array([]), "cands": .array([])]))
+                                                                         "w0": 0])]),
+                                               "last": -99, "mts": .array([])]))
         }
         // the outside owner likes the profits and backs the CEO; a rare change of heart is hashed by name and week, so look for an ordinary week
         var v = e.ceoVote(companyID: a)

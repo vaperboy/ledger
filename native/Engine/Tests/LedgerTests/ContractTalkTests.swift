@@ -183,7 +183,7 @@ final class ContractTalkTests: XCTestCase {
         let full = ManagerModel.promotionNeed(post, terms: .init(authority: 2))
         let limited = ManagerModel.promotionNeed(post, terms: .init(authority: 1))
         XCTAssertLessThan(full, limited)
-        let preview = e.contractPreview(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask, choice: post.id, terms: .init(duties: ["hire", "buy"], authority: 2)))
+        let preview = e.contractPreview(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask, choice: post.id, terms: .init(authority: 2)))
         XCTAssertTrue(preview.blocked.isEmpty)
         XCTAssertTrue(preview.lines.contains { $0.contains("New post") })
         XCTAssertTrue(preview.lines.contains { $0.contains("Authority") || $0.contains("authority") })
@@ -549,11 +549,10 @@ final class ContractTalkTests: XCTestCase {
         var (e, id) = try shop()
         let pid = hire(&e, id)
         let post = try XCTUnwrap(ManagerModel.promotionPosts(e.state, companyID: id, personID: pid, data: e.data).first { $0.kind == "mgr" && $0.companyID == id })
-        guard case .counter = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 0.6, choice: post.id, terms: .init(duties: ["hire"], authority: 2, report: "week", bonus: 0.1))) else { return XCTFail("counter") }
+        guard case .counter = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 0.6, choice: post.id, terms: .init(authority: 2))) else { return XCTFail("counter") }
         let open = try XCTUnwrap(e.contractTalk(personID: pid))
         let back = try JSONDecoder().decode(GameState.self, from: try JSONEncoder().encode(e.state))
         XCTAssertEqual(ContractTalk.openTalk(back, personID: pid), open)
-        XCTAssertEqual(open.proposal.terms.duties, ["hire"])
         XCTAssertEqual(open.proposal.terms.authority, 2)
     }
 

@@ -26,18 +26,15 @@ public extension GameEngine {
         return e
     }
 
-    /// Only for the Board screenshots (`-showcase-board`): the café gets a co-owner, so a board exists, a CFO is seated through the real search
-    /// and seat actions, three loss months are written to its history, and the board is called. The agenda is then built by the engine.
+    /// Only for the Board screenshots (`-showcase-board`): the café gets a co-owner, so a board exists, and three loss months are written to its
+    /// history. The decision list is then built by the engine.
     mutating func addShowcaseBoard() {
-        guard let id = state.companies.first(where: { $0.type == "cafe" })?.id, let key = boardKey(companyID: id) else { return }
+        guard let id = state.companies.first(where: { $0.type == "cafe" })?.id else { return }
         update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].set("holders", .array([.object(["name": "Ann Partner", "pct": 15, "in": 0, "k27": "quiet", "sat": 60, "w0": 0])]))
             let cash = max(1, s.companies[i].cash)   // sizes follow the company's own money, so they scale with the country
             s.companies[i].monthlyHistory = (0..<3).map { MonthRecord(monthIndex: $0, revenue: cash / 2, profit: -cash / 20, cash: cash) }
         }
-        setBoardMode(key: key, regular: true)
-        if let c = searchForSeat(key: key, role: "cfo")?.first { _ = fillSeat(key: key, personID: c.id, monthlyFee: c.num("fee13") * 1.3) }
-        _ = holdBoardMeeting(key: key)
     }
 }

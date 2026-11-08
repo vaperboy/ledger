@@ -4,33 +4,14 @@ import Countries
 import Employees
 import Finance
 
-/// Board meetings and emergencies, meetings with your managers, the data analyst's report, and a manager nobody meets slipping.
-/// Originals: features/company/shelf_stock_chains_boards.js (`holdMeeting`, `recs`, `emergency`, `doEmg`, `emgWeek`, `boardsWeek`, `briefing`),
-/// features/company/shareholders_and_board.js (`extraX`, `ownersWeek`), engine/management/meetings.js (`callMeeting`, `meetOne`,
-/// `analystReport`), features/people/owner_attention.js (`OA59`).
+/// Emergency board meetings, the right hand's briefing, meetings with your managers, the data analyst's report, and a manager nobody meets slipping.
+/// What the board decides in ordinary times is the decision list (`ManagerAgenda`).
 extension ManagerModel {
     // MARK: Reading meetings
 
-    public struct MeetingItem: Identifiable, Equatable, Sendable {
-        public var id: Int
-        public var text: String
-        public var action: String       // price, stock, sale, hire, marketing, paperwork, fireceo, capacity, dividend, morale, leaving
-        public var companyID: Int
-        public var recommendedBy: Int?
-        public var status: String       // "" to decide, "yes", "no", "late" (nobody decided in time)
-        public var invited: [String]
-        /// What approving does, what it costs once (0 if nothing), and what could go wrong. Empty on points from older saves.
-        public var effect: String = ""
-        public var cost: Double = 0
-        public var risk: String = ""
-        /// What happened when it was decided, and the week.
-        public var outcome: String = ""
-        public var decidedWeek: Int? = nil
-        /// Who raised it, "Name, Title".
-        public var raisedBy: String = ""
-    }
     public struct MeetingRow: Equatable, Sendable { public var companyID: Int; public var name: String; public var revenue: Double; public var profit: Double; public var previous: Double; public var cash: Double }
     public struct EmergencyVote: Equatable, Sendable { public var personID: Int?; public var name: String; public var title: String; public var pick: Int; public var isRightHand: Bool }
+    /// An emergency meeting: trouble at a company that nobody below the board could settle, with how each seat would vote.
     public struct BoardMeeting: Identifiable, Equatable, Sendable {
         public var id: Int
         public var week: Int
@@ -38,9 +19,6 @@ extension ManagerModel {
         public var title: String
         public var why: String
         public var rows: [MeetingRow]
-        public var items: [MeetingItem]
-        public var exceptions: [String]
-        public var rightHandNote: String
         public var options: [String]
         public var votes: [EmergencyVote]
         public var rightHandPick: Int?
@@ -48,212 +26,30 @@ extension ManagerModel {
         public var picked: Int?
         public var companyID: Int
         public var kind: String
-        /// Who sat at the table when it was held (names and titles); empty on older saves.
-        public var attendees: [String] = []
-        /// The week it closed (decided, lapsed or answered); nil while open.
+        /// The week it closed (answered); nil while open.
         public var closedWeek: Int? = nil
-        /// A regular meeting is open while "", then "closed" (every point decided) or "lapsed" (time ran out). Emergencies: "", "you", "lh", "late".
         public var isOpen: Bool { status.isEmpty }
-        /// The minutes: what was on the agenda, what was decided and what came of it.
+        /// The minutes: what was decided.
         public var minutes: [String] {
-            if isEmergency {
-                guard let p = picked, options.indices.contains(p) else { return [] }
-                return ["Decision: \(options[p])" + (status == "lh" ? " (your right hand decided)" : "")]
-            }
-            return items.filter { !$0.action.isEmpty }.map { it in
-                switch it.status {
-                case "yes": return "Approved: \(it.text) " + (it.outcome.isEmpty ? "" : "Result: \(it.outcome)")
-                case "no": return "Declined: \(it.text)"
-                case "late": return "No decision: \(it.text)"
-                default: return "Open: \(it.text)"
-                }
-            }
+            guard let p = picked, options.indices.contains(p) else { return [] }
+            return ["Decision: \(options[p])" + (status == "lh" ? " (your right hand decided)" : "")]
         }
     }
-    /// The meetings of a board, newest first. A regular meeting from before the agenda rules (no status) reads as closed when nothing is left to
-    /// decide in it, and as lapsed after `lapseWeeks`, so old saves do not keep phantom points on the badges.
+    /// The emergency meetings of a board, newest first.
     public static func meetings(_ s: GameState, key: String) -> [BoardMeeting] {
-        board(s, key: key)["mts"].array.map { m in
-            var x = meetingFrom(m)
-            guard !x.isEmergency, x.status.isEmpty else { return x }
-            if !x.items.contains(where: { !$0.action.isEmpty && $0.status.isEmpty }) { x.status = "closed" }
-            else if s.week - x.week >= lapseWeeks {
-                x.status = "lapsed"
-                for i in x.items.indices where x.items[i].status.isEmpty { x.items[i].status = "late" }
-            }
-            return x
-        }
+        board(s, key: key)["mts"].array.filter { $0["emg"].bool }.map { meetingFrom($0) }
     }
     public static func meeting(_ s: GameState, key: String, id: Int) -> BoardMeeting? { meetings(s, key: key).first { $0.id == id } }
-    static func itemFrom(_ j: JSONValue, index: Int) -> MeetingItem {
-        MeetingItem(id: index, text: j["text"].string, action: j["act"].string, companyID: j["co"].int, recommendedBy: j["who"].isNull ? nil : j["who"].int,
-                    status: j["st"].string, invited: j["inv"].array.map { $0.string }, effect: j["eff"].string, cost: j["cost"].double, risk: j["risk"].string,
-                    outcome: j["out"].string, decidedWeek: j["dw"].isNull ? nil : j["dw"].int, raisedBy: j["by"].string)
-    }
     static func meetingFrom(_ m: JSONValue) -> BoardMeeting {
         var x = BoardMeeting(id: m["id"].int, week: m["w"].int, isEmergency: m["emg"].bool, title: m["title"].string, why: m["why"].string,
                      rows: m["rows"].array.map { MeetingRow(companyID: $0["id"].int, name: $0["name"].string, revenue: $0["rev"].double, profit: $0["prof"].double, previous: $0["prev"].double, cash: $0["cash"].double) },
-                     items: m["items"].array.enumerated().map { itemFrom($0.element, index: $0.offset) },
-                     exceptions: m["ex"].array.map { $0.string }, rightHandNote: m["lh"].string, options: m["opts"].array.map { $0.string },
+                     options: m["opts"].array.map { $0.string },
                      votes: m["votes"].array.map { EmergencyVote(personID: $0["id"].isNull ? nil : $0["id"].int, name: $0["name"].string, title: $0["t"].string, pick: $0["pick"].int, isRightHand: $0["lh"].bool) },
                      rightHandPick: m["lhPick"].isNull ? nil : m["lhPick"].int, status: m["st"].string, picked: m["pickI"].isNull ? nil : m["pickI"].int, companyID: m["co"].int, kind: m["kind"].string)
-        x.attendees = m["att"].array.map { $0.string }
         x.closedWeek = m["cw"].isNull ? nil : m["cw"].int
-        if x.title.isEmpty && !x.isEmergency { x.title = x.why == "Regular meeting" ? "Regular board meeting" : "Board meeting" }
         return x
     }
 
-    // MARK: Points for a meeting
-
-    static let seatToAdviceType: [String: String] = ["cfo": "fin", "legal": "law", "mkt": "mkt", "analyst": "lh", "consult": "ind", "chair": "chair", "director": "ind",
-                                                    "hr": "exec", "lh": "lh", "ceo": "exec", "regional": "exec"]
-    static func invited(for act: String) -> [String] {
-        ["price": ["mkt", "analyst"], "stock": ["analyst"], "sale": ["legal", "cfo"], "hire": ["hr"], "marketing": ["mkt"], "paperwork": ["legal"], "dividend": ["cfo"], "capacity": ["analyst"]][act] ?? []
-    }
-    /// What a person at the table would bring up. Original: `recs`.
-    static func recommendations(_ s: GameState, voter v: Voter, cos: [Company], data: GameData) -> [JSONValue] {
-        guard let typ = seatToAdviceType[v.type] else { return [] }
-        let cur = playerCurrency(s, data)
-        var out: [JSONValue] = []
-        func H3(_ c: Company) -> [MonthRecord] { Array(c.monthlyHistory.suffix(3)) }
-        func item(_ text: String, _ act: String, _ c: Company) -> JSONValue {
-            .object(["text": .string(text), "act": .string(act), "co": .number(Double(c.id)), "who": v.personID.map { .number(Double($0)) } ?? .null, "inv": .array(invited(for: act).map { .string($0) })])
-        }
-        if ["fin", "lh", "exec"].contains(typ), let bad = cos.first(where: { H3($0).count == 3 && H3($0).allSatisfy { $0.profit < 0 } }) {
-            out.append(item("\(bad.name) lost money three months in a row (\(H3(bad).map { cur.short($0.profit) }.joined(separator: ", "))). Put it up for sale?", "sale", bad))
-        }
-        if ["ind", "exec", "lh"].contains(typ) {
-            let low = cos.compactMap { c -> (Company, Double)? in
-                guard let h = H3(c).last, c.priceLevel < 3, h.revenue > 0 else { return nil }
-                let m = h.profit / h.revenue
-                return m > -0.15 && m < (data.catalog[c.type]?.margin ?? 0.08) - 0.03 ? (c, m) : nil
-            }.min { $0.1 < $1.1 }
-            if let (c, m) = low { out.append(item("Margin at \(c.name) is \(Int(jsRound(m * 100)))%, the trade normally makes about \(Int(jsRound((data.catalog[c.type]?.margin ?? 0.08) * 100)))%. Raise prices one step.", "price", c)) }
-        }
-        if typ == "mkt" || typ == "chair", let quiet = cos.filter({ $0.awareness < 35 }).min(by: { $0.awareness < $1.awareness }) {
-            out.append(item("Only \(Int(jsRound(quiet.awareness)))% of the area knows \(quiet.name). Spend more on marketing.", "marketing", quiet))
-        }
-        if typ == "law", let c = cos.first(where: { !missingDocs(s, $0, data: data).isEmpty }) {
-            out.append(item("\(c.name) is missing paperwork it needs. Fix it before an inspection finds it.", "paperwork", c))
-        }
-        if ["exec", "chair", "lh"].contains(typ), let nom = cos.first(where: { $0.managerID == nil && $0.staff.count >= 3 }) {
-            out.append(item("\(nom.name) has \(nom.staff.count) staff and no manager. Hire one.", "hire", nom))
-        }
-        if typ == "lh" || typ == "fin", let so = cos.first(where: { $0.value("dlast")["so"].double >= 2 }) {
-            out.append(item("\(so.name) sold out \(so.value("dlast")["so"].int) days last week, about \(so.value("dlast")["lost"].int) sales lost. Order more.", "stock", so))
-        }
-        // capacity: the bottleneck is something the company can buy (equipment, space)
-        if ["ind", "exec", "lh", "chair"].contains(typ), let c = cos.first(where: { c in
-            guard c.value("lastW")["util"].double > 0.9, let bd = data.catalog[c.type], let p = bottleneckProposal(s, c, bd, data: data), p.kind == "eq" || p.kind == "space" else { return false }
-            return c.cash >= (p.kind == "space" ? p.cost * 0.5 : p.cost)
-        }), let bd = data.catalog[c.type], let p = bottleneckProposal(s, c, bd, data: data) {
-            let what = p.kind == "space" ? "more space" : (bd.equipment.first(where: { $0.id == p.id })?.name.lowercased() ?? "equipment")
-            out.append(item("\(c.name) runs at \(Int(jsRound(c.value("lastW")["util"].double * 100)))% of what it can deliver and the limit is \(p.kind == "space" ? "space" : "equipment"). Buy \(what).", "capacity", c))
-        }
-        // owners wait for a dividend
-        if ["fin", "chair"].contains(typ), let c = cos.first(where: { $0.form == .limited && $0.str("dp27", "none") == "none" && !$0.value("holders").array.isEmpty && H3($0).count == 3 && H3($0).reduce(0.0, { $0 + $1.profit }) > 0 && $0.cash > 0 }) {
-            out.append(item("\(c.name) made \(cur.short(H3(c).reduce(0.0) { $0 + $1.profit })) over three months and pays its owners nothing. Start a regular dividend.", "dividend", c))
-        }
-        // signs of trouble among the people
-        if ["exec", "chair", "lh"].contains(typ) {
-            if let c = cos.first(where: { $0.managerID != nil && mood($0) < 40 }) { out.append(item("The manager of \(c.name) is low in morale. Talk with them.", "morale", c)) }
-            if let c = cos.first(where: { $0.staff.contains { $0.noticeWeeks > 0 } }) { out.append(item("Someone at \(c.name) is working their notice. Talk to them before they go.", "leaving", c)) }
-        }
-        return Array(out.prefix(3))
-    }
-
-    /// The board questions a CEO after three loss months. Original: `R12.extraX` step.
-    static func questionCEO(_ s: GameState, key: String, cos: [Company]) -> [JSONValue] {
-        guard let d = seats(s, key: key).first(where: { $0.role == "director" }) else { return [] }
-        var out: [JSONValue] = []
-        for c in cos {
-            let H = Array(c.monthlyHistory.suffix(3))
-            guard let mid = c.managerID, let n = s.people[mid], H.count == 3, H.allSatisfy({ $0.profit < 0 }), s.week - c.int("mgrW0") >= 13 else { continue }
-            out.append(.object(["text": .string("The board questions \(n.name) as \(cos.count > 1 ? "manager of \(c.name)" : "CEO"): three months of losses in a row. Replace them?"),
-                                "act": "fireceo", "co": .number(Double(c.id)), "who": .number(Double(d.id)), "inv": .array(["hr", "legal"])]))
-        }
-        return out
-    }
-
-    // MARK: Holding a meeting
-
-    /// Call the board together. A meeting is held only when there is something to decide: no points, no meeting and no message.
-    /// Original: `ACT.bd12meet` and `holdMeeting`.
-    @discardableResult
-    public static func holdBoardMeeting(_ s: inout GameState, key: String, data: GameData, why: String = "") -> Int? {
-        let cos = boardCompanies(s, key: key)
-        guard !cos.isEmpty else { return nil }
-        let b0 = board(s, key: key)
-        if s.week - b0["last"].int < 2 && why.isEmpty { return nil }
-        let items = agendaItems(s, key: key, cos: cos, data: data)
-        guard !items.isEmpty else { return nil }
-        let cur = playerCurrency(s, data)
-        let rows: [JSONValue] = cos.map { c in
-            let a = c.monthlyHistory.last, b = c.monthlyHistory.dropLast().last
-            return .object(["id": .number(Double(c.id)), "name": .string(c.name), "rev": .number(a?.revenue ?? 0), "prof": .number(a?.profit ?? 0), "prev": .number(b?.profit ?? 0), "cash": .number(jsRound(c.cash))])
-        }
-        let title = why.isEmpty ? "Meeting you called" : "Regular board meeting"
-        let att = voters(s, key: key).prefix(8).map { JSONValue.string("\($0.name), \($0.title)") }
-        var m: [String: JSONValue] = ["id": .number(Double(s.makeID())), "w": .number(Double(s.week)), "rows": .array(rows), "items": .array(items), "ex": .array([]), "why": .string(why),
-                                      "title": .string(title), "att": .array(att), "st": ""]
-        if Headquarters.rightHand(s) != nil {
-            m["lh"] = .string("Start with this: \(items[0]["text"].string)" + (items.count > 1 ? " The rest can wait a week." : ""))
-        }
-        var b = board(s, key: key)
-        b["mts"] = .array(([.object(m)] + b["mts"].array).prefix(keptMeetings).map { $0 })
-        b["last"] = .number(Double(s.week))
-        writeBoard(&s, key: key, b)
-        let rev = rows.reduce(0) { $0 + $1["rev"].double }, pr = rows.reduce(0) { $0 + $1["prof"].double }
-        s.addMessage(kind: "info", from: "Board of \(boardName(s, key: key))", title: "Board meeting · \(boardName(s, key: key))",
-                     body: "Revenue last month \(cur.short(rev)), profit \(cur.short(pr)). \(items.count) \(items.count == 1 ? "point" : "points") to decide, first: \(items[0]["text"].string)",
-                     companyID: cos[0].id, tone: "n", status: "done")
-        return m["id"]!.int
-    }
-
-    /// `done` and `followUp` carry the outcome text (`followUp` also means a follow-up job was recorded); `refused` leaves the point on the agenda.
-    public enum ItemResult: Equatable, Sendable { case done(String), declined, gone, followUp(String), refused(String) }
-
-    /// Approve or reject a point. Approving carries the point out through the game's own systems (see `applyItem`); when that cannot be done
-    /// the point stays on the agenda with the reason. Either answer is kept as the outcome and the point is not raised again for a while.
-    /// Original: `ACT.bd12yes`, `ACT.bd12no`.
-    @discardableResult
-    public static func decideMeetingItem(_ s: inout GameState, key: String, meetingID: Int, item idx: Int, approve: Bool, data: GameData, marketing: MarketingTables? = nil) -> ItemResult {
-        var b = board(s, key: key)
-        let mts = b["mts"].array
-        guard let k = mts.firstIndex(where: { $0["id"].int == meetingID }), mts[k]["items"].array.indices.contains(idx), mts[k]["items"][idx]["st"].string.isEmpty,
-              mts[k]["st"].string.isEmpty else { return .gone }
-        let it = mts[k]["items"][idx]
-        var effect: ItemEffect = .ok("Declined.", followUp: nil, check: nil)
-        if approve {
-            effect = applyItem(&s, item: it, data: data, marketing: marketing)
-            if case .refused(let why) = effect { return .refused(why) }
-            b = board(s, key: key)   // the effect may have touched the board (a dismissed manager, a seat)
-        }
-        let who = it["who"].isNull ? -1 : it["who"].int
-        var seatsJSON = b["seats"].array
-        if let si = seatsJSON.firstIndex(where: { $0["id"].int == who }) {
-            if approve { seatsJSON[si]["ok"] = .number(seatsJSON[si]["ok"].double + 1); seatsJSON[si]["mood"] = .number(min(100, (seatsJSON[si]["mood"].isNull ? 60 : seatsJSON[si]["mood"].double) + 4)) }
-            else {
-                seatsJSON[si]["no"] = .number(seatsJSON[si]["no"].double + 1)
-                let mo = max(0, (seatsJSON[si]["mood"].isNull ? 60 : seatsJSON[si]["mood"].double) - 6)
-                seatsJSON[si]["mood"] = .number(mo)
-                if seatsJSON[si]["kind"].string == "adv" && mo < 25, var n = s.people[who] {
-                    n.employerID = 0; s.people[who] = n
-                    seatsJSON.remove(at: si)
-                    s.addMessage(kind: "info", from: n.name, title: "Leaving the board", body: "You rarely take my advice, so I am stepping down from the board of \(boardName(s, key: key)).", tone: "bad", status: "done")
-                }
-            }
-        }
-        b["seats"] = .array(seatsJSON)
-        var outcome = "Declined."
-        var follow: (String, String?)? = nil
-        if approve, case .ok(let text, let fu, let chk) = effect { outcome = text; if let fu { follow = (fu, chk) } }
-        recordDecision(&b, meeting: k, item: idx, status: approve ? "yes" : "no", outcome: outcome, week: s.week, quiet: approve ? approvedQuietWeeks : declinedQuietWeeks)
-        writeBoard(&s, key: key, b)
-        guard approve else { return .declined }
-        if let (text, chk) = follow { addFollowUp(&s, key: key, text: text, companyID: it["co"].int, check: chk); return .followUp(outcome) }
-        return .done(outcome)
-    }
     static func dismissForBoard(_ s: inout GameState, companyID: Int, data: GameData) { fire(&s, companyID: companyID, data: data) }
 
     // MARK: Emergencies
@@ -377,10 +173,7 @@ extension ManagerModel {
         guard let k = mts.firstIndex(where: { $0["id"].int == meetingID }), mts[k]["emg"].bool, mts[k]["st"].string.isEmpty || mts[k]["st"].string == "late",
               let E = emergencyKinds[mts[k]["kind"].string], E.options.indices.contains(idx) else { return nil }
         mts[k]["st"] = .string(who); mts[k]["pickI"] = .number(Double(idx))
-        var L = b["seats"].array
-        for v in mts[k]["votes"].array { if let si = L.firstIndex(where: { $0["id"].int == v["id"].int && !v["id"].isNull }) {
-            if v["pick"].int == idx { L[si]["ok"] = .number(L[si]["ok"].double + 1) } else { L[si]["no"] = .number(L[si]["no"].double + 1); L[si]["mood"] = .number(max(0, (L[si]["mood"].isNull ? 60 : L[si]["mood"].double) - 4)) } } }
-        b["mts"] = .array(mts); b["seats"] = .array(L)
+        b["mts"] = .array(mts)
         writeBoard(&s, key: key, b)
         // the inbox message for it is done
         if let mi = s.inbox.firstIndex(where: { $0.actionID == "emg12" && $0.value("data")["id"].int == meetingID && $0.status == "open" }) {
@@ -409,9 +202,9 @@ extension ManagerModel {
         }
     }
 
-    // MARK: Weekly: emergencies, regular meetings, the secretary, your right hand
+    // MARK: Weekly: emergencies, co-owner directors, your right hand
 
-    /// Original: `emgWeek`, `seatsWeek`, `ownersWeek`.
+    /// The week of every board: signs of trouble become emergencies, unanswered ones lapse, your right hand answers what you left waiting.
     static func boardsWeekly(_ s: inout GameState, data: GameData) {
         // revenue history, cash change and the signs of trouble
         for i in s.companies.indices {
@@ -471,47 +264,8 @@ extension ManagerModel {
                 s.note("\(s.people[lh.personID]?.name ?? "Your right hand") decided for you at \(s.company(m.companyID)?.name ?? "a company"): \(mt.options[pick]).", tone: "n", companyID: m.companyID)
             }
         }
-        // seats at work: an HR manager talks people out of leaving; the secretary chases open points
-        for i in s.companies.indices where s.companies[i].status == .open {
-            let key = boardKey(s, s.companies[i])
-            let st = seats(s, key: key)
-            s.companies[i].set("brdLaw", st.contains { $0.role == "legal" })
-            s.companies[i].set("brdMkt", st.contains { $0.role == "mkt" })
-            if st.contains(where: { $0.role == "hr" }) {
-                var staff = s.companies[i].staff
-                for k in staff.indices where staff[k].noticeWeeks > 0 && s.random.next() < 0.15 { staff[k].noticeWeeks = 0; staff[k].happyUntilWeek = s.week + 12 }
-                s.companies[i].staff = staff
-            }
-        }
-        for key in boardKeys(s) {
-            guard let sec = seats(s, key: key).first(where: { $0.role == "sec" }), let sn = s.people[sec.id] else { continue }
-            var b = board(s, key: key)
-            var mts = b["mts"].array, changed = false
-            for k in mts.indices where !mts[k]["emg"].bool && mts[k]["rem13"].isNull && s.week - mts[k]["w"].int >= 1 {
-                let open = mts[k]["items"].array.filter { !$0["act"].string.isEmpty && $0["st"].string.isEmpty }
-                if open.isEmpty { continue }
-                mts[k]["rem13"] = 1; changed = true
-                s.addMessage(kind: "info", from: sn.name, title: "\(open.count) board points still open at \(boardName(s, key: key))", body: open.map { "• \($0["text"].string)" }.joined(separator: "\n"), tone: "n", status: "done")
-            }
-            if changed { b["mts"] = .array(mts); writeBoard(&s, key: key, b) }
-        }
         ownersWeek(&s)
-        if GameCalendar.isMonthEnd(week: s.week) { boardsMonthly(&s, data: data) }
         briefing(&s, data: data)
-    }
-
-    /// Fees of the seats, and regular meetings. Original: `boardsWeek`.
-    static func boardsMonthly(_ s: inout GameState, data: GameData) {
-        let mi = GameCalendar.monthIndex(week: s.week) % 12
-        for key in boardKeys(s) {
-            let b = board(s, key: key), cos = boardCompanies(s, key: key)
-            guard !cos.isEmpty else { continue }
-            let fee = seats(s, key: key).reduce(0) { $0 + $1.monthlyFee }
-            if fee > 0 { for c in cos { Payments.companyPays(&s, companyID: c.id, amount: fee / Double(cos.count), category: "oth") } }
-            let freq = b["freq"].isNull ? 4 : b["freq"].int
-            if boardActive(s, key: key), b["mode"].string == "regular", freq != 13 || mi % 3 == 2, s.week - (b["last"].isNull ? -99 : b["last"].int) >= 2,
-               !seats(s, key: key).isEmpty || Headquarters.rightHand(s) != nil { holdBoardMeeting(&s, key: key, data: data, why: "Regular meeting") }
-        }
     }
 
     /// The right hand's briefing. Original: `briefing`.

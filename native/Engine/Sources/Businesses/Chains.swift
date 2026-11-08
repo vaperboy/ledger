@@ -278,10 +278,56 @@ public enum Chains {
         return true
     }
 
-    /// The chain's rules on a store: price (plus its own step), the business choices, ordering. Original: `applyRules`.
+    // MARK: Standards the stores follow
+
+    /// What every store of a chain follows, kept on the chain (`std`; the ordering policy is the chain's `rules.stockPol`). A store's own price step
+    /// stays inside the band (`applyRules`); the headcount floor is read by whoever cuts or hires in a store (`chainStandards`).
+    public struct StoreStandards: Equatable, Sendable {
+        /// The lowest and highest price step a store may keep of its own, on top of the chain's price (steps, -3 to 3).
+        public var priceLow: Double
+        public var priceHigh: Double
+        /// The fewest people a store keeps: a manager does not cut below it.
+        public var headcountFloor: Int
+        /// How stores order stock: 0 lean, 1 normal, 2 plenty.
+        public var ordering: Int
+        public init(priceLow: Double, priceHigh: Double, headcountFloor: Int, ordering: Int) {
+            self.priceLow = priceLow; self.priceHigh = priceHigh; self.headcountFloor = headcountFloor; self.ordering = ordering
+        }
+        /// The price step a store may take given the step it wants.
+        public func price(_ wanted: Double) -> Double { min(priceHigh, max(priceLow, wanted)) }
+    }
+
+    /// The standards of a chain; nil when there is no such chain. A chain that never set any has the widest band, no floor and normal ordering.
+    public static func chainStandards(_ s: GameState, chainID: Int) -> StoreStandards? {
+        guard let ch = chain(s, id: chainID) else { return nil }
+        return standards(of: ch)
+    }
+    /// The standards the chain of a store sets for it; nil for a company outside any chain.
+    public static func chainStandards(_ s: GameState, of co: Company) -> StoreStandards? { chain(s, of: co).map { standards(of: $0) } }
+
+    static func standards(of ch: JSONValue) -> StoreStandards {
+        let st = ch["std"]
+        let lo = st["lo"].isNull ? -3 : clamp(st["lo"].double, -3, 3), hi = st["hi"].isNull ? 3 : clamp(st["hi"].double, -3, 3)
+        return StoreStandards(priceLow: min(lo, hi), priceHigh: max(lo, hi), headcountFloor: max(0, st["floor"].int),
+                              ordering: ch["rules"]["stockPol"].isNull ? 1 : min(2, max(0, ch["rules"]["stockPol"].int)))
+    }
+
+    /// Set what is given; the rest stays. The stores take the new price band and ordering policy at once.
+    public static func setStandards(_ s: inout GameState, chainID: Int, priceLow: Double? = nil, priceHigh: Double? = nil, headcountFloor: Int? = nil, ordering: Int? = nil) {
+        guard var ch = chain(s, id: chainID) else { return }
+        var st = ch["std"].isNull ? JSONValue.object([:]) : ch["std"]
+        if let v = priceLow { st["lo"] = .number(clamp(v, -3, 3)) }
+        if let v = priceHigh { st["hi"] = .number(clamp(v, -3, 3)) }
+        if let v = headcountFloor { st["floor"] = .number(Double(max(0, v))) }
+        ch["std"] = st
+        save(&s, ch)
+        if let o = ordering { setRule(&s, chainID: chainID, rule: .stockPolicy(o)) } else { applyAll(&s, chain: ch) }
+    }
+
+    /// The chain's rules on a store: price (plus its own step, within the chain's band), the business choices, ordering. Original: `applyRules`.
     static func applyRules(_ s: inout GameState, chain ch: JSONValue, companyIndex i: Int) {
         let R = ch["rules"], o = s.companies[i].value("off")
-        s.companies[i].priceLevel = clamp(R["price"].double + o["price"].double, -3, 3)
+        s.companies[i].priceLevel = clamp(R["price"].double + standards(of: ch).price(o["price"].double), -3, 3)
         // A store that is not open yet takes the chain's standard as it opens. An open store changes over (cost, weeks, licences)
         // when the standard changes (`setKnobStandard`), so the weekly turn never rewrites its choices silently.
         if s.companies[i].status != .open {

@@ -32,50 +32,62 @@ final class OwnerMeetingsTests: XCTestCase {
         return (e, id, cands[0].id)
     }
 
-    func testTopicsDifferByPositionAndEveryTopicHasADialogue() throws {
+    /// One quarterly review with the CEO and exactly two choices in it: the direction and the budget. Nobody else holds a talk.
+    func testOnlyTheCEOHoldsTheQuarterlyReviewWithTwoChoices() throws {
         let (e, id, mgr) = try setup(seed: 41)
         let who = e.ownerCounterparts(companyID: id)
         XCTAssertEqual(who.first?.id, mgr)
         XCTAssertEqual(who.first?.position, "ceo")
-        let ceoTopics = e.ownerTopics(companyID: id, personID: mgr).map { $0.id }
-        XCTAssertTrue(ceoTopics.contains("results") && ceoTopics.contains("advice") && ceoTopics.contains("expect"))
-        for t in ceoTopics {
-            let sc = try XCTUnwrap(e.ownerScene(companyID: id, personID: mgr, topic: t), t)
-            XCTAssertFalse(sc.lines.isEmpty)
-            XCTAssertTrue((2...3).contains(sc.choices.count), t)
-        }
-        for pos in ["fin", "sales", "hr", "ops", "mkt"] { XCTAssertNotNil(OwnerMeetings.topicTable[pos]) }
-        XCTAssertNotEqual(OwnerMeetings.topicTable["fin"]!.map { $0.0 }, ceoTopics)
+        XCTAssertEqual(e.ownerTopics(companyID: id, personID: mgr).map { $0.id }, ["review"])
+        XCTAssertEqual(Array(OwnerMeetings.topicTable.keys), ["ceo"])
+        let sc = try XCTUnwrap(e.ownerScene(companyID: id, personID: mgr, topic: "review"))
+        XCTAssertFalse(sc.lines.isEmpty)
+        XCTAssertEqual(Set(sc.choices.map { $0.group }), ["direction", "budget"])
+        XCTAssertEqual(sc.choices.filter { $0.group == "direction" }.map { $0.id }, OwnerMeetings.directives.map { "dir:" + $0.key })
+        XCTAssertEqual(sc.choices.filter { $0.group == "budget" }.count, Budget.allCases.count)
+        XCTAssertNil(e.ownerScene(companyID: id, personID: mgr, topic: "results"), "the old talks are gone")
+        for c in who where c.position != "ceo" { XCTAssertTrue(e.ownerTopics(companyID: id, personID: c.id).isEmpty, c.title) }
     }
 
-    func testResultsTalkMovesMoodAndHasACooldown() throws {
+    func testReviewChoicesMoveMoodAndEachHasAQuarterlyCooldown() throws {
         var (e, id, mgr) = try setup(seed: 42)
         let m0 = mood(e, id)
-        let out = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "results", choice: "thanks"))
+        let out = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "dir:growth"))
         XCTAssertEqual(out.tone, "good")
         XCTAssertGreaterThan(mood(e, id), m0)
-        XCTAssertGreaterThan(e.ownerTopics(companyID: id, personID: mgr).first { $0.id == "results" }!.waitWeeks, 0)
-        let again = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "results", choice: "thanks"))
-        XCTAssertTrue(again.text.contains("recently"))
-        XCTAssertNil(e.ownerChoose(companyID: id, personID: mgr, topic: "results", choice: "nonsense"))
+        XCTAssertEqual(e.ownerTopics(companyID: id, personID: mgr).first?.waitWeeks, 0, "the budget choice of the review is still open")
+        let again = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "dir:lean"))
+        XCTAssertTrue(again.text.contains("this quarter"))
+        XCTAssertEqual(e.companyDirective(companyID: id), "growth", "the second pick did nothing")
+        let m1 = mood(e, id)
+        _ = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "bud:\(Budget.tight.rawValue)"))
+        XCTAssertLessThan(mood(e, id), m1, "a tight budget is a sign of distrust")
+        XCTAssertGreaterThan(e.ownerTopics(companyID: id, personID: mgr).first!.waitWeeks, 0)
+        XCTAssertNil(e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "nonsense"))
+        e.update { s, _, _ in s.week += OwnerMeetings.cooldownWeeks }
+        XCTAssertEqual(e.ownerTopics(companyID: id, personID: mgr).first?.waitWeeks, 0)
+        _ = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "dir:lean"))
+        XCTAssertEqual(e.companyDirective(companyID: id), "lean")
+    }
+
+    func testBudgetChoiceSetsTheManagersBudget() throws {
+        var (e, id, mgr) = try setup(seed: 43)
+        for b in [Budget.free, .tight] {
+            e.update { s, _, _ in s.week += OwnerMeetings.cooldownWeeks }
+            let out = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "bud:\(b.rawValue)"))
+            XCTAssertTrue(out.text.lowercased().contains(b.title.lowercased()))
+            XCTAssertEqual(ManagerModel.budget(of: try XCTUnwrap(e.state.company(id))), b)
+        }
     }
 
     func testStrategicDirectiveIsSavedAndBiasesProposals() throws {
         var (e, id, mgr) = try setup(seed: 43)
         XCTAssertNil(e.companyDirective(companyID: id))
-        _ = e.ownerChoose(companyID: id, personID: mgr, topic: "advice", choice: "lean")
+        _ = e.ownerChoose(companyID: id, personID: mgr, topic: "review", choice: "dir:lean")
         XCTAssertEqual(e.companyDirective(companyID: id), "lean")
         XCTAssertGreaterThan(OwnerMeetings.bias(directive: "lean", kind: "cut"), 0)
         XCTAssertLessThan(OwnerMeetings.bias(directive: "lean", kind: "hire"), 0)
         XCTAssertEqual(OwnerMeetings.bias(directive: "growth", kind: "quality"), 0)
-    }
-
-    func testFinalWarningCanOnlyEverCostTheManagerTheirMood() throws {
-        var (e, id, mgr) = try setup(seed: 44)
-        let m0 = mood(e, id)
-        _ = try XCTUnwrap(e.ownerChoose(companyID: id, personID: mgr, topic: "challenge", choice: "final"))
-        XCTAssertLessThan(mood(e, id), m0)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
     func testSoleOwnerBoardIsAdvisoryAndEveryoneSpeaks() throws {
@@ -89,21 +101,20 @@ final class OwnerMeetingsTests: XCTestCase {
         XCTAssertFalse(e.ceoVote(companyID: id).active)
     }
 
-    func testBoardSeatHoldersCanBeTalkedToAndSpeakInTheRound() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 47)
-        e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 6_000_000) else { throw XCTSkip("start") }
-        e.update { s, d, _ in _ = CompanySetup.quickSetup(&s, companyID: id, data: d) }
-        e.addShowcaseBoard()
-        let key = try XCTUnwrap(e.boardKey(companyID: id))
-        let seated = e.boardSeats(key: key)
-        guard let cfo = seated.first(where: { $0.role == "cfo" }) else { throw XCTSkip("no CFO candidate in this seed") }
-        let who = e.ownerCounterparts(companyID: id)
-        let c = try XCTUnwrap(who.first { $0.id == cfo.id }, "the CFO in a board seat is someone to talk to")
+    func testBoardSeatHoldersSpeakInTheRoundButHoldNoReview() throws {
+        var (e, id, mgr) = try setup(seed: 47)
+        let pick = try XCTUnwrap(try XCTUnwrap(e.searchManagers(companyID: id)).first { $0.id != mgr })
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id), var p = s.people[pick.id] else { return }
+            p.employerID = -4; s.people[pick.id] = p
+            s.companies[i].set("brd", .object(["seats": .array([.object(["id": .number(Double(pick.id)), "kind": "adv", "r": "director", "t": "Director", "w0": 0])]),
+                                               "last": -99, "mts": .array([])]))
+        }
+        let c = try XCTUnwrap(e.ownerCounterparts(companyID: id).first { $0.id == pick.id }, "a director is someone at the table")
         XCTAssertEqual(c.position, "fin")
-        let topic = try XCTUnwrap(e.ownerTopics(companyID: id, personID: cfo.id).first)
-        XCTAssertNotNil(e.ownerScene(companyID: id, personID: cfo.id, topic: topic.id))
-        XCTAssertTrue(e.boardRound(companyID: id).contains { $0.id == cfo.id }, "the CFO speaks in the board round")
+        XCTAssertTrue(e.ownerTopics(companyID: id, personID: pick.id).isEmpty, "only the CEO holds the review")
+        XCTAssertNil(e.ownerScene(companyID: id, personID: pick.id, topic: "review"))
+        XCTAssertTrue(e.boardRound(companyID: id).contains { $0.id == pick.id }, "the director speaks in the board round")
     }
 
     func testSoleOwnerReplacesTheCEOAtOnce() throws {

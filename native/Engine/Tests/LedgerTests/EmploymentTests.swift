@@ -385,7 +385,7 @@ final class EmploymentTests: XCTestCase {
         // promotion and responsibility are fulfilled by a real promotion
         let posts = ManagerModel.promotionPosts(e.state, companyID: id, personID: pid, data: e.data).filter { $0.blocked.isEmpty && $0.kind == "role" }
         if let post = posts.first {
-            guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 1.2, choice: post.id, terms: .init(duties: ["coach"], authority: 1))) else { return }
+            guard case .agreed = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 1.2, choice: post.id, terms: .init(authority: 1))) else { return }
             XCTAssertEqual(status(.promotion), .fulfilled)
             XCTAssertEqual(status(.responsibility), .fulfilled)
         }

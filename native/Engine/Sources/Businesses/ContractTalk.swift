@@ -75,7 +75,7 @@ public enum ContractTalk {
 
     /// One thing proposed: a topic, a figure and a choice inside the topic.
     ///  - payRise: `amount` = the rise as a share (0.05 = +5 %).
-    ///  - promotion: `choice` = the post (`PromotionPost.id`), `amount` = the monthly pay offered, `terms` = duties, authority, reporting, bonus, shares.
+    ///  - promotion: `choice` = the post (`PromotionPost.id`), `amount` = the monthly pay offered, `terms` = authority (the budget) and shares.
     ///  - hours: `choice` "hours" (`amount` = hours a week), "full", "part" (part time all year for a seasonal worker) or "season:<id>".
     ///  - payBasis: `choice` "fix", "mix", "com" (`amount` = the commission share, 0 = the usual one) or "salary" (an hourly worker's fixed salary).
     ///  - bonus: `amount` = a manager's profit share (0 to 0.3) or a seller's commission share.
@@ -92,13 +92,12 @@ public enum ContractTalk {
         }
 
         var json: JSONValue {
-            .object(["t": .string(topic.rawValue), "a": .number(amount), "c": .string(choice), "du": .array(terms.duties.map { .string($0) }), "au": .number(Double(terms.authority)),
-                     "rp": .string(terms.report), "bo": .number(terms.bonus), "sh": .number(terms.sharesPercent)])
+            .object(["t": .string(topic.rawValue), "a": .number(amount), "c": .string(choice), "au": .number(Double(terms.authority)), "sh": .number(terms.sharesPercent)])
         }
         init?(json j: JSONValue) {
             guard let t = Topic(rawValue: j["t"].string) else { return nil }
             self.init(t, amount: j["a"].double, choice: j["c"].string,
-                      terms: .init(duties: j["du"].array.map { $0.string }, authority: j["au"].int, report: j["rp"].string, bonus: j["bo"].double, sharesPercent: j["sh"].double))
+                      terms: .init(authority: j["au"].int, sharesPercent: j["sh"].double))
         }
     }
 
@@ -460,7 +459,7 @@ public enum ContractTalk {
         case .promotion:
             if let post = ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).first(where: { $0.id == p.choice }) {
                 c.lines.append("New post: \(post.title) at \(post.place). They ask about \(cur.display(post.ask)) a month for it.")
-                if !p.terms.duties.isEmpty { c.lines.append("Duties: \(p.terms.duties.joined(separator: ", ")). Budget \(p.terms.budget.title.lowercased()): \(p.terms.budget.text).") }
+                if post.kind != "role" { c.lines.append("Budget \(p.terms.budget.title.lowercased()): \(p.terms.budget.text).") }
                 if post.kind != "role", sub.member != nil || sub.isManager { c.peers.append("They leave their present job; it is empty until it is filled.") }
             }
         case .hours:

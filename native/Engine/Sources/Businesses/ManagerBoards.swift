@@ -4,38 +4,14 @@ import Countries
 import Employees
 import Finance
 
-/// Boards: one per chain, or per company that has co-owners. Seats (chair, directors, CFO, secretary; specialists invited when relevant),
-/// meetings with points to decide, emergency meetings, votes by shares, and your right hand on every board.
-/// Originals: features/company/shelf_stock_chains_boards.js (boards, meetings, emergencies, `voteOn`), features/company/chain_registration_and_boards.js
-/// (seats, `votersX`, owner votes), features/company/shareholders_and_board.js (directors elected by the owners, the board questions a CEO).
-/// A board is saved on its company or chain as `brd` {seats[], mode, freq, last, mts[], cands[], candR}.
+/// Boards: one per chain, or per company that has co-owners. The board is fixed: co-owners with a real stake take a director's seat, the CEO,
+/// the department heads and the regional managers attend and advise, and the owners vote by shares. Nobody is hired onto it and nobody is paid
+/// for sitting on it. What it decides is the decision list (`boardDecisions`); urgent trouble becomes an emergency meeting.
+/// A board is saved on its company or chain as `brd` {seats[], last, mts[], memo, locp[], fu[]}.
 extension ManagerModel {
     // MARK: Seats
 
-    public struct SeatRole: Identifiable, Equatable, Sendable {
-        public var id: String
-        public var title: String
-        public var permanent: Bool
-        public var stat: String
-        public var maxSeats: Int
-        public var baseFee: Double
-        public var text: String
-    }
-    /// Original: `ROLE13`.
-    public static let seatRoles: [SeatRole] = [
-        SeatRole(id: "chair", title: "Board chair", permanent: true, stat: "people", maxSeats: 1, baseFee: 14000, text: "Runs the meetings and keeps the board on the numbers"),
-        SeatRole(id: "director", title: "Director", permanent: true, stat: "ops", maxSeats: 4, baseFee: 9000, text: "Independent view; weighs every big decision"),
-        SeatRole(id: "cfo", title: "CFO", permanent: true, stat: "fin", maxSeats: 1, baseFee: 32000, text: "Cash, debt and profit; first to speak on money"),
-        SeatRole(id: "sec", title: "Board secretary", permanent: true, stat: "ops", maxSeats: 1, baseFee: 6000, text: "Minutes, follow-ups and reminders"),
-        SeatRole(id: "mkt", title: "Marketing manager", permanent: false, stat: "sales", maxSeats: 1, baseFee: 22000, text: "Brand and campaigns; marketing works about 5% better"),
-        SeatRole(id: "hr", title: "HR manager", permanent: false, stat: "people", maxSeats: 1, baseFee: 20000, text: "Hiring and morale; fewer people quit"),
-        SeatRole(id: "legal", title: "Legal adviser", permanent: false, stat: "risk", maxSeats: 1, baseFee: 16000, text: "Contracts, permits and disputes; fines about 10% lower"),
-        SeatRole(id: "analyst", title: "Data analyst", permanent: false, stat: "fin", maxSeats: 1, baseFee: 18000, text: "Numbers behind prices, stock and demand"),
-        SeatRole(id: "consult", title: "External consultant", permanent: false, stat: "ops", maxSeats: 1, baseFee: 26000, text: "Outside eyes on what is not working"),
-    ]
     static let maxBoard = 7
-    static let adviserBackgrounds = ["former director", "ex-banker", "sits on two other boards", "built and sold a company", "twenty years in the trade", "former partner at a big firm"]
-    static let oldSeatTypes = ["fin": "cfo", "law": "legal", "ind": "consult", "mkt": "mkt", "chair": "chair"]
 
     /// The company whose board a branch sits on: its `branch.of` parent (and that company's parent, a few hops up) while the parent is live, set up,
     /// in the same country and under the same holding. A chain store, or a branch that left those terms, keeps its own board.
@@ -60,7 +36,7 @@ extension ManagerModel {
     }
     static func isChainKey(_ k: String) -> Bool { k.hasPrefix("ch:") }
     static func keyID(_ k: String) -> Int { Int(k.dropFirst(3)) ?? 0 }
-    static func emptyBoard() -> JSONValue { .object(["seats": .array([]), "mode": "needed", "freq": 4, "last": -99, "mts": .array([]), "cands": .array([])]) }
+    static func emptyBoard() -> JSONValue { .object(["seats": .array([]), "last": -99, "mts": .array([])]) }
 
     public static func board(_ s: GameState, key: String) -> JSONValue {
         let b: JSONValue = isChainKey(key) ? (Chains.chain(s, id: keyID(key))?["brd"] ?? .null) : (s.company(keyID(key))?.value("brd") ?? .null)
@@ -91,7 +67,7 @@ extension ManagerModel {
     }
     /// A board exists once a chain is registered, or somebody else owns part of a company. Original: `active`.
     public static func boardActive(_ s: GameState, key: String) -> Bool { isChainKey(key) ? Chains.chain(s, id: keyID(key)) != nil : !holders(s, key: key).isEmpty }
-    static func seatRoleID(_ x: JSONValue) -> String? { x["r"].isNull ? oldSeatTypes[x["type"].string] : x["r"].string }
+    static func seatRoleID(_ x: JSONValue) -> String? { x["r"].isNull ? nil : x["r"].string }
     /// Seats in use; entries without a role (left by older saves) hold no seat.
     static func heldSeatCount(_ L: [JSONValue]) -> Int { L.filter { seatRoleID($0) != nil }.count }
 
@@ -99,23 +75,19 @@ extension ManagerModel {
         public var id: Int
         public var role: String
         public var title: String
-        public var monthlyFee: Double
-        public var adviceTaken: Int
-        public var adviceRefused: Int
-        public var mood: Double
         public var isAdviser: Bool
         public var isOwner: Bool
-        /// "adv" (outside adviser or director), "own" (your own staff, they keep their job) or "exec".
+        /// "adv" (an outside owner's director), "own" or "exec" (somebody already employed in the group).
         public var kind: String = "adv"
     }
-    /// Seats that still have a person in them. Original: `seatsOf`.
+    /// Seats that still have a person in them.
     public static func seats(_ s: GameState, key: String) -> [Seat] {
         board(s, key: key)["seats"].array.compactMap { x in
             guard let n = s.people[x["id"].int], let r = seatRoleID(x) else { return nil }
             let ok = x["kind"].string == "adv" ? n.employerID == -4 : [-1, -2, -3].contains(n.employerID) || n.employerID > 0
             guard ok else { return nil }
-            return Seat(id: n.id, role: r, title: x["t"].string.isEmpty ? (seatRoles.first { $0.id == r }?.title ?? r) : x["t"].string, monthlyFee: x["fee"].double,
-                        adviceTaken: x["ok"].int, adviceRefused: x["no"].int, mood: x["mood"].isNull ? 60 : x["mood"].double, isAdviser: x["kind"].string == "adv", isOwner: x["owner"].bool, kind: x["kind"].string.isEmpty ? "adv" : x["kind"].string)
+            return Seat(id: n.id, role: r, title: x["t"].string.isEmpty ? r.capitalized : x["t"].string, isAdviser: x["kind"].string == "adv", isOwner: x["owner"].bool,
+                        kind: x["kind"].string.isEmpty ? "adv" : x["kind"].string)
         }
     }
     public static func boardHas(_ s: GameState, _ co: Company, role: String) -> Bool { seats(s, key: boardKey(s, co)).contains { $0.role == role } }
@@ -127,7 +99,7 @@ extension ManagerModel {
         let id = seat["id"]?.int ?? 0
         if L.contains(where: { $0["id"].int == id }) { return true }
         if heldSeatCount(L) + 2 >= maxBoard { return false }
-        var x: [String: JSONValue] = ["w0": .number(Double(s.week)), "fee": 0, "ok": 0, "no": 0, "mood": 60]
+        var x: [String: JSONValue] = ["w0": .number(Double(s.week))]
         for (k, v) in seat { x[k] = v }
         L.append(.object(x)); b["seats"] = .array(L)
         writeBoard(&s, key: key, b)
@@ -140,75 +112,6 @@ extension ManagerModel {
             let L = b["seats"].array
             if L.contains(where: { $0["id"].int == personID }) { b["seats"] = .array(L.filter { $0["id"].int != personID }); writeBoard(&s, key: key, b) }
         }
-    }
-
-    // MARK: Settings
-
-    public static func setBoardMode(_ s: inout GameState, key: String, regular: Bool? = nil, quarterly: Bool? = nil) {
-        var b = board(s, key: key)
-        if let r = regular { b["mode"] = .string(r ? "regular" : "needed") }
-        if let q = quarterly { b["freq"] = .number(q ? 13 : 4) }
-        writeBoard(&s, key: key, b)
-    }
-
-    // MARK: Hiring advisers and officers
-
-    /// Pay for a search and meet three candidates for a seat. Original: `ACT.bd13find`.
-    public static func searchForSeat(_ s: inout GameState, key: String, role: String, data: GameData) -> [Person]? {
-        guard let R = seatRoles.first(where: { $0.id == role }) else { return nil }
-        let cur = playerCurrency(s, data)
-        let cost = cur.scaledPrice(8000)
-        guard Payments.liquid(s) >= cost, !boardCompanies(s, key: key).isEmpty else { return nil }
-        Payments.playerPays(&s, cost, label: "Search: \(R.title)")
-        var b = board(s, key: key)
-        let cands: [Person] = (0..<3).map { _ in
-            var n = generateCandidate(company: nil, type: "gen", state: &s, data: data)
-            n.set("adv13", role); n.set("advBg", s.random.pick(adviserBackgrounds))
-            n.set("fee13", cur.roundedStep(cur.scaledPrice(R.baseFee * (0.7 + n.value("stats")[R.stat].double / 150)), about: 500))
-            s.people[n.id] = n
-            return n
-        }
-        b["cands"] = .array(cands.map { .number(Double($0.id)) }); b["candR"] = .string(role)
-        writeBoard(&s, key: key, b)
-        return cands
-    }
-
-    public enum SeatResult: Equatable, Sendable { case ok, full, refused, votedDown(Int), taken, bad }
-
-    /// Offer a fee for a seat. A director needs more than half of the shares behind them. Original: `ACT.bd13hire` and the election step.
-    public static func fillSeat(_ s: inout GameState, key: String, personID: Int, monthlyFee fee: Double) -> SeatResult {
-        var b = board(s, key: key)
-        guard var n = s.people[personID], !boardCompanies(s, key: key).isEmpty else { return .bad }
-        if n.employerID != 0 { return .taken }
-        let role = n.str("adv13").isEmpty ? b["candR"].string : n.str("adv13")
-        guard let R = seatRoles.first(where: { $0.id == role }) else { return .bad }
-        if seats(s, key: key).filter({ $0.role == role }).count >= R.maxSeats { return .full }
-        let want = n.num("fee13")
-        func drop() { b["cands"] = .array(b["cands"].array.filter { $0.int != personID }); writeBoard(&s, key: key, b) }
-        if !(fee >= want || (fee >= want * 0.9 && s.random.chance(0.5))) { drop(); return .refused }
-        let H = holders(s, key: key)
-        if role == "director" && !H.isEmpty, let co0 = boardCompanies(s, key: key).first {
-            let q = leadership(n)
-            var yes = HoldingStakes.votingPercent(co0)
-            for x in H where HashedRandom.first("el15:\(x.h["name"].string):\(personID)") < 0.25 + q * 0.8 { yes += x.h["pct"].double }
-            if yes <= 50 { drop(); return .votedDown(Int(jsRound(yes))) }
-        }
-        n.employerID = -4
-        s.people[personID] = n
-        b = board(s, key: key)
-        b["cands"] = .array([])
-        writeBoard(&s, key: key, b)
-        addSeat(&s, boardKey: key, seat: ["id": .number(Double(personID)), "kind": "adv", "r": .string(role), "t": .string(R.title), "fee": .number(fee)])
-        s.note("\(n.name) is now \(R.title.lowercased()) of \(boardName(s, key: key)).", tone: "good")
-        return .ok
-    }
-
-    /// Let an adviser go. Original: `ACT.bd12rm`.
-    public static func removeFromBoard(_ s: inout GameState, key: String, personID: Int) {
-        if var n = s.people[personID], n.employerID == -4 { n.employerID = 0; s.people[personID] = n }
-        var b = board(s, key: key)
-        b["seats"] = .array(b["seats"].array.filter { $0["id"].int != personID })
-        writeBoard(&s, key: key, b)
     }
 
     // MARK: Who sits at the table and who votes
@@ -324,8 +227,8 @@ extension ManagerModel {
         let base = kind == "sell" || kind == "close" ? p3 < 0 : p3 > 0
         return HashedRandom.first("ov13:\(h["name"].string):\(kind):\(s.week)") < 0.85 ? base : !base
     }
-    /// What the board and the owners say to a sale (`sell`), a closing (`close`) or a big loan (`loan`). More than half of the shares wins.
-    /// Original: `voteOn` and `voteSheetX`.
+    /// What the board and the owners say to a sale (`sell`), a closing (`close`), a dividend (`dividend`), a new location (`open`), replacing the CEO
+    /// (`ceo`) or a big loan (`loan`). More than half of the shares wins.
     public static func boardVote(_ s: GameState, kind: String, companyID: Int, amount: Double = 0, advisory: Bool = false) -> BoardVote {
         let none = BoardVote(advice: [], board: [], owners: [], percentYes: 100, passes: true, decidingOwner: nil, pushedThroughAlone: false, active: false)
         guard let co = s.company(companyID) else { return none }
@@ -343,6 +246,8 @@ extension ManagerModel {
             case "sell": yes = p3 < 0 || (r3 > 0 && p3 / r3 < 0.02); why = yes ? (p3 < 0 ? "It lost money over three months." : "It barely makes money.") : "It made money over three months. Keep it."
             case "close": yes = p3 < 0; why = yes ? "Losses over three months." : "It is profitable. Sell it rather than close it."
             case "ceo": yes = p3 < 0; why = yes ? "It lost money over three months. A new leader may turn it." : "It made money over three months. Give them time."
+            case "dividend": yes = p3 > 0; why = yes ? "It made money over three months. The owners should see some of it." : "There is no profit to pay out."
+            case "open": yes = p3 >= 0; why = yes ? "The chain is making money. Another location can grow it." : "The chain lost money over three months. Fix that first."
             default: let ratio = (debt + amount) / yp; yes = ratio < 3; why = yes ? "Debt stays at \(String(format: "%.1f", ratio)) years of profit." : "Debt would be \(Int(ratio)) times a year of profit."
             }
             let q = leadership(v.personID.flatMap { s.people[$0] })
@@ -415,18 +320,12 @@ extension ManagerModel {
         }
         return .dismissed
     }
-    /// You go ahead against everyone else: the owners and the board lose some morale. Original: `ui.b13cont`.
+    /// You go ahead against everyone else: the co-owners lose some morale.
     public static func recordPushedThrough(_ s: inout GameState, companyID: Int) {
         guard let i = s.companyIndex(companyID) else { return }
         var H = s.companies[i].value("holders").array
         for k in H.indices { H[k]["mood"] = .number(max(0, (H[k]["mood"].isNull ? 60 : H[k]["mood"].double) - 8)) }
         s.companies[i].set("holders", .array(H))
-        let key = boardKey(s, s.companies[i])
-        var b = board(s, key: key)
-        var L = b["seats"].array
-        for k in L.indices { L[k]["mood"] = .number(max(0, (L[k]["mood"].isNull ? 60 : L[k]["mood"].double) - 4)) }
-        b["seats"] = .array(L)
-        writeBoard(&s, key: key, b)
         s.note("Pushed through against the others at \(s.companies[i].name). They are not happy.", tone: "bad", companyID: companyID)
     }
 }
