@@ -318,29 +318,17 @@ public extension GameEngine {
         return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
     }
 
+    /// Today's goal with its streak (the streak grows the first time the goal is seen done).
     mutating func dailyGoal(now: Date = Date()) -> PlayerGoals.DailyGoal? {
         var r: PlayerGoals.DailyGoal?
         let cur = homeCurrency
         update { s, d, _ in r = PlayerGoals.dailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
         return r
     }
-    @discardableResult mutating func claimDailyGoal(now: Date = Date()) -> Double? {
-        var r: Double?
-        let cur = homeCurrency
-        update { s, d, _ in r = PlayerGoals.claimDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
-        return r
-    }
     /// True when the player turned the daily mission off (it is optional).
     var dailyGoalsOff: Bool { PlayerGoals.dailyGoalsOff(state) }
     mutating func setDailyGoalsOff(_ off: Bool) { update { s, _, _ in PlayerGoals.setDailyGoalsOff(&s, off) } }
-    /// Queues the "mission done" celebration once per day. Called by the app after a day has run.
-    @discardableResult mutating func celebrateDailyGoal(now: Date = Date()) -> Bool {
-        var r = false
-        let cur = homeCurrency
-        update { s, d, _ in r = PlayerGoals.announceDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
-        return r
-    }
-    /// Celebrations earned and not yet shown (trophies, ambition milestones, finished first steps, the daily mission).
+    /// Celebrations earned and not yet shown (trophies, ambition milestones, finished ladder goals).
     var pendingCelebrations: [Celebration] { Celebrations.pending(state) }
     /// The same waiting list as the popup needs it: id, title, detail, tier and art key.
     func pendingAwards() -> [AwardInfo] {
@@ -352,16 +340,6 @@ public extension GameEngine {
         update { s, _, _ in r = Celebrations.take(&s) }
         return r
     }
-    var firstStepRewards: [PlayerGoals.FirstStep]? { PlayerGoals.firstSteps(state) }
-    var firstStepRewardsHidden: Bool { PlayerGoals.firstStepsHidden(state) }
-    mutating func claimFirstStep(id: String) -> String? {
-        var r: String?
-        let cur = homeCurrency
-        update { s, _, _ in r = PlayerGoals.claimFirstStep(&s, id: id, currency: cur) }
-        return r
-    }
-    mutating func setFirstStepsHidden(_ hidden: Bool) { update { s, _, _ in PlayerGoals.setFirstStepsHidden(&s, hidden) } }
-
 
     private mutating func setFlag(_ companyID: Int, _ key: String, _ on: Bool) {
         update { s, _, _ in

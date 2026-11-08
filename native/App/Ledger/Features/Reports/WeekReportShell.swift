@@ -60,8 +60,7 @@ struct WeekReportShell<More: View>: View {
 
     /// The finished goals waiting behind this report, in queue order, that need no claim of their own.
     private var foldedGoals: [Celebration] {
-        let e: GameEngine? = store.engine
-        return Array(store.celebrationQueue.prefix(while: { (c: Celebration) -> Bool in CelebrationPopup.foldsIntoReport(c, e) }))
+        Array(store.celebrationQueue.prefix(while: { (c: Celebration) -> Bool in CelebrationPopup.foldsIntoReport(c) }))
     }
 
     @ViewBuilder private var goalsBlock: some View {

@@ -106,9 +106,6 @@ final class MoneyLiteralLintTests: XCTestCase {
         "RentalModel.swift": ["2654435761": "hash arithmetic", "4000": "square metres per commercial building (quantity)"],
         "FinanceModel.swift": ["30000": "policies (count)", "1000": "policies per noise step (count)"],
         "ProjectModel.swift": ["1500": "hour value at the reference level, multiplied by the wage level in use (differential-tested)", "1650": "hour value (same)", "1700": "hour value (same)", "2000": "job size class / hour value (hours, same)", "5000": "job size class (hours)", "1000": "job size class (hours) / default hour value"],
-        // Goals: reference-level rewards and milestone targets, scaled by the helper (cash, K, m) with the player's currency.
-        "PlayerGoals.swift": ["25000": "reward, scaled by cash()", "6000": "reward, scaled by cash()", "3000": "reward, scaled by cash()", "2500": "reward, scaled by cash()",
-                              "15000": "reward, scaled by cash()", "1500": "people (count)", "300000": "milestone target, scaled by K()/m()", "700000": "milestone target, scaled by K()/m()"],
         "MiscActions.swift": ["86400": "seconds in a day"],
         // Career ranks and goals are reference-level targets; every read scales them (rankIndex via scaledPrice, goals via money()/text).
         "Career.swift": ["25_000": "reference-level target, scaled with scaledPrice where read", "100_000": "reference-level target, scaled where read", "400_000": "reference-level target, scaled where read",

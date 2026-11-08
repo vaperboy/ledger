@@ -33,9 +33,6 @@ struct PopupLayer: View {
             .hostedPopup(key: "daily", priority: .report, active: store.dailySheet != nil && store.reportSheet == nil, onClose: { }) {
                 if let d = store.dailySheet { DailyReportPopup(digest: d).environmentObject(store) }
             }
-            .hostedPopup(key: "ambition", priority: .report, active: store.ambitionPrompt, onClose: { }) {
-                AmbitionPrompt().environmentObject(store)
-            }
             .hostedPopup(key: "celebration-\(store.celebrationQueue.first?.id ?? 0)", priority: .celebration, active: !store.celebrationQueue.isEmpty, onClose: { }) {
                 if let c = store.celebrationQueue.first { CelebrationPopup(item: c).environmentObject(store) }
             }

@@ -21,7 +21,6 @@ enum MiscWeekly {
         PromiseReminders.weekly(&s, data: data)
         Giving.weekly(&s, data: data)
         Ambitions.weekly(&s, data: data)
-        PlayerGoals.announceFirstSteps(&s)
         Stories.weekly(&s, data: data)   // staff stories, the rivalry, the Top 50 (before the paper picks its front page)
         Press.weekly(&s, data: data)
         WeatherEvents.weekly(&s, data: data)

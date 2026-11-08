@@ -22,13 +22,12 @@ final class AuditFixesTests: XCTestCase {
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: wage ?? ask * 1.2, terms: Hiring.Terms()), .ok)
     }
 
-    // MARK: First steps and trophies
+    // MARK: Ladder facts and trophies
 
-    func testFirstStepsCanAllCompleteInOrder() throws {
+    func testLadderFactsCanAllCompleteInOrder() throws {
         var (e, id) = try cafe()
-        let cur = e.homeCurrency
-        func done(_ step: String) -> Bool { e.firstStepRewards?.first { $0.id == step }?.done == true }
-        func claim(_ step: String) { XCTAssertTrue(done(step), "\(step) should be done"); XCTAssertNotNil(e.claimFirstStep(id: step), "\(step) reward"); _ = cur }
+        func done(_ step: String) -> Bool { PlayerGoals.stepDone(step, e.state) }
+        func claim(_ step: String) { XCTAssertTrue(done(step), "\(step) should be done") }
         XCTAssertFalse(done("week"), "no week has been played yet")
         claim("co")
         hireOne(&e, id)
@@ -58,7 +57,6 @@ final class AuditFixesTests: XCTestCase {
         claim("profit")
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].set("asst", .object(["npc": 1])) }
         claim("mgr")
-        XCTAssertTrue(e.firstStepRewards?.allSatisfy { $0.claimed } == true)
     }
 
     func testEveryTrophyGroupIsOnTheWall() {

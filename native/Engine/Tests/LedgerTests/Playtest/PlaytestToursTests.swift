@@ -417,9 +417,6 @@ final class PlaytestToursTests: XCTestCase {
         // goals and rewards
         let dg = e.dailyGoal()
         _ = dg
-        let c = e.claimDailyGoal()
-        _ = c
-        for st in PlayerGoals.firstSteps(e.state) ?? [] where st.done { ex(e.claimFirstStep(id: st.id) != nil || true, "claimFirstStep returns") }
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent after luxury tour", sev: 1)
     }
 

@@ -4,8 +4,8 @@ import Events
 import Simulation
 
 /// The progress strip on Home, two tiles side by side. Career: the worn badge in a ring that fills towards the next rank, the share
-/// done and the next rank's name (opens Goals). Today: the daily mission with its reward and the streak, a Claim when it is ready
-/// (a small "+reward" rises on claim), else a tap opens where it is done.
+/// done and the next rank's name (opens Goals). Today: the daily goal with its streak badge (no reward), a tick when it is done,
+/// else a tap opens where it is done.
 struct HomeProgressStrip: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -17,8 +17,6 @@ struct HomeProgressStrip: View {
     @State private var daily: PlayerGoals.DailyGoal?
     @State private var shownProgress: Double = 0
     @State private var burst = false
-    @State private var claimedText: String?
-    @State private var claimRise = false
 
     var body: some View {
         let st: Career.RankStatus = store.memo("careerStatus") { $0.careerStatus } ?? engine.careerStatus
@@ -75,10 +73,9 @@ struct HomeProgressStrip: View {
     // MARK: Today's mission
 
     @ViewBuilder private var missionTile: some View {
-        let streak: Int = PlayStreak.current(engine.state, today: GameStore.calendarDay())
-        let ready: Bool = (daily?.done ?? false) && !(daily?.claimed ?? false)
-        let claimed: Bool = daily?.claimed ?? false
-        Button { missionTapped(ready: ready) } label: {
+        let streak: Int = daily?.streak ?? PlayStreak.current(engine.state, today: GameStore.calendarDay())
+        let done: Bool = daily?.done ?? false
+        Button { missionTapped() } label: {
             tile {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     HStack(spacing: Theme.Space.xs) {
@@ -87,62 +84,27 @@ struct HomeProgressStrip: View {
                         Image(systemName: "flame.fill").font(.caption).foregroundStyle(streak > 0 ? Theme.warn : Theme.inkFaint).accessibilityHidden(true)
                         Text("\(streak)").textStyle(.caption, tint: streak > 0 ? Theme.ink : Theme.inkFaint, numeric: true, weight: .semibold)
                     }
-                    Text(daily?.title ?? "No mission today").textStyle(.body, tint: Theme.ink).lineLimit(2).multilineTextAlignment(.leading)
+                    Text(daily?.title ?? "No goal today").textStyle(.body, tint: Theme.ink).lineLimit(2).multilineTextAlignment(.leading)
                     if let d = daily {
-                        if ready {
-                            Text("Claim " + store.short(d.reward)).textStyle(.caption, weight: .semibold)
-                                .containerInk(Theme.accentInk)
-                                .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xxs)
-                                .background(Capsule().fill(Theme.accent))
-                                .accessibilityIdentifier("home-claim")
-                        } else if claimed {
-                            Text("Claimed").textStyle(.caption, tint: Theme.gain)
-                        } else {
-                            Text(d.progress.isEmpty ? "+" + store.short(d.reward) : d.progress + " · +" + store.short(d.reward))
-                                .textStyle(.caption, numeric: true).lineLimit(1)
+                        if done {
+                            Text("Done").textStyle(.caption, tint: Theme.gain)
+                        } else if !d.progress.isEmpty {
+                            Text(d.progress).textStyle(.caption, numeric: true).lineLimit(1)
                         }
                     }
-                }
-            }
-            .overlay(alignment: .topTrailing) {
-                if let t = claimedText {
-                    Text(t).textStyle(.headline, tint: Theme.gain, numeric: true)
-                        .offset(x: -Theme.Space.m, y: claimRise ? -22 : 6)
-                        .opacity(claimRise ? 0 : 1)
-                        .allowsHitTesting(false)
                 }
             }
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel((daily?.title ?? "No mission today") + (ready ? ", ready to claim" : "") + ". Streak \(streak) days")
+        .accessibilityLabel((daily?.title ?? "No goal today") + (done ? ", done" : "") + ". Streak \(streak) days")
         .accessibilityIdentifier("home-mission")
     }
 
-    private func missionTapped(ready: Bool) {
-        if ready { claim(); return }
+    private func missionTapped() {
         Haptics.tap()
         if let link = daily?.link, !link.isEmpty, store.openLadderLink(link) { return }
         store.openApp(.goals)
-    }
-
-    /// Claims today's mission: a success haptic, and the reward rises and fades once over the tile.
-    private func claim() {
-        if let r = store.act({ (e: inout GameEngine) in e.claimDailyGoal() }) ?? nil {
-            Haptics.success()
-            daily = store.dailyGoal()
-            claimedText = "+" + store.short(r)
-            claimRise = false
-            if reduceMotion {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { claimedText = nil }
-            } else {
-                Motion.animate(Motion.revealAnimation.delay(0.1)) { claimRise = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { claimedText = nil; claimRise = false }
-            }
-        } else {
-            Haptics.warning()
-            store.show("That mission cannot be claimed yet.", tone: "warn")
-        }
     }
 
     private func fill(to target: Double) {

@@ -105,18 +105,13 @@ struct ReportDigestSheet: View {
     private func signed(_ v: Double) -> String { abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "−") + store.short(abs(v)) }
 }
 
-/// A reward popup: a trophy, an ambition milestone, a finished first step or the day's mission. One at a time, from the queue the
-/// store holds after a day; it shows the real reward, arrives with a calm animation (none under Reduce Motion) and a light haptic.
+/// A reward popup: a trophy, a milestone or a finished ladder goal. One at a time, from the queue the store holds after a day;
+/// it says what the goal changed, arrives with a calm animation (none under Reduce Motion) and a light haptic.
 struct CelebrationPopup: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var item: Celebration
     @State private var shown = false
-    /// Set once the reward has been claimed right here: what the player got. The card then shows a small celebration of its own.
-    @State private var claimedText: String?
-    @State private var burst = false
-    /// The numeric part of a reward claimed here (the daily goal), counted up in the gold reward figure.
-    @State private var claimedAmount: Double?
     /// Goal complete: the card turns green, the check draws itself, the reward fades in.
     @State private var goalShown = false
     @State private var checkDrawn: CGFloat = 0
@@ -135,7 +130,7 @@ struct CelebrationPopup: View {
                 let id: Int = item.id
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: UInt64(Motion.celebrateSeconds * 1_000_000_000))
-                    guard store.celebrationQueue.first?.id == id, !canClaim else { return }
+                    guard store.celebrationQueue.first?.id == id else { return }
                     Motion.animate(Motion.move(reduceMotion)) { leaving = true }
                     try? await Task.sleep(nanoseconds: 350_000_000)
                     if store.celebrationQueue.first?.id == id { store.dismissCelebration() }
@@ -157,8 +152,7 @@ struct CelebrationPopup: View {
                 Text(item.reward).popupText(.rowValue).multilineTextAlignment(.center)
                     .opacity(item.kind != "goal" || goalShown || reduceMotion ? 1 : 0)
             }
-            claimArea
-            if !canClaim { dismissButton }
+            dismissButton
         }
         .frame(maxWidth: .infinity)
     }
@@ -173,30 +167,11 @@ struct CelebrationPopup: View {
         }
     }
 
-    // MARK: Claiming in place
+    /// A finished goal: the week report tells it in a line instead of this popup.
+    static func foldsIntoReport(_ item: Celebration) -> Bool { item.kind == "goal" }
 
-    /// A finished goal or today's mission carries a reward that is claimed with one tap, here, not by going to Goals.
-    private var canClaim: Bool { claimedText == nil && (item.kind == "mission" || (item.kind == "goal" && claimableStep != nil)) }
-
-    /// A first-step reward that is finished and not yet taken under this title. A ladder goal has none (the engine paid its reward when it
-    /// finished), so it is closed with "Nice" instead of a claim button that could only say "Already claimed.".
-    private var claimableStep: PlayerGoals.FirstStep? { Self.claimableStep(item, store.engine) }
-
-    static func claimableStep(_ item: Celebration, _ engine: GameEngine?) -> PlayerGoals.FirstStep? {
-        (engine?.firstStepRewards ?? []).first(where: { $0.title == item.title && $0.done && !$0.claimed })
-    }
-
-    /// A finished goal with nothing to claim: the week report tells it in a line instead of this popup.
-    static func foldsIntoReport(_ item: Celebration, _ engine: GameEngine?) -> Bool {
-        item.kind == "goal" && claimableStep(item, engine) == nil
-    }
-
-    /// Claiming is the only way out: a goal or mission is claimed here, a trophy or milestone (already paid) is claimed with one tap.
-    private var dismissTitle: String {
-        if claimedText != nil { return store.celebrationQueue.count > 1 ? "Next" : "Done" }
-        if item.kind == "goal" { return "Nice" }
-        return "Claim"
-    }
+    /// A goal closes with "Nice"; a trophy or milestone (nothing to take) with the pulsing Claim.
+    private var dismissTitle: String { item.kind == "goal" ? "Nice" : "Claim" }
 
     private var trophyEntry: Trophies.Entry? {
         guard item.kind == "trophy", let e = store.engine else { return nil }
@@ -221,49 +196,10 @@ struct CelebrationPopup: View {
         }
     }
 
-    @ViewBuilder private var claimArea: some View {
-        if let done = claimedText {
-            VStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill").popupText(.effect)
-                    .scaleEffect(burst || reduceMotion ? 1 : 0.4)
-                    .symbolEffect(.bounce, value: burst)
-                if let amount = claimedAmount, let cur = store.engine?.homeCurrency {
-                    RewardFigure(amount: amount, format: { (v: Double) -> String in cur.tidyShort(v) })
-                }
-                Text(done).popupText(.rowValue).multilineTextAlignment(.center)
-            }
-            .transition(.scale.combined(with: .opacity))
-            .accessibilityElement(children: .combine)
-        } else if canClaim {
-            ClaimButton(title: "Claim", identifier: "celebration-claim") { claim() }
-        }
-    }
-
-    private func claim() {
-        var text: String?
-        if item.kind == "mission" {
-            let cur: Currency? = store.engine?.homeCurrency
-            if let r = store.act({ $0.claimDailyGoal() }) ?? nil {
-                text = "Daily goal reward: " + (cur?.tidyShort(r) ?? "") + " is yours."
-                claimedAmount = r
-            }
-        } else if let step = claimableStep {
-            text = store.act({ $0.claimFirstStep(id: step.id) }) ?? nil
-        }
-        if let text {
-            Haptics.play(.success)
-            Motion.animate(Motion.arrive(reduceMotion)) { claimedText = text.tidyText; burst = true }
-        } else {
-            Haptics.play(.warning)
-            Motion.animate(Motion.standard(reduceMotion)) { claimedText = "Already claimed." }
-        }
-    }
-
     private var kindLabel: String {
         switch item.kind {
         case "trophy": return "Trophy earned"
         case "milestone": return "Milestone reached"
-        case "mission": return "Mission done"
         default: return "Goal reached"
         }
     }

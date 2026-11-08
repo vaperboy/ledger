@@ -47,7 +47,7 @@ final class ConnectivityLinksTests: XCTestCase {
         XCTAssertFalse(goals.isEmpty)
         for g in goals { XCTAssertTrue(known.contains(g.link), "\(g.id) links to \(g.link)") }
         for id in ["start", "weeks", "hire", "cmp", "grow"] {
-            let d = PlayerGoals.DailyGoal(id: id, title: "", progress: "", done: false, claimed: false, reward: 0, streak: 0)
+            let d = PlayerGoals.DailyGoal(id: id, title: "", progress: "", done: false, streak: 0)
             XCTAssertTrue(known.contains(d.link), "daily goal \(id) links to \(d.link)")
         }
     }

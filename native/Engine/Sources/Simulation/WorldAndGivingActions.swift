@@ -38,8 +38,11 @@ public extension GameEngine {
     /// A payment waited for cash on the last day run: Home shows "Cash is tight. A bill waits until tomorrow."
     var cashIsTight: Bool { state.rest["tight"] != nil }
     var ambitionVisible: Bool { !Gates.ladderOn(state) || PlayerGoals.ladderFlag(state, "amb") }
-    /// True when the start-of-game prompt should still be shown: no ambition chosen, never asked, still inside the free window.
-    var ambitionPromptPending: Bool { ambitionVisible && Ambitions.currentPath(state) == nil && state.rest["ambPrompt"] == nil && ambitionChangeIsFree }
+    /// True when Home should offer the ambition card: unlocked by the first profitable month, none chosen, never answered, still inside the free window.
+    /// It is a card the player can ignore, never a popup that holds up play.
+    var ambitionCardPending: Bool { ambitionVisible && Ambitions.currentPath(state) == nil && state.rest["ambPrompt"] == nil && ambitionChangeIsFree }
+    /// Always false: ambition no longer blocks play. Kept only because `GameStore.refreshPending` still reads it; use `ambitionCardPending`.
+    var ambitionPromptPending: Bool { false }
     /// The prompt has been shown (answered or skipped): it is not shown again. The key is written only now.
     mutating func markAmbitionPromptShown() { update { s, _, _ in s.rest["ambPrompt"] = .number(1) } }
     @discardableResult mutating func chooseAmbition(path: String) -> Bool {

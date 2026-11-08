@@ -293,7 +293,7 @@ struct TopPriorities: View {
 
     @State private var daily: PlayerGoals.DailyGoal?
 
-    /// With nothing to answer, the player's next goal fills the slot: the ladder goal, else today's mission while it is open.
+    /// With nothing to answer, the player's next goal fills the slot: the ladder goal, else today's goal while it is open.
     private struct Goal {
         var title: String
         var line: String
@@ -305,8 +305,7 @@ struct TopPriorities: View {
         if let g = PlayerGoals.currentLadderGoal(engine.state) {
             return Goal(title: g.title, line: g.body, action: g.button, link: g.link)
         }
-        if let d = daily, !d.claimed {
-            if d.done { return Goal(title: d.title, line: "Done. Claim the reward in Goals.", action: "Claim", link: "goals") }
+        if let d = daily, !d.done {
             return Goal(title: d.title, line: d.progress, action: d.link.isEmpty ? "" : "Go", link: d.link)
         }
         return nil
@@ -315,16 +314,19 @@ struct TopPriorities: View {
     var body: some View {
         let first: Suggestion? = store.suggestionsNow.first { $0.tone != .neutral }
         let waiting: Int = store.openDecisionCount
-        let next: Goal? = first == nil && waiting == 0 ? goal : nil
+        let offerAmbition: Bool = first == nil && waiting == 0 && engine.ambitionCardPending
+        let next: Goal? = first == nil && waiting == 0 && !offerAmbition ? goal : nil
         let tick: Int = engine.state.week * 7 + engine.state.day
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HomeGroupLabel(title: next != nil ? "Your next goal" : "Needs you") { inboxLink(waiting) }
+            HomeGroupLabel(title: next != nil || offerAmbition ? "Your next goal" : "Needs you") { inboxLink(waiting) }
             if let first {
                 lead(first)
                     .id(first.id)
                     .transition(.opacity)
             } else if waiting > 0 {
                 waitingCard(waiting)
+            } else if offerAmbition {
+                AmbitionCard(compact: compact)
             } else if let next {
                 goalCard(next)
             } else {

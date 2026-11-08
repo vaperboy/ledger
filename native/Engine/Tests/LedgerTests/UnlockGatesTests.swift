@@ -2,7 +2,7 @@ import XCTest
 import GameCore
 import Countries
 import Finance
-import Businesses
+@testable import Businesses
 import Simulation
 
 /// Every row of the gate table is hidden before its gate and open after it; the `firstYear` keys are read where each
@@ -40,8 +40,6 @@ final class UnlockGatesTests: XCTestCase {
             (.bank, 7, "Unlocks after your first profitable month"), (.newCompany, 7, "Unlocks after your first profitable month"),
             (.management, 7, "Unlocks after your first profitable month"), (.techpro, 7, "Unlocks after your first profitable month"),
             (.accounting, 7, "Opens with your first profitable month"),
-            (.insurance, 8, "Unlocks when a manager runs the company"), (.suppliers, 8, "Unlocks when a manager runs the company"),
-            (.weather, 8, "Unlocks when a manager runs the company"), (.marketplace, 8, "Unlocks when a manager runs the company"),
             (.property, 9, "Unlocks with your second company"), (.rivals, 9, "Unlocks with your second company"),
             (.airstay, 9, "Unlocks with your second company"),
         ]
@@ -54,6 +52,91 @@ final class UnlockGatesTests: XCTestCase {
             Self.doneUpTo(&e, n)
             XCTAssertEqual(vis(e, g), .open, "\(g) after M\(n)")
         }
+    }
+
+    /// A company whose books show `rev` of sales and the given closed months.
+    private func trade(_ e: inout GameEngine, rev: Double = 0, months: [Double] = [], week: Int) throws {
+        if e.state.companies.isEmpty { _ = ChainsTests.start(&e, "cafe") }
+        e.update { s, _, _ in
+            s.week = week
+            guard let i = s.companies.indices.first(where: { s.companies[$0].type != "hold" }) else { return }
+            var b = s.companies[i].books
+            b.total["rev"] = rev
+            b.total["loss"] = 0
+            b.total["fine"] = 0
+            s.companies[i].books = b
+            s.companies[i].monthlyHistory = months.enumerated().map { MonthRecord(monthIndex: $0.offset, revenue: 1, profit: $0.element, cash: 0) }
+        }
+    }
+
+    func testSuppliersOpenAfterTheFirstWeekOfSales() throws {
+        var e = try ChainsTests.engine()
+        Self.doneUpTo(&e, 0)
+        try trade(&e, rev: 0, week: 0)
+        XCTAssertEqual(vis(e, .suppliers), .hidden)
+        try trade(&e, rev: 0, week: 3)
+        XCTAssertEqual(vis(e, .suppliers), .locked("Unlocks after your first week of sales"))
+        try trade(&e, rev: 5_000, week: 0)
+        XCTAssertNotEqual(vis(e, .suppliers), .open, "the week has not closed")
+        try trade(&e, rev: 5_000, week: 1)
+        for g in [Gate.suppliers, .marketplace] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
+    }
+
+    func testInsuranceOpensWithTheFirstProfitableMonthOrTheFirstLoss() throws {
+        var e = try ChainsTests.engine()
+        Self.doneUpTo(&e, 0)
+        try trade(&e, months: [], week: 3)
+        XCTAssertEqual(vis(e, .insurance), .locked("Unlocks with your first profitable month or your first loss"))
+        try trade(&e, months: [5_000], week: 6)
+        for g in [Gate.insurance, .weather] { XCTAssertEqual(vis(e, g), .open, "profit: " + g.rawValue) }
+        try trade(&e, months: [-2_000], week: 6)
+        XCTAssertEqual(vis(e, .insurance), .open, "a month at a loss")
+        try trade(&e, months: [], week: 6)
+        e.update { s, _, _ in
+            guard let i = s.companies.indices.first(where: { s.companies[$0].type != "hold" }) else { return }
+            var b = s.companies[i].books
+            b.total["fine"] = 400
+            s.companies[i].books = b
+        }
+        XCTAssertEqual(vis(e, .insurance), .open, "a fine is a loss event")
+    }
+
+    func testManagerFeaturesStayWithTheLadderAndTheChain() throws {
+        XCTAssertEqual(Gate.management.rule, .goal(7))
+        XCTAssertEqual(Gates.entry(.unlock("chain")).rule, .weeksTraded(Unlocks.weeksChain))
+        XCTAssertEqual(Gates.entry(.unlock("board")).rule, .boardSeat)
+    }
+
+    func testEveryGateAndUnlockHasOneRowInTheTable() {
+        for g in Gate.allCases { XCTAssertEqual(Gates.table.filter { $0.feature == .gate(g) }.count, 1, g.rawValue) }
+        for d in Unlocks.defs { XCTAssertEqual(Gates.table.filter { $0.feature == .unlock(d.id) }.count, 1, d.id) }
+    }
+
+    func testRoadmapListsLockedFeaturesWithConditionsAndProgress() throws {
+        var e = try ChainsTests.engine()
+        let id = ChainsTests.start(&e, "cafe")
+        Self.doneUpTo(&e, 2)
+        let road = e.unlockRoadmap()
+        let ids = road.map { $0.id }
+        XCTAssertEqual(Set(ids).count, ids.count)
+        for want in ["gate.marketing", "gate.insurance", "gate.suppliers", "gate.group", "gate.luxury", "unlock.chain", "unlock.franchise", "unlock.research"] {
+            XCTAssertTrue(ids.contains(want), "\(want) is locked and listed")
+        }
+        XCTAssertFalse(ids.contains("gate.reviews"), "systems that follow another are not listed twice")
+        XCTAssertFalse(ids.contains("unlock.marketplace"))
+        for item in road {
+            XCTAssertFalse(item.title.isEmpty); XCTAssertFalse(item.condition.isEmpty, item.id)
+            XCTAssertTrue((0...1).contains(item.progress), item.id)
+        }
+        XCTAssertEqual(road.first { $0.id == "gate.group" }?.detail, "1 of 3 companies")
+        XCTAssertEqual(road.first { $0.id == "unlock.chain" }?.companyID, id)
+        XCTAssertEqual(road.map { $0.progress }, road.map { $0.progress }.sorted(by: >), "closest first")
+        // Opening something removes it from the list.
+        try trade(&e, rev: 5_000, week: 1)
+        XCTAssertFalse(e.unlockRoadmap().contains { $0.id == "gate.suppliers" })
+        // An old save without a ladder has no locked app surface.
+        e.update { s, _, _ in s.rest["ldr"] = nil }
+        XCTAssertFalse(e.unlockRoadmap().contains { $0.id.hasPrefix("gate.") })
     }
 
     func testHiringOpensInWeekThreeAndOwnerHoursInWeekThirteen() throws {

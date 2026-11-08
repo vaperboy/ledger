@@ -38,13 +38,13 @@ final class NewPlayerStartTests: XCTestCase {
     func testAmbitionIsHeldBackUntilTheLadderRaisesIt() throws {
         var e = try fresh()
         XCTAssertFalse(e.ambitionVisible)
-        XCTAssertFalse(e.ambitionPromptPending)
+        XCTAssertFalse(e.ambitionCardPending)
         e.update { s, _, _ in
             var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l
             s.week = 9
         }
         XCTAssertTrue(e.ambitionVisible)
-        XCTAssertTrue(e.ambitionPromptPending, "the prompt may appear after M7 even past week 4")
+        XCTAssertTrue(e.ambitionCardPending, "the card may appear after M7 even past week 4")
         XCTAssertTrue(e.chooseAmbition(path: "titan"))
         XCTAssertTrue(e.ambitionChangeIsFree)
         e.update { s, _, _ in s.week = 14 }
