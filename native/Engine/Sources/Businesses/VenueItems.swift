@@ -181,7 +181,7 @@ public enum VenueItems {
                               capacityPerSession: spec.sessions > 0 ? l.cap / spec.sessions : l.cap, sessionName: spec.sessionName, sold: l.sold,
                               occupancy: l.cap > 0 ? l.sold / l.cap : 0, price: l.price, marketPrice: l.market, variablePerSale: l.vc, fixedParts: parts, fixedWeekly: oh,
                               costPerSale: cost, breakEvenPrice: cost, weeklyRevenue: l.rev, weeklyProfit: l.rev - l.sold * l.vc - oh, seasonIndex: season,
-                              booked: Int((l.sold * adv).rounded()), holders: holders, churnMonthly: sub ? 1 - pow(1 - min(0.99, wk * max(0.1, l.d.churn)), 52.0 / 12) : 0,
+                              booked: Int(saturating: (l.sold * adv).rounded()), holders: holders, churnMonthly: sub ? 1 - pow(1 - min(0.99, wk * max(0.1, l.d.churn)), 52.0 / 12) : 0,
                               edge: l.d.edge, playedPerSale: l.d.edge > 0 ? l.price / l.d.edge : 0, bundleDays: l.d.days, bundlePrice: l.d.days > 0 ? l.price * l.d.days : 0,
                               recipe: l.d.recipe, isSub: sub)
             return Computed(def: l.d, itemID: id, econ: e)
@@ -342,7 +342,7 @@ public enum VenueItems {
             guard var r = ItemModels.record(s.companies[i], itemID: c.itemID) else { continue }
             let e = c.econ
             r.cost = e.costPerSale; r.fair = e.marketPrice; r.reserved = e.booked; r.capacity = e.capacity
-            r.stock = c.def.model == .sub ? Int(e.holders.rounded()) : Int(e.capacityPerSession.rounded())
+            r.stock = c.def.model == .sub ? Int(saturating: e.holders.rounded()) : Int(saturating: e.capacityPerSession.rounded())
             ItemModels.put(&s, i, r)
         }
     }

@@ -87,6 +87,7 @@ struct CompanyDetailView: View {
             let pagerSelection: Binding<CompanyTab> = Binding(get: { tabs.contains(segment) ? segment : CompanyTab.overview }, set: { segment = $0 })
             VStack(spacing: 0) {
                 SegmentedPill(items: tabs, title: { $0.rawValue }, selection: $segment, identifier: { "company-tab-\($0.id)" })
+                    .coachAnchor(.companyTabs)
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xxs).padding(.bottom, Theme.Space.s)
                 SegmentPager(items: tabs, selection: pagerSelection) { (t: CompanyTab) in
                     ScrollView {
@@ -100,6 +101,7 @@ struct CompanyDetailView: View {
                     .scrollBounceBehavior(.basedOnSize)
                     .scrollDismissesKeyboard(.interactively)
                 }
+                .coachTopStrip(.companyPage, height: 150)
             }
             // One metadata line: trade, city and form, then where it sits in the group and who runs it.
             .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co), form] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " · ").tidyText) {

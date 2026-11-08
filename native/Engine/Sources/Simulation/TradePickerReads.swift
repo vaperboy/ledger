@@ -124,7 +124,7 @@ public extension GameEngine {
         lines.append(FinanceLine(id: "wages", label: "Wages", amount: plan.estimate.firstPayroll))
         lines = lines.filter { $0.amount > 0 }
         let staff = bd.standardStaff.enumerated().reduce(0.0) { $0 + ($1.offset == 0 && bd.ownerFTE >= 1 ? max(0, $1.element.count - 1) : $1.element.count) }
-        return MonthlyFixedCostEstimate(lines: lines, total: lines.reduce(0) { $0 + $1.amount }, staffCount: Int(staff.rounded()))
+        return MonthlyFixedCostEstimate(lines: lines, total: lines.reduce(0) { $0 + $1.amount }, staffCount: Int(saturating: staff.rounded()))
     }
 
     // MARK: Helpers

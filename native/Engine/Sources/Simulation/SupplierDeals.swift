@@ -144,7 +144,7 @@ public extension GameEngine {
         return h.isEmpty ? co.lastWeekRevenue * 52 : h.reduce(0.0) { $0 + $1.revenue } / Double(h.count) * 12
     }
 
-    private func supplierPct(_ x: Double) -> String { "\(Int((x * 100).rounded()))%" }
+    private func supplierPct(_ x: Double) -> String { "\(Int(saturating: (x * 100).rounded()))%" }
 
     private func supplierVendorOption(_ v: Suppliers.Vendor, id: String, kind: SupplierProviderKind, change: SupplierSwitch, current: Bool) -> SupplierOption {
         let next = Suppliers.nextDiscountTier(v.relationship)
@@ -152,7 +152,7 @@ public extension GameEngine {
         let terms = v.discount > 0 ? "\(supplierPct(v.discount)) off every order from your relationship" + (agreed ? " (includes the board agreement)" : "") : "List price, no relationship discount yet"
         return SupplierOption(id: id, kind: kind, name: v.name, subtitle: "\(v.owner) · \(v.relationshipWord)", change: change, isCurrent: current, priceFactor: nil,
                               yearlyVsMarket: nil, yearlyVsCurrent: nil, discount: v.discount, relationship: v.relationship, relationshipWord: v.relationshipWord,
-                              nextLevel: next.map { "\($0.word) (from \(Int($0.from.rounded()))): \(supplierPct($0.discount)) off every order" }, vendorID: v.id,
+                              nextLevel: next.map { "\($0.word) (from \(Int(saturating: $0.from.rounded()))): \(supplierPct($0.discount)) off every order" }, vendorID: v.id,
                               quality: nil, reliability: String(format: "%.1f stars", v.rating), terms: terms, delivery: "With your regular orders", risks: [], blocked: nil)
     }
 
@@ -212,7 +212,7 @@ public extension GameEngine {
         let outsideRisk = cogs ? ["Exposed to outside supplier events: price rises, failures, cut deliveries."] : []
         // A delivery service: the add-on's data says how reliable an outside courier is (the share of orders that reach the customer).
         let dway = k.delivered ? IntercompanySupply.deliveryWay(co.type, data.balance) : nil
-        let outsideRel = dway.map { "Outside courier: \(Int((($0.options["rel"] ?? 1) * 100).rounded()))% of orders reach the customer" }
+        let outsideRel = dway.map { "Outside courier: \(Int(saturating: (($0.options["rel"] ?? 1) * 100).rounded()))% of orders reach the customer" }
         var options: [SupplierOption] = []
         options.append(SupplierOption(id: "out", kind: .outside, name: k.delivered ? "Outside courier" : "Outside suppliers", subtitle: "The market", change: .outside, isCurrent: link == nil && acctLink == nil,
                                       priceFactor: 1, yearlyVsMarket: 0, yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil, vendorID: nil,
@@ -229,7 +229,7 @@ public extension GameEngine {
                     risks.append("\(co.name) has left \(sp.name) unpaid for \(SupplyTerms.ownLateWeeks(state, buyer: co.id, supplier: sp.id)) weeks, so it delivers only part of what it could. Pay what is overdue.")
                 }
                 if m.id != "mkt" && pf >= 1 { risks.append("\(sp.name) runs at no margin today, so this mode gives no saving yet.") }
-                let delivered: String? = isCur ? link.map { "\(Int(($0.lastShare * 100).rounded()))% delivered last week" } : nil
+                let delivered: String? = isCur ? link.map { "\(Int(saturating: ($0.lastShare * 100).rounded()))% delivered last week" } : nil
                 options.append(SupplierOption(id: "o:\(sp.id):\(m.id)", kind: .ownCompany, name: sp.name, subtitle: "Your company · \(m.name)", change: .ownCompany(sp.id, mode: m.id), isCurrent: isCur,
                                               priceFactor: pf, yearlyVsMarket: spend * (1 - pf), yearlyVsCurrent: nil, discount: nil, relationship: nil, relationshipWord: nil, nextLevel: nil,
                                               vendorID: nil, quality: nil, reliability: delivered ?? "Not measured until it delivers",
@@ -244,7 +244,7 @@ public extension GameEngine {
             options.append(SupplierOption(id: "c:\(c.accountID)", kind: .businessCustomer, name: c.accountName, subtitle: "Business customer of \(c.ownerCompanyName) · \(word)",
                                           change: .businessCustomer(c.accountID), isCurrent: isCur, priceFactor: c.priceFactor, yearlyVsMarket: c.yearlySaving, yearlyVsCurrent: nil, discount: nil,
                                           relationship: c.relationship, relationshipWord: word,
-                                          nextLevel: next.map { "\($0.word) (from \(Int($0.from.rounded()))): \(supplierPct($0.discount)) better price" },
+                                          nextLevel: next.map { "\($0.word) (from \(Int(saturating: $0.from.rounded()))): \(supplierPct($0.discount)) better price" },
                                           vendorID: nil, quality: nil, reliability: "Warms every week you buy",
                                           terms: "2% below the outside price, plus your relationship discount; weekly rebate booked as a lower cost",
                                           delivery: k.local ? "Same city" : "Same country",

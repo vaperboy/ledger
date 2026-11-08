@@ -90,7 +90,7 @@ public extension GameEngine {
                     id: "m\(co.id)-\(t.id)", companyID: co.id, companyName: co.name, kind: .bid, title: t.title, subtitle: t.buyer,
                     startWeek: nil, dueWeek: t.awardWeek,
                     stages: [
-                        .init(name: "Bid sent", detail: t.myBid.map { String(format: "At %d%% of the list price", Int(($0 * 100).rounded())) } ?? "", state: .done, week: nil),
+                        .init(name: "Bid sent", detail: t.myBid.map { String(format: "At %d%% of the list price", Int(saturating: ($0 * 100).rounded())) } ?? "", state: .done, week: nil),
                         .init(name: "Decision", detail: "The buyer picks the best score on price and quality", state: .current, week: t.awardWeek),
                         .init(name: "Work", detail: "A won tender joins your jobs", state: .upcoming, week: nil),
                     ],
@@ -109,12 +109,12 @@ public extension GameEngine {
         let taken = ProjectTimeline.Stage(name: "Taken on", detail: j.client, state: .done, week: j.startWeek)
         var stages: [ProjectTimeline.Stage]
         let kind: ProjectTimeline.Kind = board.isEvent ? .event : .job
-        let pct = { (v: Double) in Int((v * 100).rounded()) }
+        let pct = { (v: Double) in Int(saturating: (v * 100).rounded()) }
         if board.isEvent {
             let day = row.dueWeek
             stages = [
                 .init(name: "Booked", detail: "30% paid at booking", state: .done, week: j.startWeek),
-                .init(name: "Preparation", detail: "\(Int(j.hoursDone.rounded())) of \(Int(j.hours.rounded())) h done (\(pct(progress))%)", state: .current, week: nil),
+                .init(name: "Preparation", detail: "\(Int(saturating: j.hoursDone.rounded())) of \(Int(saturating: j.hours.rounded())) h done (\(pct(progress))%)", state: .current, week: nil),
                 .init(name: "Event day", detail: "The event happens on its day, ready or not; the rest is invoiced after", state: .upcoming, week: day),
             ]
         } else if j.milestones == true || (j.milestones == nil && j.sizeClass == 2) {
@@ -128,7 +128,7 @@ public extension GameEngine {
         } else {
             stages = [
                 taken,
-                .init(name: "Work", detail: "\(Int(j.hoursDone.rounded())) of \(Int(j.hours.rounded())) h done (\(pct(progress))%)", state: started ? .current : .upcoming, week: nil),
+                .init(name: "Work", detail: "\(Int(saturating: j.hoursDone.rounded())) of \(Int(saturating: j.hours.rounded())) h done (\(pct(progress))%)", state: started ? .current : .upcoming, week: nil),
                 .init(name: "Finished", detail: "Paid in full on completion", state: .upcoming, week: nil),
             ]
         }

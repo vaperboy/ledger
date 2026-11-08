@@ -36,7 +36,7 @@ struct HomeProgressStrip: View {
         content()
             .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
+            .glassSurface()
             .contentShape(Rectangle())
     }
 
@@ -66,7 +66,7 @@ struct HomeProgressStrip: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Rank \(st.rank.title)" + (st.next.map { (n: Career.Rank) -> String in ", \(Int((st.progress * 100).rounded())) percent to " + n.title } ?? ""))
+        .accessibilityLabel("Rank \(st.rank.title)" + (st.next.map { (n: Career.Rank) -> String in ", \(Int(saturating: (st.progress * 100).rounded())) percent to " + n.title } ?? ""))
         .accessibilityIdentifier("home-rank-ring")
     }
 
@@ -139,7 +139,7 @@ struct HomeMilestoneLine: View {
                     HStack(spacing: Theme.Space.s) {
                         Text(g.title.tidyMoney).textStyle(.caption, tint: Theme.ink).lineLimit(1)
                         Spacer(minLength: Theme.Space.s)
-                        Text("\(Int((f * 100).rounded()))%").textStyle(.caption, tint: Theme.inkSoft, numeric: true)
+                        Text("\(Int(saturating: (f * 100).rounded()))%").textStyle(.caption, tint: Theme.inkSoft, numeric: true)
                     }
                     ProgressLine(fraction: f, tint: Theme.gain, height: 3)
                 }

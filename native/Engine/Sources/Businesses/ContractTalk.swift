@@ -454,7 +454,7 @@ public enum ContractTalk {
         case .payRise:
             if let m = sub.member {
                 let need = StaffTalks.raiseNeeded(role: m.role, age: sub.person.age, tables: data.catalog.tables)
-                c.lines.append(p.amount >= need ? "A raise they will notice: it reaches the \(Int((need * 100).rounded()))% people feel." : "They take it, but under \(Int((need * 100).rounded()))% does not feel like a raise and they stay unhappy.")
+                c.lines.append(p.amount >= need ? "A raise they will notice: it reaches the \(Int(saturating: (need * 100).rounded()))% people feel." : "They take it, but under \(Int(saturating: (need * 100).rounded()))% does not feel like a raise and they stay unhappy.")
             }
         case .promotion:
             if let post = ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).first(where: { $0.id == p.choice }) {
@@ -465,7 +465,7 @@ public enum ContractTalk {
         case .hours:
             if let m = sub.member, p.choice == "hours" || p.choice == "full" {
                 let hrs = after?.member?.weeklyHours ?? StaffModel.fullWeekHours
-                if hrs > lab.stdHours { c.labour.append("Hours over the standard \(Int(lab.stdHours.rounded())) a week are overtime" + (lab.overtimePremium > 0 ? ", paid with +\(Int((lab.overtimePremium * 100).rounded()))%." : ".")) }
+                if hrs > lab.stdHours { c.labour.append("Hours over the standard \(Int(saturating: lab.stdHours.rounded())) a week are overtime" + (lab.overtimePremium > 0 ? ", paid with +\(Int(saturating: (lab.overtimePremium * 100).rounded()))%." : ".")) }
                 if m.payBasis == "fix" { c.lines.append("They are on a fixed salary: pay does not change with the hours.") }
             }
         case .payBasis:
@@ -480,12 +480,12 @@ public enum ContractTalk {
                 if !WorkerBonus.hasTargets(co, week: s.week) { c.risks.append("This company has no monthly targets set, so the target bonus is not paid until it has.") }
             }
         case .bonus:
-            if sub.isManager { c.lines.append("Profit share: \(Int((p.amount * 100).rounded()))% of each month's profit, worth about \(cur.display(ManagerModel.bonusWorth(co, p.amount))) a month at the last three months' profit.") }
-            else { c.lines.append("Commission: \(Int((p.amount * 100).rounded()))% of their sales (variable, not in the cost above).") }
+            if sub.isManager { c.lines.append("Profit share: \(Int(saturating: (p.amount * 100).rounded()))% of each month's profit, worth about \(cur.display(ManagerModel.bonusWorth(co, p.amount))) a month at the last three months' profit.") }
+            else { c.lines.append("Commission: \(Int(saturating: (p.amount * 100).rounded()))% of their sales (variable, not in the cost above).") }
         case .benefits:
             if p.choice.hasPrefix("exp:"), let x = StaffExpenses.item(String(p.choice.dropFirst(4))) {
                 c.lines.append("Paid back every month against their work costs: \(cur.display(cur.scaledPrice(x.monthlyCost))). Booked as an expense, not wages" + (StaffExpenses.carriesEmployerCharge(w.country(co), item: x.id) ? ", with the employer's social charge because the country treats it as a taxable benefit." : "; the country's data gives no tax rule for it, so it is treated neutrally."))
-                if x.learnBoost > 0 { c.lines.append("They learn on the job about \(Int((x.learnBoost * 100).rounded()))% faster while it is paid.") }
+                if x.learnBoost > 0 { c.lines.append("They learn on the job about \(Int(saturating: (x.learnBoost * 100).rounded()))% faster while it is paid.") }
             } else if let (perk, group) = perkChoice(p.choice) {
                 let people = group.map { StaffPerks.people(co, group: $0) } ?? StaffPerks.eligibleCount(co, perk)
                 c.peers.append("It covers \(group == nil ? "everyone it applies to" : "that group"): \(people) \(people == 1 ? "person" : "people"), not just \(first).")
@@ -502,7 +502,7 @@ public enum ContractTalk {
                     c.lines.append("Fixed term until week \(end) (\(end - s.week) weeks from now). \(first) is asked about renewal \(FixedTerm.reviewWindowWeeks(lab)) weeks before.")
                     let end0 = lab.termination(tenureWeeks: Double(end - m.hiredWeek), reason: .expiry, age: Double(sub.person.age))
                     c.labour.append(end0.noticeWeeks + end0.severanceWeeks > 0
-                                    ? "When it ends on its date the labour rules require: \(Int(end0.noticeWeeks.rounded())) weeks of notice and \(Int(end0.severanceWeeks.rounded())) weeks of severance."
+                                    ? "When it ends on its date the labour rules require: \(Int(saturating: end0.noticeWeeks.rounded())) weeks of notice and \(Int(saturating: end0.severanceWeeks.rounded())) weeks of severance."
                                     : "When it ends on its date nothing is owed: the country's labour data lists no notice or severance for the end of a fixed term.")
                     if !FixedTerm.isFixed(m), FixedTerm.wantsPermanent(sub.person) { c.risks.append("\(first) wants security and may not take a fixed-term job.") }
                 }
@@ -511,7 +511,7 @@ public enum ContractTalk {
             if let m = sub.member {
                 let years = Double(s.week - m.hiredWeek)
                 let t0 = lab.termination(tenureWeeks: years, reason: .unjustified, age: Double(sub.person.age))
-                c.labour.append("Notice by law at their service: \(Int(t0.noticeWeeks.rounded())) weeks" + (t0.severanceWeeks > 0 ? ", severance \(Int(t0.severanceWeeks.rounded())) weeks of pay" : "") + " (if you let them go without cause).")
+                c.labour.append("Notice by law at their service: \(Int(saturating: t0.noticeWeeks.rounded())) weeks" + (t0.severanceWeeks > 0 ? ", severance \(Int(saturating: t0.severanceWeeks.rounded())) weeks of pay" : "") + " (if you let them go without cause).")
                 if p.amount > 0 { c.lines.append("\(Int(p.amount)) weeks more notice on top, owed by both sides: if they resign they work it, if you let them go without cause you pay it.") }
             }
         case .move:
@@ -525,7 +525,7 @@ public enum ContractTalk {
             c.labour.append("The \(lab.statutory ? "legal" : "agreed") minimum pay is \(cur.display(floor)) a month for their hours; base pay never goes under it" + (p.topic == .payBasis && p.choice == "com" ? ", except commission only, which has no base." : "."))
         }
         let tenure = Double(s.week - (sub.member?.hiredWeek ?? s.week))
-        if sub.member != nil, lab.probationWeeks > tenure { c.labour.append("They are still in probation for \(Int((lab.probationWeeks - tenure).rounded())) more weeks.") }
+        if sub.member != nil, lab.probationWeeks > tenure { c.labour.append("They are still in probation for \(Int(saturating: (lab.probationWeeks - tenure).rounded())) more weeks.") }
         if asRequest, let before = c.quitRiskBefore, let declined = c.quitRiskIfDeclined, declined != before {
             c.risks.append("If you decline: \(first) is \(declined.words), and feels turned down for \(rules.yearWeeks / 2) weeks.")
         } else if asRequest { c.risks.append("If you decline: \(first) feels turned down for \(rules.yearWeeks / 2) weeks.") }
@@ -562,7 +562,7 @@ public enum ContractTalk {
 
     static func refusal(_ sub: Subject, _ p: Proposal, week: Int) -> String? {
         guard let l = refusalLikelihood(sub, p, week: week) else { return nil }
-        guard HashedRandom.first("refuse:\(sub.person.id):\(p.topic.rawValue):\(p.choice):\(Int(p.amount.rounded())):\(week / 8)") < l else { return nil }
+        guard HashedRandom.first("refuse:\(sub.person.id):\(p.topic.rawValue):\(p.choice):\(Int(saturating: p.amount.rounded())):\(week / 8)") < l else { return nil }
         let first = ManagerModel.firstName(sub.person.name)
         switch p.topic {
         case .hours: return "\(first) does not want fewer hours and says no."
@@ -616,7 +616,7 @@ public enum ContractTalk {
                 }
             case "hours":
                 switch StaffTalks.setStaffHours(&s, companyID: co.id, staffID: id, hours: p.amount) {
-                case .ok: return .ok("\(name) now works \(Int(p.amount.rounded())) hours a week.")
+                case .ok: return .ok("\(name) now works \(Int(saturating: p.amount.rounded())) hours a week.")
                 case .student: return .notPossible(why("part"))
                 default: return .notPossible("They no longer work here.")
                 }
@@ -663,10 +663,10 @@ public enum ContractTalk {
             if sub.isManager {
                 guard p.amount >= s.companies[sub.ci].managerProfitBonus else { return .notPossible("A profit share is not cut in a contract talk.") }
                 ManagerModel.setManagerProfitBonus(&s, companyID: co.id, share: p.amount)
-                return .ok("\(name) now gets \(Int((min(0.3, p.amount) * 100).rounded()))% of each month's profit.")
+                return .ok("\(name) now gets \(Int(saturating: (min(0.3, p.amount) * 100).rounded()))% of each month's profit.")
             }
             guard StaffProfile.setCommissionRate(&s, companyID: co.id, staffID: id, rate: p.amount) else { return .notPossible("Not possible on this pay basis.") }
-            return .ok("Commission is \(Int((p.amount * 100).rounded()))% of their sales.")
+            return .ok("Commission is \(Int(saturating: (p.amount * 100).rounded()))% of their sales.")
         case .benefits:
             if p.choice == "ownCar" {
                 guard let bd = data.catalog[co.type], let role = sub.member?.role, PersonalEquipment.canUseOwnCar(role: role, bd, tables: data.catalog.tables) else { return .notPossible("This job does not use a car for work.") }
@@ -776,7 +776,7 @@ public enum ContractTalk {
             var text = text
             if p.topic == .payRise, let m = sub.member {
                 let need = StaffTalks.raiseNeeded(role: m.role, age: sub.person.age, tables: data.catalog.tables)
-                if p.amount < need { text += " It is less than the \(Int((need * 100).rounded()))% people feel as a raise, so they stay unhappy." }
+                if p.amount < need { text += " It is less than the \(Int(saturating: (need * 100).rounded()))% people feel as a raise, so they stay unhappy." }
             }
             finish()
             return .agreed(text)
@@ -861,7 +861,7 @@ public enum ContractTalk {
             let target = max(rules.minHours, (now * rules.keepShare).rounded())
             guard target < now else { s.companies[i].staff = st; return }
             talk = Talk(opener: .employee, proposal: Proposal(.hours, amount: target, choice: "hours"), week: s.week); talk.ask = target
-            talk.reason = "The long weeks are wearing me down. Could I work \(Int(target)) hours instead of \(Int(now.rounded()))?"
+            talk.reason = "The long weeks are wearing me down. Could I work \(Int(target)) hours instead of \(Int(saturating: now.rounded()))?"
             title = "\(n.name) asks for shorter hours at \(co.name)"; body = talk.reason
             agree = "\(Int(target)) hours a week" + (m.payBasis == "fix" ? ", same pay" : ", pay follows the hours"); kind = "hoursask"
         default: s.companies[i].staff = st; return

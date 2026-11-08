@@ -346,7 +346,7 @@ struct TechProApp: View {
 
     private func status(_ n: EquipmentMarket.Need) -> (text: String, tint: Color) {
         let have: Double = n.have + n.leased
-        let haveText: String = String(Int(have.rounded()))
+        let haveText: String = String(Int(saturating: have.rounded()))
         switch rank(n) {
         case 0: return ("Missing", P.loss)
         case 1: return ("\(haveText) of \(Int(n.need))", P.caution)

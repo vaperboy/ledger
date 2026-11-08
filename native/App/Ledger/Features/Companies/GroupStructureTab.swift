@@ -27,6 +27,7 @@ struct GroupStructureTab: View {
         let mgmt: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
         let lines: [Int: GroupManagement.Line] = Dictionary((mgmt?.lines ?? []).map { (l: GroupManagement.Line) -> (Int, GroupManagement.Line) in (l.id, l) }, uniquingKeysWith: { (a: GroupManagement.Line, _: GroupManagement.Line) -> GroupManagement.Line in a })
+        let firstCardID: String? = rows(nodes).first?.id
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if nodes.count <= 1 {
                 EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Add one from Overview.")
@@ -34,7 +35,7 @@ struct GroupStructureTab: View {
                 hero(nodes, mgmt)
                 VStack(spacing: Theme.Space.s) {
                     ForEach(rows(nodes)) { (r: Row) in
-                        card(r, nodes, lines, list)
+                        card(r, nodes, lines, list).coachAnchor(.groupCard, enabled: r.id == firstCardID)
                     }
                 }
             }
@@ -177,7 +178,7 @@ struct GroupStructureTab: View {
         }
     }
 
-    private func pct(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
+    private func pct(_ share: Double) -> String { "\(Int(saturating: (share * 100).rounded()))%" }
 
     /// How the value of what you own splits by how much of each company is yours: over 50% control, 20-50% influence, under 20% passive.
     /// Holdings and chains are left out because the companies under them are counted.

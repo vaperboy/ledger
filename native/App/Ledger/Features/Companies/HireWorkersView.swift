@@ -125,7 +125,7 @@ struct HireWorkersView: View {
     // MARK: How to look
 
     private func searchSection(_ e: GameEngine, _ cur: Currency) -> some View {
-        let share: Int = Int((Agency.salaryShare * 100).rounded())
+        let share: Int = Int(saturating: (Agency.salaryShare * 100).rounded())
         let words: String = method == .ad
             ? "The ad runs four weeks. People answer a few at a time, and each reply comes as a message."
             : "Three suggestions now and better ones over the next weeks. Costs far more than an ad, and \(share) percent of the hired person's salary for \(Agency.months) months."
@@ -176,7 +176,7 @@ struct HireWorkersView: View {
 
     private func askAgency(_ chosen: (id: String, name: String), _ fee: Double, _ cur: Currency) {
         let cid = companyID, role = chosen.id, name = chosen.name.lowercased()
-        let share: Int = Int((Agency.salaryShare * 100).rounded())
+        let share: Int = Int(saturating: (Agency.salaryShare * 100).rounded())
         pending = PendingAction(title: "Engage an agency for a \(name)?", message: "Cost: \(cur.tidyShort(fee)) now, then \(share) percent of the hired person's salary for \(Agency.months) months. Benefit: suggestions at once and better ones over weeks. Risk: it is the dearest way.",
                                 button: "Pay \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "person.badge.plus") {
             let r: Agency.EngageResult? = store.act { $0.engageAgency(companyID: cid, role: role) }

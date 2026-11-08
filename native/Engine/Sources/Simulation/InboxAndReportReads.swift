@@ -95,7 +95,7 @@ public extension GameEngine {
             let lw = co.value("lastW")
             let cap = lw["cap"].double
             let units = d["u"].double
-            func pct(_ v: Double) -> String { "\(Int((v * 100).rounded()))%" }
+            func pct(_ v: Double) -> String { "\(Int(saturating: (v * 100).rounded()))%" }
             if cap > 0 && units > 0 {
                 let committed = VolumeContracts.committedUnits(co)
                 if d["k"].string == "offer" {

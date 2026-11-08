@@ -272,7 +272,7 @@ struct MarketTradeFlow: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 Figure(label: "Reaches \(p.owner == .player ? "your account" : p.ownerName)", value: cur.tidyDisplay(q.cashChange), tint: P.gain, size: .display)
                 VStack(spacing: 0) {
-                    line("You sell", whole ? "All of \(p.name)" : "\(Int((fraction * 100).rounded()))% of \(p.name)")
+                    line("You sell", whole ? "All of \(p.name)" : "\(Int(saturating: (fraction * 100).rounded()))% of \(p.name)")
                     line("Value sold", cur.tidyDisplay(q.amount))
                     if q.units > 0 { line("Units", PositionRow.unitsText(q.units)) }
                     line(q.feeLabel, q.fee > 0 ? cur.tidyDisplay(q.fee) : "None", tint: q.fee > 0 ? P.loss : nil)

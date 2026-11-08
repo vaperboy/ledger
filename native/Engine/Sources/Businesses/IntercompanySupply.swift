@@ -272,7 +272,7 @@ public enum IntercompanySupply {
                     if l["warn"].isNull || Double(s.week) - l["warn"].double > 6 {
                         l["warn"] = .number(Double(s.week))
                         s.addMessage(kind: "info", from: b.name, title: "\(sp.name) could not deliver to \(b.name)",
-                                     body: "\(sp.name) delivered only \(Int((f * 100).rounded()))% of the \(K.name.lowercased()) \(b.name) needed. The rest was bought outside at short notice, and some customers noticed.", companyID: b.id, tone: "bad")
+                                     body: "\(sp.name) delivered only \(Int(saturating: (f * 100).rounded()))% of the \(K.name.lowercased()) \(b.name) needed. The rest was bought outside at short notice, and some customers noticed.", companyID: b.id, tone: "bad")
                     }
                 }
             }

@@ -145,7 +145,7 @@ struct GroupSupplierDirectory: View {
 
     private static func starText(_ s: String) -> String {
         guard s.hasSuffix("stars"), let first = s.split(separator: " ").first, let v = Double(first) else { return "" }
-        let n: Int = min(5, max(0, Int(v.rounded())))
+        let n: Int = min(5, max(0, Int(saturating: v.rounded())))
         return String(repeating: "\u{2605}", count: n) + String(repeating: "\u{2606}", count: 5 - n)
     }
 
@@ -175,8 +175,8 @@ struct GroupSupplierDirectory: View {
                     PopupRow(label: "Lead time", value: o.delivery)
                     PopupRow(label: "Reliability", value: o.reliability)
                     PopupRow(label: "Total spent a year", value: home.tidyShort(en.spendHome))
-                    if discount > 0 { PopupRow(label: "Discount", value: "\(Int((discount * 100).rounded()))% off") }
-                    if extra > 0 { Text("Negotiated: \(Int((extra * 100).rounded()))% extra off.").popupText(.effect) }
+                    if discount > 0 { PopupRow(label: "Discount", value: "\(Int(saturating: (discount * 100).rounded()))% off") }
+                    if extra > 0 { Text("Negotiated: \(Int(saturating: (extra * 100).rounded()))% extra off.").popupText(.effect) }
                     if !risks.isEmpty { Text("Risk: " + risks.joined(separator: " ")).popupText(.risk) }
                     Text("Terms by company").capsLabel(Theme.ivoryFaint).padding(.top, Theme.Space.xs)
                     ForEach(Array(en.uses.enumerated()), id: \.offset) { pair in

@@ -259,7 +259,7 @@ public enum Reports {
         g.taxPaid = stat("taxPaid"); g.dividendsReceived = stat("dividends"); g.wagesPaid = stat("wagesPaid"); g.interestPaid = stat("interest")
         g.personalTax = -cum(ReportCounters.Key.tax)
         g.ownerPay = cum(ReportCounters.Key.salary) + cum(ReportCounters.Key.drawings)
-        g.decisionsAnswered = Int(cum(ReportCounters.Key.answered).rounded())
+        g.decisionsAnswered = Int(saturating: cum(ReportCounters.Key.answered).rounded())
         let labels: [(String, String)] = [
             (ReportCounters.Key.invested, "Put into your companies"), (ReportCounters.Key.dividends, "Dividends received"),
             (ReportCounters.Key.salary, "Salary from your companies"), (ReportCounters.Key.drawings, "Drawings from your businesses"),

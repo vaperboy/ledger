@@ -154,7 +154,7 @@ struct NewCompanyDetailedSetupView: View {
         if form == .soleTrader {
             return "Simple and cheap. Profit is taxed as your own income, and you are personally liable for debts."
         }
-        let pct = Int((country.corporateTax * 100).rounded())
+        let pct = Int(saturating: (country.corporateTax * 100).rounded())
         let capital: String = (costs?.shareCapital ?? 0) > 0 ? " Share capital of \(store.money(costs?.shareCapital ?? 0)) is locked in the company." : ""
         return "Your personal assets are protected. The company pays \(pct)% corporation tax on profit, and more tax when you take it out." + capital
     }

@@ -99,6 +99,39 @@ public enum SalesItems {
         s.companies[i].status = status
     }
 
+    /// The item id without its module prefix ("w3-espresso", "w2_papers", "w9:x" give "espresso", "papers", "x"), as `starters` in trades.json names them.
+    static func localID(_ id: String) -> String {
+        guard id.hasPrefix("w"), let sep = id.firstIndex(where: { $0 == "-" || $0 == "_" || $0 == ":" }) else { return id }
+        let digits = id[id.index(after: id.startIndex)..<sep]
+        guard !digits.isEmpty, digits.allSatisfy(\.isNumber) else { return id }
+        return String(id[id.index(after: sep)...])
+    }
+
+    /// The three products a new company chooses its first from: the trade's `starters` ids when they all exist in `list`, else three of the
+    /// list with distinct character (a cheap high-volume one, a middle one, a dearer one). A list of three or fewer is offered whole.
+    public static func starterIDs(_ bd: Trade, _ list: [Item]) -> [String] {
+        guard list.count > 3 else { return list.map(\.id) }
+        let named = bd.raw["starters"].array.map(\.string)
+        let byLocal = Dictionary(list.map { (localID($0.id), $0.id) }, uniquingKeysWith: { a, _ in a })
+        let fromData = named.compactMap { byLocal[$0] }
+        if named.count == 3, fromData.count == 3, Set(fromData).count == 3 { return fromData }
+        let byPrice = list.sorted { $0.ratio != $1.ratio ? $0.ratio < $1.ratio : $0.id < $1.id }
+        let third = max(1, byPrice.count / 3)
+        let maxShare = byPrice.map(\.unitShare).max() ?? 0
+        let cheap = byPrice.prefix(third).max { $0.unitShare < $1.unitShare }
+        let top = byPrice.suffix(third)
+        let dear = top.filter { $0.unitShare >= 0.15 * maxShare }.max { $0.ratio < $1.ratio } ?? top.last
+        guard let c = cheap, let d = dear, c.id != d.id else { return byPrice.prefix(3).map(\.id) }
+        let mid = byPrice.filter { $0.id != c.id && $0.id != d.id }.min { abs($0.ratio - 1) < abs($1.ratio - 1) }
+        return [c.id] + (mid.map { [$0.id] } ?? []) + [d.id]
+    }
+
+    /// Names of the items on sale now: what the add-item lists leave out. Unchosen starters and other items kept off the list can be added later.
+    static func onSaleNames(_ co: Company, _ bd: Trade) -> Set<String> {
+        let hidden = hiddenIDs(co)
+        return Set(items(co, bd).filter { !hidden.contains($0.id) }.map { $0.name.lowercased() })
+    }
+
     /// The first choice is made: every starter item except `keeping` (nil: all of them) stays out of the player's list, and the customers
     /// (unit shares, see `shaped`) go to what is left.
     public static func settlePick(_ s: inout GameState, companyID: Int, keeping: String?, data: GameData) {

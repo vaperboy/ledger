@@ -122,8 +122,8 @@ public enum CarRepairJobs {
         let spare = OwnListings.spareSlots(s, seller: g, bd, w) - reserved
         guard spare > 0 else { return nil }
         let slots = OwnListings.slotsPerUnit(price: price, seller: g, bd, w)
-        let shortest = Int((Double(k.days) * max(1, scale.squareRoot()) / 7).rounded(.up))
-        let weeks = max(1, shortest, Int((slots / spare).rounded(.up)))
+        let shortest = Int(saturating: (Double(k.days) * max(1, scale.squareRoot()) / 7).rounded(.up))
+        let weeks = max(1, shortest, Int(saturating: (slots / spare).rounded(.up)))
         return RepairQuote(garageID: garageID, garageName: g.name, kind: k, scale: scale, hours: hours, labour: labour, partsCost: partsCost,
                            partsPrice: partsPrice, price: price, vat: vat, weeks: weeks, dueWeek: s.week + weeks)
     }

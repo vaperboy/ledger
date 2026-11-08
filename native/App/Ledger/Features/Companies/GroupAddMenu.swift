@@ -65,7 +65,7 @@ enum HoldingRules {
         var rate: String = "a dividend tax"
         if let e = engine {
             let r: Double = e.homeCountry.dividendTax
-            rate = "\(Int((r * 100).rounded())) percent dividend tax"
+            rate = "\(Int(saturating: (r * 100).rounded())) percent dividend tax"
         }
         return "A holding company owns your other limited companies. When a company it owns pays a dividend, the money goes into the holding's cash and "
             + "no personal dividend tax is taken at that step. Dividend tax (\(rate) in your home country, above a tax-free allowance) is due only when "

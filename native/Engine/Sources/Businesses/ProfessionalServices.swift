@@ -316,13 +316,13 @@ public enum ProfessionalServices {
             r.stock += n
         }
         r.plans.removeAll { $0.kind == "order" && $0.week <= week }
-        let sold = min(r.stock, Int(units.rounded()))
+        let sold = min(r.stock, Int(saturating: units.rounded()))
         r.stock -= sold
         if r.stock == 0 { r.since = nil }
-        let want = Int((units * g.restockWeeks).rounded(.up))
+        let want = Int(saturating: (units * g.restockWeeks).rounded(.up))
         if r.stock + r.onOrder < want || (r.stock + r.onOrder == 0 && units > 0) {
             let qty = max(g.batch, want - r.stock - r.onOrder)
-            let weeks = max(1, Int((Double(sp.leadDays) / 7).rounded(.up)))
+            let weeks = max(1, Int(saturating: (Double(sp.leadDays) / 7).rounded(.up)))
             r.onOrder += qty
             r.plans.append(ItemModels.Plan(kind: "order", text: "\(qty) units ordered, due in \(weeks) week\(weeks == 1 ? "" : "s")", week: week + weeks))
         }

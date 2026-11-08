@@ -57,7 +57,7 @@ public enum JobAds {
         let revenue = co.lastWeekRevenue > 0 ? log10(1 + co.lastWeekRevenue / max(1, cur.scaledPrice(1000))) * 1.2 : 0
         var r = HashedRandom("\(s.seed):adn:\(co.id):\(s.week):\(salt)")
         let jitter = Int(r.next() * 3) - 1
-        return max(1, Int((2 + heads * 0.5 + co.reputation / 25 + revenue).rounded()) + jitter)
+        return max(1, Int(saturating: (2 + heads * 0.5 + co.reputation / 25 + revenue).rounded()) + jitter)
     }
 
     static func list(_ co: Company) -> [JSONValue] { co.value("apl").array }
@@ -197,7 +197,7 @@ public enum Agency {
     static func markHire(_ m: inout StaffMember, person n: Person, week: Int) {
         guard !n.value("ag").isNull, n.int("ag") == 1 else { return }
         m.set("agPct", salaryShare)
-        m.set("agEnd", week + Int((Double(months) * 52 / 12).rounded()))
+        m.set("agEnd", week + Int(saturating: (Double(months) * 52 / 12).rounded()))
     }
 
     /// Month end: the agency's share of each agency hire's monthly wage, booked as an expense.

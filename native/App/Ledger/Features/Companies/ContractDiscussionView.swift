@@ -72,7 +72,7 @@ struct ContractDiscussionView: View {
         let m = co.staff.first { $0.id == personID }
         let pay = isManager ? co.managerMonthlyWage : (m?.monthlyWage ?? 0)
         let role = isManager ? "Manager" : (m.map { $0.role.prefix(1).uppercased() + $0.role.dropFirst() } ?? "")
-        let hours: String = m?.weeklyHours.map { "\(Int($0.rounded())) h a week \u{00B7} " } ?? ""
+        let hours: String = m?.weeklyHours.map { "\(Int(saturating: $0.rounded())) h a week \u{00B7} " } ?? ""
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             HStack(spacing: Theme.Space.m) {
                 ThumbnailView(kind: .person, key: isManager ? "manager" : (m?.role ?? "helper"), size: 44, initials: n.name, face: n.faceKey)
@@ -142,7 +142,7 @@ struct ContractDiscussionView: View {
             WrapRow {
                 ForEach([0.25, 0.5, 0.75], id: \.self) { share in
                     let v = from + (p.amount - from) * share
-                    HireChip(title: p.topic == .payRise ? "+\(String(format: "%.1f", v * 100))%" : p.topic == .hours ? "\(Int(v.rounded())) h" : cur.tidyShort(cur.roundedStep(v, about: 500)), on: false) {
+                    HireChip(title: p.topic == .payRise ? "+\(String(format: "%.1f", v * 100))%" : p.topic == .hours ? "\(Int(saturating: v.rounded())) h" : cur.tidyShort(cur.roundedStep(v, about: 500)), on: false) {
                         Haptics.choose()
                         topic = p.topic
                         switch p.topic {
@@ -162,7 +162,7 @@ struct ContractDiscussionView: View {
         switch p.topic {
         case .payRise: return "+\(String(format: "%.1f", p.amount * 100))% on their pay"
         case .promotion: return "\(cur.tidyDisplay(p.amount)) a month for the new post"
-        case .hours: return "\(Int(p.amount.rounded())) hours a week"
+        case .hours: return "\(Int(saturating: p.amount.rounded())) hours a week"
         case .payBasis: return "A fixed monthly salary"
         default: return p.topic.title
         }
@@ -209,7 +209,7 @@ struct ContractDiscussionView: View {
                     if choice == "hours" { Stepper("\(Int(hours)) hours a week", value: $hours, in: 5...60, step: 5).popupText(.body) }
                 case .payBasis:
                     pick(options)
-                    if choice == "mix" || choice == "com" { steps(PayPlans.rateSteps, current: rate) { rate = $0 }; Text("Commission: \(Int((rate * 100).rounded()))% of their sales.").popupText(.caption) }
+                    if choice == "mix" || choice == "com" { steps(PayPlans.rateSteps, current: rate) { rate = $0 }; Text("Commission: \(Int(saturating: (rate * 100).rounded()))% of their sales.").popupText(.caption) }
                 case .bonus:
                     if !isManager && !options.isEmpty {
                         Text("A bonus plan is paid through payroll with the employer's charges, like wages: a share for every target the company meets, a year-end bonus when the budget is met, and a reward for the better half of the team in a month without a loss.").popupText(.caption)
@@ -242,7 +242,7 @@ struct ContractDiscussionView: View {
     private func steps(_ values: [Double], current: Double, _ set: @escaping (Double) -> Void) -> some View {
         WrapRow {
             ForEach(values, id: \.self) { v in
-                HireChip(title: "\(Int((v * 100).rounded()))%", on: abs(current - v) < 0.0001) { Haptics.choose(); set(v) }
+                HireChip(title: "\(Int(saturating: (v * 100).rounded()))%", on: abs(current - v) < 0.0001) { Haptics.choose(); set(v) }
             }
         }
     }

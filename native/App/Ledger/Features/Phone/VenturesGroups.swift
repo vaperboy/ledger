@@ -37,7 +37,7 @@ struct VenturesGroupsSection: View {
                     let gain: Double = s.value - s.cost
                     if item.offset > 0 || offer != nil || !big.isEmpty { Hairline() }
                     LedgerRow(title: s.name,
-                              subtitle: "\(Int((s.ownership * 100).rounded()))% since \(GameCalendar.dateString(week: s.sinceWeek))",
+                              subtitle: "\(Int(saturating: (s.ownership * 100).rounded()))% since \(GameCalendar.dateString(week: s.sinceWeek))",
                               value: cur.tidyShort(s.value),
                               valueNote: (gain >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(gain)) + " on cost", valueNoteTint: Theme.change(gain))
                 }
@@ -161,13 +161,13 @@ struct GroupStakeSheet: View {
             Text(g.name).popupText(.figure)
             Text("\(g.strategyName). \(g.strategyText)").popupText(.caption).fixedSize(horizontal: false, vertical: true)
             PopupRow(label: "Worth in all", value: cur.tidyShort(q.groupValue))
-            SegmentedPill(items: [0.05, 0.1, 0.2, 0.33, 0.5], title: { (f: Double) -> String in "\(Int((f * 100).rounded()))%" }, selection: $fraction)
+            SegmentedPill(items: [0.05, 0.1, 0.2, 0.33, 0.5], title: { (f: Double) -> String in "\(Int(saturating: (f * 100).rounded()))%" }, selection: $fraction)
             LedgerSlider(value: shownMultiplier, in: 0.5...3, step: 0.05, valueText: String(format: "Bid %.2f\u{00D7} fair value", multiplier))
                 .accessibilityIdentifier("ventures-group-bid")
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 PopupRow(label: "Fair value of the share", value: cur.tidyShort(q.groupValue * fraction))
                 PopupRow(label: "You pay if you win", value: cur.tidyShort(q.price))
-                PopupRow(label: "Chance of winning", value: "\(Int((chance * 100).rounded()))%")
+                PopupRow(label: "Chance of winning", value: "\(Int(saturating: (chance * 100).rounded()))%")
                 PopupRow(label: "Your cash", value: cur.tidyShort(q.available))
                 Text("Other bidders may win instead; then nothing is paid. A bigger bid wins more often. The stake's value follows the group's profit and debt.")
                     .popupText(.caption).fixedSize(horizontal: false, vertical: true)
@@ -177,7 +177,7 @@ struct GroupStakeSheet: View {
                     Text("You need \(cur.tidyShort(q.price - q.available)) more in cash to win this.").popupText(.risk)
                 }
                 if let f = failure { Text(f.reason).popupText(.risk).fixedSize(horizontal: false, vertical: true) }
-                Button("Bid \(cur.tidyShort(q.price)) for \(Int((fraction * 100).rounded()))%") { ask(g, q, cur) }
+                Button("Bid \(cur.tidyShort(q.price)) for \(Int(saturating: (fraction * 100).rounded()))%") { ask(g, q, cur) }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .disabled(q.refusal != nil || !q.canAfford)
                     .accessibilityIdentifier("ventures-group-bid-go")
@@ -188,15 +188,15 @@ struct GroupStakeSheet: View {
     private func ask(_ g: RivalGroups.Group, _ q: GroupDeals.StakeQuote, _ cur: Currency) {
         let f: Double = fraction, m: Double = multiplier, c: Double = chance
         let id: String = g.id
-        pending = PendingAction(title: "Bid for \(Int((f * 100).rounded()))% of \(g.name)?",
-                                message: "If you win, \(cur.tidyDisplay(q.price)) leaves your cash now. You win with a \(Int((c * 100).rounded()))% chance; if another bidder wins, nothing is paid.",
+        pending = PendingAction(title: "Bid for \(Int(saturating: (f * 100).rounded()))% of \(g.name)?",
+                                message: "If you win, \(cur.tidyDisplay(q.price)) leaves your cash now. You win with a \(Int(saturating: (c * 100).rounded()))% chance; if another bidder wins, nothing is paid.",
                                 button: "Bid", amount: q.price, currency: cur,
                                 risk: "The stake can lose value if the group's profit falls or its debt grows.", tone: .investment, icon: "chart.pie") {
             let r: Result<Double, GroupDeals.StakeFailure> = store.act { (e: inout GameEngine) -> Result<Double, GroupDeals.StakeFailure> in
                 e.buyGroupStake(groupID: id, fraction: f, multiplier: m, chance: c)
             } ?? .failure(.noGroup)
             switch r {
-            case .success(let paid): Haptics.success(); store.show("You bought \(Int((f * 100).rounded()))% of \(g.name) for \(cur.tidyShort(paid)).", tone: "good"); dismiss()
+            case .success(let paid): Haptics.success(); store.show("You bought \(Int(saturating: (f * 100).rounded()))% of \(g.name) for \(cur.tidyShort(paid)).", tone: "good"); dismiss()
             case .failure(let why): Haptics.warning(); failure = why; store.show(why.reason, tone: "warn")
             }
         }

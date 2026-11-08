@@ -363,9 +363,9 @@ final class GameStore: ObservableObject {
     func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
 
     /// `story: .fresh` is the new-player start: `tradeID` and `companyName` are the player's two choices after the country.
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, difficulty: Difficulty = .classic) {
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, difficulty: Difficulty = .classic, entitlements: EntitlementSnapshot = .free) {
         RememberedDetails.clearAll()
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, difficulty: difficulty); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, difficulty: difficulty, entitlements: entitlements); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
     /// Whether the run that ended can be started again with the same country, trade and names (the new-player start needs a company to copy).

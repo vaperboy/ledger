@@ -67,9 +67,12 @@ private struct SeriesShape: Shape {
             pts.append((1, last))
         }
         let span: Double = max(hi - lo, abs(hi) * 0.002, 1)
+        // A non-finite value or size would hand CoreGraphics a NaN point: every coordinate is made finite first.
+        func fin(_ v: Double) -> CGFloat { v.isFinite ? CGFloat(v) : 0 }
         let points: [CGPoint] = pts.map { (q: (x: Double, v: Double)) -> CGPoint in
-            CGPoint(x: rect.minX + rect.width * CGFloat(q.x), y: rect.minY + rect.height * (1 - CGFloat((q.v - lo) / span)) * 0.9 + rect.height * 0.05)
+            CGPoint(x: rect.minX + rect.width * fin(q.x), y: rect.minY + rect.height * (1 - fin((q.v - lo) / span)) * 0.9 + rect.height * 0.05)
         }
+        guard rect.width.isFinite, rect.height.isFinite, !points.isEmpty else { return Path() }
         var p = Path()
         if area {
             p.move(to: CGPoint(x: points[0].x, y: rect.maxY))

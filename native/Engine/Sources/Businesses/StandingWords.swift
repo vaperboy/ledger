@@ -1,4 +1,5 @@
 import Foundation
+import GameCore
 
 /// Words for the standing figures the screens must not show as bare numbers: how well known a company is, how well it is regarded, and
 /// a rating as stars. One shared helper, so Marketing, Customers, Overview and the Reviews app say the same thing. The thresholds read the
@@ -50,7 +51,7 @@ public enum StandingWords {
 
     /// Five star glyphs for a rating out of 5: filled for each whole star the rating reaches when rounded, empty for the rest.
     public static func starGlyphs(_ rating: Double) -> String {
-        let filled: Int = min(5, max(0, Int(rating.rounded())))
+        let filled: Int = min(5, max(0, Int(saturating: rating.rounded())))
         return String(repeating: "★", count: filled) + String(repeating: "☆", count: 5 - filled)
     }
 

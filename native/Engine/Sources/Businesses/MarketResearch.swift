@@ -185,19 +185,17 @@ public enum MarketResearch {
     }
 
     static func bestProduct(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, _ data: GameData) -> [String] {
-        var best: [(name: String, profit: Double, weeks: Int, cost: Double, net: Double)] = []
+        var best: [(name: String, profit: Double)] = []
         for svc in [false, true] {
             for o in NewItemOptions.list(s, companyID: co.id, isService: svc, data: data).options {
-                let lift = o.needsDevelopment ? NewItemOptions.categoryLift : NewItemOptions.variantLift
-                let p = NewItemOptions.estimate(s, co, bd, lift: lift, w: w).0
-                best.append((o.name, p, o.developmentWeeks, o.developmentCost, p * 52 - o.developmentCost))
+                best.append((o.name, NewItemOptions.estimate(s, co, bd, lift: NewItemOptions.variantLift, w: w).0))
             }
         }
-        best.sort { $0.net != $1.net ? $0.net > $1.net : $0.name < $1.name }
+        best.sort { $0.profit != $1.profit ? $0.profit > $1.profit : $0.name < $1.name }
         guard let top = best.first else { return ["Nothing new to add: you already sell what fits."] }
         let cur = w.currency(co)
-        func line(_ b: (name: String, profit: Double, weeks: Int, cost: Double, net: Double)) -> String {
-            "\(b.name): about \(cur.display(b.profit)) more profit a week\(b.weeks > 0 ? ", \(b.weeks) weeks and \(cur.display(b.cost)) to develop" : ", on sale at once")."
+        func line(_ b: (name: String, profit: Double)) -> String {
+            "\(b.name): about \(cur.display(b.profit)) more profit a week, on sale at once."
         }
         var out = ["Best next product: " + line(top)]
         if best.count > 1 { out.append("Next best: " + line(best[1])) }

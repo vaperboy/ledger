@@ -57,7 +57,7 @@ struct VenturesStartupsSection: View {
         return VStack(alignment: .leading, spacing: 0) {
             LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: f.sectorName, glyph: Glyph.ventures, initials: f.name, shape: .square)),
                       title: f.name,
-                      subtitle: "\(f.productName.isEmpty ? f.sectorName : f.productName) \u{00B7} \(f.stageName) \u{00B7} \(Int(f.ownership.rounded()))% yours",
+                      subtitle: "\(f.productName.isEmpty ? f.sectorName : f.productName) \u{00B7} \(f.stageName) \u{00B7} \(Int(saturating: f.ownership.rounded()))% yours",
                       value: cur.tidyShort(f.valuation * f.ownership / 100),
                       valueNote: "cash \(cur.tidyShort(f.cash))",
                       pill: status.0, pillTone: status.1,
@@ -97,7 +97,7 @@ private struct StartupPanel: View {
         let primary: String = ready ? "launch" : short ? "topup" : "raise"
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             FigureCard(items: [
-                .init(label: "You own", value: "\(Int(f.ownership.rounded()))%", sub: "worth \(cur.tidyShort(f.valuation * f.ownership / 100))"),
+                .init(label: "You own", value: "\(Int(saturating: f.ownership.rounded()))%", sub: "worth \(cur.tidyShort(f.valuation * f.ownership / 100))"),
                 .init(label: "Cash", value: cur.tidyShort(f.cash), tint: short ? Theme.loss : Theme.ink, sub: "\(f.runwayWeeks) weeks of runway"),
                 .init(label: "Burn", value: cur.tidyShort(monthlyBurn), sub: "a month"),
             ])
@@ -133,16 +133,16 @@ private struct StartupPanel: View {
     private func offerView(_ o: Funding.FundOffer, _ cur: Currency) -> some View {
         let terms: CapTable.DealTerms? = engine.fundingOfferTerms(companyID: f.id, offerIndex: o.id)
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("\(o.name) offers \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%").textStyle(.headline, tint: Theme.accent)
+            Text("\(o.name) offers \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%").textStyle(.headline, tint: Theme.accent)
             Text("\(o.says) Values it at \(cur.tidyShort(o.preMoney)) before the money, \(terms.map { cur.tidyDisplay($0.pricePerShare) } ?? "") a share, \(terms.map { String($0.sharesIssued) } ?? "") new shares.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button("Accept") {
-                    pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%?",
+                    pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%?",
                                             message: DealText.describe(terms, cur, companyName: f.name),
                                             button: "Close the round", destructive: true, tone: .investment, icon: "chart.pie") {
                         let ok = store.act { $0.acceptStartupRound(startupID: f.id, index: o.id) } ?? false
-                        store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
+                        store.show(ok ? "Round closed: \(cur.tidyShort(o.amount)) in for \(Int(saturating: o.pct.rounded()))%." : "That offer is no longer on the table.", tone: ok ? "good" : "warn")
                     }
                 }.buttonStyle(PrimaryButtonStyle(size: .compact))
                 Button("Decline") { store.settle(store.act { $0.declineStartupRound(startupID: f.id, index: o.id) }, "Offer declined.", same: "That offer had already gone.") }
@@ -162,7 +162,7 @@ private struct StartupPanel: View {
 
     private func askTopUp(_ topUp: Double, _ cur: Currency) {
         pending = PendingAction(title: "Put \(cur.tidyShort(topUp)) into \(f.name)?",
-                                message: "From your own cash. It buys about \(Int((topUp / max(1, f.burn)).rounded())) more weeks of runway; your share does not change.",
+                                message: "From your own cash. It buys about \(Int(saturating: (topUp / max(1, f.burn)).rounded())) more weeks of runway; your share does not change.",
                                 button: "Put it in", amount: topUp, currency: cur, tone: .investment, icon: "plus.circle") {
             let ok = store.act { $0.putMoneyIntoStartup(startupID: f.id, amount: topUp) } ?? false
             store.show(ok ? "\(cur.tidyShort(topUp)) put in." : "Not enough cash.", tone: ok ? "good" : "warn")
@@ -222,7 +222,7 @@ private struct StartupPanel: View {
                 Text("Your companies pay").textStyle(.caption)
                 Spacer(minLength: Theme.Space.s)
                 SegmentedPill(items: [0, 50, 100], title: { (pct: Int) -> String in "\(pct)%" },
-                              selection: Binding<Int>(get: { Int(p.internalPrice.rounded()) }, set: { (pct: Int) in
+                              selection: Binding<Int>(get: { Int(saturating: p.internalPrice.rounded()) }, set: { (pct: Int) in
                                   store.act { $0.setProductInternalPrice(startupID: f.id, percent: Double(pct)) }
                                   store.show("Your own companies pay \(pct)% of the list price for \(f.productName.isEmpty ? "the product" : f.productName).", tone: "n")
                               }))
@@ -236,7 +236,7 @@ private struct StartupPanel: View {
                 HStack {
                     VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                         Text(r.name).textStyle(.body)
-                        Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int((r.odds * 100).rounded()))% chance they sign \u{00B7} relationship: \(Words.level(r.relationship, scale: .quality).lowercased())")
+                        Text(r.alreadyCustomer ? "Already a customer" : r.waitWeeks > 0 ? "Asked recently: try again in \(r.waitWeeks.weeksText)" : "\(Int(saturating: (r.odds * 100).rounded()))% chance they sign \u{00B7} relationship: \(Words.level(r.relationship, scale: .quality).lowercased())")
                             .textStyle(.caption, tint: Theme.inkFaint)
                     }
                     Spacer()
@@ -256,7 +256,7 @@ private struct StartupPanel: View {
 
     private func productLine(_ p: Startups.Product, _ cur: Currency) -> String {
         let phase: String = p.phase == "live" ? "On sale" : p.phase == "ready" ? "Finished, waiting for your launch decision" : p.phase == "beta" ? "Being tested" : "Being built"
-        var parts: [String] = ["\(phase) \(Int((p.progress * 100).rounded()))%", "\(f.developers) builder\(f.developers == 1 ? "" : "s") on the payroll"]
+        var parts: [String] = ["\(phase) \(Int(saturating: (p.progress * 100).rounded()))%", "\(f.developers) builder\(f.developers == 1 ? "" : "s") on the payroll"]
         if f.teamWanted > f.developers && p.phase != "live" { parts.append("you asked for \(f.teamWanted)") }
         if p.phase == "live" && f.price > 0 { parts.append("\(cur.tidyDisplay(f.price)) each") }
         if p.selfHours > 0 { parts.append("you help") }
@@ -383,7 +383,7 @@ struct StartupLaunchSheet: View {
             Group {
                 VStack(alignment: .leading, spacing: PopupSpace.card) {
                     CardSection("Price per customer") {
-                        SegmentedPill(items: Array(steps.indices), title: { "\(Int((steps[$0] * 100).rounded()))%" }, selection: $priceStep)
+                        SegmentedPill(items: Array(steps.indices), title: { "\(Int(saturating: (steps[$0] * 100).rounded()))%" }, selection: $priceStep)
                         Text("\(cur.tidyDisplay(price)) for each customer. 100% is the usual price in this sector; cheaper brings more customers, dearer fewer.").popupText(.caption)
                     }
                     if !launched {
@@ -394,7 +394,7 @@ struct StartupLaunchSheet: View {
                     }
                     if let funnel {
                         FigureCard(items: [
-                            .init(label: "New customers", value: String(Int(funnel.newCustomersWeekly.rounded())), sub: "a week, without luck"),
+                            .init(label: "New customers", value: String(Int(saturating: funnel.newCustomersWeekly.rounded())), sub: "a week, without luck"),
                             .init(label: "Can look after", value: String(Int(funnel.capacity)), sub: "customers with today's team"),
                             .init(label: "Revenue", value: cur.tidyShort(funnel.weeklyRevenueAt), sub: "a week once they join"),
                             .init(label: "Company cash", value: cur.tidyShort(f.cash), sub: "\(f.runwayWeeks) weeks of runway"),

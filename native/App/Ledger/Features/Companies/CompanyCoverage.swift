@@ -138,11 +138,11 @@ struct CompanyCoverageScreen: View {
         var parts = [String(format: "rated %.1f", a.rating)]
         if let r = a.reviews { parts.append("\(r) reviews") }
         if a.kind == .insurer {
-            if let f = a.premiumFactor { parts.append(f < 1 ? "premiums \(Int(((1 - f) * 100).rounded()))% under standard" : f > 1 ? "premiums \(Int(((f - 1) * 100).rounded()))% over standard" : "standard premiums") }
-            if let p = a.payoutReliability { parts.append("pays claims in full \(Int((p * 100).rounded()))% of the time") }
+            if let f = a.premiumFactor { parts.append(f < 1 ? "premiums \(Int(saturating: ((1 - f) * 100).rounded()))% under standard" : f > 1 ? "premiums \(Int(saturating: ((f - 1) * 100).rounded()))% over standard" : "standard premiums") }
+            if let p = a.payoutReliability { parts.append("pays claims in full \(Int(saturating: (p * 100).rounded()))% of the time") }
         } else {
             parts.append("\(cur.tidyShort(a.monthlyFee)) a month")
-            if let e = a.errorRate { parts.append("books wrong \(Int((e * 100).rounded()))% of the time") }
+            if let e = a.errorRate { parts.append("books wrong \(Int(saturating: (e * 100).rounded()))% of the time") }
         }
         if a.ownFirmID != nil { parts.append("your own firm") }
         return parts.joined(separator: " · ")

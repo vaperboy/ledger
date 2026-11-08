@@ -37,22 +37,42 @@ struct WeekReportShell<More: View>: View {
 
     @ViewBuilder private var pageContent: some View {
         if let r = recap {
-            VStack(alignment: .leading, spacing: PopupSpace.card) {
-                titleBlock
-                numberBlock(r)
-                storyBlock(r)
-                barsBlock(r)
-                extras(r)
-                nextCard(r)
-                recordLine(r)
-                goalsBlock
-                moreBlock(r)
-            }
+            recapContent(r)
         } else if loaded {
-            VStack(alignment: .leading, spacing: PopupSpace.card) {
-                more()
-                goalsBlock
-            }
+            plainContent
+        }
+    }
+
+    @inline(never) private func recapContent(_ r: WeekRecap) -> some View {
+        VStack(alignment: .leading, spacing: PopupSpace.card) {
+            recapTop(r)
+            recapBottom(r)
+        }
+    }
+
+    @inline(never) private func recapTop(_ r: WeekRecap) -> some View {
+        VStack(alignment: .leading, spacing: PopupSpace.card) {
+            titleBlock
+            numberBlock(r)
+            storyBlock(r)
+            barsBlock(r)
+        }
+    }
+
+    @inline(never) private func recapBottom(_ r: WeekRecap) -> some View {
+        VStack(alignment: .leading, spacing: PopupSpace.card) {
+            extras(r)
+            nextCard(r)
+            recordLine(r)
+            goalsBlock
+            moreBlock(r)
+        }
+    }
+
+    private var plainContent: some View {
+        VStack(alignment: .leading, spacing: PopupSpace.card) {
+            more()
+            goalsBlock
         }
     }
 
@@ -125,7 +145,7 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    private func numberBlock(_ r: WeekRecap) -> some View {
+    @inline(never) private func numberBlock(_ r: WeekRecap) -> some View {
         let word: String = vsWord(r)
         return VStack(alignment: .leading, spacing: 4) {
             Text("Profit").textStyle(.label, tint: Theme.inkFaint)
@@ -138,13 +158,13 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    private func storyBlock(_ r: WeekRecap) -> some View {
+    @inline(never) private func storyBlock(_ r: WeekRecap) -> some View {
         Text(r.story).popupText(.body)
             .fixedSize(horizontal: false, vertical: true)
             .opacity(storyShown ? 1 : 0)
     }
 
-    private func barsBlock(_ r: WeekRecap) -> some View {
+    @inline(never) private func barsBlock(_ r: WeekRecap) -> some View {
         let top: Double = max(1, max(r.sales, max(r.costs, abs(r.profit))))
         return VStack(spacing: 12) {
             barRow("Sales", r.sales, Theme.ink.opacity(0.75), 0, top, false)
@@ -180,7 +200,7 @@ struct WeekReportShell<More: View>: View {
 
     // MARK: Month and year depth
 
-    @ViewBuilder private func extras(_ r: WeekRecap) -> some View {
+    @inline(never) @ViewBuilder private func extras(_ r: WeekRecap) -> some View {
         if r.kind != .week {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(r.movers.enumerated()), id: \.offset) { (_: Int, m: WeekMover) in moverRow(m) }
@@ -204,7 +224,7 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    private func yearBlock(_ r: WeekRecap) -> some View {
+    @inline(never) private func yearBlock(_ r: WeekRecap) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             monthStrip(r.monthStrip)
             HStack(alignment: .top, spacing: 12) {
@@ -247,7 +267,7 @@ struct WeekReportShell<More: View>: View {
 
     // MARK: One thing to do, record, More
 
-    @ViewBuilder private func nextCard(_ r: WeekRecap) -> some View {
+    @inline(never) @ViewBuilder private func nextCard(_ r: WeekRecap) -> some View {
         if let n = r.next {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text("One thing to do").textStyle(.label, tint: Theme.inkFaint)
@@ -270,7 +290,7 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    @ViewBuilder private func recordLine(_ r: WeekRecap) -> some View {
+    @inline(never) @ViewBuilder private func recordLine(_ r: WeekRecap) -> some View {
         if let text = r.record {
             HStack(spacing: 8) {
                 Image(systemName: "trophy").popupText(.effect)
@@ -296,7 +316,7 @@ struct WeekReportShell<More: View>: View {
         }
     }
 
-    @ViewBuilder private func moreBlock(_ r: WeekRecap) -> some View {
+    @inline(never) @ViewBuilder private func moreBlock(_ r: WeekRecap) -> some View {
         if r.kind != .week {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: Theme.Space.m) {

@@ -422,7 +422,7 @@ struct ChainRulesSection: View {
         let nearest: Double = steps.min(by: { abs($0 - now) < abs($1 - now) }) ?? 0
         let binding = Binding<Double>(get: { nearest }, set: { (v: Double) in
             let r = store.act { $0.setChainRule(chainID: chainID, rule: .pay(v)) }
-            store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int((v * 100).rounded()))% above market.")
+            store.settle(r, v == 0 ? "Chain pay rule: market pay." : "Chain pay rule: \(Int(saturating: (v * 100).rounded()))% above market.")
         })
         return SegmentedPill(items: steps, title: { labels[steps.firstIndex(of: $0) ?? 0] }, selection: binding)
     }

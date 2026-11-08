@@ -192,7 +192,7 @@ public enum Headquarters {
             cd["hq:\(role)"] = .number(Double(s.week + 4)); s.rest["netCD"] = cd
         }
         if cost > 0 { guard s.cash + s.savings >= cost else { return nil }; Payments.playerPays(&s, cost, label: "Recruiting") }
-        let f = fame(s, data), cap = Double(Int((42 + f * 0.58).rounded()))
+        let f = fame(s, data), cap = Double(Int(saturating: (42 + f * 0.58).rounded()))
         let count = mode == .agency ? 4 : mode == .ad ? 3 : 2
         return (0..<count).map { _ in
             var n = ManagerModel.generateCandidate(company: nil, type: "gen", state: &s, data: data)

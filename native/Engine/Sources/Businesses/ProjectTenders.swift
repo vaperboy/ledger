@@ -153,7 +153,7 @@ public enum ProjectTenders {
         let w = World(state: s, data: data)
         let bd = data.catalog[co.type]!
         let list = catalog[co.type]!
-        let offer = list[Int((s.random.next() * Double(list.count)).rounded(.down))]
+        let offer = list[Int(saturating: (s.random.next() * Double(list.count)).rounded(.down))]
         let priceOnly = s.random.next() < 0.46
         var t = Tender(raw: [:])
         t.set("id", s.makeID())
@@ -163,10 +163,10 @@ public enum ProjectTenders {
         t.set("minR", s.random.next() < 0.4 ? 3.5 + jsRound(s.random.next() * 6) / 10 : 0)
         t.set("minY", s.random.next() < 0.5 ? 1 : 0)
         t.set("w0", s.week)
-        t.set("due", s.week + 3 + Int((s.random.next() * 4).rounded(.down)))
-        t.set("rivals", s.random.next() < 0.28 ? 0 : 1 + Int((s.random.next() * 5).rounded(.down)))
+        t.set("due", s.week + 3 + Int(saturating: (s.random.next() * 4).rounded(.down)))
+        t.set("rivals", s.random.next() < 0.28 ? 0 : 1 + Int(saturating: (s.random.next() * 5).rounded(.down)))
         t.set("bids", .array([]))
-        t.set("award", t.closesWeek + 2 + Int((s.random.next() * 3).rounded(.down)))
+        t.set("award", t.closesWeek + 2 + Int(saturating: (s.random.next() * 3).rounded(.down)))
         let val = home.roundedStep(bd.ticket * Pricing.ticketMultiplier(co, bd, w) * (2 + s.random.next() * 4), about: 1000)
         t.set("val", val); t.set("yrs", 0); t.set("ext", 0)
         t.set("cost", home.roundedStep(max(w.currency(co).scaledPrice(4000), val * 0.004), about: 500))

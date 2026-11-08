@@ -99,7 +99,7 @@ public enum Shareholders {
         if h["pct"].double >= 20 {
             var f = s.companies[i].value("flags"); f["boardSeat"] = .number(max(0, (f["boardSeat"].isNull ? 1 : f["boardSeat"].double) - 1)); s.companies[i].set("flags", f)
         }
-        s.note("You now own \(Int(s.companies[i].ownership.rounded()))% of \(s.companies[i].name).", tone: "good", companyID: companyID)
+        s.note("You now own \(Int(saturating: s.companies[i].ownership.rounded()))% of \(s.companies[i].name).", tone: "good", companyID: companyID)
         return true
     }
 
@@ -174,9 +174,9 @@ public enum Shareholders {
         let cur = fc.currency(co.countryCode, s)
         let pr = max(0, co.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit }), v0 = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
         let pw = power(co), o = outside(co)
-        let tail = pw.kind == .control ? " Outside owners hold \(Int(o.rounded()))%, so they can push this through without you."
-            : pw.kind == .block ? " They hold \(Int(o.rounded()))% between them and can block your big moves if you refuse."
-            : " They hold \(Int(o.rounded()))%. If you refuse, they may sell their stake to someone else."
+        let tail = pw.kind == .control ? " Outside owners hold \(Int(saturating: o.rounded()))%, so they can push this through without you."
+            : pw.kind == .block ? " They hold \(Int(saturating: o.rounded()))% between them and can block your big moves if you refuse."
+            : " They hold \(Int(saturating: o.rounded()))%. If you refuse, they may sell their stake to someone else."
         let name = unhappy["name"].string
         var title = "", body = "", opts: [String] = [], kind = "", amt = 0.0
         let hist3 = co.monthlyHistory.suffix(3)
@@ -196,7 +196,7 @@ public enum Shareholders {
         } else if k == "exit" {
             amt = (v0 * unhappy["pct"].double / 100 * 1.1 / 1000).rounded() * 1000
             title = "\(name) wants out of \(co.name)"
-            body = "They have held their \(String(format: "%.1f", unhappy["pct"].double))% for \(Int((Double(s.week - unhappy["w0"].int) / 52).rounded())) years and want their money back: sell the company, or buy their stake for about \(cur.display(amt))."
+            body = "They have held their \(String(format: "%.1f", unhappy["pct"].double))% for \(Int(saturating: (Double(s.week - unhappy["w0"].int) / 52).rounded())) years and want their money back: sell the company, or buy their stake for about \(cur.display(amt))."
             opts = ["Buy their stake", "Sell the whole company", "Refuse"]; kind = "exit"
         } else { return }
         s.addMessage(kind: "ask", from: "\(name), shareholder", title: title, body: body + tail, companyID: co.id, tone: "bad", status: "open",
@@ -267,7 +267,7 @@ public enum Shareholders {
                     Payments.transferFromSavings(&s, need: amt)
                     Payments.playerPays(&s, amt, label: "Bought \(hn)'s stake in \(co.name)", companyID: id)
                     CapTable.buyFromHolder(&s, i, holder: hn)
-                    s.note("You bought \(hn)'s stake in \(co.name) before it could be sold on. You now own \(Int(s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
+                    s.note("You bought \(hn)'s stake in \(co.name) before it could be sold on. You now own \(Int(saturating: s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
                     return
                 }
                 s.note("You could not pay \(fc.currency(co.countryCode, s).display(amt)), so the stake goes to the other buyer.", tone: "bad", companyID: id)
@@ -282,7 +282,7 @@ public enum Shareholders {
                 Payments.transferFromSavings(&s, need: amt)
                 Payments.playerPays(&s, amt, label: "Bought \(hn)'s stake in \(co.name)", companyID: id)
                 CapTable.buyFromHolder(&s, i, holder: hn)
-                s.note("You bought back \(String(format: "%.1f", h["pct"].double))% of \(co.name). You now own \(Int(s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
+                s.note("You bought back \(String(format: "%.1f", h["pct"].double))% of \(co.name). You now own \(Int(saturating: s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
                 return
             }
             if idx == 1 { sellOut(&s, i, why: "The owners agreed to sell", data: data, context: fc); return }
@@ -359,7 +359,7 @@ public enum Shareholders {
         let price = jsRound(v * 0.98)
         let mine = price * co.ownership / 100
         if CompanySale.complete(&s, companyIndex: i, buyer: "A competitor", price: price, data: data, context: fc) != nil {
-            s.addMessage(from: "Shareholders of \(co.name)", title: "\(co.name) is sold", body: "\(why). A competitor paid \(fc.currency(co.countryCode, s).display(price)); your \(Int(co.ownership.rounded()))% came to \(fc.currency(co.countryCode, s).display(mine)).", companyID: co.id)
+            s.addMessage(from: "Shareholders of \(co.name)", title: "\(co.name) is sold", body: "\(why). A competitor paid \(fc.currency(co.countryCode, s).display(price)); your \(Int(saturating: co.ownership.rounded()))% came to \(fc.currency(co.countryCode, s).display(mine)).", companyID: co.id)
         }
     }
 

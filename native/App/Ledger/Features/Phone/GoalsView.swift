@@ -36,7 +36,7 @@ struct GoalsView: View {
         let line: String = st.next.map { "Next: \($0.title). \(st.missing)" } ?? "You are at the top of the ladder."
         return Card(padding: 16, radius: Theme.Radius.hero) {
             HStack(spacing: 16) {
-                GoalRing(progress: st.progress, done: st.next == nil, size: 64, label: "\(Int((st.progress * 100).rounded()))%")
+                GoalRing(progress: st.progress, done: st.next == nil, size: 64, label: "\(Int(saturating: (st.progress * 100).rounded()))%")
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Your rank").capsLabel()
                     Text(st.rank.title).textStyle(.title)
@@ -54,7 +54,7 @@ struct GoalsView: View {
             CardSection("Next up") {
                 ForEach(Array(goals.enumerated()), id: \.element.id) { i, g in
                     if i > 0 { CardLine() }
-                    GoalRow(ring: GoalRing(progress: g.progress, done: false, label: "\(Int((g.progress * 100).rounded()))"),
+                    GoalRow(ring: GoalRing(progress: g.progress, done: false, label: "\(Int(saturating: (g.progress * 100).rounded()))"),
                             title: g.title, detail: g.horizon.label + " goal. " + g.body, reward: "Reward: " + g.reward,
                             action: g.link.isEmpty ? nil : "Go") {
                         Haptics.tap()
@@ -138,7 +138,7 @@ struct GoalsView: View {
             CardLine()
             let target: Double = m.target > 0 ? m.target : 1
             let part: Double = m.done != nil ? 1 : min(1, max(0, m.now / target))
-            GoalRow(ring: GoalRing(progress: part, done: m.done != nil, size: 30), title: m.text, detail: m.done != nil ? "Done" : "\(Int((part * 100).rounded()))% there",
+            GoalRow(ring: GoalRing(progress: part, done: m.done != nil, size: 30), title: m.text, detail: m.done != nil ? "Done" : "\(Int(saturating: (part * 100).rounded()))% there",
                     reward: "", action: nil, compact: true) {}
         }
     }
@@ -186,7 +186,7 @@ struct GoalRing: View {
         }
         .frame(width: size, height: size)
         .goldPulse(done)
-        .accessibilityLabel(done ? "Done" : "\(Int((arc * 100).rounded())) percent")
+        .accessibilityLabel(done ? "Done" : "\(Int(saturating: (arc * 100).rounded())) percent")
     }
 }
 

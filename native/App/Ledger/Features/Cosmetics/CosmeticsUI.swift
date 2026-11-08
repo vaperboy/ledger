@@ -60,7 +60,7 @@ struct CountUpPercent: View, Animatable {
     }
 
     var body: some View {
-        Text("\(Int(value.rounded()))%").monospacedDigit()
+        Text("\(Int(saturating: value.rounded()))%").monospacedDigit()
     }
 }
 

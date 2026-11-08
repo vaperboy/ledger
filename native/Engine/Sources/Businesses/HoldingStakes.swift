@@ -77,7 +77,7 @@ public enum HoldingStakes {
             switch self {
             case .notAHolding: return "That is not an open holding company."
             case .notFound: return "That company is not available."
-            case .notEnoughCash(let n): return "The holding needs \(Int(n.rounded())) in its account for this. Put cash into the holding first."
+            case .notEnoughCash(let n): return "The holding needs \(Int(saturating: n.rounded())) in its account for this. Put cash into the holding first."
             case .refused(let why): return why
             }
         }
@@ -259,7 +259,7 @@ public enum HoldingStakes {
         return h
     }
     static func percentOf(shares n: Int, total: Int) -> Double { Double(n) / Double(max(1, total)) * 100 }
-    static func sharesFor(percent: Double, total: Int) -> Int { Int((Double(total) * percent / 100).rounded()) }
+    static func sharesFor(percent: Double, total: Int) -> Int { Int(saturating: (Double(total) * percent / 100).rounded()) }
 
     /// Percent the owner could sell personally, and percent outside owners could sell, in a company.
     static func available(_ c: Company) -> (owner: Double, others: Double) {
@@ -316,7 +316,7 @@ public enum HoldingStakes {
         if wantOthers > a.others + 0.0001 {
             return .failure(.refused(a.others < minimumPercent ? "Nobody else owns shares of \(c.name) to sell." : "Only \(String(format: "%.1f", a.others))% of \(c.name) is for sale from outside owners."))
         }
-        let nOwner = sharesFor(percent: wantOwner, total: t.total), nOthers = min(sharesFor(percent: wantOthers, total: t.total), Int((a.others * Double(t.total) / 100).rounded()))
+        let nOwner = sharesFor(percent: wantOwner, total: t.total), nOthers = min(sharesFor(percent: wantOthers, total: t.total), Int(saturating: (a.others * Double(t.total) / 100).rounded()))
         guard nOwner + nOthers > 0 else { return .failure(.refused("That is less than one share.")) }
         let pOwner = percentOf(shares: nOwner, total: t.total), pOthers = percentOf(shares: nOthers, total: t.total)
         let after = sharePercent(of: c, holdingID: h.id) + pOwner + pOthers
@@ -353,7 +353,7 @@ public enum HoldingStakes {
         var taken = 0
         if nOthers > 0, poolShares > 0 {
             for k in pool {
-                let take = min(list[k]["sh"].int, Int((Double(list[k]["sh"].int) * Double(nOthers) / Double(poolShares)).rounded()))
+                let take = min(list[k]["sh"].int, Int(saturating: (Double(list[k]["sh"].int) * Double(nOthers) / Double(poolShares)).rounded()))
                 list[k]["sh"] = .number(Double(list[k]["sh"].int - take)); taken += take
             }
             // rounding leaves a few shares over or short: settle them on the largest outside owner

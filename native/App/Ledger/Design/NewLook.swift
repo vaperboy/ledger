@@ -1,4 +1,5 @@
 import SwiftUI
+import GameCore
 
 // The shared pieces of the new look. Every screen is built from these, so a
 // colour, radius or icon changes in one place. Values are the mockups' own; tokens live in Theme.swift.
@@ -200,7 +201,7 @@ enum SVGPathData {
         var delta: Double = theta2 - theta1
         if !sweep && delta > 0 { delta -= 2 * Double.pi }
         if sweep && delta < 0 { delta += 2 * Double.pi }
-        let n: Int = max(1, Int((abs(delta) / (Double.pi / 2)).rounded(.up)))
+        let n: Int = min(8, max(1, Int(saturating: (abs(delta) / (Double.pi / 2)).rounded(.up))))   // an arc has at most four quarter turns
         let step: Double = delta / Double(n)
         let k: Double = 4.0 / 3.0 * tan(step / 4)
         for j in 0..<n {
@@ -774,6 +775,7 @@ struct PillTabBar: View {
                 }, including: item.changeable ? .all : .subviews)
                 .animation(Motion.quickAnimation, value: on)
                 .coachAnchor(.phoneTab, enabled: item.id == AppTab.phone.rawValue)
+                .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
@@ -783,8 +785,7 @@ struct PillTabBar: View {
         }
         .padding(.horizontal, 6)
         .frame(height: PillTabBar.height - 8)
-        .background(Capsule().fill(Theme.surfaceRaised))
-        .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 0.5))
+        .glassCapsule()
         .elevation(.raised)
         .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
     }

@@ -28,7 +28,6 @@ struct HomeSummary<Companies: View>: View {
         VStack(alignment: .leading, spacing: compact ? Theme.Space.m : Theme.Space.l) {
             VStack(alignment: .leading, spacing: compact ? Theme.Space.s : Theme.Space.m) {
                 HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag)  Week \(e.state.week + 1) · \(e.date)", engine: e, onNewCompany: onNewCompany)
-                if fills { Spacer(minLength: 0).frame(maxHeight: Theme.Space.s) }
                 if e.cashIsTight { cashTightLine }
                 if ent.plusEndedNotice {
                     Text("Plus has ended. Your saves are safe.").textStyle(.caption)
@@ -52,13 +51,13 @@ struct HomeSummary<Companies: View>: View {
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact).coachAnchor(.needsYou) }
             if fills { Self.gap }
             companies()
-            if fills { Spacer(minLength: 0) }
+            if fills { Self.gap }
         }
         .centerSheet(isPresented: $showInsights, title: "Insights", size: .tall, category: .detail, tone: .info) { InsightsView(engine: e) }
     }
 
-    /// Spare height between two groups, at most 16 pt over the stack's own spacing; whatever is left over gathers under the companies, above the day bar.
-    private static var gap: some View { Spacer(minLength: 0).frame(maxHeight: Theme.Space.l) }
+    /// Spare height between two groups: the free room is shared evenly by every gap and the one under the companies, so no single void forms.
+    private static var gap: some View { Spacer(minLength: 0) }
 
     private var playerName: String {
         let n = engine.state.player.name
@@ -237,7 +236,10 @@ struct NetWorthCard: View {
             if let then {
                 let d: Double = now - then
                 Text(store.short(then)).textStyle(.body, numeric: true, weight: .medium).lineLimit(1)
-                Text((d > 0.5 ? "▲ " : d < -0.5 ? "▼ " : "") + store.short(abs(d))).textStyle(.caption, tint: Theme.change(d), numeric: true).lineLimit(1)
+                // Nothing under the figure when it has not moved (a "0 kr" line reads like a bug).
+                if abs(d) > 0.5 {
+                    Text((d > 0 ? "▲ " : "▼ ") + store.short(abs(d))).textStyle(.caption, tint: Theme.change(d), numeric: true).lineLimit(1)
+                }
             } else {
                 Text("–").textStyle(.body, tint: Theme.inkFaint)
             }
@@ -373,7 +375,7 @@ struct TopPriorities: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.l)
-        .background(shape.fill(Theme.surfaceRaised))
+        .glassSurface(raised: true)
         .contentShape(shape)
         return Button {
             guard opens else { return }
@@ -443,7 +445,7 @@ struct TopPriorities: View {
                     .padding(.horizontal, Theme.Space.l).padding(.bottom, compact ? Theme.Space.m : Theme.Space.l)
             }
         }
-        .background(shape.fill(Theme.surfaceRaised))
+        .glassSurface(raised: true)
         .contentShape(shape)
     }
 
@@ -460,7 +462,7 @@ struct TopPriorities: View {
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
             .padding(Theme.Space.l)
-            .background(shape.fill(Theme.surfaceRaised))
+            .glassSurface(raised: true)
             .contentShape(shape)
         }
         .buttonStyle(PressableStyle())

@@ -101,7 +101,7 @@ extension UsedCarDealer {
         let m2 = prem["m2"].double
         guard m2 > 0 else { return 0 }
         let l = lotLayout[prem["kind"].string] ?? (0.3, 30)
-        return Int((m2 * l.share / l.perCar).rounded(.down))
+        return Int(saturating: (m2 * l.share / l.perCar).rounded(.down))
     }
 
     public static func lot(_ co: Company) -> UsedCarLot { UsedCarLot(spaces: lotSpaces(co), used: co.value("stk").array.count) }
@@ -119,7 +119,7 @@ extension UsedCarDealer {
         let w = World(state: s, data: data)
         let cur = w.currency(co)
         let typical = cur.scaledPrice(4200)
-        var best = UsedCarRepairOffer(supplierID: 0, supplierName: "An independent garage", isOwn: false, price: need, weeks: 1 + Int(ceil(need / (3 * typical))), marketPrice: need)
+        var best = UsedCarRepairOffer(supplierID: 0, supplierName: "An independent garage", isOwn: false, price: need, weeks: 1 + Int(saturating: ceil(need / (3 * typical))), marketPrice: need)
         for sup in s.companies where sup.type == "carrepair" && sup.status == .open && sup.id != co.id {
             guard let sbd = data.catalog[sup.type] else { continue }
             let jobsPerWeek = CapacityModel.compute(sup, sbd, w).capacity * bayShare
@@ -130,7 +130,7 @@ extension UsedCarDealer {
                 for c in other.value("stk").array where c["job"]["sup"].int == sup.id { queued += c["job"]["price"].double / ticket }
             }
             let price = need * ownRepairFactor
-            let weeks = max(1, Int(ceil((queued + price / ticket) / jobsPerWeek)))
+            let weeks = max(1, Int(saturating: ceil((queued + price / ticket) / jobsPerWeek)))
             if best.supplierID == 0 || weeks < best.weeks { best = UsedCarRepairOffer(supplierID: sup.id, supplierName: sup.name, isOwn: true, price: price, weeks: weeks, marketPrice: need) }
         }
         return best
@@ -283,7 +283,7 @@ extension UsedCarDealer {
             guard price / pick.h.fair <= 0.98, s.companies[i].cash > price * 1.4 else { continue }
             if case .ok = Marketplace.buy(&s, listingID: pick.l.id, companyID: co.id, price: price, data: data, by: me.who, quiet: true) {
                 bought += 1
-                lines.append("\(pick.l.title): paid \(World(state: s, data: data).currency(s.companies[i]).display(price)), about \(Int(((1 - price / pick.h.fair) * 100).rounded())) percent under what it is worth. Check it in the yard.")
+                lines.append("\(pick.l.title): paid \(World(state: s, data: data).currency(s.companies[i]).display(price)), about \(Int(saturating: ((1 - price / pick.h.fair) * 100).rounded())) percent under what it is worth. Check it in the yard.")
                 if me.who != "mgr" { s.companies[i].set("ucbb", s.companies[i].num("ucbb") + max(0, pick.h.fair - price)) }
             }
         }

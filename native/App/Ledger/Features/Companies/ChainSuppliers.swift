@@ -76,7 +76,7 @@ struct ChainSupplyOverview: View {
                         let buyer = engine.state.company(l.buyerID)?.name ?? "Store"
                         let supplier = engine.state.company(l.supplierID)?.name ?? "Supplier"
                         let kindName: String = IntercompanySupply.kind(l.kindID)?.name ?? l.kindID
-                        let sub: String = "\(kindName) · \(IntercompanySupply.modeName(l.mode)) · \(Int((l.lastShare * 100).rounded()))% delivered"
+                        let sub: String = "\(kindName) · \(IntercompanySupply.modeName(l.mode)) · \(Int(saturating: (l.lastShare * 100).rounded()))% delivered"
                         let yearly: String = currency.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52) + " / yr"
                         NavigationLink(value: CompanyRoute.companyAt(l.buyerID, .operations)) {
                             GroupLinkRow(title: "\(supplier) → \(buyer)", sub: sub, trailing: yearly, subTint: l.lastShare < 0.9 ? Theme.loss : Theme.ivoryFaint)

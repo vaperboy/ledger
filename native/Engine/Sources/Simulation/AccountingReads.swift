@@ -491,7 +491,7 @@ public extension GameEngine {
                 "Done", week: h["w"].int, amount: h["capital"].double)
         }
         let holders = co.value("holders").array.filter { $0["pct"].double > 0 }
-        add(.company, "ownership", "own", "Ownership", "You hold \(Int(co.ownership.rounded()))%" + (holders.isEmpty ? "" : "; others: " + holders.map { "\($0["name"].string) \(Int($0["pct"].double.rounded()))%" }.joined(separator: ", ")), "Current")
+        add(.company, "ownership", "own", "Ownership", "You hold \(Int(saturating: co.ownership.rounded()))%" + (holders.isEmpty ? "" : "; others: " + holders.map { "\($0["name"].string) \(Int(saturating: $0["pct"].double.rounded()))%" }.joined(separator: ", ")), "Current")
         if co.shareCapital > 0 { add(.company, "ownership", "capital", "Share capital", legal["shares"]["count"].isNull ? "" : "\(Int(legal["shares"]["count"].double)) shares", "Paid in", amount: co.shareCapital) }
         let acc = co.value("acc")
         if !acc["id"].isNull { add(.company, "registration", "accagr", "Accountant agreement", acc["name"].string, co.value("docs")["accountant_agreement"]["st"].string == "ok" ? "In force" : "Pending", week: acc["w0"].int) }
@@ -515,7 +515,7 @@ public extension GameEngine {
         for m in co.staff {
             let name = state.people[m.id]?.name ?? "Employee"
             let ft = m.raw["ft"].map { $0.isNull ? nil : $0.int } ?? nil
-            add(.contracts, "employment", "emp\(m.id)", "Employment contract: \(name)", "\(m.role), \(Int((m.weeklyHours ?? StaffModel.fullWeekHours).rounded())) h a week" + (ft.map { ", fixed term to \(GameCalendar.dateString(week: $0))" } ?? ""),
+            add(.contracts, "employment", "emp\(m.id)", "Employment contract: \(name)", "\(m.role), \(Int(saturating: (m.weeklyHours ?? StaffModel.fullWeekHours).rounded())) h a week" + (ft.map { ", fixed term to \(GameCalendar.dateString(week: $0))" } ?? ""),
                 "In force", week: m.hiredWeek, amount: m.monthlyWage)
         }
         if let mid = co.managerID { add(.contracts, "employment", "emp\(mid)", "Employment contract: \(state.people[mid]?.name ?? "Manager")", "Manager", "In force", amount: co.managerMonthlyWage) }

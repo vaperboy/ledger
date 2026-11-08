@@ -64,7 +64,7 @@ extension StaffTalks {
 
     /// What work someone wants, stable per person: "season", "part" or "full". Original: `workWish`.
     static func workWish(_ m: inout StaffMember, week: Int) -> String {
-        let yr = Int(floor(Double(week - m.hiredWeek) / 52))
+        let yr = Int(saturating: floor(Double(week - m.hiredWeek) / 52))
         if m.str("wish").isEmpty {
             let r = HashedRandom.first("wish:\(m.id)")
             let seasonal = !m.value("seas").isNull

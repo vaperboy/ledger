@@ -52,11 +52,15 @@ public struct GameEngine {
 
     // MARK: New game
 
+    public enum NewGameError: Error, Equatable { case sandboxNeedsPro }
+
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil,
                                tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false,
-                               difficulty: Difficulty = .classic) throws -> GameEngine {
+                               difficulty: Difficulty = .classic, entitlements: EntitlementSnapshot = .free, now: Date = Date()) throws -> GameEngine {
+        // Sandbox is a Ledger Pro mode: the app passes what the player owns.
+        if difficulty == .sandbox, !entitlements.isUnlocked(.sandboxMode, now: now) { throw NewGameError.sandboxNeedsPro }
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
         let seed = seed ?? Int(Date().timeIntervalSince1970) % 2147483647

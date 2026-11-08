@@ -45,7 +45,7 @@ struct WorkerGrowthSection: View {
             HStack {
                 Text("Readiness").textStyle(.caption)
                 Spacer(minLength: 6)
-                Text(String(Int((target * 100).rounded())) + "%").textStyle(.caption, tint: Theme.ink, numeric: true)
+                Text(String(Int(saturating: (target * 100).rounded())) + "%").textStyle(.caption, tint: Theme.ink, numeric: true)
             }
             GeometryReader { (geo: GeometryProxy) -> AnyView in
                 AnyView(ZStack(alignment: .leading) {

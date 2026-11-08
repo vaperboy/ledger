@@ -254,7 +254,7 @@ private struct LoanSummaryPanel: View {
                 }
             }
             .frame(height: 6)
-            Text("\(Int((repaid * 100).rounded()))% repaid").textStyle(.caption)
+            Text("\(Int(saturating: (repaid * 100).rounded()))% repaid").textStyle(.caption)
         }
         .accessibilityElement(children: .combine)
     }

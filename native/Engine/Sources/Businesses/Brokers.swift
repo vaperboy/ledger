@@ -230,7 +230,7 @@ public enum Brokers {
 
         // New business.
         var units = max(0, min(D, cap) * (1 + gauss(&rnd) * 0.045))
-        var n = Int(units.rounded(.down))
+        var n = Int(saturating: units.rounded(.down))
         if rnd.next() < units - Double(n) { n += 1 }
         units = Double(n)
         let ws = lineWeights(bd, active: active)
@@ -354,7 +354,7 @@ public enum Brokers {
         let lineID = line["id"].string
         switch bd.id {
         case "travel":
-            let lead = Int(between(line["lead"], rnd.next()).rounded())
+            let lead = Int(saturating: between(line["lead"], rnd.next()).rounded())
             var cancel = 0
             let stress = max(0, 1 - s.economy.demand)
             if rnd.next() < line["cancel"].double * (1 + cfg["disruptionCancel"].double * stress) { cancel = week + 1 + Int(rnd.next() * Double(max(1, lead - 1))) }
@@ -378,7 +378,7 @@ public enum Brokers {
             let r = rnd.next()
             if r < declineP { book.count("decl"); return 0 }
             if r < declineP + line["fallThrough"].double { book.count("fell"); return 0 }
-            let lag = Int(between(line["lag"], rnd.next()).rounded())
+            let lag = Int(saturating: between(line["lag"], rnd.next()).rounded())
             let proc = value * between(line["com"], p)
             let extra = addOnCommission(cfg, line: lineID, active: active, scale: scale, &rnd)
             let fees = (line["lenderFee"].double + line["clientFee"].double) * scale

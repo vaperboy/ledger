@@ -46,7 +46,7 @@ struct CompanyFinanceBook: View {
         let sellers = engine.salespeople(companyID: company.id)
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             KeyFigures(items: [
-                .init(label: "Policies", value: String(Int(b.policies.rounded()))),
+                .init(label: "Policies", value: String(Int(saturating: b.policies.rounded()))),
                 .init(label: "Premiums a week", value: cur.tidyShort(b.weeklyPremium), sub: cur.tidyShort(b.weeklyPremium * 52) + " a year"),
                 .init(label: "Claims vs premiums", value: Currency.percent(b.lossRatio, decimals: 0), tint: b.lossRatio > 0.9 ? Theme.loss : Theme.ivory, sub: "loss ratio"),
                 .init(label: "Solvency", value: b.solvency < 0.8 ? "Critical" : b.solvency < 1 ? "Too low" : b.solvency < 1.3 ? "Adequate" : "Comfortable", tint: b.solvency < 1 ? Theme.loss : Theme.ivory, sub: "capital against claims"),
@@ -58,7 +58,7 @@ struct CompanyFinanceBook: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                                 Text(p.name).textStyle(.body, tint: Theme.ink)
-                                Text(p.status + (p.isOffered ? " · verified sellers \(Int(p.verifiedSellers.rounded()))" : " · approval " + cur.tidyShort(p.approvalFee)))
+                                Text(p.status + (p.isOffered ? " · verified sellers \(Int(saturating: p.verifiedSellers.rounded()))" : " · approval " + cur.tidyShort(p.approvalFee)))
                                     .textStyle(.caption, tint: p.status == "Live" ? Theme.gain : Theme.inkFaint)
                             }
                             Spacer(minLength: 8)

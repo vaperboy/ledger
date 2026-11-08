@@ -57,7 +57,7 @@ extension Rivals {
                 r["rx27"] = .number(Double(week + reactionCooldown))
                 if fortuneOf(r) >= 0, score >= 0.5 {
                     if score >= 0.75 {
-                        let weeks = 4 + Int((aggr * 4).rounded())
+                        let weeks = 4 + Int(saturating: (aggr * 4).rounded())
                         let amount = (0.04 + 0.5 * min(0.08, beyond)) * sizeF
                         let target = max(own * 1.03, 0.7)
                         let eff = effectivePrice(r, week: week)
@@ -66,16 +66,16 @@ extension Rivals {
                         MarketPressure.add(&s, ci, kind: .response, amount: amount, weeks: weeks, rivalID: id)
                         PriceMoves.addModifier(&s, ci, key: "cogsup", multiplier: 1.02, weeks: Double(weeks))
                         MarketEvents.log(&s, .priceResponse, title: "\(name) cuts prices to match \(co.name)",
-                                         detail: "You have been \(Int(((1 - own / ref) * 100).rounded()))% under the \(bd.name.lowercased()) market in \(cityName).",
+                                         detail: "You have been \(Int(saturating: ((1 - own / ref) * 100).rounded()))% under the \(bd.name.lowercased()) market in \(cityName).",
                                          companyID: co.id, amount: amount, tone: "bad",
-                                         consequence: "Price war for \(weeks) weeks: demand about \(Int((amount * 100).rounded()))% lower, fading; costs 2% higher.")
+                                         consequence: "Price war for \(weeks) weeks: demand about \(Int(saturating: (amount * 100).rounded()))% lower, fading; costs 2% higher.")
                     } else {
                         let amount = 0.02 * sizeF
                         if r["mkt16"].isNull { r["mkt16"] = .number(Double(week + 6)) }
                         MarketPressure.add(&s, ci, kind: .response, amount: amount, weeks: 6, rivalID: id)
                         MarketEvents.log(&s, .priceResponse, title: "\(name) pushes back with marketing",
                                          detail: "It answers \(co.name)'s low prices in \(cityName) with a campaign.", companyID: co.id, amount: amount, tone: "bad",
-                                         consequence: "Demand about \(max(1, Int((amount * 100).rounded())))% lower for 6 weeks, fading.")
+                                         consequence: "Demand about \(max(1, Int(saturating: (amount * 100).rounded())))% lower for 6 weeks, fading.")
                     }
                 }
                 riv[j] = r

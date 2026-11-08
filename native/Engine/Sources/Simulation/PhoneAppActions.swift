@@ -79,8 +79,8 @@ public extension GameEngine {
     func bankPaymentDetails(companyID: Int) -> BankPaymentDetails? {
         guard let co = state.company(companyID), co.status.isLive else { return nil }
         var r = HashedRandom("\(state.seed):account:\(co.id)")
-        let a: String = (0..<4).map { _ in String(Int((r.next() * 10).rounded(.down))) }.joined()
-        let b: String = (0..<4).map { _ in String(Int((r.next() * 10).rounded(.down))) }.joined()
+        let a: String = (0..<4).map { _ in String(Int(saturating: (r.next() * 10).rounded(.down))) }.joined()
+        let b: String = (0..<4).map { _ in String(Int(saturating: (r.next() * 10).rounded(.down))) }.joined()
         let bank = RivalAbsorb.ownBank(state)?.name ?? "Ledger Business Bank"
         return BankPaymentDetails(holder: co.name, accountName: "Company account \u{00B7} " + co.name, accountNumber: a + " " + b, bankName: bank)
     }

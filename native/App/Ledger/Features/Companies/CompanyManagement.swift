@@ -186,7 +186,7 @@ struct CompanyManagement: View {
         var line = ""
         if let card = engine.managerScorecard(companyID: company.id) { line += "scorecard: \(Self.scoreWord(card.score))" }
         line += (line.isEmpty ? "" : " · ") + "budget \(ManagerModel.budget(of: company).title.lowercased())"
-        if company.managerProfitBonus > 0 { line += " · \(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
+        if company.managerProfitBonus > 0 { line += " · \(Int(saturating: (company.managerProfitBonus * 100).rounded()))% profit share" }
         let weak = (engine.managerScorecard(companyID: company.id)?.score ?? 100) < 35
         return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage), face: m.faceKey)
     }

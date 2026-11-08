@@ -109,9 +109,9 @@ public enum Startups {
         let cur = fc.homeCurrency(s)
         let seed = cur.scaledPrice(d.seed) * m
         let devs = who == "c4" ? 4 : who == "c2" ? 2 : 0, selfH = who == "self" && d.canBuildYourself ? freeHours(s) : 0
-        let speed = Double(devs) + selfH / 40 * 0.7, wk = speed > 0 ? Int((d.work / speed).rounded(.up)) : nil
+        let speed = Double(devs) + selfH / 40 * 0.7, wk = speed > 0 ? Int(saturating: (d.work / speed).rounded(.up)) : nil
         let dc = builderCost(id, cur)
-        return Plan(seed: seed, builders: devs, weeksToTest: wk.map { Int((Double($0) / 2).rounded(.up)) }, weeksToSell: wk, buildersMonthly: Double(devs) * dc,
+        return Plan(seed: seed, builders: devs, weeksToTest: wk.map { Int(saturating: (Double($0) / 2).rounded(.up)) }, weeksToSell: wk, buildersMonthly: Double(devs) * dc,
                     runwayWeeks: Int(saturating: (CompanyFigures.runwayWeeks(cash: seed, weeklyLoss: cur.scaledPrice(d.seed) / 26 + Double(devs) * dc * 12 / 52) ?? 0).rounded()),
                     interest: Funding.interest(s, capitalNeed: d.capitalNeed, traction: 0.05), capitalNeed: d.capitalNeed)
     }
@@ -364,7 +364,7 @@ public enum Startups {
         let tr = trust(riv["rel"].double)
         let ok = s.random.chance(t.odds)
         if ok {
-            let cnt = max(1, Int((1 + (riv["size"].isNull ? 1 : riv["size"].double) * 3).rounded()))
+            let cnt = max(1, Int(saturating: (1 + (riv["size"].isNull ? 1 : riv["size"].double) * 3).rounded()))
             riv["rel"] = .number(min(100, riv["rel"].double + 3))
             let chk = tr > 0.6 && f["q"].double < 0.45 ? s.week + s.random.int(6, 10) : 0
             let wk = Double(s.week)

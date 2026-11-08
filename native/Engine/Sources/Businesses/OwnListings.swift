@@ -42,7 +42,7 @@ public enum OwnListings {
     /// Whole units the seller can supply this week at this unit price.
     public static func spareUnits(_ s: GameState, seller sp: Company, _ sbd: Trade, price: Double, _ w: World) -> Int {
         let n = spareSlots(s, seller: sp, sbd, w) / slotsPerUnit(price: price, seller: sp, sbd, w)
-        return n.isFinite ? Int(min(n, Double(Int32.max)).rounded(.down)) : 0
+        return n.isFinite ? Int(saturating: min(n, Double(Int32.max)).rounded(.down)) : 0
     }
 
     public static func listings(_ s: GameState, buyer companyID: Int, data: GameData) -> [OwnListing] {

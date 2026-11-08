@@ -70,7 +70,7 @@ struct VenturesFigures {
     /// "+1.2M (+8%) on 15M put in", or empty when nothing has gone in.
     var changeLine: String {
         guard invested > 0 else { return "" }
-        let pct: Int = Int((gain / invested * 100).rounded())
+        let pct: Int = Int(saturating: (gain / invested * 100).rounded())
         return (gain >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(gain)) + " (" + (pct >= 0 ? "+" : "\u{2212}") + "\(abs(pct))%) on \(cur.tidyShort(invested)) put in"
     }
 
@@ -117,7 +117,7 @@ struct VenturesHome: View {
         if let e = store.engine {
             let fig = VenturesFigures(e)
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                VenturesHeader(figures: fig, found: found)
+                VenturesHeader(figures: fig, found: found).coachAnchor(.venturesHeader)
                 if fig.isEmpty {
                     EmptyState(glyph: Glyph.ventures, title: "No ventures yet",
                                message: "Found a startup and build it, back a founder with a stake, or commit to a fund. Whatever you hold shows here with its value and what to do next.",
@@ -126,7 +126,7 @@ struct VenturesHome: View {
                     VenturesStartupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
                 }
                 if !fig.isEmpty || fig.pitches > 0 {
-                    VenturesBackingSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
+                    VenturesBackingSection(engine: e, open: $open, sheet: $sheet, pending: $pending).coachTopStrip(.venturesBacking, height: 56)
                 }
                 if !fig.isEmpty || fig.fundOffers > 0 {
                     VenturesFundsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
@@ -185,6 +185,7 @@ struct VenturesHeader: View {
             }
             HStack(spacing: Theme.Space.s) {
                 Button("Found a startup", action: found).buttonStyle(PrimaryButtonStyle(size: .compact))
+                    .coachAnchor(.venturesFound)
                     .accessibilityIdentifier("ventures-found")
                 ProMark(feature: .ventures)
             }

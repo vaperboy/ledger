@@ -115,7 +115,7 @@ struct HoldingSellSheet: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             splitLine(bought, moved)
             PopupRow(label: buyer == .owner && companyID != nil ? "You pay the holding" : "The holding receives", value: cur.tidyShort(price))
-            if factor < 0.9999 { Text("Sold at \(Int((factor * 100).rounded()))% of fair value.").popupText(.caption) }
+            if factor < 0.9999 { Text("Sold at \(Int(saturating: (factor * 100).rounded()))% of fair value.").popupText(.caption) }
             HoldingTierNote(tier: tier, percent: left)
             Button("Sell \(holdingPct(pct)) for \(cur.tidyShort(price))") { askSell(name, pct, price, cur) }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))

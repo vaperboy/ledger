@@ -104,7 +104,7 @@ extension UsedCarDealer {
         let m = markup(co)
         var shoppers = Int(D)
         if rnd.next() < D - Double(Int(D)) { shoppers += 1 }
-        let room = Int(cap.rounded(.down)) + (rnd.next() < cap - cap.rounded(.down) ? 1 : 0)
+        let room = Int(saturating: cap.rounded(.down)) + (rnd.next() < cap - cap.rounded(.down) ? 1 : 0)
         for _ in 0..<shoppers where Int(units) < room {
             let open = list.indices.filter { list[$0]["res"].isNull }
             guard !open.isEmpty else { break }

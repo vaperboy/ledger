@@ -33,7 +33,7 @@ struct CompanyProperties: View {
     private func figures(_ pf: PropertyPortfolio, _ cur: Currency) -> some View {
         let count: String = "\(pf.rows.count) \(pf.rows.count == 1 ? "property" : "properties")"
         let yield: String = pf.totalValue > 0 ? "gross yield " + Currency.percent(pf.grossYield, decimals: 1) : ""
-        let units: String = "\(Int(pf.totalUnits.rounded())) \(pf.unitWord)"
+        let units: String = "\(Int(saturating: pf.totalUnits.rounded())) \(pf.unitWord)"
         let footer: String = [count, yield, units, "gain on cost is not profit until sold"].filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")
         let letTint: Color = pf.occupancy < 0.8 ? Theme.caution : Theme.ivory
         let coverTint: Color = pf.staffCover < 0.8 ? Theme.caution : Theme.ivory
@@ -67,7 +67,7 @@ struct CompanyProperties: View {
             if !pf.rows.isEmpty {
                 SettingsTable(heading: "Property") {
                     ForEach(pf.rows, id: \.id) { (p: PropertyRow) in
-                        SettingsTableRow(title: p.name, note: "\(Int(p.units.rounded())) \(pf.unitWord) · vacancy \(Currency.percent(p.vacancy, decimals: 0))",
+                        SettingsTableRow(title: p.name, note: "\(Int(saturating: p.units.rounded())) \(pf.unitWord) · vacancy \(Currency.percent(p.vacancy, decimals: 0))",
                                          value: cur.tidyShort(p.value), opens: .sheet) { detailID = p.id }
                     }
                 }
@@ -115,7 +115,7 @@ struct CompanyProperties: View {
                         HStack(alignment: .firstTextBaseline) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(p.name).popupText(.body).lineLimit(2)
-                                Text("\(Int(p.units.rounded())) \(pf.unitWord) · vacancy \(Currency.percent(p.vacancy, decimals: 0)) · \(conditionWord(p.condition))")
+                                Text("\(Int(saturating: p.units.rounded())) \(pf.unitWord) · vacancy \(Currency.percent(p.vacancy, decimals: 0)) · \(conditionWord(p.condition))")
                                     .popupText(.caption)
                             }
                             Spacer(minLength: 8)

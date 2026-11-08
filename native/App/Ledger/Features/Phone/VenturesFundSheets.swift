@@ -106,7 +106,7 @@ struct FundSellSheet: View {
                 PopupRow(label: "Buyer pays at the quote", value: cur.tidyShort(q.proceeds))
                 VenturesAskControl(quote: q, cur: cur, multiplier: $multiplier)
                 PopupRow(label: "Against what you paid in", value: (ask + f.distributed >= q.costBasis ? "+" : "\u{2212}") + cur.tidyShort(abs(ask + f.distributed - q.costBasis)))
-                Text("Secondary buyers pay \(Int(((1 - q.factor) * 100).rounded()))% under the fund's value. You give up everything it still pays out, and the gain is taxed.")
+                Text("Secondary buyers pay \(Int(saturating: ((1 - q.factor) * 100).rounded()))% under the fund's value. You give up everything it still pays out, and the gain is taxed.")
                     .popupText(.caption).fixedSize(horizontal: false, vertical: true)
                 VenturesSaleReply(reply: reply, cur: cur) { (c: Double) in sell(cur, multiplier: c / max(1, q.proceeds)) }
                 Button("Ask \(cur.tidyShort(ask))") { askConfirm(f, ask, cur) }.buttonStyle(PrimaryButtonStyle(fullWidth: true))

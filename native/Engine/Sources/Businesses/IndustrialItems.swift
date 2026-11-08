@@ -178,7 +178,7 @@ public enum IndustrialItems {
         r.leadDays = sp.lead
         r.capacity = maxPerWeek(sp, t, capacity: capacity)
         if holdsFinishedStock(sp) {
-            r.stock = Int((perWeek * stockCoverWeeks).rounded(.up))
+            r.stock = Int(saturating: (perWeek * stockCoverWeeks).rounded(.up))
             r.since = week
         }
         return r
@@ -251,17 +251,17 @@ public enum IndustrialItems {
                     if rec.stock == 0 { rec.since = week }
                     rec.stock += arriving
                 }
-                let sold = min(rec.stock, Int(perWeek.rounded()))
+                let sold = min(rec.stock, Int(saturating: perWeek.rounded()))
                 rec.stock -= sold
                 if rec.stock == 0 { rec.since = nil }
                 let lead = Double(rec.leadDays) / 7
-                let level = Int((perWeek * (lead + reorderCoverWeeks)).rounded(.up))
-                let target = Int((perWeek * (lead + stockCoverWeeks)).rounded(.up))
+                let level = Int(saturating: (perWeek * (lead + reorderCoverWeeks)).rounded(.up))
+                let target = Int(saturating: (perWeek * (lead + stockCoverWeeks)).rounded(.up))
                 if rec.stock + rec.onOrder <= level, target > rec.stock + rec.onOrder {
                     // Production runs are whole batches.
                     let need = target - rec.stock - rec.onOrder
-                    let n = Int((Double(need) / Double(sp.batch)).rounded(.up)) * sp.batch
-                    let due = week + Int(lead.rounded(.up))
+                    let n = Int(saturating: (Double(need) / Double(sp.batch)).rounded(.up)) * sp.batch
+                    let due = week + Int(saturating: lead.rounded(.up))
                     rec.onOrder += n
                     rec.plans.append(ItemModels.Plan(kind: "batch:\(n)", text: "Batch of \(n) is ready in week \(due).", week: due))
                 }

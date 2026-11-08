@@ -128,7 +128,7 @@ public enum Advisers {
         var nos = s.companies[i].value("polNo")
         if on {
             var r = HashedRandom("\(s.seed):pol:\(s.companies[i].id):\(product):\(s.week):\(s.day)")
-            let digits: String = (0..<5).map { _ in String(Int((r.next() * 10).rounded(.down))) }.joined()
+            let digits: String = (0..<5).map { _ in String(Int(saturating: (r.next() * 10).rounded(.down))) }.joined()
             let no = "AT-" + String(GameCalendar.year(week: s.week)) + "-" + digits
             nos[product] = .object(["no": .string(no), "w": .number(Double(s.week)), "d": .number(Double(s.day))])
             s.companies[i].set("polNo", nos)

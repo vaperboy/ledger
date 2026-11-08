@@ -59,9 +59,9 @@ struct CompanyEnergy: View {
             PageGroup("Power plant") {
                 VStack(alignment: .leading, spacing: 0) {
                     FigureStrip(items: [
-                        .init(label: "Producing", value: "\(Int((p?.megawatts ?? 0).rounded())) MW", sub: p?.source ?? ""),
-                        .init(label: "Being built", value: "\(Int((p?.building ?? 0).rounded())) MW", sub: p?.weeksToReady.map { "first ready in \($0) wk" } ?? ""),
-                        .init(label: "Output last week", value: "\(Int((p?.outputMWh ?? 0).rounded())) MWh"),
+                        .init(label: "Producing", value: "\(Int(saturating: (p?.megawatts ?? 0).rounded())) MW", sub: p?.source ?? ""),
+                        .init(label: "Being built", value: "\(Int(saturating: (p?.building ?? 0).rounded())) MW", sub: p?.weeksToReady.map { "first ready in \($0) wk" } ?? ""),
+                        .init(label: "Output last week", value: "\(Int(saturating: (p?.outputMWh ?? 0).rounded())) MWh"),
                     ])
                     FlatRow(label: "Average price", value: cur.tidyShort(p?.averagePrice ?? 0) + " / MWh", sub: "Sold at the power market price, less what is hedged.").padding(.top, 8)
                     FlatRow(label: "Market price index", value: String(format: "%.0f%% of normal", engine.state.economy.power * 100),
@@ -91,7 +91,7 @@ struct CompanyEnergy: View {
 
     private func fieldSub(_ f: EnergyModel.FieldInfo) -> String {
         if f.state == "dev" { return "In development · \(f.weeksToProduction) weeks to production" }
-        if f.state == "prod" { return "Producing about \(Int(f.weeklyBarrels.rounded())) kbbl a week" }
+        if f.state == "prod" { return "Producing about \(Int(saturating: f.weeklyBarrels.rounded())) kbbl a week" }
         return "Depleted"
     }
 
@@ -148,7 +148,7 @@ struct CompanyEnergy: View {
                 VStack(alignment: .leading, spacing: 0) {
                     FigureStrip(items: [
                         .init(label: "Fields", value: "\(fields.filter { $0.state != "depleted" }.count)", sub: "\(fields.filter { $0.state == "dev" }.count) in development"),
-                        .init(label: "Last week", value: "\(Int(company.lastWeekUnits.rounded())) kbbl"),
+                        .init(label: "Last week", value: "\(Int(saturating: company.lastWeekUnits.rounded())) kbbl"),
                         .init(label: "Oil price", value: cur.tidyShort(price), sub: "per barrel"),
                     ])
                     FlatRow(label: "Market index", value: String(format: "%.0f%% of normal", engine.state.economy.oil * 100),
@@ -216,7 +216,7 @@ struct CompanySalmon: View {
                 VStack(alignment: .leading, spacing: 0) {
                     FigureStrip(items: [
                         .init(label: "Fish", value: String(format: "%.0f k", cohorts.reduce(0) { $0 + $1.fish } / 1000)),
-                        .init(label: "Biomass", value: "\(Int(fm["bio"].double.rounded())) t"),
+                        .init(label: "Biomass", value: "\(Int(saturating: fm["bio"].double.rounded())) t"),
                         .init(label: "Price a kilo", value: cur.tidyShort(engine.salmonPricePerKilo())),
                     ])
                     if cohorts.isEmpty {
@@ -228,7 +228,7 @@ struct CompanySalmon: View {
                                 HStack {
                                     Text("Cohort \(c.id + 1) · week \(c.age)").textStyle(.headline)
                                     Spacer()
-                                    Text("\(Int((c.fish / 1000).rounded())) k fish · \(String(format: "%.1f", c.kilosEach)) kg").textStyle(.caption, numeric: true)
+                                    Text("\(Int(saturating: (c.fish / 1000).rounded())) k fish · \(String(format: "%.1f", c.kilosEach)) kg").textStyle(.caption, numeric: true)
                                 }
                                 RateBar(label: "Ready to harvest", fraction: c.readyShare, tint: c.readyShare >= 0.95 ? Theme.gain : Theme.gold)
                             }

@@ -261,9 +261,9 @@ public extension GroupDeals {
             case .badFraction: return "Choose a share between 1% and 100%."
             case .badMultiplier: return "Bid between 0.5 and 3 times fair value."
             case .notWorthAnything: return "The group is not worth anything right now."
-            case .alreadyHold(let p): return "You already own \(Int((p * 100).rounded()))% of this group."
+            case .alreadyHold(let p): return "You already own \(Int(saturating: (p * 100).rounded()))% of this group."
             case .outbid: return "Another bidder won the stake."
-            case .couldNotPay(let n): return "You could not raise \(Int(n.rounded())) in time."
+            case .couldNotPay(let n): return "You could not raise \(Int(saturating: n.rounded())) in time."
             }
         }
     }

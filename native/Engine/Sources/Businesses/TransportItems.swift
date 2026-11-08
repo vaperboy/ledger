@@ -250,7 +250,7 @@ public enum TransportItems {
         for b in list {
             var r = ItemModels.record(s.companies[i], itemID: b.itemID) ?? ItemModels.Record(id: b.itemID, model: .svc)
             r.model = .svc
-            r.stock = max(1, Int(b.count.rounded())); r.capacity = b.periods; r.status = b.status; r.leadDays = b.spec.lead
+            r.stock = max(1, Int(saturating: b.count.rounded())); r.capacity = b.periods; r.status = b.status; r.leadDays = b.spec.lead
             ItemModels.put(&s, i, r)
         }
         // A smoothed weekly cost of the company (monthly bills would otherwise make the item costs jump).

@@ -167,7 +167,7 @@ public extension GameEngine {
         let rivals = marketRivals()
         for r in rivals.filter({ $0.forSale }).sorted(by: { ($0.share, $1.id) > ($1.share, $0.id) }) {
             rivalCards.append(MarketOpportunity(id: "sale:\(r.id)", kind: .rivalForSale, title: "\(r.name) is for sale",
-                                                detail: "\(r.tradeName) in \(r.cityName), \(Int((r.share * 100).rounded()))% of the market.", companyID: r.companyID,
+                                                detail: "\(r.tradeName) in \(r.cityName), \(Int(saturating: (r.share * 100).rounded()))% of the market.", companyID: r.companyID,
                                                 rivalID: r.id, cityID: r.cityID, countryCode: r.countryCode, tradeID: r.tradeID, assetID: nil, amount: r.valuation))
         }
         for r in rivals.filter({ $0.inTrouble && !$0.forSale }).sorted(by: { ($0.share, $1.id) > ($1.share, $0.id) }) {
@@ -181,7 +181,7 @@ public extension GameEngine {
         // A fund's dip first (steadier), else the deepest dip of a coin.
         let deepest: ([MarketAsset]) -> MarketAsset? = { $0.min { ($0.monthChange ?? 0, $0.id) < ($1.monthChange ?? 0, $1.id) } }
         if let d = deepest(dips.filter { $0.kind != .crypto }) ?? deepest(dips.filter { $0.kind == .crypto }) {
-            others.append(MarketOpportunity(id: "dip:\(d.id)", kind: .fundDip, title: "\(d.name) is down \(Int((abs(d.monthChange ?? 0) * 100).rounded()))%",
+            others.append(MarketOpportunity(id: "dip:\(d.id)", kind: .fundDip, title: "\(d.name) is down \(Int(saturating: (abs(d.monthChange ?? 0) * 100).rounded()))%",
                                             detail: "Over the last four weeks. Risk: \(d.risk.rawValue.lowercased()).", companyID: nil, rivalID: nil, cityID: nil,
                                             countryCode: nil, tradeID: nil, assetID: d.id, amount: d.price))
         }
@@ -238,7 +238,7 @@ public extension GameEngine {
                     let gap = mine > 0 ? 1 - (u.priceIndex ?? mine) / mine : 0
                     let disc = rivals.first { $0.id == id }?.discountPercent
                     out.append(MarketThreat(id: "under:\(p.companyID):\(id)", kind: .undercut, title: "\(u.name) undercuts \(p.name)",
-                                            detail: disc.map { "Running \($0)% off." } ?? "About \(Int((gap * 100).rounded()))% cheaper than you.",
+                                            detail: disc.map { "Running \($0)% off." } ?? "About \(Int(saturating: (gap * 100).rounded()))% cheaper than you.",
                                             companyID: p.companyID, rivalID: id, severity: clamp(u.share + max(0, gap), 0, 1)))
                 }
             }

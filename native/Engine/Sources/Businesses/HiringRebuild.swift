@@ -41,7 +41,7 @@ public enum Workplaces {
     /// The places a premises of this kind and size holds: offices by area, home by the table, everything else unlimited (nil).
     public static func places(kind: String, squareMetres m2: Double) -> Int? {
         switch kind {
-        case "office": return max(smallestOffice, Int((m2 / squareMetresPerPlace).rounded(.down)))
+        case "office": return max(smallestOffice, Int(saturating: (m2 / squareMetresPerPlace).rounded(.down)))
         case "home": return homePlaces
         default: return nil
         }
@@ -337,7 +337,7 @@ public enum RoleEffects {
         if filled(co, "recept") { f += receptionistGain }
         return f
     }
-    public static func developmentWeeks(_ weeks: Int, _ co: Company) -> Int { filled(co, "dev") ? max(1, Int((Double(weeks) * developerWeeksFactor).rounded(.up))) : weeks }
+    public static func developmentWeeks(_ weeks: Int, _ co: Company) -> Int { filled(co, "dev") ? max(1, Int(saturating: (Double(weeks) * developerWeeksFactor).rounded(.up))) : weeks }
     public static func inspectionRelief(_ co: Company) -> Double { (filled(co, "acct") ? accountantInspection : 0) + (filled(co, "cleaner") ? cleanerInspection : 0) }
     public static func theftGrowthFactor(_ co: Company) -> Double { filled(co, "guard") ? 0.5 : 1 }
 

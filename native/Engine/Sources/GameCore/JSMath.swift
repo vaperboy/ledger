@@ -32,4 +32,8 @@ extension Int {
         else if d <= -9.2e18 { self = Int.min }
         else { self = Int(d) }
     }
+    /// The same for a CGFloat (screen sizes and fractions).
+    public init(saturating d: CGFloat) { self.init(saturating: Double(d)) }
+    /// The same for a Float.
+    public init(saturating d: Float) { self.init(saturating: Double(d)) }
 }

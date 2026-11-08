@@ -24,7 +24,7 @@ struct CompanyPerformance: View {
             : use == nil ? "Shows after the first trading week" : (full ? "Capacity is the limit: customers are turned away" : "Demand is the limit: there is room for more customers")
         let trend: [Double] = weeks.map { (w: OperationsFigures.Week) -> Double in w.capacity > 0 ? min(w.demand, w.capacity) / w.capacity : 0 }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            CompanyHero(label: "Capacity used", value: none ? "None" : (use.map { "\(Int(($0 * 100).rounded()))%" } ?? "\u{2013}"), tint: none ? P.loss : (full ? P.warn : nil),
+            CompanyHero(label: "Capacity used", value: none ? "None" : (use.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? "\u{2013}"), tint: none ? P.loss : (full ? P.warn : nil),
                         change: note, changeTint: none ? P.loss : (full ? P.warn : P.inkSoft), trend: trend)
             if !weeks.isEmpty {
                 ChartFrame(title: "Demand against capacity", period: "last \(weeks.count) weeks", height: 84) {

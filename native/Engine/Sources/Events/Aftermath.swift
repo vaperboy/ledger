@@ -102,7 +102,7 @@ public enum Aftermath {
             var f = s.companies[i].value("flags")
             f["premUp"] = fx["premUp"]; f["premUntil"] = .number(Double(s.week) + fx["premWeeks"].double)
             s.companies[i].set("flags", f)
-            s.note("\(co.name): insurance premiums +\(Int((fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks.", tone: "bad", companyID: co.id)
+            s.note("\(co.name): insurance premiums +\(Int(saturating: (fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks.", tone: "bad", companyID: co.id)
         }
         // A step of a chain can queue the next one, so the answer decides what comes next (`next`: {k, d, why}).
         if !fx["next"].isNull {

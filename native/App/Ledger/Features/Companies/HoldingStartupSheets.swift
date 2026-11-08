@@ -136,8 +136,8 @@ struct HoldingBuyMoreStartupSheet: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     PopupRow(label: "Price", value: cur.tidyShort(q.price))
                     PopupRow(label: "Fair value of these shares", value: cur.tidyShort(q.valuation * q.percent / 100))
-                    if q.priceFactor > 1.0001 { Text("Includes a \(Int(((q.priceFactor - 1) * 100).rounded()))% premium for taking control.").popupText(.caption) }
-                    if q.priceFactor < 0.9999 { Text("A small stake is bought at a \(Int(((1 - q.priceFactor) * 100).rounded()))% discount.").popupText(.caption) }
+                    if q.priceFactor > 1.0001 { Text("Includes a \(Int(saturating: ((q.priceFactor - 1) * 100).rounded()))% premium for taking control.").popupText(.caption) }
+                    if q.priceFactor < 0.9999 { Text("A small stake is bought at a \(Int(saturating: ((1 - q.priceFactor) * 100).rounded()))% discount.").popupText(.caption) }
                     HoldingTierNote(tier: q.tierAfter, percent: q.heldAfter)
                     HoldingCashNeed(holdingCash: h.cash, needed: q.price, cur: cur) { (short: Double) in
                         pending = holdingInjectAction(store: store, holdingID: holdingID, holdingName: h.name, amount: short, cur: cur)
@@ -204,7 +204,7 @@ struct HoldingSellStartupSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(s.name).popupText(.figure)
             HoldingTierNote(tier: s.tier, percent: s.percent)
-            SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in "\(Int((f * 100).rounded()))%" }, selection: $fraction)
+            SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in "\(Int(saturating: (f * 100).rounded()))%" }, selection: $fraction)
             switch result {
             case .success(let q):
                 let ask: Double = (q.proceeds * multiplier).rounded()
@@ -214,7 +214,7 @@ struct HoldingSellStartupSheet: View {
                     VenturesAskControl(quote: q, cur: cur, multiplier: $multiplier)
                     PopupRow(label: "Against what the holding paid", value: (ask >= q.costBasis ? "+" : "\u{2212}") + cur.tidyShort(abs(ask - q.costBasis)))
                     PopupRow(label: "The holding keeps", value: q.closesStake ? "Nothing" : holdingPct((q.remainingPercent * 10).rounded() / 10))
-                    Text("A buyer pays \(Int((q.factor * 100).rounded()))% of fair value at this stake size; a bigger stake is easier to sell. The money goes into the holding's account.")
+                    Text("A buyer pays \(Int(saturating: (q.factor * 100).rounded()))% of fair value at this stake size; a bigger stake is easier to sell. The money goes into the holding's account.")
                         .popupText(.caption).fixedSize(horizontal: false, vertical: true)
                     VenturesSaleReply(reply: reply, cur: cur) { (c: Double) in sell(cur, multiplier: c / max(1, q.proceeds)) }
                     Button("Ask \(cur.tidyShort(ask))") { askConfirm(s, q, ask, cur) }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
@@ -229,7 +229,7 @@ struct HoldingSellStartupSheet: View {
 
     private func askConfirm(_ s: StartupHolding.Stake, _ q: VentureSale.Quote, _ ask: Double, _ cur: Currency) {
         let m: Double = multiplier
-        pending = PendingAction(title: "Sell \(Int((q.fraction * 100).rounded()))% of the stake in \(s.name)?",
+        pending = PendingAction(title: "Sell \(Int(saturating: (q.fraction * 100).rounded()))% of the stake in \(s.name)?",
                                 message: "The holding asks \(cur.tidyShort(ask)). The buyer may take it, offer less, or refuse. A sale cannot be undone.",
                                 button: "Sell", destructive: true, tone: .investment, icon: "arrow.up.right") {
             sell(cur, multiplier: m)

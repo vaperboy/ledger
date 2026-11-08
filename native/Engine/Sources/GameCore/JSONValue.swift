@@ -47,11 +47,11 @@ public enum JSONValue: Codable, Equatable, Sendable {
         default: return 0
         }
     }
-    public var int: Int { Int(double.finiteOrZero) }
+    public var int: Int { Int(saturating: double.finiteOrZero) }   // a huge saved number must not trap
     public var string: String {
         switch self {
         case .string(let s): return s
-        case .number(let n): return n == n.rounded() ? String(Int64(n)) : String(n)
+        case .number(let n): return n.isFinite && abs(n) < 9e18 && n == n.rounded() ? String(Int64(n)) : String(n)   // Int64() traps outside its range
         case .bool(let b): return b ? "true" : "false"
         default: return ""
         }

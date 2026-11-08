@@ -139,7 +139,7 @@ public enum Marketplace {
             let cl = tables.raw["VEH_CLASS"][m].string
             age = 1 + Int(r.next() * (["plant", "ship", "plane"].contains(cl) ? 14 : 11))
             let kmY: Double = (cl == "truck" || cl == "bus") ? 90000 : (cl == "bike" || cl == "scooter") ? 4000 : 18000
-            km = Int(roundTo(Double(age) * kmY * (0.6 + r.next() * 0.8), step: 1000))
+            km = Int(saturating: roundTo(Double(age) * kmY * (0.6 + r.next() * 0.8), step: 1000))
             base = EquipmentMarket.vehiclePrice(vm, factor: o.priceFactor, w) * 0.8 * pow(0.87, Double(age - 1))
             name = o.name; rel = o.reliability; rating = o.rating
         } else if let e = f.e {

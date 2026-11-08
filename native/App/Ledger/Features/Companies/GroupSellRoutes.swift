@@ -190,7 +190,7 @@ struct SaleRoutePicker: View {
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             SegmentedPill(items: [false, true], title: { (b: Bool) -> String in b ? "Broker (4%)" : "Quietly" }, selection: $brokerStake)
             ForEach(tiers) { (t: CompanySale.StakeTier) in
-                PopupChoiceRow(title: "\(t.pct)% of your shares", subtitle: "You keep \(Int(t.youKeep.rounded()))%. " + t.unlocks.joined(separator: " ")) { listStake(t) }
+                PopupChoiceRow(title: "\(t.pct)% of your shares", subtitle: "You keep \(Int(saturating: t.youKeep.rounded()))%. " + t.unlocks.joined(separator: " ")) { listStake(t) }
                     .disabled(!t.allowed)
             }
         }

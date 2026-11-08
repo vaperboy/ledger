@@ -5,7 +5,7 @@ import Businesses
 import Simulation
 
 /// Customer complaints, placed at the end of Operations: a mailbag (a quote and three ways to answer, each with what it costs).
-/// Development moved to Sales (`CompanyDevelopment`), named for the trade; giving up premises and changing the accountant moved to
+/// Giving up premises and changing the accountant moved to
 /// Workplace and Insurance and advisers.
 struct CompanyOtherSections: View {
     @EnvironmentObject var store: GameStore

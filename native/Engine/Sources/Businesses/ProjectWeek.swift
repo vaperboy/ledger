@@ -128,7 +128,7 @@ public enum ProjectWeek {
                     j.what = s.random.pick(pool[min(2, max(0, focus))])
                 }
                 j.dueWeek = wk + j.weeks
-                j.dueDay = j.dueWeek * 7 + Int((s.random.next() * 7).rounded(.down))
+                j.dueDay = j.dueWeek * 7 + Int(saturating: (s.random.next() * 7).rounded(.down))
                 let before = jobs.filter { ($0.dueDay ?? 0) <= (j.dueDay ?? 0) }.reduce(0) { $0 + $1.remainingHours }
                 if Hw <= 0 || before + j.hours > Double((j.dueDay ?? 0) - nowD) / 7 * Hw * 0.9 { L.lost += 1; return false }
             } else {

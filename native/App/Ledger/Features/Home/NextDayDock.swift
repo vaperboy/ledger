@@ -1,8 +1,9 @@
 import SwiftUI
 import Simulation
 
-/// The floating Next day control at the bottom right of Home, above the tab bar: a 56 pt pill that advances one day, with a thin accent
-/// ring that runs round it while the day plays. Home keeps `reserve` points clear for it.
+/// The floating Next day control at the bottom right of Home: a 56 pt glass pill that advances one day, with a thin accent ring that runs
+/// round it while the day plays. It is attached inside the page's tab bar clearance (see `CompaniesView`), so it sits above the tab bar
+/// by `gap`; Home keeps `reserve` points clear for it.
 struct NextDayDock: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -10,8 +11,10 @@ struct NextDayDock: View {
     @State private var dayRing: Double = 0
 
     static let height: CGFloat = 56
-    /// Height Home keeps clear at the bottom: the pill and a gap above the tab bar's own clearance.
-    static let reserve: CGFloat = height + Theme.Space.s
+    /// Space between the pill and the tab bar (or the screen's bottom edge where there is no bar).
+    static let gap: CGFloat = Theme.Space.m
+    /// Height Home keeps clear at the bottom: the pill and its gap, on top of the tab bar's own clearance.
+    static let reserve: CGFloat = height + gap
 
     private var over: Bool { engine.state.isGameOver }
     private var blockID: Int? { store.blockingMessageID }
@@ -48,7 +51,7 @@ struct NextDayDock: View {
             }
             .padding(.horizontal, Theme.Space.xl)
             .frame(minWidth: Self.height, minHeight: Self.height)
-            .background(Capsule().fill(Theme.surfaceRaised))
+            .glassCapsule()
             .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1.5))
             .overlay(
                 Capsule().trim(from: 0, to: fraction)

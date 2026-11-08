@@ -331,19 +331,19 @@ public extension GameEngine {
             let dev = f.filter { $0.state == "dev" }, prod = f.filter { $0.state == "prod" }
             if prod.isEmpty && dev.isEmpty { out.append(Insight(id: "nofield", symbol: "drop", text: "No field yet. Buy a stake in a producing field or drill an exploration well.", tone: .warn)) }
             if let d = dev.first { out.append(Insight(id: "dev", symbol: "hammer", text: "\(d.name) is in development, \(d.weeksToProduction) weeks to first oil.", tone: .neutral)) }
-            if state.economy.oil < 0.8 { out.append(Insight(id: "oilprice", symbol: "arrow.down.right", text: "The oil price is low (\(Int((state.economy.oil * 100).rounded()))% of normal). Term contracts would cushion it.", tone: .warn)) }
+            if state.economy.oil < 0.8 { out.append(Insight(id: "oilprice", symbol: "arrow.down.right", text: "The oil price is low (\(Int(saturating: (state.economy.oil * 100).rounded()))% of normal). Term contracts would cushion it.", tone: .warn)) }
         case "salmon":
             let c = SalmonModel.cohorts(co)
             if c.isEmpty { out.append(Insight(id: "nofish", symbol: "fish", text: "No fish in the pens. A new cohort is stocked when the cash allows.", tone: .warn)) }
-            else if let r = c.map({ $0.readyShare }).max() { out.append(Insight(id: "fish", symbol: "fish", text: r >= 0.9 ? "A cohort is nearly ready for harvest." : "The oldest cohort has reached \(Int((r * 100).rounded()))% of harvest weight.", tone: r >= 0.9 ? .good : .neutral)) }
-            if state.economy.salmon < 0.8 { out.append(Insight(id: "salmonprice", symbol: "arrow.down.right", text: "The salmon price is low (\(Int((state.economy.salmon * 100).rounded()))% of normal).", tone: .warn)) }
+            else if let r = c.map({ $0.readyShare }).max() { out.append(Insight(id: "fish", symbol: "fish", text: r >= 0.9 ? "A cohort is nearly ready for harvest." : "The oldest cohort has reached \(Int(saturating: (r * 100).rounded()))% of harvest weight.", tone: r >= 0.9 ? .good : .neutral)) }
+            if state.economy.salmon < 0.8 { out.append(Insight(id: "salmonprice", symbol: "arrow.down.right", text: "The salmon price is low (\(Int(saturating: (state.economy.salmon * 100).rounded()))% of normal).", tone: .warn)) }
         case "hold":
             let o = HoldingModel.consolidated(co, state, trades: data.catalog)
             out.append(Insight(id: "holdvalue", symbol: "building.columns", text: "The holding is worth \(cur.short(o.holdingValue)): \(cur.short(o.companiesValue)) in companies, \(cur.short(o.indexFund)) in the index fund, \(cur.short(co.cash)) in cash.", tone: .neutral))
             if o.groupCovered > 0 { out.append(Insight(id: "taxgroup", symbol: "arrow.triangle.merge", text: "Profits cover \(cur.short(o.groupCovered)) of sister companies' losses this year, saving tax.", tone: .good)) }
         case "club":
             if let c = FootballModel.summary(co, state, data: data) {
-                if c.wageToRevenue > 0.75 { out.append(Insight(id: "clubwages", symbol: "banknote", text: "Player and coach wages take \(Int((c.wageToRevenue * 100).rounded()))% of revenue.", tone: .warn)) }
+                if c.wageToRevenue > 0.75 { out.append(Insight(id: "clubwages", symbol: "banknote", text: "Player and coach wages take \(Int(saturating: (c.wageToRevenue * 100).rounded()))% of revenue.", tone: .warn)) }
                 if c.coach == nil { out.append(Insight(id: "nocoach", symbol: "person.fill.questionmark", text: "The club has no manager.", tone: .bad)) }
                 else if c.coach?.interim == true { out.append(Insight(id: "interim", symbol: "person.fill.questionmark", text: "A temporary manager is in charge. Hire a permanent one.", tone: .warn)) }
                 if c.position > 0, c.clubs > 3, c.division == 1, c.position > c.clubs - 3, c.played > 10 { out.append(Insight(id: "relegation", symbol: "arrow.down.circle", text: "In the relegation places: \(c.position) of \(c.clubs).", tone: .bad)) }

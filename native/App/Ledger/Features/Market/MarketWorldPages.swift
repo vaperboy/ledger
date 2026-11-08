@@ -47,7 +47,7 @@ struct CompanyRankingSection: View {
     }
 
     private func figure(_ en: CompanyRanking.Entry) -> String {
-        metric == .growth ? String(format: "%+d%%", Int((en.growth * 100).rounded())) : store.short(en.figure(metric))
+        metric == .growth ? String(format: "%+d%%", Int(saturating: (en.growth * 100).rounded())) : store.short(en.figure(metric))
     }
 
     private func row(_ en: CompanyRanking.Entry, _ e: GameEngine) -> some View {
@@ -158,7 +158,7 @@ struct WorldAroundView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(n.name).textStyle(.body)
-                                        Text(n.trade + (n.ownership < 100 ? " · you own \(Int(n.ownership.rounded()))%" : "")).font(.caption).foregroundStyle(Theme.ivoryFaint)
+                                        Text(n.trade + (n.ownership < 100 ? " · you own \(Int(saturating: n.ownership.rounded()))%" : "")).font(.caption).foregroundStyle(Theme.ivoryFaint)
                                     }
                                     Spacer()
                                     Text(store.short(n.value)).textStyle(.body, tint: Theme.inkSoft, numeric: true)

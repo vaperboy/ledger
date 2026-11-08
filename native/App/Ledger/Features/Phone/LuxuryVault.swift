@@ -91,7 +91,7 @@ struct LuxuryInspectSheet: View {
 
     private func askToSell(_ e: GameEngine, _ p: Luxury.Piece) {
         guard let get = e.luxurySellQuote(pieceID: p.id) else { return }
-        let fee: Int = Int((Luxury.sellFee * 100).rounded())
+        let fee: Int = Int(saturating: (Luxury.sellFee * 100).rounded())
         let message: String = "You receive \(store.money(get)), after \(fee)% selling costs. A gain is taxed with your other gains."
         pending = PendingAction(title: "Sell \(p.item.name)?", message: message, button: "Sell for \(store.short(get))", destructive: false, tone: .warning, icon: "tag") {
             let v: Double = store.act { $0.sellLuxury(pieceID: p.id) } ?? 0

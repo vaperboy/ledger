@@ -116,7 +116,7 @@ struct SellStakeSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text(st.name).popupText(.figure)
             PopupRow(label: "You hold", value: String(format: "%.1f%% worth ", st.ownership) + cur.tidyShort(st.value))
-            SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in "\(Int((f * 100).rounded()))%" }, selection: $fraction)
+            SegmentedPill(items: [0.25, 0.5, 0.75, 1.0], title: { (f: Double) -> String in "\(Int(saturating: (f * 100).rounded()))%" }, selection: $fraction)
             if q.ok {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     PopupRow(label: "Fair value of these shares", value: cur.tidyShort(q.fairValue))
@@ -124,7 +124,7 @@ struct SellStakeSheet: View {
                     VenturesAskControl(quote: q, cur: cur, multiplier: $multiplier)
                     PopupRow(label: "Against what you put in", value: (ask >= q.costBasis ? "+" : "\u{2212}") + cur.tidyShort(abs(ask - q.costBasis)))
                     PopupRow(label: "You hold after", value: q.closesStake ? "Nothing" : String(format: "%.1f%%", q.remainingPercent))
-                    Text("Shares sold early go for \(Int(((1 - q.factor) * 100).rounded()))% under their fair value. A gain is taxed." + (st.boardSeat && !q.keepsBoardSeat && !q.closesStake ? " Under 20% you lose the board seat." : ""))
+                    Text("Shares sold early go for \(Int(saturating: ((1 - q.factor) * 100).rounded()))% under their fair value. A gain is taxed." + (st.boardSeat && !q.keepsBoardSeat && !q.closesStake ? " Under 20% you lose the board seat." : ""))
                         .popupText(.caption).fixedSize(horizontal: false, vertical: true)
                     VenturesSaleReply(reply: reply, cur: cur) { (c: Double) in sell(st, cur, multiplier: c / max(1, q.proceeds)) }
                     Button("Ask \(cur.tidyShort(ask))") { askConfirm(st, q, ask, cur) }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
@@ -139,7 +139,7 @@ struct SellStakeSheet: View {
 
     private func askConfirm(_ st: Startups.Stake, _ q: VentureSale.Quote, _ ask: Double, _ cur: Currency) {
         let m: Double = multiplier
-        pending = PendingAction(title: "Sell \(Int((q.fraction * 100).rounded()))% of your stake in \(st.name)?",
+        pending = PendingAction(title: "Sell \(Int(saturating: (q.fraction * 100).rounded()))% of your stake in \(st.name)?",
                                 message: "You ask \(cur.tidyShort(ask)). The buyer may take it, offer less, or refuse. A sale cannot be undone.",
                                 button: "Sell", destructive: true, tone: .investment, icon: "arrow.up.right") {
             sell(st, cur, multiplier: m)

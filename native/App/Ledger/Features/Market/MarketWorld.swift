@@ -177,7 +177,7 @@ struct CountryPage: View {
                 let city: MarketCity = pair.element
                 let rivals: String = city.rivals.map { (n: Int) -> String in " \u{00B7} " + n.countText("rival") } ?? ""
                 LedgerRow(title: city.name,
-                          subtitle: "\(Int(city.population.rounded()).formatted())k \u{00B7} \(MarketWords.level(city.tradeDemand ?? city.demand)) demand \u{00B7} \(MarketWords.cost(city.rentLevel)) rent" + rivals,
+                          subtitle: "\(Int(saturating: city.population.rounded()).formatted())k \u{00B7} \(MarketWords.level(city.tradeDemand ?? city.demand)) demand \u{00B7} \(MarketWords.cost(city.rentLevel)) rent" + rivals,
                           value: city.yourCompanies > 0 ? city.yourCompanies.countText("company", plural: "companies") : "", lineLimit: 1)
             }
         }

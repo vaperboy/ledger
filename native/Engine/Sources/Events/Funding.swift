@@ -177,7 +177,7 @@ public enum Funding {
         if o["k"].string == "fund" { addBoardSeats(&s, i, 1) }
         bump(&s, "raised", amt)
         writeOffers(&s, companyID, [])
-        s.note("\(co.name) raised \(Int(amt)) from \(o["name"].string) for \(Int(pct.rounded()))% in new shares.", tone: "good", companyID: companyID)
+        s.note("\(co.name) raised \(Int(amt)) from \(o["name"].string) for \(Int(saturating: pct.rounded()))% in new shares.", tone: "good", companyID: companyID)
         return true
     }
 
@@ -240,7 +240,7 @@ public enum Funding {
             s.note("Sold \(Int(pct))% of \(co.name) to \(inv) for \(cur.display(amt)) (\(shares) new shares).", tone: "good", companyID: companyID)
             return .ok(amt)
         }
-        let shares = Int((Double(t.you) * pct / 100).rounded())
+        let shares = Int(saturating: (Double(t.you) * pct / 100).rounded())
         let amt = jsRound(v * Double(shares) / Double(t.total) * 0.85)
         let moved = CapTable.sellFromYou(&s, i, shares: shares, to: inv, paid: amt)
         Payments.ownerReceivesSale(&s, from: co, amount: amt, gain: amt * 0.7, label: "Sold \(Int(pct))% of your stake in \(co.name)")

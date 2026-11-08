@@ -136,7 +136,7 @@ public extension GameEngine {
         let legal = co.value("legal")
         let holders = co.value("holders").array.compactMap { h -> String? in
             let pct = h["pct"].double
-            return pct > 0 ? "\(h["name"].string.isEmpty ? "Shareholder" : h["name"].string) \(Int(pct.rounded()))%" : nil
+            return pct > 0 ? "\(h["name"].string.isEmpty ? "Shareholder" : h["name"].string) \(Int(saturating: pct.rounded()))%" : nil
         }
         let acc = co.value("acc")
         let periodName: String

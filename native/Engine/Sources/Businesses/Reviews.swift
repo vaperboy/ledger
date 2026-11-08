@@ -68,7 +68,7 @@ public enum Reviews {
         guard s.companies[i].status == .open, bd.family != "project", s.companies[i].value("lastW")["units"].double > 0 else { return }
         let u = s.companies[i].value("lastW")["units"].double
         let acc = s.companies[i].num("rvF") + min(u * rate(bd), 30 + 3 * u.squareRoot())
-        let n = Int(acc.rounded(.down))
+        let n = Int(saturating: acc.rounded(.down))
         s.companies[i].set("rvF", acc - Double(max(0, n)))
         if n > 0 { for _ in 0..<min(n, 60) { add(&s, i, bias: 0, data: data) } }
     }
@@ -184,7 +184,7 @@ public enum Reviews {
     /// Reviews a rival has gathered so far, as the screen shows them. Original: `reviewList` (rival rows).
     public static func rivalReviewCount(_ bd: Trade, size: Double, week: Int) -> Int {
         let per = min(((bd.normalDemand == 0 ? 30 : bd.normalDemand) * 7) * size * 0.5, 600) * rate(bd)
-        return Int(((80 + Double(week)) * per * 0.6).rounded(.down))
+        return Int(saturating: ((80 + Double(week)) * per * 0.6).rounded(.down))
     }
 }
 

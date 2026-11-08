@@ -1,4 +1,11 @@
 # What's new
+- Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
+- Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists
+- Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
+- Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
+- Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them
+- Home sits clear of the island, Next day sits above the tab bar, empty space is shared evenly, a single company shows a richer card, and the app has a soft gradient background with glass-style cards, tab bar and day button
+- Fix for a crash while playing the first weeks of a new game: more number conversions can no longer overflow or hit a non-number, and charts ignore values that are not numbers
 - Fix for the crash on opening an older save: saved numbers can no longer overflow a conversion, duplicate names no longer break lookups, the first-run tour only starts in a new game, and the zoom transitions are off until they are proven safe
 - Money in is a green up arrow and money out a red down arrow instead of plus and minus; a company shows this week so far live with its change on last week; only the change in a figure rolls (up in green, down in red); the net worth chart adds each new day instead of redrawing
 - A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests

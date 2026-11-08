@@ -33,7 +33,8 @@ struct CustomTabView: View {
         if let target = store.customTarget {
             switch target {
             case .app(let app): PhoneAppScreen(app: app)
-            case .company(let id): CompanyRouteDestination(route: .company(id))
+            case .company(let id):
+                if store.engine?.state.company(id) != nil { CompanyRouteDestination(route: .company(id)) } else { CustomTabEmpty() }
             }
         } else {
             CustomTabEmpty()
@@ -48,7 +49,7 @@ struct CustomTabEmpty: View {
 
     var body: some View {
         ScrollView {
-            CustomTabPicker(pickingFirst: true)
+            CustomTabPicker(pickingFirst: true).coachAnchor(.customPick)
         }
         .background(P.ground.ignoresSafeArea())
         .accessibilityIdentifier("custom-empty")

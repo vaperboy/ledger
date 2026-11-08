@@ -36,7 +36,8 @@ private struct AppFirstOpenHelp: ViewModifier {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .task {
-                guard app.helpText != nil, !FirstRunFlags.seen(FirstRunFlags.appHelp(app.rawValue)) else { return }
+                // Apps with a guided tour (`CoachTours`) point at their screen instead of raising this sheet.
+                guard app.helpText != nil, !CoachTours.coversApp(app), !FirstRunFlags.seen(FirstRunFlags.appHelp(app.rawValue)) else { return }
                 // After the app's opening splash, and only when no other popup is up; retried briefly while one is.
                 for _ in 0..<12 {
                     try? await Task.sleep(nanoseconds: 700_000_000)

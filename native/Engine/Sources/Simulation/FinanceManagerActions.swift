@@ -54,6 +54,6 @@ public extension GameEngine {
     /// The layoff chip of the staff screen: "1", "3" or "10" (10% of the staff, at least one). Original: `layoffCard`, `ACT.loset`.
     func layoffCount(companyID: Int, preset: String) -> Int {
         let n = state.company(companyID)?.staff.count ?? 0
-        return preset == "10" ? max(1, Int((Double(n) * 0.1).rounded())) : min(n, Int(preset) ?? 1)
+        return preset == "10" ? max(1, Int(saturating: (Double(n) * 0.1).rounded())) : min(n, Int(preset) ?? 1)
     }
 }

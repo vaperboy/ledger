@@ -1,4 +1,5 @@
 import Foundation
+import GameCore
 import Countries
 
 /// The plain-language summary of a report: three to five sentences, every number taken from the report itself.
@@ -6,7 +7,7 @@ import Countries
 public enum ReportSummary {
     public static func sentences(_ r: PeriodReport, currency cur: Currency) -> [String] {
         func amount(_ v: Double) -> String { cur.short(abs(v)).replacingOccurrences(of: "\u{00A0}", with: " ") }
-        func pct(_ x: Double) -> String { abs(x) < 0.1 ? String(format: "%.1f%%", abs(x) * 100) : "\(Int((abs(x) * 100).rounded()))%" }
+        func pct(_ x: Double) -> String { abs(x) < 0.1 ? String(format: "%.1f%%", abs(x) * 100) : "\(Int(saturating: (abs(x) * 100).rounded()))%" }
         let noun = r.kind.noun
         let g = r.group
         let net = g.pnl.netProfit
@@ -46,12 +47,12 @@ public enum ReportSummary {
         let rev = g.pnl.revenue
         let costs = g.pnl.costLines.filter { $0.amount > 0 }.sorted { $0.amount != $1.amount ? $0.amount > $1.amount : $0.id < $1.id }
         if rev > 0, let top = costs.first {
-            var s = "\(top.label) took \(Int((top.amount / rev * 100).rounded()))% of revenue"
+            var s = "\(top.label) took \(Int(saturating: (top.amount / rev * 100).rounded()))% of revenue"
             if let p = prev, p.pnl.revenue > 0, let was = p.pnl.costLines.first(where: { $0.id == top.id }) {
                 let before = was.amount / p.pnl.revenue, now = top.amount / rev
-                if abs(now - before) >= 0.02 { s += " (\(Int((before * 100).rounded()))% last \(noun))" }
+                if abs(now - before) >= 0.02 { s += " (\(Int(saturating: (before * 100).rounded()))% last \(noun))" }
             }
-            if costs.count > 1 { s += ", then \(costs[1].label.lowercased()) at \(Int((costs[1].amount / rev * 100).rounded()))%" }
+            if costs.count > 1 { s += ", then \(costs[1].label.lowercased()) at \(Int(saturating: (costs[1].amount / rev * 100).rounded()))%" }
             out.append(s + ".")
         } else if rev <= 0, g.pnl.costs > 0 {
             out.append("Costs were \(amount(g.pnl.costs)) with no revenue yet.")

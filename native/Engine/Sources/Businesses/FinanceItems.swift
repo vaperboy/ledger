@@ -206,7 +206,7 @@ public enum FinanceItems {
         for b in list {
             var r = ItemModels.record(s.companies[i], itemID: b.id) ?? ItemModels.Record(id: b.id, model: b.model)
             r.model = b.model
-            r.stock = Int(b.units.rounded()); r.capacity = b.volume; r.status = ""
+            r.stock = Int(saturating: b.units.rounded()); r.capacity = b.volume; r.status = ""
             ItemModels.put(&s, i, r)
         }
         refresh(&s, i, companyID: companyID, data: data)

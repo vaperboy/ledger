@@ -281,7 +281,7 @@ private struct LoanStepChoose: View {
 
     private var termCard: some View {
         let lo = Double(q.minTermMonths), hi = Double(q.maxTermMonths)
-        let value = Binding<Double>(get: { Double(term) }, set: { term = Int($0.rounded()) })
+        let value = Binding<Double>(get: { Double(term) }, set: { term = Int(saturating: $0.rounded()) })
         return Card(padding: 16, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: 10) {
                 Text("REPAYMENT PERIOD (MONTHS)").capsLabel()

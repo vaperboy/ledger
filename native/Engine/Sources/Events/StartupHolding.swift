@@ -67,7 +67,7 @@ public enum StartupHolding {
         let q = Startups.investQuote(s, pitchID: pitchID, amount: amount, holdingID: holdingID, context: fc)
         switch q.result {
         case .gone: return .failure(.notFound)
-        case .tooSmall: return .failure(.refused("The smallest investment is \(Int(q.minimum.rounded()))."))
+        case .tooSmall: return .failure(.refused("The smallest investment is \(Int(saturating: q.minimum.rounded()))."))
         case .notEnoughMoney: return .failure(.notEnoughCash(needed: q.amount))
         case .ok: return .success(q)
         }

@@ -172,7 +172,7 @@ public enum SupplyDeals {
             let lw = sp.value("lastW")
             let free = max(0, lw["cap"].double - lw["units"].double) - (committed[sid] ?? 0)
             let already = IntercompanySupply.link(s, buyer: co.id, kind: input)?.supplierID == sid
-            if !already && need > free + 1e-9 { return "\(sp.name) has no spare capacity for it (needs about \(Int(need.rounded())) sales a week, \(Int(free.rounded())) free)." }
+            if !already && need > free + 1e-9 { return "\(sp.name) has no spare capacity for it (needs about \(Int(saturating: need.rounded())) sales a week, \(Int(saturating: free.rounded())) free)." }
             if !already { committed[sid, default: 0] += need }
             return nil
         case .businessCustomer(let aid):

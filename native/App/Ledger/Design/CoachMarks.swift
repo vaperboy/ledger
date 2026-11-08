@@ -5,13 +5,23 @@ enum FirstRunFlags {
     static let tour = "firstRun.tour"
     static let customTabTip = "firstRun.customTabTip"
     static func appHelp(_ appID: String) -> String { "firstRun.appHelp." + appID }
+    /// The seen flag of one tour of `CoachTours` (the first-session tour keeps its original key).
+    static func tourFlag(_ id: String) -> String { "firstRun.tour." + id }
 
     static func seen(_ key: String) -> Bool { UserDefaults.standard.bool(forKey: key) }
     static func mark(_ key: String) { UserDefaults.standard.set(true, forKey: key) }
 }
 
 /// A place on screen a coach mark can point at.
-enum CoachStop: Hashable { case nextDay, happened, needsYou, phoneTab }
+enum CoachStop: Hashable {
+    case nextDay, happened, needsYou, phoneTab
+    case tabBar, customTab, customPick
+    case groupAdd, groupStructure, groupPeople, groupCard
+    case venturesHeader, venturesFound, venturesBacking
+    case phoneGrid, phoneInbox, phoneBank
+    case companyTabs, companyPage
+    case appHeader
+}
 
 /// Collects the bounds of every view tagged with `coachAnchor`, so one overlay higher up can cut a hole around any of them.
 struct CoachAnchorKey: PreferenceKey {
@@ -28,6 +38,11 @@ extension View {
             enabled ? [stop: a] : [:]
         }
     }
+
+    /// Marks a strip of `height` at the top of this view as the place `stop` points at: for a long block whose first lines are what to show.
+    func coachTopStrip(_ stop: CoachStop, height: CGFloat) -> some View {
+        overlay(alignment: .top) { Color.clear.frame(height: height).allowsHitTesting(false).coachAnchor(stop) }
+    }
 }
 
 /// One mark of a tour: where it points, its sentence, whether a tap on the highlighted view reaches it (the step is done by using it)
@@ -37,6 +52,14 @@ struct CoachMark: Equatable {
     var text: String
     var passThrough: Bool = false
     var button: String = "Next"
+    /// Where to point when `stop` is not on screen (a screen that has no hook for it yet).
+    var fallback: CoachStop? = nil
+
+    func anchor(in anchors: [CoachStop: Anchor<CGRect>]) -> Anchor<CGRect>? {
+        if let a = anchors[stop] { return a }
+        if let f = fallback { return anchors[f] }
+        return nil
+    }
 }
 
 /// A dimmed screen with a cut-out around the view the current mark points at, and a small card with one sentence, the step count and Skip.
@@ -47,6 +70,9 @@ struct CoachMarks: View {
     var anchors: [CoachStop: Anchor<CGRect>]
     var step: Int
     var visible: Bool
+    /// "n of m" shown on the card; nil: the step number and the count of `marks`.
+    var position: Int? = nil
+    var total: Int? = nil
     var onNext: () -> Void
     var onSkip: () -> Void
 
@@ -54,7 +80,8 @@ struct CoachMarks: View {
         GeometryReader { (geo: GeometryProxy) in
             if visible, step < marks.count, let anchor = anchors[marks[step].stop] {
                 let mark: CoachMark = marks[step]
-                let hole: CGRect = geo[anchor].insetBy(dx: -6, dy: -6)
+                // A block taller than the screen is cut to what is on screen.
+                let hole: CGRect = geo[anchor].intersection(CGRect(origin: .zero, size: geo.size)).insetBy(dx: -6, dy: -6)
                 ZStack {
                     dim(size: geo.size, hole: hole, passThrough: mark.passThrough)
                     ring(hole)
@@ -92,7 +119,7 @@ struct CoachMarks: View {
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(mark.text).textStyle(.headline, tint: Theme.ink).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: Theme.Space.s) {
-                Text("\(step + 1) of \(marks.count)").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                Text("\(position ?? (step + 1)) of \(total ?? marks.count)").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                 Spacer(minLength: Theme.Space.s)
                 Button { Haptics.tap(); onSkip() } label: { Text("Skip") }
                     .buttonStyle(PlainTextButtonStyle()).accessibilityIdentifier("coach-skip")
@@ -111,5 +138,95 @@ struct CoachMarks: View {
         .padding(above ? .bottom : .top, above ? size.height - hole.minY + Theme.Space.m : hole.maxY + Theme.Space.m)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+    }
+}
+
+/// Where a tour starts. `firstDay`: the first week of a new game on Home. `tab`: the tab is showing at its root. `unlock`: the feature is
+/// open (the player has earned it) and its tab is showing. `route`: that page is the one on top of the tab being shown.
+enum CoachTrigger: Equatable {
+    case firstDay
+    case tab(AppTab)
+    case unlock(String, AppTab)
+    case route(CoachRoute)
+}
+
+enum CoachRoute: Equatable {
+    case company
+    case app(PhoneApp)
+}
+
+/// One guided tour: shown once (its flag is kept per install), when its trigger holds and its first mark is on screen. A mark whose
+/// view is not on screen is skipped.
+struct CoachTour {
+    var id: String
+    var trigger: CoachTrigger
+    var marks: [CoachMark]
+    /// The seen flag when it is not the tour's own (the app tours share the flag of the old help sheet).
+    var flag: String? = nil
+    /// Seconds the trigger must hold before the tour appears (an app's opening splash plays first).
+    var delay: Double = 0.6
+
+    var key: String { flag ?? FirstRunFlags.tourFlag(id) }
+}
+
+/// Every tour of the game, in priority order: adding a tour is adding one entry here (and a `.coachAnchor` on each view it points at).
+enum CoachTours {
+    static let all: [CoachTour] = [
+        CoachTour(id: "home", trigger: .firstDay, marks: [
+            CoachMark(stop: .nextDay, text: "This button runs your day. Press it.", passThrough: true, button: ""),
+            CoachMark(stop: .happened, text: "This is what happened"),
+            CoachMark(stop: .needsYou, text: "This card is what needs you: answers live here"),
+            CoachMark(stop: .phoneTab, text: "The phone holds your bank, news and more: two apps are open for you now", passThrough: true, button: "Done"),
+        ], flag: FirstRunFlags.tour),
+        CoachTour(id: "group", trigger: .tab(.group), marks: [
+            CoachMark(stop: .groupAdd, text: "Add a new company, holding, franchise or club to your group here."),
+            CoachMark(stop: .groupPeople, text: "People lists everyone who works for you. Tap it to look.", passThrough: true),
+            CoachMark(stop: .groupStructure, text: "Structure shows what you own and who runs it. Tap it to look.", passThrough: true),
+            CoachMark(stop: .groupCard, text: "Each card is a company or a stake. Open one to manage it."),
+        ]),
+        CoachTour(id: "ventures", trigger: .tab(.projects), marks: [
+            CoachMark(stop: .venturesHeader, text: "This is what your startups, stakes and funds are worth together."),
+            CoachMark(stop: .venturesFound, text: "Found a startup here: pick an idea and put some money in."),
+            CoachMark(stop: .venturesBacking, text: "Back other founders here: put money into a pitch for a share of it."),
+        ]),
+        CoachTour(id: "phone", trigger: .tab(.phone), marks: [
+            CoachMark(stop: .phoneGrid, text: "Every app lives here. Tap one to open it."),
+            CoachMark(stop: .phoneInbox, text: "The Inbox holds every question waiting for you."),
+            CoachMark(stop: .phoneBank, text: "The Bank holds your money, bills and loans.", button: "Done"),
+        ]),
+        CoachTour(id: "custom", trigger: .tab(.custom), marks: [
+            CoachMark(stop: .customTab, text: "This tab is yours. Press and hold it to choose what it opens: the Edit chip shows until you do.", fallback: .tabBar),
+            CoachMark(stop: .customPick, text: "Pick any app, or one of your companies.", button: "Done"),
+        ]),
+        CoachTour(id: "company", trigger: .route(.company), marks: [
+            CoachMark(stop: .companyTabs, text: "Overview is the summary, Team the people, Manage how it runs, Sales what it sells and Stats the money."),
+            CoachMark(stop: .companyPage, text: "Start on Overview: it shows the cash and what needs you.", button: "Done"),
+        ]),
+        appTour(.bank),
+        appTour(.market),
+        appTour(.atlas),
+    ]
+
+    /// A first-open tour of a phone app: its help text pointing at the app's header. It replaces that app's one-time help sheet.
+    private static func appTour(_ app: PhoneApp) -> CoachTour {
+        CoachTour(id: "app." + app.rawValue, trigger: .route(.app(app)),
+                  marks: [CoachMark(stop: .appHeader, text: app.helpText ?? "", button: "Got it")],
+                  flag: FirstRunFlags.appHelp(app.rawValue), delay: 1.2)
+    }
+
+    /// True when a tour introduces this app, so its help sheet stays away.
+    static func coversApp(_ app: PhoneApp) -> Bool {
+        all.contains { (t: CoachTour) -> Bool in
+            if case .route(.app(let a)) = t.trigger { return a == app }
+            return false
+        }
+    }
+}
+
+extension GameStore {
+    /// True when `app` is the screen on top of the tab being shown: pushed on it, or the Custom tab's own root.
+    func showsApp(_ app: PhoneApp) -> Bool {
+        if path(for: tab).last == .app(app) { return true }
+        return tab == .custom && customPath.isEmpty && customTarget == .app(app)
     }
 }

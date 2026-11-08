@@ -136,7 +136,7 @@ public enum CarBrandContract {
     public static func isActive(_ co: Company) -> Bool { !co.value("cd")["con"].isNull }
     public static func brandID(_ co: Company) -> String? { isActive(co) ? co.value("cd")["con"]["b"].string : nil }
 
-    public static func target(_ b: CarBrand, size: Double) -> Int { max(1, Int((b.target * max(0.4, size)).rounded())) }
+    public static func target(_ b: CarBrand, size: Double) -> Int { max(1, Int(saturating: (b.target * max(0.4, size)).rounded())) }
 
     static func standards(_ b: CarBrand, minSpaces: Int, minSales: Int, minSat: Double, _ co: Company, _ bd: Trade) -> [Standard] {
         let spaces = CarDealer.spaces(co, bd)
@@ -145,7 +145,7 @@ public enum CarBrandContract {
         return [
             Standard(id: "spaces", title: "Showroom and lot", need: "\(minSpaces) car spaces", have: "\(spaces)", ok: spaces >= minSpaces),
             Standard(id: "sales", title: "Salespeople", need: "\(minSales)", have: "\(sales)", ok: sales >= minSales),
-            Standard(id: "sat", title: "Customer satisfaction", need: "\(Int(minSat)) of 100", have: "\(Int(sat.rounded()))", ok: sat >= minSat),
+            Standard(id: "sat", title: "Customer satisfaction", need: "\(Int(minSat)) of 100", have: "\(Int(saturating: sat.rounded()))", ok: sat >= minSat),
         ]
     }
 
@@ -302,7 +302,7 @@ public enum CarBrandContract {
                 let better = (a2.last?.ratio ?? 1) >= 1.1
                 let years = a2.brand.termYears
                 c["offer"] = .object(["years": .number(Double(years)), "margin": .number(a2.margin + (better ? 0.003 : 0)), "bonus": .number(a2.bonus),
-                                      "target": .number(Double(max(1, Int((Double(a2.target) * (better ? 1.1 : 1)).rounded())))), "until": .number(Double(a2.end))])
+                                      "target": .number(Double(max(1, Int(saturating: (Double(a2.target) * (better ? 1.1 : 1)).rounded())))), "until": .number(Double(a2.end))])
                 s.note("\(a2.brand.name) is happy with \(name) and offers a \(years)-year renewal.", tone: "good", companyID: id)
             } else {
                 s.note("\(a2.brand.name) is not happy with \(name) and will not renew the contract.", tone: "warn", companyID: id)

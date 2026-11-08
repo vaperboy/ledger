@@ -79,7 +79,7 @@ public enum Documents {
         if co.countryCode != s.homeCountryCode { weeks = (weeks * w.country(co).bureaucracy * (s.hasHeadOffice("cd_" + co.countryCode) ? 0.6 : 1.4)).rounded(.up) }
         if id == "vat" || id == "registration" || id == "vat_not_applicable" { weeks = max(1, weeks) }
         if co.value("law")["own"].bool && weeks > 3 { weeks = (weeks * 0.75).rounded(.up) }
-        return Int(weeks)
+        return Int(saturating: weeks)
     }
 
     public enum ApplyResult: Equatable { case ok, alreadyHeld, notEnoughCash, pickAccountant }

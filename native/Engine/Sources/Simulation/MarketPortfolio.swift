@@ -211,10 +211,10 @@ enum MarketBook {
         for f in PrivateEquity.funds(s) where f.live {
             out.append(make(s, id: "me:pe:\(f.id)", owner: me, ownerName: "You", kind: .privateEquity, assetID: nil, name: f.name, symbol: f.style,
                             units: 1, price: f.nav, cost: f.paidIn, value: f.nav, pnl: f.nav + f.distributed - f.paidIn, risk: .high,
-                            note: "Sold whole on the secondary market, \(Int((PrivateEquity.secondaryDiscount(s, fundID: f.id) * 100).rounded()))% under its value."))
+                            note: "Sold whole on the secondary market, \(Int(saturating: (PrivateEquity.secondaryDiscount(s, fundID: f.id) * 100).rounded()))% under its value."))
         }
         for g in GroupDeals.stakes(s) {
-            out.append(make(s, id: "me:group:\(g.id)", owner: me, ownerName: "You", kind: .groupStake, assetID: nil, name: g.name, symbol: "\(Int((g.ownership * 100).rounded()))%",
+            out.append(make(s, id: "me:group:\(g.id)", owner: me, ownerName: "You", kind: .groupStake, assetID: nil, name: g.name, symbol: "\(Int(saturating: (g.ownership * 100).rounded()))%",
                             units: g.ownership * 100, price: g.ownership > 0 ? g.value / (g.ownership * 100) : 0, cost: g.cost, value: g.value, risk: .medium,
                             canSell: false, note: "A stake in a group is held for its share of the group's value; there is no buyer for it."))
         }

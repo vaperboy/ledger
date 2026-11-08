@@ -263,7 +263,7 @@ struct WorkerProfileBody: View {
             }
             .accessibilityElement(children: .combine)
             TeamHero(value: cur.tidyShort(p.monthlyWage), unit: "a month",
-                     context: "\(basis.prefix(1).uppercased() + basis.dropFirst()) \u{00B7} \(Int(p.hoursPerWeek.rounded())) h a week \u{00B7} \(contract)")
+                     context: "\(basis.prefix(1).uppercased() + basis.dropFirst()) \u{00B7} \(Int(saturating: p.hoursPerWeek.rounded())) h a week \u{00B7} \(contract)")
         }
     }
 
@@ -454,7 +454,7 @@ struct WorkerProfileBody: View {
         return TeamBlock("Record") {
             VStack(spacing: 0) {
                 FlatRow(label: "Last raise", value: raise, sub: s.underpaid ? "Paid less than the job usually pays" : "", rule: false)
-                FlatRow(label: "Hours worked", value: "\(Int(p.hoursWorked.rounded()))", sub: "In all, since they started")
+                FlatRow(label: "Hours worked", value: "\(Int(saturating: p.hoursWorked.rounded()))", sub: "In all, since they started")
                 if extras, let plan = s.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: s.bonusPaidThisYear > 0 ? "\(cur.tidyShort(s.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
                 if extras, !s.perks.isEmpty { FlatRow(label: "Perks", value: s.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(s.perksWorth)) a month to them, counted as pay") }
                 if extras, !s.expenses.isEmpty { FlatRow(label: "Expenses paid", value: s.expenses.joined(separator: ", ")) }

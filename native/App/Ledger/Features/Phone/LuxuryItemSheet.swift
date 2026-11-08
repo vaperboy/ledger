@@ -142,7 +142,7 @@ struct LuxuryItemSpecs: View {
     private var specs: [(String, String)] {
         var rows: [(String, String)] = [("Category", LuxuryFacts.categoryName(item)), ("About", item.detail), ("Outlook", item.trend)]
         if let est = Luxury.estateInfo(item.id) { rows.append(("Earns from", est.what)) }
-        else { rows.append(("Selling costs", "\(Int((Luxury.sellFee * 100).rounded()))% of the value")) }
+        else { rows.append(("Selling costs", "\(Int(saturating: (Luxury.sellFee * 100).rounded()))% of the value")) }
         return rows
     }
 

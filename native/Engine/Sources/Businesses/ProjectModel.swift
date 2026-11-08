@@ -180,7 +180,7 @@ public enum ProjectModel {
     static func clientName(_ co: Company, _ cls: Int, _ country: Country, _ r: inout DeterministicRandom) -> String {
         if cls == 0 || (cls == 1 && r.next() < 0.6) {
             let last = country.lastNames
-            return "the " + (last.isEmpty ? "Smith" : last[Int((r.next() * Double(last.count)).rounded(.down))]) + " family"
+            return "the " + (last.isEmpty ? "Smith" : last[Int(saturating: (r.next() * Double(last.count)).rounded(.down))]) + " family"
         }
         return r.pick(["a housing co-op", "the municipality", "a developer", "a retail chain", "the school board", "an office owner", "a hotel", "a landlord"])
     }

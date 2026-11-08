@@ -15,8 +15,11 @@ struct Card<Content: View>: View {
     @Environment(\.outsidePalette) private var palette
     @Environment(\.insidePopup) private var insidePopup
     @Environment(\.insideCard) private var insideCard
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
+        // The game's cards are translucent over the backdrop; outside apps and Reduce Transparency keep the solid fill.
+        let cardFill: Color = palette == .game && !reduceTransparency ? palette.card.opacity(0.65) : palette.card
         let plain: Bool = fill == nil && stroke == nil
         if plain && insideCard {
             content()
@@ -35,9 +38,9 @@ struct Card<Content: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
                     ZStack {
-                        shape.fill(fill ?? palette.card)
+                        shape.fill(fill ?? cardFill)
                         shape.fill(LinearGradient(
-                            colors: [Color.white.opacity(palette.isLight ? 0.10 : 0.025), .clear],
+                            colors: [Color.white.opacity(palette.isLight ? 0.10 : 0.05), .clear],
                             startPoint: .top, endPoint: .bottom
                         ))
                     }
@@ -131,7 +134,7 @@ struct Sparkline: View {
     var filled = true
     var body: some View {
         GeometryReader { geo in
-            if values.count >= 2, let lo = values.min(), let hi = values.max() {
+            if values.count >= 2, values.allSatisfy({ $0.isFinite }), geo.size.width.isFinite, geo.size.height.isFinite, let lo = values.min(), let hi = values.max() {
                 let span = max(hi - lo, abs(hi) * 0.002, 1)
                 let pts: [CGPoint] = values.enumerated().map { i, v in
                     CGPoint(x: geo.size.width * CGFloat(i) / CGFloat(values.count - 1), y: geo.size.height * (1 - CGFloat((v - lo) / span)) * 0.9 + geo.size.height * 0.05)
@@ -203,12 +206,83 @@ struct KeyFigures: View {
     }
 }
 
+/// The page behind every screen: in the game palette a very soft vertical gradient from the page colour to a warmer, lifted tone and a faint
+/// large champagne glow in the top right corner, drawn once and never animated. Outside apps keep their flat ground. Reduce Transparency
+/// drops the glow.
+struct LedgerBackdrop: View {
+    var palette: OutsidePalette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        ZStack {
+            if palette == .game {
+                LinearGradient(colors: [Theme.page, Theme.pageLift], startPoint: .top, endPoint: .bottom)
+                if !reduceTransparency {
+                    // Faded out over the top inset so the status-bar guard strip (flat page colour) shows no edge.
+                    RadialGradient(colors: [Theme.accent.opacity(0.07), Theme.accent.opacity(0)], center: .topTrailing, startRadius: 0, endRadius: 440)
+                        .mask(LinearGradient(stops: [.init(color: .clear, location: 0.07), .init(color: .black, location: 0.28)], startPoint: .top, endPoint: .bottom))
+                }
+            } else {
+                palette.ground
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
+/// A card or tile floating on the backdrop: the surface colour at about 65% (opaque under Reduce Transparency), a faint highlight along the
+/// top edge and a hairline border that is a little brighter at the top.
+struct GlassSurface: ViewModifier {
+    var radius: CGFloat
+    var raised: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let base: Color = raised ? Theme.surfaceRaised : Theme.surface
+        content
+            .background {
+                ZStack {
+                    shape.fill(base.opacity(reduceTransparency ? 1 : 0.65))
+                    shape.fill(LinearGradient(colors: [Color.white.opacity(0.05), .clear], startPoint: .top, endPoint: .center))
+                }
+            }
+            .overlay {
+                shape.strokeBorder(LinearGradient(colors: [Color.white.opacity(0.10), Theme.line], startPoint: .top, endPoint: .bottom), lineWidth: 0.6)
+            }
+    }
+}
+
+/// The floating capsule (tab bar, Next day): a thin material with the raised surface tint over it, a top highlight and a hairline rim.
+/// Opaque under Reduce Transparency.
+struct GlassCapsule: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    if !reduceTransparency { Capsule().fill(.ultraThinMaterial) }
+                    Capsule().fill(Theme.surfaceRaised.opacity(reduceTransparency ? 1 : 0.62))
+                    Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.06), .clear], startPoint: .top, endPoint: .center))
+                }
+            }
+            .overlay { Capsule().strokeBorder(LinearGradient(colors: [Color.white.opacity(0.14), Theme.line], startPoint: .top, endPoint: .bottom), lineWidth: 0.6) }
+    }
+}
+
+extension View {
+    func glassSurface(radius: CGFloat = Theme.Radius.medium, raised: Bool = false) -> some View { modifier(GlassSurface(radius: radius, raised: raised)) }
+    func glassCapsule() -> some View { modifier(GlassCapsule()) }
+}
+
 struct LedgerBackground: ViewModifier {
     @Environment(\.outsidePalette) private var palette
     func body(content: Content) -> some View {
         content
             .ledgerScreen()
-            .background(palette.ground.ignoresSafeArea())
+            .background(LedgerBackdrop(palette: palette))
             .foregroundStyle(palette.ink)
             .environment(\.colorScheme, palette.isLight ? .light : .dark)
     }

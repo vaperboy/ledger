@@ -194,7 +194,7 @@ struct CompanyContracts: View {
     }
 
     private func contractSheet(_ c: VolumeContracts.Contract, _ d: VolumeContracts.Detail) -> some View {
-        let discountText: String = c.discount > 0.0005 ? " · \(Int((c.discount * 100).rounded()))% below list" : c.discount < -0.0005 ? " · above list" : ""
+        let discountText: String = c.discount > 0.0005 ? " · \(Int(saturating: (c.discount * 100).rounded()))% below list" : c.discount < -0.0005 ? " · above list" : ""
         let extText: String = c.extensionsLeft > 0 ? " · \(c.extensionsLeft) extension\(c.extensionsLeft == 1 ? "" : "s") left" : ""
         return VStack(alignment: .leading, spacing: 8) {
             row("Price per unit", store.money(d.price, in: company) + discountText)
@@ -257,7 +257,7 @@ struct CompanyContracts: View {
                         }
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 1) {
-                            if let b = mine { Chip(text: "Bid \(Int((b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
+                            if let b = mine { Chip(text: "Bid \(Int(saturating: (b.priceFactor * 100).rounded()))%", tint: Theme.gold) }
                             else { Text("\(weeksToBid) wk to bid").textStyle(.caption, tint: Theme.accent, numeric: true) }
                             Text(award).textStyle(.caption)
                         }
@@ -282,11 +282,11 @@ struct CompanyContracts: View {
         let load = engine.contractLoad(companyID: company.id)
         let payWeeks = t.isPublicBuyer ? 4 : 6
         let years = Double(max(1, t.years))
-        let capText: String = cap > 0 ? "\(Int((share * 100).rounded()))% (with contracts \(Int(((load.capacityShare + share) * 100).rounded()))%)" : "\(String(format: "%.1f", t.unitsPerWeek)) units a week"
-        let priceText: String = "\(Int((pf * 100).rounded()))% of list" + (pf < 1 ? " · \(Int(((1 - pf) * 100).rounded()))% discount" : "")
+        let capText: String = cap > 0 ? "\(Int(saturating: (share * 100).rounded()))% (with contracts \(Int(saturating: ((load.capacityShare + share) * 100).rounded()))%)" : "\(String(format: "%.1f", t.unitsPerWeek)) units a week"
+        let priceText: String = "\(Int(saturating: (pf * 100).rounded()))% of list" + (pf < 1 ? " · \(Int(saturating: ((1 - pf) * 100).rounded()))% discount" : "")
         let termText: String = "\(t.years) years" + (t.extensions > 0 ? ", up to \(t.extensions) one-year extensions" : "")
         return VStack(alignment: .leading, spacing: 8) {
-            row("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int((t.priceWeight * 100).rounded()))% · quality \(Int(((1 - t.priceWeight) * 100).rounded()))%")
+            row("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int(saturating: (t.priceWeight * 100).rounded()))% · quality \(Int(saturating: ((1 - t.priceWeight) * 100).rounded()))%")
             row("Your price", priceText)
             row("Worth a year at your price", store.short(t.worth * pf / years, in: company))
             row("Term", termText)
@@ -302,17 +302,17 @@ struct CompanyContracts: View {
                 Text("The firm does not meet the buyer's requirements yet.").textStyle(.caption, tint: Theme.warn)
             } else {
                 Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
-                SegmentedPill(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
+                SegmentedPill(items: Array(prices.indices), title: { "\(Int(saturating: (prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
                 Toggle(isOn: $higherQuality) {
                     Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
                 }.tint(Theme.gold)
                 QuietButton(title: "Send the bid…") {
                     let hq = higherQuality
-                    pending = PendingAction(title: "Bid \(Int((pf * 100).rounded()))% of list?", message: "Writing the bid costs \(store.money(t.bidCost, in: company)) even if you lose. Worth about \(store.short(t.worth * pf / years, in: company)) a year if you win; the result comes on \(GameCalendar.dateString(week: t.awardWeek)).",
+                    pending = PendingAction(title: "Bid \(Int(saturating: (pf * 100).rounded()))% of list?", message: "Writing the bid costs \(store.money(t.bidCost, in: company)) even if you lose. Worth about \(store.short(t.worth * pf / years, in: company)) a year if you win; the result comes on \(GameCalendar.dateString(week: t.awardWeek)).",
                                             button: "Send for \(store.short(t.bidCost, in: company))", amount: t.bidCost, currency: engine.currency(for: company), tone: .warning, icon: "doc.text") {
                         let r = store.act { $0.bidOnTender(companyID: company.id, tenderID: t.id, priceFactor: pf, higherQuality: hq) }
                         switch r {
-                        case .sent?: Haptics.success(); store.show("Bid sent at \(Int((pf * 100).rounded()))% of list. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil
+                        case .sent?: Haptics.success(); store.show("Bid sent at \(Int(saturating: (pf * 100).rounded()))% of list. The result comes on \(GameCalendar.dateString(week: t.awardWeek)).", tone: "good"); openTender = nil
                         case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company to write the bid (\(store.short(t.bidCost, in: company))).", tone: "warn")
                         case .notQualified(let why)?: Haptics.warning(); store.show(why, tone: "warn")
                         case nil: break

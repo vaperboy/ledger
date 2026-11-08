@@ -8,10 +8,6 @@ public struct NewItemOption: Equatable, Identifiable, Sendable {
     public var id: String
     public var name: String
     public var isService: Bool
-    /// True for a genuinely new category (a service for a goods trade, goods for a service trade): it is developed first.
-    public var needsDevelopment: Bool
-    public var developmentWeeks: Int
-    public var developmentCost: Double
     /// Weekly profit change when the item is added, and the change in the company's share of the local market (0.01 = one point).
     /// Both nil unless the company has a market advisor.
     public var profitChange: Double?
@@ -24,21 +20,17 @@ public struct NewItemOptionList: Equatable, Sendable {
     public var hasMarketAdvisor: Bool
 }
 
-/// New products and services. A variant of what the trade already sells is added at once; a new category is developed first
-/// (the Development machinery, project "newitem"; the item appears when it is done). Profit and market numbers need a market advisor
-/// (role "advisor", hired or as a duty).
+/// New products and services of the trade's own kind, added at once. Everything the company does not sell yet is on offer, the starters it
+/// did not choose first included. Profit and market numbers need a market advisor (role "advisor", hired or as a duty).
 public enum NewItemOptions {
     public static let projectID = "newitem"
     public static let advisorRole = "advisor"
-    /// Customers a variant brings in, and a new category brings in, as a share of the weekly units (before rivals dilute it).
+    /// Customers an added item brings in, as a share of the weekly units (before rivals dilute it).
     static let variantLift = 0.02
-    static let categoryLift = 0.05
-    /// Share of a year's sales a new category costs to develop.
-    static let costShare = 0.02
     static let optionCount = 5
 
     /// One catalog entry (`Resources/itemcatalog.json`): a realistic product or service for a trade.
-    struct Entry: Equatable { var name: String; var isService: Bool; var develop: Bool; var brand: Bool }
+    struct Entry: Equatable { var name: String; var isService: Bool; var brand: Bool }
 
     /// Options per trade id, from the JSON resource. Empty if the resource is missing (then the family fallback below is used).
     static let catalog: [String: [Entry]] = {
@@ -46,7 +38,7 @@ public enum NewItemOptions {
               let raw = try? Data(contentsOf: url), let j = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return [:] }
         var out: [String: [Entry]] = [:]
         for (k, rows) in j["trades"].object {
-            out[k] = rows.array.map { Entry(name: $0["n"].string, isService: $0["svc"].bool, develop: $0["dev"].bool, brand: $0["b"].bool) }
+            out[k] = rows.array.map { Entry(name: $0["n"].string, isService: $0["svc"].bool, brand: $0["b"].bool) }
         }
         return out
     }()
@@ -58,7 +50,7 @@ public enum NewItemOptions {
 
     static func entries(for bd: Trade) -> [Entry] {
         if let e = catalog[bd.id], !e.isEmpty { return e }
-        return fallback.goods.map { Entry(name: $0, isService: false, develop: false, brand: false) } + fallback.service.map { Entry(name: $0, isService: true, develop: false, brand: false) }
+        return fallback.goods.map { Entry(name: $0, isService: false, brand: false) } + fallback.service.map { Entry(name: $0, isService: true, brand: false) }
     }
 
     public static func hasAdvisor(_ co: Company) -> Bool { RoleEffects.filled(co, advisorRole) }
@@ -68,42 +60,40 @@ public enum NewItemOptions {
     public static func list(_ s: GameState, companyID: Int, isService svc: Bool, data: GameData) -> NewItemOptionList {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return NewItemOptionList(options: [], hasMarketAdvisor: false) }
         let advisor = hasAdvisor(co)
-        let own = SalesItems.isService(bd)
+        // Only the trade's own kind of offer: a service for a goods trade (or the reverse) is not a variant and is not offered.
+        guard svc == SalesItems.isService(bd) else { return NewItemOptionList(options: [], hasMarketAdvisor: advisor) }
         let pool = entries(for: bd).filter { $0.isService == svc }
-        let existing = Set(SalesItems.items(co, bd).map { $0.name.lowercased() })
+        let existing = SalesItems.onSaleNames(co, bd)
         let short = SalesItems.shortName(co)
         var h = HashedRandom("\(s.seed):newitems:\(co.id):\(svc)")
         let start = pool.isEmpty ? 0 : Int(h.next() * Double(pool.count))
         let w = World(state: s, data: data)
-        let cur = w.currency(co)
-        let devWeeks = RoleEffects.developmentWeeks(developmentWeeksBase(co), co)
-        let devCost = developmentCost(co, currency: cur)
         var out: [NewItemOption] = []
-        for k in pool.indices where out.count < optionCount {
+        func option(_ name: String) -> NewItemOption {
+            let est = advisor ? estimate(s, co, bd, lift: variantLift, w: w) : nil
+            return NewItemOption(id: "\(svc ? "svc" : "gds"):\(slug(name))", name: name, isService: svc, profitChange: est?.0, marketChange: est?.1)
+        }
+        // Items the company holds but does not sell (the starters it did not choose) come first, all of them.
+        let hidden = SalesItems.hiddenIDs(co)
+        for it in SalesItems.items(co, bd) where hidden.contains(it.id) && it.isService == svc && !existing.contains(it.name.lowercased()) {
+            if !out.contains(where: { $0.name.lowercased() == it.name.lowercased() }) { out.append(option(it.name)) }
+        }
+        let held = out.count
+        for k in pool.indices where out.count < held + optionCount {
             let e = pool[(start + k) % pool.count]
             let name = e.brand ? "\(short) \(e.name.prefix(1).lowercased() + e.name.dropFirst())" : e.name
             if existing.contains(name.lowercased()) { continue }
-            let category = svc != own          // a different kind of offer is always developed first
-            let develop = category || e.develop
-            let est = advisor ? estimate(s, co, bd, lift: category ? categoryLift : variantLift, w: w) : nil
-            out.append(NewItemOption(id: "\(svc ? "svc" : "gds"):\(slug(name))", name: name, isService: svc, needsDevelopment: develop, developmentWeeks: develop ? devWeeks : 0,
-                                     developmentCost: develop ? devCost : 0, profitChange: est?.0, marketChange: est?.1))
+            if out.contains(where: { $0.name.lowercased() == name.lowercased() }) { continue }
+            out.append(option(name))
         }
         return NewItemOptionList(options: out, hasMarketAdvisor: advisor)
-    }
-
-    /// Larger companies take longer: 6 weeks plus 2 per square root of size, at most 20.
-    static func developmentWeeksBase(_ co: Company) -> Int { min(20, 6 + Int((2 * max(1, co.size).squareRoot()).rounded())) }
-
-    static func developmentCost(_ co: Company, currency cur: Currency) -> Double {
-        Development.cost(Development.Project(id: projectID, name: "A new product or service", text: "", kind: "dem", size: 0, weeks: 0, share: costShare), for: co, currency: cur)
     }
 
     /// Weekly profit and market-share change, by the unit-share model of `SalesItems.forecast`: the new customers buy at the going ticket and
     /// leave the cost of sales; rivals dilute the lift (a quarter each); share is own size over own plus rivals'.
     static func estimate(_ s: GameState, _ co: Company, _ bd: Trade, lift: Double, w: World) -> (Double, Double) {
         let rivals = Rivals.rivals(s, for: co)
-        let effective = MarketPressure.addedLift(co, category: lift == categoryLift, rivalCount: rivals.count)   // the very figure the real add uses
+        let effective = MarketPressure.addedLift(co, category: false, rivalCount: rivals.count)   // the very figure the real add uses
         let ticket = SalesItems.marketTicket(co, bd, w)
         // The extra customers are what the demand model itself gives with the lift in full force, up to what the company can serve:
         // the same calculation the weekly simulation runs, so the estimate and the game cannot drift apart.
@@ -119,7 +109,7 @@ public enum NewItemOptions {
         return (profit, after - share)
     }
 
-    // MARK: Development of a new category
+    // MARK: Projects started before development was removed
 
     static func addRefusal(_ co: Company, _ bd: Trade, name: String) -> String? {
         let list = SalesItems.items(co, bd)
@@ -128,28 +118,7 @@ public enum NewItemOptions {
         return nil
     }
 
-    public static func startRefusal(_ s: GameState, companyID: Int, option o: NewItemOption, data: GameData) -> String? {
-        if let why = SalesItems.refusal(s, companyID: companyID, itemID: nil, data: data) { return why }
-        guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return nil }
-        if let why = addRefusal(co, bd, name: o.name) { return why }
-        if !co.value("rd56")["run"].isNull { return "Another development project is already running." }
-        if co.cash < o.developmentCost { return "The company does not have the cash for it yet." }
-        return nil
-    }
-
-    public static func start(_ s: inout GameState, companyID: Int, option o: NewItemOption) {
-        guard let i = s.companyIndex(companyID) else { return }
-        _ = Payments.companyPays(&s, companyID: companyID, amount: o.developmentCost, category: "oth", label: "Development: \(o.name)")
-        var r = s.companies[i].value("rd56")
-        if r.isNull { r = .object(["run": .null, "done": .array([])]) }
-        r["run"] = .object(["k": .string(projectID), "w0": .number(Double(s.week)), "wEnd": .number(Double(s.week + o.developmentWeeks)), "cost": .number(o.developmentCost),
-                            "item": .string(o.name), "svc": .bool(o.isService)])
-        s.companies[i].set("rd56", r)
-        Development.refreshFactors(&s, i)
-        s.note("\(s.companies[i].name) started developing \(o.name).", tone: "n", companyID: companyID)
-    }
-
-    /// The project is done: the item joins the list (or, if the list changed meanwhile, the money is spent and a message says so).
+    /// An older save's running project is done: the item joins the list (or, if the list changed meanwhile, a message says so).
     static func finish(_ s: inout GameState, _ i: Int, name: String, isService: Bool, data: GameData) {
         let co = s.companies[i]
         guard let bd = data.catalog[co.type] else { return }
