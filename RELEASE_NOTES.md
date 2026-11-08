@@ -1,4 +1,5 @@
 # What's new
+- The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month
 - Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
 - Next day is a floating button above the tab bar, Skip week is free and always there, the daily report popup is back, and Home never scrolls with one company
 - Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once
