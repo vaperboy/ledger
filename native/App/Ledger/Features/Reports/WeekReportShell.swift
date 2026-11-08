@@ -206,6 +206,7 @@ struct WeekReportShell<More: View>: View {
                 yearFigure("Tax paid", r.taxPaid, Theme.ivory, false)
                 yearFigure("Net worth", r.netWorthChange, Theme.change(r.netWorthChange), true)
             }
+            YearTaxBlock()
         }
     }
 

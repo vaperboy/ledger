@@ -16,6 +16,7 @@ struct GroupEntityMoney: View {
     @State private var move: MoveTarget?
     @State private var pending: PendingAction?
     @State private var policyOpen = false
+    @State private var payOpen = false
     @State private var amount = 0.0
 
     private struct MoveTarget: Identifiable {
@@ -37,6 +38,7 @@ struct GroupEntityMoney: View {
         }
         .centerSheet(item: $move) { (t: MoveTarget) in BankMoveSheet(account: .company(t.companyID), kind: t.kind) }
         .centerSheet(isPresented: $policyOpen) { DividendPolicySheet(companyID: entity.companyID).environmentObject(store) }
+        .centerSheet(isPresented: $payOpen, title: "Pay yourself") { PayYourselfSheet(companyID: entity.companyID).environmentObject(store) }
         .confirmAction($pending)
     }
 
@@ -83,7 +85,7 @@ struct GroupEntityMoney: View {
                     .buttonStyle(SecondaryButtonStyle())
                     .accessibilityHint("Invest in or sell the index fund")
                 }
-                Text("Index fund: 0.66% to sell \u{00B7} dividends taxed as your income")
+                Text("Index fund: 0.66% to sell \u{00B7} dividends carry \(PayRules.dividendTaxText(engine))")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -111,7 +113,7 @@ struct GroupEntityMoney: View {
         let id: Int = entity.companyID
         let amt: Double = amount
         guard amt > 0 else { Haptics.warning(); store.show("Enter an amount first.", tone: "warn"); return }
-        pending = PendingAction(title: "Pay \(cur.tidyShort(amt)) to yourself?", message: "It comes out of the holding's retained profits and is taxed as your income. It cannot be paid back in as a dividend.", button: "Pay dividend", amount: amt, currency: cur) {
+        pending = PendingAction(title: "Pay \(cur.tidyShort(amt)) to yourself?", message: "It comes out of the holding's retained profits and is added to your dividends for the year, with \(PayRules.dividendTaxText(engine)). It cannot be paid back in as a dividend.", button: "Pay dividend", amount: amt, currency: cur) {
             switch store.act({ $0.payDividend(companyID: id, amount: amt) }) {
             case .ok?: Haptics.success(); store.show("Dividend of \(cur.tidyShort(amt)) paid.", tone: "good")
             case .noRetainedProfit?: Haptics.warning(); store.show("There are no retained profits to pay out.", tone: "warn")
@@ -165,6 +167,10 @@ struct GroupEntityMoney: View {
             }
             GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil, compact: true)
             Text(last).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
+            if main?.form == .limited {
+                LedgerRow(leading: .symbol("person.crop.circle"), title: "Pay yourself", subtitle: "Salary, dividend or keep it in the company",
+                          identifier: "money-pay-yourself", action: { payOpen = true })
+            }
         }
     }
 
