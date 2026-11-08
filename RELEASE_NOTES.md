@@ -1,4 +1,5 @@
 # What's new
+- Fix for the crash on opening an older save: saved numbers can no longer overflow a conversion, duplicate names no longer break lookups, the first-run tour only starts in a new game, and the zoom transitions are off until they are proven safe
 - Money in is a green up arrow and money out a red down arrow instead of plus and minus; a company shows this week so far live with its change on last week; only the change in a figure rolls (up in green, down in red); the net worth chart adds each new day instead of redrawing
 - A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests
 - Events can chain (an ignored breach becomes a claim, then a press story; late invoices, a skipped inspection and price wars escalate), each of the twelve starter trades has its own events, big owners get a fourth answer, daily goals vary with streak perks, a recap shows when you return, and Stats has a "How you are playing" panel

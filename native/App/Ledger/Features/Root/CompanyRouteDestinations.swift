@@ -58,7 +58,7 @@ private struct RouteDestinations: ViewModifier {
 
 /// Kill switch for the zoom transitions: `defaults write ledger.zoomOff -bool YES` (or the same key set in UserDefaults) falls back to the plain push.
 enum ZoomSwitch {
-    static var on: Bool { !UserDefaults.standard.bool(forKey: "ledger.zoomOff") }
+    static var on: Bool { UserDefaults.standard.bool(forKey: "ledger.zoomOn") }
 }
 
 /// Marks a row or tile as the origin the pushed screen of `route` grows out of (iOS 18; earlier systems and Reduce Motion use the plain push).
