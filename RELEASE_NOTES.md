@@ -1,4 +1,5 @@
 # What's new
+- Choose Classic, Sandbox or Hard when you start; rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
 - Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a game-over screen with a one-tap retry, a four-step first-session tour, and a short help sheet the first time you open each phone app
 - The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month
 - Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
