@@ -85,7 +85,7 @@ struct ContractDiscussionView: View {
             .accessibilityElement(children: .combine)
             TeamHero(label: "Pay now", value: cur.tidyShort(pay), unit: "a month",
                      context: hours + (e.contractHandler(companyID: companyID).flatMap { (h) -> String? in
-                        isManager ? nil : "\(h.name) may settle up to \(cur.tidyShort(h.payLimit)) a month (\(h.level >= 2 ? "full control" : "within limits")); above that it comes to you."
+                        isManager ? nil : "\(h.name) may settle up to \(cur.tidyShort(h.payLimit)) a month (\(h.level >= 2 ? "free budget" : "normal budget")); above that it comes to you."
                      } ?? "Every change is agreed here."))
         }
     }

@@ -8,7 +8,7 @@ import Simulation
 
 /// The management posts above the manager (managing director, department heads, regional manager).
 /// In Company > Team these posts are rows of the one management list in `CompanyManagement`, so this standalone list only shows
-/// where that list does not (a holding, which has no store manager). Each row opens `TeamSlotSheet` for hire, authority and release.
+/// where that list does not (a holding, which has no store manager). Each row opens `TeamSlotSheet` for hire, budget and release.
 /// Chain and group posts are the same kind of rows seen from the chain and from Group (see ExecutivePosts).
 // MARK: Person cards (new look)
 
@@ -215,7 +215,7 @@ struct CompanyTeamRoster: View {
     }
 }
 
-/// One management post of a company: who holds it, what they may decide, pay and release; or, when vacant, the search and the shortlist.
+/// One management post of a company: who holds it, their budget, pay and release; or, when vacant, the search and the shortlist.
 struct TeamSlotSheet: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
@@ -227,12 +227,15 @@ struct TeamSlotSheet: View {
         switch slot.key { case "ceo": return company.type == "hold" ? "group" : "company"; case "reg": return "region"; default: return "company" }
     }
 
+    /// The budget preset a post holds (its `level` is `Budget.rawValue`).
+    static func budget(of slot: ManagerModel.TeamSlot) -> Budget { Budget(rawValue: min(2, max(0, slot.level))) ?? .tight }
+
     /// The row used in the management list (here and in CompanyManagement).
     static func row(_ slot: ManagerModel.TeamSlot, company: Company, engine: GameEngine, cur: Currency) -> ManagementRow {
         let person = slot.personID.flatMap { engine.state.people[$0] }
         let line: String
         if person == nil { line = slot.detail }
-        else if slot.key == "ceo" { line = "\(AuthorityWords.label(slot.level))\(slot.level == 1 ? " · spends up to \(cur.tidyShort(slot.buy))" : "")" }
+        else if slot.key == "ceo" { line = "Budget \u{00B7} " + budget(of: slot).title }
         else { line = "Since \(GameCalendar.dateString(week: slot.since, dayOffset: 0))" }
         return ManagementRow(name: person?.name, role: slot.title, scope: scope(slot, company: company), line: line, wage: person == nil ? nil : cur.tidyShort(slot.monthlyWage),
                              face: person?.faceKey)
@@ -261,23 +264,13 @@ struct TeamSlotSheet: View {
             }
         }
         if slot.key == "ceo" {
-            LedgerSection("Decides") {
+            let budget: Budget = Self.budget(of: slot)
+            let name: String = p.name
+            LedgerSection("Budget") {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    AuthorityLevelPicker(level: slot.level) { l in
-                        store.settle(store.act { $0.setTeamAuthority(companyID: co.id, level: l) }, "\(p.name) now \(GameEngine.authorityText(level: l)).", same: "\(p.name) already works that way.")
-                    }
-                    if slot.level == 1 {
-                        HStack {
-                            Text("Spends up to").popupText(.subtitle)
-                            Spacer()
-                            Menu {
-                                ForEach([25000.0, 50000, 100000, 250000, 500000], id: \.self) { v in
-                                    Button(cur.tidyShort(cur.scaledPrice(v))) {
-                                        store.settle(store.act { $0.setTeamAuthority(companyID: co.id, buy: cur.scaledPrice(v)) }, "Above \(cur.tidyShort(cur.scaledPrice(v))) it comes to you.", same: "That limit is already set.")
-                                    }
-                                }
-                            } label: { Text(cur.tidyShort(slot.buy)).popupText(.effect) }
-                        }
+                    BudgetChip(budget: budget)
+                    BudgetPicker(budget: budget, name: name.split(separator: " ").first.map(String.init) ?? name) { (b: Budget) in
+                        store.settle(store.act { $0.setTeamBudget(companyID: co.id, budget: b) }, "\(name): budget \(b.title.lowercased()).", same: "That budget is set already.")
                     }
                 }
             }

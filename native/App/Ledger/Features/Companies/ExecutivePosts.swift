@@ -6,7 +6,7 @@ import Businesses
 import Simulation
 
 /// Chain and group level management posts (group managing director, chain CEO, chain manager, regional managers), shown from Group and
-/// from a company's Chain section. Same people, same rules as the Team list on a company: role + scope badge, search, hire, authority, let go.
+/// from a company's Chain section. Same people, same rules as the Team list on a company: role, name and budget chip, search, hire, let go.
 /// `chainID == nil` is the group level. Pay comes from the chain's stores (chain levels) or from you (group level), as the engine decides.
 struct ExecutivePosts: View {
     @EnvironmentObject var store: GameStore
@@ -102,15 +102,14 @@ struct ExecutivePosts: View {
                 Spacer(minLength: Theme.Space.s)
                 if person != nil { Text(cur.tidyShort(p.rec["wage"].double)).textStyle(.headline, tint: Theme.ink, numeric: true) }
             }
-            if person != nil {
-                let lvl = Int(p.rec["lvl"].double)
+            if let person {
+                let name: String = person.name
                 HStack(spacing: Theme.Space.l) {
-                    AuthorityPicker(level: lvl, currency: cur, limit: p.rec["buy"].double,
-                                    limitSteps: [50000.0, 100000, 250000, 600000, 2000000].map { cur.scaledPrice($0) },
-                                    setLevel: { l in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, authority: l) }, "Authority changed.", same: "Authority is already at that level.") },
-                                    setLimit: { v in store.settle(store.act { $0.setExecutiveAuthority(p.level, chainID: chainID, regionalID: p.regionalID, buy: v) }, "Spending limit saved.", same: "That limit is already set.") })
+                    BudgetMenu(budget: Budget.of(p.rec), name: name) { (b: Budget) in
+                        store.settle(store.act { $0.setExecutiveBudget(p.level, chainID: chainID, regionalID: p.regionalID, budget: b) }, "\(name): budget \(b.title.lowercased()).", same: "That budget is set already.")
+                    }
                     Spacer(minLength: 0)
-                    GroupRewardMenu(engine: engine, personID: p.rec["npc"].int, name: person?.name ?? "them")
+                    GroupRewardMenu(engine: engine, personID: p.rec["npc"].int, name: name)
                     Button("Let go") { askToRelease(p) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
                 }.buttonStyle(TertiaryButtonStyle(size: .compact))
             } else {

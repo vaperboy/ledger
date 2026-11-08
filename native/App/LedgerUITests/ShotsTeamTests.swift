@@ -177,6 +177,15 @@ final class ShotsTeamTests: FeatureTourCase {
                 pause(0.8)
                 shot("29-manager-sheet")
                 scrollShot("30-manager-sheet-lower")
+                if tapID("manager-headcount", wait: 2) {
+                    pause(0.8)
+                    shot("30a-staffing-plan")
+                    tapLabel("Back to the manager")
+                }
+                if tapLabel("Results") {
+                    pause(0.6)
+                    shot("30b-manager-results")
+                }
                 closePopup()
             } else { miss("29-manager-sheet", "no manager row") }
             if tapID("mgmt-row-a", wait: 2) || tapText("Assistant manager", wait: 2) {

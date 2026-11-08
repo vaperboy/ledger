@@ -8,7 +8,7 @@ import Simulation
 
 /// Who runs the company, as one management list at the top of Company > Team: the store manager, the assistant manager and the
 /// management posts above the manager (managing director, department heads, regional manager), each a row with a role + scope badge.
-/// A row opens its sheet, where hiring, authority, duties, pay and letting go happen. Original: the Manager, Assistant and Team pages
+/// A row opens its sheet, where hiring, the budget, pay and letting go happen. Original: the Manager, Assistant and Team pages
 /// of the company headquarters (ui/company/people.js, headquarters.js, features/people/owner_hours_clients_assistants.js, manager_duties.js).
 struct CompanyManagement: View {
     @EnvironmentObject var store: GameStore
@@ -144,7 +144,7 @@ struct CompanyManagement: View {
 
     private func orgNodes(_ cur: Currency) -> [OrgNode] {
         var out: [OrgNode] = []
-        let youLine: String = OwnerHours.works(company) ? "Runs it day to day." : "Final say on anything above the limits you set."
+        let youLine: String = OwnerHours.works(company) ? "Runs it day to day." : "Final say on anything above the budget you set."
         let canWork: Bool = company.managerID == nil && company.type != "hold"
         let working: Bool = OwnerHours.works(company)
         let cid: Int = company.id
@@ -156,12 +156,12 @@ struct CompanyManagement: View {
                            works: canWork ? working : nil, toggleWorks: canWork ? toggle : nil))
         for b in chainAbove.reversed() {
             let title: String = GameEngine.bossTitle(b.kind, trade: nil)
-            let said: String = GameEngine.authorityText(level: b.level)
-            let row = ManagementRow(name: b.name, role: title, scope: Self.scope(b.kind), line: String(said.prefix(1)).uppercased() + String(said.dropFirst()) + ".", wage: nil,
+            let budget: Budget = Budget(rawValue: min(2, max(0, b.level))) ?? .tight
+            let row = ManagementRow(name: b.name, role: title, scope: Self.scope(b.kind), line: "Budget \u{00B7} " + budget.title, wage: nil,
                                     face: engine.state.people[b.personID]?.faceKey)
             out.append(OrgNode(id: "b:" + b.kind + ":\(b.personID)", glyph: Glyph.group, row: row, level: b.level, sheet: nil))
         }
-        let mgrLevel: Int? = company.managerID != nil ? Int(company.value("auth")["lvl"].double) : nil
+        let mgrLevel: Int? = company.managerID != nil ? ManagerModel.budget(of: company).rawValue : nil
         out.append(OrgNode(id: "m", glyph: Glyph.person, row: managerRow(cur), level: mgrLevel, sheet: .manager))
         out.append(OrgNode(id: "a", glyph: Glyph.people, row: assistantRow(cur), level: nil, sheet: .assistant))
         for slot in engine.teamSlots(companyID: company.id) {
@@ -185,7 +185,8 @@ struct CompanyManagement: View {
         }
         var line = ""
         if let card = engine.managerScorecard(companyID: company.id) { line += "scorecard: \(Self.scoreWord(card.score))" }
-        if company.managerProfitBonus > 0 { line += (line.isEmpty ? "" : " · ") + "\(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
+        line += (line.isEmpty ? "" : " · ") + "budget \(ManagerModel.budget(of: company).title.lowercased())"
+        if company.managerProfitBonus > 0 { line += " · \(Int((company.managerProfitBonus * 100).rounded()))% profit share" }
         let weak = (engine.managerScorecard(companyID: company.id)?.score ?? 100) < 35
         return ManagementRow(name: m.name, role: title, scope: "store", line: line, lineTint: weak ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(company.managerMonthlyWage), face: m.faceKey)
     }
@@ -200,290 +201,6 @@ struct CompanyManagement: View {
         return ManagementRow(name: n.name, role: "Assistant manager", scope: "store",
                              line: jobs.isEmpty ? "No jobs picked yet: pick up to two." : "Looks after " + jobs.joined(separator: " and "),
                              lineTint: jobs.isEmpty ? Theme.caution : Theme.ivoryFaint, wage: cur.tidyShort(a["wage"].double), face: n.faceKey)
-    }
-}
-
-// MARK: - The manager
-
-/// The store manager's sheet: performance, what they decide, duties, profit share, talks and pay, replacing them; or hiring one.
-struct ManagerSheet: View {
-    @State private var discussing: ContractTalk.Topic?
-    @State private var discussingOpen = false
-    @EnvironmentObject var store: GameStore
-    var companyID: Int
-    @Binding var candidates: [Int]
-    @State private var pending: PendingAction?
-    @State private var tab: ManagerTab = .results
-
-    /// The three pages of the manager's sheet: how they are doing, what they may decide, and what they are paid and how you talk.
-    enum ManagerTab: String, CaseIterable, Hashable { case results = "Results", powers = "Powers", pay = "Pay and talks" }
-
-
-    /// The contract discussion replaces the manager's sheet inside the same popup (its close steps back here), never a popup on a popup.
-    var body: some View {
-        if (discussing != nil || discussingOpen), let mid = store.engine?.state.company(companyID)?.managerID {
-            let back: () -> Void = { discussing = nil; discussingOpen = false }
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Button { Haptics.tap(); back() } label: { Text("\u{2039} Manager") }
-                    .buttonStyle(TertiaryButtonStyle(size: .compact))
-                    .accessibilityLabel("Back to the manager")
-                ContractDiscussionView(companyID: companyID, personID: mid, startTopic: discussing)
-                    .environment(\.popupClose, back)
-            }
-        } else {
-            PeopleSheet(title: "Manager") {
-                if let e = store.engine, let co = e.state.company(companyID) {
-                    let cur = e.currency(for: co)
-                    if let mid = co.managerID, let m = e.state.people[mid] { manage(e, co, m, cur) } else { hire(e, co, cur) }
-                } else {
-                    Text("This company no longer exists.").popupText(.body)
-                }
-            }
-            .confirmAction($pending)
-        }
-    }
-
-    // MARK: Managing the manager
-
-    @ViewBuilder private func manage(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        let bd = e.tradeInfo(companyID: co.id)
-        let started = co.value("mgrW0").isNull ? e.state.week : co.int("mgrW0")
-        let months = max(0, e.state.week - started) / 4
-        let notice = co.value("mgrNotice")
-        let mgrRole: String = bd.map { ManagerModel.title($0) } ?? "Manager"
-        let mgrNote: String = "\(co.name) · age \(m.age) · \(String(format: "%g", m.num("exp"))) years of experience · \(months) month\(months == 1 ? "" : "s") in the job"
-        PersonCard(name: m.name, role: mgrRole, scope: "store", note: mgrNote, wage: cur.tidyShort(co.managerMonthlyWage), chevron: false, roleKey: "manager", face: m.faceKey)
-        if !notice.isNull {
-            TeamBlock("Leaving") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("\(m.name.split(separator: " ").first.map(String.init) ?? "The manager") leaves on \(GameCalendar.dateString(week: notice["w"].int, dayOffset: 0)). Hire a successor before then and they will hand over.")
-                        .popupText(.risk)
-                    SuccessorSection(engine: e, company: co)
-                }
-            }
-        }
-        SegmentedPill(items: ManagerTab.allCases, title: { $0.rawValue }, selection: $tab)
-        switch tab {
-        case .results:
-            performance(e, co, m, months)
-        case .powers:
-            authority(e, co, m, cur)
-            duties(e, co)
-        case .pay:
-            profitShare(e, co, m, cur)
-            talks(e, co, m, cur)
-            lettingGo(co, m, cur)
-        }
-    }
-
-    @ViewBuilder private func performance(_ e: GameEngine, _ co: Company, _ m: Person, _ months: Int) -> some View {
-        let bd = e.tradeInfo(companyID: co.id)
-        TeamBlock("Performance") {
-            VStack(alignment: .leading, spacing: 10) {
-                if let vc = e.managerVoiceCard(companyID: co.id) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(vc.traits).font(.caption).foregroundStyle(.secondary)
-                        ForEach(vc.rows.indices, id: \.self) { i in
-                            HStack { Text(vc.rows[i].label); Spacer(); Text(vc.rows[i].word.capitalized).foregroundStyle(.secondary) }.font(.subheadline)
-                        }
-                        Text("\u{201C}\(vc.verdict)\u{201D}").font(.subheadline.italic()).padding(.top, 4)
-                    }
-                }
-                RateBar(label: "Overall results", fraction: e.managerQuality(companyID: co.id))
-                if let card = e.managerScorecard(companyID: co.id) {
-                    FigureCard(items: [
-                        .init(label: "Scorecard", value: CompanyManagement.scoreWord(card.score).capitalized, tint: card.score < 35 ? Theme.loss : card.score >= 65 ? Theme.gain : Theme.ivory),
-                        .init(label: "Margin, 3 months", value: String(format: "%.0f%%", card.margin * 100), tint: Theme.change(card.margin)),
-                        .init(label: "Reputation", value: StandingWords.reputation(Double(card.reputation))),
-                        .init(label: "Quality", value: StandingWords.reputation(Double(card.quality))),
-                    ], columns: 4)
-                    if card.paperworkGaps > 0 { Text("\(card.paperworkGaps.peopleText) with paperwork missing \(card.paperworkGaps == 1 ? "counts" : "count") against them.").popupText(.risk) }
-                    if card.fraud > 0 { Text("Fraud was found under this manager.").popupText(.risk) }
-                }
-                if let bd, m.str("mtype") != bd.managerType { Text("Not the ideal type for this trade.").popupText(.risk) }
-                Text("How well they do shows in the scorecard and in the results of the business.").popupText(.caption)
-            }
-        }
-    }
-
-    @ViewBuilder private func authority(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        let auth = co.value("auth")
-        let lvl = Int(auth["lvl"].double)
-        TeamBlock("Decides") {
-            VStack(alignment: .leading, spacing: 10) {
-                AuthorityLevelPicker(level: lvl) { v in
-                    store.settle(store.act { $0.setManagerAuthority(companyID: co.id, level: v) }, "\(m.name) now \(GameEngine.authorityText(level: v)).", same: "\(m.name) already works that way.")
-                }
-                if lvl == 1 {
-                    limitRow("Pay and promotions a month", auth["hire"].double, [0, 3000, 8000, 15000, 30000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, pay: v) }, "Pay and promotions limit: \(cur.tidyShort(v)) a month.") }
-                    limitRow("Purchases and hires up to", auth["buy"].double, [10000, 25000, 50000, 100000, 250000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, buy: v) }, "Purchases and hires limit: \(cur.tidyShort(v)).") }
-                    limitRow("Advertising a week", auth["ad"].double, [0, 1500, 3000, 7000], cur) { v in store.settle(store.act { $0.setManagerAuthority(companyID: co.id, ad: v) }, "Advertising limit: \(cur.tidyShort(v)) a week.") }
-                }
-            }
-        }
-    }
-
-    private func limitRow(_ label: String, _ value: Double, _ options: [Double], _ cur: Currency, set: @escaping (Double) -> Void) -> some View {
-        HStack {
-            Text(label).popupText(.subtitle)
-            Spacer()
-            Menu {
-                ForEach(options, id: \.self) { o in
-                    Button(o == 0 ? "None" : cur.tidyShort(cur.scaledPrice(o))) { set(cur.scaledPrice(o)); store.show("\(label): \(o == 0 ? "none" : cur.tidyShort(cur.scaledPrice(o))).", tone: "n") }
-                }
-            } label: { Text((value == 0 ? "None" : cur.tidyShort(value)) + "  ⌄").popupText(.effect) }
-        }
-    }
-
-    @ViewBuilder private func duties(_ e: GameEngine, _ co: Company) -> some View {
-        let list = e.managerDuties(companyID: co.id)
-        if !list.isEmpty {
-            TeamBlock("Duties") {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(list) { d in
-                        Button {
-                            store.act { $0.setManagerDuty(companyID: co.id, duty: d.id, manager: !d.manager) }
-                            let now = store.engine?.managerDuties(companyID: co.id).first { $0.id == d.id }?.manager
-                            store.show(now == true ? "The manager looks after \(d.title.lowercased()) again." : now == false ? "You keep \(d.title.lowercased()) yourself." : "Not possible now.", tone: now == nil ? "warn" : "n")
-                            Haptics.choose()
-                        } label: {
-                            HStack(alignment: .top) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(d.title.tidyMoney).popupText(.body)
-                                    Text(d.manager ? d.managerText : d.ownerText).popupText(.caption)
-                                }
-                                Spacer(minLength: 8)
-                                handoverSwitch(managerHas: d.manager)
-                            }.padding(.vertical, 8).contentShape(Rectangle())
-                        }.buttonStyle(PressableStyle())
-                    }
-                }
-            }
-        }
-    }
-
-    /// Who looks after a duty, as a two-part switch: the lit side is the one that does it. Tapping the row flips it.
-    private func handoverSwitch(managerHas: Bool) -> some View {
-        HStack(spacing: 0) {
-            handoverSide("Manager", on: managerHas)
-            handoverSide("You", on: !managerHas)
-        }
-        .padding(Theme.Space.xxs)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset))
-    }
-
-    private func handoverSide(_ text: String, on: Bool) -> some View {
-        Text(text).textStyle(.caption, tint: on ? Theme.ink : Theme.inkFaint, weight: on ? .medium : .regular)
-            .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.small - Theme.Space.xxs, style: .continuous).fill(on ? Theme.accentWash : Color.clear))
-    }
-
-    @ViewBuilder private func profitShare(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        if let pv = e.managerProfitBonusPreview(companyID: co.id, share: co.managerProfitBonus) {
-            TeamBlock(title: "Profit share", trailing: {
-                Text(pv.current > 0 ? "\(Int((pv.current * 100).rounded()))% of profit" : "none").popupText(.caption)
-            }) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("A share of each profitable month's profit, paid on top of the salary with the next wages. Nothing is paid in a loss month.")
-                        .popupText(.caption)
-                    FlatRow(label: "Average monthly profit, last 3 months", value: cur.tidyShort(pv.averageMonthlyProfit), rule: false)
-                    if pv.current > 0 { FlatRow(label: "At this share it costs about", value: "\(cur.tidyShort(pv.monthlyCost)) a month") }
-                    if pv.lastPaid > 0 { FlatRow(label: "Bonus paid last month", value: cur.tidyShort(pv.lastPaid)) }
-                    Button(pv.current > 0 ? "Change the share…" : "Offer a profit share…") { discussing = .bonus }
-                        .buttonStyle(TertiaryButtonStyle(size: .compact))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func talks(_ e: GameEngine, _ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        TeamBlock("Talk and pay") {
-            VStack(alignment: .leading, spacing: 12) {
-                WrapRow {
-                    Menu {
-                        ForEach(Array(ManagerModel.askOptions.enumerated()), id: \.offset) { _, o in
-                            Button(o.label) {
-                                let said = store.act { $0.askManager(companyID: co.id, key: o.key) } ?? nil
-                                store.show(said.map { "\(m.name): \($0)" } ?? "\(m.name) has nothing to add on that now.", tone: "n")
-                            }
-                        }
-                    } label: { Text("Ask for\u{2026}") }
-                    .menuStyle(.button)
-                    .buttonStyle(SecondaryButtonStyle(tint: Theme.accent))
-                    Button("Contract discussion…") { discussing = nil; discussingOpen = true }.buttonStyle(TertiaryButtonStyle(size: .compact))
-                }
-            }
-        }
-    }
-
-    /// Replacing the manager: its own card apart from the talks, with the consequence stated before the button.
-    private func lettingGo(_ co: Company, _ m: Person, _ cur: Currency) -> some View {
-        Card(padding: 14, radius: Theme.Radius.card, stroke: Theme.loss.opacity(0.4)) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    IconCircle(glyph: Glyph.exit, size: 34, tint: Theme.loss)
-                    Text("Replace the manager").popupText(.title)
-                }
-                let alone: Bool = store.engine?.boardIsAdvisory(companyID: co.id) ?? true
-                Text(alone ? "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new."
-                     : "Somebody else owns part of \(co.name), so replacing the manager is a vote by shares. If it passes, notice and severance are paid and you run it yourself until you hire someone new.")
-                    .popupText(.caption)
-                if alone {
-                    QuietButton(title: "Replace…", tint: Theme.loss) {
-                        pending = PendingAction(title: "Dismiss \(m.name)?",
-                                                message: "Notice and severance by the country's labour law are paid now. You run \(co.name) yourself until you hire someone new.",
-                                                button: "Dismiss", destructive: true, tone: .danger, icon: "person.fill.xmark") {
-                            let sev = store.act { $0.dismissManager(companyID: co.id) } ?? 0
-                            store.show("\(m.name) has gone. Paid \(cur.tidyDisplay(sev)) in notice and severance. You run \(co.name) yourself again.", tone: "n"); Haptics.warning()
-                        }
-                    }
-                } else {
-                    QuietButton(title: "Propose it to the owners…", tint: Theme.loss) {
-                        pending = PendingAction(title: "Put replacing \(m.name) to the vote?",
-                                                message: "The co-owners vote by their shares. If it fails, \(m.name) learns you tried and you cannot ask again for eight weeks.",
-                                                button: "Put it to the vote", tone: .warning, icon: "hand.raised") {
-                            let r: ManagerModel.CEOChange? = store.act { $0.proposeCEOChange(companyID: co.id) }
-                            switch r {
-                            case .dismissed?: Haptics.warning(); store.show("\(m.name) has gone. You run \(co.name) yourself again.", tone: "n")
-                            case .voteFailed(let p)?: Haptics.warning(); store.show("The co-owners voted it down: \(p)% of the shares were for it.", tone: "warn")
-                            case .blocked(let w)?: store.show("You asked recently. Try again in \(w) \(w == 1 ? "week" : "weeks").", tone: "warn")
-                            case .refused(let why)?: store.show(why, tone: "warn")
-                            case nil: break
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: Hiring a manager
-
-    @ViewBuilder private func hire(_ e: GameEngine, _ co: Company, _ cur: Currency) -> some View {
-        let title = e.tradeInfo(companyID: co.id).map { ManagerModel.title($0) } ?? "Manager"
-        let fee = ManagerModel.searchFee(currency: cur)
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Hire a \(title.lowercased())").popupText(.figure)
-            RoleScopeBadge(role: co.name, scope: "store")
-        }
-        Text("Runs \(co.name) day to day: hires, prices, stock, and keeps the team up. You set what they may decide and step back from the work. They are not cheap, and a manager nobody checks on slowly slips.")
-            .popupText(.caption)
-        Button(candidates.isEmpty ? "Executive search · \(cur.tidyShort(fee))" : "Search again · \(cur.tidyShort(fee))") {
-            pending = PendingAction(title: "Pay for an executive search?",
-                                    message: "Cost: \(cur.tidyShort(fee)), not refunded. Benefit: a shortlist you can interview and check. Risk: none may suit.",
-                                    button: "Search for \(cur.tidyShort(fee))", amount: fee, currency: cur, tone: .info, icon: "magnifyingglass") {
-                if let list = store.act({ $0.searchManagers(companyID: co.id) }) ?? nil { candidates = list.map { $0.id }; Haptics.tap(); store.show("\(list.count) candidates found. Search paid: \(cur.tidyShort(fee)).", tone: "n") }
-                else { Haptics.warning(); store.show("Not enough cash for the search (\(cur.tidyShort(fee))).", tone: "warn") }
-            }
-        }.buttonStyle(TertiaryButtonStyle(size: .compact))
-        let people = candidates.compactMap { e.state.people[$0] }.filter { $0.employerID == 0 }
-        CandidateHireList(people: people, emptyText: candidates.isEmpty ? "Run a search to see candidates." : "Everyone on the shortlist has taken another job. Search again.") { p in
-            let request = HireRequest(post: .manager, companyID: co.id, personID: p.id, roleTitle: title, onHired: { candidates = [] })
-            CandidateHireRow(person: p, currency: cur, subtitle: CandidateClaims.line(e, p, extra: ManagerModel.typeTitles[p.str("mtype")] ?? "Manager"),
-                             market: e.goingRate(for: .manager, companyID: co.id), request: request, roleKey: "manager") {
-                ManagerCandidateChecks(person: p, companyID: co.id, currency: cur)
-            }
-        }
     }
 }
 
