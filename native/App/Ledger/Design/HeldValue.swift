@@ -32,3 +32,57 @@ struct HeldValue<Content: View>: View {
             .onChange(of: scenePhase) { _, phase in if phase == .active && !store.holdsHomeFigures { held = live } }
     }
 }
+
+/// Text of a money figure that counts from its previous value to the new one (a real interpolation, so every step shows). Reduce Motion
+/// jumps straight to the new value. Used inside `HeldValue`, so the count starts when the report closes, not under it.
+struct RollingMoney: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var value: Double
+    var format: (Double) -> String
+    @State private var shown: Double
+
+    init(value: Double, format: @escaping (Double) -> String) {
+        self.value = value
+        self.format = format
+        _shown = State(initialValue: value)
+    }
+
+    var body: some View {
+        CountingText(value: shown, format: format)
+            .onChange(of: value) { _, new in
+                if reduceMotion { shown = new } else { withAnimation(.easeOut(duration: 1.1)) { shown = new } }
+            }
+    }
+}
+
+/// A `Text` whose number is the animated property: SwiftUI feeds it every in-between value while an animation runs.
+private struct CountingText: View, Animatable {
+    var value: Double
+    var format: (Double) -> String
+    var animatableData: Double {
+        get { value }
+        set { value = newValue }
+    }
+    var body: some View { Text(format(value)) }
+}
+
+extension View {
+    /// Draws the view in from the left whenever `trigger` changes (not on the first appearance); Reduce Motion shows it at once.
+    func revealOnChange<T: Equatable>(of trigger: T) -> some View { modifier(RevealOnChange(trigger: trigger)) }
+}
+
+private struct RevealOnChange<T: Equatable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var trigger: T
+    @State private var progress: CGFloat = 1
+
+    func body(content: Content) -> some View {
+        content
+            .mask(alignment: .leading) { Rectangle().scaleEffect(x: max(progress, 0.001), y: 1, anchor: .leading) }
+            .onChange(of: trigger) { _, _ in
+                guard !reduceMotion else { return }
+                progress = 0
+                withAnimation(.easeOut(duration: 0.9)) { progress = 1 }
+            }
+    }
+}

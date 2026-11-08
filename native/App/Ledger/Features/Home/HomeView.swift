@@ -118,12 +118,22 @@ struct NetWorthCard: View {
         var series: [Double]
         var week: Double?
         var month: Double?
+        /// Net worth a week and a month ago (nil until that much history exists).
+        var weekAgo: Double?
+        var monthAgo: Double?
     }
 
     private func takeSnap() -> NetWorthSnap {
         let hist = store.dayHistoryNow ?? engine.dayHistory
         return NetWorthSnap(series: store.netWorthSeriesNow(days: Self.days), week: DayHistory.change(hist.netWorth, days: 7)?.amount,
-                            month: DayHistory.change(hist.netWorth, days: 30)?.amount)
+                            month: DayHistory.change(hist.netWorth, days: 30)?.amount,
+                            weekAgo: Self.past(hist.netWorth, days: 7), monthAgo: Self.past(hist.netWorth, days: 30))
+    }
+
+    /// The value `days` entries before the latest one (or the oldest); nil with fewer than two entries.
+    private static func past(_ series: [Double], days: Int) -> Double? {
+        guard series.count >= 2 else { return nil }
+        return series[max(0, series.count - 1 - days)]
     }
 
     var body: some View {
@@ -134,6 +144,8 @@ struct NetWorthCard: View {
         let week: Double? = held != nil ? held?.week : DayHistory.change(hist.netWorth, days: 7)?.amount
         let month: Double? = held != nil ? held?.month : DayHistory.change(hist.netWorth, days: 30)?.amount
         let series: [Double] = held?.series ?? store.netWorthSeriesNow(days: Self.days)
+        let weekAgo: Double? = held != nil ? held?.weekAgo : Self.past(hist.netWorth, days: 7)
+        let monthAgo: Double? = held != nil ? held?.monthAgo : Self.past(hist.netWorth, days: 30)
         Button { Haptics.tap(); onInsights() } label: {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
@@ -146,18 +158,19 @@ struct NetWorthCard: View {
                     }
                 }
                 HeldValue(live: nw.total) { (v: Double) in
-                    Text(store.money(v))
+                    RollingMoney(value: v) { (x: Double) -> String in store.money(x) }
                         .font(.hero(heroSize))
                         .foregroundStyle(v < 0 ? Theme.loss : Theme.ink)
                         .minimumScaleFactor(0.5).lineLimit(1)
-                        .moneyFlash(v)
                 }
                 changeLine(today: store.dayChip?.profit, week: week, month: month)
+                balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo)
                 if series.count >= 2 && chartHeight > 0 {
                     // Scaled to the series' own range, so a year's real shape shows instead of a flat line on a band.
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
                     Sparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
                         .frame(height: chartHeight)
+                        .revealOnChange(of: series.last)
                         .accessibilityHidden(true)
                         .padding(.top, Theme.Space.xs)
                 }
@@ -189,6 +202,38 @@ struct NetWorthCard: View {
             }
         }
         .accessibilityIdentifier("home-today")
+    }
+
+    /// Three columns under the figure: the personal account (cash and savings) and net worth a week and a month ago, each past one with its change.
+    private func balanceRow(personal: Double, total: Double, weekAgo: Double?, monthAgo: Double?) -> some View {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("Personal account").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+                HeldValue(live: personal) { (v: Double) in
+                    RollingMoney(value: v) { (x: Double) -> String in store.short(x) }
+                        .textStyle(.body, tint: v < 0 ? Theme.loss : Theme.ink, numeric: true, weight: .medium).lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            pastColumn("A week ago", then: weekAgo, now: total)
+            pastColumn("A month ago", then: monthAgo, now: total)
+        }
+        .padding(.top, Theme.Space.xxs)
+        .accessibilityIdentifier("home-balances")
+    }
+
+    private func pastColumn(_ title: String, then: Double?, now: Double) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
+            if let then {
+                let d: Double = now - then
+                Text(store.short(then)).textStyle(.body, numeric: true, weight: .medium).lineLimit(1)
+                Text((d > 0.5 ? "▲ " : d < -0.5 ? "▼ " : "") + store.short(abs(d))).textStyle(.caption, tint: Theme.change(d), numeric: true).lineLimit(1)
+            } else {
+                Text("–").textStyle(.body, tint: Theme.inkFaint)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private func changeText(_ c: Double?, _ unit: String) -> some View {
