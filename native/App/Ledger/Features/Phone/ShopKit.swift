@@ -143,7 +143,7 @@ struct ShopHero<Action: View>: View {
             Text(value.tidyText)
                 .font(.system(size: heroSize, weight: .medium, design: .serif).monospacedDigit())
                 .foregroundStyle(valueTint ?? P.ink)
-                .lineLimit(2).minimumScaleFactor(0.5)
+                .lineLimit(2).minimumScaleFactor(0.8)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             if !note.isEmpty {

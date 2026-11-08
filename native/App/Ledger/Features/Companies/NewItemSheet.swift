@@ -70,7 +70,7 @@ struct NewItemSheet: View {
     private var lockedLine: some View {
         Button { onHireAdvisor() } label: {
             HStack(spacing: 6) {
-                Image(systemName: "lock.fill").font(.system(size: 11))
+                LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.ivoryMuted)
                 Text("Hire a market advisor to see this").popupText(.caption)
             }
             .foregroundStyle(Theme.ivoryMuted)

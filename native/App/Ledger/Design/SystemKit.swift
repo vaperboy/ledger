@@ -169,9 +169,9 @@ struct Figure: View {
     @ViewBuilder private var valueText: some View {
         switch size {
         case .display:
-            Text(value.tidyText).textStyle(.display, tint: tint).lineLimit(1).minimumScaleFactor(0.6)
+            Text(value.tidyText).textStyle(.display, tint: tint).lineLimit(2).minimumScaleFactor(0.8)
         case .figure:
-            Text(value.tidyText).textStyle(.figure, tint: tint).lineLimit(1).minimumScaleFactor(0.7)
+            Text(value.tidyText).textStyle(.figure, tint: tint).lineLimit(2).minimumScaleFactor(0.8)
         case .inline:
             Text(value.tidyText).textStyle(.headline, tint: tint, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
         }

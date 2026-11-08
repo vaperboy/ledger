@@ -258,7 +258,7 @@ struct ContractDiscussionView: View {
                         Text(o.detail.tidyMoney).popupText(.caption)
                     }
                     Spacer()
-                    Image(systemName: choice == o.id ? "checkmark" : "circle").textStyle(.caption, tint: choice == o.id ? Theme.accent : Theme.inkFaint)
+                    LedgerGlyph(glyph: choice == o.id ? Glyph.check : Glyph.ring, size: 14, tint: choice == o.id ? Theme.accent : Theme.inkFaint)
                 }.padding(.vertical, 6).contentShape(Rectangle())
             }.buttonStyle(PressableStyle())
         }

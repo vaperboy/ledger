@@ -32,7 +32,7 @@ struct GameOverView: View {
                     Text("The ledger is closed").textStyle(.label, tint: Theme.inkFaint)
                     CountedFigure(value: endWorth, format: { (v: Double) -> String in store.short(v) }, tint: endWorth < 0 ? Theme.loss : Theme.ink, duration: 1.4)
                         .font(.hero(heroSize))
-                        .lineLimit(1).minimumScaleFactor(0.5)
+                        .lineLimit(2).minimumScaleFactor(0.8)
                     Rectangle().fill(Theme.gold).frame(height: 2)
                         .scaleEffect(x: reduceMotion ? 1 : ruleGrown, anchor: .leading)
                         .accessibilityHidden(true)

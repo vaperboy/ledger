@@ -14,6 +14,7 @@ struct CompanyProperties: View {
     @State private var openTenants: Int? = nil
     @State private var pending: PendingAction? = nil
     @State private var detailID: Int? = nil
+    @State private var burst: MoneyBurst? = nil
 
     var body: some View {
         let cur = engine.currency(for: company)
@@ -23,6 +24,7 @@ struct CompanyProperties: View {
                 owned(pf, cur)
                 forSale(pf, cur)
             }
+            .moneyTravel($burst)
         }
     }
 
@@ -216,7 +218,11 @@ struct CompanyProperties: View {
     }
 
     private func sell(_ p: PropertyRow) {
-        if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 { Haptics.success(); store.show("Sold for \(engine.currency(for: company).tidyShort(net)) after costs.", tone: "good") }
+        if let net = store.act({ $0.sellProperty(companyID: company.id, propertyID: p.id) }), net > 0 {
+            Haptics.success(); store.show("Sold for \(engine.currency(for: company).tidyShort(net)) after costs.", tone: "good")
+            // Only a large sale is worth a chip.
+            if net >= engine.currency(for: company).scaledPrice(50_000) { burst = MoneyBurst(label: "Sold", amount: net, text: engine.currency(for: company).tidyShort(net)) }
+        }
         else { Haptics.warning(); store.show("The property could not be sold.", tone: "warn") }
     }
 

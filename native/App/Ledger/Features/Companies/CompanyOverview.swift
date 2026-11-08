@@ -40,7 +40,7 @@ struct CompanyHero: View {
 
     @ViewBuilder private var figure: some View {
         let t = Text(value.tidyText).font(.system(size: size, weight: .medium, design: .serif).monospacedDigit())
-            .foregroundStyle(tint ?? P.ink).lineLimit(1).minimumScaleFactor(0.5)
+            .foregroundStyle(tint ?? P.ink).lineLimit(2).minimumScaleFactor(0.8)
         if let live { t.moneyFlash(live) } else { t }
     }
 
@@ -129,7 +129,7 @@ struct FixFirstCard: View {
                         HStack {
                             Text(showAll ? "Hide the rest" : "\(issues.count - 1) more \(issues.count == 2 ? "needs" : "need") you").textStyle(.body, tint: P.accent)
                             Spacer()
-                            Image(systemName: showAll ? "chevron.up" : "chevron.down").font(.caption.weight(.semibold)).foregroundStyle(P.accent)
+                            LedgerGlyph(glyph: showAll ? Glyph.chevronUp : Glyph.chevronDown, size: 12, tint: P.accent)
                         }
                         .frame(minHeight: 44).contentShape(Rectangle())
                     }
@@ -416,7 +416,7 @@ struct CompanyOverview: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(spanTitle(months)).textStyle(.caption, tint: P.accent)
-                        Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(P.accent)
+                        LedgerGlyph(glyph: Glyph.chevronDown, size: 10, tint: P.accent)
                     }
                     .frame(minHeight: 44)
                 }

@@ -38,7 +38,7 @@ struct BankAllBillsScreen: View {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("DUE IN 30 DAYS").capsLabel()
-                    Text(store.short(all.dueWithin30Days)).textStyle(.display).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.short(all.dueWithin30Days)).textStyle(.display).minimumScaleFactor(0.8).lineLimit(2)
                 }
                 Spacer(minLength: 8)
                 Chip(text: all.isCovered ? "Covered" : "Not covered", tint: tint)

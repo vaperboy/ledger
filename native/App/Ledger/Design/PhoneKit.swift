@@ -4,6 +4,8 @@ import SwiftUI
 // NewLook.swift: a titled card section, a figure card, an icon row, and a few extra house icons in the same 24 x 24 style.
 
 extension Glyph {
+    static let chevronDown = "M5 9 L12 16 L19 9"
+    static let chevronUp = "M5 15 L12 8 L19 15"
     static let arrowIn = "M17 7 L7 17 M7 9 V17 H15"
     static let arrowOut = "M7 17 L17 7 M9 7 H17 V15"
     static let check = "M5 12 L10 17 L19 7"

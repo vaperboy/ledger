@@ -21,6 +21,7 @@ struct InboxView: View {
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
     @State private var detailID: Int?
+    @State private var burst: MoneyBurst?
     @State private var scrollTarget: Int?
     @AppStorage("inboxPinned") private var pinnedText = ""
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
@@ -273,6 +274,7 @@ struct InboxView: View {
             }
         }
         .padding(.vertical, Theme.Space.s)
+        .moneyTravel($burst, source: a.companyID)
     }
 
     private func runPayroll(_ a: PayrollAlert, _ fmt: BankFmt) {
@@ -281,6 +283,7 @@ struct InboxView: View {
         case .approved?:
             Haptics.success()
             store.show("Payroll approved: about \(fmt.short(a.amount)) goes out on \(a.dateText).", tone: "good")
+            burst = MoneyBurst(label: "Payroll", amount: a.amount, outgoing: true, text: fmt.short(a.amount), source: a.companyID)
         case .paidLate(let paid, let short)?:
             if short > 0.5 {
                 Haptics.warning()
@@ -288,6 +291,7 @@ struct InboxView: View {
             } else {
                 Haptics.success()
                 store.show("Late payroll paid: \(fmt.short(paid)).", tone: "good")
+                burst = MoneyBurst(label: "Payroll", amount: paid, outgoing: true, text: fmt.short(paid), source: a.companyID)
             }
         case .notNeeded(let why)?:
             Haptics.warning()

@@ -159,7 +159,7 @@ struct ReportsPage: View {
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("Profit after tax").textStyle(.label, tint: Theme.inkFaint)
             CountedFigure(value: net, format: f.short, tint: net < -0.5 ? Theme.loss : Theme.ink)
-                .font(.hero(heroSize)).lineLimit(1).minimumScaleFactor(0.5)
+                .font(.hero(heroSize)).lineLimit(2).minimumScaleFactor(0.8)
             if let prev = r.previous {
                 HStack(spacing: Theme.Space.xs) {
                     Text(profitChange.text).textStyle(.body, tint: profitChange.tint, numeric: true, weight: .medium)

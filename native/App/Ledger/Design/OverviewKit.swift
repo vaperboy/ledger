@@ -46,9 +46,9 @@ struct OverviewFigureCard: View {
 
     @ViewBuilder private var figureText: some View {
         if let live, let countFormat {
-            CountedFigure(value: live, format: countFormat, tint: valueTint).font(TextStep.display.fixedFont).lineLimit(1).minimumScaleFactor(0.6)
+            CountedFigure(value: live, format: countFormat, tint: valueTint).font(TextStep.display.fixedFont).lineLimit(2).minimumScaleFactor(0.8)
         } else {
-            Text(value).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
+            Text(value).textStyle(.display).lineLimit(2).minimumScaleFactor(0.8).moneyFlash(live ?? 0)
         }
     }
 }

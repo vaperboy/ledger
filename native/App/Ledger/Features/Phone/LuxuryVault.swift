@@ -44,7 +44,7 @@ struct LuxuryVaultTab: View {
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("My vault").textStyle(.label, tint: P.inkFaint)
             Text(store.short(worth)).font(.system(size: 40, weight: .regular, design: .serif).monospacedDigit()).foregroundStyle(P.ink)
-                .lineLimit(1).minimumScaleFactor(0.5)
+                .lineLimit(2).minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
             if !pieces.isEmpty {
                 Text((change >= 0 ? "+" : "\u{2212}") + store.short(abs(change)) + " on what you paid").textStyle(.body, tint: P.change(change), numeric: true)

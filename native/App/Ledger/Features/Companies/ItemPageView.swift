@@ -54,7 +54,7 @@ struct ItemsList: View {
                 Hairline()
                 Button { Haptics.tap(); onAdd() } label: {
                     HStack(spacing: Theme.Space.m) {
-                        Image(systemName: "plus").font(.body.weight(.medium)).foregroundStyle(P.accent).frame(width: 40)
+                        LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.medium, tint: P.accent).frame(width: 40)
                         Text("Add a \(noun)").textStyle(.headline, tint: P.accent)
                         Spacer()
                     }

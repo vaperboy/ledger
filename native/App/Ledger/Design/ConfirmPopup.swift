@@ -43,20 +43,17 @@ struct ConfirmPopup: View {
             VStack(spacing: Theme.Space.s) {
                 if let amount = action.amount, let currency = action.currency {
                     Text(currency.tidyShort(amount))
-                        .font(.system(size: 30, weight: .semibold, design: .serif).monospacedDigit())
-                        .foregroundStyle(tone.color)
+                        .textStyle(.display, tint: tone.color, numeric: true)
                 }
                 if !effect.isEmpty {
                     Text(effect)
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.primary.opacity(0.62))
+                        .textStyle(.headline, tint: Color.primary.opacity(0.62), weight: .regular)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if !riskText.isEmpty {
                     Text(riskText)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(action.destructive ? PopupTone.danger.color : PopupTone.warning.color)
+                        .textStyle(.body, tint: action.destructive ? PopupTone.danger.color : PopupTone.warning.color, weight: .medium)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }

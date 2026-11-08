@@ -74,7 +74,7 @@ struct ReportDigestSheet: View {
     private func figure(_ label: String, _ value: Double, _ tint: Color, _ text: @escaping (Double) -> String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label).popupText(.rowLabel)
-            CountedFigure(value: value, format: text, tint: tint).font(PopupVariant.standard.figureFont).lineLimit(1).minimumScaleFactor(0.7)
+            CountedFigure(value: value, format: text, tint: tint).font(PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

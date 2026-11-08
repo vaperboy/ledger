@@ -328,6 +328,7 @@ struct CompanyRow: View {
         .padding(.vertical, Theme.Space.s)
         .frame(minHeight: 56)
         .contentShape(Rectangle())
+        .zoomSource(.company(co.id))
         .accessibilityElement(children: .combine)
     }
 

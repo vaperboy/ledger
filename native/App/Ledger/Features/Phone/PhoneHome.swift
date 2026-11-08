@@ -108,7 +108,7 @@ struct AppIcon: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 6) {
-                AppIconTile(glyph: app.glyph, tint: app.tint).opacity(lock == nil ? 1 : 0.35)
+                AppIconTile(glyph: app.glyph, tint: app.tint).opacity(lock == nil ? 1 : 0.35).zoomSource(.app(app))
                 Text(lock ?? app.title).textStyle(.caption, tint: lock == nil ? Theme.ink : Theme.inkFaint).lineLimit(lock == nil ? 1 : 2).minimumScaleFactor(0.8)
             }
             .animation(Motion.quick(reduceMotion), value: lock)

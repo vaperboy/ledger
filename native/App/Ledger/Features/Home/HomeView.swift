@@ -1,4 +1,5 @@
 import SwiftUI
+import GameCore
 import Simulation
 import Finance
 import Businesses
@@ -158,7 +159,7 @@ struct NetWorthCard: View {
                     Text("Net worth").textStyle(.label, tint: Theme.inkFaint)
                     Spacer(minLength: Theme.Space.s)
                     HStack(spacing: Theme.Space.xxs) {
-                        if !ent.isPro { Image(systemName: "lock.fill").font(.caption2).foregroundStyle(Theme.inkFaint).accessibilityHidden(true) }
+                        if !ent.isPro { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.inkFaint) }
                         Text("Insights").textStyle(.caption, tint: Theme.inkSoft)
                         LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                     }
@@ -167,7 +168,7 @@ struct NetWorthCard: View {
                     RollingMoney(value: v) { (x: Double) -> String in store.money(x) }
                         .font(.hero(heroSize))
                         .foregroundStyle(v < 0 ? Theme.loss : Theme.ink)
-                        .minimumScaleFactor(0.5).lineLimit(1)
+                        .minimumScaleFactor(0.8).lineLimit(2)
                 }
                 changeLine(today: store.dayChip?.profit, week: week, month: month)
                 if showBalances { balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo) }
@@ -176,6 +177,7 @@ struct NetWorthCard: View {
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
                     Sparkline(values: series, tint: rising ? Theme.gain : Theme.loss, filled: true)
                         .frame(height: chartHeight)
+                        .drawsItself()
                         .revealOnChange(of: series.last)
                         .accessibilityHidden(true)
                         .padding(.top, Theme.Space.xs)
@@ -399,11 +401,19 @@ struct TopPriorities: View {
         if case .openCompany = item.action { return "suggestion-open-company" } else { return "suggestion-row" }
     }
 
-    /// The raised card: a tone mark, the title, one line of why, and the action in accent.
+    /// The open two-answer decision a card stands for, which Home answers in place; nil for every other card.
+    private func inlineDecision(_ item: Suggestion) -> Message? {
+        guard case .openMessage(let id) = item.action, let m = engine.state.inbox.first(where: { (x: Message) -> Bool in x.id == id }),
+              HomeDecisionButtons.fits(engine, m) else { return nil }
+        return m
+    }
+
+    /// The raised card: a tone mark, the title, one line of why, and the action in accent. A two-answer decision shows its answers as buttons.
     private func lead(_ item: Suggestion) -> some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous)
         let detail: String = item.detail.tidyMoney
-        return Button { Haptics.tap(); store.go(popup: item.action) } label: {
+        let inline: Message? = inlineDecision(item)
+        let card = Button { Haptics.tap(); store.go(popup: item.action) } label: {
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 Capsule().fill(tint(item.tone)).frame(width: 3).frame(maxHeight: .infinity).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
@@ -411,20 +421,30 @@ struct TopPriorities: View {
                     if !detail.isEmpty && !compact {
                         Text(detail).textStyle(.caption).lineLimit(1)
                     }
-                    Text(item.actionLabel).textStyle(.body, tint: Theme.accent, weight: .semibold).lineLimit(1)
-                        .padding(.top, Theme.Space.xxs)
+                    if inline == nil {
+                        Text(item.actionLabel).textStyle(.body, tint: Theme.accent, weight: .semibold).lineLimit(1)
+                            .padding(.top, Theme.Space.xxs)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
             }
             .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.l)
-            .background(shape.fill(Theme.surfaceRaised))
             .contentShape(shape)
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier(item))
+        return VStack(spacing: 0) {
+            card
+            if let inline {
+                HomeDecisionButtons(engine: engine, message: inline)
+                    .padding(.horizontal, Theme.Space.l).padding(.bottom, compact ? Theme.Space.m : Theme.Space.l)
+            }
+        }
+        .background(shape.fill(Theme.surfaceRaised))
+        .contentShape(shape)
     }
 
     private func waitingCard(_ waiting: Int) -> some View {

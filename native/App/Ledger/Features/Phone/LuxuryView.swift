@@ -116,7 +116,7 @@ struct LuxuryPhoto: View {
     }
 
     @ViewBuilder private var picture: some View {
-        if let ui = UIImage(named: ThumbnailView.assetName(.luxury, itemID)) ?? ArtLibrary.luxuryImage(itemID: itemID) {
+        if let ui = ArtLibrary.luxuryImage(itemID: itemID) {
             Image(uiImage: ui).resizable().scaledToFill()
         } else {
             ThumbnailView(kind: .luxury, key: itemID, size: 72, shape: .square)

@@ -172,7 +172,7 @@ struct VenturesHeader: View {
             Text(f.total > 0 ? f.cur.tidyShort(f.total) : "Nothing yet")
                 .font(.system(size: heroSize, weight: .medium, design: .serif).monospacedDigit())
                 .foregroundStyle(P.ink)
-                .lineLimit(1).minimumScaleFactor(0.5)
+                .lineLimit(2).minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
             if !f.changeLine.isEmpty {
                 Text(f.changeLine).textStyle(.body, tint: P.change(f.gain), numeric: true)

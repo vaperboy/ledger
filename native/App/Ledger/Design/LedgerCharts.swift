@@ -32,6 +32,7 @@ struct RevenueProfitChart: View {
                 }
             }
             .frame(height: height)
+            .drawsItself()
         } else {
             Text("Monthly results appear once a month has closed.").textStyle(.caption, tint: Theme.inkFaint).frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
         }

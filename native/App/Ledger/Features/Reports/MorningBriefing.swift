@@ -162,7 +162,7 @@ struct DailyReportPopup: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Net worth today").popupText(.rowLabel)
                 CountedFigure(value: n, format: signedText, tint: Theme.change(n), instant: instant)
-                    .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
+                    .font(PopupVariant.report.figureFont).lineLimit(2).minimumScaleFactor(0.8)
                 if let c = digest.cashChange {
                     HStack(spacing: Theme.Space.xs) {
                         Text("Cash").popupText(.caption)
@@ -175,7 +175,7 @@ struct DailyReportPopup: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Taken today").popupText(.rowLabel)
                 CountedFigure(value: digest.revenue, format: signedText, tint: Theme.change(digest.revenue), instant: instant)
-                    .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.6)
+                    .font(PopupVariant.report.figureFont).lineLimit(2).minimumScaleFactor(0.8)
             }
         }
     }

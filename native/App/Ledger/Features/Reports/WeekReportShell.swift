@@ -130,7 +130,7 @@ struct WeekReportShell<More: View>: View {
         return VStack(alignment: .leading, spacing: 4) {
             Text("Profit").textStyle(.label, tint: Theme.inkFaint)
             CountedFigure(value: r.profit, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(r.profit), duration: Motion.revealSeconds)
-                .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.5)
+                .font(PopupVariant.report.figureFont).lineLimit(2).minimumScaleFactor(0.8)
                 .scaleEffect(numberShown || reduceMotion ? 1 : 0.9, anchor: .leading)
             if let d = r.delta {
                 CountedFigure(value: d, format: { (v: Double) -> String in signed(v) + " vs " + word }, tint: Theme.change(d), duration: Motion.revealSeconds)
@@ -214,7 +214,7 @@ struct WeekReportShell<More: View>: View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label).popupText(.rowLabel)
             CountedFigure(value: value, format: { (v: Double) -> String in withSign ? signed(v) : store.short(v) }, tint: tint, duration: Motion.revealSeconds)
-                .font(PopupVariant.standard.figureFont).lineLimit(1).minimumScaleFactor(0.7)
+                .font(PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

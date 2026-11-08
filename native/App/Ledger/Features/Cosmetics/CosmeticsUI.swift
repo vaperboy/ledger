@@ -139,7 +139,7 @@ struct WardrobeView: View {
         } label: {
             ZStack {
                 Circle().fill(t.accent).frame(width: 34, height: 34)
-                if !open { Image(systemName: "lock.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.black.opacity(0.65)) }
+                if !open { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Color.black.opacity(0.65)) }
             }
             .padding(4)
             .overlay(Circle().strokeBorder(on ? Theme.ivory : Color.clear, lineWidth: 2))

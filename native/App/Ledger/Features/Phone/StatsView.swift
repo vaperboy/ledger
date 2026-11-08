@@ -118,6 +118,7 @@ struct StatsView: View {
                         AxisValueLabel { if let d = v.as(Double.self) { Text(store.short(d)).font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
                     }
                 }
+                .drawsItself()
             }
             makeUpNow(e, colours)
         }
@@ -222,6 +223,7 @@ struct StatsView: View {
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) }
             }
+            .drawsItself()
         }
     }
 

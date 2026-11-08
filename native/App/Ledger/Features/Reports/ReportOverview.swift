@@ -136,6 +136,7 @@ struct ReportChartCard: View {
                 Text("Last \(kind.noun)s".uppercased()).capsLabel()
                 SegmentedPill(items: ReportChartMetric.allCases, title: { $0.rawValue }, selection: $metric)
                 ReportHistoryChart(reports: reports, selectedID: selectedID, metric: metric, format: format)
+                    .revealOnChange(of: metric)
             }
         }
     }
@@ -231,6 +232,7 @@ struct ReportLineDetail: View {
                         }
                     }
                     .frame(height: 120)
+                    .drawsItself()
                 }
             }
         }

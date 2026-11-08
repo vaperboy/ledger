@@ -12,6 +12,7 @@ struct AcctPayroll: View {
     @Environment(\.outsidePalette) private var P
     @ObservedObject var m: AcctModel
     @State private var pending: PendingAction?
+    @State private var burst: MoneyBurst?
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(m.companyID) {
@@ -36,6 +37,7 @@ struct AcctPayroll: View {
                 }
             }
             .confirmAction($pending)
+            .moneyTravel($burst)
         }
     }
 
@@ -383,6 +385,7 @@ struct AcctPayroll: View {
         case .approved?:
             Haptics.success()
             store.show("Payroll approved: about \(fmt.short(r.amountDue)) goes out on \(r.payDateText).", tone: "good")
+            burst = MoneyBurst(label: "Payroll", amount: r.amountDue, outgoing: true, text: fmt.short(r.amountDue))
         case .paidLate(let paid, let short)?:
             if short > 0.5 {
                 Haptics.warning()
@@ -390,6 +393,7 @@ struct AcctPayroll: View {
             } else {
                 Haptics.success()
                 store.show("Late payroll paid: \(fmt.short(paid)).", tone: "good")
+                burst = MoneyBurst(label: "Payroll", amount: paid, outgoing: true, text: fmt.short(paid))
             }
             if let run = store.engine?.payrollRuns(companyID: id, user: user)?.first { m.push(.payrollRun(run.id)) }
         case .notNeeded(let why)?:

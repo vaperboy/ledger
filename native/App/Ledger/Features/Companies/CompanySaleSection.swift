@@ -24,7 +24,7 @@ struct CompanySaleSection: View {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Your part is worth about").textStyle(.label, tint: Theme.inkFaint)
-                    Text(cur.tidyShort(value * company.ownership / 100)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+                    Text(cur.tidyShort(value * company.ownership / 100)).textStyle(.display).lineLimit(2).minimumScaleFactor(0.8)
                     Text("\(Int(company.ownership.rounded()))% of \(company.name)").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
                 }
                 .accessibilityElement(children: .combine)

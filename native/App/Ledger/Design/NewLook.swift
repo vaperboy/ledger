@@ -409,7 +409,7 @@ struct ReturnLine: View {
                 store.returnToOrigin()
             } label: {
                 HStack(spacing: Theme.Space.xs) {
-                    Image(systemName: "chevron.left").textStyle(.caption, tint: Theme.accent, weight: .semibold)
+                    LedgerGlyph(glyph: Glyph.back, size: 12, tint: Theme.accent)
                     Text("Back to \(store.title(for: r.from))").textStyle(.body, tint: Theme.accent, weight: .medium)
                     Spacer()
                 }

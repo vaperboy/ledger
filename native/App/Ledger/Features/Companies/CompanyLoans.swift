@@ -22,7 +22,7 @@ struct CompanyLoans: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if missedTotal > 0 || company.int("loanCall") != 0 {
                 HStack(alignment: .top, spacing: Theme.Space.m) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(P.loss).padding(.top, Theme.Space.xxs)
+                    LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.medium, tint: P.loss).padding(.top, Theme.Space.xxs)
                     Text(company.int("loanCall") != 0 ? "The bank has called a loan. Pay the next instalment in time or the company is wound up."
                          : "\(missedTotal) missed \(missedTotal == 1 ? "instalment" : "instalments"). Penalties are added each month until the loan is back on track.")
                         .font(.system(size: 14, weight: .medium)).foregroundStyle(P.ink).fixedSize(horizontal: false, vertical: true)

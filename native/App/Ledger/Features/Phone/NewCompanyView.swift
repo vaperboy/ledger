@@ -72,7 +72,7 @@ struct NewCompanyView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(name).textStyle(.caption, tint: Theme.accent, weight: .medium)
-                    Image(systemName: "chevron.down").textStyle(.caption, tint: Theme.accent, weight: .semibold)
+                    LedgerGlyph(glyph: Glyph.chevronDown, size: 12, tint: Theme.accent)
                 }
             }
             Spacer()

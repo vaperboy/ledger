@@ -41,8 +41,7 @@ struct PopupHeaderRow: View {
     var body: some View {
         ZStack {
             Text(title)
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(P.ink)
+                .textStyle(.figure, tint: P.ink)
                 .lineLimit(2).minimumScaleFactor(0.85).multilineTextAlignment(.center)
                 .padding(.horizontal, 64)
             HStack {
@@ -63,9 +62,7 @@ struct PopupCloseButton: View {
 
     var body: some View {
         Button { onClose() } label: {
-            Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(P.ink)
+            LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.ink)
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(P.ink.opacity(0.1)))
                 .contentShape(Circle())
@@ -200,8 +197,7 @@ struct CenterSheetFrame<Content: View>: View {
                 PopupIconRing(systemName: icon ?? shade.defaultSymbol, tone: shade)
                 if !shownTitle.isEmpty {
                     Text(shownTitle)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(P.ink)
+                        .textStyle(.title, tint: P.ink)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, PopupLayout.inset)

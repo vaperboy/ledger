@@ -113,11 +113,16 @@ struct HomeEvent: Equatable, Identifiable {
     var day: String
 }
 
-/// An amount chip that travels once (dividend received, transfer made).
+/// An amount chip that travels once (dividend received, transfer made). With `origin` (a point in screen space) it flies from there
+/// to the top of the screen in 0.5 s; `outgoing` marks money that leaves (a minus sign, the loss tint).
 struct TransferChip: Equatable, Identifiable {
     let id = UUID()
     var label: String
     var amount: Double
+    var origin: CGPoint? = nil
+    var outgoing: Bool = false
+    /// The amount as the payer's currency writes it; nil shows `amount` in the home currency.
+    var text: String? = nil
 }
 
 /// Owns the running game and the save files. Views read `engine` and call the methods here; no game rules live in views.
@@ -208,7 +213,9 @@ final class GameStore: ObservableObject {
     }
     /// A chip that flies from a company to the personal account (a view calls `flyChip` after a dividend is paid out).
     @Published private(set) var transferChip: TransferChip?
-    func flyChip(_ label: String, amount: Double) { transferChip = TransferChip(label: label, amount: amount) }
+    func flyChip(_ label: String, amount: Double, from origin: CGPoint? = nil, outgoing: Bool = false, text: String? = nil) {
+        transferChip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
+    }
     func clearChip() { transferChip = nil }
     /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
@@ -766,9 +773,12 @@ final class GameStore: ObservableObject {
     }
 
     /// Opens one account of the Bank app (and optionally one of its tabs) from anywhere: a company's "Open in Bank", a loan or tax prompt.
-    func openBank(_ account: BankAccountID, tab: BankTab = .account) {
-        openApp(.bank, request: .bank(BankRequest(account: account, tab: tab)))
+    func openBank(_ account: BankAccountID, tab: BankTab = .account, applyLoan: Double? = nil) {
+        openApp(.bank, request: .bank(BankRequest(account: account, tab: tab, applyLoan: applyLoan)))
     }
+
+    /// The loan amount a link asked the Bank's loan application to start with; the Loans tab takes it when it appears.
+    @Published var pendingLoanApply: Double?
 
     /// Opens the Accounting app on one company, on its Payroll page when `payroll` is true: the link Team and the Bank use instead of a payroll run of their own.
     func openAccounting(companyID: Int, payroll: Bool = false) {
@@ -881,7 +891,10 @@ final class GameStore: ObservableObject {
         switch action {
         case .openMessage(let id): openMessage(id)
         case .openCompany(let id, let key): openCompany(id, section: key.flatMap { CompanySection(key: $0) })
-        case .openLoans: openBank(.personal, tab: .loans)
+        // An overdrawn account opens the loan application with the shortfall (to the next 100) already chosen.
+        case .openLoans:
+            let short: Double = max(0, -(engine?.state.cash ?? 0))
+            openBank(.personal, tab: .loans, applyLoan: short > 0 ? (short / 100).rounded(.up) * 100 : nil)
         case .openInvest: openMarket(tab: .invest)
         case .openTax: openBank(.personal, tab: .bills)
         case .newCompany: push(.newCompany)
