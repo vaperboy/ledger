@@ -29,6 +29,8 @@ public struct ReportDigest: Equatable, Sendable {
     public var decisionsOpen: Int
     /// The shorter periods that closed together with this one (a month ends with its last week): shown here once, not again.
     public var includes: [ReportKind]
+    /// "Decisions this week: 7. Handled by your team: 5. Escalated to you: 2." Empty when no decision was raised in the period.
+    public var delegation: String = ""
 }
 
 public extension GameEngine {
@@ -65,12 +67,14 @@ public extension GameEngine {
 
         let included: [ReportKind]
         switch r.kind { case .year: included = [.month, .week]; case .month: included = [.week]; case .week: included = [] }
-        return ReportDigest(kind: r.kind, reportID: r.id, title: r.title, range: r.range,
+        var digest = ReportDigest(kind: r.kind, reportID: r.id, title: r.title, range: r.range,
                             revenue: g.pnl.revenue, netProfit: g.pnl.netProfit, cashEnd: g.cashEnd, cashChange: g.cashEnd - g.cashStart,
                             debt: r.netWorthEnd.debt, debtChange: r.netWorthEnd.debt - r.netWorthStart.debt,
                             payroll: max(g.pnl.wages, g.wagesPaid), taxes: g.taxPaid, netWorthEnd: r.netWorthEnd.total, netWorthChange: r.netWorthChange,
                             changes: Array(changes.prefix(5)), risks: Array(risks.prefix(4)),
                             decisionsAnswered: g.decisionsAnswered, decisionsOpen: openDecisions.count, includes: included)
+        digest.delegation = delegationLine(firstWeek: r.firstWeek, lastWeek: r.lastWeek, period: r.kind == .week ? "this week" : r.kind == .month ? "this month" : "this year")
+        return digest
     }
 
     /// The report sheet to show now, or nil: the one pending report the player has not yet dismissed (see `pendingReportPrompt`).

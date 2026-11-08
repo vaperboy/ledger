@@ -187,6 +187,31 @@ final class GameStore: ObservableObject {
         guard let e = engine else { return }
         Reminders.schedule(SessionHooks.reminders(e.state))
     }
+    private static let leftAtKey = "ledger.leftAt"
+    /// Seconds away after which coming back shows the recap card.
+    private static let recapAfterAway: Double = 15 * 60
+    /// The app went to the background: remember the game day and when, for the recap on return.
+    func noteLeaving() {
+        guard var e = engine else { return }
+        e.markSeen()
+        engine = e
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: GameStore.leftAtKey)
+    }
+    /// The app came back after a while: one notice card with what changed since the player left (engine `sinceYouLeft`). It waits its turn:
+    /// nothing is added while a report, another notice or an outcome is on screen.
+    func showReturnRecap() {
+        let left: Double = UserDefaults.standard.double(forKey: GameStore.leftAtKey)
+        guard left > 0, Date().timeIntervalSince1970 - left >= GameStore.recapAfterAway else { return }
+        UserDefaults.standard.removeObject(forKey: GameStore.leftAtKey)
+        guard var e = engine, !isAdvancing, reportSheet == nil, notices.isEmpty, outcomes.isEmpty, let seen: Int = e.lastSeenDay else { return }
+        if let recap: ReturnRecap = e.sinceYouLeft(lastSeenDay: seen) {
+            var t = Toast(title: recap.title, text: recap.lines.joined(separator: "\n"), tone: "n")
+            t.style = "recap"
+            notices.append(t)
+        }
+        e.markSeen()
+        engine = e
+    }
     /// Newly opened features waiting for their announcement popup, oldest first (UnlockKit.swift). One shows at a time, after the day's popups.
     @Published var unlockQueue: [UnlockPrompt] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
@@ -767,6 +792,7 @@ final class GameStore: ObservableObject {
     /// Opens an app of the Phone (Inbox, Bank, News ...) on the open tab: pushed on its stack (or, when already on it, gone back to), so
     /// Back returns to where the link was. Ventures is a part of the Projects tab: on that tab's root it switches to Portfolio.
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
+        if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }   // a daily goal may be waiting on this app
         if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
         appRequest = app == .ventures ? nil : request
         push(.app(app))

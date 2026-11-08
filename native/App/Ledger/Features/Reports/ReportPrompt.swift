@@ -99,6 +99,7 @@ struct ReportDigestSheet: View {
         return VStack(alignment: .leading, spacing: 4) {
             Text("Decisions").capsLabel()
             Text(answered + ", " + waiting).popupText(.body)
+            if !digest.delegation.isEmpty { Text(digest.delegation).popupText(.caption) }
         }
     }
 

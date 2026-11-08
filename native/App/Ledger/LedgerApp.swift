@@ -54,8 +54,8 @@ struct LedgerApp: App {
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { store.scheduleReminders() }
-                    if phase == .active { Reminders.cancelAll(); Task { await entitlements.refresh() } }
+                    if phase == .background { store.scheduleReminders(); store.noteLeaving() }
+                    if phase == .active { Reminders.cancelAll(); store.showReturnRecap(); Task { await entitlements.refresh() } }
                 }
             }
         }

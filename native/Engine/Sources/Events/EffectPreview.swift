@@ -40,6 +40,7 @@ public enum EffectPreview {
         if fx["cyberLvl"].double != 0 { out.append("IT security raised (monthly fee applies)") }
         if fx["cyberTrain"].bool { out.append("Staff security training") }
         if fx["cyberTarget"].bool { out.append("Attack odds x1.8 for 26 weeks") }
+        if fx["delegate"].bool { out.append("Your manager chooses the answer") }
         if fx["warn"].bool { out.append("A warning on record: demand −7% for 6 weeks") }
         return out
     }

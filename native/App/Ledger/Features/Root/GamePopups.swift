@@ -83,7 +83,19 @@ struct NoticePopup: View {
     }
 
     var body: some View {
-        if notice.style == "luxury" { luxury } else { plain }
+        if notice.style == "luxury" { luxury } else if notice.style == "recap" { recap } else { plain }
+    }
+
+    /// The card shown on coming back: what changed while the player was away, one line each.
+    private var recap: some View {
+        GamePopup(title: notice.title, showsClose: false, category: .compact, tone: .info, icon: "clock", onClose: { store.dismissNotice() }) {
+            PopupBody {
+                ForEach(notice.text.split(separator: "\n").map { String($0) }, id: \.self) { line in
+                    Text(line).popupText(.body).fixedSize(horizontal: false, vertical: true)
+                }
+                PopupOptionButton(title: "Continue", highlighted: true, identifier: "recap-ok") { store.dismissNotice() }
+            }
+        }
     }
 
     /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
