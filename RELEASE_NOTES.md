@@ -1,4 +1,5 @@
 # What's new
+- Chain page leads with a head office and location cards (manager, health, one action), holding stakes are grouped by size with one clear button each, and every company shows who it belongs to and who runs it
 - Managers have one budget (tight, normal or free) instead of several limits; tax screens explain the yearly tax and a pay-yourself sheet compares salary, dividend and keeping profit in the company
 - Goals: one ladder with no cash gifts (rewards raise credit, awareness or reputation), a streak-only daily goal, and the ambition choice is a Home card after the first profitable month; unlocks follow one rule table and insurance and suppliers open earlier
 - Group has a Structure tab: a tree of what you own and who runs it, with ownership, manager, health and one action per entry; Boardroom says whose board it is; tabs renamed (People, Grow, Owners and sales)
