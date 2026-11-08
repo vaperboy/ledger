@@ -1,4 +1,5 @@
 # What's new
+- Chains: a chain has its own head-office page, new locations are named after districts (never numbers), adding a location is one step, and a chain manager fills every location manager automatically
 - Boards: a branch shares its parent company board, managers are no longer seated as directors, and directors decide the CEO when an outside owner sits on the board
 - Fixes: a holding loan always covers the full price, and a fund commitment at exactly the shown minimum is accepted
 - Interface polish: cards have a soft edge and top highlight, sliders have a larger thumb with a ring and only snap when close to a stop, popup corners are tighter, corner radii are slightly rounder, and screens that do not fit now scroll instead of cropping
