@@ -71,12 +71,12 @@ public enum HoldingModel {
 
     // MARK: The week
 
-    /// The holding earns interest on its cash and revalues what it owns. Original: `FAM.hold.custom`.
+    /// The holding books no sales and earns nothing on idle cash (a business current account pays no interest): only money put in its treasury
+    /// funds grows, through their price. It revalues what it owns each week. Original: `FAM.hold.custom`.
     static func context(_ s: inout GameState, _ i: Int, _ data: GameData) -> CompanyWeek.WeekContext {
         let h = s.companies[i]
         refreshAssets(&s, holdingID: h.id, data: data)
-        let interest = max(0, h.cash) * max(0, s.economy.policyRate - 0.01) / 52
-        return CompanyWeek.WeekContext(units: 0, rev: interest, cogs: 0, D: 0, cap: 0, util: 0, price: 1, paidDuringWeek: 0)
+        return CompanyWeek.WeekContext(units: 0, rev: 0, cogs: 0, D: 0, cap: 0, util: 0, price: 1, paidDuringWeek: 0)
     }
 
     /// Revalue what a holding owns (`fm.assets` = treasury funds + each company's value x its share). Called every week, and whenever a company
