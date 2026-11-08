@@ -174,9 +174,15 @@ public enum Failure {
 
     /// The end-of-week check: overdraft limit, bank warnings, forced sales, game over. Original: `checkOver`.
     public static func checkOver(_ s: inout GameState, data: GameData, context: FinanceContext, liquidate: (inout GameState, Double) -> Void) {
+        TaxSettlement.collectIfRefused(&s, context: context)
+        TaxSettlement.refresh(&s, data: data, context: context)
         coverFromSoleTraders(&s, context: context)
         var od = s.rest["flags"]?["od"].int ?? 0
-        if s.cash < -s.overdraftLimit {
+        // While the player is choosing how to pay a tax bill, the bank's clock waits.
+        let choosingTaxPayment = s.inbox.contains { $0.status == "open" && $0.actionID == PersonalFinance.dueAction }
+        if s.cash < -s.overdraftLimit && choosingTaxPayment {
+            // no weeks counted until the answer or its deadline
+        } else if s.cash < -s.overdraftLimit {
             od += 1
             if od == 1 {
                 s.addMessage(from: "Bank", title: "Overdraft limit exceeded",

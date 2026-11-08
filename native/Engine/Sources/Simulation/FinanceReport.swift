@@ -122,9 +122,10 @@ public extension GameEngine {
             }
         }
         if companyID == nil {
-            let est = PersonalFinance.taxEstimate(s, context: context)
+            let est = PersonalFinance.storedEstimate(s)?.total ?? PersonalFinance.taxEstimate(s, context: context)
             if est > 0 || s.tax.pending > 0 {
-                o.taxes.append(FinanceLine(id: "personal", label: "Your personal income tax", amount: max(est, s.tax.pending), detail: "Estimated for this year; settled after year end"))
+                o.taxes.append(FinanceLine(id: "personal", label: "Your personal tax", amount: max(est, s.tax.pending),
+                                           detail: "Estimated for this year (income, dividends, gains, interest, wealth); settled at year end"))
                 o.taxesOwed += s.tax.pending
             }
         }

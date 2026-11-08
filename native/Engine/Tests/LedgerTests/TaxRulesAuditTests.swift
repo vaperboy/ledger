@@ -47,6 +47,7 @@ final class TaxRulesAuditTests: XCTestCase {
                 let k = data.countries.resolve(code, orHome: code)
                 s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
                 s.tax.gains = 2_000_000; s.tax.interest = 100_000
+                Ledger.move(&s, .me, 100_000_000, why: "Test funds")   // enough to pay the whole bill without a payment decision
                 let before = s.cash + s.savings
                 PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
                 XCTAssertEqual(before - (s.cash + s.savings), 2_000_000 * k.capitalGainsTax + 100_000 * k.savingsInterestTax, accuracy: 3, code)

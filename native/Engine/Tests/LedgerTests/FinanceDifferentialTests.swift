@@ -75,7 +75,7 @@ final class PersonalFinanceDifferentialTests: XCTestCase {
         let book = try CountryBook.bundled()
         let ctx = FinanceContext(countries: CountryBook(countries: book.countries.map { var c = $0; if c.code == "UK" { c.dividendTax = 0.3375; c.capitalGainsTax = 0.3375; c.savingsInterestTax = 0.3375 }; return c }), trades: cat)
 
-        func check(_ label: String, _ e: JSONValue) {
+        func check(_ label: String, _ e: JSONValue, statement: Bool = true) {
             assertClose(s.cash, e["cash"].double, tol: 1e-9, "\(label) cash")
             assertClose(s.savings, e["sav"].double, tol: 1e-9, "\(label) savings")
             assertClose(s.credit, e["credit"].double, tol: 1e-9, "\(label) credit")
@@ -89,7 +89,7 @@ final class PersonalFinanceDifferentialTests: XCTestCase {
             assertClose(s.tax.withheld, e["tax"]["withheld"].double, tol: 1e-9, "\(label) withheld")
             assertClose(s.tax.advancePaid, e["tax"]["adv"].double, tol: 1e-9, "\(label) advance")
             assertClose(s.tax.interest, e["tax"]["int"].double, tol: 1e-9, "\(label) tax interest")
-            for (i, line) in s.statement.prefix(e["log"].array.count).enumerated() {
+            for (i, line) in s.statement.prefix(statement ? e["log"].array.count : 0).enumerated() {
                 XCTAssertEqual(line.label, e["log"][i]["l"].string, "\(label) statement line \(i)")
                 assertClose(line.amount, e["log"][i]["a"].double, tol: 1e-9, "\(label) statement amount \(i)")
             }
@@ -105,7 +105,13 @@ final class PersonalFinanceDifferentialTests: XCTestCase {
         assertClose(nw.total, g["nwBeforeYear"].double, tol: 1e-9, "net worth before year end")
         let owned = s.companies.filter { $0.status != .sold }.reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: cat) * $1.ownership / 100 }
         PersonalFinance.yearEnd(&s, context: ctx, netWorth: nw.total, ownedCompanyValue: owned)
-        check("after year end", g["afterYear"])
+        check("after year end", g["afterYear"], statement: false)
+        // The assessment is one statement line per part; together they are the original's single line.
+        let taxLines = s.statement.prefix { $0.label.hasPrefix("Annual tax") }
+        XCTAssertEqual(taxLines.reduce(0) { $0 + $1.amount }, g["afterYear"]["log"][0]["a"].double, accuracy: 3, "assessment lines sum to the original's line")
+        for (i, line) in s.statement.dropFirst(taxLines.count).prefix(g["afterYear"]["log"].array.count - 1).enumerated() {
+            XCTAssertEqual(line.label, g["afterYear"]["log"][i + 1]["l"].string, "year end earlier line \(i)")
+        }
         assertClose(s.enkLoss, g["enkLoss"].double, tol: 1e-9, "sole trader loss carried")
         XCTAssertEqual(s.stats.yearsPlayed, g["yearsStat"].int)
         assertClose(s.stats.taxPaid, g["taxPaid"].double, tol: 1e-9, "tax paid statistic")

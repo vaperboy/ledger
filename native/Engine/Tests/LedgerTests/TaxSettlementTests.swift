@@ -1,0 +1,94 @@
+import XCTest
+import GameCore
+import Countries
+import Finance
+@testable import Simulation
+
+/// The year-end personal tax: itemised, paid from cash then savings, and a decision (not a forced sale) when the accounts cannot carry it.
+final class TaxSettlementTests: XCTestCase {
+    private func game() throws -> GameEngine {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
+        e.update { s, _, _ in
+            Ledger.set(&s, .me, to: 0)
+            s.savings = 0
+            s.loans.removeAll()
+            s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
+        }
+        return e
+    }
+
+    func testBillIsPaidFromSavingsBeforeTheAccountGoesNegative() throws {
+        var e = try game()
+        e.update { s, _, ctx in
+            let cur = ctx.homeCurrency(s)
+            s.tax.gains = cur.scaledPrice(100_000)
+            s.savings = cur.scaledPrice(100_000)
+            PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
+            XCTAssertGreaterThanOrEqual(s.cash, 0, "savings covered it")
+            XCTAssertLessThan(s.savings, cur.scaledPrice(100_000))
+            XCTAssertEqual(s.tax.pending, 0)
+            let last = PersonalFinance.lastAssessment(s)
+            XCTAssertNotNil(last)
+            XCTAssertGreaterThan(last?.gainsTax ?? 0, 0)
+            XCTAssertEqual(last?.total ?? 0, last?.gainsTax ?? -1, accuracy: 1)
+            XCTAssertFalse(s.inbox.contains { $0.actionID == PersonalFinance.dueAction })
+        }
+    }
+
+    func testBillBeyondTheAccountsAsksBeforeAnythingIsForced() throws {
+        var e = try game()
+        e.update { s, _, ctx in
+            s.tax.gains = ctx.homeCurrency(s).scaledPrice(100_000_000)
+            PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
+            XCTAssertGreaterThan(s.tax.pending, 0)
+            XCTAssertGreaterThanOrEqual(s.cash, -s.overdraftLimit, "the unpaid part is not charged to the account")
+            XCTAssertTrue(s.inbox.contains { $0.status == "open" && $0.actionID == PersonalFinance.dueAction })
+        }
+        let id = e.state.inbox.first { $0.actionID == PersonalFinance.dueAction }!.id
+        let owed = e.state.tax.pending
+        XCTAssertTrue(e.answer(messageID: id, option: 2), "a payment plan is allowed")
+        XCTAssertEqual(e.state.tax.pending, 0)
+        XCTAssertEqual(e.state.loans.first { $0.name == "Tax payment plan" }?.balance ?? 0, owed, accuracy: 1)
+    }
+
+    func testRefusingTakesTheBalanceFromTheAccount() throws {
+        var e = try game()
+        e.update { s, _, ctx in
+            s.tax.gains = ctx.homeCurrency(s).scaledPrice(100_000_000)
+            PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
+        }
+        let id = e.state.inbox.first { $0.actionID == PersonalFinance.dueAction }!.id
+        let cash0 = e.state.cash, owed = e.state.tax.pending
+        XCTAssertTrue(e.answer(messageID: id, option: 3))
+        XCTAssertEqual(e.state.tax.pending, 0)
+        XCTAssertEqual(cash0 - e.state.cash, owed, accuracy: 1)
+    }
+
+    func testMonthlyEstimateIsStoredAndTheCreditLineGrowsWithWealth() throws {
+        var e = try game()
+        e.update { s, data, ctx in
+            let cur = ctx.homeCurrency(s)
+            let base = cur.scaledPrice(25000)
+            s.credit = 70
+            s.savings = cur.scaledPrice(500_000_000)
+            s.tax.dividends = cur.scaledPrice(1_000_000)
+            TaxSettlement.refresh(&s, data: data, context: ctx)
+            XCTAssertNotNil(PersonalFinance.storedEstimate(s))
+            XCTAssertGreaterThan(PersonalFinance.storedEstimate(s)?.dividendTax ?? 0, 0)
+            XCTAssertGreaterThan(s.overdraftLimit, base, "wealth raises the line")
+            s.savings = 0
+        }
+        XCTAssertGreaterThan(e.taxEstimate().total, 0)
+    }
+
+    func testWarningWhenTheBillExceedsLiquidFundsNearYearEnd() throws {
+        var e = try game()
+        e.update { s, data, ctx in
+            // Move to the last weeks of the year.
+            while PersonalFinance.weeksToYearEnd(week: s.week) > 6 { s.week += 1 }
+            s.tax.gains = ctx.homeCurrency(s).scaledPrice(10_000_000)
+            TaxSettlement.refresh(&s, data: data, context: ctx)
+            XCTAssertTrue(s.inbox.contains { $0.title.contains("tax bill") }, "an inbox warning")
+        }
+    }
+}

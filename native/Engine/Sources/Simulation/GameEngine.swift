@@ -159,6 +159,7 @@ public struct GameEngine {
             if m.actionID == HierarchyHiring.action { HierarchyHiring.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
+            if m.actionID == PersonalFinance.dueAction { return TaxSettlement.answer(&s, message: m, option: idx, data: d, context: c) }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
             if ManagerTargets.handlesAnswer(m.actionID) { ManagerTargets.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FirstYear.frozenAction { return true }
