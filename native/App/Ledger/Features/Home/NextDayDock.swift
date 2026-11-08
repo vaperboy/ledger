@@ -60,6 +60,7 @@ struct NextDayDock: View {
             .contentShape(Capsule())
         }
         .buttonStyle(PressableStyle())
+        .coachAnchor(.nextDay)
         .disabled(over || (busy || (blockID == nil && store.reportSheet != nil)))
         .accessibilityLabel(title)
         .accessibilityValue(caption)

@@ -48,7 +48,7 @@ struct HomeSummary<Companies: View>: View {
                 HomeProgressStrip(engine: e)
                 if fills { Self.gap }
             }
-            if sizeClass != .regular { TopPriorities(engine: e, compact: compact) }
+            if sizeClass != .regular { TopPriorities(engine: e, compact: compact).coachAnchor(.needsYou) }
             if fills { Self.gap }
             companies()
             if fills { Spacer(minLength: 0) }
@@ -188,6 +188,7 @@ struct NetWorthCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityHint(ent.isPro ? "Opens Insights" : "Opens Insights, part of Ledger Pro")
         .accessibilityIdentifier("home-insights")
+        .coachAnchor(.happened)
         .onAppear { if snap == nil { snap = takeSnap() } }
         .onChange(of: nw.total) { _, _ in if !store.holdsHomeFigures { snap = takeSnap() } }
         .onChange(of: blocked) { _, now in if !now { snap = takeSnap() } }
