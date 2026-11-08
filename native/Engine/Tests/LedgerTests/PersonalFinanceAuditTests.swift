@@ -109,7 +109,7 @@ final class PersonalFinanceAuditTests: XCTestCase {
             s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
             s.tax.gains = 1_000_000; s.tax.dividends = 5_000_000; s.tax.interest = 20_000
             PersonalFinance.yearEnd(&s, context: ctx, netWorth: 50_000_000, ownedCompanyValue: 0)
-            let text = s.notices.last?.text ?? ""
+            let text = s.rest["rep"]?["ev"].array.last?["t"].string ?? ""
             XCTAssertTrue(text.contains("dividend tax"), text)
             XCTAssertTrue(text.contains("tax on gains"), text)
             XCTAssertTrue(text.contains("tax on interest"), text)
