@@ -1,4 +1,5 @@
 # What's new
+- Goals: one ladder with no cash gifts (rewards raise credit, awareness or reputation), a streak-only daily goal, and the ambition choice is a Home card after the first profitable month; unlocks follow one rule table and insurance and suppliers open earlier
 - Group has a Structure tab: a tree of what you own and who runs it, with ownership, manager, health and one action per entry; Boardroom says whose board it is; tabs renamed (People, Grow, Owners and sales)
 - Personal tax: a monthly estimate with an early warning, paid from cash then savings with each tax shown separately, a credit line that grows with wealth, and payment options (sell investments, loan, 12-month plan) before any forced sale
 - Hiring is one staffing plan: a target headcount per role, filled by the responsible manager after a two-week search with a recruiting fee, seasonal crews included
