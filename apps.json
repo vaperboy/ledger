@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.95",
+          "buildVersion": "95",
+          "date": "2026-11-08T12:43:57Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v95/Ledger-unsigned.ipa",
+          "size": 30153885,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval\n- Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows\n- Taxes are paid as they arise: dividend tax when a dividend is paid, gains tax at the sale, interest and wealth tax monthly, company tax monthly, and the year end only settles the small difference\n- No banners or toasts at the top: a decision is answered in a popup and a result popup follows with what you chose and what happened; plain information lives in Stats, Inbox and the ledger pages\n- Managers act realistically: they move prices within a band set by your Direction, order stock and run marketing within their budget, and each department head owns one decision; you give five orders (Direction, Budget, Headcount, Pay and bonus, Replace)\n- Hiring starts simple (offer the going rate, below or above) and the perks, promises and expenses unlock with f"
+        },
+        {
           "version": "1.0.94",
           "buildVersion": "94",
           "date": "2026-11-08T11:12:36Z",
@@ -187,22 +196,13 @@
           "size": 29296541,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; sheet text uses the shared popup styles\n- Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports "
-        },
-        {
-          "version": "1.0.75",
-          "buildVersion": "75",
-          "date": "2026-11-06T11:58:05Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v75/Ledger-unsigned.ipa",
-          "size": 29314653,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more time\n- Operations: repair at your own garage, add retail catalogue items, analyst and ranking in Market\n- News links to the company; achievements show streaks; reports show more figures\n- Hiring: mobile and remote roles no longer need a desk; checklist always completable; picker shows affordable trades"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.94",
-      "versionDate": "2026-11-08T11:12:36Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v94/Ledger-unsigned.ipa",
-      "size": 30161050
+      "version": "1.0.95",
+      "versionDate": "2026-11-08T12:43:57Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v95/Ledger-unsigned.ipa",
+      "size": 30153885
     }
   ]
 }
