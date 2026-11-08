@@ -5,9 +5,9 @@ import Events
 import Simulation
 
 /// What the player must read or decide is a popup on the main screen: the notice queue (a serious problem, the outcome of an answer),
-/// a top-priority decision, the daily report, the week, month and year reports and the rewards. A refusal or a minor warning is a
+/// a top-priority decision, the week, month and year reports and the rewards. An ordinary day is not a popup: Home shows it in `DayReportBar`. A refusal or a minor warning is a
 /// toast instead (`GameStore.show`). This view only REGISTERS the popups with the app's popup host (see `PopupHost`, `PopupPriority`):
-/// the host draws them, one at a time, in the order confirm, decision, alert (error, red alert, notice), report and daily, reward and
+/// the host draws them, one at a time, in the order confirm, decision, alert (error, red alert, notice), report, reward and
 /// feature unlock, panel.
 struct PopupLayer: View {
     @EnvironmentObject var store: GameStore
@@ -29,9 +29,6 @@ struct PopupLayer: View {
             }
             .hostedPopup(key: "report-\(store.reportSheet?.reportID ?? 0)", priority: .report, active: store.reportSheet != nil, onClose: { }) {
                 if let r = store.reportSheet { ReportDigestSheet(digest: r).environmentObject(store) }
-            }
-            .hostedPopup(key: "daily", priority: .report, active: store.dailySheet != nil && store.reportSheet == nil, onClose: { }) {
-                if let d = store.dailySheet { DailyReportPopup(digest: d).environmentObject(store) }
             }
             .hostedPopup(key: "celebration-\(store.celebrationQueue.first?.id ?? 0)", priority: .celebration, active: !store.celebrationQueue.isEmpty, onClose: { }) {
                 if let c = store.celebrationQueue.first { CelebrationPopup(item: c).environmentObject(store) }
