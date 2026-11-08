@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.97",
+          "buildVersion": "97",
+          "date": "2026-11-08T14:12:43Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v97/Ledger-unsigned.ipa",
+          "size": 30163283,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month\n- Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers\n- Next day is a floating button above the tab bar and Skip week is gone, the daily report popup is back, and Home never scrolls with one company\n- Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once\n- The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval\n- Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows\n- Taxes are paid as they arise: dividend tax when a divid"
+        },
+        {
           "version": "1.0.96",
           "buildVersion": "96",
           "date": "2026-11-08T13:41:43Z",
@@ -187,22 +196,13 @@
           "size": 29480463,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed\n- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)\n- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device\n- Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap\n- Notices: minor \"cannot / not enough\" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette\n- Balance: managers can approve more space; nightclub wages sane; salmon farms no longer run dry before the first harvest; dealer customer loans approve far more often\n- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; she"
-        },
-        {
-          "version": "1.0.77",
-          "buildVersion": "77",
-          "date": "2026-11-06T13:26:38Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v77/Ledger-unsigned.ipa",
-          "size": 29296349,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Balance: managers can approve more space; nightclub wages sane; salmon farms no longer run dry before the first harvest; dealer customer loans approve far more often\n- Popups: Wardrobe, Insights, loan application and info tips now open as the same popup cards; sheet text uses the shared popup styles\n- Own delivery books the delivery fee customers pay; type a price in any item page; franchise applications show their four steps\n- Home suggestions open the section that needs you; your badge shows on company cards; managers hire remote roles even when the office is full\n- Week report: Continue and Full report stay pinned at the bottom of the card\n- Balance: ads now stack on your name and show payback; second-store readiness; known brands resist rivals; skilled play out-earns idle play\n- Accounting: balance sheet and cash flow; choose your accountant (Atlas, new company, conversion); people cost and pay day panels\n- Inbox: \"Handled by\" and a Handled tab; messages open the right app; research reports open as documents\n- Group: \"Who runs what\" table; own staff on a board; interview chips for manager candidates\n- Goals link to where they are done; promises can be given more "
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.96",
-      "versionDate": "2026-11-08T13:41:43Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v96/Ledger-unsigned.ipa",
-      "size": 30185281
+      "version": "1.0.97",
+      "versionDate": "2026-11-08T14:12:43Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v97/Ledger-unsigned.ipa",
+      "size": 30163283
     }
   ]
 }
