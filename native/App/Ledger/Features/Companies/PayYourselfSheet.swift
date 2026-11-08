@@ -6,7 +6,7 @@ import Simulation
 
 /// The tax rule for dividends in the player's country, in words, for the places that offer to pay one.
 enum PayRules {
-    /// "dividend tax of 37.84% at year end, after any tax-free shield".
+    /// "dividend tax of 37.84% withheld when it is paid, after any tax-free shield".
     static func dividendTaxText(_ engine: GameEngine) -> String {
         let c: Country = engine.context.homeCountry(engine.state)
         return "dividend tax of \(Currency.percent(c.dividendTax, decimals: 2)) at year end, after any tax-free shield"
@@ -23,7 +23,7 @@ struct PayYourselfSheet: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let cur: Currency = e.currency(for: co)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("Compared for one amount: a year of salary at this size, or one dividend of it. Tax is added to your bill at year end.")
+                Text("Compared for one amount: a year of salary at this size, or one dividend of it. Tax is taken when the money is paid.")
                     .popupText(.caption).fixedSize(horizontal: false, vertical: true)
                 AmountField(title: "Amount to take out", currency: cur, amount: $amount)
                 if let r = e.ownerPayOptions(companyID: companyID, amount: amount) {

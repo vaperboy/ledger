@@ -70,7 +70,7 @@ struct TaxTable: View {
             }
             Hairline()
             HStack(alignment: .firstTextBaseline) {
-                Text("Total").popupText(.rowValue)
+                Text("Still to settle").popupText(.rowValue)
                 Spacer(minLength: Theme.Space.s)
                 Text(store.short(breakdown.total)).popupText(.rowValue).lineLimit(1)
             }
@@ -100,7 +100,7 @@ struct TaxEstimateCard: View {
     @ViewBuilder var body: some View {
         let b: PersonalFinance.TaxBreakdown = engine.taxEstimate()
         let owed: Double = engine.state.tax.pending
-        if b.total > 0 || owed > 0 {
+        if b.annual > 0 || b.total > 0 || owed > 0 {
             card(b, owed: owed)
                 .centerSheet(isPresented: $open, title: "How the tax adds up") {
                     TaxTable(title: "Estimate if the year ended now", breakdown: b, country: engine.context.homeCountry(engine.state))
@@ -119,13 +119,23 @@ struct TaxEstimateCard: View {
             Button("How it adds up") { open = true }.buttonStyle(TertiaryButtonStyle(size: .compact))
         }) {
             HStack(alignment: .firstTextBaseline) {
-                Text(store.short(b.total)).textStyle(.figure, tint: covered ? P.ink : P.loss).lineLimit(1).minimumScaleFactor(0.6)
+                Text(store.short(b.annual)).textStyle(.figure, tint: P.ink).lineLimit(1).minimumScaleFactor(0.6)
                 Spacer(minLength: Theme.Space.s)
-                Text("Due \(due)").textStyle(.caption, tint: P.inkFaint)
+                Text("Paid as you earn it").textStyle(.caption, tint: P.inkFaint)
+            }
+            HStack(alignment: .firstTextBaseline) {
+                Text("Paid so far").textStyle(.caption, tint: P.inkFaint)
+                Spacer(minLength: Theme.Space.s)
+                Text(store.short(b.paidSoFar)).textStyle(.caption, tint: P.inkSoft)
+            }
+            HStack(alignment: .firstTextBaseline) {
+                Text(b.total < 0 ? "Refund at year end (\(due))" : "Settled at year end (\(due))").textStyle(.caption, tint: P.inkFaint)
+                Spacer(minLength: Theme.Space.s)
+                Text(store.short(abs(b.total))).textStyle(.caption, tint: b.total > 0 && !covered ? P.loss : P.inkSoft)
             }
             ProgressLine(fraction: share, tint: covered ? P.gain : P.loss)
             Text(covered
-                 ? "Cash and savings of \(store.short(liquid)) cover it."
+                 ? "Tax is taken when you receive the money. Only the difference is settled at year end."
                  : "Cash and savings of \(store.short(liquid)) are \(store.short(b.total - liquid)) short. Take dividends, sell investments or arrange a loan before then.")
                 .textStyle(.caption, tint: covered ? P.inkFaint : P.warn).fixedSize(horizontal: false, vertical: true)
             if owed > 0 {
