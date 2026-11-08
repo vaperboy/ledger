@@ -85,7 +85,7 @@ public enum HoldingModel {
         guard let i = s.companyIndex(holdingID), s.companies[i].type == "hold" else { return }
         let rivals = HoldingStakes.revalueRivals(&s, holdingID: holdingID, data: data)
         let h = s.companies[i]
-        let held = HoldingStakes.stakeCompanies(of: h.id, in: s).reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * HoldingStakes.sharePercent(of: $1, holdingID: h.id) / 100 } + rivals
+        let held = HoldingStakes.stakeCompanies(of: h.id, in: s).reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * HoldingStakes.sharePercent(of: $1, holdingID: h.id) / 100 } + rivals + HoldingStartups.value(s, holdingID: h.id)
         var fm = h.value("fm")
         fm["assets"] = .number(treasuryValue(h, s) + held)
         s.companies[i].set("fm", fm)
@@ -339,7 +339,7 @@ public enum HoldingModel {
         c.profitTTM += hh.reduce(0) { $0 + $1.profit }
         c.cashInGroup += max(0, h.cash)
         c.debtInGroup += CompanyFigures.debts(h, loans: s.loans)
-        c.rivalStakes = HoldingStakes.rivalStakesValue(h)
+        c.rivalStakes = HoldingStakes.rivalStakesValue(h) + HoldingStartups.value(s, holdingID: h.id)
         c.holdingValue = h.cash + c.indexFund + c.otherFunds + c.companiesValue + c.rivalStakes
         return c
     }

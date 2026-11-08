@@ -257,7 +257,7 @@ public enum Funding {
     public static func holdingValue(_ s: GameState, holdingID: Int, data: GameData) -> Double {
         guard let h = s.company(holdingID) else { return 0 }
         let kids = HoldingStakes.stakeCompanies(of: holdingID, in: s).reduce(0) { $0 + max(0, Valuation.companyValue($1, state: s, trades: data.catalog)) * HoldingStakes.sharePercent(of: $1, holdingID: holdingID) / 100 }
-        return kids + HoldingStakes.rivalStakesValue(h) + h.cash + HoldingModel.treasuryValue(h, s)
+        return kids + HoldingStakes.rivalStakesValue(h) + HoldingStartups.value(s, holdingID: holdingID) + h.cash + HoldingModel.treasuryValue(h, s)
     }
     public static func isListed(_ co: Company) -> Bool { co.type == "hold" && co.flag("listed") }
     public static func listingMinimum(_ s: GameState, _ fc: FinanceContext) -> Double { fc.homeCurrency(s).scaledPrice(listingMinimumValue) }

@@ -109,9 +109,9 @@ public enum PrivateEquity {
         var pe = s.rest["pe56"]!
         guard let n = pe["offers"].array.firstIndex(where: { $0["id"].string == offerID }) else { return .gone }
         let o = pe["offers"].array[n]
-        let amt = jsRound(amount)
-        if amt < o["min"].double { return .tooSmall }
-        if Valuation.netWorth(s, trades: data.catalog).total < amt * 1.5 { return .notRichEnough }
+        let check = commitCheck(s, offerID: offerID, amount: amount, data: data)
+        guard check.result == .ok else { return check.result }
+        let amt = check.amount
         var mine = pe["mine"].array
         mine.append(.object(["id": .number(Double(s.makeID())), "o": o["id"], "n": o["n"], "k": o["k"], "q": o["q"], "w0": .number(Double(s.week)), "com": .number(amt),
                              "called": 0, "nav": 0, "dist": 0, "paid": 0, "fee": 0, "st": "live"]))
@@ -124,15 +124,7 @@ public enum PrivateEquity {
     /// Sell a stake on the secondary market. Returns the cash you get. Original: `PE56.sell`.
     @discardableResult
     public static func sellStake(_ s: inout GameState, fundID: Int) -> Double? {
-        guard var pe = s.rest["pe56"], var mine = Optional(pe["mine"].array), let k = mine.firstIndex(where: { $0["id"].int == fundID && $0["st"].string == "live" }) else { return nil }
-        var f = mine[k]
-        let get = jsRound(f["nav"].double * (1 - discount(f, s)))
-        Payments.playerReceives(&s, get, label: "Sold on the secondary market: \(f["n"].string)")
-        let gain = max(0, f["dist"].double + get - f["paid"].double) - f["taxed"].double
-        if gain > 0 { s.tax.gains += gain }
-        f["dist"] = .number(f["dist"].double + get); f["nav"] = 0; f["st"] = "sold"
-        mine[k] = f; pe["mine"] = .array(mine); s.rest["pe56"] = pe
-        return get
+        sellStakeAsking(&s, fundID: fundID, askMultiplier: nil)?.proceeds
     }
 
     // MARK: The week

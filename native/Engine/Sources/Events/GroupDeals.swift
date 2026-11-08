@@ -73,7 +73,7 @@ public enum GroupDeals {
     @discardableResult
     public static func buyStake(_ s: inout GameState, groupID: String, fraction: Double, multiplier: Double, chance: Double, context fc: FinanceContext) -> BuyStakeResult {
         guard let g = GroupStakes.group(s, id: groupID) else { return .noGroup }
-        let price = (GroupStakes.value(of: g, s) * fraction * multiplier / 1000).rounded() * 1000
+        let price = stakePrice(value: GroupStakes.value(of: g, s), fraction: fraction, multiplier: multiplier)
         if !s.random.chance(chance) { s.note("Another bidder won the stake in \(g["name"].string).", tone: "n"); return .outbid }
         if Payments.liquid(s) < price { s.note("You could not raise \(Int(price)) in time.", tone: "bad"); return .couldNotPay(price) }
         Payments.transferFromSavings(&s, need: price)
