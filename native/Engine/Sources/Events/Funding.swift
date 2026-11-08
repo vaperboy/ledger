@@ -57,7 +57,7 @@ public enum Funding {
         s.companies[i].set("flags", f)
     }
     /// The percent of a company that outsiders own.
-    public static func outsidePercent(_ co: Company) -> Double { 100 - co.ownership }
+    public static func outsidePercent(_ co: Company) -> Double { 100 - co.ownership - HoldingStakes.heldByHoldings(co) }
 
     // MARK: How investors see you
 
@@ -256,8 +256,8 @@ public enum Funding {
     /// What a holding is worth: its companies by your share, its cash and its treasury funds. Original: `holdValue`.
     public static func holdingValue(_ s: GameState, holdingID: Int, data: GameData) -> Double {
         guard let h = s.company(holdingID) else { return 0 }
-        let kids = HoldingModel.subsidiaries(of: holdingID, in: s).reduce(0) { $0 + max(0, Valuation.companyValue($1, state: s, trades: data.catalog)) * $1.ownership / 100 }
-        return kids + h.cash + HoldingModel.treasuryValue(h, s)
+        let kids = HoldingStakes.stakeCompanies(of: holdingID, in: s).reduce(0) { $0 + max(0, Valuation.companyValue($1, state: s, trades: data.catalog)) * HoldingStakes.sharePercent(of: $1, holdingID: holdingID) / 100 }
+        return kids + HoldingStakes.rivalStakesValue(h) + HoldingStartups.value(s, holdingID: holdingID) + h.cash + HoldingModel.treasuryValue(h, s)
     }
     public static func isListed(_ co: Company) -> Bool { co.type == "hold" && co.flag("listed") }
     public static func listingMinimum(_ s: GameState, _ fc: FinanceContext) -> Double { fc.homeCurrency(s).scaledPrice(listingMinimumValue) }

@@ -80,7 +80,7 @@ public enum Valuation {
         funds += (s.rest["pe56"]?["mine"].array ?? []).filter { $0["st"].string == "live" }.reduce(0) { $0 + $1["nav"].double }
 
         var companies = 0.0
-        for st in s.rest["startups"]?.array ?? [] where st["st"].string == "live" { companies += st["val"].double * st["pct"].double / 100 }
+        for st in s.rest["startups"]?.array ?? [] where st["st"].string == "live" && st["hid"].int == 0 { companies += st["val"].double * st["pct"].double / 100 }
         // Startups you founded (live ones, by your share) and shares you hold in other people's startups
         // (A startup you founded is a company of yours and is counted with the companies below.)
         companies += (s.rest["stakes"]?.array ?? []).reduce(0) { $0 + $1["val"].double }

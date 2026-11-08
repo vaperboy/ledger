@@ -107,8 +107,16 @@ public enum SalesItems {
         guard let bd = data.catalog[s.companies[i].type] else { return }
         let all = items(s.companies[i], bd)
         let hide = all.map(\.id).filter { $0 != keeping }
+        let keep: [JSONValue] = keeping.map { [JSONValue.string($0)] } ?? []
         store(&s, i, all)   // a trade with no module of its own now has a stored list to hide from
-        s.companies[i].set(pickKey, .object(["p": .bool(false), "hide": .array(hide.map { .string($0) })]))
+        s.companies[i].set(pickKey, .object(["p": .bool(false), "hide": .array(hide.map { .string($0) }), "only": .bool(true), "keep": .array(keep)]))
+    }
+
+    /// Zero a company's sales for the week while its first choice of what to sell is still open. For the models that work out their own
+    /// week (rental, developer, special families) and so do not pass through `DemandModel.compute`; costs run on.
+    static func gate(_ ctx: inout CompanyWeek.WeekContext, _ co: Company) {
+        guard firstChoicePending(co) else { return }
+        ctx.units = 0; ctx.rev = 0; ctx.D = 0; ctx.util = 0
     }
 
     /// While the first choice is open nothing is on sale: 0 (customers), else 1.
@@ -123,8 +131,34 @@ public enum SalesItems {
         return list.map { var it = $0; it.unitShare = hidden.contains(it.id) ? 0 : it.unitShare / total; return it }
     }
 
-    /// Ids the player does not see (starter items left unchosen).
-    public static func hiddenIDs(_ co: Company) -> Set<String> { Set(co.value(pickKey)["hide"].array.map(\.string)) }
+    /// Ids the player does not see (starter items left unchosen). After a choice (`only`), a starter a module installs later is hidden too:
+    /// every stored id is hidden unless it was chosen, the owner added it (`n<k>`) or it follows an asset the owner bought (rental units).
+    public static func hiddenIDs(_ co: Company) -> Set<String> {
+        let pick = co.value(pickKey)
+        var out = Set(pick["hide"].array.map(\.string))
+        guard pick["only"].bool, !pick["p"].bool else { return out }
+        let chosen = Set(pick["keep"].array.map(\.string))
+        for id in co.value(key).array.map({ $0["id"].string }) where !chosen.contains(id) && !isOwnerItemID(id) { out.insert(id) }
+        return out
+    }
+
+    /// Customers a narrow range draws against the full range: the square root of the visible share of customers (1 with nothing hidden), never
+    /// below a quarter. A company that sells one chosen product does not get every customer the whole range would, and a dear product's ticket
+    /// does not come on top of the full customer count.
+    static func rangeFactor(_ co: Company) -> Double {
+        let hidden = hiddenIDs(co)
+        guard !hidden.isEmpty else { return 1 }
+        let raw = co.value(key).array
+        let total = raw.reduce(0.0) { $0 + $1["q"].double }
+        guard total > 0 else { return 1 }
+        let visible = raw.filter { !hidden.contains($0["id"].string) }.reduce(0.0) { $0 + $1["q"].double }
+        return clamp((visible / total).squareRoot(), 0.25, 1)
+    }
+
+    static func isOwnerItemID(_ id: String) -> Bool {
+        if id.hasPrefix(RentalUnits.unitPrefix) { return true }
+        return id.count > 1 && id.hasPrefix("n") && id.dropFirst().allSatisfy(\.isNumber)
+    }
 
     // MARK: Defaults from trade data
 

@@ -521,7 +521,7 @@ public enum Startups {
         }
     }
     public static func stakes(_ s: GameState) -> [Stake] {
-        (s.rest["startups"]?.array ?? []).map { Stake(id: $0["id"].int, name: $0["name"].string, sector: $0["sec"].string, stage: $0["stage"].int, live: $0["st"].string == "live", failed: $0["st"].string == "failed",
+        (s.rest["startups"]?.array ?? []).filter { $0["hid"].int == 0 }.map { Stake(id: $0["id"].int, name: $0["name"].string, sector: $0["sec"].string, stage: $0["stage"].int, live: $0["st"].string == "live", failed: $0["st"].string == "failed",
                                                       ownership: $0["pct"].double, invested: $0["in"].double, value: $0["val"].double * $0["pct"].double / 100, boardSeat: $0["seat"].bool) }
     }
 
@@ -530,21 +530,23 @@ public enum Startups {
     /// Put money into a pitch. Original: `investStartup`.
     @discardableResult
     public static func invest(_ s: inout GameState, pitchID: Int, amount: Double, context fc: FinanceContext) -> InvestResult {
-        guard let d = (s.rest["deals_su"]?.array ?? []).first(where: { $0["id"].int == pitchID }) else { return .gone }
-        var amt = (amount / 10000).rounded() * 10000
-        if amt < fc.homeCurrency(s).scaledPrice(minimumInvestment) { return .tooSmall }
-        amt = min(amt, d["raise"].double)
-        if Payments.liquid(s) < amt { return .notEnoughMoney }
-        Payments.transferFromSavings(&s, need: amt)
-        Payments.playerPays(&s, amt, label: "Invested in \(d["name"].string)")
+        let q = investQuote(s, pitchID: pitchID, amount: amount, context: fc)
+        guard q.result == .ok, let d = (s.rest["deals_su"]?.array ?? []).first(where: { $0["id"].int == pitchID }) else { return q.result }
+        pay(&s, .object(["hid": 0]), q.amount, label: "Invested in \(d["name"].string)")
+        openStake(&s, pitch: d, amount: q.amount, holdingID: 0)
+        if q.boardSeat { s.note("You hold \(String(format: "%.1f", q.ownershipPercent))% of \(d["name"].string) and get a board seat.", tone: "good") }
+        return .ok
+    }
+
+    /// Record a new stake in a pitch (paid for by the caller) and take the pitch off the table; `holdingID` is the holding that owns it, 0 for you.
+    static func openStake(_ s: inout GameState, pitch d: JSONValue, amount amt: Double, holdingID: Int) {
         let pct = amt / d["post"].double * 100
-        let f: JSONValue = .object(["id": .number(Double(s.makeID())), "name": d["name"], "sec": d["sec"], "q": d["q"], "st": "live", "stage": 0, "pct": .number(pct), "in": .number(amt), "val": d["post"],
+        var f: JSONValue = .object(["id": .number(Double(s.makeID())), "name": d["name"], "sec": d["sec"], "q": d["q"], "st": "live", "stage": 0, "pct": .number(pct), "in": .number(amt), "val": d["post"],
                                     "w0": .number(Double(s.week)), "wNext": .number(Double(s.week + s.random.int(26, 52))), "seat": .bool(pct >= 20), "help": 0,
                                     "rounds": .array([.object(["w": .number(Double(s.week)), "amt": .number(amt), "pct": .number(pct)])]), "sig": d["sig"]])
+        if holdingID != 0 { f["hid"] = .number(Double(holdingID)) }
         s.rest["startups"] = .array((s.rest["startups"]?.array ?? []) + [f])
-        s.rest["deals_su"] = .array((s.rest["deals_su"]?.array ?? []).filter { $0["id"].int != pitchID })
-        if pct >= 20 { s.note("You hold \(String(format: "%.1f", pct))% of \(d["name"].string) and get a board seat.", tone: "good") }
-        return .ok
+        s.rest["deals_su"] = .array((s.rest["deals_su"]?.array ?? []).filter { $0["id"].int != d["id"].int })
     }
 
     static func editStake(_ s: inout GameState, _ id: Int, _ body: (inout JSONValue) -> Void) {
@@ -564,16 +566,7 @@ public enum Startups {
     /// Sell a fraction of your stake at 72% of fair value. Original: `sellStartupStake`.
     @discardableResult
     public static func sellStake(_ s: inout GameState, stakeID: Int, fraction: Double) -> Double {
-        guard let f = (s.rest["startups"]?.array ?? []).first(where: { $0["id"].int == stakeID }), f["st"].string == "live" else { return 0 }
-        let v = f["val"].double * f["pct"].double / 100 * fraction * 0.72
-        Payments.playerReceives(&s, v, label: "Sold shares in \(f["name"].string)")
-        s.tax.gains += v - f["in"].double * fraction
-        editStake(&s, stakeID) { x in
-            x["pct"] = .number(x["pct"].double * (1 - fraction)); x["in"] = .number(x["in"].double * (1 - fraction))
-            x["seat"] = .bool(x["pct"].double >= 20)
-            if x["pct"].double < 0.05 { x["st"] = "exit" }
-        }
-        return v
+        sellAsking(&s, stakeID: stakeID, fraction: fraction, askMultiplier: nil).proceeds
     }
 
     static func weeklyStakes(_ s: inout GameState) {
@@ -608,8 +601,8 @@ public enum Startups {
                 let exitV = f["val"].double * (acq ? s.random.range(1.5, 4) : s.random.range(0.7, 1.4))
                 let proceeds = exitV * f["pct"].double / 100
                 f["st"] = "exit"; f["val"] = 0
-                Payments.playerReceives(&s, proceeds, label: "Exit: \(name)")
-                s.tax.gains += proceeds - f["in"].double
+                receive(&s, f, proceeds, label: "Exit: \(name)")
+                if f["hid"].int == 0 { s.tax.gains += proceeds - f["in"].double }
                 s.note("Exit: \(name) was acquired. Your stake pays \(Int(proceeds)) (\(String(format: "%.1f", proceeds / max(1, f["in"].double)))x).", tone: "good")
                 s.news("\(name) is acquired in a deal valued at \(Int(exitV)).", tone: "good")
                 list[k] = f; continue
@@ -635,9 +628,8 @@ public enum Startups {
         if m.actionID == "round" {
             if idx == 0 {
                 let mine = data["myShare"].double
-                if Payments.liquid(s) < mine { return false }
-                Payments.transferFromSavings(&s, need: mine)
-                Payments.playerPays(&s, mine, label: "New funding round: \(f["name"].string)")
+                if available(s, f) < mine { return false }
+                pay(&s, f, mine, label: "New funding round: \(f["name"].string)")
                 let wk = Double(s.week)
                 editStake(&s, sid) { x in
                     x["in"] = .number(x["in"].double + mine)
@@ -650,9 +642,8 @@ public enum Startups {
         // bridge
         let need = data["need"].double
         if idx == 0 {
-            if Payments.liquid(s) < need { return false }
-            Payments.transferFromSavings(&s, need: need)
-            Payments.playerPays(&s, need, label: "Bridge money for \(f["name"].string)")
+            if available(s, f) < need { return false }
+            pay(&s, f, need, label: "Bridge money for \(f["name"].string)")
             let lives = s.random.chance(0.55), wk = Double(s.week)
             editStake(&s, sid) { x in
                 x["in"] = .number(x["in"].double + need); x["pct"] = .number(x["pct"].double + need / max(1, x["val"].double) * 100); x["help"] = .number(x["help"].double + 0.5)

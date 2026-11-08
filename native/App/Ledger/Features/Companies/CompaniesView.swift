@@ -11,6 +11,7 @@ struct CompaniesView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sort: Sort = .attention
+    @State private var showAll = false
 
     var body: some View {
         NavigationStack(path: Binding(get: { store.path(for: .company) }, set: { store.setPath($0, for: .company) })) {
@@ -24,6 +25,13 @@ struct CompaniesView: View {
                     let rows = healths.sorted(by: order)
                     homeScreen(e, rows: rows)
                     .id(store.rootToken(.company))
+                    .centerSheet(isPresented: $showAll, title: "All companies", size: .tall, category: .detail, tone: .info) {
+                        AllCompaniesList(engine: e, rows: rows) { (id: Int) in
+                            showAll = false
+                            store.push(.company(id), on: .company)
+                        }
+                        .environmentObject(store)
+                    }
                     .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
                 }
             }
@@ -39,15 +47,19 @@ struct CompaniesView: View {
 
     // MARK: The Home page
 
-    /// iPhone: one screen without scrolling, the top three companies (two when the screen is short); only at very large text sizes
-    /// does it fall back to a scroll. iPad: one scroll with the full company table.
+    /// iPhone: one screen without scrolling, as many companies as the height allows (five down to one, tighter spacing from the fourth
+    /// candidate on); only at very large text sizes does it fall back to a scroll. iPad: one scroll with the full company table.
     @ViewBuilder private func homeScreen(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
         if sizeClass == .regular {
             ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
                 .scrollIndicators(.hidden)
         } else {
             ViewThatFits(in: .vertical) {
+                page(e, rows: rows, limit: 5, compact: false, fills: true)
+                page(e, rows: rows, limit: 4, compact: false, fills: true)
                 page(e, rows: rows, limit: 3, compact: false, fills: true)
+                page(e, rows: rows, limit: 4, compact: true, fills: true)
+                page(e, rows: rows, limit: 3, compact: true, fills: true)
                 page(e, rows: rows, limit: 2, compact: true, fills: true)
                 page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
                 page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
@@ -66,7 +78,7 @@ struct CompaniesView: View {
         .frame(maxWidth: 1100).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    /// The companies, worst first: the top `limit` rows and "All N" to the Group tab's full list (nil: every company, iPad).
+    /// The companies, worst first: the top `limit` rows and "All N", which opens the full list in a popup (nil: every company, iPad).
     @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?) -> some View {
         if rows.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -82,7 +94,7 @@ struct CompaniesView: View {
                     if sizeClass == .regular {
                         sortMenu
                     } else if shown.count < rows.count {
-                        Button("All \(rows.count)") { Haptics.tap(); store.jump(to: .group) }
+                        Button("All \(rows.count)") { Haptics.tap(); showAll = true }
                             .buttonStyle(TertiaryButtonStyle(size: .compact))
                             .accessibilityLabel("All \(rows.count) companies")
                             .accessibilityIdentifier("show-all-companies")
@@ -115,8 +127,10 @@ struct CompaniesView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
                     if i > 0 { Hairline().padding(.leading, CompanyRow.textInset) }
-                    NavigationLink(value: CompanyRoute.company(r.co.id)) { CompanyRow(engine: e, company: r.co, health: r.h) }
+                    // The same push as the iPad table, on the Home stack.
+                    Button { Haptics.tap(); store.push(.company(r.co.id), on: .company) } label: { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
+                        .accessibilityHint("Opens the company")
                         .transition(.opacity)
                 }
             }
@@ -146,6 +160,29 @@ struct CompaniesView: View {
         return 4
     }
 
+}
+
+/// The popup behind "All N" on Home: every live company, worst first, one tap to open it.
+struct AllCompaniesList: View {
+    var engine: GameEngine
+    var rows: [(co: Company, h: CompanyHealth)]
+    var open: (Int) -> Void
+
+    var body: some View {
+        ScrollView(.vertical) {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
+                    if i > 0 { Hairline().padding(.leading, CompanyRow.textInset) }
+                    Button { Haptics.tap(); open(r.co.id) } label: { CompanyRow(engine: engine, company: r.co, health: r.h) }
+                        .buttonStyle(PressableStyle())
+                        .accessibilityHint("Opens the company")
+                }
+            }
+            .padding(.horizontal, Theme.Space.page).padding(.bottom, Theme.Space.m)
+        }
+        .scrollIndicators(.hidden)
+        .accessibilityIdentifier("all-companies-list")
+    }
 }
 
 /// iPad: every company side by side, one row each.

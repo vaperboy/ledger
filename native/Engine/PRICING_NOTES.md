@@ -14,4 +14,5 @@
 12. Hidden starters carry no customers (`SalesItems.shaped`: visible shares renormalised, hidden 0); `DemandModel.compute` and the finance model return 0 while the choice is pending.
 13. `newGame(... chooseFirstItem: true)` marks the onboarding company pending (default false so engine balance tests are unchanged; the app passes true).
 14. The owner can always set prices; `priceSetter` is information only.
-15. Open: rental, developer and special-family models do not read the gate; starters a module adds long after the choice are visible.
+15. Rental, developer and special-family models return their own week, so `CompanyWeek.openWeek` passes it through `SalesItems.gate` (no sales while the choice is open, costs run on). After a choice, `pick1` carries `only` and `keep`: any stored id that was not chosen stays hidden, except the owner's own items (`n<k>`) and rental units that follow an asset (`w8u:`), so a starter a module adds later stays out unless chosen.
+16. `SalesItems.rangeFactor` (in `Pricing.demandEffect`): a company with starters hidden draws the square root of the visible share of customers (never below a quarter), so one chosen product neither takes every customer of the full range nor puts a dear item's ticket on top of the full customer count. Exactly 1 with nothing hidden. Tests: `FirstItemGateTests`.

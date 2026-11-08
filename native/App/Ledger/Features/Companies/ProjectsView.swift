@@ -3,12 +3,12 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Ventures tab: header with the running figures, then `SectionTabs` Running (a `SegmentedPill` for In progress, Timeline, Bids and
-/// offers), Ideas and startups, Done. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
+/// The Projects tab: header with the running figures, then `SectionTabs` Running (a `SegmentedPill` for In progress, Timeline, Bids and
+/// offers), Portfolio (the whole venture portfolio, `VenturesHome`), Done. All figures come from `projectBoard` and `projectTimelines`; actions go through the engine
 /// (see `ProjectsTabs.swift`). Every company's own Projects section stays reachable from the cards, tender details and the company list.
 struct ProjectsView: View {
-    /// The three segments of the merged Ventures screen. Running also holds the Timeline and the Bids and offers lists (`RunPart`).
-    enum Part: String, CaseIterable, Hashable { case running = "Running", ideas = "Ideas and startups", finished = "Done" }
+    /// The three segments of Projects. Running also holds the Timeline and the Bids and offers lists (`RunPart`); Portfolio is the venture portfolio.
+    enum Part: String, CaseIterable, Hashable { case running = "Running", ideas = "Portfolio", finished = "Done" }
     enum RunPart: String, CaseIterable, Hashable { case now = "In progress", timeline = "Timeline", bids = "Bids and offers" }
     @EnvironmentObject var store: GameStore
     @State private var part: Part = .running
@@ -53,7 +53,7 @@ struct ProjectsView: View {
         case .running:
             SegmentedPill(items: RunPart.allCases, title: { $0.rawValue }, selection: $runPart)
             runContent(e, rows, lines, running)
-        case .ideas: VenturesFeedApp(embedded: true)
+        case .ideas: VenturesHome()
         case .finished: ProjectsFinishedTab(engine: e, rows: rows)
         }
     }

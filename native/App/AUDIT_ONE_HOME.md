@@ -34,6 +34,7 @@ Rules: managers live in Group (the Group row is the manager); employees live in 
 | Companies/CompanySetupScreen.swift:68,70; CompanyOperations.swift:124-132; CompanyOperationsSheets.swift:39; CompanyEquipment.swift | Rows opened AirStay, TechPro, Atlas | Removed; the flows live only in the apps (rows are read-only, the Not insured and Outgrown-home fix cards are gone) |
 | Companies/DocumentSignSheet.swift:123, GroupSupplierDirectory.swift:200, ProjectsTabs.swift, ProjectTimelineViews.swift:53 | Redirects to company sections | Removed (project company rows are plain, the Start-something tiles keep only Venture) |
 | Market/MarketCompanies:258, MarketWorld:145, MarketRivals:313-453, WorldRecordsView:163 | Open Company after acquisitions and from lists | Removed; the post-purchase toast stays |
+| Companies/ProjectsTabs.swift (Venture tile) | Opened the Ventures app | The tile is a `VenturesGlance` row (value, change, offers) that opens the Portfolio part of Projects; the portfolio is `VenturesHome` (Phone/VenturesView.swift), shared with the standalone Ventures phone app, which only adds its header |
 | Phone/BankApp.swift:89, NewsView.swift:173, VenturesView.swift:248, StatsView.swift:241 | Phone apps opened Company or other apps | Removed (Stats keeps the Activity page) |
 | Reports/WeekReportShell.swift:93,113, ReportPrompt.swift:162 | "Next goal" link and "Full report" | Removed with `openReport` and the `openReports` parameter |
 
@@ -43,6 +44,5 @@ Rules: managers live in Group (the Group row is the manager); employees live in 
 |---|---|---|
 | Home/* | Home launches apps and the Inbox; HomeInsights and Suggestions repeat per-feature facts | Home was not touched in this pass |
 | Companies/GroupBoards.swift:101 | "Owners and shares" opens Group > Ownership | Group to Group, left as is |
-| Companies/ProjectsTabs.swift (Venture tile) | Opens the Ventures app | Cross-app, not in the decisions |
 
 Not compiled here; CI is the compiler.

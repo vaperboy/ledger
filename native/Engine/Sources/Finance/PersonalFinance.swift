@@ -88,9 +88,26 @@ public enum PersonalFinance {
         Payments.playerPays(&s, due, label: "Annual tax assessment (income, gains, wealth)")
         s.stats.taxPaid += due + withheld
         let cur = context.homeCurrency(s)
-        s.note("Annual personal tax: \(cur.display(due))" + (withheld != 0 ? " (after \(cur.display(withheld)) withheld)" : "") + (wealth != 0 ? ", including wealth tax \(cur.display(wealth))" : "") + ".", tone: "n")
+        s.note(assessmentNote(due: due, income: income, incomeTax: tax1, withheld: withheld, gains: taxGain, dividends: t.dividends, shield: t.dividendShield,
+                              dividendTax: divT, interest: intT, wealth: wealth, currency: cur), tone: "n")
         s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
         s.stats.yearsPlayed += 1
+    }
+
+    /// The year-end message: the total, then every part that was charged, so the player sees what made it up.
+    static func assessmentNote(due: Double, income: Double, incomeTax: Double, withheld: Double, gains: Double, dividends: Double, shield: Double,
+                               dividendTax: Double, interest: Double, wealth: Double, currency cur: Currency) -> String {
+        var parts: [String] = []
+        if incomeTax > 0 || withheld > 0 {
+            parts.append("income tax \(cur.display(incomeTax)) on \(cur.display(income))" + (withheld != 0 ? " (\(cur.display(withheld)) already withheld)" : ""))
+        }
+        if dividendTax > 0 {
+            parts.append("dividend tax \(cur.display(dividendTax)) on \(cur.display(dividends))" + (shield > 0 ? " (\(cur.display(shield)) tax-free)" : ""))
+        }
+        if gains > 0 { parts.append("tax on gains \(cur.display(gains))") }
+        if interest > 0 { parts.append("tax on interest \(cur.display(interest))") }
+        if wealth > 0 { parts.append("wealth tax \(cur.display(wealth))") }
+        return "Annual personal tax: \(cur.display(due))" + (parts.isEmpty ? "" : ". " + parts.joined(separator: ", ")) + "."
     }
 }
 

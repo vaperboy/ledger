@@ -25,7 +25,7 @@ extension ManagerModel {
 
     /// The smallest share the owner holds in the companies behind the board (shareholders vote to remove an outside seat holder).
     static func controlShare(_ s: GameState, key: String) -> Double {
-        boardCompanies(s, key: key).map { $0.ownership }.min() ?? 0
+        boardCompanies(s, key: key).map { HoldingStakes.votingPercent($0) }.min() ?? 0
     }
 
     public static func seatRemovalTerms(_ s: GameState, key: String, personID: Int) -> SeatRemovalTerms {

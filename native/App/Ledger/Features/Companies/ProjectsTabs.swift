@@ -213,8 +213,7 @@ struct ProjectsBidsTab: View {
                 ProjectCaps(title: "Your bids · \(sent.count)", note: "waiting for a decision")
                 ProjectList(data: sent) { (x: Tender) in sentCard(x) }
             }
-            ProjectCaps(title: "Start something")
-            startTiles
+            VenturesGlance(open: openVentures)
         }
         .confirmAction($pending)
     }
@@ -294,28 +293,6 @@ struct ProjectsBidsTab: View {
                 store.settle(store.act { $0.withdrawBid(companyID: x.co.id, tenderID: t.id) }, "Your bid is withdrawn.", same: "The bid could not be taken back: the bidding has closed.")
             } label: { Text("Take the bid back") }.buttonStyle(SecondaryButtonStyle(size: .compact))
         }
-    }
-
-    // START SOMETHING: a venture. Company projects are started in the company's own Projects section, not from here.
-    private var startTiles: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible(), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
-            Button { Haptics.tap(); openVentures() } label: { tile("Venture", "back a startup", "M12 3 C16 6 17 11 14 16 L12 20 L10 16 C7 11 8 6 12 3") }.buttonStyle(PressableStyle())
-        }
-    }
-
-    private func tile(_ name: String, _ note: String, _ icon: String) -> some View {
-        HStack(spacing: Theme.Space.m) {
-            LedgerGlyph(glyph: icon, size: Theme.Icon.medium, tint: Theme.accent)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1).minimumScaleFactor(0.8)
-                Text(note).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(Theme.Space.m)
-        .frame(minHeight: 44)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
-        .contentShape(Rectangle())
     }
 }
 

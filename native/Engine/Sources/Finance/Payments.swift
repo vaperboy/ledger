@@ -228,6 +228,13 @@ public enum Payments {
             s.tax.dividends += mine
             s.stats.dividendsReceived += mine
         }
+        // A holding that owns a bought stake (a `holders` entry with `hid`) takes its share too; outside owners' shares leave the group.
+        for l in co.value("holders").array where l["hid"].int != 0 {
+            let part = amount * l["pct"].double / 100
+            guard part > 0, let hi = s.companyIndex(l["hid"].int), s.companies[hi].status.isLive else { continue }
+            Ledger.moveRaw(&s, .company(l["hid"].int), part)
+            s.companies[hi].addTransaction(week: s.week, amount: part, label: "Dividend from \(name)")
+        }
         let shield = context.homeCountry(s).dividendShield
         let injected = s.companies.filter { $0.status.isLive && $0.form == .limited }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }
         s.tax.dividendShield = max(s.tax.dividendShield, injected * shield)

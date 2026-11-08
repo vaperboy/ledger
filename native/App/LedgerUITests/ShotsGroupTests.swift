@@ -123,7 +123,7 @@ final class ShotsGroupTests: FeatureTourCase {
         if goTab("Ventures") || openPhoneApp("Ventures") {
             pause(1)
             snapPage("ventures", lower: 1)
-            for part in ["Running", "Ideas and startups", "Done"] where tapLabel(part, wait: 2) { pause(0.6); snap("ventures-\(part)") }
+            for part in ["Running", "Portfolio", "Done"] where tapLabel(part, wait: 2) { pause(0.6); snap("ventures-\(part)") }
             for seg in ["In progress", "Timeline", "Bids and offers"] {
                 if tapLabel("Running", wait: 2), tapID("segment-\(seg)", wait: 2) { pause(0.6); snap("ventures-running-\(seg)") }
             }

@@ -203,12 +203,13 @@ public enum CapTable {
     public static func buyBackPercent(_ s: inout GameState, _ i: Int, percent: Double) -> Int {
         normalise(&s, i)
         let t = read(s.companies[i])
-        let outside = t.holders.reduce(0) { $0 + $1.shares }
+        var list = s.companies[i].value("holders").array
+        // A holding's own stake (`hid`) is not bought back here; it is sold through `HoldingStakes`.
+        let outside = list.filter { $0["hid"].int == 0 }.reduce(0) { $0 + $1["sh"].int }
         let want = min(outside, Int((Double(t.total) * percent / 100).rounded()))
         guard want > 0, outside > 0 else { return 0 }
-        var list = s.companies[i].value("holders").array
         var moved = 0
-        for k in list.indices {
+        for k in list.indices where list[k]["hid"].int == 0 {
             let take = min(list[k]["sh"].int, Int((Double(list[k]["sh"].int) * Double(want) / Double(outside)).rounded()))
             list[k]["sh"] = .number(Double(list[k]["sh"].int - take)); moved += take
         }
