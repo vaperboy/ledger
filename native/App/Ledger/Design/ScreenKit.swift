@@ -95,11 +95,11 @@ struct FixedScreen<Content: View>: View {
 }
 
 extension GameStore {
-    /// The one definition of "a store-level popup is on screen" (report, decision, notice, red alert, error, reward, ambition,
-    /// the banner question): the page under it must not scroll or take taps, and banners and the paywall wait. Popups opened with
+    /// The one definition of "a store-level popup is on screen" (report, decision, notice, outcome, red alert, error, reward,
+    /// ambition): the page under it must not scroll or take taps, and the paywall waits. Popups opened with
     /// `.centerSheet` are drawn by the popup host as an overlay whose backdrop blocks the page by itself.
     var popupOpen: Bool {
-        reportSheet != nil || decisionPopup != nil || toast != nil || !redAlerts.isEmpty || errorText != nil
-            || !celebrationQueue.isEmpty || ambitionPrompt || banners.confirm != nil
+        reportSheet != nil || decisionPopup != nil || toast != nil || !outcomes.isEmpty || !redAlerts.isEmpty || errorText != nil
+            || !celebrationQueue.isEmpty || ambitionPrompt
     }
 }

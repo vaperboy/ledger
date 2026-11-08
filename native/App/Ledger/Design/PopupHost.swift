@@ -95,6 +95,15 @@ extension EnvironmentValues {
     }
 }
 
+private struct OutcomeStoreKey: EnvironmentKey { static let defaultValue: GameStore? = nil }
+extension EnvironmentValues {
+    /// The game store that tells the outcome of a confirmed action (read by `confirmAction`; set once at the root).
+    var outcomeStore: GameStore? {
+        get { self[OutcomeStoreKey.self] }
+        set { self[OutcomeStoreKey.self] = newValue }
+    }
+}
+
 private struct PopupCloseKey: EnvironmentKey { static let defaultValue: (() -> Void)? = nil }
 extension EnvironmentValues {
     /// Set for everything drawn inside a popup: closes that popup. A view that used `\.dismiss` to close its centred popup calls this

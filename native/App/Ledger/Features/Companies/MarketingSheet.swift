@@ -6,7 +6,7 @@ import Simulation
 
 /// Marketing as a popup: one compact row per channel with its switch; a running channel also shows its weekly budget as a step control
 /// over the engine's own budget levels (no slider, so a scroll or swipe never sets a budget) and what that budget is expected to do.
-/// A big rise asks first; every change can be undone from its toast.
+/// A big rise asks first; a change shows in the channel's row.
 struct MarketingSheet: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
@@ -127,25 +127,19 @@ struct MarketingSheet: View {
         if big {
             pending = PendingAction(title: "Spend \(cur.tidyDisplay(newTotal)) a week on marketing?",
                                     message: "\(ch.name) at \(cur.tidyDisplay(new)) a week: \(cur.tidyDisplay(newTotal - total)) a week more than now, from company cash.",
-                                    button: "Spend it", alwaysAsk: true, tone: .warning, icon: "megaphone") { commit(ch, new, undo: old, cur: cur) }
+                                    button: "Spend it", alwaysAsk: true, tone: .warning, icon: "megaphone") { commit(ch, new, cur: cur) }
         } else {
-            commit(ch, new, undo: old, cur: cur)
+            commit(ch, new, cur: cur)
         }
     }
 
-    /// Applies the budget (0 stops it). A refusal (lock, chain) is a toast; a change is a banner whose tap puts the old budget back.
-    private func commit(_ ch: MarketingChannel, _ budget: Double, undo old: Double, cur: Currency) {
+    /// Applies the budget (0 stops it). A refusal (lock, chain) is a popup; a change shows in the channel's row.
+    private func commit(_ ch: MarketingChannel, _ budget: Double, cur: Currency) {
         let id: Int = companyID
         let channel: String = ch.id
         let r = store.act { $0.setCampaign(companyID: id, channel: channel, weeklyBudget: budget, weeks: nil) }
         if case .refused(let why)? = r { Haptics.warning(); store.show(why.prefix(1).uppercased() + why.dropFirst(), tone: "warn"); return }
         guard r != nil else { return }
-        let text: String = budget > 0 ? ch.name + " at " + cur.tidyDisplay(budget) + " a week" : ch.name + " stopped"
-        let s: GameStore = store
-        s.banners.post(BannerItem(key: "mkt-undo-" + channel, source: "Marketing", title: text, body: "Tap to undo", glyph: Glyph.opsMega, severity: 1, lifetime: 6,
-                                  target: .place("Undo", {
-            _ = s.act { $0.setCampaign(companyID: id, channel: channel, weeklyBudget: old, weeks: nil) }
-            s.show(old > 0 ? "Back to \(cur.tidyDisplay(old)) a week" : ch.name + " stopped again", tone: "n")
-        })))
+        store.show(budget > 0 ? ch.name + " at " + cur.tidyDisplay(budget) + " a week" : ch.name + " stopped")
     }
 }

@@ -125,10 +125,10 @@ class FeatureTourCase: XCTestCase {
     /// Every id that is only on a popup. A popup is up when any of them is on screen (GamePopup and CenterSheet are modal: the screen under
     /// them is hidden from the accessibility tree, so these are the ones that remain).
     static let popupIDs: [String] = ["popup-backdrop", "popup-close", "confirm-go", "confirm-cancel", "report-continue", "report-open", "celebration-dismiss",
-                                     "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "unlock-go", "ambition-later",
+                                     "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok", "notice-ok", "outcome-ok", "unlock-skip", "unlock-go", "ambition-later",
                                      "conversion-keep", "paywall-buy", "paywall-pass"]
     static let closeIDs: [String] = ["popup-close", "confirm-cancel", "report-continue", "celebration-dismiss", "celebration-claim", "celebration-next-goal", "alert-continue", "error-ok",
-                                     "notice-ok", "unlock-skip", "ambition-later", "conversion-keep", "paywall-pass"]
+                                     "notice-ok", "outcome-ok", "unlock-skip", "ambition-later", "conversion-keep", "paywall-pass"]
 
     override func setUp() {
         super.setUp()
@@ -328,16 +328,6 @@ class FeatureTourCase: XCTestCase {
         return nil
     }
 
-    /// A toast lying over the target is swiped away first (it would take the tap).
-    func clearBanner(over f: CGRect) {
-        for _ in 0..<2 {
-            guard let b = find({ $0.id == "notification-banner" }), b.frame.intersects(f.insetBy(dx: -4, dy: -4)) else { return }
-            let o: XCUICoordinate = app.coordinate(withNormalizedOffset: .zero)
-            o.withOffset(CGVector(dx: b.frame.midX, dy: b.frame.midY)).press(forDuration: 0.05, thenDragTo: o.withOffset(CGVector(dx: b.frame.midX, dy: b.frame.minY - 160)))
-            pause(0.8)
-        }
-    }
-
     /// Taps the middle of the visible part of `h`; buttons are measured for the 44 pt check.
     @discardableResult
     func touch(_ h: Hit) -> Bool {
@@ -353,11 +343,10 @@ class FeatureTourCase: XCTestCase {
         return true
     }
 
-    /// Finds, scrolls into the tap band, clears a toast over it, then taps. False when it is not on this screen.
+    /// Finds, scrolls into the tap band, then taps. False when it is not on this screen.
     @discardableResult
     func tapWhere(wait: TimeInterval = 3, _ pred: (Hit) -> Bool) -> Bool {
-        guard let h = bringIn(pred, wait: wait) else { return false }
-        clearBanner(over: h.frame)
+        guard bringIn(pred, wait: wait) != nil else { return false }
         guard let now = find(pred) else { return false }
         if noteBefore { lastBefore = signature() }
         return touch(now)
@@ -477,7 +466,6 @@ class FeatureTourCase: XCTestCase {
     /// Taps the screen's Back: the round back button, the Group entity page's back, else a system navigation bar back button.
     func tapBack() -> Bool {
         if let h = find({ ($0.id == "back-button" || $0.id == "group-back" || $0.id == "BackButton") && $0.type == .button }) {
-            clearBanner(over: h.frame)
             if let now = find({ $0.id == h.id && $0.type == .button }) { touch(now); pause(0.3); return true }
         }
         let bars: XCUIElementQuery = app.navigationBars
@@ -628,7 +616,7 @@ class FeatureTourCase: XCTestCase {
         for s in hs {
             if (s.id == "back-button" || s.id == "group-back" || s.id == "BackButton") && s.type == .button { back = true }
             if (s.id.hasPrefix("tab-") || s.id.hasPrefix("company-tab-") || s.id.hasPrefix("group-tab-")) && s.type == .button && s.selected { tabs.append(s.id) }
-            if s.id.hasPrefix("tab-") || s.id == "notification-banner" { continue }
+            if s.id.hasPrefix("tab-") { continue }
             if (s.type == .staticText || s.type == .other), !s.label.isEmpty, s.frame.minY >= w.minY + 50, s.frame.maxY < w.minY + 190, s.frame.height < 90 {
                 let t: String = s.label.components(separatedBy: ", ")[0]
                 let ns: NSString = t as NSString
@@ -728,7 +716,7 @@ class FeatureTourCase: XCTestCase {
             var lowestLabel = ""
             var hidden: [String] = []
             let tabFrames: [CGRect] = hs.filter { $0.id.hasPrefix("tab-") && $0.type == .button }.map { $0.frame.insetBy(dx: -4, dy: -14) }
-            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && h.id != "notification-banner" && !tabFrames.contains(where: { $0.intersects(h.frame) }) {
+            for h in hs where !h.id.hasPrefix("tab-") && h.id != "back-button" && !tabFrames.contains(where: { $0.intersects(h.frame) }) {
                 guard h.type == .staticText || h.type == .button || h.type == .textField || h.type == .switch || h.type == .slider else { continue }
                 let r: CGRect = h.frame
                 guard !h.label.isEmpty, r.minY >= w.minY, r.minY < w.maxY - 1 else { continue }
@@ -801,7 +789,7 @@ class FeatureTourCase: XCTestCase {
         }
     }
 
-    /// The notification banner is not a popup; nothing to clean, but a stuck popup from an earlier step must not leak into this one.
+    /// A stuck popup (an outcome waiting for its OK, say) from an earlier step must not leak into this one.
     func toastCleanup() {
         var n = 0
         while popupUp() && n < 3 { closePopup(); n += 1 }
@@ -814,7 +802,7 @@ class FeatureTourCase: XCTestCase {
             let pre: Bool = s.hasPrefix("prefix:")
             let key: String = pre ? String(s.dropFirst(7)) : s
             let pred: (Hit) -> Bool = { pre ? ($0.id.hasPrefix(key) && $0.type == .button) : $0.id == key }
-            if let h = bringIn(pred, wait: 2) { lastBefore = signature(); clearBanner(over: h.frame); if let now = find(pred) { touch(now) }; pause(0.3) }
+            if bringIn(pred, wait: 2) != nil { lastBefore = signature(); if let now = find(pred) { touch(now) }; pause(0.3) }
         }
         return popupUp(2)
     }

@@ -14,16 +14,13 @@ struct HoldingTalkSheet: View {
     var companyID: Int
     @State private var personID: Int?
     @State private var topic: String?
-    @State private var outcome: OwnerMeetings.Outcome?
 
     var body: some View {
         let name: String = store.engine?.state.company(companyID)?.name ?? "Board"
         Group {
             if let e = store.engine {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    if let o = outcome {
-                        outcomeView(o)
-                    } else if let p = personID, let t = topic {
+                    if let p = personID, let t = topic {
                         sceneView(e, p, t)
                     } else if let p = personID {
                         topicList(e, p)
@@ -75,7 +72,7 @@ struct HoldingTalkSheet: View {
             Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
             VStack(spacing: 0) {
                 ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
-                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(person, sc.topic, c.id) }
+                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(person, sc.topic, c.id, c.label) }
                 }
             }
         case .failure(let f):
@@ -84,7 +81,7 @@ struct HoldingTalkSheet: View {
         Button("Back") { Haptics.tap(); topic = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
     }
 
-    private func choose(_ person: Int, _ topic: String, _ choice: String) {
+    private func choose(_ person: Int, _ topic: String, _ choice: String, _ label: String) {
         let hid: Int = holdingID
         let cid: Int = companyID
         let r: Result<OwnerMeetings.Outcome, HoldingStakes.Failure>? = store.act { (e: inout GameEngine) -> Result<OwnerMeetings.Outcome, HoldingStakes.Failure> in
@@ -93,21 +90,12 @@ struct HoldingTalkSheet: View {
         switch r {
         case .success(let o)?:
             if o.tone == "bad" { Haptics.warning() } else { Haptics.success() }
-            outcome = o
+            popupClose?()
+            store.outcome(chosen: label, result: o.text)
         case .failure(let f)?:
             Haptics.warning(); store.show(f.reason, tone: "warn")
         case nil:
             break
-        }
-    }
-
-    private func outcomeView(_ o: OwnerMeetings.Outcome) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text(o.text).popupText(o.tone == "bad" ? .risk : .effect).fixedSize(horizontal: false, vertical: true)
-            Button("Done") { Haptics.tap(); popupClose?() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
-            if !o.resigned {
-                Button("Talk about something else") { Haptics.tap(); outcome = nil; topic = nil; personID = nil }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
-            }
         }
     }
 }

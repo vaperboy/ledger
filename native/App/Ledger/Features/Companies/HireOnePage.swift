@@ -616,14 +616,16 @@ struct HireOnePage: View {
         let said = HireOutcomeWords.line(result, name: name, cur: cur, hourFactor: hourFactor)
         model.lines.append(HireLine(mine: true, text: "I can offer \(cur.tidyShort(amount)) a month."))
         model.lines.append(HireLine(mine: false, text: said.text))
+        // The answer to the offer is told in one outcome popup, whatever it was.
+        let chosen: String = "Offer \(cur.tidyShort(amount)) a month"
         switch result {
         case .hired:
             model.hired = true; model.closing = "\(name) has joined as \(request.roleTitle.lowercased())."
-            Haptics.option(); store.show(model.closing, tone: "good"); request.onHired()
-        case .countered(let amount, _): model.offer = amount; model.offerSet = true; Haptics.tap()
-        case .refused, .termsRefused, .blocked: Haptics.warning(); if case .blocked = result { store.show(said.text, tone: "warn") }
+            Haptics.option(); store.outcome(chosen: chosen, result: model.closing); request.onHired()
+        case .countered(let amount, _): model.offer = amount; model.offerSet = true; Haptics.tap(); store.outcome(chosen: chosen, result: said.text)
+        case .refused, .termsRefused, .blocked: Haptics.warning(); store.outcome(chosen: chosen, result: said.text)
         case .walkedAway, .taken:
-            model.gone = true; model.closing = said.text; Haptics.warning(); store.show(said.text, tone: "warn")
+            model.gone = true; model.closing = said.text; Haptics.warning(); store.outcome(chosen: chosen, result: said.text)
         }
     }
 

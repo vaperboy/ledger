@@ -35,9 +35,8 @@ struct RootView: View {
         // The one popup host: every popup of the app is drawn here, above everything (tab bar included), in queue order.
         .overlay { PopupLayer() }
         .overlay { PopupHostLayer(host: popups) }
-        // Above the popups, so a toast raised from a panel is seen (the layer takes touches on its card only).
-        .overlay { NotificationBannerLayer(queue: store.banners) }
         .environment(\.popupHost, popups)
+        .environment(\.outcomeStore, store)
     }
 }
 

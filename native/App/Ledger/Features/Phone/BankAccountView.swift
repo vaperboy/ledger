@@ -5,7 +5,7 @@ import Finance
 import Simulation
 
 /// One account (BankAccount.dc.html): the tabs, the balance with the available / overdraft / rate strip, the action
-/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a toast. Investing is in the
+/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a popup. Investing is in the
 /// Market app, so the Bank opens cash accounts only.
 struct BankAccountScreen: View {
     @Environment(\.outsidePalette) private var P

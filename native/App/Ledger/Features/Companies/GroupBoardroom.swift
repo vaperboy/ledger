@@ -115,11 +115,12 @@ struct GroupBoardroom: View {
         let alone: Bool = engine.boardIsAdvisory(companyID: id)
         let msg: String = alone ? "You decide alone. The manager is let go with notice and severance by the country's labour law, and you run \(name) until someone new is appointed."
             : "The co-owners vote by their shares. If it passes the manager is let go with notice and severance; if it fails the CEO learns you tried and you cannot ask again for eight weeks."
-        pending = PendingAction(title: "Replace the CEO of \(name)?", message: msg, button: alone ? "Replace" : "Put it to the vote", destructive: true) {
+        let button: String = alone ? "Replace" : "Put it to the vote"
+        pending = PendingAction(title: "Replace the CEO of \(name)?", message: msg, button: button, destructive: true) {
             let r: ManagerModel.CEOChange? = store.act { $0.proposeCEOChange(companyID: id) }
             switch r {
-            case .dismissed?: Haptics.success(); store.show("The CEO of \(name) was replaced. Appoint a successor under Management.", tone: "good")
-            case .voteFailed(let p)?: Haptics.warning(); store.show("The co-owners voted it down: \(p)% of the shares were for it.", tone: "warn")
+            case .dismissed?: Haptics.success(); store.outcome(chosen: button, result: "The CEO of \(name) was replaced. Appoint a successor under Management.")
+            case .voteFailed(let p)?: Haptics.warning(); store.outcome(chosen: button, result: "The co-owners voted it down: \(p)% of the shares were for it. The CEO stays.")
             case .blocked(let w)?: Haptics.warning(); store.show("You asked recently. Try again in \(w) \(w == 1 ? "week" : "weeks").", tone: "warn")
             case .refused(let why)?: Haptics.warning(); store.show(why, tone: "warn")
             case nil: break
@@ -140,7 +141,6 @@ struct OwnerTalkSheet: View {
     var personID: Int
     var onReplace: (Int) -> Void
     @State private var topic: String?
-    @State private var outcome: OwnerMeetings.Outcome?
     @State private var voting = false
 
     var body: some View {
@@ -157,9 +157,7 @@ struct OwnerTalkSheet: View {
 
     @ViewBuilder private func content(_ e: GameEngine, _ who: OwnerMeetings.Counterpart) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if let o = outcome {
-                outcomeView(o)
-            } else if voting {
+            if voting {
                 voteView(e)
             } else if let t = topic, let sc = e.ownerScene(companyID: companyID, personID: personID, topic: t) {
                 sceneView(sc)
@@ -192,35 +190,23 @@ struct OwnerTalkSheet: View {
             Text("Your answer").popupText(.subtitle).padding(.top, Theme.Space.xs)
             VStack(spacing: 0) {
                 ForEach(sc.choices) { (c: OwnerMeetings.Choice) in
-                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(sc.topic, c.id) }
+                    PopupChoiceRow(title: c.label, subtitle: c.preview) { choose(sc.topic, c.id, c.label) }
                 }
             }
             Button("Back") { Haptics.tap(); topic = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
         }
     }
 
-    private func choose(_ topic: String, _ choice: String) {
+    private func choose(_ topic: String, _ choice: String, _ label: String) {
         let c: Int = companyID
         let p: Int = personID
         let r: OwnerMeetings.Outcome? = store.act { $0.ownerChoose(companyID: c, personID: p, topic: topic, choice: choice) } ?? nil
         if let r {
             if r.tone == "bad" { Haptics.warning() } else { Haptics.success() }
-            outcome = r
+            // The talk ends with one outcome popup: what you answered and what came of it.
+            dismiss()
+            store.outcome(chosen: label, result: r.text)
         }
-    }
-
-    private func outcomeView(_ o: OwnerMeetings.Outcome) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text(o.text).popupText(o.tone == "bad" ? .risk : .effect).fixedSize(horizontal: false, vertical: true)
-            if o.resigned { dismissButton } else {
-                Button("Done") { Haptics.tap(); dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                Button("Talk about something else") { Haptics.tap(); outcome = nil; topic = nil }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
-            }
-        }
-    }
-
-    private var dismissButton: some View {
-        Button("Close") { Haptics.tap(); dismiss() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
     }
 
     private func voteView(_ e: GameEngine) -> some View {

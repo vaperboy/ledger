@@ -15,7 +15,7 @@ extension FeatureToursTests {
         while rounds < limit {
             guard popupUp(seen.isEmpty ? firstWait : 3) else { break }
             rounds += 1
-            let kinds: [String] = ["report-continue", "celebration-claim", "celebration-dismiss", "alert-continue", "error-ok", "notice-ok", "unlock-skip", "ambition-later", "popup-close", "confirm-go"]
+            let kinds: [String] = ["report-continue", "celebration-claim", "celebration-dismiss", "alert-continue", "error-ok", "notice-ok", "outcome-ok", "unlock-skip", "ambition-later", "popup-close", "confirm-go"]
             let hs: [Hit] = hits()
             let kind: String = kinds.first { (k: String) -> Bool in hs.contains { $0.id == k } } ?? "unknown"
             seen.append(kind)
@@ -136,20 +136,18 @@ extension FeatureToursTests {
             waiting = inboxWithDecision()
             return waiting.map { .pass("\($0) waiting") } ?? .skip("no decision arrived in 4 days")
         }
-        step("inbox: answer inline in the list -> a toast, no popup, the waiting count drops") {
+        step("inbox: answer inline in the list -> one outcome popup with OK, the waiting count drops") {
             guard let before = inboxWithDecision(days: 2) else { return .skip("no decision waiting") }
             guard let opt = bringIn({ $0.id == "inbox-inline-option" && $0.type == .button }, wait: 3) else { return .skip("no decision with inline options (2-3 options, no document)") }
             touch(opt)
             var problems: [String] = []
-            if popupUp(1.5) {
-                if has("confirm-go") { closePopup(prefer: ["confirm-go"]) } else { problems.append("answering raised a popup (a toast was expected)"); closePopup() }
-            }
-            let toast: String = find(wait: 3, { $0.id == "notification-banner" })?.label ?? ""
+            if popupUp(1.5), has("confirm-go") { closePopup(prefer: ["confirm-go"]) }
+            let outcome: String = find(wait: 3, { $0.id == "outcome-ok" })?.label ?? ""
+            if !has("outcome-ok") { problems.append("no outcome popup after answering") } else { closePopup(prefer: ["outcome-ok"]) }
             pause(0.8)
             let after: Int = waitingNumber() ?? 0
             if after >= before { problems.append("waiting count \(before) -> \(after): the list did not update") }
-            if toast.isEmpty { problems.append("no toast after answering") }
-            return problems.isEmpty ? .pass("waiting \(before) -> \(after); toast '\(toast.prefix(50))'") : .fail(problems.prefix(3).joined(separator: "; "))
+            return problems.isEmpty ? .pass("waiting \(before) -> \(after); outcome '\(outcome.prefix(50))'") : .fail(problems.prefix(3).joined(separator: "; "))
         }
         step("inbox: answer in the detail -> the detail closes, the waiting count drops") {
             guard let before = inboxWithDecision(days: 2) else { return .skip("no decision waiting") }
@@ -158,23 +156,25 @@ extension FeatureToursTests {
             var problems: [String] = rawProblems("inbox detail")
             touch(opt)
             if popupUp(1), has("confirm-go") { problems.append(contentsOf: rawProblems("inbox confirm")); closePopup(prefer: ["confirm-go"]) }
+            if has("outcome-ok", wait: 3) { closePopup(prefer: ["outcome-ok"]) }
             guard waitPopupGone(4) else { return .fail("the detail did not close after answering") }
             let after: Int = waitingNumber() ?? 0
             if after >= before { problems.append("waiting count \(before) -> \(after): the list did not update") }
             if !has("inbox-row", wait: 1) && signature().heads.contains("Inbox") == false { problems.append("left the Inbox after answering: \(signature().text)") }
             return problems.isEmpty ? .pass("waiting \(before) -> \(after)") : .fail(problems.prefix(3).joined(separator: "; "))
         }
-        step("home: answer a decision from Needs you -> a toast, no OK popup") {
+        step("home: answer a decision from Needs you -> one outcome popup, then OK") {
             guard goTab("Home") else { return .fail("no Home") }
             guard tapWhere(wait: 2, { $0.id == "suggestion-row" }) else { return .skip("no decision row in Needs you") }
             guard popupUp(2) else { return .skip("the row opened a page, not a decision (\(signature().text))") }
             guard let opt = find(wait: 2, { $0.id == "inbox-option" && $0.type == .button }) else { closePopup(); return .skip("the popup is not a decision") }
             touch(opt)
             if popupUp(1), has("confirm-go") { closePopup(prefer: ["confirm-go"]) }
-            let gone: Bool = waitPopupGone(3)
-            let toast: String = find(wait: 2, { $0.id == "notification-banner" })?.label ?? ""
-            if !gone { closePopup(); return .fail("a popup stayed up after answering (an OK popup?)") }
-            return homeVisible(3) ? .pass(toast.isEmpty ? "no toast seen" : "toast '\(toast.prefix(50))'") : .fail("not on Home after answering: \(signature().text)")
+            let outcome: String = find(wait: 3, { $0.id == "outcome-ok" })?.label ?? ""
+            if outcome.isEmpty { closePopup(); return .fail("no outcome popup after answering") }
+            closePopup(prefer: ["outcome-ok"])
+            if !waitPopupGone(3) { closePopup(); return .fail("a popup stayed up after the outcome OK") }
+            return homeVisible(3) ? .pass("outcome shown") : .fail("not on Home after answering: \(signature().text)")
         }
     }
 
@@ -261,20 +261,18 @@ extension FeatureToursTests {
         for tile in ["Transfer", "Deposit", "Withdraw"] {
             roundTrip("bank: \(tile) popup closes and keeps the account", prepare: { openBankAccount("personal") }) { tapLabel(tile) }
         }
-        step("bank: Transfer -> Half -> move (confirm if asked) -> toast, popup stays usable") {
+        step("bank: Transfer -> Half -> move (confirm if asked, then its outcome OK), popup stays usable") {
             guard openBankAccount("personal"), tapLabel("Transfer"), popupUp(2) else { return .skip("no Transfer popup") }
             var problems: [String] = []
             if case .fail(let m) = primaryInView("bank-move-go") { problems.append(m) }
             guard tapLabel("Half", wait: 2) else { closePopup(); return .skip("nothing to move (no Half button)") }
             guard tapEnabled("bank-move-go", wait: 2) else { closePopup(); return .fail("bank-move-go not tappable after Half (blocked?)") }
             if has("confirm-go", wait: 1.5) { closePopup(prefer: ["confirm-go"]) }
-            let toast: String = find(wait: 3, { $0.id == "notification-banner" })?.label ?? ""
-            if toast.isEmpty { problems.append("no toast after moving money") }
             problems.append(contentsOf: rawProblems("bank move"))
             var n = 0
             while popupUp() && n < 3 { closePopup(); n += 1 }
             if !has("back-button", wait: 2) { problems.append("not on the account after closing: \(signature().text)") }
-            return problems.isEmpty ? .pass("toast '\(toast.prefix(50))'") : .fail(problems.prefix(3).joined(separator: "; "))
+            return problems.isEmpty ? .pass("") : .fail(problems.prefix(3).joined(separator: "; "))
         }
         step("market invest: Buy -> asset -> amount -> Review -> Confirm -> Done") {
             guard openPhoneApp("Market"), tapID("market-tab-Invest", wait: 4) else { return .skip("no Market app") }
@@ -355,13 +353,13 @@ extension FeatureToursTests {
             let all: [String] = days.isEmpty ? ids(prefix: "acct-payday-", wait: 1) : days
             return all.isEmpty ? .fail("no acct-payday-* rows") : .pass(all.map { String($0.dropFirst(12)) }.joined(separator: ","))
         }
-        step("payroll: choosing another pay day shows a toast and marks it") {
+        step("payroll: choosing another pay day marks it, no popup") {
             guard openPayroll() else { return .skip("payroll not reachable") }
             guard tapWhere(wait: 3, { $0.id.hasPrefix("acct-payday-") && $0.type == .button && !$0.label.contains("Current") && !$0.label.contains("Queued") }) else { return .skip("no other pay day to choose") }
-            let toast: String = find(wait: 3, { $0.id == "notification-banner" })?.label ?? ""
-            let marked: Bool = hits().contains { $0.id.hasPrefix("acct-payday-") && $0.label.contains("Queued") } || !toast.isEmpty
+            pause(1)
+            let marked: Bool = hits().contains { $0.id.hasPrefix("acct-payday-") && $0.label.contains("Queued") }
             if popupUp(1) { closePopup(); return .fail("choosing a pay day raised a popup") }
-            return marked ? .pass("toast '\(toast.prefix(60))'") : .fail("no toast and no 'Queued' mark after choosing a pay day")
+            return marked ? .pass("queued") : .fail("no 'Queued' mark after choosing a pay day")
         }
         step("payroll: Run payroll button goes to the Run tab with its action in view") {
             guard openPayroll(), tapID("acct-payroll-run", wait: 3) else { return .skip("no Run payroll button") }

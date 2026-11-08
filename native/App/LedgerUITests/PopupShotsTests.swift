@@ -27,7 +27,7 @@ final class PopupShotsTests: CompanyBatchTourCase {
     }
 
     func closeAny() {
-        for id in ["popup-close", "report-continue", "alert-continue", "error-ok", "unlock-skip", "celebration-dismiss", "ambition-later", "conversion-keep"] {
+        for id in ["popup-close", "report-continue", "alert-continue", "error-ok", "outcome-ok", "unlock-skip", "celebration-dismiss", "ambition-later", "conversion-keep"] {
             let b = app.buttons[id]
             if b.exists && b.isHittable { b.tap(); sleep(1); return }
         }
@@ -73,7 +73,7 @@ final class PopupShotsTests: CompanyBatchTourCase {
             return true
         }
         site("decision") {
-            guard tapID("decide-appoint-manager", wait: 2) || exists("banner-go", 2) else { return false }
+            guard tapID("decide-appoint-manager", wait: 2) else { return false }
             popup("decision"); closeAny(); return true
         }
         site("celebration") {

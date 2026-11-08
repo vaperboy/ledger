@@ -3,7 +3,7 @@ import GameCore
 import Simulation
 import Businesses
 
-/// The Phone tab: a home screen of apps (time and date, a banner for the most urgent alert, a 4-column grid with red bubbles),
+/// The Phone tab: a home screen of apps (time and date, a 4-column grid with red bubbles),
 /// exactly as in native/design/new-look-2026-10/PhoneHome.dc.html. Each app opens as a pushed full screen with its own `AppHeader`
 /// and a round back button to this home. The tab owns the navigation stack: apps and the companies they link to are pushed on it,
 /// so Back always returns to where the player came from.
@@ -14,9 +14,6 @@ struct PhoneHome: View {
 
     @EnvironmentObject var store: GameStore
     @Environment(\.tabBarClearance) private var clearance
-    /// The apps that were dimmed the last time the grid looked, and the toast lines for the ones that opened since.
-    @State private var lockedBefore: Set<String>?
-    @State private var notes: [OrgNote] = []
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
     private var path: PhonePath { PhonePath(store: store) }
 
@@ -50,25 +47,11 @@ struct PhoneHome: View {
             .frame(maxWidth: .infinity)
         }
         .id(store.rootToken(.phone))
-        .onAppear { store.endVisits(); lockedBefore = lockedApps }
-        .onChange(of: lockedApps) { _, now in
-            guard let before = lockedBefore else { lockedBefore = now; return }
-            for title in before.subtracting(now).sorted() {
-                OrgNote.show($notes, text: "\(title) unlocked", tint: Theme.gold, seconds: 2)
-                Haptics.tap()
-            }
-            lockedBefore = now
-        }
-        .overlay(alignment: .bottom) { OrgNoteStack(notes: notes).padding(.horizontal, 16).padding(.bottom, clearance + 8) }
+        .onAppear { store.endVisits() }
         .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: clearance) }
         .background(PhoneBackdrop())
         .toolbar(.hidden, for: .navigationBar)
         .accessibilityIdentifier("phone-home")
-    }
-
-    /// The titles of the apps that are dimmed with a lock text right now.
-    private var lockedApps: Set<String> {
-        Set(PhoneApp.launcher.filter { (app: PhoneApp) -> Bool in gateState(app).lockText != nil }.map { (app: PhoneApp) -> String in app.title })
     }
 
     /// Where the app's gate stands; everything is open when no game is loaded.

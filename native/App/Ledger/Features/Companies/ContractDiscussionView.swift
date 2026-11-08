@@ -108,12 +108,12 @@ struct ContractDiscussionView: View {
                     }
                     if termsOpen(e) {
                         promiseMaker(e, label: "Promise instead") { draft in
-                            show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) })
+                            show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) }, "Promise instead")
                         }
                     }
                     if e.contractHandler(companyID: companyID) != nil {
                         Button("Leave it to the manager") {
-                            show(store.act { $0.contractLeaveToManager(companyID: companyID, personID: personID) })
+                            show(store.act { $0.contractLeaveToManager(companyID: companyID, personID: personID) }, "Leave it to the manager")
                         }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft))
                     }
                 }
@@ -126,7 +126,7 @@ struct ContractDiscussionView: View {
                     Button("Drop this talk") {
                         _ = store.act { $0.contractWithdraw(personID: personID) }
                         reply = ""
-                        store.show("Talk dropped. Nothing changes for \(first(n)).", tone: "n")
+                        store.outcome(chosen: "Drop this talk", result: "Talk dropped. Nothing changes for \(first(n)).")
                     }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft))
                 }
             }
@@ -359,8 +359,9 @@ struct ContractDiscussionView: View {
                         title: answering ? "Answer \(first(n)) with this?" : "Put this to \(first(n))?",
                         message: summary(pv, cur),
                         button: answering ? "Send answer" : "Put it to \(first(n))", tone: .info, icon: "doc.text") {
-                            if answering { show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .counter(counterValue(p))) }) }
-                            else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }) }
+                            let label: String = answering ? "Send answer" : "Put it to \(first(n))"
+                            if answering { show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .counter(counterValue(p))) }, label) }
+                            else { show(store.act { $0.contractPropose(companyID: companyID, personID: personID, proposal: p) }, label) }
                         }
                 }
                 .disabled(!sendable).opacity(sendable ? 1 : 0.4)
@@ -389,21 +390,22 @@ struct ContractDiscussionView: View {
         let (title, button): (String, String) = d == .accept ? ("Agree to \(first(n))'s request?", "Agree") : d == .delay ? ("Delay your answer?", "Delay") : ("Decline \(first(n))'s request?", "Decline")
         pending = PendingAction(title: title, message: d == .decline ? summary(pv, cur) + " They feel turned down." : d == .delay ? "You have \(ContractTalk.delayWeeks) weeks to answer. If the answer does not come, it counts as a decline. " + summary(pv, cur) : summary(pv, cur),
                                 button: button, tone: d == .decline ? .warning : .info, icon: "doc.text") {
-            show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: d) })
+            show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: d) }, button)
         }
     }
 
-    private func show(_ r: ContractTalk.Reply?) {
+    /// Tells the reply to what the player chose (`chosen`) in the outcome popup; a counter or an unwilling answer stays in the talk.
+    private func show(_ r: ContractTalk.Reply?, _ chosen: String) {
         guard let r else { store.show("No game is loaded.", tone: "warn"); return }
         switch r {
-        case .agreed(let t), .settled(let t): Haptics.success(); store.show(t, tone: "good"); reply = ""
+        case .agreed(let t), .settled(let t): Haptics.success(); store.outcome(chosen: chosen, result: t); reply = ""
         case .counter(let amount, _, let t):
             reply = t; Haptics.tap()
             if topic == .payRise { percent = amount } else if topic == .promotion { pay = amount }
-        case .delayed(_, let t): Haptics.tap(); store.show(t, tone: "n"); reply = ""
-        case .declined(let t): Haptics.warning(); store.show(t, tone: "warn"); reply = ""
+        case .delayed(_, let t): Haptics.tap(); store.outcome(chosen: chosen, result: t); reply = ""
+        case .declined(let t): Haptics.warning(); store.outcome(chosen: chosen, result: t); reply = ""
         case .unwilling(let t): Haptics.warning(); reply = t
-        case .resigned(let t): Haptics.warning(); store.show(t, tone: "bad"); reply = ""
+        case .resigned(let t): Haptics.warning(); store.outcome(chosen: chosen, result: t); reply = ""
         case .notPossible(let t): Haptics.warning(); reply = t; store.show(t, tone: "warn")
         }
         if let e = store.engine, let co = e.state.company(companyID), !isEmployee(co) { dismiss() }
@@ -458,7 +460,7 @@ struct ContractDiscussionView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Instead of deciding now, promise \(first(n)) something by a date. It is kept in the Promises list.").popupText(.caption)
                 promiseMaker(e, label: "Make a promise") { draft in
-                    show(store.act { $0.promise(companyID: companyID, personID: personID, draft: draft) })
+                    show(store.act { $0.promise(companyID: companyID, personID: personID, draft: draft) }, "Make a promise")
                 }
             }
         }

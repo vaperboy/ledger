@@ -10,7 +10,7 @@ struct WorkerRef: Identifiable, Hashable {
     var id: Int
 }
 
-/// The worker's profile as a popup (from a banner or the inbox): the same `WorkerProfileBody` as the pushed page, with the actions inline.
+/// The worker's profile as a popup (from the inbox): the same `WorkerProfileBody` as the pushed page, with the actions inline.
 /// The contract discussion replaces the profile inside this popup (its close steps back to the profile) instead of opening a second popup.
 struct WorkerProfileSheet: View {
     @EnvironmentObject var store: GameStore

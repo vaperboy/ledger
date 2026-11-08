@@ -123,12 +123,17 @@ struct InboxView: View {
     private func answer(_ message: Message, _ index: Int, _ label: String, inline: Bool = false) {
         var effects: [String] = []
         if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
+        // An option with no preview lines is told by its own description.
+        if effects.isEmpty, let e = store.engine, message.options.indices.contains(index) {
+            let d: String = e.displayText(message.options[index]["d"].string, companyID: message.companyID)
+            if !d.isEmpty { effects = [d] }
+        }
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // The answer is told in a one-line toast; the player stays on the Inbox.
-            store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
+            // What was chosen and what it does: one outcome popup (the tax decision names the payment route it took).
+            store.announceAnswer(label: label, effects: effects, ok: true, messageTitle: message.title, companyID: message.companyID)
         } else if message.actionID == PersonalFinance.dueAction {
             // The tax decision stays open when a route cannot cover the bill: say so and let the player choose another.
             Haptics.warning()

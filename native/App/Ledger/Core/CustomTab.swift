@@ -49,11 +49,11 @@ extension GameStore {
     }
 
     /// The player picked a destination: it is stored and the Custom tab starts on it. The selected tab stays (only the tab bar changes
-    /// it): on the Custom tab its root shows the new destination, elsewhere a toast says where it went.
+    /// it): on the Custom tab its root shows the new destination.
     func chooseCustom(_ target: CustomTabTarget) {
         customTarget = target
         target.save()
         customPickerOpen = false
-        if tab == .custom { popToRoot(.custom) } else { show("\(title(for: .custom)) is now on your Custom tab", tone: "good") }
+        if tab == .custom { popToRoot(.custom) }
     }
 }

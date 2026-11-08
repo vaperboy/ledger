@@ -235,40 +235,6 @@ struct OrgProgressBar: View {
     var body: some View { ProgressLine(fraction: fraction, height: height) }
 }
 
-/// One line of notice that comes and goes by itself (a resignation reason, a recognition chip).
-struct OrgNote: Identifiable, Equatable {
-    var id = UUID()
-    var text: String
-    var tint: Color
-
-    /// Adds a note to `list` and removes it after `seconds`.
-    static func show(_ list: Binding<[OrgNote]>, text: String, tint: Color = Theme.ivoryMuted, seconds: Double = 3) {
-        let note = OrgNote(text: text, tint: tint)
-        Motion.animate(Motion.quickAnimation) { list.wrappedValue.append(note) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
-            Motion.animate(Motion.quickAnimation) { list.wrappedValue.removeAll { $0.id == note.id } }
-        }
-    }
-}
-
-/// The notes as small chips; empty when there are none. Never takes touches.
-struct OrgNoteStack: View {
-    var notes: [OrgNote]
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            ForEach(notes) { n in
-                Text(n.text).textStyle(.caption, tint: n.tint).lineLimit(2)
-                    .padding(.horizontal, Theme.Space.s).padding(.vertical, Theme.Space.xs)
-                    .background(Capsule().fill(Theme.surface))
-                    .overlay(Capsule().strokeBorder(n.tint.opacity(0.6), lineWidth: 1))
-                    .transition(AnyTransition.opacity.combined(with: AnyTransition.move(edge: .top)))
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .allowsHitTesting(false)
-    }
-}
-
 // MARK: Acquisition completion
 
 struct OrgCompletion: Identifiable, Equatable {

@@ -7,7 +7,7 @@ import Simulation
 /// Board seat rules shared by the board room and the entity page, so both ask and answer in the same words.
 extension GameStore {
     /// The confirmation for taking a holder off a board. Own staff keep their job; an outside holder is paid their notice; without a
-    /// majority it is refused (shown as a toast, nil returned).
+    /// majority it is refused (told in a popup, nil returned).
     func removeSeatPrompt(key: String, personID: Int, name: String) -> PendingAction? {
         guard let engine else { return nil }
         let terms: SeatRemovalTerms = engine.seatRemovalTerms(key: key, personID: personID)
@@ -89,8 +89,6 @@ struct BoardView: View {
             .ledgerBackground()
             .appScreen(title: engine.boardName(key: key), subtitle: key.hasPrefix("ch:") ? "Board of the chain · \(companies.count) \(companies.count == 1 ? "store" : "stores")" : "Board of the company", tab: .group)
             .confirmAction($pending)
-            // Every result is also a toast, so it is seen when the line at the top has scrolled away.
-            .onChange(of: message) { _, new in if !new.isEmpty { store.show(new, tone: "n") } }
         } else {
             Text("This board no longer meets.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
@@ -136,7 +134,7 @@ struct BoardView: View {
             } else {
                 PrimaryAction(title: "Hold a board meeting \u{00B7} \(preview.count) \(preview.count == 1 ? "point" : "points")", identifier: "board-hold-meeting") {
                     let id: Int? = store.act { $0.holdBoardMeeting(key: key) } ?? nil
-                    if id == nil { message = "Nothing to meet about right now." } else { message = ""; Haptics.success(); store.show("The board met. Its agenda is below.", tone: "good") }
+                    if id == nil { message = "Nothing to meet about right now." } else { message = "The board met. Its agenda is below."; Haptics.success() }
                 }
             }
         }
@@ -148,8 +146,10 @@ struct BoardView: View {
                 Button(o) {
                     pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true) {
                         let r: String? = store.act { $0.pickEmergency(key: key, meetingID: m.id, option: i) } ?? nil
-                        message = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
+                        let said: String = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
+                        message = said
                         Haptics.success()
+                        store.outcome(chosen: "Decide: \(o)", result: said)
                     }
                 }.buttonStyle(GreyOutlineButtonStyle())
             }
@@ -176,16 +176,19 @@ struct BoardView: View {
             switch r {
             case .followUp(let what)?: message = what + " A follow-up job is listed below."; Haptics.success()
             case .done(let what)?: message = what.isEmpty ? "Done." : what; Haptics.success()
-            case .refused(let why)?: message = "Not done: " + why
-            case .gone?: message = "That point is no longer on the agenda."
+            case .refused(let why)?: message = "Not done: " + why; store.show(message, tone: "warn"); return
+            case .gone?: message = "That point is no longer on the agenda."; store.show(message, tone: "warn"); return
             default: message = "Done."
             }
+            store.outcome(chosen: approveWord(it), result: message)
         }
     }
 
     private func decline(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) {
         let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) }
-        if case .gone? = r { message = "That point is no longer on the agenda." } else { message = isConcern(it) ? "Left as it is. It goes in the minutes." : "Declined. It goes in the minutes." }
+        if case .gone? = r { message = "That point is no longer on the agenda."; store.show(message, tone: "warn"); return }
+        message = isConcern(it) ? "Left as it is. It goes in the minutes." : "Declined. It goes in the minutes."
+        store.outcome(chosen: declineWord(it), result: message)
     }
 
     private func itemRow(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem, _ engine: GameEngine) -> some View {
@@ -399,6 +402,7 @@ struct BoardView: View {
         case .refused(let why)?: message = why
         default: message = "\(c.name) could not be seated."
         }
+        store.outcome(chosen: "Seat them", result: message)
     }
 
     private func candidateRow(_ p: Person) -> some View {
@@ -435,6 +439,7 @@ struct BoardView: View {
     private func seat(_ p: Person, fee: Double) {
         let r = store.fillSeatOutcome(key: key, person: p, fee: fee)
         message = r.text
+        store.outcome(chosen: "Seat them", result: r.text)
         if r.joined { candidates = []; Haptics.success() }
     }
 

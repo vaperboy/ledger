@@ -553,6 +553,7 @@ enum ConfirmThreshold {
 private struct ConfirmActionModifier: ViewModifier {
     @Binding var pending: PendingAction?
     @State private var asked: PendingAction?
+    @Environment(\.outcomeStore) private var outcomeStore
 
     func body(content: Content) -> some View {
         let current: PendingAction? = asked
@@ -571,7 +572,7 @@ private struct ConfirmActionModifier: ViewModifier {
         guard let p = pending else { asked = nil; return }
         if ConfirmThreshold.skips(p) {
             pending = nil
-            p.run()
+            run(p)
         } else {
             asked = p
         }
@@ -581,7 +582,12 @@ private struct ConfirmActionModifier: ViewModifier {
         asked = nil
         pending = nil
         // Once the popup is gone, so the action may open or close screens without clashing with it.
-        if go { DispatchQueue.main.async { p.run() } }
+        if go { DispatchQueue.main.async { run(p) } }
+    }
+
+    /// Runs the action; the game store then tells its outcome in one popup (or just runs it where no store is in the environment).
+    private func run(_ p: PendingAction) {
+        if let s = outcomeStore { s.runConfirmed(p) } else { p.run() }
     }
 }
 

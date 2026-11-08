@@ -157,11 +157,8 @@ extension GameStore {
     func seedUpdateMarks() {
         guard let e = engine else { return }
         var s: UpdateMarks = seenMarks
-        var a: UpdateMarks = announcedMarks
         fill(&s, e)
-        fill(&a, e)
         if s != seenMarks { seenMarks = s; s.save("seen") }
-        if a != announcedMarks { announcedMarks = a; a.save("announced") }
     }
 
     /// The player opened the app: everything up to now counts as seen.
@@ -182,104 +179,5 @@ extension GameStore {
         }
         if UpdateFeed.messageApps.contains(app) { s.ints["m." + app.rawValue] = UpdateFeed.maxMessageID(e) }
         if s != seenMarks { seenMarks = s; s.save("seen") }
-    }
-
-    private func isOpen(_ app: PhoneApp) -> Bool {
-        guard case .app(let a)? = path(for: tab).last else { return false }
-        return a == app
-    }
-
-    private struct UpdateCandidate {
-        var app: PhoneApp
-        var severity: Int
-        var count: Int
-        var title: String
-        var body: String
-        var isAlert: Bool
-        var target: BannerTarget = .none
-        var hasOwnTarget = false
-        /// The newest message of the app's update (0 = none) and the company it concerns (0 = none): the banner opens it directly.
-        var newestID: Int = 0
-        var companyID: Int = 0
-    }
-
-    /// A tap on an "N updates in <App>" banner: the app on its newest item, no question. Inbox: that message's popup; Bank: the account;
-    /// Accounting: payroll; Market: News; Stats: Goals; the shops: the company's page.
-    func openUpdate(_ app: PhoneApp, messageID: Int, companyID cid: Int) {
-        switch app {
-        case .inbox:
-            if messageID != 0 { openMessage(messageID) } else { openApp(.inbox) }
-        case .bank:
-            openBank(cid != 0 ? BankAccountID.company(cid) : BankAccountID.personal)
-        case .accounting:
-            if cid != 0 { openAccounting(companyID: cid, payroll: true) } else { openApp(.accounting) }
-        case .market:
-            marketNewsPending = true
-            openApp(.market, request: .market(companyID: 0))
-        case .stats:
-            openApp(.goals)
-        case .airStay:
-            openAirStay(companyID: cid)
-        case .techPro:
-            if cid != 0 { openTechPro(companyID: cid) } else { openApp(.techPro) }
-        case .atlas:
-            if cid != 0 { openAtlas(companyID: cid) } else { openApp(.atlas) }
-        default:
-            openApp(app)
-        }
-    }
-
-    /// After a simulated day: one banner per app with new updates, the most severe first, at most two a day. Open decisions, payroll and
-    /// weather warnings are standing alerts and come through the alert path, not here.
-    func postUpdateBanners(_ e: GameEngine) {
-        var found: [UpdateCandidate] = []
-        for app in UpdateFeed.messageApps {
-            let all: [Message] = UpdateFeed.freshMessages(e, app, marks: announcedMarks)
-            // Routine (severity 1) notices and ones a desk already handled stay quiet: they are in the Inbox, not banners.
-            let msgs: [Message] = all.filter { (m: Message) -> Bool in
-                !(m.status == "open" && !m.options.isEmpty) && e.severityLevel(of: m) >= 2 && UpdateFeed.ownerRelevant(m)
-            }
-            var events: [BannerItem] = []
-            if app == .market { events = marketBannerItems(e, after: announcedMarks.ints["market"] ?? Int.max) }
-            let news: [NewsItem] = app == .news ? UpdateFeed.freshNews(e, marks: announcedMarks) : []
-            let n: Int = msgs.count + events.count + news.count
-            if n == 0 || isOpen(app) { continue }
-            var sev = 1
-            var alert = false
-            for m in msgs {
-                sev = max(sev, e.severityLevel(of: m))
-                if e.severityLevel(of: m) >= 4 { alert = true }
-            }
-            for b in events { sev = max(sev, b.severity) }
-            var c = UpdateCandidate(app: app, severity: sev, count: n, title: "\(n) updates in \(app.title)", body: "", isAlert: alert && sev >= 4)
-            if let m = msgs.first {
-                let t: String = e.displayText(m.title, companyID: m.companyID).tidyText
-                if n == 1 { c.title = t; c.body = m.from } else { c.body = t }
-                let newest: Message = msgs.max { (a: Message, b: Message) -> Bool in a.id < b.id } ?? m
-                c.newestID = newest.id
-                c.companyID = newest.companyID
-            } else if let b = events.first {
-                if n == 1 { c.title = b.title; c.body = b.body; c.target = b.target; c.hasOwnTarget = true } else { c.body = b.title }
-            } else if let nw = news.first {
-                if n == 1 { c.title = nw.text.tidyText } else { c.body = nw.text.tidyText }
-            }
-            found.append(c)
-        }
-        let ranked: [UpdateCandidate] = found.sorted { (a: UpdateCandidate, b: UpdateCandidate) -> Bool in a.severity > b.severity }
-        let store: GameStore = self
-        for c in ranked.prefix(2) {
-            var item = BannerItem(key: "upd-\(c.app.rawValue)", source: c.app.title, title: c.title, body: c.body, glyph: c.app.glyph)
-            item.severity = c.severity
-            item.isAlert = c.isAlert
-            item.lifetime = 4
-            let app: PhoneApp = c.app
-            let newestID: Int = c.newestID
-            let cid: Int = c.companyID
-            item.target = c.hasOwnTarget ? c.target : .place(app.title, { store.openUpdate(app, messageID: newestID, companyID: cid) })
-            banners.post(item)
-        }
-        var a: UpdateMarks = UpdateMarks()
-        fill(&a, e)
-        if a != announcedMarks { announcedMarks = a; a.save("announced") }
     }
 }
