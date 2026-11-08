@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.100",
+          "buildVersion": "100",
+          "date": "2026-11-08T20:39:30Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v100/Ledger-unsigned.ipa",
+          "size": 30426974,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack\n- Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists\n- Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once\n- Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone\n- Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them\n- Home sits clear of the island, Next day sits above the tab bar, empty space is shared evenly, a single company shows a richer card, and the app has a soft gradient background with glass-style cards, tab bar and day button\n- Fix for a crash while playing the first weeks of a new game: more number conversions can no longer overflow or hit a non-number, and charts ignore values that are not numbers\n- Fix for the crash on opening an older save: saved numbers can no longer overflow a conversion, duplicate names no longer break lookups, the first-run tour only starts i"
+        },
+        {
           "version": "1.0.99",
           "buildVersion": "99",
           "date": "2026-11-08T18:10:02Z",
@@ -187,22 +196,13 @@
           "size": 28887763,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale\n- Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring without the extra toggle; Group pages, Treasury, sale routes and Boardroom calmer; new-company flow reviews the cost before paying; Bank flatter, payroll lives in Accounting\n- Look: new design system: one type scale that follows your text size, one spacing and corner set, unboxed sections and rows, three button styles with full-size tap areas, buttons say why they are disabled, no gradients or glows\n- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handles them, no flood after replacing a CEO, pay requests capped per week\n- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners;"
-        },
-        {
-          "version": "1.0.80",
-          "buildVersion": "80",
-          "date": "2026-11-06T19:33:14Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v80/Ledger-unsigned.ipa",
-          "size": 29262224,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Look: new design system: one type scale that follows your text size, one spacing and corner set, unboxed sections and rows, three button styles with full-size tap areas, buttons say why they are disabled, no gradients or glows\n- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handles them, no flood after replacing a CEO, pay requests capped per week\n- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed\n- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)\n- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device\n- Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap\n- Notices: minor \"cann"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.99",
-      "versionDate": "2026-11-08T18:10:02Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v99/Ledger-unsigned.ipa",
-      "size": 30450376
+      "version": "1.0.100",
+      "versionDate": "2026-11-08T20:39:30Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v100/Ledger-unsigned.ipa",
+      "size": 30426974
     }
   ]
 }
