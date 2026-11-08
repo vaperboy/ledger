@@ -135,7 +135,7 @@ public enum WeatherEvents {
                 let lines = aff.prefix(4).map { co -> String in
                     let e = Weather.effect(for: co, trade: data.catalog[co.type]!, week: s.week + 1, seed: s.seed, tables: t)
                     var txt = ""
-                    if abs(e.demand - 1) >= 0.08 { txt += e.demand > 1 ? "about \(Int(jsRound((e.demand - 1) * 100)))% more customers" : "about \(Int(jsRound((1 - e.demand) * 100)))% fewer customers" }
+                    if abs(e.demand - 1) >= 0.08 { txt += e.demand > 1 ? "about \(Int(saturating: jsRound((e.demand - 1) * 100)))% more customers" : "about \(Int(saturating: jsRound((1 - e.demand) * 100)))% fewer customers" }
                     if e.capacity < 0.95 { txt += (txt.isEmpty ? "" : ", ") + "less working time" }
                     return "\(co.name): \(txt)."
                 }
@@ -160,7 +160,7 @@ public enum WeatherEvents {
                 ev = ev.filter { $0["end"].int > s.week - 52 }
                 st["ev"] = .array(ev); s.rest["wx56"] = st
                 let who = T.filter { !k.4 || $0.cityID == co.cityID }.prefix(4).map { c -> String in
-                    "\(c.name) (\(Int(jsRound(DemandModel.touristShare(c, data.catalog[c.type]!, World(state: s, data: data)) * 100)))% of its customers are visitors)" }
+                    "\(c.name) (\(Int(saturating: jsRound(DemandModel.touristShare(c, data.catalog[c.type]!, World(state: s, data: data)) * 100)))% of its customers are visitors)" }
                 s.addMessage(kind: "info", from: "Tourism board", title: cap(text),
                              body: "\(k.1 > 1 ? "More visitors than usual" : "Fewer visitors than usual") for about \(k.2) weeks\(k.4 ? " in \(city)" : ""). \(who.joined(separator: ", ")).", companyID: co.id, tone: k.1 > 1 ? "good" : "bad")
             }

@@ -96,6 +96,7 @@ final class AutoHireTests: XCTestCase {
         var gaps = 0, filled = 0
         var unfilled: [String] = []
         for seed in 1...60 {
+            var role = ""
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
             var id = 0
             e.update { s, data, ctx in
@@ -107,14 +108,18 @@ final class AutoHireTests: XCTestCase {
                 s.companies[i].status = .open
                 s.companies[i].managerID = 0   // only a manager replaces people who leave
                 if let m = s.companies[i].staff.last {
+                    role = m.role
                     s.companies[i].staff.removeLast()
                     if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p }
                 }
             }
             let before = e.state.company(id)!.staff.count
+            let inRole = e.state.company(id)!.staff.filter { $0.role == role }.count
             e.update { s, d, _ in for _ in 0..<6 { s.week += 1; StaffingPlan.weekly(&s, data: d) } }
             gaps += 1
-            if e.state.company(id)!.staff.count == before + 1 { filled += 1 } else { unfilled.append("seed \(seed): \(before) -> \(e.state.company(id)!.staff.count)") }
+            // The gap is refilled in its own role; a company held back by demand may also add one more person (growth), never more than that in six weeks.
+            let after = e.state.company(id)!.staff
+            if after.filter({ $0.role == role }).count > inRole, (before + 1...before + 2).contains(after.count) { filled += 1 } else { unfilled.append("seed \(seed): \(before) -> \(after.count)") }
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
         }
         XCTAssertEqual(filled, gaps, "every gap is filled; not: \(unfilled)")

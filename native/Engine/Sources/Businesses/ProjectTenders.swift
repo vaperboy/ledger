@@ -271,16 +271,16 @@ public enum ProjectTenders {
         for (idx, e) in all.enumerated() {
             guard let cid = e.me, let co = s.company(cid) else { continue }
             let place = order.firstIndex(of: idx)! + 1
-            let pts = Int(jsRound(e.score * 100))
+            let pts = Int(saturating: jsRound(e.score * 100))
             if idx == order[0] {
                 startJob(&s, t, co, priceFactor: e.pf, higherQuality: e.higher, data: data)
                 s.addMessage(from: t.buyer, title: "Award: \(t.title)",
                              body: "\(co.name) won with \(pts) points out of 100 (\(all.count) \(all.count == 1 ? "bid" : "bids")). \(t.isVolume ? VolumeTenders.startText(t) : "Work starts now.")",
                              companyID: cid, tone: "good", status: "done")
             } else {
-                let weights = t.priceWeight >= 1 ? ", on price alone." : ". Price counted \(Int(jsRound(t.priceWeight * 100)))%, quality \(Int(jsRound((1 - t.priceWeight) * 100)))%."
+                let weights = t.priceWeight >= 1 ? ", on price alone." : ". Price counted \(Int(saturating: jsRound(t.priceWeight * 100)))%, quality \(Int(saturating: jsRound((1 - t.priceWeight) * 100)))%."
                 s.addMessage(from: t.buyer, title: "Not awarded: \(t.title)",
-                             body: "\(co.name) came \(ordinal(place)) of \(all.count) with \(pts) points. The winner had \(Int(jsRound(win.score * 100)))\(weights)",
+                             body: "\(co.name) came \(ordinal(place)) of \(all.count) with \(pts) points. The winner had \(Int(saturating: jsRound(win.score * 100)))\(weights)",
                              companyID: cid, tone: "bad", status: "done")
             }
             _ = w

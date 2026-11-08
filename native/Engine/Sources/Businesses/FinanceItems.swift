@@ -173,7 +173,7 @@ public enum FinanceItems {
         s.companies[i].set(key, .object(["w": .number(Double(s.week)), "exp": .number(exp), "dir": .number(dir)]))
         let co = s.companies[i]
         let old = SalesItems.items(co, bd)
-        let existing = Dictionary(uniqueKeysWithValues: old.map { ($0.id, $0) })
+        let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
         // A company whose earlier items were all the old titles keeps no title items at all.
         let totalUnits = list.reduce(0.0) { $0 + max(0, $1.units) }

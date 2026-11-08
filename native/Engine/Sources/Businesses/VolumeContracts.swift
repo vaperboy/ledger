@@ -242,7 +242,7 @@ public enum VolumeContracts {
             let total = units * tk * (1 - discount) * Double(weeks)
             let worth = w.currency(co).display(total)
             let perWeek = jsRound(units * 10) / 10
-            let percent = Int(jsRound(discount * 100))
+            let percent = Int(saturating: jsRound(discount * 100))
             let paid = pay == 0 ? "on delivery" : "\(pay) weeks after delivery"
             let look = reliability >= 0.85 ? "solid" : reliability >= 0.65 ? "average" : "shaky"
             let body = "About \(perWeek) a week for \(weeks) weeks, at \(percent)% below your price, paid \(paid). Worth about \(worth) in total. The customer looks \(look)."

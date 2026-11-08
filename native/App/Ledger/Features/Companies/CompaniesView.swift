@@ -258,7 +258,7 @@ struct CompanyTable: View {
 enum RunwayText {
     static func of(_ h: CompanyHealth) -> String {
         guard let w = h.runwayWeeks else { return h.profitTTM > 0 || h.label == "New" ? "Self-funding" : "–" }
-        return w >= 104 ? "2+ years" : "\(Int(w)) weeks"
+        return w >= 104 ? "2+ years" : "\(Int(saturating: w)) weeks"
     }
 }
 

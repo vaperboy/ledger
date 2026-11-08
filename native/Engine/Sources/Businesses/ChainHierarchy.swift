@@ -154,8 +154,8 @@ extension ManagerModel {
         guard H.count == 4 else { return nil }
         let d = H.reduce(0) { $0 + $1["d"].double } / 4, u = H.reduce(0) { $0 + $1["u"].double } / 4
         let off = co.value("off")["price"].double
-        if d > 1.25 && u >= 0.95 && off < 2 { return (off + 1, "up", "far more customers than we can serve (about \(Int(jsRound(d * 100)))% of what we can do), and the store is full") }
-        if d < 0.6 && u < 0.55 && off > -2 { return (off - 1, "down", "the store is only about \(Int(jsRound(u * 100)))% busy") }
+        if d > 1.25 && u >= 0.95 && off < 2 { return (off + 1, "up", "far more customers than we can serve (about \(Int(saturating: jsRound(d * 100)))% of what we can do), and the store is full") }
+        if d < 0.6 && u < 0.55 && off > -2 { return (off - 1, "down", "the store is only about \(Int(saturating: jsRound(u * 100)))% busy") }
         if off != 0 && d >= 0.8 && d <= 1.1 { return (0, "back", "customers and capacity are back in balance") }
         return nil
     }

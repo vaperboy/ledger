@@ -183,7 +183,7 @@ public enum PriceMoves {
         var h = HashedRandom("\(seed):g16:\(key):\(k.id):\(week / 4)")
         let a = h.next(), b = h.next()
         let off = (a - 0.5) * 2 * (1 - k.skill) * unit * 2.2 * (b < k.skill ? 0.4 : 1), w = unit * (0.35 + (1 - k.skill) * 2)
-        func f(_ x: Double) -> String { (sign && x > 0 ? "+" : x < 0 ? "−" : "") + "\(Int(jsRound(abs(x) * 100)))%" }
+        func f(_ x: Double) -> String { (sign && x > 0 ? "+" : x < 0 ? "−" : "") + "\(Int(saturating: jsRound(abs(x) * 100)))%" }
         return f(v + off - w / 2) + " to " + f(v + off + w / 2)
     }
 

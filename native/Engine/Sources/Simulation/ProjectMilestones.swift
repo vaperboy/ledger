@@ -61,7 +61,7 @@ public extension GameEngine {
             guard let board = projectBoard(companyID: co.id), let bd = data.catalog[co.type] else { continue }
             if board.isDeveloper {
                 let wks = Int(bd.traits["wks"] ?? 70)
-                let rawBy = Dictionary(uniqueKeysWithValues: ProjectDeveloper.projects(co).map { ($0.id, $0) })
+                let rawBy = Dictionary(ProjectDeveloper.projects(co).map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
                 for p in board.developments { out.append(developmentTimeline(co, p, spent: rawBy[p.id]?.spent ?? 0, overrun: rawBy[p.id]?.overrun ?? 0, buildWeeks: wks, now: now)) }
                 continue
             }

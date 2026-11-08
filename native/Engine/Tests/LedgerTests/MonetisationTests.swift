@@ -10,7 +10,7 @@ final class EntitlementGatesTests: XCTestCase {
         let pro = EntitlementSnapshot(owned: [.pro])
         let founder = EntitlementSnapshot(owned: [.founder])
         let plus = EntitlementSnapshot(owned: [.plusYearly], plusExpires: now.addingTimeInterval(86_400))
-        XCTAssertEqual(LockedFeature.allCases.count, 8)
+        XCTAssertEqual(LockedFeature.allCases.count, 7)
         for f in LockedFeature.allCases {
             XCTAssertFalse(free.isUnlocked(f, now: now), f.rawValue)
             for (name, e) in [("pro", pro), ("founder", founder), ("plus", plus)] { XCTAssertTrue(e.isUnlocked(f, now: now), "\(f.rawValue) \(name)") }

@@ -50,7 +50,7 @@ public enum EquipmentOutage {
                 if let off = m.offSale { t += all ? ": \(off) off sale" : ": fewer \(off)" }
                 return t
             }
-            let pct = Int(jsRound(lost * 100))
+            let pct = Int(saturating: jsRound(lost * 100))
             return what.joined(separator: "; ") + (pct >= 1 ? ", about \(pct)% fewer customers served." : ", a few customers fewer served.")
         }
     }
@@ -94,7 +94,7 @@ public enum EquipmentOutage {
             let dep = dependentShare(bd, e, w)
             let lost = min(maxLoss, out * dep.share)
             guard lost > 0 else { continue }
-            r.machines.append(Machine(id: e.id, name: e.name, out: out, lost: lost, offSale: dep.off, unitsDown: unitsDown(co, e), units: Int(jsRound(installed))))
+            r.machines.append(Machine(id: e.id, name: e.name, out: out, lost: lost, offSale: dep.off, unitsDown: unitsDown(co, e), units: Int(saturating: jsRound(installed))))
         }
         return r
     }

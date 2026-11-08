@@ -104,7 +104,7 @@ public enum StrategicDecisions {
     // MARK: The decisions
 
     static let definitions: [Def] = build()
-    static let byID: [String: Def] = Dictionary(uniqueKeysWithValues: definitions.map { ($0.id, $0) })
+    static let byID: [String: Def] = Dictionary(definitions.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
 
     static func build() -> [Def] {
         var L: [Def] = []

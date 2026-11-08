@@ -39,7 +39,7 @@ public extension ManagerModel {
 
         static func describe(steps: Int, share: Double) -> String {
             let price = steps == 0 ? "at the market price" : steps < 0 ? "one step under the market price" : "one step over the market price"
-            return "Prices \(price); marketing up to \(Int(jsRound(share * 100)))% of revenue."
+            return "Prices \(price); marketing up to \(Int(saturating: jsRound(share * 100)))% of revenue."
         }
     }
 
@@ -80,7 +80,7 @@ public extension ManagerModel {
         let target = rows.reduce(0) { $0 + $1.target }, filled = rows.reduce(0) { $0 + min($1.filled, $1.target) }, open = rows.reduce(0) { $0 + $1.vacancies }
         out.append(Order(key: .headcount, title: "Headcount", value: rows.isEmpty ? "None" : "\(filled) of \(target)",
                          detail: open > 0 ? "\(open) \(open == 1 ? "post is" : "posts are") open and \(firstName(n.name)) is hiring. Targets are set role by role." : "Every post is filled. Targets are set role by role."))
-        let bonus = co.managerProfitBonus > 0 ? " and \(Int(jsRound(co.managerProfitBonus * 100)))% of profit" : ""
+        let bonus = co.managerProfitBonus > 0 ? " and \(Int(saturating: jsRound(co.managerProfitBonus * 100)))% of profit" : ""
         let raise = b.payLimit(cur, monthlyRevenue: revenue)
         out.append(Order(key: .pay, title: "Pay and bonus", value: "\(cur.display(co.managerMonthlyWage)) a month\(bonus)",
                          detail: b == .tight ? "Every raise comes to you." : b == .free ? "\(firstName(n.name)) settles pay on their own." : "Raises up to \(cur.short(raise)) a month are settled without asking."))

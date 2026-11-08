@@ -114,23 +114,23 @@ public extension GameEngine {
             let cap = lw["cap"].double, D = lw["D"].double, util = lw["util"].double
             // Machines in repair last week, and what they cost in customers: a repair is worth chasing.
             if !lw["out"].string.isEmpty { out.append(Insight(id: "repair", symbol: "wrench.and.screwdriver", text: lw["out"].string, tone: .warn)) }
-            if cap > 0, D > cap * 1.12, util > 0.93 { out.append(Insight(id: "cap", symbol: "gauge.with.dots.needle.100percent", text: "Capacity is limiting sales: about \(Int(jsRound(D - cap))) customers a week are turned away. More staff or equipment would add revenue.", tone: .warn)) }
-            else if cap > 0, util < 0.5 { out.append(Insight(id: "slack", symbol: "person.3", text: "Only \(Int(jsRound(util * 100)))% of capacity is used. Demand is the limit: price, marketing and reputation matter more than hiring.", tone: .neutral)) }
+            if cap > 0, D > cap * 1.12, util > 0.93 { out.append(Insight(id: "cap", symbol: "gauge.with.dots.needle.100percent", text: "Capacity is limiting sales: about \(Int(saturating: jsRound(D - cap))) customers a week are turned away. More staff or equipment would add revenue.", tone: .warn)) }
+            else if cap > 0, util < 0.5 { out.append(Insight(id: "slack", symbol: "person.3", text: "Only \(Int(saturating: jsRound(util * 100)))% of capacity is used. Demand is the limit: price, marketing and reputation matter more than hiring.", tone: .neutral)) }
         }
         let rev = co.books.month["rev"] ?? 0, wages = co.books.month["wages"] ?? 0, rent = co.books.month["rent"] ?? 0
-        if rev > 0, wages / rev > 0.55 { out.append(Insight(id: "wages", symbol: "banknote", text: "Wages are \(Int(jsRound(wages / rev * 100)))% of this month's revenue, which leaves little for profit.", tone: .warn)) }
-        if rev > 0, rent / rev > 0.2 { out.append(Insight(id: "rent", symbol: "building", text: "Rent takes \(Int(jsRound(rent / rev * 100)))% of revenue this month.", tone: .warn)) }
+        if rev > 0, wages / rev > 0.55 { out.append(Insight(id: "wages", symbol: "banknote", text: "Wages are \(Int(saturating: jsRound(wages / rev * 100)))% of this month's revenue, which leaves little for profit.", tone: .warn)) }
+        if rev > 0, rent / rev > 0.2 { out.append(Insight(id: "rent", symbol: "building", text: "Rent takes \(Int(saturating: jsRound(rent / rev * 100)))% of revenue this month.", tone: .warn)) }
         let hist = co.monthlyHistory
         if hist.count >= 3, co.cash < (hist[hist.count - 3].cash) * 0.8, co.cash > 0, hist.last!.revenue > 0 {
             out.append(Insight(id: "cash", symbol: "arrow.down.right", text: "Cash has fallen over the last three months, from \(cur.short(hist[hist.count - 3].cash)) to \(cur.short(co.cash)).", tone: .warn))
         }
         if co.cash < 0 { out.append(Insight(id: "overdrawn", symbol: "exclamationmark.triangle", text: "The account is overdrawn. Put money in before the next payday.", tone: .bad)) }
         if let g = companyHealth(co).revenueGrowth, abs(g) > 0.08 {
-            out.append(Insight(id: "growth", symbol: g > 0 ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis", text: "Revenue is \(g > 0 ? "up" : "down") \(Int(jsRound(abs(g) * 100)))% on the previous three months.", tone: g > 0 ? .good : .warn))
+            out.append(Insight(id: "growth", symbol: g > 0 ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis", text: "Revenue is \(g > 0 ? "up" : "down") \(Int(saturating: jsRound(abs(g) * 100)))% on the previous three months.", tone: g > 0 ? .good : .warn))
         }
         if let bd = data.catalog[co.type], co.status == .open, !special {
             let rival = Competition.rivalFactor(co, w)
-            if rival < 0.8 { out.append(Insight(id: "rivals", symbol: "person.2", text: "Competitors are taking about \(Int(jsRound((1 - rival) * 100)))% of the customers you would otherwise have. Their prices and number matter here.", tone: .warn)) }
+            if rival < 0.8 { out.append(Insight(id: "rivals", symbol: "person.2", text: "Competitors are taking about \(Int(saturating: jsRound((1 - rival) * 100)))% of the customers you would otherwise have. Their prices and number matter here.", tone: .warn)) }
             _ = bd
         }
         let open = co.value("compl").array.filter { $0["st"].string == "open" }.count
@@ -146,7 +146,7 @@ public extension GameEngine {
             let ra = a.reduce(0) { $0 + $1.revenue }, rb = b.reduce(0) { $0 + $1.revenue }
             let ma = ra > 0 ? a.reduce(0) { $0 + $1.profit } / ra : 0, mb = rb > 0 ? b.reduce(0) { $0 + $1.profit } / rb : 0
             if ra > rb * 1.05, mb - ma > 0.04 {
-                out.append(Insight(id: "margin", symbol: "arrow.down.forward.and.arrow.up.backward", text: "Revenue is growing, but the profit margin fell from \(Int(jsRound(mb * 100)))% to \(Int(jsRound(ma * 100)))%: costs are rising faster than sales.", tone: .warn))
+                out.append(Insight(id: "margin", symbol: "arrow.down.forward.and.arrow.up.backward", text: "Revenue is growing, but the profit margin fell from \(Int(saturating: jsRound(mb * 100)))% to \(Int(saturating: jsRound(ma * 100)))%: costs are rising faster than sales.", tone: .warn))
             }
             // Profitable, yet cash keeps falling: money leaves through loan repayments, purchases or payouts
             let profit3 = a.reduce(0) { $0 + $1.profit }

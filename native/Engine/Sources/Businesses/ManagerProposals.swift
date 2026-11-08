@@ -132,7 +132,7 @@ extension ManagerModel {
             }
         }
         if let eqc = co.value("eqc").isNull ? nil : co.value("eqc").double, eqc < 0.7, co.maintenance < 2 {
-            out.append(ManagerProposal(kind: "quality", title: "Step up maintenance", why: "Equipment is at \(Int(jsRound(eqc * 100)))% and breakdowns cost us jobs.", role: "", id: "", addedCost: max(cur.scaledPrice(200), rev * 0.02), addedRevenue: rev * 0.05, once: 0))
+            out.append(ManagerProposal(kind: "quality", title: "Step up maintenance", why: "Equipment is at \(Int(saturating: jsRound(eqc * 100)))% and breakdowns cost us jobs.", role: "", id: "", addedCost: max(cur.scaledPrice(200), rev * 0.02), addedRevenue: rev * 0.05, once: 0))
         }
         if util < 0.5 && co.staff.count > 1, let weak = co.staff.min(by: { (s.people[$0.id]?.skill ?? 0) < (s.people[$1.id]?.skill ?? 0) }) {
             out.append(ManagerProposal(kind: "cut", title: "Let one person go", why: "We have more people than work right now.", role: "", id: "", addedCost: -weak.monthlyWage * 1.14 * 12 / 52, addedRevenue: -rev * 0.04, once: 0))

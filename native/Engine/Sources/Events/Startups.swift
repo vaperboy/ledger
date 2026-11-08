@@ -66,7 +66,7 @@ public enum Startups {
         return Founded(id: f["id"].int, name: co?.name ?? f["name"].string, productName: f["secn"].string, sectorName: StartupProducts.sector(f["sec"].string)?.name ?? "",
                        live: live, exited: exited, stage: stageIndex(f), ownership: co?.ownership ?? f["pct"].double, valuation: val,
                        cash: cash, burn: burn, invested: co?.injectedCapital ?? f["in"].double, exitValue: f["exitV"].double, quality: f["q"].double, traction: f["tr"].double,
-                       runwayWeeks: CompanyFigures.runwayWeeks(cash: cash, weeklyLoss: max(0, burn - f["sw16"]["revW"].double)).map { Int($0) } ?? 0,
+                       runwayWeeks: CompanyFigures.runwayWeeks(cash: cash, weeklyLoss: max(0, burn - f["sw16"]["revW"].double)).map { Int(saturating: $0) } ?? 0,
                        offers: Funding.offers(s, companyID: f["cid"].int),
                        product: product(f["sw16"]), companyID: f["cid"].int, teamSize: co?.staff.count ?? 0, developers: co.map { StartupModel.developers($0) } ?? 0,
                        teamWanted: f["wantTeam"].int, price: f["sw16"]["price"].double)
@@ -112,7 +112,7 @@ public enum Startups {
         let speed = Double(devs) + selfH / 40 * 0.7, wk = speed > 0 ? Int((d.work / speed).rounded(.up)) : nil
         let dc = builderCost(id, cur)
         return Plan(seed: seed, builders: devs, weeksToTest: wk.map { Int((Double($0) / 2).rounded(.up)) }, weeksToSell: wk, buildersMonthly: Double(devs) * dc,
-                    runwayWeeks: Int((CompanyFigures.runwayWeeks(cash: seed, weeklyLoss: cur.scaledPrice(d.seed) / 26 + Double(devs) * dc * 12 / 52) ?? 0).rounded()),
+                    runwayWeeks: Int(saturating: (CompanyFigures.runwayWeeks(cash: seed, weeklyLoss: cur.scaledPrice(d.seed) / 26 + Double(devs) * dc * 12 / 52) ?? 0).rounded()),
                     interest: Funding.interest(s, capitalNeed: d.capitalNeed, traction: 0.05), capitalNeed: d.capitalNeed)
     }
     /// Your own companies that could use this product, with the effect each would get.

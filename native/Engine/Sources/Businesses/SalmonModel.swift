@@ -102,7 +102,7 @@ public enum SalmonModel {
         let rev = r.revenue, cogs = r.cogs, biomass = r.biomass, units = r.tonnes
         co = s.companies[i]
         let cur = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
-        for h in r.harvests { s.note("Harvest at \(co.name): \(Int(jsRound(h.tonnes))) tonnes sold at \(Int(jsRound(spot))) per kg = \(cur.short(h.revenue)).", tone: "good", companyID: co.id) }
+        for h in r.harvests { s.note("Harvest at \(co.name): \(Int(saturating: jsRound(h.tonnes))) tonnes sold at \(Int(saturating: jsRound(spot))) per kg = \(cur.short(h.revenue)).", tone: "good", companyID: co.id) }
         let kept = cohorts
         fm["coh"] = .array(kept.map { $0.json })
         fm["bio"] = .number(biomass)

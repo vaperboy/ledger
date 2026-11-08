@@ -431,7 +431,7 @@ public enum StaffPerks {
             n.set("ret27", Double(max(Int(n.num("ret27")), s.week + L.loyal)))   // rival headhunters leave a manager alone
         } else if let k = s.companies[ci].staff.firstIndex(where: { $0.id == pid }) {
             var m = s.companies[ci].staff[k]
-            m.happyUntilWeek = max(m.happyUntilWeek, s.week + Int(jsRound(Double(L.loyal) * f)))
+            m.happyUntilWeek = max(m.happyUntilWeek, s.week + Int(saturating: jsRound(Double(L.loyal) * f)))
             m.tiredness = max(0, m.tiredness - 20 * f)
             s.companies[ci].staff[k] = m
         }

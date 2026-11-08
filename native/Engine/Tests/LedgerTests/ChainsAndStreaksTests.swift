@@ -14,6 +14,7 @@ final class ChainsAndStreaksTests: XCTestCase {
     func engineWithCompany(trades: [String] = ["cafe"], weeks: Int = 3) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4242)
         var first = 0
+        var ids: [Int] = []
         for (n, trade) in trades.enumerated() {
             e.update { s, data, ctx in
                 Ledger.move(&s, .me, 50_000_000, why: "Test funds")
@@ -23,9 +24,13 @@ final class ChainsAndStreaksTests: XCTestCase {
                 Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
                 if n == 0 { first = id }
+                ids.append(id)
             }
         }
         for _ in 0..<(weeks * 7) { e.nextDay() }
+        // Each company's own weekday decides when its paperwork clears and it opens: play on until all have.
+        var extra = 0
+        while ids.contains(where: { e.state.company($0)?.status != .open }) && extra < 28 { e.nextDay(); extra += 1 }
         return (e, first)
     }
 
@@ -229,10 +234,11 @@ final class ChainsAndStreaksTests: XCTestCase {
 
     // MARK: Streaks
 
+    /// A day whose goal ("play two weeks", counted from week -5) is already done, so the first read grows the streak.
     func dailyState(_ e: inout GameEngine, streak: Int, last: Date, day: Date, prot: Int = 0) {
         e.update { s, _, _ in
-            var d: [String: JSONValue] = ["streak": .number(Double(streak)), "last": .string(GameEngine.dayString(last)), "d": .string(GameEngine.dayString(day)), "got": 0, "k": "grow",
-                                          "b": .object(["week": 0, "staff": 0, "cmp": 0, "nw": 1])]
+            var d: [String: JSONValue] = ["streak": .number(Double(streak)), "last": .string(GameEngine.dayString(last)), "d": .string(GameEngine.dayString(day)), "got": 0, "k": "weeks",
+                                          "b": .object(["week": -5, "staff": 0, "cmp": 0, "nw": 1])]
             if prot > 0 { d["prot"] = .number(Double(prot)) }
             s.rest["dy59"] = .object(d)
         }

@@ -216,7 +216,7 @@ public enum EquipmentMarket {
                 rating = jsRound(clamp(rating, 2.5, 4.9) * 10) / 10
                 let model = words[Int(r.next() * Double(words.count))] + " " + letters[Int(r.next() * 5)] + String(c + 1) + "0" + String(Int(r.next() * 9))
                 let brand = makerName(mcat, cc, &r, &used, countries)
-                let reviews = Int(jsRound(30 + r.next() * r.next() * 1800))
+                let reviews = Int(saturating: jsRound(30 + r.next() * r.next() * 1800))
                 list.append(Offer(index: b * 3 + c, vendorID: v.id, seller: v.name, brand: brand, model: model, className: names[c], cls: c,
                                   priceFactor: jsRound(base[c] * bf * 100) / 100, rating: rating, reviews: reviews,
                                   performance: jsRound((0.88 + 0.0957 * (rating - 2.6)) * 1000) / 1000,
@@ -237,7 +237,7 @@ public enum EquipmentMarket {
             let rating = jsRound(clamp(3.6 + (r.next() - 0.35) * 1.5 + Double(i) * 0.1, 2.7, 4.9) * 10) / 10
             let model = words[Int(r.next() * 5)] + " " + String(Int(r.next() * 8) + 2) + "00"
             let f = jsRound((0.92 + r.next() * 0.2 + (rating - 3.6) * 0.08) * 100) / 100
-            let reviews = Int(jsRound(40 + r.next() * r.next() * 1500))
+            let reviews = Int(saturating: jsRound(40 + r.next() * r.next() * 1500))
             list.append(VehicleOffer(modelID: m, index: i, brand: brand, model: model, modelName: modelName, priceFactor: f, rating: rating, reviews: reviews,
                                      reliability: jsRound((1.4 - 0.3 * (rating - 2.6)) * 100) / 100))
         }

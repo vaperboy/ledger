@@ -256,7 +256,7 @@ public enum FinanceModel {
         s.companies[i] = co
         if performanceFee > 0 {
             Payments.companyReceives(&s, companyID: id, amount: performanceFee, category: "rev", label: "Performance fee")
-            s.note("Performance fee earned at \(co.name): {m:\(Int(jsRound(performanceFee)))}.", tone: "good", companyID: id)
+            s.note("Performance fee earned at \(co.name): {m:\(Int(saturating: jsRound(performanceFee)))}.", tone: "good", companyID: id)
         }
         return CompanyWeek.WeekContext(units: aum / 1e6, rev: fee, cogs: 0, D: target, cap: target, util: 0.7, price: 0, paidDuringWeek: 0)
     }

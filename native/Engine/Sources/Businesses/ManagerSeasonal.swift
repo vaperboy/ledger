@@ -54,7 +54,7 @@ extension ManagerModel {
         guard let role = seasonalRole(s, co, bd, data: data) else { return nil }
         let lift = monthFactor(co, bd, month: ahead, data: data) / max(0.2, monthFactor(co, bd, month: now, data: data)) - 1
         let permanent = co.staff.filter { $0.value("seas").isNull }.count
-        let need = Int(jsRound(Double(permanent) * max(0, lift)))
+        let need = Int(saturating: jsRound(Double(permanent) * max(0, lift)))
         guard need >= 1 else { return nil }
         let n = min(4, need)
         return SeasonalPlan(role: role, months: ms, count: n, monthlyCost: marketWage(s, co, role: role, data: data) * 0.67 * Double(n))

@@ -84,9 +84,15 @@ final class DealerWiringTests: XCTestCase {
         XCTAssertEqual(c.repairSupplierID, rid)
         let vat0 = e.state.company(rid)!.vatBalance
         let dealerVat0 = e.state.company(id)!.vatBalance
-        // Stop on the day the job is billed: once the car is ready the dealer can sell it on its own weekday, and that sale's VAT is not the reclaim.
-        var waited = 0
-        while e.usedCarStock(companyID: id).first(where: { $0.id == c.id })?.status == "repair" && waited < 7 * (c.repairWeeksLeft + 4) { days(&e, 1); waited += 1 }
+        // Bill the job directly: in a played week a reserved car is sold in the same step, and that sale's VAT is not the reclaim.
+        var billed = false
+        e.update { s, d, _ in
+            let i = s.companyIndex(id)!
+            guard let k = s.companies[i].value("stk").array.firstIndex(where: { $0["id"].int == c.id }) else { return }
+            var car = s.companies[i].value("stk").array[k]
+            billed = UsedCarDealer.finishJob(&s, i, &car, data: d)
+        }
+        XCTAssertTrue(billed, "the dealer can pay the garage")
         XCTAssertGreaterThan(e.state.company(rid)!.vatBalance - vat0, 0, "the garage owes VAT on its bill to the dealer")
         XCTAssertLessThan(e.state.company(id)!.vatBalance - dealerVat0, 0.001, "the dealer reclaims it")
         balanced(e, "own garage VAT")

@@ -136,7 +136,7 @@ extension ManagerModel {
         var seen = Set<Int>()
         for c in cos { if let r = regionals(s).first(where: { $0["id"].int == c.value("region").int && !c.value("region").isNull }), let n = person(s, r), seen.insert(n.id).inserted {
             L.append(Voter(id: "p\(n.id)", personID: n.id, name: n.name, title: "Regional manager", type: "regional", votes: false, percent: 0)) } }
-        for (i, x) in holders(s, key: key).enumerated() { L.append(Voter(id: "h\(i)", personID: nil, name: x.h["name"].string, title: "Co-owner · \(Int(jsRound(x.h["pct"].double)))%", type: "owner", votes: true, percent: x.h["pct"].double)) }
+        for (i, x) in holders(s, key: key).enumerated() { L.append(Voter(id: "h\(i)", personID: nil, name: x.h["name"].string, title: "Co-owner · \(Int(saturating: jsRound(x.h["pct"].double)))%", type: "owner", votes: true, percent: x.h["pct"].double)) }
         return L
     }
 
@@ -174,7 +174,7 @@ extension ManagerModel {
         public var lines: [VoteLine]
         /// More than half of the directors, you included.
         public var passes: Bool { yes * 2 > total }
-        public var percentYes: Int { total == 0 ? 0 : Int(jsRound(Double(yes) * 100 / Double(total))) }
+        public var percentYes: Int { total == 0 ? 0 : Int(saturating: jsRound(Double(yes) * 100 / Double(total))) }
     }
     /// The board decides on dismissing the CEO (or on `appointing` a person as CEO) when outside shareholders sit as directors and you hold the
     /// vote: you and each seated director get one vote. When outsiders hold control, or none of them has a seat, the shares decide as before.
@@ -311,7 +311,7 @@ extension ManagerModel {
             s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 8))
             moveHolders(no, 3)
             s.note("\(vote.directorsDecide ? "The board" : "The co-owners") of \(co.name) voted against replacing the CEO. The CEO knows you tried.", tone: "n", companyID: companyID)
-            return .voteFailed(percentYes: vote.directorsDecide ? DirectorsDecision(decide: true, yes: vote.directorsYes, total: vote.directorsTotal, lines: []).percentYes : Int(jsRound(vote.percentYes)))
+            return .voteFailed(percentYes: vote.directorsDecide ? DirectorsDecision(decide: true, yes: vote.directorsYes, total: vote.directorsTotal, lines: []).percentYes : Int(saturating: jsRound(vote.percentYes)))
         }
         dismissForBoard(&s, companyID: companyID, data: data)
         if vote.active {

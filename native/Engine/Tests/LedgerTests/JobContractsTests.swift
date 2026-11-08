@@ -167,16 +167,13 @@ final class JobContractsTests: XCTestCase {
 
     func testHandyKitStockRunsDownAndIsReordered() throws {
         var (e, id) = try start("handy", weeks: 6, setup: true)
-        // the kit only sells down once the company is open and has traded a full week of its own cycle
-        var extra = 0
-        while (e.state.company(id)?.status != .open || e.state.company(id)?.value("lastW")["units"].double ?? 0 <= 0), extra < 30 { e.w7week(); extra += 1 }
-        XCTAssertEqual(e.state.company(id)?.status, .open, "handy should have opened")
+        // A steady, known volume: a young firm's own whole daily sales can be too few for the kit (a few percent of the jobs) to sell down in 16 weeks.
+        traded(&e, id, units: 400)
         e.update { s, d, _ in JobContracts.install(&s, companyID: id, data: d) }
         var sawOrder = false, sawArrival = false
         var last: Int?
         for _ in 0..<16 {
-            e.w7week()
-            e.update { s, d, _ in if let i = s.companyIndex(id) { JobContracts.weekly(&s, i, data: d) } }
+            e.update { s, d, _ in if let i = s.companyIndex(id) { s.week += 1; JobContracts.weekly(&s, i, data: d) } }
             let co = try XCTUnwrap(e.state.company(id)), bd = try XCTUnwrap(e.data.catalog["handy"])
             let it = try XCTUnwrap(SalesItems.items(co, bd).first { $0.name == "Tool and materials kit" })
             let r = try XCTUnwrap(ItemModels.record(co, itemID: it.id))

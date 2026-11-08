@@ -134,9 +134,9 @@ public enum Rivals {
     }
 
     /// How many weeks a rival could keep losing money. Original: `rivRun`.
-    public static func holdOut(_ r: Rival, seed: Int) -> Int { Int(jsRound(6 + r.size * 8 + HashedRandom.first(String(r.id)) * 4)) }
+    public static func holdOut(_ r: Rival, seed: Int) -> Int { Int(saturating: jsRound(6 + r.size * 8 + HashedRandom.first(String(r.id)) * 4)) }
 
-    public static func staffCount(_ bd: Trade, _ r: Rival) -> Int { max(1, Int(jsRound(bd.standardStaff.reduce(0) { $0 + $1.count } * r.size))) }
+    public static func staffCount(_ bd: Trade, _ r: Rival) -> Int { max(1, Int(saturating: jsRound(bd.standardStaff.reduce(0) { $0 + $1.count } * r.size))) }
 
     static func roundTo(_ v: Double, _ step: Double) -> Double { (v / step).rounded() * step }
 
@@ -317,7 +317,7 @@ public enum Rivals {
                 let step = (abs(dir) < 0.2 ? 0 : (dir > 0 ? 1.0 : -1.0)) * (0.02 + h.next() * 0.04)
                 if step != 0 {
                     r["pm16"] = .number(clamp(jsRound(r["pm16"].double * (1 + step) * 1000) / 1000, 0.7, 1.6))
-                    if abs(step) >= 0.04 { notes.append(("\(name) \(step > 0 ? "raised" : "cut") its prices about \(Int(jsRound(abs(step) * 100)))%.", step > 0 ? "n" : "bad")) }
+                    if abs(step) >= 0.04 { notes.append(("\(name) \(step > 0 ? "raised" : "cut") its prices about \(Int(saturating: jsRound(abs(step) * 100)))%.", step > 0 ? "n" : "bad")) }
                 }
             }
             // Discounts where the trade does them
@@ -424,7 +424,7 @@ public enum Rivals {
         let title: String, body: String, opts: [JSONValue]
         if kind == "match" {
             title = "\(rname) calls about your prices"
-            body = "\"You cut your prices \(Int(jsRound(cut * 100)))% in a few weeks and our customers noticed. We have matched you. If you keep going down, we both bleed.\""
+            body = "\"You cut your prices \(Int(saturating: jsRound(cut * 100)))% in a few weeks and our customers noticed. We have matched you. If you keep going down, we both bleed.\""
             opts = [.option("Hold your prices", "Stay aggressive."), .option("Raise prices back a step", "Cool things down.", effects: ["pr": 1]),
                     .option("Propose to \"coordinate\" prices", "Illegal. If caught: fine of 8% of turnover.", effects: ["coord": 1])]
         } else {

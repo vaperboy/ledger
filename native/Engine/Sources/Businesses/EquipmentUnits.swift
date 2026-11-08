@@ -89,7 +89,7 @@ public enum EquipmentUnits {
         let rec = s.companies[i].value("eq")[id]
         if rec.isNull || !rec["sub"].isNull { if !units[id].isNull { units = removing(units, id); s.companies[i].set("units", units) }; return }
         var list = units[id].array
-        let n = max(0, Int(jsRound(rec["n"].double)))
+        let n = max(0, Int(saturating: jsRound(rec["n"].double)))
         while list.count < n {
             let name = rec["mods"].array.first?["nm"].string ?? ""
             list.append(.object(["u": .number(Double(s.makeID())), "src": "old", "nm": .string(name), "yr": .number(Double(gameYear(s.week) - 1)), "tc": .number(rec["cond"].double),
@@ -273,7 +273,7 @@ public enum EquipmentUnits {
         }
         let price = u["price"].double != 0 ? u["price"].double : spec.cost
         let cost = max(cur.scaledPrice(400), jsRound(price * s.random.range(0.05, 0.2)))
-        let down = max(1, Int(jsRound(Double(days) * 0.6)))
+        let down = max(1, Int(saturating: jsRound(Double(days) * 0.6)))
         u["down"] = .number(Double(down))
         return ("\(name) broke down. No warranty, so the repair cost \(cur.display(cost)). Back in about \(down) days.", cost)
     }
@@ -287,7 +287,7 @@ public enum EquipmentUnits {
             return ("\(name) broke down. Covered by warranty, back in about \(days) days.", 0)
         }
         let cost = max(cur.scaledPrice(400), jsRound(v["cost"].double * s.random.range(0.05, 0.2)))
-        let down = max(1, Int(jsRound(Double(days) * 0.6)))
+        let down = max(1, Int(saturating: jsRound(Double(days) * 0.6)))
         v["down"] = .number(Double(down))
         return ("\(name) broke down. No warranty, so the repair cost \(cur.display(cost)). Back in about \(down) days.", cost)
     }

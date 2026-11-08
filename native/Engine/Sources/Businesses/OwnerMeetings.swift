@@ -147,7 +147,7 @@ public enum OwnerMeetings {
         f.notice = co.staff.filter { $0.noticeWeeks > 0 }.count
         return f
     }
-    static func pct(_ v: Double) -> String { "\(Int(jsRound(v * 100)))%" }
+    static func pct(_ v: Double) -> String { "\(Int(saturating: jsRound(v * 100)))%" }
     static func money(_ f: Facts, _ v: Double) -> String { v < 0 ? "-" + f.cur.short(-v) : f.cur.short(v) }
     static func moodWord(_ m: Double) -> String { m >= 70 ? "high" : m >= 50 ? "fine" : m >= 35 ? "low" : "bad" }
 
@@ -182,7 +182,7 @@ public enum OwnerMeetings {
         let dir = directive(co)
         let now = budget(s, co, personID: personID)
         var L: [String] = ["Over three months we took in \(f.cur.short(f.r3)) and \(f.p3 >= 0 ? "made \(f.cur.short(f.p3))" : "lost \(f.cur.short(-f.p3))").\(trend)"]
-        if f.util > 0 { L.append("We are using about \(pct(f.util)) of what we can deliver and \(Int(jsRound(f.awareness)))% of the area knows us.") }
+        if f.util > 0 { L.append("We are using about \(pct(f.util)) of what we can deliver and \(Int(saturating: jsRound(f.awareness)))% of the area knows us.") }
         L.append(f.cash + f.avgProfit * 3 < 0 ? "At this pace cash runs short within three months (cash now \(money(f, f.cash)))."
                  : "Cash stays positive for the next three months (about \(money(f, f.cash + f.avgProfit * 3))). Loans: \(f.debt > 0 ? f.cur.short(f.debt) : "none").")
         L.append("\(f.staff) \(f.staff == 1 ? "person" : "people") on the team, \(f.notice) working their notice. Mood is \(moodWord(f.mood)).")
@@ -240,12 +240,12 @@ public enum OwnerMeetings {
         switch c.position {
         case "ceo": return "Last month we took in \(f.cur.short(f.rev)) and \(f.profit >= 0 ? "made \(f.cur.short(f.profit))" : "lost \(f.cur.short(-f.profit))")."
         case "fin": return "Cash in the company: \(money(f, f.cash)). Loans: \(f.debt > 0 ? f.cur.short(f.debt) : "none")."
-        case "sales": return "We are at \(pct(f.util)) of capacity and \(Int(jsRound(f.awareness)))% known in the area."
+        case "sales": return "We are at \(pct(f.util)) of capacity and \(Int(saturating: jsRound(f.awareness)))% known in the area."
         case "hr": return "We have \(f.staff) \(f.staff == 1 ? "person" : "people"), \(f.notice) working their notice. Mood is \(moodWord(f.mood))."
         case "ops": return "We use \(pct(f.util)) of capacity."
         case "mkt":
             let spend = co.value("mkt").object.values.reduce(0.0) { $0 + $1["b"].double }
-            return "\(Int(jsRound(f.awareness)))% of the area knows us. We spend \(f.cur.short(spend)) a week on marketing."
+            return "\(Int(saturating: jsRound(f.awareness)))% of the area knows us. We spend \(f.cur.short(spend)) a week on marketing."
         default: return nil
         }
     }

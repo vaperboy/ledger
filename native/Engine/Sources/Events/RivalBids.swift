@@ -34,7 +34,7 @@ public enum RivalBids {
         let cur = fc.homeCurrency(s)
         if sell(&s, companyID: companyID, groupID: groupID, price: price, data: data, context: fc) {
             s.addMessage(from: "Shareholders of \(co.name)", title: "Outvoted: \(co.name) is sold to \(s.rest["g27"]?["g"][groupID]["name"].string ?? "a group")",
-                         body: "The other owners hold \(Int(jsRound(out)))% and accepted \(cur.display(price)). Your \(Int(jsRound(co.ownership)))% was paid out: \(cur.display(price * co.ownership / 100)).",
+                         body: "The other owners hold \(Int(saturating: jsRound(out)))% and accepted \(cur.display(price)). Your \(Int(saturating: jsRound(co.ownership)))% was paid out: \(cur.display(price * co.ownership / 100)).",
                          companyID: co.id, tone: "bad")
         }
     }

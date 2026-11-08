@@ -49,7 +49,7 @@ public struct DeterministicRandom: Sendable, Equatable {
     /// Poisson-distributed count with mean l. Original: `pois(l)`.
     public mutating func poisson(_ l: Double) -> Int {
         if l <= 0 { return 0 }
-        if l > 30 { return max(0, Int(jsRound(l + gauss() * l.squareRoot()))) }
+        if l > 30 { return max(0, Int(saturating: jsRound(l + gauss() * l.squareRoot()))) }
         var k = 0
         var p = 1.0
         let e = Foundation.exp(-l)

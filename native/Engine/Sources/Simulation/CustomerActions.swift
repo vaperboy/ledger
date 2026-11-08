@@ -448,7 +448,7 @@ public extension GameEngine {
     /// The forecast boxes of the price-move screen: customers and margin, as you or your analyst see them. Original: `est`, `fcBoxes`.
     func priceForecast(companyID: Int, byShare d: Double, campaignPercent cp: Int = 0) -> (forecast: PriceMoves.Forecast, text: PriceMoves.ForecastText)? {
         guard let f = PriceMoves.forecast(state, companyID: companyID, byShare: d, campaignPercent: cp, data: data) else { return nil }
-        return (f, PriceMoves.forecastText(f, state, key: "p\(companyID):\(Int(jsRound(d * 100))):\(cp)", campaign: cp > 0))
+        return (f, PriceMoves.forecastText(f, state, key: "p\(companyID):\(Int(saturating: jsRound(d * 100))):\(cp)", campaign: cp > 0))
     }
 
     /// The biggest companies by sales, profit, value or growth. Original: `R27.ranked`.
