@@ -180,7 +180,7 @@ public enum RetailItems {
     /// Catalogue items this company does not sell yet.
     public static func addable(_ s: GameState, companyID: Int, data: GameData) -> [Def] {
         guard let co = s.company(companyID), let bd = data.catalog[co.type], trades.contains(co.type) else { return [] }
-        let have = Set(SalesItems.items(co, bd).map { $0.name.lowercased() })
+        let have = SalesItems.onSaleNames(co, bd)
         return catalogue(co.type).filter { !have.contains($0.name.lowercased()) }
     }
 
@@ -189,7 +189,7 @@ public enum RetailItems {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return "That company no longer exists." }
         guard co.status == .open else { return "Only an open company adds items." }
         guard let d = catalogue(co.type).first(where: { $0.id == defID }) else { return "This trade does not sell that." }
-        if SalesItems.items(co, bd).contains(where: { $0.name.lowercased() == d.name.lowercased() }) { return "There is already an item with that name." }
+        if SalesItems.onSaleNames(co, bd).contains(d.name.lowercased()) { return "There is already an item with that name." }
         if SalesItems.items(co, bd).count >= SalesItems.maxItems { return "That is as many items as one company can sell." }
         if !needsMet(co, bd, d) {
             let opt = d.needs.split(separator: ":").last.map(String.init) ?? ""

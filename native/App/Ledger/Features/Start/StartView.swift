@@ -16,6 +16,7 @@ import Finance
 struct StartView: View {
     @EnvironmentObject var store: GameStore
     @Environment(AdCoordinator.self) private var ads
+    @Environment(Entitlements.self) private var ent
     @State private var summary: SaveSummary?
     @State private var pending: PendingAction?
     @State private var settingUp = false
@@ -39,7 +40,7 @@ struct StartView: View {
     /// The new-player start: the company is created fully set up and open on day 1 (`LifeStory.fresh`).
     private func begin(country: String, trade: String, company: String, player: String, difficulty: Difficulty) {
         replacingSave("Start a new game?", button: "Start new game") {
-            store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company, difficulty: difficulty)
+            store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company, difficulty: difficulty, entitlements: ent.effective)
             ads.resetForNewSave()
         }
     }

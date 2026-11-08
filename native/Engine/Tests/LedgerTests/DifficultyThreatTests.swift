@@ -11,7 +11,16 @@ import Finance
 final class DifficultyThreatTests: XCTestCase {
     func fresh(_ d: Difficulty = .classic) throws -> GameEngine {
         try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test Co",
-                               chooseFirstItem: true, difficulty: d)
+                               chooseFirstItem: true, difficulty: d, entitlements: EntitlementSnapshot(owned: [.pro]))
+    }
+
+    func testSandboxNeedsPro() {
+        func start(_ e: EntitlementSnapshot) throws -> GameEngine {
+            try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test Co", difficulty: .sandbox, entitlements: e)
+        }
+        XCTAssertThrowsError(try start(.free)) { XCTAssertEqual($0 as? GameEngine.NewGameError, .sandboxNeedsPro) }
+        XCTAssertEqual(try start(EntitlementSnapshot(owned: [.pro])).difficulty, .sandbox)
+        XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .hard))
     }
 
     func testModeIsStoredAndSetOnlyAtTheStart() throws {

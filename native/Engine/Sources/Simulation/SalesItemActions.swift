@@ -20,13 +20,15 @@ public extension GameEngine {
     /// True for a company the player started that still has nothing on sale: the item page asks what to sell first.
     func needsFirstItemChoice(companyID: Int) -> Bool { state.company(companyID).map(SalesItems.firstChoicePending) ?? false }
 
-    /// What the trade can start with, to choose the first product or service from. Empty once the choice is made; a custom first item is
+    /// The three starter products (fewer where the trade has fewer) to choose the first product or service from. Empty once the choice is made; a custom first item is
     /// added with `addSalesItem` or `addNewItem`.
     func firstItemChoices(companyID: Int) -> [SalesItem] {
-        guard let co = state.company(companyID), SalesItems.firstChoicePending(co), let i = state.companyIndex(companyID) else { return [] }
+        guard let co = state.company(companyID), SalesItems.firstChoicePending(co), let i = state.companyIndex(companyID),
+              let bd = data.catalog[co.type] else { return [] }
         var seeded = state   // the trade's own starter items, as they will be once its module has installed them
         SalesItems.seedStarters(&seeded, i, data: data)
-        return SalesItems.rows(seeded, companyID: companyID, data: data)
+        let offered = Set(SalesItems.starterIDs(bd, SalesItems.items(seeded.companies[i], bd)))
+        return SalesItems.rows(seeded, companyID: companyID, data: data).filter { offered.contains($0.id) }
     }
 
     /// The lowest and highest price of an item against its market price for this company's trade (the slider's range).
@@ -44,7 +46,7 @@ public extension GameEngine {
             guard SalesItems.firstChoicePending(co), let i = s.companyIndex(companyID) else { return "You have already chosen what to sell." }
             var seeded = s
             SalesItems.seedStarters(&seeded, i, data: data)
-            return SalesItems.items(seeded.companies[i], bd).contains { $0.id == itemID } ? nil : "That choice is not on offer."
+            return SalesItems.starterIDs(bd, SalesItems.items(seeded.companies[i], bd)).contains(itemID) ? nil : "That choice is not on offer."
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
         }
@@ -125,18 +127,14 @@ public extension GameEngine {
     /// True when a market advisor is employed (or a manager has that duty).
     func hasMarketAdvisor(companyID: Int) -> Bool { state.company(companyID).map(NewItemOptions.hasAdvisor) ?? false }
 
-    /// Add the chosen option: at once for a variant, or start its development (cost paid now, the item appears when done).
+    /// Add the chosen option: it goes on sale at once.
     @discardableResult
     mutating func addNewItem(companyID: Int, optionID: String) -> SettingResult {
-        let data = self.data
         let svc = optionID.hasPrefix("svc:")
         guard let o = NewItemOptions.list(state, companyID: companyID, isService: svc, data: data).options.first(where: { $0.id == optionID }) else {
             return .refused("That choice is no longer on offer.")
         }
-        if !o.needsDevelopment { return addSalesItem(companyID: companyID, name: o.name, isService: o.isService) }
-        return applySetting(refuse: { NewItemOptions.startRefusal($0, companyID: companyID, option: o, data: data) }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
-            NewItemOptions.start(&s, companyID: companyID, option: o)
-        }
+        return addSalesItem(companyID: companyID, name: o.name, isService: o.isService)
     }
 
     /// Offer an item to your other companies (or stop).

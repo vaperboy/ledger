@@ -4,15 +4,15 @@ import Countries
 import Businesses
 import Simulation
 
-/// "Add a product" / "Add a service": the engine's choices as compact rows (name, ready or development time and cost, and, with a market
-/// advisor, the profit and market change). A tap asks for confirmation, then adds the item (or starts its development).
+/// "Add a product" / "Add a service": the engine's choices as compact rows (name and, with a market advisor, the profit and market change).
+/// A tap asks for confirmation, then puts the item on sale at once.
 struct NewItemSheet: View {
     @EnvironmentObject var store: GameStore
     let companyID: Int
     let isService: Bool
     var onClose: () -> Void
     var onHireAdvisor: () -> Void
-    /// Called with the name of an item that went on sale at once (not for a development), so the caller can open its page.
+    /// Called with the name of an item that went on sale, so the caller can open its page.
     var onAdded: ((String) -> Void)? = nil
     @State private var pending: PendingAction?
     @State private var own = ""
@@ -40,11 +40,11 @@ struct NewItemSheet: View {
     }
 
     private func optionRow(_ o: NewItemOption, _ advisor: Bool, _ cur: Currency) -> some View {
-        Button { ask(o, cur) } label: {
+        Button { ask(o) } label: {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(o.name).popupText(.rowValue).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    Text(badge(o, cur)).popupText(o.needsDevelopment ? .effect : .caption).lineLimit(2)
+                    Text("Ready at once").popupText(.caption).lineLimit(2)
                 }
                 Spacer(minLength: 4)
                 if advisor {
@@ -87,26 +87,17 @@ struct NewItemSheet: View {
         }
     }
 
-    private func badge(_ o: NewItemOption, _ cur: Currency) -> String {
-        guard o.needsDevelopment else { return "Ready at once" }
-        return "Development: \(o.developmentWeeks) weeks, " + cur.tidyDisplay(o.developmentCost)
-    }
-
     private func sign(_ v: Double) -> String { v >= 0 ? "+" : "-" }
 
-    private func ask(_ o: NewItemOption, _ cur: Currency) {
+    private func ask(_ o: NewItemOption) {
         let id: Int = companyID
         let oid: String = o.id
         let name: String = o.name
-        let dev: Bool = o.needsDevelopment
-        pending = PendingAction(title: "Add \(name)?",
-                                message: dev ? "Development takes \(o.developmentWeeks) weeks and costs " + cur.tidyDisplay(o.developmentCost) + "." : "It goes on sale at once.",
-                                button: "Add", alwaysAsk: true,
-                                amount: dev ? o.developmentCost : nil, currency: cur,
+        pending = PendingAction(title: "Add \(name)?", message: "It goes on sale at once.", button: "Add", alwaysAsk: true,
                                 tone: .info, icon: "plus.circle", run: {
             let r = store.act { $0.addNewItem(companyID: id, optionID: oid) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-            else { Haptics.success(); store.show(dev ? "Started developing \(name)." : "Added \(name).", tone: "good"); onClose(); if !dev { onAdded?(name) } }
+            else { Haptics.success(); store.show("Added \(name).", tone: "good"); onClose(); onAdded?(name) }
         })
     }
 

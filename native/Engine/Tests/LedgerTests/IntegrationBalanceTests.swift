@@ -82,7 +82,7 @@ final class IntegrationBalanceTests: XCTestCase {
     func testEightWeekRunAfterAddingAnItemMatchesTheEstimate() throws {
         var (e, id) = try engine(weeks: 70)   // well past the first-year demand boost (by company age) and its capacity squeeze: demand is level
         try giveAdvisorDuty(&e, id)
-        let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: false).options.first { !$0.needsDevelopment })
+        let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: false).options.first)
         let estimate = try XCTUnwrap(opt.profitChange)
         XCTAssertEqual(e.addNewItem(companyID: id, optionID: opt.id), .applied)
         var deltas: [Double] = []

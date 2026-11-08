@@ -5,8 +5,8 @@ import Businesses
 import Simulation
 
 /// Sales of one company: "Your products" (or "Your services") as a list, one row per item with its name, how demand is, its price and how far
-/// that is from the market. Tapping an item opens its item page. Marketing is a popup (`MarketingSheet`); a trade that
-/// can develop new things also has that row (a timed project on its own page, `CompanyDevelopment`). Customers are in Stats; the market, its
+/// that is from the market. Tapping an item opens its item page. Marketing is a popup (`MarketingSheet`).
+/// Customers are in Stats; the market, its
 /// rivals and market research are in the Market app; Projects are a part of this section only for project businesses (`CompanyDetailView`).
 /// There is no Pricing screen any more: prices are set per item.
 struct CompanySales: View {
@@ -34,7 +34,6 @@ struct CompanySales: View {
             addonsCard
             OverviewSettingsCard(heading: "Marketing and more") {
                 marketingRow
-                developRow
             }
         }
         .centerSheet(isPresented: $showMarketing, title: "Marketing", category: .detail, tone: .investment) { MarketingSheet(companyID: company.id) }
@@ -83,15 +82,6 @@ struct CompanySales: View {
                 LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Warranty, loans and insurance",
                           identifier: "sales-addons") { showAddons = true }
             }
-        }
-    }
-
-    /// New products or services written for this trade ("New menu item"): a timed project with its cost, on its own page.
-    @ViewBuilder private var developRow: some View {
-        if CompanyDevelopment.isAvailable(company, engine) {
-            let running: Bool = Development.running(company) != nil
-            SettingsTableRow(title: CompanyDevelopment.title(company, engine), note: "Develop something new to sell; it takes weeks and costs money up front",
-                             value: running ? "In progress" : "Start", valueTint: running ? Theme.gain : Theme.ink, glyph: Glyph.invest) { part = .develop }
         }
     }
 

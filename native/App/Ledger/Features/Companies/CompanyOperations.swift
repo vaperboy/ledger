@@ -9,7 +9,7 @@ import Simulation
 /// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
     case setup = "Operations", premises = "Premises", suppliers = "Suppliers"
-    case equipment = "Equipment", insurance = "Insurance and advisers", develop = "Develop", licences = "Licences"
+    case equipment = "Equipment", insurance = "Insurance and advisers", licences = "Licences"
 }
 
 extension Glyph {

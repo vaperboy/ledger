@@ -18,7 +18,7 @@ public enum LedgerProduct: String, CaseIterable, Sendable {
 
 /// What a free player sees locked, with a key glyph and the words `Ledger Pro`.
 public enum LockedFeature: String, CaseIterable, Sendable {
-    case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup
+    case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup, sandboxMode
 
     /// Needs a Plus subscription itself, not just Pro. Nothing in the 11.1 locked list is Plus-only.
     public var plusOnly: Bool { false }
@@ -33,6 +33,7 @@ public enum LockedFeature: String, CaseIterable, Sendable {
         case .luxuryGivingFootball: return "Luxury, giving and football"
         case .saveSlots: return "More save slots"
         case .cloudBackup: return "Cloud backup"
+        case .sandboxMode: return "Sandbox mode"
         }
     }
 }
