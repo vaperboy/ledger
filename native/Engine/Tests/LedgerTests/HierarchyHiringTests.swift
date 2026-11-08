@@ -66,6 +66,14 @@ final class HierarchyHiringTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
+    func testAStoreManagerPostWaitsBeforeTheSearchBegins() throws {
+        var (e, cid, stores) = try chain(2)
+        _ = try hireExec(&e, .chainmgr, chain: cid, authority: 2)
+        run(&e, times: 1)
+        XCTAssertTrue(stores.allSatisfy { e.state.company($0)?.managerID == nil }, "the post has only just opened")
+        XCTAssertEqual(e.staffingPlan(companyID: stores[0]).first { $0.role == StaffingPlan.managerRole }?.vacancies, 1)
+    }
+
     func testChainManagerWithoutRegionalLayerHiresStoreManagersDirectly() throws {
         var (e, cid, stores) = try chain(3)
         let cm = try hireExec(&e, .chainmgr, chain: cid, authority: 2)

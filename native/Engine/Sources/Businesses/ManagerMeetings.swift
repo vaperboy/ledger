@@ -14,7 +14,7 @@ extension ManagerModel {
     public struct MeetingItem: Identifiable, Equatable, Sendable {
         public var id: Int
         public var text: String
-        public var action: String       // price, stock, sale, hire, marketing, paperwork, fireceo, capacity, dividend, morale, overtime, leaving
+        public var action: String       // price, stock, sale, hire, marketing, paperwork, fireceo, capacity, dividend, morale, leaving
         public var companyID: Int
         public var recommendedBy: Int?
         public var status: String       // "" to decide, "yes", "no", "late" (nobody decided in time)
@@ -157,7 +157,6 @@ extension ManagerModel {
         // signs of trouble among the people
         if ["exec", "chair", "lh"].contains(typ) {
             if let c = cos.first(where: { $0.managerID != nil && mood($0) < 40 }) { out.append(item("The manager of \(c.name) is low in morale. Talk with them.", "morale", c)) }
-            if let c = cos.first(where: { $0.managerID != nil && $0.value("dlast")["ot"].double > 0 }) { out.append(item("Staff at \(c.name) worked overtime last week. Ask the manager to hire more people.", "overtime", c)) }
             if let c = cos.first(where: { $0.staff.contains { $0.noticeWeeks > 0 } }) { out.append(item("Someone at \(c.name) is working their notice. Talk to them before they go.", "leaving", c)) }
         }
         return Array(out.prefix(3))

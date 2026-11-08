@@ -138,8 +138,6 @@ extension ManagerModel {
             return (0, "\(c.name) pays 25% of profit to its owners each quarter, when there is profit and cash after costs.", "Cash leaves the company every quarter. You receive your share.")
         case "morale":
             return (0, "You talk with the manager of \(c.name) about how the work is going.", "The manager will expect you to keep listening.")
-        case "overtime":
-            return (0, "The manager of \(c.name) is asked to hire more people.", "More wages every month. The manager hires only if the company can afford it safely.")
         case "leaving":
             return (0, "A follow-up goes to you: talk to the person at \(c.name) who is leaving.", "If nothing is done they leave when their notice ends.")
         default:
@@ -242,10 +240,6 @@ extension ManagerModel {
             if CounterpartMeeting.isCoolingDown(lastWeek: co.value("meetW").isNull ? nil : co.num("meetW"), now: s.week) { return .refused("You met \(mg.name) a few days ago. Give it a week or two.") }
             meetOne(&s, companyID: cid, goal: "morale", tone: "casual", data: data, marketing: m)
             return .ok("You talked with \(mg.name); morale is better.", followUp: nil, check: nil)
-        case "overtime":
-            guard co.managerID != nil, let m = marketing else { return .refused("\(co.name) has no manager to ask.") }
-            let said = ask(&s, companyID: cid, key: "hire", data: data, marketing: m) ?? ""
-            return .ok(said.isEmpty ? "The manager was asked to hire." : "The manager: \(said)", followUp: nil, check: nil)
         case "leaving":
             return .ok("Noted.", followUp: "Talk to the person leaving \(co.name) (Team).", check: "notice")
         default:
