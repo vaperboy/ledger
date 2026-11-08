@@ -233,7 +233,6 @@ extension ManagerModel {
                 updateGroup(&s) { g in var l = g["regional"].array; l.append(rec); g["regional"] = .array(l) }
                 var nn = s.people[n.id]!; nn.employerID = -1; s.people[n.id] = nn
                 assignRegions(&s, chainID: chainID)
-                addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(n.id)), "kind": "exec", "t": .string(post.title)])
                 ok = true
             }
         } else if post.id.hasPrefix("hq:") {

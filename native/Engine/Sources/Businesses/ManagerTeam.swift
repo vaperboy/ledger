@@ -264,6 +264,14 @@ extension ManagerModel {
     public static func hireTeam(_ s: inout GameState, companyID: Int, key: String, personID: Int, monthlyWage w: Double, data: GameData) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
+        // With outside directors the board approves a new CEO; a refusal changes nothing.
+        if key == "ceo" {
+            let d = ceoDirectors(s, companyID: companyID, appointing: personID)
+            if d.decide && !d.passes {
+                s.note("The board of \(s.companies[ci].name) did not approve \(n0.name) as CEO: \(d.yes) of \(d.total) directors were for it.", tone: "n", companyID: companyID)
+                return .refused
+            }
+        }
         let reply = Hiring.answer(personID: personID, employer: companyID, rank: teamRank(key), offer: w, currency: World(state: s, data: data).currency(s.companies[ci]), about: 500, state: &s)
         if let r = offerResult(reply.answer) { return r }
         guard var n = s.people[personID] else { return .refused }
@@ -298,6 +306,14 @@ extension ManagerModel {
     public static func releaseTeam(_ s: inout GameState, companyID: Int, key: String, regionalID: Int? = nil, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID) else { return false }
         let co = s.companies[ci]
+        // With outside directors the board decides whether the CEO goes.
+        if key == "ceo", !team(co)["ceo"].isNull {
+            let d = ceoDirectors(s, companyID: companyID)
+            if d.decide && !d.passes {
+                s.note("The board of \(co.name) voted against letting the CEO go: \(d.yes) of \(d.total) directors were for it.", tone: "n", companyID: companyID)
+                return false
+            }
+        }
         var t = team(co)
         var rec: JSONValue = .null
         if key == "ceo" { rec = t["ceo"] } else if key == "reg" { rec = regionals(s).first { $0["id"].int == regionalID } ?? .null } else { rec = t["heads"][key] }
@@ -395,7 +411,6 @@ extension ManagerModel {
             n.employerID = -2
             ch["ceo56"] = rec
             Chains.save(&s, ch)
-            addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(personID)), "kind": "exec", "t": "CEO"])
         case .chainmgr, .region:
             guard let chainID = chainID, Chains.chain(s, id: chainID) != nil else { return .refused }
             n.employerID = -1
@@ -405,7 +420,6 @@ extension ManagerModel {
                                          "buy": .number(cur.scaledPrice(level.buy)), "payCo": "chain", "w0": .number(Double(s.week))])
             updateGroup(&s) { g in var l = g["regional"].array; l.append(rg); g["regional"] = .array(l) }
             assignRegions(&s, chainID: chainID)
-            addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(personID)), "kind": "exec", "t": .string(level.title)])
             n.set("k11", .object(["post": .string(scope), "t": .string(level.title), "wage": .number(w), "bonus": 0, "duties": .array(["quality", "coach"]), "auth": 1, "rep": "month", "w0": .number(Double(s.week))]))
         }
         s.people[personID] = n

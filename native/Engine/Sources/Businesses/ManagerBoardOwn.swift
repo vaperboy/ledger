@@ -44,7 +44,7 @@ extension ManagerModel {
         let L = board(s, key: key)["seats"].array
         if L.contains(where: { $0["id"].int == personID }) { return "Already on this board." }
         if seats(s, key: key).filter({ $0.role == role }).count >= R.maxSeats { return "That seat is full." }
-        if L.count + 2 >= maxBoard { return "The board is full." }
+        if heldSeatCount(L) + 2 >= maxBoard { return "The board is full." }
         return nil
     }
     /// Your own people who qualify for the seat (not already on the board) followed by the candidates found by a search for it.
