@@ -1,4 +1,5 @@
 # What's new
+- Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows
 - Taxes are paid as they arise: dividend tax when a dividend is paid, gains tax at the sale, interest and wealth tax monthly, company tax monthly, and the year end only settles the small difference
 - No banners or toasts at the top: a decision is answered in a popup and a result popup follows with what you chose and what happened; plain information lives in Stats, Inbox and the ledger pages
 - Managers act realistically: they move prices within a band set by your Direction, order stock and run marketing within their budget, and each department head owns one decision; you give five orders (Direction, Budget, Headcount, Pay and bonus, Replace)
