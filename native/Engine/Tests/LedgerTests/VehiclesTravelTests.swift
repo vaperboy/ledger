@@ -140,8 +140,11 @@ final class VehiclesTravelTests: XCTestCase {
     func hireLead(_ e: inout GameEngine, _ id: Int) throws -> Int {
         var pid = 0
         e.update { s, d, _ in pid = Hiring.generateCandidate(role: "lead", company: s.company(id), tier: "mid", state: &s, data: d).id }
-        let wage = e.state.people[pid]!.askingMonthlyWage * 1.5
-        XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: wage), .ok)
+        let ask = try XCTUnwrap(e.state.people[pid]).askingMonthlyWage
+        // A candidate may counter a first offer (the talk factor differs by country): raise it until they accept.
+        var result = Hiring.HireResult.refused
+        for k in [1.5, 2.0, 3.0] where result != .ok { result = e.hire(personID: pid, companyID: id, monthlyWage: ask * k) }
+        XCTAssertEqual(result, .ok)
         return pid
     }
 
@@ -250,11 +253,11 @@ final class VehiclesTravelTests: XCTestCase {
         var (e, id) = try startedCompany("cafe", country: "DE", fund: 3_000_000)
         _ = try hireLead(&e, id)
         XCTAssertEqual(e.toggleStaffPerk(companyID: id, perk: "car"), true)
-        let co = e.state.company(id)!
+        let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(VehicleRunning.weeklyCharges(e.state, co, data: e.data), VehicleRunning.Charges(), "no sourced figures for DE: nothing is charged")
         let d2 = dataWith("DE", { $0.motorInsuranceShare = 0.04; $0.roadTaxPerYear = ["car": 52_000]; $0.benefitInKindShare = 0.1 }, from: e)
         let c = VehicleRunning.weeklyCharges(e.state, co, data: d2)
-        let car = co.value("veh").array.first { !$0["perk"].isNull }!
+        let car = try XCTUnwrap(co.value("veh").array.first { !$0["perk"].isNull }, "the perk car is leased at once")
         XCTAssertEqual(c.insurance, car["cost"].double * 0.04 / 52, accuracy: 1e-6)
         XCTAssertEqual(c.vehicleTax, 1000, accuracy: 1e-6)
         XCTAssertGreaterThan(c.benefitCharge, 0)

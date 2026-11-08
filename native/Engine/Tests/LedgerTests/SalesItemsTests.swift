@@ -10,11 +10,17 @@ private extension GameEngine {
 }
 
 final class SalesItemsTests: XCTestCase {
-    func engine(_ trade: String = "bakery", weeks: Int = 3) throws -> (GameEngine, Int) {
+    /// `opened` keeps stepping weeks until the company has opened (licences take a while); prices can only be set on an open company.
+    func engine(_ trade: String = "bakery", weeks: Int = 3, opened: Bool = false) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
+        if opened {
+            var extra = 0
+            while e.state.company(id)?.status != .open, extra < 40 { e.week(); extra += 1 }
+            XCTAssertEqual(e.state.company(id)?.status, .open, "\(trade) should have opened")
+        }
         return (e, id)
     }
 
@@ -147,7 +153,7 @@ final class SalesItemsTests: XCTestCase {
     // MARK: Price ceiling, first choice, price setter
 
     func testPriceCeilingIsRealistic() throws {
-        let (e, id) = try engine("estate", weeks: 2)
+        let (e, id) = try engine("estate", weeks: 2, opened: true)
         let it = e.salesItems(companyID: id)[0]
         var b = e
         let ceiling = e.itemPriceRange(companyID: id).upperBound
@@ -181,7 +187,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testPriceSetterIsOwnerUnlessSomeoneIsHired() throws {
-        let (e, id) = try engine("estate", weeks: 1)
+        let (e, id) = try engine("estate", weeks: 1, opened: true)
         XCTAssertTrue(e.salesItems(companyID: id).allSatisfy { $0.priceSetter.isOwner })
         var b = e
         b.update { s, _, _ in
@@ -213,7 +219,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testSetItemPriceUsesTheTradeCeiling() throws {
-        let (e, id) = try engine("bakery", weeks: 2)
+        let (e, id) = try engine("bakery", weeks: 2, opened: true)
         let ceiling = e.itemPriceRange(companyID: id).upperBound
         XCTAssertEqual(ceiling, SalesItems.ceiling(for: e.data.catalog["bakery"]!))
         let it = e.salesItems(companyID: id)[0]
