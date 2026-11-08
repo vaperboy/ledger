@@ -76,8 +76,10 @@ struct CompanyOperations: View {
                 LedgerRow(leading: .glyph(Glyph.opsPin), leadingTint: P.inkSoft, title: "Properties",
                           value: "\(count)", valueNote: count == 1 ? "property" : "properties", identifier: "manage-properties") { part = .premises }
             }
-            RowRule()
-            equipmentRow
+            if equipmentApplies {
+                RowRule()
+                equipmentRow
+            }
             if sourcing {
                 let inputs: Int = engine.supplierInputs(companyID: company.id).count
                 RowRule()
@@ -95,11 +97,16 @@ struct CompanyOperations: View {
                          identifier: "manage-upkeep") { sheet = .upkeep }
     }
 
-    /// What the company owns and what is missing; the page sells, services and links to TechPro Store to buy.
+    private var equipmentApplies: Bool {
+        let r = engine.equipmentRelevance(companyID: company.id)
+        return r.machines || r.vehicles || r.software
+    }
+
+    /// Opens the equipment list directly: what the company owns and what it still lacks.
     private var equipmentRow: some View {
         let needs: [EquipmentMarket.Need] = engine.equipmentNeeds(companyID: company.id)
-        let missing: Int = needs.filter { !$0.isVehicle && !$0.isSoftware && $0.need > 0 && $0.have + $0.leased < $0.need }.count
-        let owned: Int = engine.ownedEquipment(companyID: company.id).filter { $0.kind != "veh" }.count
+        let missing: Int = needs.filter { $0.ofTrade && $0.need > 0 && $0.have + $0.leased < $0.need }.count
+        let owned: Int = engine.ownedEquipment(companyID: company.id).reduce(0) { $0 + Int($1.count) + Int($1.leasedCount) }
         return LedgerRow(leading: .glyph(Glyph.settings), leadingTint: missing > 0 ? P.warn : P.inkSoft, title: "Equipment",
                          value: missing > 0 ? "\(missing)" : "\(owned)", valueTint: missing > 0 ? P.warn : nil, valueNote: missing > 0 ? "missing" : "owned",
                          identifier: "manage-equipment") { part = .equipment }
