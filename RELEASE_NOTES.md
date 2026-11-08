@@ -1,4 +1,5 @@
 # What's new
+- Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
 - Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
 - Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them
 - Home sits clear of the island, Next day sits above the tab bar, empty space is shared evenly, a single company shows a richer card, and the app has a soft gradient background with glass-style cards, tab bar and day button
