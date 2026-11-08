@@ -1,4 +1,5 @@
 # What's new
+- Holdings can borrow to buy a stake, turn a fully owned company into a division, sell shares you moved in, and hold board talks; a single chosen first product no longer sells like a full range
 - Ventures is one portfolio page inside Projects: your startups, backing others, funds, group stakes and software, with a cost summary before founding and buy/sell popups; the Venture tile opens it in place
 - Holding companies can buy full or partial stakes in your companies and in rivals (passive, influence, control, squeeze-out), take board seats, sell and merge stakes
 - Home: net worth counts up after a report closes and shows your personal account with last week and last month; "All" opens every company in a popup; more companies fit on screen; the yearly tax note itemises each charge
