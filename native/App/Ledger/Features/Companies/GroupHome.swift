@@ -22,7 +22,8 @@ struct GroupHome: View {
         let waiting: Int = list.reduce(0) { (a: Int, g: GroupEntity) -> Int in a + GroupWaiting.count(engine, g) }
         let badges: [GroupHomeTab: Int] = waiting > 0 ? [GroupHomeTab.overview: waiting] : [:]
         VStack(spacing: 0) {
-            GroupSectionBar(tab: $tab, badges: badges, sections: GroupHomeTab.allCases, idPrefix: "group-home-tab-")
+            GroupSectionBar(tab: $tab, badges: badges, sections: GroupHomeTab.allCases, idPrefix: "group-home-tab-",
+                            anchors: [GroupHomeTab.structure: CoachStop.groupStructure, GroupHomeTab.people: CoachStop.groupPeople])
                 .padding(.top, Theme.Space.s)
             SegmentPager(items: GroupHomeTab.allCases, selection: $tab) { (t: GroupHomeTab) in
                 ScrollScreen(spacing: Theme.Space.xxl, top: Theme.Space.l) { content(t) }
@@ -67,6 +68,7 @@ struct GroupOverviewTab: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 hero
                 LedgerRow(leading: .symbol("plus"), title: "Add to group", identifier: "group-add", action: onAdd)
+                    .coachAnchor(.groupAdd)
             }
             needsYou(list)
             keyFigures(list, ov)

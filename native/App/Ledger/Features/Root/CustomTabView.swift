@@ -48,7 +48,7 @@ struct CustomTabEmpty: View {
 
     var body: some View {
         ScrollView {
-            CustomTabPicker(pickingFirst: true)
+            CustomTabPicker(pickingFirst: true).coachAnchor(.customPick)
         }
         .background(P.ground.ignoresSafeArea())
         .accessibilityIdentifier("custom-empty")

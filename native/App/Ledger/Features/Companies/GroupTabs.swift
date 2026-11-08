@@ -31,6 +31,8 @@ struct GroupSectionBar<Tab: Hashable & RawRepresentable>: View where Tab.RawValu
     var sections: [Tab]
     /// Each tab's accessibility identifier is this prefix and its title.
     var idPrefix: String = "group-tab-"
+    /// Tabs a tour points at.
+    var anchors: [Tab: CoachStop] = [:]
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -57,6 +59,7 @@ struct GroupSectionBar<Tab: Hashable & RawRepresentable>: View where Tab.RawValu
         ForEach(sections, id: \.self) { (t: Tab) in
             Button { tab = t; Haptics.choose() } label: { cell(t.rawValue, on: tab == t, badge: badges[t] ?? 0, equal: equal) }
                 .buttonStyle(PressableStyle())
+                .coachAnchor(anchors[t] ?? .groupStructure, enabled: anchors[t] != nil)
                 .accessibilityAddTraits(tab == t ? [.isButton, .isSelected] : [.isButton])
                 .accessibilityIdentifier(idPrefix + t.rawValue)
                 .id(t)

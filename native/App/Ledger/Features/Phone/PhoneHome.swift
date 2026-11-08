@@ -39,10 +39,12 @@ struct PhoneHome: View {
                                 Haptics.tap()
                                 if app == .luxury { ent.run(.luxuryGivingFootball, "Luxury") { path.append(.app(app)) } } else { path.append(.app(app)) }
                             }
+                            .coachAnchor(app == .inbox ? .phoneInbox : .phoneBank, enabled: app == .inbox || app == .bank)
                         }
                     }
                 }
                 .padding(.top, 2)
+                .coachAnchor(.phoneGrid)
             }
             .frame(maxWidth: .infinity)
         }
@@ -134,6 +136,10 @@ struct PhoneAppScreen: View {
                         palette: app.splashPalette(ownBankIsMain: store.engine?.playerMainBankIsOwn ?? false)) { appContent }
             .markerBudget()
             .appFirstOpenHelp(app)
+            // Where the app's first-open tour points: the strip its header sits in (only on the screen that is on top).
+            .overlay(alignment: .top) {
+                Color.clear.frame(height: 88).allowsHitTesting(false).coachAnchor(.appHeader, enabled: store.showsApp(app))
+            }
             .onAppear { store.markSeen(app) }
             .onChange(of: store.engine?.state.day) { _, _ in store.markSeen(app) }
     }

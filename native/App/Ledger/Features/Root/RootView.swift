@@ -48,6 +48,7 @@ struct GameShell: View {
         Group {
             if sizeClass == .regular { SidebarShell() } else { PhoneShell() }
         }
+        .modifier(CoachTourHost())
     }
 }
 
@@ -84,9 +85,9 @@ struct PhoneShell: View {
             }, onLongPress: { raw in
                 if raw == AppTab.custom.rawValue { store.customPickerOpen = true }
             })
+            .coachAnchor(.tabBar)
             }
         }
-        .modifier(CoachTourHost())
         .onChange(of: store.tab) { _, now in
             Haptics.tap()
             if now != .custom { showCustomTip() }
