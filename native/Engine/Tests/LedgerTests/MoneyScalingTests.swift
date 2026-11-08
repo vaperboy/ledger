@@ -77,6 +77,7 @@ final class MoneyLiteralLintTests: XCTestCase {
         "TradeCatalog.swift": ["3400": "calibration of a trade at the reference economy"],
         "TradeTuning.swift": ["250000": "documentation example", "150000000": "documentation example"],
         "Markets.swift": ["980000": "crypto price in accounting units (global asset)", "36000": "crypto price", "1700": "crypto price"],
+        "ManagerStore.swift": ["1500": "reference-level weekly ad budget, scaled with scaledPrice at the use"],
         "Demo.swift": ["60_000_000": "showcase data", "4_000_000": "showcase data", "9_000_000": "showcase data"],
         "Banking.swift": ["80_000": "reference-economy base, divided by its median wage", "380_000": "reference-economy base, divided by its median wage", "1000": "rounding of the offer"],
         "StaffTalks.swift": ["70000": "compared with the role table's reference wage", "45000": "compared with the role table's reference wage", "50000": "fallback role wage at the reference level"],
