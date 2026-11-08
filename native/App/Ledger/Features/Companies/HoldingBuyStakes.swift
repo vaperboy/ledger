@@ -93,12 +93,12 @@ struct HoldingBuyStakes: View {
             } else {
                 Text("Buy \(holdingPct(hi))").popupText(.rowLabel)
             }
-            quoteView(h, o, result, cur)
+            quoteView(e, h, o, result, cur)
             Button("Back to the list") { Haptics.tap(); offerID = nil }.buttonStyle(TertiaryButtonStyle(fullWidth: true))
         }
     }
 
-    @ViewBuilder private func quoteView(_ h: Company, _ o: HoldingStakes.Offer, _ result: Result<HoldingStakes.Quote, HoldingStakes.Failure>, _ cur: Currency) -> some View {
+    @ViewBuilder private func quoteView(_ e: GameEngine, _ h: Company, _ o: HoldingStakes.Offer, _ result: Result<HoldingStakes.Quote, HoldingStakes.Failure>, _ cur: Currency) -> some View {
         switch result {
         case .success(let q):
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -119,6 +119,7 @@ struct HoldingBuyStakes: View {
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .disabled(h.cash < q.price)
                     .accessibilityIdentifier("holding-buy-go")
+                if h.cash < q.price, let cid = o.companyID { loanOffer(e, h, o.name, cid, q, cur) }
             }
         case .failure(let f):
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -128,6 +129,50 @@ struct HoldingBuyStakes: View {
                         pending = holdingInjectAction(store: store, holdingID: holdingID, holdingName: h.name, amount: short, cur: cur)
                     }
                 }
+            }
+        }
+    }
+
+    /// When cash is short: the lender's terms for the missing part, or the reason it would refuse.
+    @ViewBuilder private func loanOffer(_ e: GameEngine, _ h: Company, _ name: String, _ cid: Int, _ q: HoldingStakes.Quote, _ cur: Currency) -> some View {
+        if case .success(let t) = e.holdingBuyLoanQuote(holdingID: holdingID, companyID: cid, percent: q.percent), t.amount > 0 {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Or borrow the difference").popupText(.subtitle)
+                PopupRow(label: "Loan", value: cur.tidyShort(t.amount))
+                PopupRow(label: "Interest rate", value: String(format: "%.1f%% a year", t.yearlyRate * 100))
+                PopupRow(label: "Monthly payment", value: cur.tidyShort(t.monthlyPayment) + " for \(t.termMonths) months")
+                PopupRow(label: "Total interest", value: cur.tidyShort(t.totalInterest))
+                PopupRow(label: "Most it can borrow now", value: cur.tidyShort(t.maximum))
+                PopupRow(label: "Lender", value: t.lender)
+                if !t.allowed {
+                    Text(t.reason).popupText(.risk).fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Borrow and buy") { askBorrowBuy(name, cid, q, t, h.name, cur) }
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                    .disabled(!t.allowed)
+                    .accessibilityIdentifier("holding-buy-borrow")
+            }
+        }
+    }
+
+    private func askBorrowBuy(_ name: String, _ cid: Int, _ q: HoldingStakes.Quote, _ t: HoldingStakes.BorrowTerms, _ holdingName: String, _ cur: Currency) {
+        let pct: Double = q.percent
+        pending = PendingAction(title: "Borrow and buy \(holdingPct(pct)) of \(name)?",
+                                message: "\(holdingName) borrows \(cur.tidyShort(t.amount)) from \(t.lender) at \(String(format: "%.1f%%", t.yearlyRate * 100)) and pays \(cur.tidyShort(q.price)) in all. The loan is the holding's own: \(cur.tidyShort(t.monthlyPayment)) a month for \(t.termMonths) months comes out of its account.",
+                                button: "Borrow and buy", alwaysAsk: true, amount: q.price, currency: cur,
+                                risk: "If the holding's account runs dry, the instalments are missed.") {
+            let r: Result<HoldingStakes.LoanDeal, HoldingStakes.Failure>? = store.act { (eng: inout GameEngine) -> Result<HoldingStakes.LoanDeal, HoldingStakes.Failure> in
+                eng.holdingBuyStakeWithLoan(holdingID: holdingID, companyID: cid, percent: pct)
+            }
+            switch r {
+            case .success(let d)?:
+                Haptics.success()
+                store.show("Bought \(holdingPct(d.deal.percent)) of \(name) with a loan of \(cur.tidyShort(d.borrowed)). The holding now owns \(holdingPct(d.deal.heldAfter)).", tone: "good")
+                offerID = nil
+            case .failure(let f)?:
+                Haptics.warning(); store.show(f.reason, tone: "warn")
+            case nil:
+                store.show("It could not be bought now.", tone: "warn")
             }
         }
     }

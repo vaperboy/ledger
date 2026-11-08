@@ -28,7 +28,13 @@ struct CompanyHolding: View {
     var body: some View {
         let cur = engine.currency(for: company)
         let rivalStakes: [HoldingStakes.RivalStake] = engine.holdingRivalStakes(holdingID: company.id)
-        let o = engine.holdingOverview(companyID: company.id)
+        let o = engine.holdingOverview(companyID: company.id).map { (x: HoldingModel.Consolidated) -> HoldingModel.Consolidated in
+            // Divisions are part of the holding, not stakes: they are listed on their own.
+            var y: HoldingModel.Consolidated = x
+            y.subsidiaries = x.subsidiaries.filter { (k: HoldingModel.Subsidiary) -> Bool in !HoldingStakes.isDivision(engine.state.company(k.id) ?? company) }
+            return y
+        }
+        let divisions: [Company] = allDivisions(o)
         let free = engine.companiesForHolding
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if let o {
@@ -62,6 +68,16 @@ struct CompanyHolding: View {
                         ForEach(Array(rivalStakes.enumerated()), id: \.element.id) { (n: Int, r: HoldingStakes.RivalStake) in
                             if n > 0 || !o.subsidiaries.isEmpty { Hairline().padding(.leading, 40 + Theme.Space.m) }
                             rivalCard(r, cur)
+                        }
+                    }
+                }
+                if !divisions.isEmpty {
+                    MoreBlock(title: "Divisions", card: false, trailing: { Text("\(divisions.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
+                        VStack(spacing: 0) {
+                            ForEach(Array(divisions.enumerated()), id: \.element.id) { (n: Int, d: Company) in
+                                if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
+                                divisionCard(d, cur)
+                            }
                         }
                     }
                 }
@@ -103,26 +119,53 @@ struct CompanyHolding: View {
         case .sellRival(let id): HoldingSellSheet(holdingID: company.id, companyID: nil, rivalID: id).environmentObject(store)
         case .board(let id): HoldingBoardSheet(holdingID: company.id, companyID: id).environmentObject(store)
         case .merge(let id): HoldingMergeSheet(holdingID: company.id, companyID: id).environmentObject(store)
+        case .division(let id): HoldingDivisionSheet(holdingID: company.id, companyID: id).environmentObject(store)
+        case .talk(let id): HoldingTalkSheet(holdingID: company.id, companyID: id).environmentObject(store)
         }
+    }
+
+    /// Divisions of the holding itself and of the companies under it.
+    private func allDivisions(_ o: HoldingModel.Consolidated?) -> [Company] {
+        var out: [Company] = engine.holdingDivisions(hostID: company.id)
+        for k in o?.subsidiaries ?? [] { out.append(contentsOf: engine.holdingDivisions(hostID: k.id)) }
+        return out
+    }
+
+    /// A division keeps its trade and people but is no longer a company of its own: opening it is all that is left to do.
+    private func divisionCard(_ d: Company, _ cur: Currency) -> some View {
+        let id: Int = d.id
+        let hostName: String = HoldingStakes.divisionHostID(d).flatMap { (h: Int) -> String? in engine.state.company(h)?.name } ?? company.name
+        return Button { store.openCompany(id) } label: {
+            LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: d.type, glyph: Glyph.home)), title: d.name, subtitle: "Division of \(hostName)",
+                      value: cur.tidyShort(d.cash), valueNote: "cash", chevron: true)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("holding-division-\(id)")
     }
 
     /// One stake in a company: tier and percent under the name, its share of the value at the right; the row's menu holds what can be done with it.
     private func heldCard(_ k: HoldingModel.Subsidiary, _ cur: Currency) -> some View {
+        let seatedIDs: Set<Int> = Set(engine.holdingSeatedCompanies(holdingID: company.id).map { (c: Company) -> Int in c.id })
         let tier: HoldingStakes.Tier = HoldingStakes.tier(forPercent: k.ownership)
         let tax: String = k.inTaxGroup ? " \u{00B7} tax group" : ""
         let line: String = "\(holdingPct((k.ownership * 10).rounded() / 10)) \u{00B7} \(tier.title)\(tax)"
         let id: Int = k.id
         let name: String = k.name
         let seat: HoldingStakes.SeatStatus = engine.holdingBoardSeat(holdingID: company.id, companyID: id)
+        let seated: Bool = seatedIDs.contains(id)
+        let hasDivisions: Bool = !engine.holdingDivisions(hostID: id).isEmpty
         let canMerge: Bool = k.ownership > HoldingStakes.controlAbove && engine.holdingMergeTerms(holdingID: company.id, companyID: id).allowed
         return Menu {
             Button("Open \(name)") { store.openCompany(id) }
             if seat.hasSeat { Button("Board round and vote\u{2026}") { stakeSheet = .board(id) } }
+            if seated { Button("Talk to the people\u{2026}") { stakeSheet = .talk(id) } }
             if seat.canTake { Button("Take a board seat") { takeSeat(id, name) } }
             if seat.hasSeat && seat.reason.isEmpty { Button("Leave the board seat") { leaveSeat(id, name) } }
             Button("Sell part\u{2026}") { stakeSheet = .sell(id) }
             if canMerge { Button("Merge into the holding\u{2026}") { stakeSheet = .merge(id) } }
-            Button("Release to me\u{2026}", role: .destructive) { askRelease(id, name) }
+            if k.ownership >= 99.9 && !hasDivisions { Button("Make it a division\u{2026}") { stakeSheet = .division(id) } }
+            if !hasDivisions { Button("Release to me\u{2026}", role: .destructive) { askRelease(id, name) } }
         } label: {
             LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: k.trade, glyph: Glyph.home)), title: name, subtitle: line,
                       value: cur.tidyShort(k.share), valueNote: "profit " + cur.tidyShort(k.profitTTM), chevron: true)
@@ -179,7 +222,8 @@ struct NewHoldingView: View {
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     @State private var name = ""
-    @State private var picked: Set<Int> = []
+    /// Companies ticked, each with the share of your own stake that goes in, in percent (100 is all of it).
+    @State private var picked: [Int: Double] = [:]
     @State private var accountantID: Int?
 
     var body: some View {
@@ -199,18 +243,9 @@ struct NewHoldingView: View {
                     MoreBlock("Which companies it holds") {
                         VStack(spacing: 0) {
                             if free.isEmpty { Text("No limited companies to hold yet. You can add them later.").textStyle(.caption, tint: Theme.inkFaint) }
-                            ForEach(Array(free.enumerated()), id: \.element.id) { n, c in
+                            ForEach(Array(free.enumerated()), id: \.element.id) { (n: Int, c: Company) in
                                 if n > 0 { Hairline() }
-                                Button {
-                                    if picked.contains(c.id) { picked.remove(c.id) } else { picked.insert(c.id) }
-                                    Haptics.choose()
-                                } label: {
-                                    HStack {
-                                        Text(c.name).textStyle(.body, tint: Theme.ink)
-                                        Spacer()
-                                        Image(systemName: picked.contains(c.id) ? "checkmark.circle.fill" : "circle").foregroundStyle(picked.contains(c.id) ? Theme.gold : Theme.ivoryFaint)
-                                    }.padding(.vertical, Theme.Space.m).contentShape(Rectangle())
-                                }.buttonStyle(PressableStyle()).accessibilityValue(picked.contains(c.id) ? "Selected" : "Not selected")
+                                pickRow(c)
                             }
                         }
                     }
@@ -222,7 +257,12 @@ struct NewHoldingView: View {
                         }
                     }
                     HStack { Button("Create the holding company") {
-                        let r = store.act { $0.createHolding(name: name, companies: Array(picked), accountantID: accountantID) }
+                        let stakes: [HoldingModel.StakeInput] = free.compactMap { (c: Company) -> HoldingModel.StakeInput? in
+                            guard let share = picked[c.id] else { return nil }
+                            let pct: Double = share >= 99.9 ? 100 : max(HoldingStakes.minimumPercent, c.ownership * share / 100)
+                            return HoldingModel.StakeInput(companyID: c.id, percent: pct)
+                        }
+                        let r = store.act { $0.createHolding(name: name, stakes: stakes, accountantID: accountantID) }
                         switch r {
                         case .success(let id)?: Haptics.success(); store.show("Registered.", tone: "good"); store.openCompany(id)
                         case .failure(.notEnoughCash)?: Haptics.warning(); store.show("You need \(cur.tidyShort(country.shareCapitalMinimum + country.registrationFee)) in your account.", tone: "warn")
@@ -236,5 +276,36 @@ struct NewHoldingView: View {
             .ledgerBackground()
             .appScreen(title: "New holding company", subtitle: "Register it and choose what it holds.")
         }
+    }
+
+    /// One company to put under the holding: tick it, then choose how much of your own stake goes in.
+    private func pickRow(_ c: Company) -> some View {
+        let on: Bool = picked[c.id] != nil
+        let share = Binding<Double>(get: { picked[c.id] ?? 100 }, set: { (v: Double) in picked[c.id] = v })
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Button {
+                Haptics.choose()
+                if on { picked[c.id] = nil } else { picked[c.id] = 100 }
+            } label: {
+                HStack {
+                    Text(c.name).textStyle(.body, tint: Theme.ink)
+                    Spacer()
+                    Text("you own \(holdingPct(c.ownership))").textStyle(.caption, tint: Theme.inkFaint)
+                    Image(systemName: on ? "checkmark.circle.fill" : "circle").foregroundStyle(on ? Theme.gold : Theme.ivoryFaint)
+                }.padding(.vertical, Theme.Space.m).contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityValue(on ? "Selected" : "Not selected")
+            .accessibilityIdentifier("new-holding-pick-\(c.id)")
+            if on {
+                LedgerSlider(value: share, in: 10...100, step: 5, valueText: share.wrappedValue >= 99.9 ? "All of your stake" : "\(Int(share.wrappedValue))% of your stake")
+                if share.wrappedValue < 99.9 {
+                    let part: Double = c.ownership * share.wrappedValue / 100
+                    Text("\(holdingPct((part * 10).rounded() / 10)) of the company goes in; you keep \(holdingPct(((c.ownership - part) * 10).rounded() / 10)).")
+                        .textStyle(.caption, tint: Theme.inkFaint)
+                }
+            }
+        }
+        .padding(.bottom, on ? Theme.Space.s : 0)
     }
 }

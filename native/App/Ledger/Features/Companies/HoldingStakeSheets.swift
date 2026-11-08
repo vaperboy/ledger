@@ -7,7 +7,7 @@ import Simulation
 
 /// Which sheet a stake's menu opens.
 enum HoldingStakeSheet: Identifiable, Hashable {
-    case sell(Int), sellRival(Int), board(Int), merge(Int)
+    case sell(Int), sellRival(Int), board(Int), merge(Int), division(Int), talk(Int)
 
     var id: String {
         switch self {
@@ -15,6 +15,8 @@ enum HoldingStakeSheet: Identifiable, Hashable {
         case .sellRival(let n): return "sellr-\(n)"
         case .board(let n): return "board-\(n)"
         case .merge(let n): return "merge-\(n)"
+        case .division(let n): return "division-\(n)"
+        case .talk(let n): return "talk-\(n)"
         }
     }
 }
@@ -89,9 +91,15 @@ struct HoldingSellSheet: View {
         if let cid = companyID {
             switch e.holdingSellStakeQuote(holdingID: holdingID, companyID: cid, percent: pct, to: buyer) {
             case .success(let q):
-                summary(cur, f.name, q.percent, q.price, q.heldAfter, q.tierAfter, q.priceFactor)
+                summary(cur, f.name, q.percent, q.price, q.heldAfter, q.tierAfter, q.priceFactor, bought: q.boughtPercent, moved: q.movedPercent)
             case .failure(let fail):
                 Text(fail.reason).popupText(.risk).fixedSize(horizontal: false, vertical: true)
+                // Shares moved under the holding cannot be bought back by the owner; the market is the only buyer for them.
+                if buyer == .owner {
+                    Button("Sell to the market instead") { Haptics.tap(); buyer = .market }
+                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("holding-sell-market")
+                }
             }
         } else {
             // A stake in another business sells to the market at the engine's own factor for the size of the stake.
@@ -101,14 +109,27 @@ struct HoldingSellSheet: View {
         }
     }
 
-    private func summary(_ cur: Currency, _ name: String, _ pct: Double, _ price: Double, _ left: Double, _ tier: HoldingStakes.Tier, _ factor: Double) -> some View {
+    private func summary(_ cur: Currency, _ name: String, _ pct: Double, _ price: Double, _ left: Double, _ tier: HoldingStakes.Tier, _ factor: Double,
+                         bought: Double = 0, moved: Double = 0) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
+            splitLine(bought, moved)
             PopupRow(label: buyer == .owner && companyID != nil ? "You pay the holding" : "The holding receives", value: cur.tidyShort(price))
             if factor < 0.9999 { Text("Sold at \(Int((factor * 100).rounded()))% of fair value.").popupText(.caption) }
             HoldingTierNote(tier: tier, percent: left)
             Button("Sell \(holdingPct(pct)) for \(cur.tidyShort(price))") { askSell(name, pct, price, cur) }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("holding-sell-go")
+        }
+    }
+
+    /// Which of the shares sold were bought by the holding and which are your own moved under it.
+    @ViewBuilder private func splitLine(_ bought: Double, _ moved: Double) -> some View {
+        if bought > 0 && moved > 0 {
+            Text("\(holdingPct(bought)) were bought by the holding, \(holdingPct(moved)) are your own shares moved under it.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
+        } else if moved > 0 {
+            Text("These are your own shares moved under the holding. Only the market can buy them; the money goes to the holding.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
+        } else if bought > 0 {
+            Text("These shares were bought by the holding.").popupText(.caption)
         }
     }
 
@@ -122,7 +143,9 @@ struct HoldingSellSheet: View {
             }
             switch r {
             case .success(let d)?:
-                Haptics.success(); store.show("Sold \(holdingPct(d.percent)) of \(name) for \(cur.tidyShort(d.amount)).", tone: "good"); close()
+                Haptics.success()
+                let split: String = d.boughtPercent > 0 && d.movedPercent > 0 ? " (\(holdingPct(d.boughtPercent)) bought, \(holdingPct(d.movedPercent)) moved)" : ""
+                store.show("Sold \(holdingPct(d.percent)) of \(name)\(split) for \(cur.tidyShort(d.amount)).", tone: "good"); close()
             case .failure(let f)?:
                 Haptics.warning(); store.show(f.reason, tone: "warn")
             case nil:
