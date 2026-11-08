@@ -49,7 +49,7 @@ final class IntegrationBalanceTests: XCTestCase {
     // MARK: 1. The add-item estimate is what the game does
 
     func testAddItemEstimateMatchesWhatTheDemandDoes() throws {
-        var (e, id) = try engine()
+        var (e, id) = try engine(weeks: 70)   // past the first year, when capacity binds and an extra customer adds no profit
         try giveAdvisorDuty(&e, id)
         for svc in [false, true] {
             let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: svc).options.first)
