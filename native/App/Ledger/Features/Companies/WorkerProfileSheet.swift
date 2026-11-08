@@ -291,8 +291,8 @@ struct WorkerProfileBody: View {
             Text(p.meetsExpectation ? "Meets it" : "Falls short").textStyle(.caption, tint: tint, weight: .medium)
         }) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                ProgressLine(fraction: p.expectedPerformance / 100, tint: P.inkSoft, label: "Expected for this pay", value: String(Int(p.expectedPerformance.rounded())))
-                ProgressLine(fraction: p.performance / 100, tint: tint, label: "Delivers now", value: String(Int(p.performance.rounded())))
+                ProgressLine(fraction: p.expectedPerformance / 100, tint: P.inkSoft, label: "Expected for this pay", value: Words.level(p.expectedPerformance, scale: .quality))
+                ProgressLine(fraction: p.performance / 100, tint: tint, label: "Delivers now", value: Words.level(p.performance, scale: .quality))
                 if !p.performanceNote.isEmpty { Text(p.performanceNote.tidyText).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
             }
         }

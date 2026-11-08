@@ -15,7 +15,7 @@ struct CompanySecurityCard: View {
         let c = engine.cyberInfo(company)
         let cur = engine.currency(for: company)
         return PageGroup(title: "IT security", trailing: {
-            Text("1 in \(Int((1 / max(0.002, c.yearOdds)).rounded())) a year").font(.system(size: 11)).foregroundStyle(c.yearOdds > 0.1 ? Theme.loss : Theme.ivoryFaint)
+            Text(c.yearOdds > 0.1 ? "Likely to be hit this year" : c.yearOdds > 0.03 ? "Could be hit this year" : "Unlikely to be hit this year").font(.system(size: 11)).foregroundStyle(c.yearOdds > 0.1 ? Theme.loss : Theme.ivoryFaint)
         }) {
             VStack(alignment: .leading, spacing: 8) {
                 FigureStrip(items: [

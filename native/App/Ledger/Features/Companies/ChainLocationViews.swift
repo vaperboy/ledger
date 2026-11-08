@@ -54,7 +54,7 @@ struct ChainHeadOffice: View {
                             Text("Head-office store: \(head.name)").textStyle(.caption, tint: Theme.inkFaint)
                         }
                     }
-                    RateBar(label: "Value of the name", fraction: h.brandScore / 100)
+                    RateBar(label: "Value of the name", fraction: h.brandScore / 100, word: BrandWords.label(score: h.brandScore))
                     VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                         line("CEO", h.ceoName ?? "None yet")
                         line("Chain manager", h.chainManagerName ?? "None yet")

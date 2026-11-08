@@ -435,8 +435,8 @@ enum MarketData {
             else if t.elasticity <= 0.8 { out.append("Quality and name beat price") }
             else { out.append("Price and quality weigh the same") }
         }
-        out.append("Known by \(Int(co.awareness.rounded()))% of people")
-        out.append("Reputation \(Int(co.reputation.rounded())) of 100")
+        out.append("Name: " + StandingWords.awareness(co.awareness).lowercased())
+        out.append("Reputation: " + StandingWords.reputation(co.reputation).lowercased())
         if let m = MarketMap.markets(e.state, data: e.data).first(where: { (x: MarketMap.Market) -> Bool in x.companyIDs.contains(co.id) }) {
             let know: MarketMap.Knowledge = MarketMap.knowledge(e.state, m)
             if know.level != .feeling { out.append(contentsOf: MarketMap.report(e.state, m, know, data: e.data).prefix(2).map { (s: String) -> String in s.tidyText }) }

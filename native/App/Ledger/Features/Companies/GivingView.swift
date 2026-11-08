@@ -78,6 +78,12 @@ struct GivingView: View {
 
     // MARK: Gifts
 
+    /// How much a gift lifts the standing in a town, in words (the engine adds 3 to 25).
+    private static func liftWord(_ v: Double) -> String { v < 5 ? "a little" : v < 10 ? "some" : v < 20 ? "a good deal" : "a great deal" }
+
+    /// How long a gift is remembered (the engine's legacy value, 8 to 400).
+    private static func legacyWord(_ v: Double) -> String { v < 20 ? "A short" : v < 100 ? "A lasting" : "A lasting, great" }
+
     private func giftRow(_ e: GameEngine, _ g: Giving.Gift, _ place: Giving.Place) -> some View {
         let cur = e.homeCurrency
         let cost = e.giftCost(g.id)
@@ -91,7 +97,7 @@ struct GivingView: View {
                 Text(cur.tidyShort(cost) + (g.yearly ? " / yr" : "")).textStyle(.body, tint: short && !done ? Theme.loss : Theme.ink, numeric: true)
             }
             Text(g.detail.tidyMoney).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-            Text("Standing in \(place.name) +\(Int(g.standing)) · legacy +\(Int(g.legacy))").textStyle(.caption, tint: Theme.inkSoft)
+            Text("Adds \(Self.liftWord(g.standing)) to your standing in \(place.name) · \(Self.legacyWord(g.legacy)) legacy").textStyle(.caption, tint: Theme.inkSoft)
             if done {
                 Text("Done in \(place.name).").textStyle(.caption, tint: Theme.gain)
             } else {
@@ -99,7 +105,7 @@ struct GivingView: View {
                     pending = PendingAction(
                         title: "\(g.name) in \(place.name)?",
                         message: "Costs \(cur.tidyDisplay(cost)) from your own cash" + (g.yearly ? ", and again every year; if you cannot pay one year the sponsorship ends." : ", once.")
-                            + " Your standing in \(place.name) rises by about \(Int(g.standing)) and your legacy by \(Int(g.legacy)). It cannot be undone, and there is no financial return except the small demand lift in that city.",
+                            + " Your standing in \(place.name) rises \(Self.liftWord(g.standing)) and it adds to your legacy. It cannot be undone, and there is no financial return except the small demand lift in that city.",
                         button: g.yearly ? "Sponsor" : "Give", destructive: true) { give(g, place) }  // irreversible: always asks
                 }.buttonStyle(QuietButtonStyle(tint: Theme.gold)).disabled(short)
                 if short { Text("Short by \(cur.tidyShort(cost - e.state.cash)).").textStyle(.caption, tint: Theme.inkFaint) }

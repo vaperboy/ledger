@@ -248,7 +248,7 @@ struct ManagerSheet: View {
                         Text("\u{201C}\(vc.verdict)\u{201D}").font(.subheadline.italic()).padding(.top, 4)
                     }
                 }
-                RateBar(label: "Overall results", fraction: e.managerQuality(companyID: co.id))
+                RateBar(label: "Overall results", fraction: e.managerQuality(companyID: co.id), word: Words.level(e.managerQuality(companyID: co.id) * 100, scale: .quality))
                 if let card = e.managerScorecard(companyID: co.id) {
                     FigureCard(items: [
                         .init(label: "Scorecard", value: CompanyManagement.scoreWord(card.score).capitalized, tint: card.score < 35 ? Theme.loss : card.score >= 65 ? Theme.gain : Theme.ivory),
