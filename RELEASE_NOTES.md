@@ -1,4 +1,5 @@
 # What's new
+- Ventures is one portfolio page inside Projects: your startups, backing others, funds, group stakes and software, with a cost summary before founding and buy/sell popups; the Venture tile opens it in place
 - Holding companies can buy full or partial stakes in your companies and in rivals (passive, influence, control, squeeze-out), take board seats, sell and merge stakes
 - Home: net worth counts up after a report closes and shows your personal account with last week and last month; "All" opens every company in a popup; more companies fit on screen; the yearly tax note itemises each charge
 - Choose what a new company sells first (only chosen products sell); price limit now depends on the trade; each screen shows only its own feature with no jump links; payroll approvals are answered in the Inbox; Group, Company, Market and Reports redirects removed; Market app, Home skip week, Group tabs and Company marketing steps added
