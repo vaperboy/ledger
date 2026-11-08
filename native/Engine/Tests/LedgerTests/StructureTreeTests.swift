@@ -51,7 +51,7 @@ final class StructureTreeTests: XCTestCase {
         let chainID = try XCTUnwrap(e.makeChain(companyID: a, name: "Test Cafe"))
         var ids = [a]
         for _ in 0..<2 {
-            guard case .success(let b) = e.openChainStore(chainID: chainID, cityID: e.state.player.cityID, size: 1) else { throw XCTSkip("store not opened") }
+            guard case .success(let b) = e.openLocation(chainID: chainID, cityID: e.state.player.cityID, size: 1) else { throw XCTSkip("store not opened") }
             _ = e.openCompany(companyID: b)
             ids.append(b)
         }

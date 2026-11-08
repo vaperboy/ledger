@@ -102,7 +102,7 @@ public enum PlayerGoals {
     static func stepsLive(_ s: GameState) -> [Company] { s.companies.filter { $0.status.isLive && $0.type != "hold" } }
 
     /// Has the player done this early thing? Ids: co, staff, open, week, sell, ad, inbox, pay, profit, mgr. The ladder goals are built on these.
-    static func stepDone(_ id: String, _ s: GameState) -> Bool {
+    public static func stepDone(_ id: String, _ s: GameState) -> Bool {
         let L = stepsLive(s)
         switch id {
         case "co": return !L.isEmpty

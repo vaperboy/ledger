@@ -244,6 +244,7 @@ public enum SalesItems {
     public struct DemandShape: Equatable, Sendable {
         public var elasticity: Double
         public var reference: Double
+        public init(elasticity: Double, reference: Double) { self.elasticity = elasticity; self.reference = reference }
         public static let standard = DemandShape(elasticity: 1.5, reference: 1)
         /// Elasticity below and above the reference, as multiples of the trade's.
         static let belowFactor = 0.75, aboveFactor = 1.3

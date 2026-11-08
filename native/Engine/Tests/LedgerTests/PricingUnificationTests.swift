@@ -79,7 +79,7 @@ final class PricingUnificationTests: XCTestCase {
     func testItemsUseTheTradesElasticity() throws {
         let (e, id) = try engine()
         let co = e.state.company(id)!, w = World(state: e.state, data: e.data)
-        let trades = e.data.catalog.values.filter { $0.elasticity >= 0.8 }
+        let trades = e.data.catalog.trades.values.filter { $0.elasticity >= 0.8 }
         guard let a = trades.first, let b = trades.first(where: { $0.elasticity != a.elasticity }) else { throw XCTSkip("one elasticity only") }
         XCTAssertEqual(SalesItems.shape(co, a, w).elasticity, a.elasticity, accuracy: 1e-12)
         XCTAssertEqual(SalesItems.shape(co, b, w).elasticity, b.elasticity, accuracy: 1e-12)
