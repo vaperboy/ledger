@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.99",
+          "buildVersion": "99",
+          "date": "2026-11-08T18:10:02Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v99/Ledger-unsigned.ipa",
+          "size": 30450376,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Fix for the crash on opening an older save: saved numbers can no longer overflow a conversion, duplicate names no longer break lookups, the first-run tour only starts in a new game, and the zoom transitions are off until they are proven safe\n- Money in is a green up arrow and money out a red down arrow instead of plus and minus; a company shows this week so far live with its change on last week; only the change in a figure rolls (up in green, down in red); the net worth chart adds each new day instead of redrawing\n- A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests\n- Events can chain (an ignored breach becomes a claim, then a press story; late invoices, a skipped inspection and price wars escalate), each of the twelve starter trades has its own events, big owners get a fourth answer, daily goals vary with streak perks, a recap shows when you return, and Stats has a \"How you are playing\" panel\n- Choose Classic, Sandbox or Hard when you start; rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and"
+        },
+        {
           "version": "1.0.98",
           "buildVersion": "98",
           "date": "2026-11-08T17:21:33Z",
@@ -187,22 +196,13 @@
           "size": 29262224,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Look: new design system: one type scale that follows your text size, one spacing and corner set, unboxed sections and rows, three button styles with full-size tap areas, buttons say why they are disabled, no gradients or glows\n- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handles them, no flood after replacing a CEO, pay requests capped per week\n- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed\n- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)\n- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device\n- Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap\n- Notices: minor \"cann"
-        },
-        {
-          "version": "1.0.79",
-          "buildVersion": "79",
-          "date": "2026-11-06T18:20:09Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v79/Ledger-unsigned.ipa",
-          "size": 29481413,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Fixes from play-testing: volume-discount and franchise buyout sizing early in the game year, desk notices always name who handles them, no flood after replacing a CEO, pay requests capped per week\n- Ownership: Boardroom and Ownership tabs in Group; owner meetings (one-to-one, board round, strategy), CEO replacement by vote, advisory board for sole owners; sale routes: handshake, broker, auction, buyout, merger, stake tiers, sell to a group, master franchise; old sell buttons elsewhere removed\n- Notices: one payroll notice a week handled by your finance desk; routine items no longer fill Needs you; share buying removed from Invest/Bank (sell what you hold)\n- Gift codes: Settings > Redeem a code opens the full game for a year (or longer) on this device\n- Popups: action buttons stay pinned under long sheets; one signing popup, one info button, one text input; no cards inside popup cards; typed values survive a backdrop tap\n- Notices: minor \"cannot / not enough\" results show as a short toast instead of a blocking popup; destructive imports and sales ask first; red alert and banners follow the app palette\n- Balance: managers can approve more space; nightclub wages sane; s"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.98",
-      "versionDate": "2026-11-08T17:21:33Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v98/Ledger-unsigned.ipa",
-      "size": 30455124
+      "version": "1.0.99",
+      "versionDate": "2026-11-08T18:10:02Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v99/Ledger-unsigned.ipa",
+      "size": 30450376
     }
   ]
 }
