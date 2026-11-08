@@ -71,7 +71,8 @@ final class SalesItemsTests: XCTestCase {
         XCTAssertLessThan(dear.demandChange, 0)
         XCTAssertEqual(same.demandChange, 0, accuracy: 1e-12)
         XCTAssertEqual(same.profitChange, 0, accuracy: 1e-6)
-        XCTAssertEqual(cheap.demandChange, pow(0.8, -1.5) - 1, accuracy: 1e-9)
+        let sh = SalesItems.shape(e.state.company(id)!, e.data.catalog[e.state.company(id)!.type]!, World(state: e.state, data: e.data))
+        XCTAssertEqual(cheap.demandChange, SalesItems.demandMultiplier(priceRatio: 0.8, shape: sh) - 1, accuracy: 1e-9)
         var b = e
         XCTAssertEqual(b.setItemPrice(companyID: id, itemID: it.id, price: it.marketPrice * 0.8), .applied)
         XCTAssertGreaterThan(b.salesItems(companyID: id)[0].demandChange, 0)

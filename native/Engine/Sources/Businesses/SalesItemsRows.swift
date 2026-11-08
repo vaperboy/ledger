@@ -35,6 +35,8 @@ public struct ItemForecast: Equatable, Sendable {
     /// Weekly profit of the item compared with now (item revenue minus its cost of sales).
     public var profitChange: Double
     public var demandChange: Double
+    /// The price against what customers see as fair (0.1 = 10% above, -0.1 = 10% below).
+    public var marketPosition: Double = 0
 }
 
 /// A listed item of another company of the owner, which this company can buy.
@@ -58,12 +60,12 @@ public extension SalesItems {
         guard let co = s.company(companyID), let bd = data.catalog[co.type] else { return [] }
         let w = World(state: s, data: data)
         let list = items(co, bd), mt = marketTicket(co, bd, w)
-        let g = max(1e-9, demandFactor(co))
+        let g = max(1e-9, demandFactor(co, bd, w)), sh = shape(co, bd, w)
         let setter = priceSetter(s, co)
         let top = ceiling(for: bd)
         let units = co.value("lastW")["units"].isNull ? 0 : co.value("lastW")["units"].double
         return list.map { it in
-            let dm = demandMultiplier(priceRatio: it.effectiveMultiplier)
+            let dm = demandMultiplier(priceRatio: it.effectiveMultiplier, shape: sh)
             let u = units * it.unitShare * dm / g
             let market = mt * it.ratio
             return SalesItem(id: it.id, name: it.name, isService: it.isService, price: market * it.priceMultiplier, marketPrice: market,
@@ -82,8 +84,8 @@ public extension SalesItems {
         let market = marketTicket(co, bd, w) * it.ratio
         let newMult = market > 0 ? clamp(max(0, price) / market, range(for: bd).lowerBound, range(for: bd).upperBound) : 1
         let mult = newMult * (1 - clamp(discountPercent, 0, 90) / 100)
-        let gNow = max(1e-9, demandFactor(co))
-        let dmNow = demandMultiplier(priceRatio: it.effectiveMultiplier), dmNew = demandMultiplier(priceRatio: mult)
+        let gNow = max(1e-9, demandFactor(co, bd, w)), sh = shape(co, bd, w)
+        let dmNow = demandMultiplier(priceRatio: it.effectiveMultiplier, shape: sh), dmNew = demandMultiplier(priceRatio: mult, shape: sh)
         let atMarket = baseUnits(co, bd, w)
         let gNew = gNow - it.unitShare * dmNow + it.unitShare * dmNew
         var scale = 1.0
@@ -95,7 +97,8 @@ public extension SalesItems {
         // change always looked like a loss, and the profit at the market price like zero.
         let cost = market * (co.type == UsedCarDealer.tradeID ? (UsedCarDealer.costRatio(co) ?? bd.costOfSales) : bd.costOfSales)
         let revNew = unitsNew * market * mult, revNow = unitsNow * market * it.effectiveMultiplier
-        return ItemForecast(units: unitsNew, revenue: revNew, profitChange: (revNew - unitsNew * cost) - (revNow - unitsNow * cost), demandChange: dmNew - 1)
+        return ItemForecast(units: unitsNew, revenue: revNew, profitChange: (revNew - unitsNew * cost) - (revNow - unitsNow * cost), demandChange: dmNew - 1,
+                            marketPosition: position(priceRatio: mult, shape: sh))
     }
 
     static func mutate(_ s: inout GameState, companyID: Int, data: GameData, _ body: (inout [Item]) -> Void) {
