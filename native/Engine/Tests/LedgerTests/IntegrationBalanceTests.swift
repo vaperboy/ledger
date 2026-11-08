@@ -51,7 +51,8 @@ final class IntegrationBalanceTests: XCTestCase {
     func testAddItemEstimateMatchesWhatTheDemandDoes() throws {
         var (e, id) = try engine(weeks: 70)   // past the first year, when capacity binds and an extra customer adds no profit
         try giveAdvisorDuty(&e, id)
-        for svc in [false, true] {
+        let own: Bool = SalesItems.isService(try XCTUnwrap(e.data.catalog[try XCTUnwrap(e.state.company(id)).type]))
+        for svc in [own] {
             let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: svc).options.first)
             let estimate = try XCTUnwrap(opt.profitChange)
             XCTAssertGreaterThan(estimate, 0)

@@ -35,45 +35,43 @@ struct WeekReportShell<More: View>: View {
         .task { await start() }
     }
 
-    @ViewBuilder private var pageContent: some View {
-        if let r = recap {
-            recapContent(r)
-        } else if loaded {
-            plainContent
-        }
+    private var pageContent: AnyView {
+        if let r = recap { return recapContent(r) }
+        if loaded { return plainContent }
+        return AnyView(EmptyView())
     }
 
-    @inline(never) private func recapContent(_ r: WeekRecap) -> some View {
-        VStack(alignment: .leading, spacing: PopupSpace.card) {
+    @inline(never) private func recapContent(_ r: WeekRecap) -> AnyView {
+        AnyView(VStack(alignment: .leading, spacing: PopupSpace.card) {
             recapTop(r)
             recapBottom(r)
-        }
+        })
     }
 
-    @inline(never) private func recapTop(_ r: WeekRecap) -> some View {
-        VStack(alignment: .leading, spacing: PopupSpace.card) {
-            titleBlock
-            numberBlock(r)
-            storyBlock(r)
-            barsBlock(r)
-        }
+    @inline(never) private func recapTop(_ r: WeekRecap) -> AnyView {
+        AnyView(VStack(alignment: .leading, spacing: PopupSpace.card) {
+            AnyView(titleBlock)
+            AnyView(numberBlock(r))
+            AnyView(storyBlock(r))
+            AnyView(barsBlock(r))
+        })
     }
 
-    @inline(never) private func recapBottom(_ r: WeekRecap) -> some View {
-        VStack(alignment: .leading, spacing: PopupSpace.card) {
-            extras(r)
-            nextCard(r)
-            recordLine(r)
-            goalsBlock
-            moreBlock(r)
-        }
+    @inline(never) private func recapBottom(_ r: WeekRecap) -> AnyView {
+        AnyView(VStack(alignment: .leading, spacing: PopupSpace.card) {
+            AnyView(extras(r))
+            AnyView(nextCard(r))
+            AnyView(recordLine(r))
+            AnyView(goalsBlock)
+            AnyView(moreBlock(r))
+        })
     }
 
-    private var plainContent: some View {
-        VStack(alignment: .leading, spacing: PopupSpace.card) {
-            more()
-            goalsBlock
-        }
+    private var plainContent: AnyView {
+        AnyView(VStack(alignment: .leading, spacing: PopupSpace.card) {
+            AnyView(more())
+            AnyView(goalsBlock)
+        })
     }
 
     // MARK: Goals reached this week
