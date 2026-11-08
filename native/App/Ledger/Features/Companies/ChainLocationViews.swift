@@ -5,15 +5,55 @@ import Finance
 import Businesses
 import Simulation
 
-/// The chain's head office: the brand and what it provides to every location, apart from any one store.
+/// Plain words for who owns, runs and sits where in a chain, shared by the chain page, a store's Chain section and the company overview.
+enum ChainWords {
+    /// "Owned by you" or "Held by <holding> 82%"; `showFull` also states a full 100% ("Owned by you 100%").
+    static func ownerText(_ e: GameEngine, companyID: Int, showFull: Bool = false) -> String {
+        let o: OwnerLine = e.ownerLine(companyID: companyID)
+        if let hid = o.holdingID, let hp = o.holdingPercent {
+            return "Held by " + (e.state.company(hid)?.name ?? "a holding") + " " + StructureWords.percent(hp)
+        }
+        if o.youPercent >= 99.5 && !showFull { return "Owned by you" }
+        return "Owned by you " + StructureWords.percent(o.youPercent)
+    }
+
+    /// The text with its first letter lowered, for use inside a line.
+    static func lowered(_ s: String) -> String { s.prefix(1).lowercased() + s.dropFirst() }
+
+    /// Who runs a company day to day: the manager, else whoever stands above, else "you".
+    static func runnerName(_ gm: GroupManagement?, companyID: Int) -> String {
+        guard let line = gm?.lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == companyID }) else { return "you" }
+        return line.runner?.name ?? line.above.first?.name ?? "you"
+    }
+
+    /// A location's own name without the brand ("Soho" for "Khan Shop Soho"); the city when the name is only the brand.
+    static func place(_ s: Chains.StoreLine, brand: String) -> String {
+        let prefix: String = brand + " "
+        if s.name.hasPrefix(prefix) && s.name.count > prefix.count { return String(s.name.dropFirst(prefix.count)) }
+        return s.cityName.isEmpty ? s.name : s.cityName
+    }
+}
+
+/// The chain's head office: the brand, who owns it, who runs it and what it provides to every location, apart from any one store.
 struct ChainHeadOffice: View {
+    @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var chainID: Int
 
     var body: some View {
         if let h = engine.chainHeadOffice(chainID: chainID) {
-            MoreBlock(h.title) {
+            let nodes: [StructureNode] = store.memo("structureTree") { (e: GameEngine) -> [StructureNode] in e.structureTree() } ?? []
+            let health: StructureNode.Health? = nodes.first(where: { (n: StructureNode) -> Bool in n.id == "chain:\(chainID)" })?.health
+            let head: Chains.StoreLine? = engine.chainSummary(id: chainID)?.stores.first
+            MoreBlock(title: h.title, card: true, trailing: { headPill(health) }) {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    if let head {
+                        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                            Text(ChainWords.ownerText(engine, companyID: head.id)).textStyle(.body, weight: .medium)
+                                .accessibilityIdentifier("chain-owner-line")
+                            Text("Head-office store: \(head.name)").textStyle(.caption, tint: Theme.inkFaint)
+                        }
+                    }
                     RateBar(label: "Value of the name", fraction: h.brandScore / 100)
                     VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                         line("CEO", h.ceoName ?? "None yet")
@@ -34,12 +74,133 @@ struct ChainHeadOffice: View {
         }
     }
 
+    @ViewBuilder private func headPill(_ health: StructureNode.Health?) -> some View {
+        if let health { StructureHealthPill(health: health) }
+    }
+
     private func line(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label).textStyle(.caption, tint: Theme.inkFaint)
             Spacer()
             Text(value).textStyle(.caption, tint: Theme.ink)
         }
+    }
+}
+
+/// One location of a chain as a card: its place, health, who manages it, what it earns and the one thing to do next; sell, close and its own
+/// rules sit behind the "More" menu. The surface is the caller's.
+struct ChainLocationCard: View {
+    var line: Chains.StoreLine
+    var place: String
+    var tradeID: String
+    var isHead: Bool
+    var health: StructureNode.Health?
+    var action: StructureNode.Action
+    var runnerName: String?
+    var runnerRole: String?
+    var runnerFace: String?
+    var profitText: String
+    var revenueText: String
+    var canLeave: Bool
+    var rulesOpen: Bool
+    var onRules: () -> Void
+    var onSell: () -> Void
+    var onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                ThumbnailView(kind: .trade, key: tradeID, size: 40, glyph: Glyph.home)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(spacing: Theme.Space.s) {
+                        Text(place).textStyle(.headline).lineLimit(1)
+                        if isHead { AcctPill(text: "Head office", tone: .neutral) }
+                    }
+                    Text(detail).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+                }
+                Spacer(minLength: Theme.Space.s)
+                if let health { StructureHealthPill(health: health) }
+            }
+            HStack(alignment: .center, spacing: Theme.Space.s) {
+                runner
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    Text(profitText + " a month").textStyle(.body, tint: line.profit < 0 ? Theme.loss : Theme.ink, numeric: true, weight: .medium)
+                    Text(revenueText + " revenue").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                }
+            }
+            HStack(spacing: Theme.Space.s) {
+                actionLink
+                Spacer(minLength: Theme.Space.s)
+                moreMenu
+            }
+        }
+    }
+
+    private var detail: String {
+        let status: String = line.status == .setup ? "setting up" : line.staff.peopleText
+        let rules: String = line.ownRules > 0 ? " \u{00B7} own rules" : ""
+        return line.cityName.isEmpty ? status + rules : line.cityName + " \u{00B7} " + status + rules
+    }
+
+    /// The manager's portrait and name, or "You run it" when nobody does.
+    @ViewBuilder private var runner: some View {
+        if let name = runnerName {
+            HStack(spacing: Theme.Space.s) {
+                StructureAvatar(name: name, role: runnerRole, face: runnerFace, size: 28)
+                Text(name).textStyle(.caption).lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+        } else {
+            HStack(spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: Glyph.person, size: Theme.Icon.small, tint: Theme.inkFaint)
+                Text("You run it").textStyle(.caption)
+            }
+        }
+    }
+
+    private var route: CompanyRoute {
+        if case .appointManager = action { return CompanyRoute.companyAt(line.id, .staff) }
+        return CompanyRoute.company(line.id)
+    }
+
+    private var actionTint: Color {
+        if case .fix = action { return Theme.loss }
+        return Theme.accent
+    }
+
+    private var actionLink: some View {
+        let title: String = StructureWords.actionTitle(action)
+        return NavigationLink(value: route) {
+            Text(title).textStyle(.caption, tint: actionTint, weight: .semibold)
+                .lineLimit(2).multilineTextAlignment(.leading)
+                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.s)
+                .frame(minHeight: 36)
+                .background(Capsule().fill(actionTint.opacity(0.14)))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel(title + ", " + line.name)
+        .accessibilityIdentifier("chain-location-\(line.id)")
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Button(rulesOpen ? "Hide this store's own rules" : "This store's own rules") { onRules() }
+            if canLeave {
+                Button("Sell as a going concern\u{2026}") { onSell() }
+                Button("Close this branch\u{2026}", role: .destructive) { onClose() }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("More for " + line.name)
+        .accessibilityIdentifier("chain-branch-\(line.id)")
     }
 }
 

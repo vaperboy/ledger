@@ -10,6 +10,8 @@ import Simulation
 struct HoldingBuyStakes: View {
     @EnvironmentObject var store: GameStore
     var holdingID: Int
+    /// An offer to open straight on ("c:<companyID>"), for "Buy more" on a stake row.
+    var startOfferID: String? = nil
     @State private var offerID: String?
     @State private var percent = 5.0
     @State private var pending: PendingAction?
@@ -24,6 +26,14 @@ struct HoldingBuyStakes: View {
         }
         .confirmAction($pending)
         .centerSheetTitle("Buy stakes")
+        .onAppear { openStartOffer() }
+    }
+
+    private func openStartOffer() {
+        guard offerID == nil, let id = startOfferID, let e = store.engine,
+              let o = e.holdingStakeOffers(holdingID: holdingID).first(where: { (x: HoldingStakes.Offer) -> Bool in x.id == id }) else { return }
+        percent = min(max(5, HoldingStakes.minimumPercent), max(HoldingStakes.minimumPercent, o.availablePercent))
+        offerID = o.id
     }
 
     @ViewBuilder private func content(_ e: GameEngine, _ h: Company) -> some View {

@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// One chain as a whole: what needs you, how the stores compare (each opens its company), who manages the chain and each city,
+/// One chain as a whole: its head office, what needs you, the locations as cards (each opens its company), who manages the chain and each city,
 /// the rules every store follows, its board, franchising, supply between your companies and growth. Opened from the Group tab and
 /// from a store's Chain section. Store-level work (staff, prices, stock) stays in each store; logic is in `Chains`, `ManagerModel`.
 struct ChainView: View {
@@ -16,8 +16,8 @@ struct ChainView: View {
     @State private var newName = ""
     @State private var part: ChainPart = .stores
 
-    /// The chain page in three sections: how it is doing, who runs it and by which rules, and how it grows.
-    enum ChainPart: String, CaseIterable, Hashable { case stores = "Stores", people = "Team and rules", growth = "Growth" }
+    /// The chain page in three sections: the head office and its locations, who manages them and by which rules, and how it grows.
+    enum ChainPart: String, CaseIterable, Hashable { case stores = "Locations", people = "Managers and rules", growth = "Growth" }
 
     @ViewBuilder private func partBody(_ p: ChainPart, _ e: GameEngine, _ sum: Chains.Summary, _ cur: Currency) -> some View {
         switch p {
@@ -247,7 +247,7 @@ struct ChainAttention: View {
     }
 }
 
-/// Every store side by side: sort, search, group by city, and open any store's company. Each store can take its own rules.
+/// Every location as a card: sort, search, group by city, and open any store's company. Each store can take its own rules.
 struct ChainStoreComparison: View {
     enum Sort: String, CaseIterable, Hashable { case profit = "Profit", revenue = "Revenue", city = "City", name = "Name" }
     @EnvironmentObject var store: GameStore
@@ -266,7 +266,7 @@ struct ChainStoreComparison: View {
     var body: some View {
         let all = sorted(summary.stores.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) || $0.cityName.localizedCaseInsensitiveContains(query) })
         let shown = showAll || query.count > 0 ? all : Array(all.prefix(pageSize))
-        MoreBlock(title: "Stores", card: false, trailing: { Text("\(summary.stores.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
+        MoreBlock(title: "Locations", card: false, trailing: { Text("\(summary.stores.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if summary.stores.count > 1 {
                     SegmentedPill(items: Sort.allCases, title: { $0.rawValue }, selection: $sort)
@@ -275,11 +275,11 @@ struct ChainStoreComparison: View {
                     Card(padding: Theme.Space.m, radius: Theme.Radius.table, fill: Theme.inset) {
                         HStack(spacing: Theme.Space.s) {
                             GlyphView(glyph: Glyph.search, size: 16, weight: 1.5, tint: Theme.ivoryFaint)
-                            TextField("Search stores or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14))
+                            TextField("Search locations or cities", text: $query).textFieldStyle(.plain).font(.system(size: 14))
                         }
                     }
                 }
-                if all.isEmpty { NoteCard(text: "No store matches.", glyph: Glyph.search) }
+                if all.isEmpty { NoteCard(text: "No location matches.", glyph: Glyph.search) }
                 if sort == .city {
                     let cities = Array(Set(shown.map { $0.cityName })).sorted()
                     ForEach(cities, id: \.self) { city in
@@ -295,7 +295,7 @@ struct ChainStoreComparison: View {
                     ForEach(shown) { (s: Chains.StoreLine) in row(s) }
                 }
                 if all.count > shown.count {
-                    QuietButton(title: "Show all \(all.count) stores") { showAll = true }
+                    QuietButton(title: "Show all \(all.count) locations") { showAll = true }
                 }
             }
             .orgArrivals(summary.stores.map { $0.id }, fresh: $freshStores)
@@ -304,23 +304,6 @@ struct ChainStoreComparison: View {
     }
 
     // MARK: A branch leaves the chain
-
-    /// Closing or selling one branch, behind a "…" menu; each asks first with a hold-to-confirm.
-    private func branchMenu(_ s: Chains.StoreLine) -> some View {
-        let id: Int = s.id
-        return Menu {
-            Button("Sell as a going concern\u{2026}") { askSell(id) }
-            Button("Close this branch\u{2026}", role: .destructive) { askClose(id) }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Theme.inkSoft)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .accessibilityLabel("Close or sell \(s.name)")
-        .accessibilityIdentifier("chain-branch-\(id)")
-    }
 
     private func askClose(_ id: Int) {
         guard let p = engine.branchClosurePlan(storeID: id) else { store.show("This store cannot be closed as a branch.", tone: "warn"); return }
@@ -350,12 +333,6 @@ struct ChainStoreComparison: View {
         }
     }
 
-    /// How far a store's monthly result is from the chain's best or worst, for the bar on its card.
-    private func profitShare(_ s: Chains.StoreLine) -> Double {
-        let peak: Double = summary.stores.map { abs($0.profit) }.max() ?? 0
-        return peak > 0 ? min(1, abs(s.profit) / peak) : 0
-    }
-
     private func sorted(_ l: [Chains.StoreLine]) -> [Chains.StoreLine] {
         switch sort {
         case .profit: return l.sorted { $0.profit > $1.profit }
@@ -366,36 +343,20 @@ struct ChainStoreComparison: View {
     }
 
     @ViewBuilder private func row(_ s: Chains.StoreLine) -> some View {
-        let status: String = s.status == .setup ? "setting up" : (s.managerName ?? "you run it")
-        let line: String = "\(s.cityName) · \(status) · \(s.staff.peopleText)" + (s.ownRules > 0 ? " · own rules" : "")
-        let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ivory
-        let rulesTitle: String = openRulesFor == s.id ? "Hide rules" : "Own rules"
+        let nodes: [StructureNode] = store.memo("structureTree") { (e: GameEngine) -> [StructureNode] in e.structureTree() } ?? []
+        let node: StructureNode? = nodes.first(where: { (n: StructureNode) -> Bool in n.id == "loc:\(s.id)" })
+        let person: Person? = node?.runnerPersonID.flatMap { (id: Int) -> Person? in engine.state.people[id] }
         let isNew: Bool = freshStores.contains(s.id)
+        let isHead: Bool = summary.stores.first?.id == s.id
         EntityCard {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(alignment: .top, spacing: Theme.Space.m) {
-                    NavigationLink(value: CompanyRoute.company(s.id)) {
-                        HStack(spacing: Theme.Space.m) {
-                            ThumbnailView(kind: .trade, key: summary.tradeID, size: 34, glyph: Glyph.home)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(s.name).textStyle(.body, tint: Theme.ink, weight: .medium).lineLimit(1)
-                                Text(line).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
-                            }
-                            Spacer(minLength: 6)
-                            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                                Text(currency.tidyShort(s.profit)).textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
-                                Text(currency.tidyShort(s.revenue) + " rev").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
-                            }
-                            MoreChevron()
-                        }.contentShape(Rectangle())
-                    }.buttonStyle(PressableStyle())
-                }
-                RateBar(label: s.profit < 0 ? "Loss vs best" : "Profit vs best", fraction: profitShare(s), tint: s.profit < 0 ? Theme.loss : Theme.gold)
-                HStack {
-                    Button(rulesTitle) { openRulesFor = openRulesFor == s.id ? nil : s.id }.buttonStyle(TertiaryButtonStyle(size: .compact))
-                    Spacer()
-                    if engine.isBranch(companyID: s.id) { branchMenu(s) }
-                }
+                ChainLocationCard(line: s, place: ChainWords.place(s, brand: summary.name), tradeID: summary.tradeID, isHead: isHead,
+                                  health: node?.health, action: node?.primaryAction ?? .open,
+                                  runnerName: node?.runnerName ?? s.managerName, runnerRole: person?.role, runnerFace: person?.faceKey,
+                                  profitText: currency.tidyShort(s.profit), revenueText: currency.tidyShort(s.revenue),
+                                  canLeave: engine.isBranch(companyID: s.id), rulesOpen: openRulesFor == s.id,
+                                  onRules: { openRulesFor = openRulesFor == s.id ? nil : s.id },
+                                  onSell: { askSell(s.id) }, onClose: { askClose(s.id) })
                 if openRulesFor == s.id { StoreRules(engine: engine, storeID: s.id) }
             }
         }

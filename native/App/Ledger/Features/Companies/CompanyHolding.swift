@@ -36,6 +36,8 @@ struct CompanyHolding: View {
         }
         let divisions: [Company] = allDivisions(o)
         let free = engine.companiesForHolding
+        let nodes: [StructureNode] = store.memo("structureTree") { (e: GameEngine) -> [StructureNode] in e.structureTree() } ?? []
+        let offerIDs: Set<String> = Set(engine.holdingStakeOffers(holdingID: company.id).map { (x: HoldingStakes.Offer) -> String in x.id })
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if let o {
                 // The holding's value is the hero; the consolidated figures follow in one strip.
@@ -57,17 +59,12 @@ struct CompanyHolding: View {
             CompanyTeamRoster(engine: engine, company: company)
             if let o {
                 MoreBlock(title: "Stakes held", card: false, trailing: { Text("\(o.subsidiaries.count + rivalStakes.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
-                    VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: Theme.Space.l) {
                         if o.subsidiaries.isEmpty && rivalStakes.isEmpty {
                             EmptyState(glyph: Glyph.group, title: "No stakes yet", message: "Put your companies under the holding or buy shares of other companies. Dividends into a holding are taxed far lower.", centered: false)
                         }
-                        ForEach(Array(o.subsidiaries.enumerated()), id: \.element.id) { (n: Int, k: HoldingModel.Subsidiary) in
-                            if n > 0 { Hairline().padding(.leading, 40 + Theme.Space.m) }
-                            heldCard(k, cur)
-                        }
-                        ForEach(Array(rivalStakes.enumerated()), id: \.element.id) { (n: Int, r: HoldingStakes.RivalStake) in
-                            if n > 0 || !o.subsidiaries.isEmpty { Hairline().padding(.leading, 40 + Theme.Space.m) }
-                            rivalCard(r, cur)
+                        ForEach(HoldingStakeGroup.allCases) { (g: HoldingStakeGroup) in
+                            stakeGroup(g, o, rivalStakes, nodes, offerIDs, cur)
                         }
                     }
                 }
@@ -122,6 +119,7 @@ struct CompanyHolding: View {
         case .merge(let id): HoldingMergeSheet(holdingID: company.id, companyID: id).environmentObject(store)
         case .division(let id): HoldingDivisionSheet(holdingID: company.id, companyID: id).environmentObject(store)
         case .talk(let id): HoldingTalkSheet(holdingID: company.id, companyID: id).environmentObject(store)
+        case .buy(let offer): HoldingBuyStakes(holdingID: company.id, startOfferID: offer).environmentObject(store)
         }
     }
 
@@ -145,51 +143,74 @@ struct CompanyHolding: View {
         .accessibilityIdentifier("holding-division-\(id)")
     }
 
-    /// One stake in a company: tier and percent under the name, its share of the value at the right; the row's menu holds what can be done with it.
-    private func heldCard(_ k: HoldingModel.Subsidiary, _ cur: Currency) -> some View {
+    /// The stakes of one tier (controlled, big, small) under their heading: your companies first, then stakes in other businesses.
+    @ViewBuilder private func stakeGroup(_ g: HoldingStakeGroup, _ o: HoldingModel.Consolidated, _ rivalStakes: [HoldingStakes.RivalStake],
+                                         _ nodes: [StructureNode], _ offerIDs: Set<String>, _ cur: Currency) -> some View {
+        let subs: [HoldingModel.Subsidiary] = o.subsidiaries.filter { (k: HoldingModel.Subsidiary) -> Bool in HoldingStakeGroup.of(percent: k.ownership) == g }
+        let rivals: [HoldingStakes.RivalStake] = rivalStakes.filter { (r: HoldingStakes.RivalStake) -> Bool in HoldingStakeGroup.of(percent: r.percent) == g }
+        if !subs.isEmpty || !rivals.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text(g.title + " \u{00B7} " + g.range).textStyle(.label, tint: Theme.inkFaint)
+                VStack(spacing: 0) {
+                    ForEach(Array(subs.enumerated()), id: \.element.id) { (n: Int, k: HoldingModel.Subsidiary) in
+                        if n > 0 { Hairline() }
+                        heldCard(k, g, cur, nodes, offerIDs)
+                    }
+                    ForEach(Array(rivals.enumerated()), id: \.element.id) { (n: Int, r: HoldingStakes.RivalStake) in
+                        if n > 0 || !subs.isEmpty { Hairline() }
+                        rivalCard(r, g, cur, offerIDs)
+                    }
+                }
+            }
+        }
+    }
+
+    /// One stake in one of your companies: who runs it and how it is doing, its share of the value, one main action and the rest under "More".
+    private func heldCard(_ k: HoldingModel.Subsidiary, _ g: HoldingStakeGroup, _ cur: Currency, _ nodes: [StructureNode], _ offerIDs: Set<String>) -> some View {
         let seatedIDs: Set<Int> = Set(engine.holdingSeatedCompanies(holdingID: company.id).map { (c: Company) -> Int in c.id })
-        let tier: HoldingStakes.Tier = HoldingStakes.tier(forPercent: k.ownership)
         let tax: String = k.inTaxGroup ? " \u{00B7} tax group" : ""
-        let line: String = "\(holdingPct((k.ownership * 10).rounded() / 10)) \u{00B7} \(tier.title)\(tax)"
+        let line: String = "\(holdingPct((k.ownership * 10).rounded() / 10)) \u{00B7} \(g.word)\(tax)"
         let id: Int = k.id
         let name: String = k.name
         let seat: HoldingStakes.SeatStatus = engine.holdingBoardSeat(holdingID: company.id, companyID: id)
         let seated: Bool = seatedIDs.contains(id)
         let hasDivisions: Bool = !engine.holdingDivisions(hostID: id).isEmpty
         let canMerge: Bool = k.ownership > HoldingStakes.controlAbove && engine.holdingMergeTerms(holdingID: company.id, companyID: id).allowed
-        return Menu {
-            Button("Open \(name)") { store.openCompany(id) }
+        let canBuy: Bool = k.ownership < 99.9 && offerIDs.contains("c:\(id)")
+        let node: StructureNode? = nodes.first(where: { (n: StructureNode) -> Bool in n.companyID == id })
+        let person: Person? = node?.runnerPersonID.flatMap { (pid: Int) -> Person? in engine.state.people[pid] }
+        let primarySeat: Bool = seat.canTake
+        let primaryBuy: Bool = !primarySeat && canBuy
+        let primaryTitle: String = primarySeat ? "Take a board seat" : (primaryBuy ? "Buy more" : "Open")
+        return HoldingStakeRow(tradeKey: k.trade, title: name, subtitle: line, value: cur.tidyShort(k.share), valueNote: "profit " + cur.tidyShort(k.profitTTM),
+                               showRunner: true, runnerName: node?.runnerName, runnerRole: person?.role, runnerFace: person?.faceKey, health: node?.health,
+                               primary: primaryTitle, key: "held-\(id)",
+                               onPrimary: {
+                                   if primarySeat { takeSeat(id, name) } else if primaryBuy { stakeSheet = .buy("c:\(id)") } else { store.openCompany(id) }
+                               }) {
+            if primarySeat || primaryBuy { Button("Open \(name)") { store.openCompany(id) } }
+            if canBuy && !primaryBuy { Button("Buy more\u{2026}") { stakeSheet = .buy("c:\(id)") } }
             if seat.hasSeat { Button("Board round and vote\u{2026}") { stakeSheet = .board(id) } }
             if seated { Button("Talk to the people\u{2026}") { stakeSheet = .talk(id) } }
-            if seat.canTake { Button("Take a board seat") { takeSeat(id, name) } }
             if seat.hasSeat && seat.reason.isEmpty { Button("Leave the board seat") { leaveSeat(id, name) } }
-            Button("Sell part\u{2026}") { stakeSheet = .sell(id) }
-            if canMerge { Button("Merge into the holding\u{2026}") { stakeSheet = .merge(id) } }
-            if k.ownership >= 99.9 && !hasDivisions { Button("Make it a division\u{2026}") { stakeSheet = .division(id) } }
-            if !hasDivisions { Button("Release to me\u{2026}", role: .destructive) { askRelease(id, name) } }
-        } label: {
-            LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: k.trade, glyph: Glyph.home)), title: name, subtitle: line,
-                      value: cur.tidyShort(k.share), valueNote: "profit " + cur.tidyShort(k.profitTTM), chevron: true)
-                .contentShape(Rectangle())
+            Button("Sell some shares\u{2026}") { stakeSheet = .sell(id) }
+            if canMerge { Button("Buy out the other owners and merge\u{2026}") { stakeSheet = .merge(id) } }
+            if k.ownership >= 99.9 && !hasDivisions { Button("Fold it into the holding as a division\u{2026}") { stakeSheet = .division(id) } }
+            if !hasDivisions { Button("Take it back to me\u{2026}", role: .destructive) { askRelease(id, name) } }
         }
-        .menuStyle(.button)
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("holding-held-\(id)")
     }
 
-    /// A stake in another business: its share of the value, with sale as the only action.
-    private func rivalCard(_ r: HoldingStakes.RivalStake, _ cur: Currency) -> some View {
+    /// A stake in another business: its share of the value, buying more as the main action (selling when nothing more is for sale).
+    private func rivalCard(_ r: HoldingStakes.RivalStake, _ g: HoldingStakeGroup, _ cur: Currency, _ offerIDs: Set<String>) -> some View {
         let id: Int = r.id
-        return Menu {
-            Button("Sell part\u{2026}") { stakeSheet = .sellRival(id) }
-        } label: {
-            LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: r.key, glyph: Glyph.home)), title: r.name,
-                      subtitle: "\(holdingPct((r.percent * 10).rounded() / 10)) \u{00B7} \(r.tier.title)", value: cur.tidyShort(r.share), valueNote: "paid " + cur.tidyShort(r.paid), chevron: true)
-                .contentShape(Rectangle())
+        let canBuy: Bool = offerIDs.contains("r:\(id)")
+        return HoldingStakeRow(tradeKey: r.key, title: r.name, subtitle: "\(holdingPct((r.percent * 10).rounded() / 10)) \u{00B7} \(g.word)",
+                               value: cur.tidyShort(r.share), valueNote: "paid " + cur.tidyShort(r.paid),
+                               showRunner: false, runnerName: nil, runnerRole: nil, runnerFace: nil, health: nil,
+                               primary: canBuy ? "Buy more" : "Sell some shares", key: "rival-\(id)",
+                               onPrimary: { stakeSheet = canBuy ? HoldingStakeSheet.buy("r:\(id)") : HoldingStakeSheet.sellRival(id) }) {
+            if canBuy { Button("Sell some shares\u{2026}") { stakeSheet = .sellRival(id) } }
         }
-        .menuStyle(.button)
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("holding-rival-\(id)")
     }
 
     private func takeSeat(_ id: Int, _ name: String) {
@@ -203,7 +224,7 @@ struct CompanyHolding: View {
     }
 
     private func askRelease(_ id: Int, _ name: String) {
-        pending = PendingAction(title: "Release \(name)?", message: "The holding's shares in it come back to you at no price and are owned by you directly again. It drops out of the tax group, and dividends to you are taxed at the normal rate.", button: "Release", destructive: true) {
+        pending = PendingAction(title: "Take \(name) back to you?", message: "The holding's shares in it come back to you at no price and are owned by you directly again. It drops out of the tax group, and dividends to you are taxed at the normal rate.", button: "Take it back", destructive: true) {
             // Shares moved under the holding and shares it bought are released separately; either counts.
             let ok: Bool = store.act { (e: inout GameEngine) -> Bool in
                 let moved: Bool = e.state.company(id)?.holdingID == company.id && e.releaseFromHolding(companyID: id)

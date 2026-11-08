@@ -123,6 +123,7 @@ struct GrowIntoChain: View {
 /// This store's place in its chain: the chain at a glance with a way to the chain page, how this store compares, its own rules and
 /// what it owes sister stores. Chain-wide work (rules, all stores, chain posts, new stores) lives on the chain page.
 struct StoreInChainCard: View {
+    @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
     var summary: Chains.Summary
@@ -134,6 +135,7 @@ struct StoreInChainCard: View {
         let owed = engine.groupLoanBalance(companyID: company.id)
         let mine: Double = summary.stores.first { $0.id == company.id }?.profit ?? 0
         MoreBlock(title: "Store of \(summary.name)", card: false, trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").textStyle(.caption, tint: Theme.inkFaint) }) {
+            placeLine
             NavigationLink { ChainView(chainID: summary.id) } label: {
                 CardRow(glyph: Glyph.group, title: "Open the chain", subtitle: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
                         value: cur.tidyShort(summary.profit) + " / mo", valueTint: summary.profit < 0 ? Theme.loss : Theme.ivory)
@@ -142,6 +144,21 @@ struct StoreInChainCard: View {
                 standing(rank: rank, mine: mine, owed: owed, cur: cur)
             }
             EntityCard { StoreRules(engine: engine, storeID: company.id) }
+        }
+    }
+
+    /// "Branch 2 of 5 of Khan Shop, run by Maria Lopez, owned by you": where this store sits, who runs it and who owns it.
+    @ViewBuilder private var placeLine: some View {
+        if let pos = engine.branchParent(companyID: company.id) {
+            let gm: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
+            let place: String = pos.index == 1 ? "Head-office store of " + summary.name : "Branch \(pos.index) of \(pos.count) of " + summary.name
+            let runner: String = ChainWords.runnerName(gm, companyID: company.id)
+            let owner: String = ChainWords.lowered(ChainWords.ownerText(engine, companyID: company.id))
+            Text(place + ", run by " + runner + ", " + owner)
+                .textStyle(.caption, tint: Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, Theme.Space.xxs)
+                .accessibilityIdentifier("store-chain-place")
         }
     }
 
