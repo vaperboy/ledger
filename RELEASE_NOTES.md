@@ -1,4 +1,5 @@
 # What's new
+- Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists
 - Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
 - Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
 - Equipment opens straight into one structured list, showing machines, vehicles and software only where the business uses them
