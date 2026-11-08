@@ -646,7 +646,7 @@ public enum HoldingStakes {
     }
 
     /// A company that is sold pays its price to every holding in proportion to the shares it holds as a stake (your own share is paid by the sale).
-    static func settleSale(_ s: inout GameState, company c: Company, price: Double) {
+    public static func settleSale(_ s: inout GameState, company c: Company, price: Double) {
         for l in c.value("holders").array where l["hid"].int != 0 {
             let amt = jsRound(price * l["pct"].double / 100)
             guard amt > 0, let hi = s.companyIndex(l["hid"].int), s.companies[hi].status.isLive else { continue }
