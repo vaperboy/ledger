@@ -17,6 +17,9 @@ final class IntegrationBalanceTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 100_000_000) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
+        // items, prices and research are only for an open company, and licences take a while
+        var extra = 0
+        while e.state.company(id)?.status != .open, extra < 40 { e.week(); extra += 1 }
         return (e, id)
     }
 
@@ -77,7 +80,7 @@ final class IntegrationBalanceTests: XCTestCase {
     /// read off the same live state; the average once the ramp is in (weeks 5 to 8) matches the estimate shown before adding (the trade, season and
     /// awareness move the level a little over 8 weeks, hence the tolerance).
     func testEightWeekRunAfterAddingAnItemMatchesTheEstimate() throws {
-        var (e, id) = try engine(weeks: 52)   // past the first-year demand ramp and its capacity squeeze: demand is level
+        var (e, id) = try engine(weeks: 70)   // well past the first-year demand boost (by company age) and its capacity squeeze: demand is level
         try giveAdvisorDuty(&e, id)
         let opt = try XCTUnwrap(e.newItemOptions(companyID: id, isService: false).options.first { !$0.needsDevelopment })
         let estimate = try XCTUnwrap(opt.profitChange)

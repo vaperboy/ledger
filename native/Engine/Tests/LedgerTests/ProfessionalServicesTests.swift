@@ -109,7 +109,9 @@ final class ProfessionalServicesTests: XCTestCase {
             let planned = try XCTUnwrap(ProfessionalServices.specs[t]).plannedUtilisation
             e.update { s, _, _ in
                 if let i = s.companyIndex(id) {
-                    var lw = s.companies[i].value("lastW"); lw["util"] = .number(planned); lw["cap"] = .number(max(1, lw["cap"].double)); s.companies[i].set("lastW", lw)
+                    var lw = s.companies[i].value("lastW"); lw["util"] = .number(planned); lw["cap"] = .number(max(1, lw["cap"].double))
+                    // whole daily sales can leave a young firm with no sold units yet: the steady week carries units too
+                    lw["units"] = .number(planned * lw["cap"].double); s.companies[i].set("lastW", lw)
                 }
             }
             let it = try XCTUnwrap(e.salesItems(companyID: id).first { $0.name != "Prints and albums" })

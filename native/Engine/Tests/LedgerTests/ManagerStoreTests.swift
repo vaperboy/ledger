@@ -13,6 +13,10 @@ final class ManagerStoreTests: XCTestCase {
         guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.2), .ok)
+        // prices are only set on an open company, and licences take a while
+        var days = 0
+        while e.state.company(id)?.status != .open, days < 300 { _ = e.nextDay(); days += 1 }
+        XCTAssertEqual(e.state.company(id)?.status, .open, "the cafe should have opened")
         return (e, id)
     }
 

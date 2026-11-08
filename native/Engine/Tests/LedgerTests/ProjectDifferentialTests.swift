@@ -16,6 +16,9 @@ final class ProjectDifferentialTests: XCTestCase {
         // Intended difference, not a regression: the Swift game has named, living rivals (strategy, fortune) whose strength moves the
         // "rivals" part of demand (Rivals.strengthFactor, 0.88...1.1). The original has no such factor, so compare without the rivals list.
         if var mk = s.rest["mk"] { for k in mk.object.keys { mk[k]["riv"] = .array([]) }; s.rest["mk"] = mk }
+        // Intended difference: the first-year demand boost follows each company's age here and the game week in the original (week 58 of the save:
+        // past the boost), so the golden companies are aged to match.
+        for i in s.companies.indices { s.companies[i].openedWeek = 0 }
         s.useOriginalInflation()   // see GameState.useOriginalInflation
         s.economy.policyRate = 0.04   // likewise the mild credit factor on rate-sensitive trades (Demand.creditFactor, neutral at 4%); construction is one
         return World(state: s, countries: try CountryBook.bundled(realCityMarket: false), catalog: try TradeCatalog.bundled(), balance: try Balance.bundled())
