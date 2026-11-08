@@ -50,12 +50,18 @@ struct ConfettiPiece: Equatable {
 /// removes itself. Does not take touches.
 struct ConfettiBurst: View {
     var count: Int = 46
+    /// Gold pieces only (the full-screen celebration); the default mixes in white and green.
+    var goldOnly: Bool = false
+    /// Where the burst starts as a fraction of the height; nil keeps the top-middle origin.
+    var originFraction: CGFloat? = nil
     @State private var start: Date = Date()
     @State private var finished = false
     private let pieces: [ConfettiPiece]
 
-    init(count: Int = 46) {
+    init(count: Int = 46, goldOnly: Bool = false, originFraction: CGFloat? = nil) {
         self.count = count
+        self.goldOnly = goldOnly
+        self.originFraction = originFraction
         self.pieces = ConfettiPiece.make(count: count)
     }
 
@@ -78,9 +84,10 @@ struct ConfettiBurst: View {
 
     private func canvas(elapsed: Double) -> some View {
         let list: [ConfettiPiece] = pieces
-        let colors: [Color] = [Theme.gold, Theme.goldDeep, Color.white, Theme.gain]
+        let colors: [Color] = goldOnly ? [Theme.gold, Theme.goldDeep, Theme.gold, Theme.goldDeep] : [Theme.gold, Theme.goldDeep, Color.white, Theme.gain]
+        let fraction: CGFloat? = originFraction
         return Canvas { (ctx: inout GraphicsContext, size: CGSize) in
-            let origin = CGPoint(x: size.width / 2, y: 24)
+            let origin = CGPoint(x: size.width / 2, y: fraction.map { $0 * size.height } ?? 24)
             for piece in list {
                 ConfettiBurst.draw(piece, in: &ctx, origin: origin, t: elapsed, color: colors[piece.palette % colors.count])
             }
@@ -151,5 +158,80 @@ struct ClaimButton: View {
         .scaleEffect(breathe && !reduceMotion ? 1.03 : 1)
         .animation(reduceMotion ? nil : Motion.pulseAnimation, value: breathe)
         .onAppear { breathe = true }
+    }
+}
+
+/// The full-screen moment for a trophy or a net-worth milestone (about 2 s): a dim backdrop, gold confetti, the art large in a gold
+/// ring, the title, a reward that rolls up and a success haptic when the ring lands. The caller shows the plain card under Reduce Motion.
+struct FullScreenCelebration<Badge: View>: View {
+    var kicker: String
+    var title: String
+    var detail: String
+    var reward: String
+    var onClaim: () -> Void
+    @ViewBuilder var badge: () -> Badge
+    @State private var ringShown = false
+    @State private var textShown = false
+    @State private var claimShown = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.82).ignoresSafeArea().contentShape(Rectangle())
+            ConfettiBurst(count: 110, goldOnly: true, originFraction: 0.42).ignoresSafeArea()
+            VStack(spacing: Theme.Space.l) {
+                Text(kicker).font(.footnote.weight(.semibold)).textCase(.uppercase).tracking(1.2).foregroundStyle(Theme.gold)
+                    .opacity(textShown ? 1 : 0)
+                badge()
+                    .scaleEffect(ringShown ? 1 : 0.6).opacity(ringShown ? 1 : 0)
+                Text(title).font(.system(.title, design: .serif, weight: .semibold)).foregroundStyle(Color.white)
+                    .multilineTextAlignment(.center).opacity(textShown ? 1 : 0)
+                if !detail.isEmpty {
+                    Text(detail).font(.subheadline).foregroundStyle(Color.white.opacity(0.75))
+                        .multilineTextAlignment(.center).opacity(textShown ? 1 : 0)
+                }
+                rewardView.opacity(textShown ? 1 : 0)
+                ClaimButton(title: "Claim", identifier: "celebration-dismiss", action: onClaim)
+                    .padding(.top, Theme.Space.s).opacity(claimShown ? 1 : 0).allowsHitTesting(claimShown)
+            }
+            .padding(.horizontal, Theme.Space.page)
+            .frame(maxWidth: 420)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+        .task {
+            Motion.animate(Motion.moveAnimation) { ringShown = true }
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            Haptics.play(.success)
+            Motion.animate(Motion.revealAnimation) { textShown = true }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            Motion.animate(Motion.quickAnimation) { claimShown = true }
+        }
+    }
+
+    /// The reward line; its first whole number counts up from 0 (CountedFigure), anything else shows as written.
+    @ViewBuilder private var rewardView: some View {
+        if reward.isEmpty {
+            EmptyView()
+        } else if let parts = FullScreenCelebration.rollParts(reward) {
+            CountedFigure(value: parts.value, format: { (v: Double) -> String in parts.prefix + Int(v.rounded()).formatted() + parts.suffix },
+                          tint: Theme.gold, duration: 0.9, delay: 0.5)
+                .font(.system(size: 30, weight: .semibold, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.6)
+        } else {
+            Text(reward).font(.system(size: 22, weight: .semibold, design: .rounded)).foregroundStyle(Theme.gold)
+        }
+    }
+
+    /// Splits "+25 legacy points" into "+", 25 and " legacy points"; nil when there is no whole number to roll.
+    static func rollParts(_ text: String) -> (prefix: String, value: Double, suffix: String)? {
+        let chars: [Character] = Array(text)
+        guard let start = chars.firstIndex(where: { $0.isNumber }) else { return nil }
+        var end: Int = start
+        while end < chars.count, chars[end].isNumber || chars[end] == "," || chars[end] == "." { end += 1 }
+        while end > start, !chars[end - 1].isNumber { end -= 1 }
+        let digits: String = String(chars[start..<end]).replacingOccurrences(of: ",", with: "")
+        guard !digits.contains("."), let v = Double(digits) else { return nil }
+        return (String(chars[..<start]), v, String(chars[end...]))
     }
 }

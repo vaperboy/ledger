@@ -313,7 +313,7 @@ struct WeekReportShell<More: View>: View {
         if reduceMotion {
             titleShown = true; numberShown = true; bars = [1, 1, 1]; strip = true; storyShown = true; cardShown = true; trophyShown = true
             Haptics.countDone()
-            if made?.record != nil { Haptics.goalDone() }
+            if made?.record != nil { Haptics.goalDone(); SoundCues.play(.record) }
             return
         }
         try? await Task.sleep(nanoseconds: 30_000_000)
@@ -332,6 +332,7 @@ struct WeekReportShell<More: View>: View {
         guard made?.record != nil else { return }
         try? await Task.sleep(nanoseconds: 1_100_000_000)
         Haptics.goalDone()
+        SoundCues.play(.record)
         Motion.animate(Motion.move(false)) { trophyShown = true }
         burst = 1
         try? await Task.sleep(nanoseconds: 60_000_000)

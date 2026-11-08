@@ -108,6 +108,7 @@ struct UnlockPopup: View {
         .centerSheetLocked()
         .onAppear {
             Motion.animate(Motion.moveAnimation) { shown = true }
+            SoundCues.play(.unlock)
         }
     }
 

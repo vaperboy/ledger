@@ -118,9 +118,18 @@ struct CelebrationPopup: View {
     /// Goal complete: after `celebrate` (1.5 s) the card slides up and out with `move`.
     @State private var leaving = false
 
+    /// A trophy or a net-worth milestone fills the screen; Reduce Motion keeps the card.
+    private var fullScreen: Bool { !reduceMotion && (item.kind == "trophy" || (item.kind == "milestone" && item.art == "milestone.networth")) }
+
     var body: some View {
-        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, category: .compact, tone: .investment, icon: "trophy", onClose: { }) {
-            card
+        Group {
+            if fullScreen {
+                FullScreenCelebration(kicker: kindLabel, title: item.title, detail: item.detail, reward: item.reward, onClaim: { dismiss() }) { badge }
+            } else {
+                GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, category: .compact, tone: .investment, icon: "trophy", onClose: { }) {
+                    card
+                }
+            }
         }
         .offset(y: leaving ? -900 : 0)
         .onAppear {
@@ -187,12 +196,12 @@ struct CelebrationPopup: View {
                 .overlay(Circle().strokeBorder(Theme.gain, lineWidth: 2))
                 .accessibilityHidden(true)
         } else if let entry = trophyEntry {
-            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: entry.id, group: entry.group), size: 112, shape: .round, glyph: Glyph.achievements)
+            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: entry.id, group: entry.group), size: fullScreen ? 168 : 112, shape: .round, glyph: Glyph.achievements)
                 .padding(6)
-                .overlay(Circle().strokeBorder(Theme.gold, lineWidth: 3))
+                .overlay(Circle().strokeBorder(Theme.gold, lineWidth: fullScreen ? 5 : 3))
                 .padding(8)
         } else {
-            GoldRingMark(glyph: Glyph.achievements, size: item.kind == "trophy" ? 96 : 64)
+            GoldRingMark(glyph: Glyph.achievements, size: fullScreen ? 150 : (item.kind == "trophy" ? 96 : 64))
         }
     }
 

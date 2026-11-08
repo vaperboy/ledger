@@ -336,6 +336,24 @@ final class GameStore: ObservableObject {
         do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
     }
 
+    /// Whether the run that ended can be started again with the same country, trade and names (the new-player start needs a company to copy).
+    var canRetrySameSetup: Bool {
+        guard let s = engine?.state else { return false }
+        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
+        return story != .fresh || s.companies.contains(where: { (c: Company) -> Bool in c.type != "hold" })
+    }
+
+    /// Starts a new game with the same country, trade, company name and player name as the current run, going straight in.
+    func retryWithSameSetup() {
+        guard let s = engine?.state else { return }
+        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
+        if story == .fresh, let c = s.companies.first(where: { (c: Company) -> Bool in c.type != "hold" }) {
+            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name)
+        } else if story != .fresh {
+            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: story)
+        }
+    }
+
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
     func importLegacy(text: String) {
         guard let saves else { return }
@@ -390,14 +408,15 @@ final class GameStore: ObservableObject {
         let out = e.nextDay()
         let today: Int = GameStore.calendarDay()
         e.update { s, _, _ in PlayStreak.record(&s, today: today) }
-        // Only a finished ladder goal celebrates; trophies, milestones and daily missions are taken and dropped.
-        let celebrations: [Celebration] = e.takeCelebrations().filter { $0.kind == "goal" }
-        if !celebrations.isEmpty { Haptics.goalDone() }
-        if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning() }
+        // Goals, milestones and trophies all queue for the celebration popup (one shown at a time).
+        let celebrations: [Celebration] = e.takeCelebrations()
+        if !celebrations.isEmpty { Haptics.goalDone(); SoundCues.play(.goal) }
+        if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning(); SoundCues.play(.warning) }
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
         if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
+        SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
@@ -453,11 +472,10 @@ final class GameStore: ObservableObject {
         ambitionPrompt = e.ambitionPromptPending
         if reportSheet == nil { reportSheet = e.pendingReportDigest() }
         let taken: [Celebration] = e.takeCelebrations()
-        let waiting: [Celebration] = taken.filter { $0.kind == "goal" }
         if !taken.isEmpty {
             engine = e
             save()
-            celebrationQueue.append(contentsOf: waiting)
+            celebrationQueue.append(contentsOf: taken)
         }
         queueUnlocks()
     }
@@ -605,6 +623,7 @@ final class GameStore: ObservableObject {
         let c: OutcomeCapture = outcomeCapture ?? OutcomeCapture()
         outcomeCapture = outer
         guard !c.refused, !c.told else { return }
+        SoundCues.play(.paymentOut)
         outcome(chosen: action.button, result: c.lines.joined(separator: "\n"))
     }
 

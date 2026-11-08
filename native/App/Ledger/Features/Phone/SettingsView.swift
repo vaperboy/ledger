@@ -12,6 +12,7 @@ struct SettingsView: View {
     @Environment(Entitlements.self) private var ent
     @Environment(AdCoordinator.self) private var ads
     @State private var haptics = Haptics.enabled
+    @State private var sounds = SoundCues.enabled
     @State private var reminders: Bool = Reminders.enabled
     @State private var showImporter = false
     @State private var showPaste = false
@@ -39,6 +40,7 @@ struct SettingsView: View {
         .modifier(SettingsBackdrop(embedded: embedded))
         .onChange(of: askStep) { _, v in ConfirmThreshold.step = v; store.saved("asking before spending: " + askLabel(v).lowercased()) }
         .onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) }
+        .onChange(of: sounds) { _, v in SoundCues.enabled = v; store.saved("sounds " + (v ? "on" : "off")) }
         .onChange(of: reminders) { _, v in Reminders.enabled = v; store.saved("reminders " + (v ? "on" : "off")) }
         .confirmAction($pending)
         .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
@@ -66,6 +68,8 @@ struct SettingsView: View {
     private var feelGroup: some View {
         group("Feel") {
             toggleRow(Glyph.phone, "Haptic feedback", isOn: $haptics)
+            rule
+            toggleRow(Glyph.phone, "Sounds", detail: "Short cues, silent when the ringer is muted", isOn: $sounds)
             rule
             toggleRow(Glyph.phone, "Reminders", isOn: $reminders)
             rule
