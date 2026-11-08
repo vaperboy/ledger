@@ -1,4 +1,5 @@
 # What's new
+- Hiring starts simple (offer the going rate, below or above) and the perks, promises and expenses unlock with five staff or a manager; settings show sole trader and limited company side by side at your current profit
 - The daily report is a one-line bar on Home instead of a blocking popup, and Stats has one ledger that answers why money moved, with search and filters, plus Goals and Reports as pages
 - Pricing: each trade has its own price sensitivity with a market reference that follows quality and rivals; the price popup shows how far you are from the market and a one-line forecast
 - Chain page leads with a head office and location cards (manager, health, one action), holding stakes are grouped by size with one clear button each, and every company shows who it belongs to and who runs it
