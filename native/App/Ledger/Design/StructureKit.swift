@@ -8,7 +8,7 @@ import Simulation
 
 /// The words and marks the Structure screen puts on a node.
 enum StructureWords {
-    static func percent(_ p: Double) -> String { "\(Int(p.rounded()))%" }
+    static func percent(_ p: Double) -> String { "\(Int(saturating: p.rounded()))%" }
 
     /// "You 100%", or "Holding 82% \u{00B7} Controlled (over 50%)" for a company a holding owns.
     static func ownership(_ n: StructureNode) -> String {
@@ -48,7 +48,7 @@ enum StructureWords {
     }
 
     static func change(_ c: Double) -> String {
-        let size: String = "\(Int((abs(c) * 100).rounded()))%"
+        let size: String = "\(Int(saturating: (abs(c) * 100).rounded()))%"
         return (c >= 0 ? "\u{25B2} " : "\u{25BC} ") + size
     }
 }
@@ -103,7 +103,7 @@ struct StructureSplitBar: View {
         .frame(height: 8)
         .clipShape(Capsule())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Control \(Int((control * 100).rounded())) percent, influence \(Int((influence * 100).rounded())) percent, passive \(Int((passive * 100).rounded())) percent")
+        .accessibilityLabel("Control \(Int(saturating: (control * 100).rounded())) percent, influence \(Int(saturating: (influence * 100).rounded())) percent, passive \(Int(saturating: (passive * 100).rounded())) percent")
     }
 
     @ViewBuilder private func segment(_ part: Double, _ tint: Color, _ width: CGFloat, _ total: Double) -> some View {

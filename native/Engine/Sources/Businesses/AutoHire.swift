@@ -87,7 +87,7 @@ public enum AutoHire {
     static func perceivedSkill(_ p: Person, _ h: Hirer) -> Double { p.skill + (p.claimedSkill - p.skill) * (1 - h.reading) }
 
     /// How many of `n` candidates get weighed.
-    static func weighed(_ n: Int, _ h: Hirer) -> Int { min(n, max(1, Int((Double(n) * lerp(tables.weigh, h.breadth)).rounded(.up)))) }
+    static func weighed(_ n: Int, _ h: Hirer) -> Int { min(n, max(1, Int(saturating: (Double(n) * lerp(tables.weigh, h.breadth)).rounded(.up)))) }
 
     /// Weigh the candidates, bargain with each in turn as a player would, and return the best deal: the most perceived skill for the money among
     /// the ones who can do the job. `fair` is what a person of the believed skill is worth, `floor` the lowest wage the law allows,

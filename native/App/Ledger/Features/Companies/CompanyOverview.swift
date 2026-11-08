@@ -195,7 +195,7 @@ enum CompanyRunner {
         if co.type == "hold" || co.status != .open { return Reading(short: "", line: "", nobody: false, title: "", why: "") }
         if co.managerID != nil { return Reading(short: "Has a manager", line: "Has a manager", nobody: false, title: "", why: "") }
         if OwnerHours.works(co) && co.ownerHours > 0 {
-            return Reading(short: "Run by you", line: "You work here, \(Int(co.ownerHours.rounded())) h a week", nobody: false, title: "", why: "")
+            return Reading(short: "Run by you", line: "You work here, \(Int(saturating: co.ownerHours.rounded())) h a week", nobody: false, title: "", why: "")
         }
         if OwnerHours.works(co) {
             return Reading(short: "No one runs it", line: "You work here, but with no hours left for it", nobody: true,
@@ -357,7 +357,7 @@ struct CompanyOverview: View {
             let limit: String = label.isEmpty ? "Staff or equipment is missing: nothing comes in"
                 : machine ? "\(label) stopped the work" : "No \(label.lowercased()) to serve them: hire one or work the role yourself"
             out.append(CompanyIssue(id: "nocap", glyph: machine ? Glyph.opsWrench : Glyph.capacity, tint: P.loss, title: "Served no one last week",
-                                    sub: "\(Int(w.demand.rounded())) customers wanted to buy. " + limit,
+                                    sub: "\(Int(saturating: w.demand.rounded())) customers wanted to buy. " + limit,
                                     action: machine ? "Open Equipment" : (label.isEmpty ? "Open Manage" : "Open Team")) {
                 if machine { openOps(.equipment) } else if label.isEmpty { go(.operations) } else { go(.staff) }
             })
@@ -410,7 +410,7 @@ struct CompanyOverview: View {
             LedgerRow(leading: .glyph(Glyph.team), leadingTint: P.inkSoft, title: "Team", subtitle: boss, value: n == 0 ? "" : "\(n)", valueNote: n == 0 ? "" : (n == 1 ? "person" : "people"),
                       identifier: "overview-open-team") { go(.staff) }
         case .manage:
-            let use: String = ops?.capacityUse.map { "\(Int(($0 * 100).rounded()))%" } ?? ""
+            let use: String = ops?.capacityUse.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? ""
             let turnedAway: Bool = h.demandCoverage > 1.05
             let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? ""
             LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Manage", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",

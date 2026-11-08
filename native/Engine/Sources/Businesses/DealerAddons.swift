@@ -354,7 +354,7 @@ public enum DealerAddons {
                              detail: "\(cfg.includedMonths) months included, \(cfg.extraMonths) more for \(pct(cfg.extraRate)) of the price a year. Fair price to a customer: \(pct(w.fairRate)) a year."),
             DealerAddonOffer(addon: .loan, active: lOn, setUp: isSet(.loan), takeRate: pFin * l.approval, customerPrice: l.financed, expectedIncome: pFin * l.approval * l.commission,
                              expectedCost: 0, lostSaleChance: pFin * (1 - l.approval) * n(.loan, "walkAway"), demandBoost: l.boost, customerSaving: 0,
-                             detail: "\(Int((pFin * 100).rounded())) in 100 customers finance with you, the bank approves \(Int((l.approval * 100).rounded())) in 100. Customer rate \(pct(l.apr)), your commission \(pct(cfg.loanCommission))."),
+                             detail: "\(Int(saturating: (pFin * 100).rounded())) in 100 customers finance with you, the bank approves \(Int(saturating: (l.approval * 100).rounded())) in 100. Customer rate \(pct(l.apr)), your commission \(pct(cfg.loanCommission))."),
             DealerAddonOffer(addon: .insurance, active: iOn, setUp: isSet(.insurance), takeRate: q.take, customerPrice: q.bundled, expectedIncome: q.take * q.commission,
                              expectedCost: 0, lostSaleChance: 0, demandBoost: n(.insurance, "boostPerSaving") * q.discount, customerSaving: q.independent - q.bundled,
                              detail: "First year \(pct(q.discount)) cheaper than buying it separately; your one-time commission \(pct(cfg.insuranceCommission)) of the premium."),
@@ -451,7 +451,7 @@ public enum DealerAddons {
                     Payments.book(&s, companyID: companyID, category: "oth", amount: reserve)
                     s.companies[i].addPayable(reserveKey, reserve)
                 }
-                let until = s.week + Int((Double(months) * 52 / 12).rounded(.up))
+                let until = s.week + Int(saturating: (Double(months) * 52 / 12).rounded(.up))
                 var list = s.companies[i].value("dap")["wty"].array
                 list.append(.object(["id": .number(nextID(&s, i)), "car": .string(name), "wk": .number(Double(s.week)), "until": .number(Double(until)), "m": .number(Double(months)),
                                      "xp": .number(extra ? w.extraPrice : 0), "lam": .number(claimRate(sale.car)), "px": .number(sale.price), "left": .number(reserve)]))
@@ -468,7 +468,7 @@ public enum DealerAddons {
                 if q.commission > 0 { Payments.companyReceives(&s, companyID: companyID, amount: q.commission, category: "rev", label: "Insurance commission: \(name)") }
                 let id = nextID(&s, i)
                 var r = HashedRandom("\(s.seed):dapol:\(companyID):\(id)")
-                let digits: String = (0..<5).map { _ in String(Int((r.next() * 10).rounded(.down))) }.joined()
+                let digits: String = (0..<5).map { _ in String(Int(saturating: (r.next() * 10).rounded(.down))) }.joined()
                 let no = "DI-" + String(GameCalendar.year(week: s.week)) + "-" + digits
                 var list = s.companies[i].value("dap")["pol"].array
                 list.append(.object(["id": .number(id), "no": .string(no), "car": .string(name), "wk": .number(Double(s.week)),

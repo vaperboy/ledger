@@ -134,7 +134,7 @@ struct UsedCarPageView: View {
     private func waitText(_ w: Double) -> String {
         if w > 52 { return "over a year" }
         if w < 1.5 { return "about a week" }
-        return "about \(Int(w.rounded())) weeks"
+        return "about \(Int(saturating: w.rounded())) weeks"
     }
 
     private func commit(_ price: Double) {

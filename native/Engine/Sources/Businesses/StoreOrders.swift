@@ -203,7 +203,7 @@ public enum StoreOrders {
     /// Shipping speed applied to a line's lead time.
     static func days(base: Int, digital: Bool, delivery: Delivery, roll: Double) -> Int {
         if digital { return 0 }
-        let varied = max(1, base + Int((roll * 3).rounded(.down)) - 1)
+        let varied = max(1, base + Int(saturating: (roll * 3).rounded(.down)) - 1)
         switch delivery {
         case .standard: return varied
         case .express: return max(1, (varied + 1) / 2)

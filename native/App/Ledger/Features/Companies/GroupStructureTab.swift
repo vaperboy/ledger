@@ -177,7 +177,7 @@ struct GroupStructureTab: View {
         }
     }
 
-    private func pct(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
+    private func pct(_ share: Double) -> String { "\(Int(saturating: (share * 100).rounded()))%" }
 
     /// How the value of what you own splits by how much of each company is yours: over 50% control, 20-50% influence, under 20% passive.
     /// Holdings and chains are left out because the companies under them are counted.

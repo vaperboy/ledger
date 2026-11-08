@@ -28,7 +28,7 @@ public enum WorkLog {
         public var complaints = 0
 
         var json: JSONValue {
-            .array([week, Int(hoursContracted * 4), Int(hoursWorked * 4), tasksAssigned, tasksDone, mistakes, late, sickWeek ? 1 : 0, initiative, guidance, informed, silent, complaints]
+            .array([week, Int(saturating: hoursContracted * 4), Int(saturating: hoursWorked * 4), tasksAssigned, tasksDone, mistakes, late, sickWeek ? 1 : 0, initiative, guidance, informed, silent, complaints]
                 .map { .number(Double($0)) })
         }
         init(json j: JSONValue) {
@@ -93,9 +93,9 @@ public enum WorkLog {
         if i.sick { w.sickWeek = true; return w }
         var r = HashedRandom("wl:\(i.id):\(i.week)")
         w.hoursWorked = i.worked
-        let assigned = max(1, Int((i.contracted / 5).rounded()))
+        let assigned = max(1, Int(saturating: (i.contracted / 5).rounded()))
         // Overtime when the business is limited by people means more work gets handed over.
-        let handed = i.limitedByPeople && i.worked > i.contracted ? assigned + Int(((i.worked - i.contracted) / 5).rounded()) : assigned
+        let handed = i.limitedByPeople && i.worked > i.contracted ? assigned + Int(saturating: ((i.worked - i.contracted) / 5).rounded()) : assigned
         w.tasksAssigned = handed
         let pace = i.ramp * i.tiredFactor * (0.78 + 0.45 * i.skill / 100) * (i.flag == "lazy" ? 0.82 : 1) * (i.disengaged ? 0.88 : 1)
         let pDone = clamp(0.62 + 0.36 * pace, 0.2, 0.995)

@@ -119,7 +119,7 @@ extension ManagerModel {
         var out: [ManagerProposal] = []
         let L = co.priceLevel
         let pm: [Double] = [0.7, 0.8, 0.9, 1, 1.15, 1.4, 1.9]
-        func pmAt(_ l: Double) -> Double { pm[min(6, max(0, Int(l.rounded()) + 3))] }
+        func pmAt(_ l: Double) -> Double { pm[min(6, max(0, Int(saturating: l.rounded()) + 3))] }
         if util > 0.85 && L < 3 { out.append(ManagerProposal(kind: "price_up", title: "Raise prices one step", why: "We are nearly fully booked, so a higher price costs us few customers.", role: "", id: "", addedCost: 0, addedRevenue: rev * (pmAt(L + 1) / pmAt(L) * 0.9 - 1), once: 0)) }
         if util < 0.6 && L > -3 && units > 0 { out.append(ManagerProposal(kind: "price_down", title: "Lower prices one step", why: "We have free capacity. A lower price fills it.", role: "", id: "", addedCost: 0, addedRevenue: rev * (pmAt(L - 1) / pmAt(L) * 1.22 - 1), once: 0)) }
         if co.awareness < 70, FranchiseStandards.campaignRefusal(co, channel: bd.audience > 0.5 ? "google" : "meta") == nil {

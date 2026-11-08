@@ -234,14 +234,14 @@ public struct LabourRules: Equatable, Sendable {
     public func summary(currency: Currency) -> [(label: String, value: String)] {
         func w(_ x: Double) -> String { x == x.rounded() ? "\(Int(x))" : String(format: "%.1f", x) }
         var out: [(label: String, value: String)] = []
-        out.append(("Minimum wage", hasMinimum ? "\(currency.country.currencySymbol) \(Int(minMonthly.rounded())) a month" + (statutory ? "" : " (agreements)") : "None"))
+        out.append(("Minimum wage", hasMinimum ? "\(currency.country.currencySymbol) \(Int(saturating: minMonthly.rounded())) a month" + (statutory ? "" : " (agreements)") : "None"))
         out.append(("Standard week", "\(w(stdHours)) h"))
-        out.append(("Overtime", overtimePremium > 0 ? "+\(Int((overtimePremium * 100).rounded()))%" : "Basic rate"))
+        out.append(("Overtime", overtimePremium > 0 ? "+\(Int(saturating: (overtimePremium * 100).rounded()))%" : "Basic rate"))
         out.append(("Notice", !noticeBands.isEmpty ? "\(w(noticeBands.first?.value ?? 0)) to \(w(noticeBands.last?.value ?? 0)) weeks by service" : noticeWeeks > 0 || noticePerYear > 0 ? "\(w(noticeWeeks)) weeks, +\(w(noticePerYear)) a year" : "None"))
         out.append(("Severance", !severanceTiers.isEmpty || severanceBaseWeeks > 0 ? "By service, only if not for cause" : severancePerYear > 0 ? "\(w(severancePerYear)) weeks a year" + (severanceAfterYears > 0 ? " after \(w(severanceAfterYears)) years" : "") : severanceMin > 0 ? "\(w(severanceMin)) weeks" : "None"))
         out.append(("Paid leave", leaveDays > 0 ? "\(w(leaveDays)) \(leaveCalendarDays ? "calendar" : "working") days" : "None"))
         out.append(("Sick pay", sickEmployerShare > 0 && sickEmployerDays > 0
-                    ? "Employer pays \(Int((sickEmployerShare * 100).rounded()))% from day \(Int(sickWaitingDays) + 1)" + (sickWeeklyCap > 0 ? ", flat weekly rate" : "")
+                    ? "Employer pays \(Int(saturating: (sickEmployerShare * 100).rounded()))% from day \(Int(sickWaitingDays) + 1)" + (sickWeeklyCap > 0 ? ", flat weekly rate" : "")
                     : sickStateShare > 0 ? "State insurance only" : "None"))
         out.append(("Probation", atWill ? "At will" : probationWeeks > 0 ? "\(w(probationWeeks)) weeks" : "None"))
         return out

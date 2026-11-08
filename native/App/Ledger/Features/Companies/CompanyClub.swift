@@ -43,7 +43,7 @@ struct CompanyClub: View {
         let windowText: String = window.name.map { $0 == "summer" ? "Summer window open" : "Winter window open" } ?? "Opens in \(window.weeksToOpen) wk"
         let sponsorIncome: Double = c.sponsors.reduce(0) { $0 + $1.weekly }
         return SettingsTable(heading: "The club") {
-            SettingsTableRow(title: Part.budget.rawValue, note: "Player wages against revenue", value: "Wages \(Int((c.wageShare * 100).rounded()))%") { part = .budget }
+            SettingsTableRow(title: Part.budget.rawValue, note: "Player wages against revenue", value: "Wages \(Int(saturating: (c.wageShare * 100).rounded()))%") { part = .budget }
             SettingsTableRow(title: Part.people.rawValue, note: "Coach and football staff", value: "Squad " + FootballModel.wordForStrength(c.squadStrength)) { part = .people }
             SettingsTableRow(title: Part.transfers.rawValue, note: "Bought " + cur.tidyShort(c.tradedIn) + ", sold " + cur.tidyShort(c.tradedOut), value: windowText, valueTint: window.name == nil ? Theme.ivoryMuted : Theme.gain) { part = .transfers }
             SettingsTableRow(title: Part.sponsors.rawValue, note: "\(c.sponsors.count) of \(FootballModel.slots.count) deals signed", value: sponsorIncome > 0 ? cur.tidyShort(sponsorIncome) + " a week" : "No income") { part = .sponsors }
@@ -71,7 +71,7 @@ struct CompanyClub: View {
 
     private func seasonItems(_ c: FootballModel.Summary, _ cur: Currency) -> [KeyFigures.Item] {
         let pos: String = c.position > 0 ? "\(c.position) of \(c.clubs)" : "–"
-        let fill: String = c.fill > 0 ? "\(Int((c.fill * 100).rounded()))%" : "–"
+        let fill: String = c.fill > 0 ? "\(Int(saturating: (c.fill * 100).rounded()))%" : "–"
         return [
             .init(label: "Position", value: pos),
             .init(label: "Points", value: "\(c.points)", sub: "from \(c.played) games"),
@@ -117,7 +117,7 @@ struct CompanyClub: View {
     }
 
     private func stadiumCard(_ c: FootballModel.Summary, _ cur: Currency) -> some View {
-        let fillText: String = c.fill > 0 ? "\(Int((c.fill * 100).rounded()))% full" : "No home match yet"
+        let fillText: String = c.fill > 0 ? "\(Int(saturating: (c.fill * 100).rounded()))% full" : "No home match yet"
         let gate: String = cur.tidyShort(c.weekly["match"] ?? 0)
         return EntityCard {
             HStack(spacing: 10) {
@@ -156,7 +156,7 @@ struct CompanyClub: View {
                     FlatRow(label: "Player wages", value: cur.tidyShort(c.weekly["wages"] ?? 0), tint: Theme.ivoryMuted)
                     FlatRow(label: "Manager and assistant", value: cur.tidyShort(c.weekly["coaches"] ?? 0), tint: Theme.ivoryMuted)
                     FlatRow(label: "Stadium, travel, academy", value: cur.tidyShort(c.weekly["ops"] ?? 0), tint: Theme.ivoryMuted)
-                    FlatRow(label: "Wages share of revenue", value: "\(Int((c.wageToRevenue * 100).rounded()))%", tint: c.wageToRevenue > 0.75 ? Theme.loss : Theme.ivory)
+                    FlatRow(label: "Wages share of revenue", value: "\(Int(saturating: (c.wageToRevenue * 100).rounded()))%", tint: c.wageToRevenue > 0.75 ? Theme.loss : Theme.ivory)
                     FlatRow(label: "Yearly revenue (about)", value: cur.tidyShort(c.yearlyRevenue))
                 }
             }

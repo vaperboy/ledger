@@ -224,7 +224,7 @@ public enum Banking {
         }
         let interest = l.balance * r / 12
         let principal: Double = (l.graceUntilWeek > 0 && s.week < l.graceUntilWeek) ? 0 : min(l.balance, max(0, payment - interest))
-        return Instalment(payment: payment, interest: interest, principal: principal, yearlyRate: r, monthsLeft: Int(remaining))
+        return Instalment(payment: payment, interest: interest, principal: principal, yearlyRate: r, monthsLeft: Int(saturating: remaining))
     }
 
     /// The calendar month (a counter) the loan's instalment was last settled for, if it was: by the month-end collection or paid early.

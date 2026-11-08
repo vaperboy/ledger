@@ -262,7 +262,7 @@ struct BoardVoteLines: View {
             ForEach(vote.advice + vote.board) { (l: ManagerModel.VoteLine) in line(l, shares: false) }
             ForEach(vote.owners.filter { (l: ManagerModel.VoteLine) -> Bool in !l.isYou }) { (l: ManagerModel.VoteLine) in line(l, shares: true) }
             if vote.active {
-                Text(vote.passes ? "It would pass with \(Int(vote.percentYes.rounded()))% of the shares." : "It would fail: only \(Int(vote.percentYes.rounded()))% of the shares are for it.")
+                Text(vote.passes ? "It would pass with \(Int(saturating: vote.percentYes.rounded()))% of the shares." : "It would fail: only \(Int(saturating: vote.percentYes.rounded()))% of the shares are for it.")
                     .popupText(vote.passes ? .effect : .risk)
                 if vote.pushedThroughAlone { Text("Everyone else is against it: going ahead upsets the board.").popupText(.risk) }
             }
@@ -271,7 +271,7 @@ struct BoardVoteLines: View {
 
     private func line(_ l: ManagerModel.VoteLine, shares: Bool) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text("\(l.name) \u{00B7} \(l.title)" + (shares ? " \(Int(l.percent.rounded()))%" : "") + ": " + (l.yes ? "Yes" : "No")).popupText(.rowLabel)
+            Text("\(l.name) \u{00B7} \(l.title)" + (shares ? " \(Int(saturating: l.percent.rounded()))%" : "") + ": " + (l.yes ? "Yes" : "No")).popupText(.rowLabel)
             if !l.reason.isEmpty { Text(l.reason).popupText(.caption).fixedSize(horizontal: false, vertical: true) }
         }
     }

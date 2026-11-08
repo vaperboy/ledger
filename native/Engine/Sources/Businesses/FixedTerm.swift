@@ -35,7 +35,7 @@ public enum FixedTerm {
 
     /// Weeks before the end date at which the owner is asked: the data's review time, or the country's notice for not renewing when that is longer.
     public static func reviewWindowWeeks(_ lab: LabourRules) -> Int { reviewWindow(lab) }
-    static func reviewWindow(_ lab: LabourRules) -> Int { max(tables.review, Int(lab.fixedTermNoticeWeeks.rounded(.up))) }
+    static func reviewWindow(_ lab: LabourRules) -> Int { max(tables.review, Int(saturating: lab.fixedTermNoticeWeeks.rounded(.up))) }
 
     /// When the run of fixed terms the person is on began (`fts`; for a term from before that key existed, the start of the current term).
     static func runStart(_ m: StaffMember) -> Int? {

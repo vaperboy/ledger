@@ -214,7 +214,7 @@ extension StrategicDecisions {
                             let c = s.companies[ci], amt = jsRound(x.d["v"].double * 0.6 * c.ownership / 100)
                             Payments.ownerReceivesSale(&s, from: c, amount: amt, gain: amt * 0.7, label: "Sold 60% of \(c.name) to private equity")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Equity")
-                            let sold = Int((Double(CapTable.table(c).you) * 0.6).rounded())
+                            let sold = Int(saturating: (Double(CapTable.table(c).you) * 0.6).rounded())
                             CapTable.sellFromYou(&s, ci, shares: sold, to: who, paid: amt, extra: ["k27": "exit", "sat": 65])
                             Funding.addBoardSeats(&s, ci, 2) },
                         Opt(label: "Offer them 25% instead", detail: "They may accept a minority stake.") { s, x in
@@ -222,7 +222,7 @@ extension StrategicDecisions {
                             let c = s.companies[ci], amt = jsRound(x.d["v"].double * 0.25 * c.ownership / 100)
                             Payments.ownerReceivesSale(&s, from: c, amount: amt, gain: amt * 0.7, label: "Sold 25% of \(c.name)")
                             let who = Funding.fundName(&s, countryCode: c.countryCode, data: x.data, suffix: "Equity")
-                            let sold = Int((Double(CapTable.table(c).you) * 0.25).rounded())
+                            let sold = Int(saturating: (Double(CapTable.table(c).you) * 0.25).rounded())
                             CapTable.sellFromYou(&s, ci, shares: sold, to: who, paid: amt, extra: ["k27": "growth", "sat": 60])
                             Funding.addBoardSeats(&s, ci, 1) },
                         Opt(label: "Say no", detail: "") { _, _ in }]))
@@ -262,7 +262,7 @@ extension StrategicDecisions {
                          let a = scaled(s, s.companies[x.i], x.data, 60000)
                          _ = Payments.companyPays(&s, companyID: x.d["c"].int, amount: a, category: "oth", label: "Lawyers: competition case") },
                      title: { _, d, _ in "The competition authority investigates \(d["n"].string)" },
-                     body: { _, d, _ in "You hold about \(Int((d["s"].double * 100).rounded()))% of the market. The authority wants to know whether you use that position against customers and rivals. Legal costs have started." },
+                     body: { _, d, _ in "You hold about \(Int(saturating: (d["s"].double * 100).rounded()))% of the market. The authority wants to know whether you use that position against customers and rivals. Legal costs have started." },
                      opts: [
                         Opt(label: "Offer to sell part of the business", detail: "Sell this company to end the case.") { s, x in
                             if let ci = s.companyIndex(x.d["c"].int), s.companies[ci].status == .open {

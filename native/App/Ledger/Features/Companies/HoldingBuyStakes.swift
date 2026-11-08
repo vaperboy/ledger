@@ -114,8 +114,8 @@ struct HoldingBuyStakes: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 PopupRow(label: "Price", value: cur.tidyShort(q.price))
                 PopupRow(label: "Fair value of these shares", value: cur.tidyShort(q.value * q.percent / 100))
-                if q.priceFactor > 1.0001 { Text("Includes a \(Int(((q.priceFactor - 1) * 100).rounded()))% premium for taking control.").popupText(.caption) }
-                if q.priceFactor < 0.9999 { Text("A small stake is bought at a \(Int(((1 - q.priceFactor) * 100).rounded()))% discount.").popupText(.caption) }
+                if q.priceFactor > 1.0001 { Text("Includes a \(Int(saturating: ((q.priceFactor - 1) * 100).rounded()))% premium for taking control.").popupText(.caption) }
+                if q.priceFactor < 0.9999 { Text("A small stake is bought at a \(Int(saturating: ((1 - q.priceFactor) * 100).rounded()))% discount.").popupText(.caption) }
                 if q.fromOwnerPercent > 0 && q.fromOthersPercent > 0 {
                     Text("\(holdingPct(q.fromOwnerPercent)) comes from your own shares, \(holdingPct(q.fromOthersPercent)) from other owners.").popupText(.caption)
                 } else if q.fromOwnerPercent > 0 {

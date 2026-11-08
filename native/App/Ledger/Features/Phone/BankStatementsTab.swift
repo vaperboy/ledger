@@ -108,7 +108,7 @@ struct BankStatementsTab: View {
                             Circle().fill(palette[i % palette.count]).frame(width: 7, height: 7)
                             Text(l.label).font(.caption).foregroundStyle(P.inkSoft).lineLimit(1)
                             Spacer(minLength: 4)
-                            Text("\(Int((l.share * 100).rounded()))%").font(.caption2.monospacedDigit()).foregroundStyle(P.inkFaint)
+                            Text("\(Int(saturating: (l.share * 100).rounded()))%").font(.caption2.monospacedDigit()).foregroundStyle(P.inkFaint)
                         }
                     }
                 }

@@ -524,7 +524,7 @@ struct HireOnePage: View {
             WrapRow {
                 ForEach(rates, id: \.self) { (r: Double) -> AnyView in
                     let on: Bool = abs(model.draft.rate - r) < 0.0001
-                    let title: String = r == 0 ? "Usual" : "\(Int((r * 100).rounded()))%"
+                    let title: String = r == 0 ? "Usual" : "\(Int(saturating: (r * 100).rounded()))%"
                     return AnyView(chip(title, on) { model.draft.rate = r })
                 }
             }

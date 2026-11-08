@@ -163,7 +163,7 @@ public enum Awards {
         }
         let prev = aw["years"].array.last?["nw"].double ?? s.openingCash
         let g = prev > 0 ? nw / prev - 1 : 0
-        if nw >= cur.scaledPrice(50e6) { add("ent", s.player.name, "net worth up \(Int((g * 100).rounded()))% this year", clamp((g - 0.3) * 0.8, 0, 0.6)) }
+        if nw >= cur.scaledPrice(50e6) { add("ent", s.player.name, "net worth up \(Int(saturating: (g * 100).rounded()))% this year", clamp((g - 0.3) * 0.8, 0, 0.6)) }
         var years = aw["years"].array
         years.append(.object(["y": .number(Double(year)), "res": .array(res), "rank": st.rank.map { .number(Double($0)) } ?? .null, "nw": .number(nw)]))
         if years.count > 30 { years.removeFirst() }

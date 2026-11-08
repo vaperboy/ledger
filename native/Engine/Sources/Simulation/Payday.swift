@@ -584,7 +584,7 @@ public enum Payday {
             cfg = config(s.companies[i], today: t)
             if cfg.lateSince != nil {
                 if cfg.lateWhy == "slip" {
-                    if t >= Int(cfg.lateOwed) {
+                    if t >= Int(saturating: cfg.lateOwed) {
                         cfg.lateSince = nil; s.companies[i].set("pr29", cfg.json)
                         let r = runPayroll(&s, i, how: .manager, today: t, data: data, context: context)
                         paidToday.append((s.companies[i].name, r.paid))

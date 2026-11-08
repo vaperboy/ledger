@@ -131,7 +131,7 @@ public enum Negotiation {
 
     /// How many offers the other side will answer before it walks away.
     public static func patience(rank: String, temperament t: Temperament) -> Int {
-        max(1, Int(((tables.base + tables.perLevel * Double(level(of: rank))) * t.patience).rounded()))
+        max(1, Int(saturating: ((tables.base + tables.perLevel * Double(level(of: rank))) * t.patience).rounded()))
     }
 
     /// The other side's hidden position, from where it opens: the reservation is a stable point (per person, `key`) in its temperament's range.

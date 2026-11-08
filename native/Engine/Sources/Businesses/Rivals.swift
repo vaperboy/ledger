@@ -341,7 +341,7 @@ public enum Rivals {
                     MarketPressure.add(&s, ci, kind: .launch, amount: amount, weeks: 6, rivalID: r["id"].int)
                 }
                 MarketEvents.log(&s, .competitorLaunch, title: "\(name) launches \(pct)% off", detail: "A new offer from a \(bd.name.lowercased()) rival in \(cityName).", companyID: co0.id, amount: Double(pct), tone: "bad",
-                                 consequence: "Demand about \(max(1, Int((worst * 100).rounded())))% lower, fading over 6 weeks.")
+                                 consequence: "Demand about \(max(1, Int(saturating: (worst * 100).rounded())))% lower, fading over 6 weeks.")
                 }
             }
             // Marketing pushes
@@ -520,7 +520,7 @@ public enum Rivals {
         let run = holdOut(r, seed: s.seed)
         let weekRev = co.value("lastW")["rev"].double
         let lossW = Double(jsRound((weekRev > 0 ? weekRev : Pricing.ticket(co, bd, w) * 10) * 0.3))
-        let myRun = lossW > 0 ? Int((max(0, co.cash) / lossW).rounded(.down)) : 99
+        let myRun = lossW > 0 ? Int(saturating: (max(0, co.cash) / lossW).rounded(.down)) : 99
         let others = rs.filter { $0.id != r.id }
         let mine = co.size, oth = others.reduce(0) { $0 + $1.size }
         let toYou = clamp(mine * 1.6 / (mine * 1.6 + oth), 0.15, 0.95)

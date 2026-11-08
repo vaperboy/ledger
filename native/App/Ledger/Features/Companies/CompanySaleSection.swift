@@ -25,7 +25,7 @@ struct CompanySaleSection: View {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text("Your part is worth about").textStyle(.label, tint: Theme.inkFaint)
                     Text(cur.tidyShort(value * company.ownership / 100)).textStyle(.display).lineLimit(2).minimumScaleFactor(0.8)
-                    Text("\(Int(company.ownership.rounded()))% of \(company.name)").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+                    Text("\(Int(saturating: company.ownership.rounded()))% of \(company.name)").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
                 }
                 .accessibilityElement(children: .combine)
                 if let l = listing {
@@ -162,7 +162,7 @@ struct BuyerTalkSheet: View {
                             Text(o.note.tidyMoney).popupText(.caption)
                         }
                         KeyFigures(items: [
-                            .init(label: "They offer", value: cur.tidyShort(o.price * mine), sub: "for your \(Int(co.ownership.rounded()))%"),
+                            .init(label: "They offer", value: cur.tidyShort(o.price * mine), sub: "for your \(Int(saturating: co.ownership.rounded()))%"),
                             .init(label: "Mood", value: PatienceWords.feeling(left: o.patience, of: 3).text, tint: PatienceWords.feeling(left: o.patience, of: 3).tint),
                             .init(label: "Open until", value: GameCalendar.dateString(week: o.expiresWeek)),
                         ])

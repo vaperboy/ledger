@@ -64,7 +64,7 @@ struct TechProOwnedView: View {
                     ForEach(Array(missing.enumerated()), id: \.element.id) { (i: Int, n: EquipmentMarket.Need) in
                         if i > 0 { Hairline() }
                         LedgerRow(leading: .glyph(TechCategory.of(n).glyph), leadingTint: n.required ? P.loss : P.caution, title: n.name,
-                                  subtitle: "\(Int((n.have + n.leased).rounded())) of \(Int(n.need))" + (n.required ? " \u{00B7} required to trade" : ""),
+                                  subtitle: "\(Int(saturating: (n.have + n.leased).rounded())) of \(Int(n.need))" + (n.required ? " \u{00B7} required to trade" : ""),
                                   value: "Shop", valueTint: P.accent) { onBuy(n.equipmentID) }
                     }
                 }

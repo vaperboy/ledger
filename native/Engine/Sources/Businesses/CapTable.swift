@@ -78,7 +78,7 @@ public enum CapTable {
         }
         var assigned = 0
         for n in list.indices {
-            let sh = Int((Double(total) * max(0, list[n]["pct"].double) / 100).rounded())
+            let sh = Int(saturating: (Double(total) * max(0, list[n]["pct"].double) / 100).rounded())
             list[n]["sh"] = .number(Double(sh)); assigned += sh
         }
         let me = max(0, total - assigned)
@@ -114,7 +114,7 @@ public enum CapTable {
     /// New shares that give the buyer `pct` percent of the company AFTER the issue.
     public static func sharesForPercent(_ pct: Double, total: Int) -> Int {
         guard pct > 0, pct < 100 else { return 0 }
-        return Int((Double(total) * pct / (100 - pct)).rounded())
+        return Int(saturating: (Double(total) * pct / (100 - pct)).rounded())
     }
     /// Shares in the company for one share price: the valuation divided by the shares in issue.
     public static func pricePerShare(valuation: Double, total: Int) -> Double { valuation / Double(max(1, total)) }
@@ -206,11 +206,11 @@ public enum CapTable {
         var list = s.companies[i].value("holders").array
         // A holding's own stake (`hid`) is not bought back here; it is sold through `HoldingStakes`.
         let outside = list.filter { $0["hid"].int == 0 }.reduce(0) { $0 + $1["sh"].int }
-        let want = min(outside, Int((Double(t.total) * percent / 100).rounded()))
+        let want = min(outside, Int(saturating: (Double(t.total) * percent / 100).rounded()))
         guard want > 0, outside > 0 else { return 0 }
         var moved = 0
         for k in list.indices where list[k]["hid"].int == 0 {
-            let take = min(list[k]["sh"].int, Int((Double(list[k]["sh"].int) * Double(want) / Double(outside)).rounded()))
+            let take = min(list[k]["sh"].int, Int(saturating: (Double(list[k]["sh"].int) * Double(want) / Double(outside)).rounded()))
             list[k]["sh"] = .number(Double(list[k]["sh"].int - take)); moved += take
         }
         list.removeAll { $0["sh"].int <= 0 }
@@ -223,7 +223,7 @@ public enum CapTable {
     public static func award(_ s: inout GameState, _ i: Int, percent: Double, to name: String, extra: [String: JSONValue] = [:]) -> Int {
         normalise(&s, i)
         let t = read(s.companies[i])
-        let n = Int((Double(t.total) * percent / 100).rounded())
+        let n = Int(saturating: (Double(t.total) * percent / 100).rounded())
         return sellFromYou(&s, i, shares: n, to: name, paid: 0, extra: extra)
     }
 
@@ -266,7 +266,7 @@ public enum CapTable {
     public static func issueTerms(_ co: Company, preMoney: Double, amount: Double, buyer: String, conditions: [String] = []) -> DealTerms {
         let t = table(co)
         let price = pricePerShare(valuation: preMoney, total: t.total)
-        let n = price > 0 ? Int((amount / price).rounded()) : 0
+        let n = price > 0 ? Int(saturating: (amount / price).rounded()) : 0
         let after = t.total + n
         let buyerPct = after > 0 ? Double(n) / Double(after) * 100 : 0
         var hs = t.holders.map { l -> Line in var x = l; x.pct = Double(l.shares) / Double(after) * 100; return x }

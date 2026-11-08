@@ -75,7 +75,7 @@ public extension GameEngine {
             guard let m = r?.marketPrice, m > 0 else { return "That price is too far from the market price." }
             guard price >= m * SalesItems.priceFloor else { return "That price is too far below the market price." }
             let ceiling = s.company(companyID).flatMap { data.catalog[$0.type] }.map { SalesItems.ceiling(for: $0) } ?? SalesItems.priceCeiling
-            guard price <= m * ceiling else { return "Customers will not pay that: the most this sells for is about \(Int((ceiling * 100).rounded()))% of the market price." }
+            guard price <= m * ceiling else { return "Customers will not pay that: the most this sells for is about \(Int(saturating: (ceiling * 100).rounded()))% of the market price." }
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setPrice(&s, companyID: companyID, itemID: itemID, price: price, data: d)

@@ -70,8 +70,8 @@ public enum StartupProducts {
         public var d = 0.0, k = 0.0, aw = 0.0, c = 0.0
         public var text: String
         public var summary: String {
-            [d > 0 ? "+\(Int((d * 100).rounded()))% customers" : "", k > 0 ? "+\(Int((k * 100).rounded()))% capacity" : "",
-             aw > 0 ? "marketing +\(Int((aw * 100).rounded()))%" : "", c > 0 ? "-\(Int((c * 100).rounded()))% running costs" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+            [d > 0 ? "+\(Int(saturating: (d * 100).rounded()))% customers" : "", k > 0 ? "+\(Int(saturating: (k * 100).rounded()))% capacity" : "",
+             aw > 0 ? "marketing +\(Int(saturating: (aw * 100).rounded()))%" : "", c > 0 ? "-\(Int(saturating: (c * 100).rounded()))% running costs" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
         }
     }
 

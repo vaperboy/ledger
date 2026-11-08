@@ -202,7 +202,7 @@ public extension GameEngine {
             return CapTable.issueTerms(co, preMoney: amt > 0 ? amt * Double(t.total) / max(1, Double(n)) : v, amount: amt, buyer: "A private investor",
                                        conditions: ["The buyer pays 10% under the estimated value.", "The money goes into the company."])
         }
-        let n = Int((Double(t.you) * percent / 100).rounded())
+        let n = Int(saturating: (Double(t.you) * percent / 100).rounded())
         let price = v / Double(t.total) * 0.85
         return CapTable.founderSaleTerms(co, shares: n, pricePerShare: price, buyer: "A private buyer", conditions: ["The buyer pays 15% under the estimated value.", "The money is yours, not the company's."])
     }

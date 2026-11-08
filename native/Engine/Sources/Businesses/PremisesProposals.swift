@@ -133,8 +133,8 @@ public enum PremisesProposals {
         let cur = World(state: s, data: data).currency(co)
         let places = (p.fromPlaces != nil && p.toPlaces != nil) ? " It seats \(p.toPlaces!) people instead of \(p.fromPlaces!)." : ""
         let rent = p.rentChangeMonthly >= 0 ? "rent up \(cur.display(p.rentChangeMonthly)) a month" : "rent down \(cur.display(-p.rentChangeMonthly)) a month"
-        let body = "We are turning away about \(Int(p.unmetUnitsPerWeek.rounded())) sales a week because the place is full. \(p.placeName) (\(p.landlord)) is \(Int(p.toSquareMetres)) m2 instead of \(Int(p.fromSquareMetres)) m2:" +
-            " about \(Int(p.extraCapacityPercent.rounded()))% more capacity,\(places) \(rent). It should add about \(cur.display(p.projectedWeeklyProfitUplift * 52 / 12)) profit a month once we are in, and the move costs about \(cur.display(p.oneOffCost)) (deposit, fit-out and moving)."
+        let body = "We are turning away about \(Int(saturating: p.unmetUnitsPerWeek.rounded())) sales a week because the place is full. \(p.placeName) (\(p.landlord)) is \(Int(p.toSquareMetres)) m2 instead of \(Int(p.fromSquareMetres)) m2:" +
+            " about \(Int(saturating: p.extraCapacityPercent.rounded()))% more capacity,\(places) \(rent). It should add about \(cur.display(p.projectedWeeklyProfitUplift * 52 / 12)) profit a month once we are in, and the move costs about \(cur.display(p.oneOffCost)) (deposit, fit-out and moving)."
         let l = p.listing
         s.addMessage(kind: "ask", from: n.name, title: "Move \(co.name) to bigger premises?", body: body, companyID: co.id, tone: "n", status: "open",
                      options: [.option("Approve the move", "About \(cur.display(p.oneOffCost)) once; \(rent)."), .option("Not now", "I will not ask again for a year.")],

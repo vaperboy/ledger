@@ -111,7 +111,7 @@ struct BankPersonalLoans: View {
                 Text(l.name).textStyle(.body).lineLimit(1)
                 Text("\(Currency.percent(p?.yearlyRate ?? Banking.rate(of: l, state: e.state), decimals: 2)) · \(cur.tidyShort(l.monthlyPayment)) a month" + (p?.monthsLeft.map { " · \($0) months to go" } ?? ""))
                     .textStyle(.caption, tint: P.inkFaint)
-                Text("\(Int((paid * 100).rounded()))% repaid" + ((p?.interestLeft ?? 0) > 0 ? " · about \(cur.tidyShort(p!.interestLeft)) interest still to come" : ""))
+                Text("\(Int(saturating: (paid * 100).rounded()))% repaid" + ((p?.interestLeft ?? 0) > 0 ? " · about \(cur.tidyShort(p!.interestLeft)) interest still to come" : ""))
                     .textStyle(.caption, tint: P.inkFaint)
                 if missed > 0 { Text("\(missed) instalment\(missed == 1 ? "" : "s") missed").textStyle(.caption, tint: P.loss, weight: .medium) }
             }

@@ -133,9 +133,9 @@ public enum FranchiseBrands {
         init(_ key: String) { h = HashedRandom(key) }
         mutating func next() -> Double { h.next() }
         mutating func range(_ a: Double, _ b: Double) -> Double { a + (b - a) * next() }
-        mutating func int(_ a: Int, _ b: Int) -> Int { Int((Double(a) + next() * Double(b - a + 1)).rounded(.down)) }
+        mutating func int(_ a: Int, _ b: Int) -> Int { Int(saturating: (Double(a) + next() * Double(b - a + 1)).rounded(.down)) }
         mutating func chance(_ p: Double) -> Bool { next() < p }
-        mutating func pick<T>(_ a: [T]) -> T { a[Int((next() * Double(a.count)).rounded(.down)) % a.count] }
+        mutating func pick<T>(_ a: [T]) -> T { a[Int(saturating: (next() * Double(a.count)).rounded(.down)) % a.count] }
     }
 
     static func noun(_ tradeID: String, _ bd: Trade) -> String {
@@ -275,7 +275,7 @@ public enum FranchiseBrands {
             Franchising.Requirement(title: "Application reviewed by the brand", ok: reviewed, detail: st == "pending" ? "Waiting for the brand's answer" : (reviewed ? "Done" : "Send your application"), key: "review",
                                     status: reviewed ? .done : (st == "pending" ? .waiting : .missing)),
             Franchising.Requirement(title: "Franchise agreement signed", ok: st == "agreed", detail: st == "agreed" ? "Signed" : "Agree the terms and sign", key: "agreement"),
-            Franchising.Requirement(title: "Financing for the entry fee", ok: s.cash >= entry, detail: "Entry fee about \(Int(entry.rounded())), paid on signing: your cash or a loan", key: "financing"),
+            Franchising.Requirement(title: "Financing for the entry fee", ok: s.cash >= entry, detail: "Entry fee about \(Int(saturating: entry.rounded())), paid on signing: your cash or a loan", key: "financing"),
         ]
     }
 
@@ -307,7 +307,7 @@ public enum FranchiseBrands {
             eligibility.detail = n > 0 ? "Prefers proven operators; you have run \(n) in this trade" : "Prefers proven operators; you have none yet, so your hand is weaker"
         }
 
-        var money = Step(key: "fee", title: "Entry fee and financing", detail: "Entry fee about \(Int(entry.rounded())), paid when you start: your cash or a loan", state: canPay ? .done : .current)
+        var money = Step(key: "fee", title: "Entry fee and financing", detail: "Entry fee about \(Int(saturating: entry.rounded())), paid when you start: your cash or a loan", state: canPay ? .done : .current)
         if !canPay { money.detail += ". Your cash is short" }
         if opened { money.state = .done }
 
@@ -389,8 +389,8 @@ public enum FranchiseBrands {
             var c = ask
             c.fee = ask.fee > 0 ? q(ask.fee * f, 0.05) : ask.fee
             c.royalty = ask.royalty > 0 ? q(ask.royalty * f, 0.005) : ask.royalty
-            c.cover = max(b.support, min(cover, b.support + Int((extra * f).rounded())))
-            c.rent = Int((Double(ask.rent) * f).rounded(.down))
+            c.cover = max(b.support, min(cover, b.support + Int(saturating: (extra * f).rounded())))
+            c.rent = Int(saturating: (Double(ask.rent) * f).rounded(.down))
             c.vehicles = f > 0.5 ? ask.vehicles : 0
             c.building = f > 0.6 ? ask.building : 0
             let lines = ["I cannot give you all of that, but I can go part of the way.", "Let us find a middle ground. This is what I can do.", "That is a bit much, but I like your plan. How about this?"]

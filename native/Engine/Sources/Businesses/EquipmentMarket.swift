@@ -295,7 +295,7 @@ public enum EquipmentMarket {
     }
 
     public static func vehicleDealFor(model: String, factor f: Double, week: Int, seed: Int) -> StoreDeals.Deal {
-        StoreDeals.deal(week: week, seed: seed, key: "veh|" + model + "|" + String(Int((f * 100).rounded())))
+        StoreDeals.deal(week: week, seed: seed, key: "veh|" + model + "|" + String(Int(saturating: (f * 100).rounded())))
     }
 
     public static func leaseMonthly(price: Double) -> Double { price * 0.0235 }
@@ -438,7 +438,7 @@ public enum EquipmentMarket {
             let cl = c.tables.raw["VEH_CLASS"][m].string
             let age = 1 + Int(r.next() * (["plant", "ship", "plane"].contains(cl) ? 14 : 11))
             let kmY: Double = c.bd.id == "taxi" ? 60000 : (cl == "truck" || cl == "bus") ? 90000 : (cl == "bike" || cl == "scooter") ? 4000 : 18000
-            let km = Int(roundTo(Double(age) * kmY * (0.6 + r.next() * 0.8), step: 1000))
+            let km = Int(saturating: roundTo(Double(age) * kmY * (0.6 + r.next() * 0.8), step: 1000))
             let tc = clamp(0.97 - Double(age) * 0.045 - Double(km) / 700000 + (r.next() - 0.6) * 0.18, 0.15, 0.96)
             let dressed = r.next() < 0.25
             let vis = dressed ? min(0.95, tc + 0.15 + r.next() * 0.15) : clamp(tc + (r.next() - 0.5) * 0.08, 0.1, 0.97)

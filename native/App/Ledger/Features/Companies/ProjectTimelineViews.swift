@@ -70,7 +70,7 @@ struct ProjectTimelineDetail: View {
         if let c = l.costSoFar {
             out.append(.init(label: l.kind == .bid ? "Bid cost" : "Cost so far", value: store.short(c, in: co), sub: l.costBudget.map { l.kind == .bid ? "" : "of about \(store.short($0, in: co))" } ?? ""))
         } else if let r = l.receivedSoFar {
-            out.append(.init(label: "Paid so far", value: store.short(r, in: co), sub: l.value > 0 ? "\(Int((r / l.value * 100).rounded()))% of the contract" : ""))
+            out.append(.init(label: "Paid so far", value: store.short(r, in: co), sub: l.value > 0 ? "\(Int(saturating: (r / l.value * 100).rounded()))% of the contract" : ""))
         } else if let b = l.costBudget {
             out.append(.init(label: "Cost to bid", value: store.short(b, in: co)))
         }

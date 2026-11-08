@@ -75,7 +75,7 @@ struct CompanySourcing: View {
                 inputSection(input, cur: cur)
             }
             if company.num("int27u") > 0 {
-                Text("Holding back \(Int(company.num("int27u").rounded())) sales a week of its capacity for the group.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
+                Text("Holding back \(Int(saturating: company.num("int27u").rounded())) sales a week of its capacity for the group.").font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.horizontal, 2)
             }
         }
     }
@@ -125,15 +125,15 @@ struct CompanySourcing: View {
 
     private func starText(_ s: String) -> String {
         guard s.hasSuffix("stars"), let first = s.split(separator: " ").first, let v = Double(first) else { return "" }
-        let n: Int = min(5, max(0, Int(v.rounded())))
+        let n: Int = min(5, max(0, Int(saturating: v.rounded())))
         return String(repeating: "\u{2605}", count: n) + String(repeating: "\u{2606}", count: 5 - n)
     }
 
     private func rowLine(_ o: SupplierOption) -> String {
         if let b = o.blocked { return b }
         var parts: [String] = []
-        if let pf = o.priceFactor { parts.append("\(Int((pf * 100).rounded()))% of market") }
-        else if let d = o.discount, d > 0 { parts.append("\(Int((d * 100).rounded()))% off") }
+        if let pf = o.priceFactor { parts.append("\(Int(saturating: (pf * 100).rounded()))% of market") }
+        else if let d = o.discount, d > 0 { parts.append("\(Int(saturating: (d * 100).rounded()))% off") }
         if o.terms.count <= 30 { parts.append(o.terms) }
         if parts.isEmpty { parts.append(o.subtitle) }
         return parts.joined(separator: " · ")
@@ -238,7 +238,7 @@ struct CompanySourcing: View {
 
     @ViewBuilder private func supplyRow(_ l: IntercompanySupply.Link, columns: [TableColumn], cur: Currency) -> some View {
         if let b = engine.state.company(l.buyerID), let k = IntercompanySupply.kind(l.kindID) {
-            let delivered: String = "\(Int((l.lastShare * 100).rounded()))%"
+            let delivered: String = "\(Int(saturating: (l.lastShare * 100).rounded()))%"
             let year: String = cur.tidyShort(l.lastSpend * l.lastShare * l.lastPriceFactor * 52)
             let tint: Color = l.lastShare < 0.9 ? Theme.loss : Theme.ivory
             NavigationLink(value: CompanyRoute.companyAt(b.id, .operations)) {
@@ -259,8 +259,8 @@ struct CompanySourcing: View {
     private func headerLine(_ input: SupplierInput, cur: Currency) -> String {
         guard let c = input.current else { return input.noOwnProvider != nil ? "Outside suppliers · no own provider" : "Choose a provider" }
         var parts: [String] = []
-        if let pf = c.priceFactor { parts.append("\(Int((pf * 100).rounded()))% of market price") }
-        else if let d = c.discount, d > 0 { parts.append("\(Int((d * 100).rounded()))% off bills") }
+        if let pf = c.priceFactor { parts.append("\(Int(saturating: (pf * 100).rounded()))% of market price") }
+        else if let d = c.discount, d > 0 { parts.append("\(Int(saturating: (d * 100).rounded()))% off bills") }
         if let s = c.yearlyVsMarket, abs(s) >= 1 { parts.append(s > 0 ? "saves about \(cur.tidyShort(s)) a year" : "costs about \(cur.tidyShort(-s)) more a year") }
         parts.append(c.reliability)
         if input.noOwnProvider != nil { parts.append("no own provider") }
@@ -287,8 +287,8 @@ struct CompanySourcing: View {
     private func confirm(_ input: SupplierInput, _ o: SupplierOption, cur: Currency) {
         var lines: [String] = []
         lines.append("\(input.title): \(o.name). \(o.subtitle)")
-        if let pf = o.priceFactor { lines.append("Price: \(Int((pf * 100).rounded()))% of the market price.") }
-        if let d = o.discount, d > 0 { lines.append("Discount: \(Int((d * 100).rounded()))% off.") }
+        if let pf = o.priceFactor { lines.append("Price: \(Int(saturating: (pf * 100).rounded()))% of the market price.") }
+        if let d = o.discount, d > 0 { lines.append("Discount: \(Int(saturating: (d * 100).rounded()))% off.") }
         if let v = o.yearlyVsCurrent, abs(v) >= 1 {
             lines.append(v > 0 ? "Compared with now: saves about \(cur.tidyShort(v)) a year." : "Compared with now: costs about \(cur.tidyShort(-v)) a year more.")
         } else if o.priceFactor != nil { lines.append("Compared with now: about the same cost.") }
@@ -411,7 +411,7 @@ struct CompanySourcing: View {
         }
     }
 
-    private func pct(_ x: Double) -> String { x * 100 == (x * 100).rounded() ? "\(Int((x * 100).rounded()))%" : String(format: "%.1f%%", x * 100) }
+    private func pct(_ x: Double) -> String { x * 100 == (x * 100).rounded() ? "\(Int(saturating: (x * 100).rounded()))%" : String(format: "%.1f%%", x * 100) }
 
     private func ask(_ input: SupplierInput, _ o: SupplierOption, _ amount: Double) {
         guard let vid = o.vendorID else { return }

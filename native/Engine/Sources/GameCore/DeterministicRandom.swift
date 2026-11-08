@@ -27,7 +27,7 @@ public struct DeterministicRandom: Sendable, Equatable {
 
     /// Whole number from a through b inclusive. Original: `rint(a, b)`.
     public mutating func int(_ a: Int, _ b: Int) -> Int {
-        Int((Double(a) + next() * Double(b - a + 1)).rounded(.down))
+        Int(saturating: (Double(a) + next() * Double(b - a + 1)).rounded(.down))
     }
 
     /// True with probability p. Original: `chance(p)`.
@@ -35,7 +35,7 @@ public struct DeterministicRandom: Sendable, Equatable {
 
     /// Original: `pick(array)`.
     public mutating func pick<T>(_ items: [T]) -> T {
-        items[Int((next() * Double(items.count)).rounded(.down))]
+        items[Int(saturating: (next() * Double(items.count)).rounded(.down))]
     }
 
     /// Standard normal number (Box-Muller). Original: `gauss()`.
@@ -79,7 +79,7 @@ public struct DeterministicRandom: Sendable, Equatable {
         var a = items
         var i = a.count - 1
         while i > 0 {
-            let j = Int((next() * Double(i + 1)).rounded(.down))
+            let j = Int(saturating: (next() * Double(i + 1)).rounded(.down))
             a.swapAt(i, j)
             i -= 1
         }

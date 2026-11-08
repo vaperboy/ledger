@@ -70,7 +70,7 @@ struct VenturesFigures {
     /// "+1.2M (+8%) on 15M put in", or empty when nothing has gone in.
     var changeLine: String {
         guard invested > 0 else { return "" }
-        let pct: Int = Int((gain / invested * 100).rounded())
+        let pct: Int = Int(saturating: (gain / invested * 100).rounded())
         return (gain >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(gain)) + " (" + (pct >= 0 ? "+" : "\u{2212}") + "\(abs(pct))%) on \(cur.tidyShort(invested)) put in"
     }
 

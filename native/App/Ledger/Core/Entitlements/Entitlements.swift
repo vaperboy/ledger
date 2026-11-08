@@ -3,6 +3,7 @@ import Observation
 import StoreKit
 import UIKit
 import Simulation
+import GameCore
 
 /// A paywall asked for by a locked item. `title` is the item that triggered it ("Open a bakery in Lithuania").
 struct PaywallRequest: Identifiable, Equatable {
@@ -95,7 +96,7 @@ final class Entitlements {
     var yearlySaving: String {
         guard let m = products[.plusMonthly]?.price, let y = products[.plusYearly]?.price, m > 0 else { return "" }
         let saved: Double = (1 - NSDecimalNumber(decimal: y / (m * 12)).doubleValue) * 100
-        return saved >= 1 ? "Save \(Int(saved.rounded()))%" : ""
+        return saved >= 1 ? "Save \(Int(saturating: saved.rounded()))%" : ""
     }
 
     // MARK: Store

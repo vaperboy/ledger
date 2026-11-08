@@ -38,7 +38,7 @@ struct ApplicantRow: View {
 
     private var experienceLine: String {
         guard let y = applicant.claimedExperienceYears else { return "no experience given" }
-        let n = Int(y.rounded())
+        let n = Int(saturating: y.rounded())
         return "\(n) \(n == 1 ? "year" : "years")"
     }
 

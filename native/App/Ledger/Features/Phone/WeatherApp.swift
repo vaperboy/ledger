@@ -62,8 +62,8 @@ struct WeatherHeader: View {
 /// Helpers shared by the Weather cards.
 enum WeatherText {
     static func word(_ kind: String) -> String { WeatherEvents.kindWords[kind] ?? kind.capitalized }
-    static func pct(_ f: Double) -> String { (f >= 1 ? "+" : "−") + "\(Int((abs(f - 1) * 100).rounded()))%" }
-    static func deg(_ t: Double) -> String { "\(Int(t.rounded()))°" }
+    static func pct(_ f: Double) -> String { (f >= 1 ? "+" : "−") + "\(Int(saturating: (abs(f - 1) * 100).rounded()))%" }
+    static func deg(_ t: Double) -> String { "\(Int(saturating: t.rounded()))°" }
     /// Temperature at an hour of the day: coolest about 3, warmest about 15.
     static func hourly(mean: Double, hour: Int) -> Double { mean + 2.5 * sin((Double(hour) - 9) / 24 * 2 * Double.pi) }
 }
@@ -221,7 +221,7 @@ struct WeatherWeeksCard: View {
                 Text(WeatherText.word(d.kind) + (d.uncertain ? " · uncertain" : "")).textStyle(.caption, tint: storm ? P.loss : P.inkFaint)
             }
             Spacer(minLength: 8)
-            Text("\(Int(d.temperatureLow.rounded()))–\(Int(d.temperatureHigh.rounded()))°").textStyle(.body, tint: P.inkSoft, numeric: true)
+            Text("\(Int(saturating: d.temperatureLow.rounded()))–\(Int(saturating: d.temperatureHigh.rounded()))°").textStyle(.body, tint: P.inkSoft, numeric: true)
         }
         .padding(.vertical, 8)
     }

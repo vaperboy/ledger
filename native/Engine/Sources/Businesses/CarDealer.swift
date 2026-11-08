@@ -75,7 +75,7 @@ public enum CarDealer {
     /// Cars a dealership keeps in the showroom and on order for its demand (about six weeks of shoppers, at least three, never more than three
     /// quarters of its spaces). The buyer orders up to this, and the start-up plan counts it as the stock the owner has to pay for.
     static func wantedCars(_ co: Company, _ bd: Trade, demand D: Double) -> Int {
-        max(3, min(Int(Double(spaces(co, bd)) * 0.75), Int((D * 6).rounded(.up))))
+        max(3, min(Int(Double(spaces(co, bd)) * 0.75), Int(saturating: (D * 6).rounded(.up))))
     }
 
     /// The money the dealership needs for its cars before it sells: the wanted cars at the distributor's price. A new dealership opens with an
@@ -211,7 +211,7 @@ public enum CarDealer {
         var shoppers = Int(D)
         if rnd.next() < D - Double(Int(D)) { shoppers += 1 }
         var units = 0.0, rev = 0.0, cogs = 0.0
-        let room = Int(cap.rounded(.down)) + (rnd.next() < cap - cap.rounded(.down) ? 1 : 0)
+        let room = Int(saturating: cap.rounded(.down)) + (rnd.next() < cap - cap.rounded(.down) ? 1 : 0)
         func ask(_ c: JSONValue) -> Double { c["ask"].isNull ? c["list"].double : c["ask"].double }
         func ratio(_ c: JSONValue) -> Double {
             let fair = c["fair"].isNull ? c["list"].double : c["fair"].double

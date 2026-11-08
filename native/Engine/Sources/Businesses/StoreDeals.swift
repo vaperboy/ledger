@@ -15,7 +15,7 @@ public enum StoreDeals {
         public var label: String
         public var isOn: Bool { kind != .none }
         /// Whole percent off, 0 when there is no deal.
-        public var percentOff: Int { Int(((1 - factor) * 100).rounded()) }
+        public var percentOff: Int { Int(saturating: ((1 - factor) * 100).rounded()) }
     }
 
     public static let none = Deal(kind: .none, factor: 1, label: "")

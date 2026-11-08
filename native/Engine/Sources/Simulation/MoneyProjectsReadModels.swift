@@ -108,7 +108,7 @@ public extension GameEngine {
             guard x > 0 else { return LoanPayoff(monthsLeft: nil, interestLeft: 0, yearlyRate: rate) }
             n = -log(x) / log(1 + i)
         }
-        let months = Int((n - 0.01).rounded(.up))
+        let months = Int(saturating: (n - 0.01).rounded(.up))
         return LoanPayoff(monthsLeft: months, interestLeft: max(0, p * n - b), yearlyRate: rate)
     }
 

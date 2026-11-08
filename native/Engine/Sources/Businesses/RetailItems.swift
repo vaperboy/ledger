@@ -125,7 +125,7 @@ public enum RetailItems {
             r.supplierID = vendor
             r.holdingPerWeek = r.cost * holdingShare
         }
-        if d.isService && d.hours > 0 && d.leadDays == 0 { r.leadDays = Int((d.hours / 8).rounded(.up)) }
+        if d.isService && d.hours > 0 && d.leadDays == 0 { r.leadDays = Int(saturating: (d.hours / 8).rounded(.up)) }
         return r
     }
 
@@ -259,21 +259,21 @@ public enum RetailItems {
             var lines: [String] = d.note.isEmpty ? [] : [d.note]
             if d.model == .stk {
                 let raw = row.weeklyUnits * cover
-                r.stock = Int(raw.rounded())
-                r.onOrder = d.leadDays > 0 && row.weeklyUnits > 0 ? Int((row.weeklyUnits * Double(d.leadDays) / 7).rounded()) : 0
+                r.stock = Int(saturating: raw.rounded())
+                r.onOrder = d.leadDays > 0 && row.weeklyUnits > 0 ? Int(saturating: (row.weeklyUnits * Double(d.leadDays) / 7).rounded()) : 0
                 if r.stock > 0 { if r.since == nil { r.since = week } } else { r.since = nil }
                 if d.shelfDays > 0 && d.shelfDays <= 30 {
                     let fresh = row.weeklyUnits * Double(d.shelfDays) / 7
                     lines.append("Shelf life \(d.shelfDays) day\(d.shelfDays == 1 ? "" : "s"), delivery in \(max(1, d.leadDays)) day\(max(1, d.leadDays) == 1 ? "" : "s").")
-                    if raw > fresh * 1.05 && fresh > 0 { lines.append("About \(Int((raw - fresh).rounded())) units sit past their shelf life: they are thrown away. Order less.") }
+                    if raw > fresh * 1.05 && fresh > 0 { lines.append("About \(Int(saturating: (raw - fresh).rounded())) units sit past their shelf life: they are thrown away. Order less.") }
                 } else if d.leadDays > 0 {
                     lines.append("Delivery takes \(d.leadDays) days.")
                 }
             }
             if d.hours > 0 { lines.append("Takes \(d.hours == d.hours.rounded() ? String(Int(d.hours)) : String(d.hours)) hour\(d.hours == 1 ? "" : "s") of work.") }
-            if d.returns > 0 { lines.append("About \(Int((d.returns * 100).rounded()))% of the units come back.") }
+            if d.returns > 0 { lines.append("About \(Int(saturating: (d.returns * 100).rounded()))% of the units come back.") }
             if !d.season.isEmpty && abs(f - 1) > 0.1 {
-                lines.append(f < 1 ? "Out of season: customers think it is worth \(Int((f * 100).rounded()))% of the in-season price. Mark it down." : "In season: customers pay up to \(Int((f * 100).rounded()))% of the average price.")
+                lines.append(f < 1 ? "Out of season: customers think it is worth \(Int(saturating: (f * 100).rounded()))% of the in-season price. Mark it down." : "In season: customers pay up to \(Int(saturating: (f * 100).rounded()))% of the average price.")
             }
             if !d.supplyKind.isEmpty, let line = tradeRef(d.supplyKind) { lines.append(line) }
             if d.model == .rent { r.capacity = RetailItemsOwn.fleet(co, bd, d) }

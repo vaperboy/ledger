@@ -53,7 +53,7 @@ public enum Expansion {
         var advice: [String] = []
         if free < needed { advice.append("Keep \(w.currency(co).short(needed)) free before you open: \(w.currency(co).short(start)) to open and \(w.currency(co).short(reserve)) to carry it for about \(weeks) weeks.") }
         if history.count < 6 || profitNow <= 0 { advice.append("Your current outlet is not yet making a steady profit. A second one doubles the bills before it brings in money.") }
-        if cannibal > 0.05 { advice.append("Same city: it will take about \(Int((cannibal * 100).rounded()))% of the customers the two would otherwise share. Another city shares none.") }
+        if cannibal > 0.05 { advice.append("Same city: it will take about \(Int(saturating: (cannibal * 100).rounded()))% of the customers the two would otherwise share. Another city shares none.") }
         advice.append("Expect it to lose money for the first \(weeks / 2) weeks and carry itself after about \(weeks).")
         return Readiness(startCost: start, rampWeeks: weeks, rampReserve: reserve, cashNeeded: needed, cannibalisation: cannibal, cashFree: free, weeklyProfitNow: profitNow,
                          enoughCash: free >= needed, advice: advice)

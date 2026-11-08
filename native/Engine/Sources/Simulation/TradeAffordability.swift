@@ -47,7 +47,7 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
                     if small.minimumToOpen > available {
                         size = t.minSize; est = small
                     } else {
-                        var lo = Int((t.minSize * 20).rounded()), hi = Int((rec * 20).rounded())
+                        var lo = Int(saturating: (t.minSize * 20).rounded()), hi = Int(saturating: (rec * 20).rounded())
                         var best = small, bestSize = t.minSize
                         while hi - lo > 1 {
                             let mid = (lo + hi) / 2

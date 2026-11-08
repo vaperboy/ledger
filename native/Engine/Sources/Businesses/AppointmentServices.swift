@@ -167,7 +167,7 @@ public enum AppointmentServices {
         r.leadDays = sp.lead
         if sp.isRetail {
             let perWeek = customers * item.unitShare
-            r.stock = Int((perWeek * stockCoverWeeks).rounded(.up))
+            r.stock = Int(saturating: (perWeek * stockCoverWeeks).rounded(.up))
             r.since = week
         } else {
             r.capacity = maxPerWeek(sp, t, capacity: capacity)
@@ -238,16 +238,16 @@ public enum AppointmentServices {
                     if rec.stock == 0 { rec.since = week }
                     rec.stock += arriving
                 }
-                let sold = min(rec.stock, Int(owed.rounded(.down)))
-                carry = sold < Int(owed.rounded(.down)) ? 0 : owed - Double(sold)
+                let sold = min(rec.stock, Int(saturating: owed.rounded(.down)))
+                carry = sold < Int(saturating: owed.rounded(.down)) ? 0 : owed - Double(sold)
                 rec.stock -= sold
                 if rec.stock == 0 { rec.since = nil }
                 let lead = Double(rec.leadDays) / 7
-                let level = Int((perWeek * (lead + reorderCoverWeeks)).rounded(.up))
-                let target = Int((perWeek * (lead + stockCoverWeeks)).rounded(.up))
+                let level = Int(saturating: (perWeek * (lead + reorderCoverWeeks)).rounded(.up))
+                let target = Int(saturating: (perWeek * (lead + stockCoverWeeks)).rounded(.up))
                 if rec.stock + rec.onOrder <= level, target > rec.stock + rec.onOrder {
                     let n = target - rec.stock - rec.onOrder
-                    let due = week + Int(lead.rounded(.up))
+                    let due = week + Int(saturating: lead.rounded(.up))
                     rec.onOrder += n
                     rec.plans.append(ItemModels.Plan(kind: "order:\(n)", text: "Reorder of \(n) arrives in week \(due).", week: due))
                 }

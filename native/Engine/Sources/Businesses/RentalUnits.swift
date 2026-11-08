@@ -218,7 +218,7 @@ public enum RentalUnits {
         let breakEven = (varOnMarket + (b.periods > 0 ? fixed / (b.periods * eff) : 0)) / max(1e-9, 1 - spec.chan)
         return UnitEconomics(itemID: b.itemID, name: b.name, kindLabel: b.kindLabel, per: spec.per, units: b.count, capacity: b.periods, rented: rented, occupancy: measured,
                              rate: price, marketRate: market, variablePerPeriod: varPerPeriod, fixedParts: parts, fixedWeekly: fixed, costPerPeriod: cost, breakEvenRate: breakEven,
-                             weeklyProfit: rented * (price - varPerPeriod) - fixed, status: b.status, seasonIndex: season, booked: Int((rented * spec.adv).rounded()))
+                             weeklyProfit: rented * (price - varPerPeriod) - fixed, status: b.status, seasonIndex: season, booked: Int(saturating: (rented * spec.adv).rounded()))
     }
 
     static func season(_ w: World, _ bd: Trade) -> Double {
@@ -351,7 +351,7 @@ public enum RentalUnits {
         for u in units {
             var r = ItemModels.record(s.companies[i], itemID: u.itemID) ?? ItemModels.Record(id: u.itemID, model: .rent)
             r.model = .rent
-            r.stock = Int(u.count.rounded()); r.capacity = u.periods; r.status = u.status
+            r.stock = Int(saturating: u.count.rounded()); r.capacity = u.periods; r.status = u.status
             ItemModels.put(&s, i, r)
         }
         // A smoothed weekly cost of the company (monthly bills would otherwise make the unit costs jump).

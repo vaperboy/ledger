@@ -157,7 +157,7 @@ struct TechProProduct: View {
         } else {
             let p: Double = e.equipmentPrice(companyID: companyID, equipmentID: equipmentID, factor: o.priceFactor, vendorID: o.vendorID)
             let sale: StoreDeals.Deal = e.equipmentDeal(equipmentID: equipmentID, vendorID: o.vendorID)
-            let perf: Int = Int(((o.performance - 1) * 100).rounded())
+            let perf: Int = Int(saturating: ((o.performance - 1) * 100).rounded())
             let base: [(label: String, value: String)] = [
                 (label: "Price each", value: cur.tidyShort(p)),
                 (label: "Seller", value: o.seller), (label: "Class", value: o.className), (label: "Rating", value: stars(o.rating, o.reviews)),
@@ -192,7 +192,7 @@ struct TechProProduct: View {
     // MARK: Header
 
     private func header(_ need: EquipmentMarket.Need, title: String) -> some View {
-        let have: Int = Int((need.have + need.leased).rounded())
+        let have: Int = Int(saturating: (need.have + need.leased).rounded())
         let sub: String = EquipmentMarket.kindName(need.kind) + " \u{00B7} lasts about \(Int(need.lifeYears)) years" + (need.warrantyYears > 0 ? " \u{00B7} \(Int(need.warrantyYears)) yr warranty" : "")
         let owned: String = need.need > 0 ? "You have \(have) of \(Int(need.need)) needed" : (have > 0 ? "You have \(have)" : "You have none yet")
         let short: Bool = need.need > 0 && Double(have) < need.need

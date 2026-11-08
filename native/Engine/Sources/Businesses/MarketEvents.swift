@@ -85,7 +85,7 @@ public enum MarketEvents {
     public static func noteContractOffer(_ s: inout GameState, company co: Company, customer: String, worth: Double, outcome: String? = nil) {
         let yearly = MarketMap.annualRevenue(co)
         guard yearly > 0, worth >= yearly * 0.05 else { return }
-        log(&s, .majorContract, title: "\(customer) offers a contract", detail: "Worth \(Int((worth / yearly * 100).rounded()))% of a year's sales at \(co.name).", companyID: co.id, amount: worth, tone: "good",
+        log(&s, .majorContract, title: "\(customer) offers a contract", detail: "Worth \(Int(saturating: (worth / yearly * 100).rounded()))% of a year's sales at \(co.name).", companyID: co.id, amount: worth, tone: "good",
             consequence: outcome ?? "The offer is in your inbox: accept or decline it there.")
     }
 
@@ -239,14 +239,14 @@ public enum MarketEvents {
         }
         seen["eco"] = eco; seen["ecoW"] = when
         guard let top = moves.max(by: { abs($0.change) < abs($1.change) }) else { return }
-        let pct = Int((abs(top.change) * 100).rounded())
+        let pct = Int(saturating: (abs(top.change) * 100).rounded())
         var sentence = "\(top.label) prices are \(top.change > 0 ? "up" : "down") \(pct)%: your costs follow."
         if let c = costChange(s, key: top.key, from: top.last, to: top.now, data: data), let bd = data.catalog[c.company.type], bd.costOfSales > 0, c.company.lastWeekRevenue > 0 {
             let cur = World(state: s, data: data).currency(c.company)
             let share = abs(c.weekly) / (c.company.lastWeekRevenue * bd.costOfSales) * 100
             sentence = "At \(c.company.name) your cost of sales \(c.weekly > 0 ? "rises" : "falls") about \(String(format: "%.1f", share))%, \(cur.display(abs(c.weekly))) a week."
         }
-        let others = moves.filter { $0.key != top.key }.map { "\($0.label.lowercased()) \($0.change > 0 ? "up" : "down") \(Int((abs($0.change) * 100).rounded()))%" }
+        let others = moves.filter { $0.key != top.key }.map { "\($0.label.lowercased()) \($0.change > 0 ? "up" : "down") \(Int(saturating: (abs($0.change) * 100).rounded()))%" }
         log(&s, .supplierPriceChange, title: "Supplier prices: \(top.label.lowercased()) \(top.change > 0 ? "up" : "down") \(pct)%", detail: sentence,
             amount: top.change, tone: top.change > 0 ? "bad" : "good", consequence: others.isEmpty ? sentence : sentence + " Also \(others.joined(separator: ", ")).")
     }

@@ -1,4 +1,5 @@
 import Foundation
+import GameCore
 
 /// Pro cosmetics: logo badges and colour themes. Pure rules, no SwiftUI. Nothing here changes a sim number.
 /// Fairness: every badge earned in the career is free to wear for ever; the extra premium badges and the colour themes are Pro.
@@ -96,7 +97,7 @@ public enum HomeProgress {
     /// Whole percent for a ring label (never 100 until it is truly full).
     public static func percent(_ p: Double) -> Int {
         let c = clamp(p)
-        return c >= 1 ? 100 : min(99, Int((c * 100).rounded(.down)))
+        return c >= 1 ? 100 : min(99, Int(saturating: (c * 100).rounded(.down)))
     }
 
     /// Days of cash left at the average daily outflow seen in the series; nil when cash is not falling (no runway to speak of).

@@ -51,7 +51,7 @@ public extension GameEngine {
         if let b = r.best, r.companies.count > 1, let p = r.company(b.id)?.pnl.netProfit { changes.append("Best: \(b.name) (\(p >= 0 ? "+" : "−")\(amount(p)))") }
         if let w = r.worst, r.companies.count > 1, let p = r.company(w.id)?.pnl.netProfit, p < 0 { changes.append("Weakest: \(w.name) (−\(amount(p)))") }
         let rep = g.reputationEnd - g.reputationStart
-        if abs(rep) >= 1 { changes.append("Reputation \(rep > 0 ? "up" : "down") \(Int(abs(rep).rounded())) points") }
+        if abs(rep) >= 1 { changes.append("Reputation \(rep > 0 ? "up" : "down") \(Int(saturating: abs(rep).rounded())) points") }
         for e in g.events.filter({ $0.tone == "good" }).prefix(2) { changes.append(e.text) }
 
         var risks: [String] = []
@@ -95,7 +95,7 @@ public extension GameEngine {
         for co in live {
             let today = DailyTrade.soldOn(co, week: state.week, day: state.day)
             guard !today.isNull else { continue }
-            let units = Int(today["u"].double.rounded())
+            let units = Int(saturating: today["u"].double.rounded())
             guard units > 0 else { continue }
             sales += units
             revenue += today["r"].double

@@ -240,10 +240,10 @@ public extension GameEngine {
         }
         if know.level != .feeling {
             let short: (Double) -> String = { cur.short($0) }
-            facts = [Fact(label: "Revenue a year", value: range(rev, "rv", unit: 0, f: short)), Fact(label: "Margin", value: range(margin * 100, "mg", unit: 1) { "\(Int($0.rounded()))" } + "%"),
-                     Fact(label: "Profit a year", value: range(rev * margin, "pf", unit: 0, f: short)), Fact(label: "Staff", value: range(Double(staff), "st", unit: 1) { "\(max(1, Int($0.rounded())))" }),
-                     Fact(label: "Cash lasts if they lose money", value: range(Double(run), "rn", unit: 2) { "\(max(1, Int($0.rounded())))" } + " weeks"),
-                     Fact(label: "Market share", value: range((share ?? 0) * 100, "sh", unit: 2) { "\(max(0, Int($0.rounded())))" } + "%")]
+            facts = [Fact(label: "Revenue a year", value: range(rev, "rv", unit: 0, f: short)), Fact(label: "Margin", value: range(margin * 100, "mg", unit: 1) { "\(Int(saturating: $0.rounded()))" } + "%"),
+                     Fact(label: "Profit a year", value: range(rev * margin, "pf", unit: 0, f: short)), Fact(label: "Staff", value: range(Double(staff), "st", unit: 1) { "\(max(1, Int(saturating: $0.rounded())))" }),
+                     Fact(label: "Cash lasts if they lose money", value: range(Double(run), "rn", unit: 2) { "\(max(1, Int(saturating: $0.rounded())))" } + " weeks"),
+                     Fact(label: "Market share", value: range((share ?? 0) * 100, "sh", unit: 2) { "\(max(0, Int(saturating: $0.rounded())))" } + "%")]
         } else {
             facts = [Fact(label: "Size", value: MarketMap.sizeComparison(rival: rev, mine: myRev)),
                      Fact(label: "Money", value: margin > 0.14 ? "Seems to be doing well" : margin > 0.05 ? "Getting by" : margin > 0 ? "Looks like thin margins" : "Looks like they are losing money"),
@@ -251,7 +251,7 @@ public extension GameEngine {
                      Fact(label: "Staff", value: staff >= 10 ? "A big team" : staff >= 4 ? "A handful of people" : "Just a few")]
         }
         let gap = Pricing.ticket(co, bd, w) > 0 ? Rivals.price(co, r, w) / Pricing.ticket(co, bd, w) - 1 : 0
-        facts.append(Fact(label: "Their price vs yours", value: abs(gap) < 0.03 ? "About the same" : (gap > 0 ? "Higher by about " : "Lower by about ") + "\(Int((abs(gap) * 100).rounded()))%"))
+        facts.append(Fact(label: "Their price vs yours", value: abs(gap) < 0.03 ? "About the same" : (gap > 0 ? "Higher by about " : "Lower by about ") + "\(Int(saturating: (abs(gap) * 100).rounded()))%"))
         let rating = Reviews.rivalRating(seed: state.seed, rivalID: r.id, size: r.size)
         let count = Reviews.rivalReviewCount(bd, size: r.size, week: state.week)
         let country = data.countries.resolve(co.countryCode, orHome: state.homeCountryCode)

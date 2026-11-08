@@ -43,9 +43,9 @@ public enum GroupDeals {
         guard let g = GroupStakes.group(s, id: groupID) else { return }
         let co = s.companies[i], cur = fc.currency(co.countryCode, s)
         let out = 100 - co.ownership
-        var body = "\(g["name"].string) offers \(cur.display(price)) for all of \(co.name) (about \(Int(((price / max(1, v0) - 1) * 100).rounded()).magnitude)% \(price >= v0 ? "above" : "below") what it is worth today). "
-        if co.ownership < 100 { body += "You own \(Int(co.ownership.rounded()))%, so you would get \(cur.display(price * co.ownership / 100)). " }
-        body += out > 50 ? "Outside owners hold \(Int(out.rounded()))%. If the price is good they can accept without you." : out >= 33.4 ? "Outside owners hold \(Int(out.rounded()))% and will want a say." : ""
+        var body = "\(g["name"].string) offers \(cur.display(price)) for all of \(co.name) (about \(Int(saturating: ((price / max(1, v0) - 1) * 100).rounded()).magnitude)% \(price >= v0 ? "above" : "below") what it is worth today). "
+        if co.ownership < 100 { body += "You own \(Int(saturating: co.ownership.rounded()))%, so you would get \(cur.display(price * co.ownership / 100)). " }
+        body += out > 50 ? "Outside owners hold \(Int(saturating: out.rounded()))%. If the price is good they can accept without you." : out >= 33.4 ? "Outside owners hold \(Int(saturating: out.rounded()))% and will want a say." : ""
         s.addMessage(kind: "ask", from: "\(g["owner"].string), \(g["name"].string)", title: "\(g["name"].string) wants to buy \(co.name)", body: body, companyID: co.id, tone: "n", status: "open",
                      options: [.option("Accept", "Sell now for \(cur.display(price * co.ownership / 100)) to you."), .option("Ask for more", "They may raise their offer, or walk away."), .option("Refuse", "Keep it. They may come back, or compete harder.")],
                      action: bidAction, data: .object(["co": .number(Double(co.id)), "g": .string(groupID), "price": .number(price), "V0": .number(v0), "round": 0]), expiresWeek: s.week + 3)
@@ -79,7 +79,7 @@ public enum GroupDeals {
         Payments.transferFromSavings(&s, need: price)
         Payments.playerPays(&s, price, label: "Stake in \(g["name"].string)")
         s.rest["st27"] = .array((s.rest["st27"]?.array ?? []) + [.object(["g": .string(groupID), "pct": .number(fraction), "cost": .number(price), "w": .number(Double(s.week))])])
-        s.note("You now own \(Int((fraction * 100).rounded()))% of \(g["name"].string).", tone: "good")
+        s.note("You now own \(Int(saturating: (fraction * 100).rounded()))% of \(g["name"].string).", tone: "good")
         return .bought(price)
     }
 }

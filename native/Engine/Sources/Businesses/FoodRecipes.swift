@@ -94,8 +94,8 @@ public enum FoodRecipes {
         let w = ps.reduce(0.0) { $0 + $1.customers * $1.ratio }
         func avg(_ f: (Recipe) -> Double) -> Double { w > 0 ? ps.reduce(0.0) { $0 + $1.customers * $1.ratio * f($1) } / w : 0 }
         return Recipe(id: "avg", name: name, match: [], ratio: 1, customers: 1, inputs: [Input(name: "Ingredients and materials", qty: "per unit", share: avg { $0.inputShare })],
-                      spoilage: avg { $0.spoilage }, minutes: avg { $0.minutes }, batch: Int(avg { Double($0.batch) }.rounded()), perShift: avg { $0.perShift },
-                      shelfDays: Int(avg { Double($0.shelfDays) }.rounded()), coverDays: Int(avg { Double($0.coverDays) }.rounded()), leadDays: Int(avg { Double($0.leadDays) }.rounded()),
+                      spoilage: avg { $0.spoilage }, minutes: avg { $0.minutes }, batch: Int(saturating: avg { Double($0.batch) }.rounded()), perShift: avg { $0.perShift },
+                      shelfDays: Int(saturating: avg { Double($0.shelfDays) }.rounded()), coverDays: Int(saturating: avg { Double($0.coverDays) }.rounded()), leadDays: Int(saturating: avg { Double($0.leadDays) }.rounded()),
                       allergens: "See the allergen sheet", boughtIn: false, harvestStart: nil, harvestWeeks: 0)
     }
 
@@ -181,7 +181,7 @@ public enum FoodRecipes {
         let d = GameCalendar.date(week: week)
         let year = d.month >= 9 ? d.year : d.year - 1
         var t = "Harvest from \(monthWord(weekOfYear: h)), about \(r.harvestWeeks) weeks"
-        if r.leadDays >= 365 { t += ". Vintage \(year), ready \(year + Int((Double(r.leadDays) / 365).rounded(.up)))" }
+        if r.leadDays >= 365 { t += ". Vintage \(year), ready \(year + Int(saturating: (Double(r.leadDays) / 365).rounded(.up)))" }
         return t
     }
 
@@ -201,9 +201,9 @@ public enum FoodRecipes {
         if r.boughtIn {
             add("Bought in: reorder every \(max(1, r.leadDays)) days from the linked supplier")
         } else {
-            add("Batch of \(r.batch), about \(Int(r.minutes.rounded())) minutes of work a unit")
+            add("Batch of \(r.batch), about \(Int(saturating: r.minutes.rounded())) minutes of work a unit")
             if r.leadDays >= 7 { add("Takes \(r.leadDays / 7) weeks to make or age, \(rec.onOrder) units in the tanks, barrels or fields now") }
-            if cap > 0, units > cap { add("Over capacity: \(Int(units.rounded())) a week asked, \(Int(cap.rounded())) can be made. Add a shift or equipment.") }
+            if cap > 0, units > cap { add("Over capacity: \(Int(saturating: units.rounded())) a week asked, \(Int(saturating: cap.rounded())) can be made. Add a shift or equipment.") }
         }
         if r.shelfDays > 0, r.shelfDays < 30 { add("Keeps \(r.shelfDays) days, unsold product is written off") }
         let note = seasonNote(r, week: week)
@@ -220,8 +220,8 @@ public enum FoodRecipes {
         rec.leadDays = r.leadDays
         rec.capacity = capacity(r, spec: spec, co)
         let cover = coverWeeks(r)
-        rec.stock = max(1, Int((units * cover).rounded(.up)))
-        rec.onOrder = r.leadDays >= 7 || r.boughtIn ? Int((units * Double(r.leadDays) / 7).rounded(.up)) : 0
+        rec.stock = max(1, Int(saturating: (units * cover).rounded(.up)))
+        rec.onOrder = r.leadDays >= 7 || r.boughtIn ? Int(saturating: (units * Double(r.leadDays) / 7).rounded(.up)) : 0
         rec.since = nil
         rec.plans.removeAll { $0.kind == planKind }
         let fresh = plans(r, rec: rec, units: units, cap: rec.capacity, week: week)

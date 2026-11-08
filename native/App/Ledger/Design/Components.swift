@@ -134,7 +134,7 @@ struct Sparkline: View {
     var filled = true
     var body: some View {
         GeometryReader { geo in
-            if values.count >= 2, let lo = values.min(), let hi = values.max() {
+            if values.count >= 2, values.allSatisfy({ $0.isFinite }), geo.size.width.isFinite, geo.size.height.isFinite, let lo = values.min(), let hi = values.max() {
                 let span = max(hi - lo, abs(hi) * 0.002, 1)
                 let pts: [CGPoint] = values.enumerated().map { i, v in
                     CGPoint(x: geo.size.width * CGFloat(i) / CGFloat(values.count - 1), y: geo.size.height * (1 - CGFloat((v - lo) / span)) * 0.9 + geo.size.height * 0.05)

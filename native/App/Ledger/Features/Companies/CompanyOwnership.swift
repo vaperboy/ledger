@@ -73,7 +73,7 @@ struct CompanyOwnershipSection: View {
                     Spacer(minLength: 8)
                     GlyphView(glyph: Glyph.group, size: 17, weight: 1.6)
                 }
-                Text("\(Int(company.ownership.rounded()))%").textStyle(.display, tint: Theme.ink)
+                Text("\(Int(saturating: company.ownership.rounded()))%").textStyle(.display, tint: Theme.ink)
                 ownershipBar(all)
                 Text(power.text).textStyle(.caption, tint: power.kind == .control ? Theme.warn : Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 StatStrip(cells: cells)
@@ -99,7 +99,7 @@ struct CompanyOwnershipSection: View {
         .chartYAxis(.hidden)
         .frame(height: 22)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous))
-        .accessibilityLabel("Ownership: you \(Int(company.ownership.rounded())) percent")
+        .accessibilityLabel("Ownership: you \(Int(saturating: company.ownership.rounded())) percent")
     }
 
     // MARK: Owners
@@ -210,7 +210,7 @@ struct CompanyOwnershipSection: View {
 
     private func offerCard(_ o: Funding.FundOffer, cur: Currency) -> some View {
         let id = company.id
-        let headline: String = "\(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%"
+        let headline: String = "\(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%"
         return Card(padding: Theme.Space.m, radius: Theme.Radius.row) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(alignment: .firstTextBaseline) {
@@ -223,10 +223,10 @@ struct CompanyOwnershipSection: View {
                 }
                 WrapRow {
                     QuietButton(title: "Accept") {
-                        pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(o.pct.rounded()))%?", message: DealText.describe(engine.fundingOfferTerms(companyID: id, offerIndex: o.id), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Accept", destructive: true) {
+                        pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%?", message: DealText.describe(engine.fundingOfferTerms(companyID: id, offerIndex: o.id), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Accept", destructive: true) {
                             let ok = store.act { $0.acceptFundingOffer(companyID: id, index: o.id) } ?? false
                             if !ok { Haptics.warning() } else { Haptics.success() }
-                            store.show(ok ? "\(cur.tidyShort(o.amount)) is in the company; \(o.name) now owns \(Int(o.pct.rounded()))%." : "The offer has gone.", tone: ok ? "good" : "warn")
+                            store.show(ok ? "\(cur.tidyShort(o.amount)) is in the company; \(o.name) now owns \(Int(saturating: o.pct.rounded()))%." : "The offer has gone.", tone: ok ? "good" : "warn")
                         }
                     }
                     if !o.countered {

@@ -72,7 +72,7 @@ private struct JobList: View {
     private var figureItems: [KeyFigures.Item] {
         let bookedLabel: String = board.isEvent ? "Booked" : "Booked ahead"
         let bookedValue: String = board.weeksBooked < 0.2 ? "Nothing yet" : String(format: "%.1f wk", board.weeksBooked)
-        let hours: String = "\(Int(board.bookedHours.rounded())) of \(Int(board.hoursPerWeek.rounded())) h a week"
+        let hours: String = "\(Int(saturating: board.bookedHours.rounded())) of \(Int(saturating: board.hoursPerWeek.rounded())) h a week"
         let doneLabel: String = board.isEvent ? "Delivered" : "Finished"
         return [
             .init(label: bookedLabel, value: bookedValue, tint: board.weeksBooked > 3 ? Theme.caution : Theme.ivory, sub: hours),
@@ -101,11 +101,11 @@ private struct JobList: View {
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 1) {
                     Text(store.short(j.value, in: company)).textStyle(.headline, tint: Theme.ink, numeric: true, weight: .semibold)
-                    Text("margin before pay \(Int((j.margin * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                    Text("margin before pay \(Int(saturating: (j.margin * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                 }
             }
             if j.started {
-                RateBar(label: "\(Int(j.hoursDone.rounded())) of \(Int(j.hours.rounded())) h", fraction: j.progress, tint: j.held ? Theme.caution : Theme.gain)
+                RateBar(label: "\(Int(saturating: j.hoursDone.rounded())) of \(Int(saturating: j.hours.rounded())) h", fraction: j.progress, tint: j.held ? Theme.caution : Theme.gain)
                     .animation(Motion.quickAnimation, value: j.progress)
                 if j.held { Text("Held up").textStyle(.caption, tint: Theme.warn) }
             }
@@ -115,7 +115,7 @@ private struct JobList: View {
     private func subtitle(_ j: ProjectBoard.JobRow) -> String {
         var parts = [j.client]
         if let w = j.dueWeek, board.isEvent { parts.append("on \(GameCalendar.dateString(week: w))") }
-        else { parts.append("\(Int(j.quotedHours.rounded())) h"); if j.isPublic { parts.append("public client") } }
+        else { parts.append("\(Int(saturating: j.quotedHours.rounded())) h"); if j.isPublic { parts.append("public client") } }
         if j.paid > 0 { parts.append("paid \(store.short(j.paid, in: company))") }
         return parts.joined(separator: " · ")
     }
@@ -181,7 +181,7 @@ private struct JobList: View {
                         if let r = t.requirement, !t.qualifies { Text("Needs \(r)").textStyle(.caption, tint: Theme.warn) }
                     }
                     Spacer(minLength: 8)
-                    if let b = t.myBid { Chip(text: "Bid \(Int((b * 100).rounded()))%", tint: Theme.gold) }
+                    if let b = t.myBid { Chip(text: "Bid \(Int(saturating: (b * 100).rounded()))%", tint: Theme.gold) }
                     else { Text("\(t.weeksToBid) wk to bid").textStyle(.caption, tint: Theme.accent, numeric: true) }
                     MoreChevron()
                 }
@@ -193,7 +193,7 @@ private struct JobList: View {
 
     private func tenderSheet(_ t: ProjectBoard.TenderRow) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            valueRow("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int((t.priceWeight * 100).rounded()))% · quality \(Int(((1 - t.priceWeight) * 100).rounded()))%")
+            valueRow("Scored on", t.priceWeight >= 1 ? "Price only" : "Price \(Int(saturating: (t.priceWeight * 100).rounded()))% · quality \(Int(saturating: ((1 - t.priceWeight) * 100).rounded()))%")
             valueRow("Bids close", "in \(t.weeksToBid.weeksText) · award \(GameCalendar.dateString(week: t.awardWeek))")
             valueRow("Writing the bid costs", store.money(t.bidCost, in: company))
             if t.myBid != nil {
@@ -204,7 +204,7 @@ private struct JobList: View {
                 Text("The firm does not meet the buyer's requirements yet.").textStyle(.caption, tint: Theme.warn)
             } else {
                 Text("Your price against your list price").capsLabel(Theme.ivoryFaint)
-                SectionTabs(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
+                SectionTabs(items: Array(prices.indices), title: { "\(Int(saturating: (prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
                 Toggle(isOn: $higherQuality) {
                     Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
                 }.tint(Theme.gold)

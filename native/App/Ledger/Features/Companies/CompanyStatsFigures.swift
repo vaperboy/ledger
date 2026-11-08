@@ -103,7 +103,7 @@ struct CompanyStatsFigures: View {
                                 Circle().fill(Self.palette[i % Self.palette.count]).frame(width: 7, height: 7)
                                 Text(l.label).textStyle(.caption).lineLimit(1)
                                 Spacer(minLength: Theme.Space.xs)
-                                Text("\(Int((l.share * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
+                                Text("\(Int(saturating: (l.share * 100).rounded()))%").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                             }
                         }
                     }

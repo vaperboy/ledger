@@ -1,4 +1,5 @@
 import SwiftUI
+import GameCore
 
 // The shared pieces of the new look. Every screen is built from these, so a
 // colour, radius or icon changes in one place. Values are the mockups' own; tokens live in Theme.swift.
@@ -200,7 +201,7 @@ enum SVGPathData {
         var delta: Double = theta2 - theta1
         if !sweep && delta > 0 { delta -= 2 * Double.pi }
         if sweep && delta < 0 { delta += 2 * Double.pi }
-        let n: Int = max(1, Int((abs(delta) / (Double.pi / 2)).rounded(.up)))
+        let n: Int = min(8, max(1, Int(saturating: (abs(delta) / (Double.pi / 2)).rounded(.up))))   // an arc has at most four quarter turns
         let step: Double = delta / Double(n)
         let k: Double = 4.0 / 3.0 * tan(step / 4)
         for j in 0..<n {

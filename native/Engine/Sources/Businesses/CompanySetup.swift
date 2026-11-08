@@ -86,8 +86,8 @@ public enum CompanySetup {
         return tiers.enumerated().map { (i, t) in
             let m2 = max(10, jsRound(rec * t[1].double * (0.92 + r.next() * 0.16) / 5) * 5)
             let rentF = t[2].double * (0.94 + r.next() * 0.12)
-            let landlord = country.companyNameStarts.isEmpty ? "Nova" : country.companyNameStarts[Int((r.next() * Double(country.companyNameStarts.count)).rounded(.down))]
-            let word = premisesWords[Int((r.next() * Double(premisesWords.count)).rounded(.down))]
+            let landlord = country.companyNameStarts.isEmpty ? "Nova" : country.companyNameStarts[Int(saturating: (r.next() * Double(country.companyNameStarts.count)).rounded(.down))]
+            let word = premisesWords[Int(saturating: (r.next() * Double(premisesWords.count)).rounded(.down))]
             return Listing(index: i, name: foot ? t[0].string : tiersB[i].string, squareMetres: m2, rentFactor: rentF, location: t[3].double, landlord: landlord + " " + word)
         }
     }

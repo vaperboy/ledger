@@ -248,7 +248,7 @@ struct ProjectsBidsTab: View {
         let t = x.t
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Your price against your list price").textStyle(.caption, tint: Theme.inkFaint)
-            SegmentedChoice(items: Array(prices.indices), title: { "\(Int((prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
+            SegmentedChoice(items: Array(prices.indices), title: { "\(Int(saturating: (prices[$0] * 100).rounded()))%" }, selection: $priceIndex)
             Toggle(isOn: $higherQuality) {
                 Text("Commit to higher quality (costs about 3% more to deliver)").textStyle(.caption, tint: Theme.ink)
             }.tint(Theme.accent).frame(minHeight: 44)
@@ -263,7 +263,7 @@ struct ProjectsBidsTab: View {
         let t = x.t
         let pf = prices[priceIndex], hq = higherQuality
         pending = PendingAction(title: "Send this bid?",
-                                message: "\(t.title.tidyMoney) at \(Int((pf * 100).rounded()))% of your list price\(hq ? ", higher quality" : ""). Writing the bid costs \(store.money(t.bidCost, in: x.co)) from \(x.co.name) whether or not you win.",
+                                message: "\(t.title.tidyMoney) at \(Int(saturating: (pf * 100).rounded()))% of your list price\(hq ? ", higher quality" : ""). Writing the bid costs \(store.money(t.bidCost, in: x.co)) from \(x.co.name) whether or not you win.",
                                 button: "Send the bid", amount: t.bidCost, currency: engine.currency(for: x.co)) {
             let r = store.act { $0.bidOnTender(companyID: x.co.id, tenderID: t.id, priceFactor: pf, higherQuality: hq) }
             switch r {
@@ -284,7 +284,7 @@ struct ProjectsBidsTab: View {
                     Text("\(x.co.name) · \(t.buyer) · worth \(store.short(t.worth, in: x.co))").textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
                 Spacer(minLength: Theme.Space.s)
-                Text(t.myBid.map { "Bid \(Int(($0 * 100).rounded()))%" } ?? "Bid sent").textStyle(.caption, tint: Theme.accent)
+                Text(t.myBid.map { "Bid \(Int(saturating: ($0 * 100).rounded()))%" } ?? "Bid sent").textStyle(.caption, tint: Theme.accent)
             }
             Text("Decision on \(GameCalendar.dateString(week: t.awardWeek)). You can take the bid back until the bids close; a new one costs the writing fee again.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)

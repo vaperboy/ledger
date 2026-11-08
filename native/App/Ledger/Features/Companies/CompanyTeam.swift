@@ -61,7 +61,7 @@ struct CompanyTeam: View {
                         Spacer(minLength: 0)
                     }
                     if let t {
-                        Text("Wages \(cur.tidyShort(t.grossMonthlyWages)) plus taxes and cover \u{00B7} \(cur.tidyShort(t.totalAnnualCost)) a year \u{00B7} \(Int(t.totalHoursPerWeek.rounded())) h a week")
+                        Text("Wages \(cur.tidyShort(t.grossMonthlyWages)) plus taxes and cover \u{00B7} \(cur.tidyShort(t.totalAnnualCost)) a year \u{00B7} \(Int(saturating: t.totalHoursPerWeek.rounded())) h a week")
                             .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                     }
                 }

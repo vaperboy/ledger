@@ -64,7 +64,7 @@ public enum DailyTrade {
         if p >= 1 { return n }
         if n > 40 { return clamp(jsRound(n * p + r.gauss() * (n * p * (1 - p)).squareRoot()), 0, n) }
         var k = 0.0
-        for _ in 0..<Int(n) where r.next() < p { k += 1 }
+        for _ in 0..<max(0, Int(saturating: n)) where r.next() < p { k += 1 }
         return k
     }
 
@@ -231,7 +231,7 @@ public enum DailyTrade {
         let W = weights.reduce(0) { $0 + $1.weight }
         var got = Array(repeating: 0.0, count: weights.count)
         if n <= 200 {
-            for _ in 0..<Int(n) {
+            for _ in 0..<max(0, Int(saturating: n)) {
                 var x = r.next() * W
                 var j = 0
                 while j < weights.count - 1 {

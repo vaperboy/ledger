@@ -57,7 +57,7 @@ struct VenturesSoftwareSection: View {
         return CardSection(title: p.name, trailing: { Text(co.name).textStyle(.caption, tint: Theme.inkFaint) }) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 FigureCard(items: [
-                    .init(label: "Stage", value: phase, sub: p.phase == .live ? "" : "\(Int((p.progress * 100).rounded()))% done"),
+                    .init(label: "Stage", value: phase, sub: p.phase == .live ? "" : "\(Int(saturating: (p.progress * 100).rounded()))% done"),
                     .init(label: "Customers", value: "\(p.customers)"),
                     .init(label: "Sales", value: cur.tidyShort(p.weeklyRevenue), sub: "last week"),
                     .init(label: "Team", value: "\(p.coders) coder\(p.coders == 1 ? "" : "s")", sub: "\(cur.tidyShort(Double(p.coders) * coder)) a month"),

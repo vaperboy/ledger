@@ -10,7 +10,7 @@ public enum EffectPreview {
         var out: [String] = []
         if !fx["gamble"].isNull {
             let g = fx["gamble"]
-            out.append("A gamble: \(Int((g["p"].double * 100).rounded()))% chance of the good outcome")
+            out.append("A gamble: \(Int(saturating: (g["p"].double * 100).rounded()))% chance of the good outcome")
             out += lines(g["ok"], currency: currency).map { "If it works: " + $0 }
             out += lines(g["bad"], currency: currency).map { "If not: " + $0 }
         }
@@ -19,15 +19,15 @@ public enum EffectPreview {
         if cash < 0 { out.append("Costs \(money(-cash))") } else if cash > 0 { out.append("Brings in \(money(cash))") }
         if fx["loss"].double != 0 { out.append("Risk of a loss up to \(money(abs(fx["loss"].double)))") }
         if fx["fine"].double != 0 { out.append("Fine of \(money(fx["fine"].double))") }
-        func sign(_ v: Double, _ what: String) { if v != 0 { out.append("\(v > 0 ? "+" : "−")\(Int(abs(v).rounded())) \(what)") } }
+        func sign(_ v: Double, _ what: String) { if v != 0 { out.append("\(v > 0 ? "+" : "−")\(Int(saturating: abs(v).rounded())) \(what)") } }
         sign(fx["rep"].double, "reputation")
         sign(fx["aware"].double, "awareness")
         sign(fx["q"].double, "quality")
         func timed(_ key: String, _ what: String) {
             let v = fx[key]
             if v.isNull { return }
-            let m = v[0].double, w = Int(v[1].double.rounded())
-            out.append("\(what) \(m >= 1 ? "+" : "−")\(Int((abs(m - 1) * 100).rounded()))% for \(w) week\(w == 1 ? "" : "s")")
+            let m = v[0].double, w = Int(saturating: v[1].double.rounded())
+            out.append("\(what) \(m >= 1 ? "+" : "−")\(Int(saturating: (abs(m - 1) * 100).rounded()))% for \(w) week\(w == 1 ? "" : "s")")
         }
         timed("dem", "Demand"); timed("cap", "Capacity"); timed("price", "Prices"); timed("cogsUp", "Cost of sales")
         if fx["pr"].double != 0 { out.append("Price level \(fx["pr"].double > 0 ? "up" : "down")") }
@@ -36,7 +36,7 @@ public enum EffectPreview {
         if fx["brk"].bool { out.append("Equipment may break") }
         if fx["ill"].double != 0 { out.append("Disease risk in the pens rises for a few weeks") }
         if fx["fixeq"].double != 0 { out.append("Repairs your worst equipment") }
-        if fx["premUp"].double != 0 { out.append("Insurance premiums +\(Int((fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks") }
+        if fx["premUp"].double != 0 { out.append("Insurance premiums +\(Int(saturating: (fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks") }
         if fx["cyberLvl"].double != 0 { out.append("IT security raised (monthly fee applies)") }
         if fx["cyberTrain"].bool { out.append("Staff security training") }
         if fx["cyberTarget"].bool { out.append("Attack odds x1.8 for 26 weeks") }

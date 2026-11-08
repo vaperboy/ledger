@@ -24,6 +24,6 @@ public enum PriceInput {
     /// The number to show in the field: the price in the country's currency, two decimals only when it has cents.
     public static func text(_ price: Double, currency cur: Currency) -> String {
         let v = price / cur.rate
-        return abs(v - v.rounded()) < 0.005 ? String(Int(v.rounded())) : String(format: "%.2f", v)
+        return abs(v - v.rounded()) < 0.005 ? String(Int(saturating: v.rounded())) : String(format: "%.2f", v)
     }
 }

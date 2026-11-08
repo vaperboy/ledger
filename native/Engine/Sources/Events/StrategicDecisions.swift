@@ -473,7 +473,7 @@ public enum StrategicDecisions {
         pay(&s, x, x.d["b"].double * 0.01, "int", "Refinancing fee")
         for k in s.loans.indices where s.loans[k].companyID == id && s.loans[k].kind != "start" {
             s.loans[k].margin = max(0.005, s.loans[k].margin - margin)
-            if shorten { s.loans[k].termMonths = max(24, Int((Double(s.loans[k].termMonths == 0 ? 120 : s.loans[k].termMonths) * 0.6).rounded())) }
+            if shorten { s.loans[k].termMonths = max(24, Int(saturating: (Double(s.loans[k].termMonths == 0 ? 120 : s.loans[k].termMonths) * 0.6).rounded())) }
             let rate = s.economy.policyRate + s.loans[k].margin
             let left = max(12, s.loans[k].termMonths - max(0, (s.week - s.loans[k].startWeek) * 12 / 52))
             s.loans[k].monthlyPayment = Loans.annuity(principal: s.loans[k].balance, yearlyRate: rate, months: Double(left))

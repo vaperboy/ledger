@@ -185,7 +185,7 @@ public enum JobContracts {
         r.cost = mt * item.ratio * costShare(sp, calibration: k)
         r.leadDays = sp.lead
         if sp.isStock {
-            r.stock = Int((customers * item.unitShare * stockCoverWeeks).rounded(.up))
+            r.stock = Int(saturating: (customers * item.unitShare * stockCoverWeeks).rounded(.up))
             r.since = s.week
         } else {
             r.prep = prepCost(labour: sp.hours * scale * hourlyCost(s, co, crew: sp.crew, data: data), materials: r.cost, sp)
@@ -271,15 +271,15 @@ public enum JobContracts {
                     if rec.stock == 0 { rec.since = week }
                     rec.stock += arriving
                 }
-                let sold = min(rec.stock, Int((perWeek * Double(week + 1)).rounded(.down)) - Int((perWeek * Double(week)).rounded(.down)))
+                let sold = min(rec.stock, Int(saturating: (perWeek * Double(week + 1)).rounded(.down)) - Int(saturating: (perWeek * Double(week)).rounded(.down)))
                 rec.stock -= sold
                 if rec.stock == 0 { rec.since = nil }
                 let lead = Double(rec.leadDays) / 7
-                let level = Int((perWeek * (lead + reorderCoverWeeks)).rounded(.up))
-                let target = Int((perWeek * (lead + stockCoverWeeks)).rounded(.up))
+                let level = Int(saturating: (perWeek * (lead + reorderCoverWeeks)).rounded(.up))
+                let target = Int(saturating: (perWeek * (lead + stockCoverWeeks)).rounded(.up))
                 if rec.stock + rec.onOrder <= level, target > rec.stock + rec.onOrder {
                     let n = target - rec.stock - rec.onOrder
-                    let due = week + Int(lead.rounded(.up))
+                    let due = week + Int(saturating: lead.rounded(.up))
                     rec.onOrder += n
                     rec.plans.append(ItemModels.Plan(kind: "order:\(n)", text: "Reorder of \(n) arrives in week \(due).", week: due))
                 }

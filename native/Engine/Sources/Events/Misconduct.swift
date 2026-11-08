@@ -83,7 +83,7 @@ public enum Misconduct {
         1 - pow(1 - weeklyRisk(s, i, data: data, context: fc, extraActs: extraActs), 52)
     }
 
-    static func pct(_ p: Double) -> String { "\(Int((p * 100).rounded()))%" }
+    static func pct(_ p: Double) -> String { "\(Int(saturating: (p * 100).rounded()))%" }
 
     // MARK: The weekly turn
 
@@ -240,8 +240,8 @@ public enum Misconduct {
         if r.next() < pWin {
             let m = d["m"].double, w = d["weeks"].double
             addMod(&s, k, "cogsup", m, w)
-            s.addMessage(from: co.name, title: "The rules shift a little in \(co.name)'s favour", body: "A change to the compliance rules lowers your regulation-related costs by about \(Int(((1 - m) * 100).rounded()))% for \(Int(w)) weeks. It was not guaranteed, and it is not permanent.", companyID: cid, tone: "good")
-            s.note("Political effort pays off for \(co.name): costs down \(Int(((1 - m) * 100).rounded()))% for \(Int(w)) weeks.", tone: "good", companyID: cid)
+            s.addMessage(from: co.name, title: "The rules shift a little in \(co.name)'s favour", body: "A change to the compliance rules lowers your regulation-related costs by about \(Int(saturating: ((1 - m) * 100).rounded()))% for \(Int(w)) weeks. It was not guaranteed, and it is not permanent.", companyID: cid, tone: "good")
+            s.note("Political effort pays off for \(co.name): costs down \(Int(saturating: ((1 - m) * 100).rounded()))% for \(Int(w)) weeks.", tone: "good", companyID: cid)
         } else {
             s.note("The \(d["what"].string) of \(co.name) changed nothing. The money is gone.", tone: "n", companyID: cid)
         }
@@ -401,7 +401,7 @@ extension StrategicDecisions {
                 title: { _, _, _ in title },
                 body: { co, d, cur in
                     "Cost: \(cur.display(d["spent"].double)) now, not refundable. "
-                    + "Benefit: with about \(Misconduct.pct(d["pw"].double)) chance the rules shift and your regulation-related costs fall \(Int(((1 - d["m"].double) * 100).rounded()))% for \(Int(d["weeks"].double)) weeks; otherwise nothing. No law is guaranteed. "
+                    + "Benefit: with about \(Misconduct.pct(d["pw"].double)) chance the rules shift and your regulation-related costs fall \(Int(saturating: ((1 - d["m"].double) * 100).rounded()))% for \(Int(d["weeks"].double)) weeks; otherwise nothing. No law is guaranteed. "
                     + "Risk: about \(Misconduct.pct(d["ps"].double)) chance of a scandal: penalty about \(cur.display(d["fine"].double)), reputation -6, sales dip for 8 weeks, and more attention from the authorities. "
                     + "Timing: the answer comes in 8 weeks. Staying out costs nothing." },
                 opts: [

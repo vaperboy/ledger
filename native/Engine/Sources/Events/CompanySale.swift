@@ -197,7 +197,7 @@ public enum CompanySale {
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         let t = CapTable.table(co)
-        let moved = CapTable.sellFromYou(&s, i, shares: Int((Double(t.you) * pct / 100).rounded()), to: buyer, paid: amount)
+        let moved = CapTable.sellFromYou(&s, i, shares: Int(saturating: (Double(t.you) * pct / 100).rounded()), to: buyer, paid: amount)
         let pts = Double(moved) / Double(t.total) * 100
         Payments.ownerReceivesSale(&s, from: co, amount: amount, gain: amount - co.injectedCapital * pts / 100, label: "Sold \(Int(pct))% of \(co.name)")
         if pts >= 20 { Funding.addBoardSeats(&s, i, 1) }

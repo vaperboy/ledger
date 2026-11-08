@@ -167,7 +167,7 @@ public enum CompanyRanking {
             case .world: return true
             }
         }
-        func crowdAbove(_ x: Double) -> Int { Int(bk.reduce(0) { $0 + above($1, x, metric) }.rounded()) }
+        func crowdAbove(_ x: Double) -> Int { Int(saturating: bk.reduce(0) { $0 + above($1, x, metric) }.rounded()) }
         let now = L.sorted { $0.figure(metric) > $1.figure(metric) }
         let before = L.sorted { $0.before(metric) > $1.before(metric) }
         var out: [Entry] = []

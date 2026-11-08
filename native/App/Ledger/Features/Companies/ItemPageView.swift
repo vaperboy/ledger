@@ -368,7 +368,7 @@ struct ItemPageView: View {
             }) {
                 if !listed {
                     if let s = p.supply {
-                        SupplierRow(name: s.vendorName, detail: "You pay \(itemAmount(s.buyPrice, cur))" + (s.discount > 0 ? " \u{00B7} \(Int((s.discount * 100).rounded()))% off for the relationship" : ""),
+                        SupplierRow(name: s.vendorName, detail: "You pay \(itemAmount(s.buyPrice, cur))" + (s.discount > 0 ? " \u{00B7} \(Int(saturating: (s.discount * 100).rounded()))% off for the relationship" : ""),
                                     badge: s.relationshipWord, current: true)
                     } else {
                         LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.warn, title: "No supplier chosen", subtitle: "Pick one below")

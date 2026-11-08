@@ -119,7 +119,7 @@ public struct Balance: Sendable {
     /// Price multiplier for a (possibly fractional) price level -3 ... +3. Original: `pmOf` (price_moves_and_lawsuits.js).
     public func priceMultiplier(level: Double) -> Double {
         let L = clamp(level, -3, 3)
-        let i = min(5, Int((L + 3).rounded(.down)))
+        let i = min(5, Int(saturating: (L + 3).rounded(.down)))
         let f = L + 3 - Double(i)
         return priceMultipliers[i] + (priceMultipliers[i + 1] - priceMultipliers[i]) * f
     }

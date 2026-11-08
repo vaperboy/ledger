@@ -102,7 +102,7 @@ public enum RivalAbsorb {
             }
         }
         let share = MarketMap.market(of: s.companies[ci], s, data: data).map { MarketMap.truth(s, $0, data: data).share } ?? 0
-        let text = "\(r.name) has closed. \(co.name) has one competitor less" + (fine > 0 ? ", but the competition authority fined you: you hold \(Int((share * 100).rounded()))% of the market." : ".")
+        let text = "\(r.name) has closed. \(co.name) has one competitor less" + (fine > 0 ? ", but the competition authority fined you: you hold \(Int(saturating: (share * 100).rounded()))% of the market." : ".")
         s.note(text, tone: fine > 0 ? "bad" : "good", companyID: co.id)
         return .ok(message: text, companyID: nil, fine: fine)
     }
