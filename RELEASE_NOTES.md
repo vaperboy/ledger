@@ -1,4 +1,5 @@
 # What's new
+- Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
 - Next day is a floating button above the tab bar, Skip week is free and always there, the daily report popup is back, and Home never scrolls with one company
 - Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once
 - The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval
