@@ -327,7 +327,7 @@ public enum Headquarters {
         let tl = co.value("tg58")["log"].array.suffix(3)
         let tg: Double? = tl.isEmpty ? nil : tl.reduce(0.0) { $0 + $1["n"].double / max(1, $1["of"].double) } / Double(tl.count)
         let score = jsRound(clamp(50 + clamp(margin * 100, -25, 25) * 0.9 + (co.reputation - 50) * 0.3 + (co.quality - 50) * 0.2 - mist * 4 - Double(paper) * 3 - (fraud > 0 ? 25 : 0) + (tg.map { ($0 - 0.5) * 20 } ?? 0), 0, 100))
-        return Scorecard(id: co.id, companyName: co.name, managerName: n.name, score: Int(score), margin: margin, reputation: Int(jsRound(co.reputation)), quality: Int(jsRound(co.quality)),
+        return Scorecard(id: co.id, companyName: co.name, managerName: n.name, score: Int(score), margin: margin, reputation: Int(saturating: jsRound(co.reputation)), quality: Int(saturating: jsRound(co.quality)),
                          paperworkGaps: paper, fraud: fraud, weeks: s.week - co.int("mgrW0"))
     }
     /// Run (and remember) the review of every managed company; with a performance analyst this happens each month. Original: `managerScorecards`.
@@ -356,7 +356,7 @@ public enum Headquarters {
             let h = co.monthlyHistory.suffix(3)
             let rev = h.reduce(0) { $0 + $1.revenue }, pr = h.reduce(0) { $0 + $1.profit }
             var l: [String] = []
-            if rev > 0 && pr / rev < 0.03 { l.append("Margins are thin (\(Int(jsRound(pr / rev * 100)))%). Review prices and supplier terms.") }
+            if rev > 0 && pr / rev < 0.03 { l.append("Margins are thin (\(Int(saturating: jsRound(pr / rev * 100)))%). Review prices and supplier terms.") }
             if let u = u, u > 0.95 { l.append("Demand is above what we can deliver. Add staff, equipment or space.") }
             if let u = u, u < 0.5 { l.append("Less than half of capacity is used. Push marketing before adding cost.") }
             if co.cash < wc * 8 { l.append("Cash is thin. Hold off on new spending.") }

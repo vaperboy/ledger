@@ -257,13 +257,13 @@ public enum EnergyModel {
                                    "capex": .number(capex), "bv": 0, "plat": 104]))
             fm["fields"] = .array(fields)
             s.companies[i].set("fm", fm)
-            s.note("Discovery. A well finds about \(Int(jsRound(vol / 1000))) million barrels. Development will take about 3 years.", tone: "good", companyID: id)
+            s.note("Discovery. A well finds about \(Int(saturating: jsRound(vol / 1000))) million barrels. Development will take about 3 years.", tone: "good", companyID: id)
             s.news("A new oil discovery is announced.", tone: "good")
             let sell = jsRound(res * 1000 * 25 * pow(s.economy.oil, 0.5) / 1e5) * 1e5
             let cur = currency(s, co, data)
             let cash = s.companies[i].cash
             s.addMessage(kind: "ask", from: co.name, title: "Discovery: \(name)",
-                         body: "About \(Int(jsRound(res / 1000))) million barrels. Developing it costs about \(cur.display(capex)) over three years before any oil flows. You have \(cur.display(cash)) in the company.",
+                         body: "About \(Int(saturating: jsRound(res / 1000))) million barrels. Developing it costs about \(cur.display(capex)) over three years before any oil flows. You have \(cur.display(cash)) in the company.",
                          companyID: id, tone: "good", status: "open",
                          options: [.option("Develop it ourselves", "You pay all of the development and keep all of the oil."),
                                    .option("Bring in a partner for half", "A partner pays half the development and takes half the field."),

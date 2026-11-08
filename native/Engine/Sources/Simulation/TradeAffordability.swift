@@ -62,7 +62,7 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
             return row
         }
         func rank(_ r: TradeAffordability) -> Int { r.blocked != nil ? 2 : (r.isFunded ? 0 : 1) }
-        let order = Dictionary(uniqueKeysWithValues: data.catalog.all.enumerated().map { ($1.id, $0) })
+        let order = Dictionary(data.catalog.all.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { (a, _) in a })
         return rows.sorted {
             if rank($0) != rank($1) { return rank($0) < rank($1) }
             if $0.cost != $1.cost { return ($0.cost ?? 0) < ($1.cost ?? 0) }

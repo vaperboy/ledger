@@ -180,7 +180,7 @@ public enum MarketMap {
     }
 
     static func percent(_ x: Double) -> String {
-        x < 0.001 ? "under 0.1%" : x < 0.1 ? String(format: "%.1f%%", (x * 1000).rounded() / 10) : "\(Int(jsRound(x * 100)))%"
+        x < 0.001 ? "under 0.1%" : x < 0.1 ? String(format: "%.1f%%", (x * 1000).rounded() / 10) : "\(Int(saturating: jsRound(x * 100)))%"
     }
 
     /// An estimate in words or numbers, by who is looking. Original: `shTxt`, `guessW`.
@@ -188,7 +188,7 @@ public enum MarketMap {
         switch e.level {
         case .marketAnalyst: return percent(e.center)
         case .dataAnalyst:
-            func f(_ x: Double) -> String { x < 0.1 ? String(format: "%.1f", (x * 1000).rounded() / 10) : "\(Int(jsRound(x * 100)))" }
+            func f(_ x: Double) -> String { x < 0.1 ? String(format: "%.1f", (x * 1000).rounded() / 10) : "\(Int(saturating: jsRound(x * 100)))" }
             return f(e.low) == f(e.high) ? f(e.low) + "%" : f(e.low) + "–" + f(e.high) + "%"
         case .feeling:
             let g = e.center
@@ -244,7 +244,7 @@ public enum MarketMap {
         var s1 = "Our share of \(what) is \(k.level == .marketAnalyst ? "about " : "")\(text(e))"
         if L.count >= 2, k.level == .marketAnalyst {
             let d = (t.share - L[L.count - 2].share) * 100
-            s1 += abs(d) < 0.15 ? ", about the same as last month" : ", \(d > 0 ? "up" : "down") \(abs(d) < 1 ? String(format: "%.1f", abs(d)) : "\(Int(jsRound(abs(d))))") points on last month"
+            s1 += abs(d) < 0.15 ? ", about the same as last month" : ", \(d > 0 ? "up" : "down") \(abs(d) < 1 ? String(format: "%.1f", abs(d)) : "\(Int(saturating: jsRound(abs(d))))") points on last month"
         }
         out.append(s1 + ".")
         if let big = t.players.first {
@@ -374,10 +374,10 @@ public enum MarketMap {
             var ln: [String] = []
             if h.count >= 8 {
                 let a = h.suffix(4).reduce(0, +) / 4, bs = Array(h.suffix(8).prefix(4)), b = bs.reduce(0, +) / Double(max(1, bs.count))
-                if b > 0 { ln.append("Sales over the last four weeks are \(a >= b ? "up" : "down") \(Int(jsRound(abs(a / b - 1) * 100)))% on the four before.") }
+                if b > 0 { ln.append("Sales over the last four weeks are \(a >= b ? "up" : "down") \(Int(saturating: jsRound(abs(a / b - 1) * 100)))% on the four before.") }
             }
             let u = co.value("lastW")["util"]
-            if !u.isNull { ln.append(u.double > 0.95 ? "We are at the limit of what we can deliver and turn people away." : u.double < 0.5 ? "We use less than half our capacity." : "We use about \(Int(jsRound(u.double * 100)))% of our capacity.") }
+            if !u.isNull { ln.append(u.double > 0.95 ? "We are at the limit of what we can deliver and turn people away." : u.double < 0.5 ? "We use less than half our capacity." : "We use about \(Int(saturating: jsRound(u.double * 100)))% of our capacity.") }
             if let m = market(of: co, s, data: data) {
                 let t = truth(s, m, data: data), kk = knowledge(s, m)
                 ln.append("Our share of the market is \(text(estimate(t.share, key: "my" + m.id, kk, seed: s.seed, week: s.week))).")

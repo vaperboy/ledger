@@ -29,7 +29,7 @@ public struct DayHistory: Equatable, Sendable {
         .object(["nw": .array(netWorth.map { .number($0) }), "cash": .array(cash.map { .number($0) }),
                  "inv": .array(invested.map { .number($0) }), "co": .array(companies.map { .number($0) }),
                  "nwW": .array(weeklyNetWorth.map { .number($0) }), "coCash": .array(companyCash.map { .number($0) }),
-                 "coEach": .object(Dictionary(uniqueKeysWithValues: perCompany.map { (String($0.key), JSONValue.array($0.value.map { .number($0) })) }))])
+                 "coEach": .object(Dictionary(perCompany.map { (String($0.key), JSONValue.array($0.value.map { .number($0) })) }, uniquingKeysWith: { (a, _) in a }))])
     }
     mutating func append(_ nw: NetWorth, cash c: Double, newWeek: Bool, companyValues: [Int: Double] = [:], companyCash cc: Double = 0) {
         if newWeek || weeklyNetWorth.isEmpty {

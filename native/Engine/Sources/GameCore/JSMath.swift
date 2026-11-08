@@ -23,3 +23,13 @@ extension Double {
     /// A finite number or zero. Original code guards against NaN in many places (`isFinite`).
     public var finiteOrZero: Double { isFinite ? self : 0 }
 }
+
+extension Int {
+    /// Rounds toward zero like `Int(_:)` but never traps: NaN is 0 and values beyond the Int range clamp to its ends.
+    public init(saturating d: Double) {
+        if d.isNaN { self = 0 }
+        else if d >= 9.2e18 { self = Int.max }
+        else if d <= -9.2e18 { self = Int.min }
+        else { self = Int(d) }
+    }
+}

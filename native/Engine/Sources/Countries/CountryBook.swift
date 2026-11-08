@@ -8,7 +8,7 @@ public struct CountryBook: Sendable {
 
     public init(countries: [Country]) {
         self.countries = countries
-        self.byCode = Dictionary(uniqueKeysWithValues: countries.map { ($0.code, $0) })
+        self.byCode = Dictionary(countries.map { ($0.code, $0) }, uniquingKeysWith: { (a, _) in a })
     }
 
     public subscript(code: String) -> Country? { byCode[code] }

@@ -840,11 +840,11 @@ public enum ContractTalk {
             let why = s.week - lastRaise >= 52 ? "It has been \(years > 1 ? "\(years) years" : "a year") since my last raise." : "I have looked around, and people doing my job earn more."
             talk = Talk(opener: .employee, proposal: Proposal(.payRise, amount: big), week: s.week); talk.ask = big; talk.reason = why
             title = "\(n.name) asks about pay at \(co.name)"; body = "\(why) I like it here and would like to stay. Could we look at my pay? (\(roleName))"
-            agree = "+\(Int(jsRound(big * 100)))% · +\(cur.display(m.monthlyWage * big))/month"; kind = "payask"
+            agree = "+\(Int(saturating: jsRound(big * 100)))% · +\(cur.display(m.monthlyWage * big))/month"; kind = "payask"
         case .payBasis:
             st[k].set("fixAskW", s.week)
             talk = Talk(opener: .employee, proposal: Proposal(.payBasis, choice: "salary"), week: s.week)
-            let months = Int(jsRound(Double(s.week - m.hiredWeek) / 4.35))
+            let months = Int(saturating: jsRound(Double(s.week - m.hiredWeek) / 4.35))
             talk.reason = "I have been here \(months) months and the work goes well. I would like a fixed monthly salary instead of being paid by the hour, so I know what comes in each month."
             title = "\(n.name) asks for a fixed salary at \(co.name)"; body = talk.reason
             agree = "\(cur.display(cur.roundedStep(m.monthlyWage, about: 100)))/month, a full week"; kind = "fixask"

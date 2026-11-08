@@ -291,7 +291,7 @@ public enum VenueItems {
         let co = s.companies[i]
         let first = co.value(key).isNull
         let old = SalesItems.items(co, bd)
-        let existing = Dictionary(uniqueKeysWithValues: old.map { ($0.id, $0) })
+        let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
         var managed: [SalesItems.Item] = []
         let svc = SalesItems.isService(bd)

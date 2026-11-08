@@ -24,7 +24,7 @@ enum ManagerStore {
         guard s.companies[ci].status == .open else { return }
         let cur = World(state: s, data: data).currency(s.companies[ci])
         if let spent = StockHandling.managerOrder(&s, ci, bd, manager: n, data: data) {
-            let pct = Int(jsRound((s.companies[ci].inventory - spent) / max(1, StockHandling.policyTarget(s.companies[ci], bd) ?? 1) * 100))
+            let pct = Int(saturating: jsRound((s.companies[ci].inventory - spent) / max(1, StockHandling.policyTarget(s.companies[ci], bd) ?? 1) * 100))
             ManagerVoice.record(&s, companyIndex: ci, "Ordered \(cur.display(spent)) of extra stock because the shelves were at \(pct)% of what the stock policy asks for.")
         }
         let co = s.companies[ci]
@@ -79,7 +79,7 @@ enum ManagerStore {
         let now = mkt[ch]["b"].double
         let steps = ManagerModel.marketingSteps(ch, cur)
         let name = ch == "google" ? "Google" : "Meta"
-        let share = Int(jsRound(marketingShare(co) * 100))
+        let share = Int(saturating: jsRound(marketingShare(co) * 100))
         if now > 0 && now > room {
             // over the ceiling: back to the largest step under it, or off, once the campaign's minimum run is over
             guard Double(s.week) >= (mkt[ch]["lock"].isNull ? 0 : mkt[ch]["lock"].double) else { return }

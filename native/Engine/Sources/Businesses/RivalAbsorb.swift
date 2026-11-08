@@ -79,7 +79,7 @@ public enum RivalAbsorb {
             let owner = s.companies[ci]
             var came = 0
             if !roles.isEmpty {
-                for n in 0..<max(1, Int(jsRound(sz * 2))) {
+                for n in 0..<max(1, Int(saturating: jsRound(sz * 2))) {
                     let cand = Hiring.generateCandidate(role: roles[n % roles.count], company: owner, faces: false, state: &s, data: data)
                     if Hiring.hire(cand.id, into: co.id, monthlyWage: Hiring.askInThisTalk(cand, company: s.company(co.id), state: s, data: data) * 1.02, state: &s, data: data) == .ok { came += 1 }
                 }

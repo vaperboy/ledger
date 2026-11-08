@@ -51,23 +51,23 @@ public enum SalesWays {
             var cost = ""
             switch way.kind {
             case "platform":
-                detail = "About \(Int(jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, \(Int(jsRound((way.options["fee"] ?? 0.2) * 100)))% commission on them"
-                cost = "\(Int(jsRound((way.options["fee"] ?? 0.2) * 100)))% commission"
+                detail = "About \(Int(saturating: jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, \(Int(saturating: jsRound((way.options["fee"] ?? 0.2) * 100)))% commission on them"
+                cost = "\(Int(saturating: jsRound((way.options["fee"] ?? 0.2) * 100)))% commission"
                 if (way.options["deliv"] ?? 0) > 0, let dk = IntercompanySupply.deliveryKind {
                     let share = dk.buyers[co.type] ?? 0
                     let fill = IntercompanySupply.deliveryFill(s, buyer: co, way: way)
-                    detail = "Up to \(Int(jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, only for the orders that get delivered (\(Int(jsRound(fill * 100)))% now). "
-                        + "\(Int(jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% marketplace commission plus delivery at \(Int(jsRound(share * 100)))% of those orders; set the courier under Suppliers"
-                    cost = "\(Int(jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% commission plus delivery at \(Int(jsRound(share * 100)))%"
+                    detail = "Up to \(Int(saturating: jsRound((way.options["lift"] ?? 0.2) * 100)))% more customers, only for the orders that get delivered (\(Int(saturating: jsRound(fill * 100)))% now). "
+                        + "\(Int(saturating: jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% marketplace commission plus delivery at \(Int(saturating: jsRound(share * 100)))% of those orders; set the courier under Suppliers"
+                    cost = "\(Int(saturating: jsRound(max(0, (way.options["fee"] ?? 0.2) - share) * 100)))% commission plus delivery at \(Int(saturating: jsRound(share * 100)))%"
                 }
             case "members":
-                detail = (on ? "\(Int(jsRound(sw["mem"].double))) members" : "Not offered") + ", perks cost 2% of sales"
+                detail = (on ? "\(Int(saturating: jsRound(sw["mem"].double))) members" : "Not offered") + ", perks cost 2% of sales"
                 cost = "Perks cost 2% of sales"
             case "emergency":
                 detail = "On call \(cur.display(cur.scaledPrice(2500))) a week, urgent jobs pay half again"
                 cost = "On call \(cur.display(cur.scaledPrice(2500))) a week"
             case "upsell":
-                detail = "About \(Int(jsRound((way.options["u"] ?? 0.08) * 100)))% extra per sale" + (sw["paidUp"].bool ? "" : ", set-up \(cur.display(cur.scaledPrice(12000)))")
+                detail = "About \(Int(saturating: jsRound((way.options["u"] ?? 0.08) * 100)))% extra per sale" + (sw["paidUp"].bool ? "" : ", set-up \(cur.display(cur.scaledPrice(12000)))")
                 cost = sw["paidUp"].bool ? "Set-up paid" : "Set-up \(cur.display(cur.scaledPrice(12000)))"
             case "referral":
                 detail = VolumeContracts.ratingFactor(co) < 0.2 ? "Too few happy customers" : "About \(jsRound(sw["ref"].double * 10) / 10) a week"
@@ -181,7 +181,7 @@ public enum SalesWays {
             let year = GameCalendar.year(week: s.week)
             if pk.peakMonths.contains(ahead), !pk.peakMonths.contains(now), !(sw["peakY"].int == year && sw["peakM"].int == ahead) {
                 sw["peakY"] = .number(Double(year)); sw["peakM"] = .number(Double(ahead))
-                let boost = Int(jsRound((pk.options["b"] ?? 0.3) * 100))
+                let boost = Int(saturating: jsRound((pk.options["b"] ?? 0.3) * 100))
                 let room = lw["util"].double > 0.8 ? " You are already near your limit, so plan for extra hands (seasonal workers are hired under Find workers)." : " You have the room to serve it."
                 s.addMessage(from: co.name, title: "\(monthName(ahead)): \(pk.name.lowercased()) is coming",
                              body: "Customers come in waves in \(pk.peakMonths.map { monthName($0) }.joined(separator: " and ")): about \(boost)% more than usual.\(room)",

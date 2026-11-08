@@ -216,7 +216,7 @@ extension Country {
         rentLevel = r2(B(eco["officeRent"].double) / ReferenceEconomy.officeRent)
         wageLevel = r2(B(eco["medianWage"].double) / ReferenceEconomy.medianWage)
         startLoan = B(p["start"]["loan"].double)
-        startLoanTermMonths = Int(jsRound(p["start"]["loanYears"].double * 12))
+        startLoanTermMonths = Int(saturating: jsRound(p["start"]["loanYears"].double * 12))
         corporateTax = tax["corporate"].double
         specialTax = tax["special"].object.mapValues { $0.double }
         dividendTax = tax["dividend"].double

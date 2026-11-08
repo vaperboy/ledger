@@ -450,7 +450,7 @@ enum MarketData {
 
     /// Every rival in your markets, for sale first, then the most valuable.
     static func rivals(_ e: GameEngine) -> [MarketUI.RivalItem] {
-        let names: [Int: String] = Dictionary(uniqueKeysWithValues: e.state.companies.map { (c: Company) -> (Int, String) in (c.id, c.name) })
+        let names: [Int: String] = Dictionary(e.state.companies.map { (c: Company) -> (Int, String) in (c.id, c.name) }, uniquingKeysWith: { (a, _) in a })
         let list: [MarketUI.RivalItem] = e.marketRivals().map { (r: MarketRivalRow) -> MarketUI.RivalItem in
             MarketUI.RivalItem(companyID: r.companyID, rivalID: r.id, name: r.name, owner: r.owner, trade: r.tradeName, city: r.cityName,
                                country: e.data.countries[r.countryCode]?.name ?? r.countryCode, sizeWord: r.sizeWord, valuation: r.valuation,

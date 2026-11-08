@@ -260,7 +260,7 @@ enum MarketBook {
         for h in HoldingModel.holdings(in: s, openOnly: false) where h.status == .open || byOwner[.holding(h.id)] != nil {
             owners.append(PortfolioOwnerSummary(owner: .holding(h.id), name: h.name, cash: h.cash, totals: byOwner[.holding(h.id)] ?? PortfolioTotals()))
         }
-        let order = Dictionary(uniqueKeysWithValues: owners.enumerated().map { ($0.element.owner, $0.offset) })
+        let order = Dictionary(owners.enumerated().map { ($0.element.owner, $0.offset) }, uniquingKeysWith: { (a, _) in a })
         list.sort { (order[$0.owner] ?? 0, -$0.value) < (order[$1.owner] ?? 0, -$1.value) }
         return Portfolio(positions: list, owners: owners, totals: totals, history: (s.rest["pfH"]?.array ?? []).map { $0["v"].double })
     }

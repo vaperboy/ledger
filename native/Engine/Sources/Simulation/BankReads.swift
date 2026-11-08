@@ -132,7 +132,7 @@ public extension GameEngine {
 
     func bankAccounts() -> BankAccounts {
         let s = state
-        let alerts = Dictionary(uniqueKeysWithValues: payrollAlerts().map { ($0.companyID, $0) })
+        let alerts = Dictionary(payrollAlerts().map { ($0.companyID, $0) }, uniquingKeysWith: { (a, _) in a })
         var rows: [BankAccountRow] = []
         rows.append(BankAccountRow(id: .personal, kind: .personal, name: "Personal account", detail: "", companyID: nil, balance: s.cash, savings: s.savings,
                                    savingsRate: PersonalFinance.savingsRate(s), loanCount: loans(for: .personal).count, hasAlert: false, alertNote: nil))

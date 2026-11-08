@@ -236,7 +236,7 @@ public enum ProjectWeek {
                                  companyID: id, tone: happy ? "good" : "n", status: "done")
                 } else {
                     s.addMessage(from: s.companies[i].name, title: "Delivered in a rush: \(eventName(j))",
-                                 body: "Only \(Int(jsRound(prep * 100)))% of the preparation was done in time. The client noticed; no recommendations from this one. Final invoice sent.",
+                                 body: "Only \(Int(saturating: jsRound(prep * 100)))% of the preparation was done in time. The client noticed; no recommendations from this one. Final invoice sent.",
                                  companyID: id, tone: "bad", status: "done")
                 }
             } else if j.sizeClass == 2 {

@@ -167,7 +167,7 @@ extension ManagerModel {
     /// Does the board carry a move? Nil when it does (or when you own it alone); else the share of yes votes.
     public static func boardGate(_ s: GameState, kind: String, companyID: Int) -> Int? {
         let v = boardVote(s, kind: kind, companyID: companyID, advisory: true)
-        return v.active && !v.passes ? Int(jsRound(v.percentYes)) : nil
+        return v.active && !v.passes ? Int(saturating: jsRound(v.percentYes)) : nil
     }
 
     /// Put an item to the board and carry it out (`approve`), or turn it down. "close" ends in `GameEngine.windUpCompany`, which this model cannot reach:

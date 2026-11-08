@@ -303,7 +303,7 @@ extension ManagerModel {
                 if !wasHired { n.employerID = -4; s.people[npcID] = n }
                 addSeat(&s, boardKey: key, seat: ["id": .number(Double(npcID)), "kind": .string(wasHired ? "exec" : "adv"), "r": "director", "t": "Director", "owner": true])
                 s.addMessage(kind: "info", from: x.h["name"].string, title: "Taking a board seat at \(boardName(s, key: key))",
-                             body: "With \(Int(jsRound(x.h["pct"].double)))% of the shares I want a say. I will sit on the board as a director.", companyID: x.co.id, tone: "n", status: "done")
+                             body: "With \(Int(saturating: jsRound(x.h["pct"].double)))% of the shares I want a say. I will sit on the board as a director.", companyID: x.co.id, tone: "n", status: "done")
             }
         }
     }
@@ -333,7 +333,7 @@ extension ManagerModel {
             let m = co.monthlyHistory.last
             let rev = m?.revenue ?? 0, pr = m?.profit ?? 0
             let u = co.value("lastW")["util"]
-            say = "Last month we took in \(cur.short(rev)) and \(pr >= 0 ? "made \(cur.short(pr))" : "lost \(cur.short(-pr))"). " + (u.isNull ? "" : "We are running at about \(Int(jsRound(u.double * 100)))% of what we can deliver. ") + (pr < 0 ? "I know it needs to turn around." : "I will keep it on track.")
+            say = "Last month we took in \(cur.short(rev)) and \(pr >= 0 ? "made \(cur.short(pr))" : "lost \(cur.short(-pr))"). " + (u.isNull ? "" : "We are running at about \(Int(saturating: jsRound(u.double * 100)))% of what we can deliver. ") + (pr < 0 ? "I know it needs to turn around." : "I will keep it on track.")
         case "growth":
             run("mkt_more"); say = "Understood. I will push harder for customers" + (t > 0 ? " and I know you expect results" : "") + ". It will cost more in marketing first."
             if t == 2 { s.companies[ci].priceLevel = max(-2, s.companies[ci].priceLevel - 1) }
@@ -375,10 +375,10 @@ extension ManagerModel {
             if h.count >= 6 {
                 let a = h.suffix(4).reduce(0, +) / 4, rest = Array(h.suffix(8).prefix(max(0, min(4, h.count - 4))))
                 let b = rest.isEmpty ? 0 : rest.reduce(0, +) / Double(rest.count)
-                if b > 0 { l.append("Sales over the last four weeks are \(a >= b ? "up" : "down") \(Int(jsRound(abs(a / b - 1) * 100)))% on the four before.") }
+                if b > 0 { l.append("Sales over the last four weeks are \(a >= b ? "up" : "down") \(Int(saturating: jsRound(abs(a / b - 1) * 100)))% on the four before.") }
             }
             if let u = co.value("lastW")["util"].isNull ? nil : co.value("lastW")["util"].double {
-                l.append(u > 0.95 ? "We are at the limit of what we can deliver and turn people away." : u < 0.5 ? "We use less than half our capacity." : "We use about \(Int(jsRound(u * 100)))% of our capacity.")
+                l.append(u > 0.95 ? "We are at the limit of what we can deliver and turn people away." : u < 0.5 ? "We use less than half our capacity." : "We use about \(Int(saturating: jsRound(u * 100)))% of our capacity.")
             }
             if let bd = data.catalog[co.type] {
                 let c = CapacityModel.compute(co, bd, World(state: s, data: data))
@@ -386,7 +386,7 @@ extension ManagerModel {
             }
             if h.count >= 4, let last = h.last, last > 0 {
                 let e = h.suffix(4).reduce(0, +) / 4
-                l.append("In two months I expect weekly sales \(e >= last ? "around \(Int(jsRound((e / last - 1) * 100)))% higher" : "around \(Int(jsRound((1 - e / last) * 100)))% lower").")
+                l.append("In two months I expect weekly sales \(e >= last ? "around \(Int(saturating: jsRound((e / last - 1) * 100)))% higher" : "around \(Int(saturating: jsRound((1 - e / last) * 100)))% lower").")
             }
             out.append(AnalystLine(companyID: co.id, name: co.name, lines: l, history: h))
         }

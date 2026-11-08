@@ -214,7 +214,7 @@ struct FullScreenCelebration<Badge: View>: View {
         if reward.isEmpty {
             EmptyView()
         } else if let parts = FullScreenCelebration.rollParts(reward) {
-            CountedFigure(value: parts.value, format: { (v: Double) -> String in parts.prefix + Int(v.rounded()).formatted() + parts.suffix },
+            CountedFigure(value: parts.value, format: { (v: Double) -> String in parts.prefix + Int(saturating: v.rounded()).formatted() + parts.suffix },
                           tint: Theme.gold, duration: 0.9, delay: 0.5)
                 .font(.system(size: 30, weight: .semibold, design: .rounded)).monospacedDigit()
                 .lineLimit(1).minimumScaleFactor(0.6)

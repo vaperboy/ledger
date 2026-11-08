@@ -208,7 +208,7 @@ public enum TransportItems {
         let old = SalesItems.items(co, bd)
         let list = bases(s, co, bd, spec, w)
         guard !list.isEmpty else { return }
-        let existing = Dictionary(uniqueKeysWithValues: old.map { ($0.id, $0) })
+        let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
         var managed: [SalesItems.Item] = []
         func fresh(_ id: String, _ name: String) -> SalesItems.Item {

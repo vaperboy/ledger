@@ -85,7 +85,7 @@ public enum RivalGroups {
             let nT = 1 + Int(h.next() * 2.6)
             while ts.count < nT, !sib.isEmpty { ts.append(sib.remove(at: Int(h.next() * Double(sib.count)) % sib.count)) }
             let strat = strategies[Int(h.next() * Double(strategies.count)) % strategies.count]
-            let br = Int(jsRound(exp(1.6 + h.next() * 3.1)))
+            let br = Int(saturating: jsRound(exp(1.6 + h.next() * 3.1)))
             let rev = Double(br) * ts.reduce(0) { $0 + tradeRevenue(data.catalog[$1]!, c) } / Double(ts.count) * (0.7 + h.next() * 0.6)
             var r = DeterministicRandom(seed: Int(h.next() * 1_000_000_000))
             let brand = brandRoot(c, family: fam, &r)
@@ -215,7 +215,7 @@ public enum RivalGroups {
                 let d = min(g["debt"].double, g["cash"].double - g["rev"].double * 0.15)
                 g["debt"] = .number(g["debt"].double - d.rounded()); g["cash"] = .number(g["cash"].double - d.rounded())
             }
-            g["br"] = .number(Double(max(1, Int(jsRound(g["br"].double * (1 + grow))))))
+            g["br"] = .number(Double(max(1, Int(saturating: jsRound(g["br"].double * (1 + grow))))))
             let lev = g["debt"].double / max(1, g["rev"].double)
             if g["dist"].double == 0, lev > 1.15, profit(g, s) < 0 {
                 g["dist"] = .number(Double(s.week)); logMove(&g, week: s.week, "Money troubles: selling assets")
@@ -440,12 +440,12 @@ public enum RivalGroups {
             let cur = World(state: s, data: data).currency(co)
             logMove(&g, week: week, "Bid \(cur.short(price)) for \(co.name)"); save()
             let out = 100 - co.ownership
-            let pct = Int(jsRound((price / max(1, V0) - 1) * 100))
+            let pct = Int(saturating: jsRound((price / max(1, V0) - 1) * 100))
             let mine = price * co.ownership / 100
             s.addMessage(kind: "ask", from: "\(g["owner"].string), \(name)", title: "\(name) wants to buy \(co.name)",
                          body: "\(name) offers \(cur.display(price)) for all of \(co.name) (about \(abs(pct))% \(price >= V0 ? "above" : "below") what it is worth today). "
-                            + (co.ownership < 100 ? "You own \(Int(jsRound(co.ownership)))%, so you would get \(cur.display(mine)). " : "")
-                            + (out > 50 ? "Outside owners hold \(Int(jsRound(out)))%. If the price is good they can accept without you." : out >= 33.4 ? "Outside owners hold \(Int(jsRound(out)))% and will want a say." : ""),
+                            + (co.ownership < 100 ? "You own \(Int(saturating: jsRound(co.ownership)))%, so you would get \(cur.display(mine)). " : "")
+                            + (out > 50 ? "Outside owners hold \(Int(saturating: jsRound(out)))%. If the price is good they can accept without you." : out >= 33.4 ? "Outside owners hold \(Int(saturating: jsRound(out)))% and will want a say." : ""),
                          companyID: co.id, tone: "n", status: "open",
                          options: [.option("Accept", "Sell now for \(cur.display(mine)) to you."), .option("Ask for more", "They may raise their offer, or walk away."),
                                    .option("Refuse", "Keep it. They may come back, or compete harder.")],

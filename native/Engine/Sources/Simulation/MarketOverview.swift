@@ -206,7 +206,7 @@ public extension GameEngine {
                     let demand = CityMarket.demandIndex(trade: t, country: country, city: city, tables: tables)
                     guard demand >= CityMarket.demandHighFrom else { continue }
                     let mk = state.rest["mk"]?[t + "|" + city.id]
-                    let rivals = Int(jsRound(mk == nil || mk!.isNull ? CityMarket.expectedRivals(trade: bd, country: country, city: city, tables: tables) : mk!["n"].double))
+                    let rivals = Int(saturating: jsRound(mk == nil || mk!.isNull ? CityMarket.expectedRivals(trade: bd, country: country, city: city, tables: tables) : mk!["n"].double))
                     let score = demand / Double(max(1, rivals))
                     if best == nil || score > best!.score { best = (score, bd, country, city, demand, rivals) }
                 }
@@ -289,7 +289,7 @@ public extension GameEngine {
                 demand = CityMarket.demandIndex(trade: bd.id, country: c, city: city, tables: tables)
                 level = CityMarket.demandLevel(trade: bd.id, country: c, city: city, tables: tables)
                 let mk = state.rest["mk"]?[bd.id + "|" + city.id]
-                rivals = Int(jsRound(mk == nil || mk!.isNull ? CityMarket.expectedRivals(trade: bd, country: c, city: city, tables: tables) : mk!["n"].double))
+                rivals = Int(saturating: jsRound(mk == nil || mk!.isNull ? CityMarket.expectedRivals(trade: bd, country: c, city: city, tables: tables) : mk!["n"].double))
             }
             return MarketCity(id: city.id, name: city.name, countryCode: c.code, population: city.population, demand: city.demand,
                               priceLevel: c.priceLevel * city.price, rentLevel: c.rentLevel * city.rent, wageLevel: c.wageLevel * city.wage, touristIndex: city.touristIndex,

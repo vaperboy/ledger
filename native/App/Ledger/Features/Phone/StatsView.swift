@@ -119,7 +119,7 @@ struct StatsView: View {
         let h: DayHistory = e.dayHistory
         let pts: [MakeUpPoint] = makeUpPoints(h)
         let names: [String] = ["Cash", "Invested", "Companies"]
-        let colours: [String: Color] = Dictionary(uniqueKeysWithValues: names.enumerated().map { ($0.element, ChartPalette.color($0.offset)) })
+        let colours: [String: Color] = Dictionary(names.enumerated().map { ($0.element, ChartPalette.color($0.offset)) }, uniquingKeysWith: { (a, _) in a })
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             ChartFrame(title: "What it is made of", height: 110, isEmpty: h.cash.count < 2, emptyText: "The chart fills in day by day.") {
                 Chart(pts) { (p: MakeUpPoint) in

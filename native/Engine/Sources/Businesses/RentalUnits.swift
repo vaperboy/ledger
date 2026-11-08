@@ -297,7 +297,7 @@ public enum RentalUnits {
         let first = co.value(key).isNull
         let old = SalesItems.items(co, bd)
         let units = bases(s, co, bd, spec, w, mt: mt)
-        let existing = Dictionary(uniqueKeysWithValues: old.map { ($0.id, $0) })
+        let existing = Dictionary(old.map { ($0.id, $0) }, uniquingKeysWith: { (a, _) in a })
         var kept: [SalesItems.Item] = old.filter { !isManaged($0.id) && !(first && $0.id.hasPrefix("d")) }
         let isProperty = spec.kind == "property"
         // Managed items: the units, then (for trades whose extras really sell) the extras.

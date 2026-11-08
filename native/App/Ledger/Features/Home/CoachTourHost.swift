@@ -8,11 +8,18 @@ import Simulation
 /// it ends or is skipped. A game that is already under way when the tour would start is marked seen without showing it.
 struct CoachTourHost: ViewModifier {
     @Environment(\.popupHost) private var popupHost
+    @EnvironmentObject private var store: GameStore
     @State private var finished: Bool = FirstRunFlags.seen(FirstRunFlags.tour)
+
+    /// The tour belongs to a game in its first week: a saved game in progress never builds it.
+    private static func isFreshGame(_ e: GameEngine?) -> Bool {
+        guard let e else { return false }
+        return e.state.week == 0
+    }
 
     func body(content: Content) -> some View {
         content.overlayPreferenceValue(CoachAnchorKey.self) { (anchors: [CoachStop: Anchor<CGRect>]) in
-            if !finished, let host = popupHost {
+            if !finished, let host = popupHost, Self.isFreshGame(store.engine) {
                 CoachTourLayer(host: host, anchors: anchors, onFinish: {
                     FirstRunFlags.mark(FirstRunFlags.tour)
                     finished = true

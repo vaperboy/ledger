@@ -291,7 +291,7 @@ extension ManagerModel {
         s.companies[ci].set("mood", max(0, mood(co) - 5))
         let said = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: nil, situation: .resign, vars: ["why": why.isEmpty ? "" : why.prefix(1).uppercased() + why.dropFirst() + "."])
         s.addMessage(kind: "info", from: n.name, title: "\(n.name) has resigned from \(co.name)",
-                     body: "\(said) I will work my notice and leave on \(GameCalendar.dateString(week: s.week + wk, dayOffset: 0))\(rival.isEmpty ? "" : ", when I start at \(rival)"). That gives you about \(Int(jsRound(Double(wk) / 4.33))) months to find someone. Hire my successor before then and I will hand over and go.",
+                     body: "\(said) I will work my notice and leave on \(GameCalendar.dateString(week: s.week + wk, dayOffset: 0))\(rival.isEmpty ? "" : ", when I start at \(rival)"). That gives you about \(Int(saturating: jsRound(Double(wk) / 4.33))) months to find someone. Hire my successor before then and I will hand over and go.",
                      companyID: co.id, tone: "bad", status: "open",
                      options: [.option("Find a successor", "Pays for an executive search now."), .option("I will handle it", "")],
                      action: ManagerTargets.successorAction, data: .object(["co": .number(Double(co.id))]), expiresWeek: s.week + wk)

@@ -149,7 +149,7 @@ public extension GameEngine {
             return out
         }
         if b.requestsTurnedAway > 0 {
-            out.append(Insight(id: "turnedaway", symbol: "tray.full", text: "Work was turned away in the last weeks: the firm is booked \(Int(jsRound(b.weeksBooked))) weeks ahead. More people or equipment would add revenue.", tone: .warn))
+            out.append(Insight(id: "turnedaway", symbol: "tray.full", text: "Work was turned away in the last weeks: the firm is booked \(Int(saturating: jsRound(b.weeksBooked))) weeks ahead. More people or equipment would add revenue.", tone: .warn))
         } else if b.weeksBooked < 0.3, b.hoursPerWeek > 0 {
             out.append(Insight(id: "emptybook", symbol: "calendar", text: "The order book is nearly empty. Marketing, a lower price or a tender can fill it.", tone: .neutral))
         }

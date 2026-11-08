@@ -840,7 +840,7 @@ public enum FootballModel {
             r.position = lg.rank(of: fm["club"].string)
             let me = lg.t.first { $0.id == fm["club"].string }
             r.points = me?.pts ?? 0; r.played = me?.gp ?? 0
-            let names = Dictionary(uniqueKeysWithValues: clubs(s, co.countryCode).map { ($0["id"].string, $0["name"].string) })
+            let names = Dictionary(clubs(s, co.countryCode).map { ($0["id"].string, $0["name"].string) }, uniquingKeysWith: { (a, _) in a })
             r.table = lg.sorted.enumerated().map { TableRow(id: $0.element.id, name: names[$0.element.id] ?? $0.element.id, position: $0.offset + 1, points: $0.element.pts, played: $0.element.gp, isYours: $0.element.id == fm["club"].string) }
         } else { r.clubs = leagueInfo(country)?.clubs ?? 0 }
         return r

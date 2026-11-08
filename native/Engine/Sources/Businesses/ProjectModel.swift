@@ -232,7 +232,7 @@ public enum ProjectModel {
             rev = j["rev"].double; cogs = j["cogs"].double; paid = j["paid"].double; units = j["units"].double
             finished = (0..<3).map { j["fin"][$0].double }
             names = j["names"].array.map { $0.string }
-            held = Dictionary(uniqueKeysWithValues: j["held"].object.compactMap { k, v in Int(k).map { ($0, v.double) } })
+            held = Dictionary(j["held"].object.compactMap { k, v in Int(k).map { ($0, v.double) } }, uniquingKeysWith: { (a, _) in a })
             released = j["rel"].array.map { $0.int }
         }
         var json: JSONValue {
@@ -243,7 +243,7 @@ public enum ProjectModel {
                             "Hw": .number(hoursPerWeekSum), "Dh": .number(requestedHours), "rev": .number(rev), "cogs": .number(cogs),
                             "paid": .number(paid), "units": .number(units), "fin": .array(finished.map { .number($0) }),
                             "names": .array(names.map { .string($0) }),
-                            "held": .object(Dictionary(uniqueKeysWithValues: held.map { (String($0.key), JSONValue.number($0.value)) })),
+                            "held": .object(Dictionary(held.map { (String($0.key), JSONValue.number($0.value)) }, uniquingKeysWith: { (a, _) in a })),
                             "rel": .array(released.map { .number(Double($0)) })])
         }
     }

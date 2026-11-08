@@ -193,7 +193,7 @@ public enum CityMarket {
             trades.append(TradeDemand(tradeID: bd.id, name: bd.name, tier: tier, affordableShare: share,
                                       demandFactor: clamp(pow(affordRatio(trade: bd.id, priceMultiplier: 1, country: country, city: city, tables: tables), cls?.lean ?? 0),
                                                           tables.demandFloor, tables.demandCeiling),
-                                      rivals: Int(jsRound(rivals))))
+                                      rivals: Int(saturating: jsRound(rivals))))
         }
         let households = city.population * 1000 / householdSize
         func summary(_ t: Tier, _ label: String, share: Double) -> TierSummary {

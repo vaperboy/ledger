@@ -208,7 +208,7 @@ public extension GameEngine {
         if bd.family == "rent", let pf = propertyPortfolio(companyID: co.id) {
             if pf.rows.isEmpty { out.append(Insight(id: "prop", symbol: "building.2", text: "No property owned. Buy one under Properties to earn rent.", tone: .bad)) }
             else {
-                if pf.occupancy < 0.8 { out.append(Insight(id: "vacancy", symbol: "door.left.hand.open", text: "\(Int(jsRound((1 - pf.occupancy) * 100)))% of your space is empty. Lower rents, keep the place in good condition and market it.", tone: .warn)) }
+                if pf.occupancy < 0.8 { out.append(Insight(id: "vacancy", symbol: "door.left.hand.open", text: "\(Int(saturating: jsRound((1 - pf.occupancy) * 100)))% of your space is empty. Lower rents, keep the place in good condition and market it.", tone: .warn)) }
                 if pf.staffCover < 0.8 { out.append(Insight(id: "cover", symbol: "person.badge.clock", text: "Too few caretakers and property managers for the portfolio: vacancy and wear rise, and part of the rent goes to an outside firm.", tone: .warn)) }
                 if let worn = pf.rows.filter({ $0.condition < 0.5 }).first { out.append(Insight(id: "worn", symbol: "wrench.and.screwdriver", text: "\(worn.name) is worn. Renovating restores condition and adds to its value.", tone: .warn)) }
                 if pf.mortgages > 0, pf.grossYield < (state.economy.policyRate + 0.012) * pf.mortgages / max(1, pf.totalValue) {
@@ -223,7 +223,7 @@ public extension GameEngine {
             switch b.kind {
             case .insurer:
                 if b.policies > 0, b.solvency >= 0.8, b.solvency < 1.2 { out.append(Insight(id: "solvency", symbol: "gauge.with.dots.needle.33percent", text: "Solvency is thin: your capital must cover the claims you may face, and the regulator steps in if it gets much lower.", tone: .warn)) }
-                if b.lossRatio > 0.9 { out.append(Insight(id: "claims", symbol: "doc.text.magnifyingglass", text: "Claims take \(Int(jsRound(b.lossRatio * 100)))% of premiums. Raise prices, tighten underwriting or hire claims staff.", tone: .warn)) }
+                if b.lossRatio > 0.9 { out.append(Insight(id: "claims", symbol: "doc.text.magnifyingglass", text: "Claims take \(Int(saturating: jsRound(b.lossRatio * 100)))% of premiums. Raise prices, tighten underwriting or hire claims staff.", tone: .warn)) }
                 let any = insuranceProducts(companyID: co.id).contains { $0.isOffered }
                 if !any { out.append(Insight(id: "products", symbol: "shield", text: "No insurance products on sale. Choose products under Insurance.", tone: .bad)) }
             case .bank:
