@@ -18,7 +18,7 @@ public enum LedgerProduct: String, CaseIterable, Sendable {
 
 /// What a free player sees locked, with a key glyph and the words `Ledger Pro`.
 public enum LockedFeature: String, CaseIterable, Sendable {
-    case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup, playToEndOfWeek
+    case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup
 
     /// Needs a Plus subscription itself, not just Pro. Nothing in the 11.1 locked list is Plus-only.
     public var plusOnly: Bool { false }
@@ -33,7 +33,6 @@ public enum LockedFeature: String, CaseIterable, Sendable {
         case .luxuryGivingFootball: return "Luxury, giving and football"
         case .saveSlots: return "More save slots"
         case .cloudBackup: return "Cloud backup"
-        case .playToEndOfWeek: return "Play to end of week"
         }
     }
 }
@@ -68,9 +67,6 @@ public struct EntitlementSnapshot: Equatable, Sendable {
 
     /// Free save slots: one; Pro and above three.
     public func saveSlots(now: Date) -> Int { isPro(now: now) ? 3 : 1 }
-
-    /// `Play to end of week` is free for the first 12 weeks, Pro after. `week` is the game week now.
-    public func canPlayToEndOfWeek(week: Int, now: Date) -> Bool { week <= 12 || isPro(now: now) }
 }
 
 /// Which trades a free player may start.

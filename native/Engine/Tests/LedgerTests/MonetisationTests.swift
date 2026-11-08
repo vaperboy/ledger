@@ -27,13 +27,10 @@ final class EntitlementGatesTests: XCTestCase {
         for f in LockedFeature.allCases { XCTAssertTrue(both.isUnlocked(f, now: later), "a Pro owner keeps Pro after Plus ends") }
     }
 
-    func testSaveSlotsAndPlayToEndOfWeek() {
+    func testSaveSlots() {
         let pro = EntitlementSnapshot(owned: [.pro])
         XCTAssertEqual(EntitlementSnapshot.free.saveSlots(now: now), 1)
         XCTAssertEqual(pro.saveSlots(now: now), 3)
-        XCTAssertTrue(EntitlementSnapshot.free.canPlayToEndOfWeek(week: 12, now: now))
-        XCTAssertFalse(EntitlementSnapshot.free.canPlayToEndOfWeek(week: 13, now: now))
-        XCTAssertTrue(pro.canPlayToEndOfWeek(week: 40, now: now))
     }
 
     func testTheOneDayPassUnlocksThenRelocks() {
