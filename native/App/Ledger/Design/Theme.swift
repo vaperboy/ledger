@@ -74,10 +74,10 @@ enum Theme {
     }
     enum Radius {
         /// Controls (buttons, fields, segments, tables), groups and tiles, popups and sheets.
-        static let small: CGFloat = 8, medium: CGFloat = 12, large: CGFloat = 16
+        static let small: CGFloat = 9, medium: CGFloat = 13, large: CGFloat = 17
         // Older names mapped onto the three steps.
-        static let s: CGFloat = 8, m: CGFloat = 8, l: CGFloat = 12
-        static let hero: CGFloat = 16, card: CGFloat = 12, row: CGFloat = 12, table: CGFloat = 8, appIcon: CGFloat = 15
+        static let s: CGFloat = 9, m: CGFloat = 9, l: CGFloat = 13
+        static let hero: CGFloat = 17, card: CGFloat = 14, row: CGFloat = 13, table: CGFloat = 9, appIcon: CGFloat = 15
     }
     /// Icon sizes of rows and controls, drawn at one stroke weight.
     enum Icon {

@@ -83,11 +83,7 @@ struct FixedScreen<Content: View>: View {
         let needed: CGFloat = scrolling ? h + top + 12 : h
         let ideal: CGFloat = avail / needed
         if ideal < minScale {
-            if overflowScrolls {
-                if !scrolling { scrolling = true; scale = 1 }
-            } else if abs(scale - minScale) > 0.009 {
-                scale = minScale
-            }
+            if !scrolling { scrolling = true; scale = 1 }
             return
         }
         if scrolling { scrolling = false }

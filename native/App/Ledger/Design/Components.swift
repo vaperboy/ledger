@@ -33,8 +33,22 @@ struct Card<Content: View>: View {
                 .environment(\.insideCard, true)
                 .padding(padding)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(shape.fill(fill ?? palette.card))
-                .overlay { if let stroke { shape.strokeBorder(stroke, lineWidth: 1) } }
+                .background {
+                    ZStack {
+                        shape.fill(fill ?? palette.card)
+                        shape.fill(LinearGradient(
+                            colors: [Color.white.opacity(palette.isLight ? 0.10 : 0.025), .clear],
+                            startPoint: .top, endPoint: .bottom
+                        ))
+                    }
+                }
+                .overlay {
+                    if rule {
+                        shape.strokeBorder(stroke ?? palette.line.opacity(0.9), lineWidth: 0.8)
+                    } else if let stroke {
+                        shape.strokeBorder(stroke, lineWidth: 1)
+                    }
+                }
         }
     }
 }
