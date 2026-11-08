@@ -77,22 +77,4 @@ extension ManagerModel {
         }
         return got
     }
-
-    /// Seasonal help is hired by `StaffingPlan.weekly`; the manager's week still calls this name.
-    static func seasonalWeek(_ s: inout GameState, _ ci: Int, _ n: Person, data: GameData, capacity cap: Double) {}
-
-    /// Carry out a seasonal-help proposal raised before the staffing plan (id "3:6,7,8" = crew size and months) and tell the owner what it costs.
-    static func execSeasonal(_ s: inout GameState, _ ci: Int, _ dp: Proposal, _ n: Person, data: GameData) {
-        let parts = dp.id.split(separator: ":")
-        let count = parts.first.flatMap { Int($0) } ?? 1
-        let months = parts.count > 1 ? parts[1].split(separator: ",").compactMap { Int($0) } : []
-        guard !months.isEmpty, data.catalog.tables.roles[dp.role] != nil else { return }
-        let co = s.companies[ci]
-        let got = hireSeasonalCrew(&s, companyID: co.id, role: dp.role, months: months, count: count, data: data)
-        guard got > 0 else { return }
-        let cur = World(state: s, data: data).currency(co)
-        let each = dp.cost / Double(max(1, count))
-        s.note("\(n.name) hired \(got) seasonal \(got > 1 ? "workers" : "worker") for the busy \(StaffTalks.seasonText(months)) months at \(co.name): about "
-               + "\(cur.display(each * Double(got))) a month while they work.", tone: "n", companyID: co.id)
-    }
 }

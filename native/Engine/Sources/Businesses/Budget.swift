@@ -101,6 +101,7 @@ public enum Budget: Int, CaseIterable, Comparable, Sendable {
             write(of(rec), into: &r)
             return r
         }
+        ManagerModel.retireLegacyProposals(&s)
         for i in s.companies.indices {
             var a = s.companies[i].value("auth")
             if !a.isNull, a["bud"].isNull {

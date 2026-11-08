@@ -118,11 +118,11 @@ final class BudgetTests: XCTestCase {
         XCTAssertGreaterThan(limit, 0)
         XCTAssertTrue(ManagerModel.withinBudget(co, amount: limit, e.state, data: e.data))
         XCTAssertFalse(ManagerModel.withinBudget(co, amount: limit * 1.5, e.state, data: e.data))
-        // a hire whose monthly cost is twice the budget is the owner's to approve
+        // premises space that costs twice the budget is the owner's to approve
         let manager = try XCTUnwrap(e.state.people[mid])
         e.update { s, d, _ in
             let ci = s.companyIndex(id)!
-            ManagerModel.propose(&s, ci, ManagerModel.Proposal(kind: "hire", role: "barista", cost: limit * 24), manager, 0.5, data: d)
+            ManagerModel.propose(&s, ci, ManagerModel.Proposal(kind: "space", cost: limit * 2), manager, 0.5, data: d)
         }
         XCTAssertNotNil(e.state.inbox.first { $0.companyID == id && $0.actionID == "prop" && $0.status == "open" }, "above the budget: the owner is asked")
         // on a free budget nothing is above it

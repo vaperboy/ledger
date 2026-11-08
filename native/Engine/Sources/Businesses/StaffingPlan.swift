@@ -16,6 +16,8 @@ import Finance
 public enum StaffingPlan {
     /// Weeks a vacancy is open before the search ends in an offer.
     public static let searchWeeks = 2
+    /// Weeks the search takes at this company: an HR head keeps candidates warm, so it is a week shorter.
+    static func searchWeeks(for co: Company) -> Int { ManagerHeads.has(co, "hr") ? max(1, searchWeeks - 1) : searchWeeks }
     /// Recruiting fee in months of the going wage, for a permanent hire and for a seasonal one.
     static let recruitingFeeMonths = 0.4
     static let seasonalFeeMonths = 0.2
@@ -191,7 +193,7 @@ public enum StaffingPlan {
         let p = co.value("stfPlan")
         if !p["h"].isNull, p["h"].int == s.week { return false }
         let opened = p["o"][role]
-        return !opened.isNull && s.week - opened.int >= searchWeeks
+        return !opened.isNull && s.week - opened.int >= searchWeeks(for: co)
     }
 
     /// A hire was made: no second one this week, and the recruiting fee is paid.
@@ -239,7 +241,7 @@ public enum StaffingPlan {
     /// One permanent hire at most: the vacancy that has waited longest and may be filled. True if a search was made.
     private static func fillOne(_ s: inout GameState, _ ci: Int, _ rows: [Row], _ boss: Hirer, standing: Bool, context: FinanceContext, data: GameData) -> Bool {
         let co = s.companies[ci]
-        let waiting = rows.filter { $0.vacancies > 0 && $0.weeksOpen >= searchWeeks && (standing || $0.ownerSet) }.sorted { ($0.weeksOpen, $1.role) > ($1.weeksOpen, $0.role) }
+        let waiting = rows.filter { $0.vacancies > 0 && $0.weeksOpen >= searchWeeks(for: co) && (standing || $0.ownerSet) }.sorted { ($0.weeksOpen, $1.role) > ($1.weeksOpen, $0.role) }
         guard let row = waiting.first(where: { ManagerHiring.verdict(s, companyID: co.id, role: $0.role, target: $0.target, data: data).allowed }) else { return false }
         let wage = ManagerModel.marketWage(s, co, role: row.role, data: data)
         guard co.cash > context.weeklyCost(co, s) * 4 + wage * 2 else {
