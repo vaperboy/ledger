@@ -62,6 +62,12 @@ public extension GameEngine {
         update { s, d, c in r = HoldingModel.create(&s, name: name, accountantID: accountantID, companies: companies, data: d, context: c) }
         return r
     }
+    /// Register a holding and put the chosen part of each company under it (`percent` of the whole company from your own shares; 100 is all of it).
+    mutating func createHolding(name: String?, stakes: [HoldingModel.StakeInput], accountantID: Int? = nil) -> Result<Int, HoldingModel.Failure> {
+        var r: Result<Int, HoldingModel.Failure> = .failure(.notAllowed)
+        update { s, d, c in r = HoldingModel.create(&s, name: name, accountantID: accountantID, stakes: stakes, data: d, context: c) }
+        return r
+    }
     @discardableResult mutating func moveToHolding(companyID: Int, holdingID: Int) -> Bool {
         var ok = false; update { s, d, _ in ok = HoldingModel.move(&s, companyID: companyID, into: holdingID, data: d) }; return ok
     }
@@ -112,6 +118,19 @@ public extension GameEngine {
         update { s, d, _ in r = HoldingStakes.buy(&s, holdingID: holdingID, companyID: companyID, percent: percent, from: source, data: d) }
         return r
     }
+    /// The loan a holding would need for the part of the price its cash does not cover: size, rate (policy rate plus margins), instalment, lender and
+    /// the holding's debt after. `allowed` is false with a `reason` when the lender would refuse.
+    func holdingBuyLoanQuote(holdingID: Int, companyID: Int, percent: Double, from source: HoldingStakes.Source = .auto, termMonths: Int = 60) -> Result<HoldingStakes.BorrowTerms, HoldingStakes.Failure> {
+        HoldingStakes.borrowTerms(state, holdingID: holdingID, companyID: companyID, percent: percent, from: source, termMonths: termMonths, data: data, context: context)
+    }
+    /// Buy the stake, borrowing the shortfall. The loan is the holding's own (shown in its debt, instalments taken monthly from its account);
+    /// nothing changes when it is refused.
+    @discardableResult
+    mutating func holdingBuyStakeWithLoan(holdingID: Int, companyID: Int, percent: Double, from source: HoldingStakes.Source = .auto, termMonths: Int = 60) -> Result<HoldingStakes.LoanDeal, HoldingStakes.Failure> {
+        var r: Result<HoldingStakes.LoanDeal, HoldingStakes.Failure> = .failure(.notFound)
+        update { s, d, c in r = HoldingStakes.buyWithLoan(&s, holdingID: holdingID, companyID: companyID, percent: percent, from: source, termMonths: termMonths, data: d, context: c) }
+        return r
+    }
     @discardableResult
     mutating func holdingBuyRivalStake(holdingID: Int, rivalID: Int, percent: Double) -> Result<HoldingStakes.Deal, HoldingStakes.Failure> {
         var r: Result<HoldingStakes.Deal, HoldingStakes.Failure> = .failure(.notFound)
@@ -153,6 +172,49 @@ public extension GameEngine {
         var r: Result<Double, HoldingStakes.Failure> = .failure(.notFound)
         update { s, d, _ in r = HoldingStakes.merge(&s, holdingID: holdingID, companyID: companyID, data: d) }
         return r
+    }
+    /// What turning the company into a division of the holding (or of `hostID`, another company the holding owns outright) would mean. Nothing is changed.
+    func holdingDivisionTerms(holdingID: Int, companyID: Int, hostID: Int? = nil) -> HoldingStakes.DivisionTerms {
+        HoldingStakes.divisionTerms(state, holdingID: holdingID, companyID: companyID, hostID: hostID, data: data)
+    }
+    /// The company stops being a separate company: it keeps trade, staff, items and cash, and its value stays in the group.
+    @discardableResult
+    mutating func holdingMakeDivision(holdingID: Int, companyID: Int, hostID: Int? = nil) -> Result<HoldingStakes.DivisionTerms, HoldingStakes.Failure> {
+        var r: Result<HoldingStakes.DivisionTerms, HoldingStakes.Failure> = .failure(.notFound)
+        update { s, d, _ in r = HoldingStakes.makeDivision(&s, holdingID: holdingID, companyID: companyID, hostID: hostID, data: d) }
+        return r
+    }
+    /// The divisions of a holding or of one of its companies.
+    func holdingDivisions(hostID: Int) -> [Company] { HoldingStakes.divisions(of: hostID, in: state) }
+
+    /// Companies the holding sits on the board of (a controlling stake, or a seat it took), where its owner can talk to the people.
+    func holdingSeatedCompanies(holdingID: Int) -> [Company] {
+        HoldingStakes.stakeCompanies(of: holdingID, in: state).filter { HoldingStakes.seatStatus(state, holdingID: holdingID, companyID: $0.id).hasSeat }
+    }
+    private func seatedCompany(_ holdingID: Int, _ companyID: Int) -> HoldingStakes.Failure? {
+        let seat = HoldingStakes.seatStatus(state, holdingID: holdingID, companyID: companyID)
+        if seat.hasSeat { return nil }
+        return HoldingStakes.Failure.refused(seat.reason.isEmpty ? "The holding has no seat on this board." : seat.reason)
+    }
+    /// The talks at a board the holding sits on: the same people, topics and scenes as `ownerCounterparts` and the rest, for the company's id.
+    func holdingOwnerCounterparts(holdingID: Int, companyID: Int) -> Result<[OwnerMeetings.Counterpart], HoldingStakes.Failure> {
+        if let f = seatedCompany(holdingID, companyID) { return .failure(f) }
+        return .success(ownerCounterparts(companyID: companyID))
+    }
+    func holdingOwnerTopics(holdingID: Int, companyID: Int, personID: Int) -> Result<[OwnerMeetings.Topic], HoldingStakes.Failure> {
+        if let f = seatedCompany(holdingID, companyID) { return .failure(f) }
+        return .success(ownerTopics(companyID: companyID, personID: personID))
+    }
+    func holdingOwnerScene(holdingID: Int, companyID: Int, personID: Int, topic: String) -> Result<OwnerMeetings.Scene, HoldingStakes.Failure> {
+        if let f = seatedCompany(holdingID, companyID) { return .failure(f) }
+        guard let sc = ownerScene(companyID: companyID, personID: personID, topic: topic) else { return .failure(.notFound) }
+        return .success(sc)
+    }
+    @discardableResult
+    mutating func holdingOwnerChoose(holdingID: Int, companyID: Int, personID: Int, topic: String, choice: String) -> Result<OwnerMeetings.Outcome, HoldingStakes.Failure> {
+        if let f = seatedCompany(holdingID, companyID) { return .failure(f) }
+        guard let o = ownerChoose(companyID: companyID, personID: personID, topic: topic, choice: choice) else { return .failure(.notFound) }
+        return .success(o)
     }
     func holdingBoardSeat(holdingID: Int, companyID: Int) -> HoldingStakes.SeatStatus { HoldingStakes.seatStatus(state, holdingID: holdingID, companyID: companyID) }
     @discardableResult

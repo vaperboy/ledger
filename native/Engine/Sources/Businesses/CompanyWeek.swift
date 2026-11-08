@@ -97,7 +97,8 @@ public enum CompanyWeek {
     static func openWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData, _ marketing: MarketingTables) {
         if RentalFinance.handles(bd) {
             // Property and finance companies have their own weekly model instead of customers and capacity (original: `FAM.rent.custom`, `FAM.fin.custom`).
-            let ctx = RentalFinance.week(&s, i, bd, data: data)
+            var ctx = RentalFinance.week(&s, i, bd, data: data)
+            SalesItems.gate(&ctx, s.companies[i])
             let w = World(state: s, data: data)
             book(&s, i, bd, ctx, vat: Vat.rate(s.companies[i], bd, w), data: data)
             weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)
@@ -127,10 +128,11 @@ public enum CompanyWeek {
         // Project businesses (the week's figures come from what happened on the days, or from the developments), and energy, the
         // salmon farm, a holding company and a football club (SpecialFamilies) work out their own week.
         if bd.family == "project" || SpecialFamilies.handles(bd) {
-            let ctx = bd.family != "project" ? SpecialFamilies.week(&s, i, bd, data)
+            var ctx = bd.family != "project" ? SpecialFamilies.week(&s, i, bd, data)
                 : ProjectModel.isDeveloper(bd)
                 ? ProjectDeveloper.week(&s, i, bd, data: data, context: FinanceContext(countries: data.countries, trades: data.catalog))
                 : ProjectWeek.closeWeek(&s, i, bd, data: data)
+            if ProjectModel.isDeveloper(bd) || bd.family != "project" { SalesItems.gate(&ctx, s.companies[i]) }
             let vat = Vat.rate(s.companies[i], bd, World(state: s, data: data))
             book(&s, i, bd, ctx, vat: vat, data: data)
             weekEnd(&s, i, bd, ctx, data: data, marketing: marketing)

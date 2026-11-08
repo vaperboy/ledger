@@ -121,7 +121,14 @@ public enum HoldingModel {
 
     /// Register a holding company: the owner pays the registration fee and the share capital, which stays in the holding.
     /// Original: `createHolding` (+ the new-holding screen that moves chosen companies under it).
-    public static func create(_ s: inout GameState, name: String?, accountantID: Int? = nil, companies: [Int] = [], data: GameData, context fc: FinanceContext) -> Result<Int, Failure> {
+    /// A company and the part of it (percent of the whole, taken from your own shares) to put under a new holding; 100 or more is the whole company.
+    public struct StakeInput: Equatable, Sendable {
+        public var companyID: Int
+        public var percent: Double
+        public init(companyID: Int, percent: Double) { self.companyID = companyID; self.percent = percent }
+    }
+
+    public static func create(_ s: inout GameState, name: String?, accountantID: Int? = nil, companies: [Int] = [], stakes: [StakeInput] = [], data: GameData, context fc: FinanceContext) -> Result<Int, Failure> {
         let code = s.homeCountryCode
         guard let country = data.countries[code] else { return .failure(.notAllowed) }
         let city = s.player.cityID
@@ -140,6 +147,11 @@ public enum HoldingModel {
         s.companies[i].set("ownerHours", 0)
         s.companies[i].ownerHours = 0
         for c in companies { _ = move(&s, companyID: c, into: id, data: data) }
+        for st in stakes {
+            if case .failure(let f) = HoldingStakes.moveShare(&s, companyID: st.companyID, into: id, percent: st.percent, data: data) {
+                s.note("\(s.company(st.companyID)?.name ?? "A company") was not put under \(nm): \(f.reason)", tone: "warn", companyID: id)
+            }
+        }
         _ = country
         s.note("\(nm) is registered.", tone: "good", companyID: id)
         return .success(id)
@@ -163,7 +175,7 @@ public enum HoldingModel {
     /// Take a company out of the holding again (it is then yours directly). Original: `ACT.hrel`.
     @discardableResult
     public static func release(_ s: inout GameState, companyID: Int, data: GameData? = nil) -> Bool {
-        guard let ci = s.companyIndex(companyID), s.companies[ci].holdingID != 0 else { return false }
+        guard let ci = s.companyIndex(companyID), s.companies[ci].holdingID != 0, !HoldingStakes.isDivision(s.companies[ci]), HoldingStakes.divisions(of: companyID, in: s).isEmpty else { return false }
         let before = s.companies[ci].holdingID
         s.companies[ci].holdingID = 0
         if let data = data { refreshAssets(&s, holdingID: before, data: data) }
@@ -230,6 +242,7 @@ public enum HoldingModel {
         HoldingStakes.releaseLines(&s, holdingID: holdingID)
         for j in s.companies.indices where s.companies[j].holdingID == holdingID {
             s.companies[j].holdingID = 0
+            s.companies[j].set("div", .null)
             s.note("\(s.companies[j].name) is owned by you directly now.", tone: "n", companyID: s.companies[j].id)
         }
     }
