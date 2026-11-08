@@ -1,4 +1,5 @@
 # What's new
+- Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a game-over screen with a one-tap retry, a four-step first-session tour, and a short help sheet the first time you open each phone app
 - The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month
 - Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
 - Next day is a floating button above the tab bar and Skip week is gone, the daily report popup is back, and Home never scrolls with one company
