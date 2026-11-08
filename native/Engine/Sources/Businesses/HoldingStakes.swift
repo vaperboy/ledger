@@ -474,8 +474,9 @@ public enum HoldingStakes {
                                lenderCompanyID: 0, lender: "", creditBand: "", debtBefore: 0, debtAfter: 0, reason: Failure.notAHolding.reason)
         }
         let cash = max(0, h.cash)
-        let shortfall = max(0, jsRound(price - h.cash))
-        let amount = shortfall.rounded(.up)
+        // Round up from the exact gap: rounding to nearest can leave the account a fraction short of the price.
+        let amount = max(0, (price - h.cash).rounded(.up))
+        let shortfall = amount
         let months = max(6, min(120, termMonths))
         let band = Banking.creditBand(s.credit)
         let debt = CompanyFigures.debts(h, loans: s.loans)

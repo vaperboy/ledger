@@ -85,18 +85,40 @@ final class LadderTests: XCTestCase {
         XCTAssertTrue(failures.isEmpty, failures.joined(separator: "; "))
     }
 
-    func testRewardsAreOneOffAndMatchTheOldChecklistValues() throws {
+    func testRewardsAreRealConsequencesNeverCash() throws {
+        var e = try ChainsTests.engine()
+        let id = ChainsTests.start(&e, "cafe")
+        let cur = e.homeCurrency
+        for g in PlayerGoals.ladder(e.state) ?? [] { XCTAssertFalse(g.reward.lowercased().contains("grant") || g.reward.lowercased().contains("refund") || g.reward.lowercased().contains("free"), g.id) }
+        let cash = e.state.cash
+        let repBefore = e.state.company(id)?.reputation ?? 0
+        let credit = e.state.credit
+        e.update { s, _, _ in
+            for k in ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"] { _ = PlayerGoals.ladderReward(&s, k, cur) }
+        }
+        XCTAssertEqual(e.state.cash, cash, accuracy: 0.001, "no ladder reward pays money")
+        XCTAssertGreaterThan(e.state.credit, credit)
+        XCTAssertGreaterThanOrEqual(e.state.company(id)?.reputation ?? 0, repBefore)
+        XCTAssertTrue(PlayerGoals.ladderFlag(e.state, "classic"))
+        XCTAssertTrue(PlayerGoals.ladderFlag(e.state, "rank"))
+        XCTAssertTrue(PlayerGoals.ladderFlag(e.state, "amb"))
+        e.update { s, _, _ in
+            XCTAssertEqual(PlayerGoals.ladderReward(&s, "M5", cur), "", "a campaign is its own reward")
+            XCTAssertEqual(PlayerGoals.ladderReward(&s, "M6", cur), "")
+        }
+    }
+
+    func testBadWeekGoalFinishesOnItsOwnAfterQuietWeeksAndNeverShowsACard() throws {
         var e = try ChainsTests.engine()
         _ = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
-        let before = e.state.cash
         e.update { s, _, _ in
-            let line = PlayerGoals.ladderReward(&s, "M3", cur)
-            XCTAssertTrue(line.hasPrefix("The job centre pays a month of payroll tax"))
+            s.rest["ldr"] = .object(["done": .object(Dictionary(uniqueKeysWithValues: (1...9).map { ("M\($0)", JSONValue.object(["w": .number(Double(s.week))])) }))])
         }
-        XCTAssertEqual(e.state.cash - before, cur.scaledPrice(6000), accuracy: 1)
-        e.update { s, _, _ in _ = PlayerGoals.ladderReward(&s, "M8", cur); _ = PlayerGoals.ladderReward(&s, "M9", cur) }
-        XCTAssertTrue(PlayerGoals.ladderFlag(e.state, "classic"))
-        XCTAssertTrue(PlayerGoals.ladderFlag(e.state, "rank"))
+        XCTAssertNil(PlayerGoals.currentLadderGoal(e.state), "M10 asks nothing of the player")
+        e.update { s, _, _ in XCTAssertEqual(PlayerGoals.ladderSweep(&s, currency: cur), []) }
+        e.update { s, _, _ in s.week += PlayerGoals.quietWeeksForM10 }
+        e.update { s, _, _ in XCTAssertEqual(PlayerGoals.ladderSweep(&s, currency: cur), ["M10"]) }
+        XCTAssertTrue(Gates.goalDone(e.state, 10))
     }
 }

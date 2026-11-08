@@ -72,39 +72,31 @@ public enum Unlocks {
     /// Closed months on record, up to twelve (the progress towards a profitable year).
     public static func monthsClosed(_ co: Company) -> Int { min(12, co.monthlyHistory.count) }
 
-    /// Someone could sit on the board now: a board exists (a chain, or co-owners), a search already lined up candidates, or a limited company
-    /// has a manager who could take a seat.
+    /// The board matters now: it exists (a chain, or co-owners), or a limited company has a manager who advises it.
     static func boardPossible(_ s: GameState, _ co: Company) -> Bool {
-        let k = ManagerModel.boardKey(s, co)
-        if ManagerModel.boardActive(s, key: k) { return true }
-        if !ManagerModel.board(s, key: k)["cands"].array.isEmpty { return true }
+        if ManagerModel.boardActive(s, key: ManagerModel.boardKey(s, co)) { return true }
         return co.form == .limited && co.managerID != nil
     }
 
-    static func check(_ d: Def, _ s: GameState, _ co: Company, context: FinanceContext) -> (ok: Bool, reason: String) {
-        let weeks = weeksTraded(s, co)
-        switch d.id {
-        case "board":
-            return (boardPossible(s, co), "Unlocks when a limited company has a manager or candidate who could take a seat, or it gets co-owners or a chain")
-        case "chain":
-            let ok = weeks >= weeksChain || !co.value("chain").isNull || co.value("fr")["on"].bool
-            return (ok, "Unlocks when the company has traded \(weeksChain) weeks (\(weeks) so far)")
-        case "franchise":
-            let ok = co.value("fr")["on"].bool || Franchising.provenConcept(s, co).ok
-            return (ok, "Unlocks with a proven concept: \(weeksChain) weeks traded and four profitable quarters")
-        case "abroad":
-            let ok = (yearProfit(co) ?? 0) > 0 || !Abroad.foreignCountries(s).isEmpty
-            return (ok, "Unlocks after a profitable year (twelve closed months in profit)")
-        case "research":
-            let ok = weeks >= weeksResearch || !co.value("res27")["r"].array.isEmpty
-            return (ok, "Unlocks when the company is \(weeksResearch) weeks old (\(weeks) so far)")
-        case "dividends":
-            let limited = co.form == .limited
-            let ok = limited && (co.distributed > 0 || Payments.maximumDividend(co, state: s, context: context) > 0)
-            return (ok, limited ? "Unlocks when the company has retained profit to pay out" : "Unlocks for a limited company with retained profit")
-        default:
-            return (co.status.isLive, "Unlocks when the company exists")
+    /// A company that already uses a feature keeps it, whatever the rule says.
+    static func alreadyUses(_ id: String, _ s: GameState, _ co: Company) -> Bool {
+        switch id {
+        case "chain": return !co.value("chain").isNull || co.value("fr")["on"].bool
+        case "franchise": return co.value("fr")["on"].bool
+        case "abroad": return !Abroad.foreignCountries(s).isEmpty
+        case "research": return !co.value("res27")["r"].array.isEmpty
+        default: return false
         }
+    }
+
+    /// The rule and its words come from `Gates.table`; this adds what the company already uses and the progress count.
+    static func check(_ d: Def, _ s: GameState, _ co: Company, context: FinanceContext) -> (ok: Bool, reason: String) {
+        let e: RuleEntry = Gates.entry(.unlock(d.id))
+        let ok: Bool = Gates.met(e.rule, s, data: nil, company: co, context: context) || alreadyUses(d.id, s, co)
+        var reason: String = e.text
+        if case .weeksTraded = e.rule { reason += " (\(weeksTraded(s, co)) so far)" }
+        if d.id == "dividends" && co.form != .limited { reason = "Unlocks for a limited company with retained profit" }
+        return (ok, reason)
     }
 
     // MARK: Records

@@ -46,6 +46,7 @@ struct ConversionSheet: View {
     @ViewBuilder private func review(_ e: GameEngine, _ co: Company, _ plan: CompanyConversion.Plan) -> some View {
         let cur: Currency = e.currency(for: co)
         header(plan)
+        PopupSection(title: "Which form pays you more") { LegalFormAdvisor(companyID: companyID) }
         costs(plan, cur)
         accountantChoice(co, plan, cur)
         payerChoice(plan, cur)
@@ -226,5 +227,74 @@ struct ConversionSheet: View {
                 Text(block.text).popupText(.body)
             }
         }
+    }
+}
+
+/// Sole trader and limited company side by side at the company's current yearly profit: what each form pays in tax, what you keep, the liability
+/// and the paperwork, and one recommendation line. Every figure is the engine's `legalFormCompare`.
+struct LegalFormAdvisor: View {
+    @EnvironmentObject var store: GameStore
+    var companyID: Int
+
+    var body: some View {
+        if let e = store.engine, let co = e.state.company(companyID), let c = e.legalFormCompare(companyID: companyID) {
+            content(c, e.currency(for: co))
+        }
+    }
+
+    private func content(_ c: LegalFormComparison, _ cur: Currency) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("At \(cur.tidyShort(c.profit)) profit a year").textStyle(.caption)
+            Grid(alignment: .leading, horizontalSpacing: Theme.Space.m, verticalSpacing: Theme.Space.s) {
+                GridRow {
+                    Text("")
+                    heading(c.soleTrader, c)
+                    heading(c.limited, c)
+                }
+                row("Company tax", "none", cur.tidyShort(c.limited.companyTax))
+                row("Your tax", cur.tidyShort(c.soleTrader.personalTax), cur.tidyShort(c.limited.personalTax))
+                if c.limited.runningCost > 0 { row("Accountant", "none required", cur.tidyShort(c.limited.runningCost) + " a year") }
+                GridRow {
+                    Text("You keep").textStyle(.headline)
+                    Text(cur.tidyShort(c.soleTrader.keep)).textStyle(.headline, tint: c.better == .soleTrader ? Theme.gain : nil, numeric: true)
+                    Text(cur.tidyShort(c.limited.keep)).textStyle(.headline, tint: c.better == .limited ? Theme.gain : nil, numeric: true)
+                }
+            }
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                note("Liability", c.soleTrader.liability)
+                note("Liability", c.limited.liability)
+            }
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                note("Paperwork", c.soleTrader.paperwork)
+                note("Paperwork", c.limited.paperwork)
+            }
+            Text(c.recommendation).textStyle(.body, tint: c.better == .even ? nil : Theme.gain).fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("legal-form-recommendation")
+            Text("Worked from your country's tax rules; the limited column assumes all profit is paid out as dividends. Your other income is not counted.")
+                .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func heading(_ col: LegalFormColumn, _ c: LegalFormComparison) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(col.formName).textStyle(.headline).lineLimit(2)
+            if col.form == c.currentForm { Text("You are here").textStyle(.caption) }
+        }
+    }
+
+    private func row(_ label: String, _ sole: String, _ limited: String) -> some View {
+        GridRow {
+            Text(label).textStyle(.caption)
+            Text(sole).textStyle(.body, numeric: true)
+            Text(limited).textStyle(.body, numeric: true)
+        }
+    }
+
+    private func note(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(title).textStyle(.caption)
+            Text(text).textStyle(.body).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -119,7 +119,7 @@ final class ChainsTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(first) { s.companies[i].set("mgr", 0) } }   // no manager needed for this check
         let id = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         e.setChainRule(chainID: id, rule: .price(1))
-        guard case .success(let second) = e.openChainStore(chainID: id, cityID: e.state.player.cityID, size: 1) else { return XCTFail("store not opened") }
+        guard case .success(let second) = e.openLocation(chainID: id, cityID: e.state.player.cityID) else { return XCTFail("store not opened") }
         XCTAssertEqual(e.state.company(second)?.priceLevel, 1)
         XCTAssertTrue(e.state.company(second)?.name.hasPrefix("Test Cafe") ?? false)
         Self.play(&e, days: 30 * 7)

@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 
 /// How games are stored.
 ///
@@ -76,6 +77,10 @@ public enum LegacyImporter {
         // The native game is always played day by day.
         root["dmode"] = 1
         let patched = try JSONEncoder().encode(JSONValue.object(root))
-        do { return try JSONDecoder().decode(GameState.self, from: patched) } catch { throw SaveError.unreadable("\(error)") }
+        do {
+            var state = try JSONDecoder().decode(GameState.self, from: patched)
+            Budget.migrate(&state)
+            return state
+        } catch { throw SaveError.unreadable("\(error)") }
     }
 }

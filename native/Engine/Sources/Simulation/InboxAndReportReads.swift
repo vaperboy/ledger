@@ -60,6 +60,7 @@ public extension GameEngine {
     /// What happens to an open message if it is left until it expires (the rules of `EventEngine.expire`). Nil when it does not expire.
     func expiryOutcome(_ m: Message) -> String? {
         guard m.status == "open", m.expiresWeek != nil else { return nil }
+        if m.actionID == PersonalFinance.dueAction { return "If you leave it, the tax office takes the balance from your account and the overdraft rules apply." }
         if m.kind == "decision" {
             var bestIndex = 0, best = -Double.infinity
             for (n, o) in m.options.enumerated() {

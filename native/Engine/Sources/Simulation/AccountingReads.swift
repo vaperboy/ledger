@@ -508,7 +508,8 @@ public extension GameEngine {
         for t in ledgerTransactions(co) where t.categoryID == "tax" && t.amount < 0 {
             add(.tax, "filing", "tax-" + t.id, t.label, t.counterparty, "Paid", week: t.week, amount: -t.amount)
         }
-        if co.taxAccrued > 0 || (co.payables["tax"] ?? 0) > 0 { add(.tax, "filing", "taxopen", "Corporate tax this year", "Accrued, not yet due", "Open", amount: max(co.taxAccrued, co.payables["tax"] ?? 0)) }
+        // Corporate tax is paid each month, so only what the account could not cover is still open.
+        if (co.payables["tax"] ?? 0) > 1 { add(.tax, "filing", "taxopen", "Corporate tax owed", "Unpaid: the account could not cover it", "Open", amount: co.payables["tax"] ?? 0) }
         if co.vatBalance > 1 { add(.tax, "filing", "vatopen", "VAT balance", "To be settled with the next return", "Open", amount: co.vatBalance) }
         // Contracts: employment, supplier, customer, financing, chain/franchise.
         for m in co.staff {

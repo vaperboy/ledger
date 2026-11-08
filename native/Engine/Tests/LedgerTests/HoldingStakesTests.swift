@@ -198,9 +198,11 @@ final class HoldingStakesTests: XCTestCase {
         let hp = pct(e, hid, cid), mine = try XCTUnwrap(e.state.company(cid)).ownership
         XCTAssertEqual(e.payDividend(companyID: cid, amount: amount), .ok)
         XCTAssertEqual(cash(e, hid) - h0, amount * hp / 100, accuracy: 1e-6, "the holding's share lands in its cash")
-        XCTAssertEqual(e.state.cash - p0, amount * mine / 100, accuracy: 1, "your own share is paid to you")
+        // Dividend tax is withheld on payout, so the account gets the share less that tax.
+        let received = e.state.cash - p0 + e.state.tax.paidDividend
+        XCTAssertEqual(received, amount * mine / 100, accuracy: 1, "your own share is paid to you")
         XCTAssertEqual((cash(e, hid) - h0) / amount, 0.25, accuracy: 0.0001)
-        XCTAssertEqual((e.state.cash - p0) / amount, 0.45, accuracy: 0.0001)
+        XCTAssertEqual(received / amount, 0.45, accuracy: 0.0001)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 

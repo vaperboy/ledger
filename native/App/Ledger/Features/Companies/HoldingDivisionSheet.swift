@@ -24,7 +24,7 @@ struct HoldingDivisionSheet: View {
             }
         }
         .confirmAction($pending)
-        .centerSheetTitle("Make it a division")
+        .centerSheetTitle("Fold it into the holding as a division")
     }
 
     /// Companies the holding owns outright that could host the division.
@@ -57,7 +57,7 @@ struct HoldingDivisionSheet: View {
                 PopupRow(label: "Cash that stays with it", value: cur.tidyShort(t.cash))
                 PopupRow(label: "People who stay", value: "\(t.staff)")
                 Text("Nothing is paid. It stops being a separate company, so the holding can no longer buy or sell shares of it.").popupText(.caption).fixedSize(horizontal: false, vertical: true)
-                Button("Make it a division") { askDivision(t) }
+                Button("Fold it in as a division") { askDivision(t) }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("holding-division-go")
             }

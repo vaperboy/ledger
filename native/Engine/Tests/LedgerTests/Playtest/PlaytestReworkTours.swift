@@ -172,44 +172,35 @@ final class PlaytestReworkTours: XCTestCase {
         let positions = Set(who.map { $0.position })
         ex(positions.contains("ceo"), "a hired manager shows as the CEO counterpart")
         for k in ["fin", "sales", "hr", "ops"] where !positions.contains(k) { find(2, "hired \(k) head is not a meeting counterpart") }
-        var scenes = 0, choicesRun = 0
-        for c in who {
-            let topics = e.ownerTopics(companyID: id, personID: c.id)
-            ex(!topics.isEmpty, "counterpart \(c.position) has topics")
-            for t in topics {
-                guard let sc = e.ownerScene(companyID: id, personID: c.id, topic: t.id) else { find(1, "scene nil for \(c.position)/\(t.id)"); continue }
-                scenes += 1
-                ex(!sc.lines.isEmpty, "scene \(c.position)/\(t.id) has lines")
-                for l in sc.lines where l.isEmpty || l.contains("{") || l.contains("NaN") || l.contains("inf ") || l.contains("nil") || l.contains("Optional") { find(2, "scene \(c.position)/\(t.id) has unclean text", l) }
-                ex((2...3).contains(sc.choices.count), "scene \(c.position)/\(t.id) has 2-3 choices (\(sc.choices.count))")
-                ex(sc.choices.allSatisfy { !$0.preview.isEmpty && !$0.label.isEmpty }, "scene \(c.position)/\(t.id) choices show a preview")
-                for ch in sc.choices {
-                    var f = e
-                    guard let o = f.ownerChoose(companyID: id, personID: c.id, topic: t.id, choice: ch.id) else { find(1, "choice \(c.position)/\(t.id)/\(ch.id) returns nil"); continue }
-                    choicesRun += 1
-                    ex(!o.text.isEmpty && ["good", "bad", "n"].contains(o.tone), "outcome text and tone for \(c.position)/\(t.id)/\(ch.id) (tone \(o.tone))")
-                    ex(f.ownerTopics(companyID: id, personID: c.id).first { $0.id == t.id }?.waitWeeks ?? 0 > 0 || o.resigned, "talk \(c.position)/\(t.id) sets a cool-down")
-                    if o.resigned { ex(f.state.company(id)?.managerID == nil || f.state.company(id)?.managerID != c.id, "a resigned person leaves the post") }
-                    ex(Ledger.gaps(f.state).isEmpty, "ledger after \(c.position)/\(t.id)/\(ch.id)", sev: 1)
-                    run(&f, weeks: 3)
-                    ex(f.state.company(id) != nil, "company still exists after \(c.position)/\(t.id)/\(ch.id)", sev: 1)
-                }
-            }
+        // Only the CEO holds the quarterly review: a direction and a budget, once each a quarter.
+        for c in who where c.position != "ceo" { ex(e.ownerTopics(companyID: id, personID: c.id).isEmpty, "\(c.position) holds no talk of their own") }
+        guard let ceo = who.first(where: { $0.position == "ceo" }), let sc = e.ownerScene(companyID: id, personID: ceo.id, topic: "review") else { return find(1, "the CEO has no review scene") }
+        ex(!sc.lines.isEmpty, "the review has lines")
+        for l in sc.lines where l.isEmpty || l.contains("{") || l.contains("NaN") || l.contains("inf ") || l.contains("nil") || l.contains("Optional") { find(2, "review has unclean text", l) }
+        ex(sc.choices.allSatisfy { !$0.preview.isEmpty && !$0.label.isEmpty }, "review choices show a preview")
+        var choicesRun = 0
+        for ch in sc.choices {
+            var f = e
+            guard let o = f.ownerChoose(companyID: id, personID: ceo.id, topic: "review", choice: ch.id) else { find(1, "review choice \(ch.id) returns nil"); continue }
+            choicesRun += 1
+            ex(!o.text.isEmpty && ["good", "bad", "n"].contains(o.tone), "outcome text and tone for \(ch.id) (tone \(o.tone))")
+            ex(Ledger.gaps(f.state).isEmpty, "ledger after \(ch.id)", sev: 1)
+            run(&f, weeks: 3)
+            ex(f.state.company(id) != nil, "company still exists after \(ch.id)", sev: 1)
         }
-        ex(scenes >= 12, "enough scenes across positions (\(scenes))", sev: 3)
-        ex(choicesRun >= 24, "enough choices played (\(choicesRun))", sev: 3)
-        // a second talk the same week is refused with text, not a state change
-        if let c = who.first, let t = e.ownerTopics(companyID: id, personID: c.id).first, let sc = e.ownerScene(companyID: id, personID: c.id, topic: t.id), let ch = sc.choices.first {
-            _ = e.ownerChoose(companyID: id, personID: c.id, topic: t.id, choice: ch.id)
+        ex(choicesRun == sc.choices.count && choicesRun >= 7, "every choice of the review plays (\(choicesRun))", sev: 3)
+        // a second pick of the same kind inside the quarter is refused with text, not a state change
+        if let ch = sc.choices.first {
+            _ = e.ownerChoose(companyID: id, personID: ceo.id, topic: "review", choice: ch.id)
             let h = e.playtestHash
-            let again = e.ownerChoose(companyID: id, personID: c.id, topic: t.id, choice: ch.id)
-            ex(again != nil && again!.text.lowercased().contains("recent") && e.playtestHash == h, "a repeated talk inside the cool-down changes nothing")
+            let again = e.ownerChoose(companyID: id, personID: ceo.id, topic: "review", choice: ch.id)
+            ex(again != nil && again!.text.contains("this quarter") && e.playtestHash == h, "a repeated pick inside the quarter changes nothing")
         }
-        // wait out the cool-down: allowed again
+        // wait out the quarter: allowed again
         run(&e, weeks: OwnerMeetings.cooldownWeeks + 1)
-        if let c = who.first { ex(e.ownerTopics(companyID: id, personID: c.id).allSatisfy { $0.waitWeeks == 0 }, "cool-down ends after \(OwnerMeetings.cooldownWeeks) weeks") }
-        // an unknown choice or a stranger changes nothing
-        ex(e.ownerChoose(companyID: id, personID: 999_999, topic: "results", choice: "thanks") == nil, "a person who is not at the company cannot be met")
+        ex(e.ownerTopics(companyID: id, personID: ceo.id).allSatisfy { $0.waitWeeks == 0 }, "the review opens again after \(OwnerMeetings.cooldownWeeks) weeks")
+        // a stranger changes nothing
+        ex(e.ownerChoose(companyID: id, personID: 999_999, topic: "review", choice: "dir:lean") == nil, "a person who is not at the company cannot be met")
         saves(e, "after meetings")
     }
 

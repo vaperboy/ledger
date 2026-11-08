@@ -286,6 +286,8 @@ public extension GameEngine {
                     case .assistant: r = ManagerModel.hireAssistant(&s, personID: personID, companyID: companyID ?? 0, monthlyWage: monthlyWage, data: d)
                     case .team(let key): r = ManagerModel.hireTeam(&s, companyID: companyID ?? 0, key: key, personID: personID, monthlyWage: monthlyWage, data: d)
                     case .executive(let level): r = ManagerModel.hireExecutive(&s, level: level, personID: personID, monthlyWage: monthlyWage, chainID: chainID, city: city, data: d)
+                        // A chain CEO or chain manager appoints the managers of the locations that have none.
+                        if r == .ok, level == .ceo56 || level == .chainmgr, let cid = chainID { ChainLocations.fillManagers(&s, chainID: cid, data: d) }
                     default: r = .refused
                     }
                     switch r {

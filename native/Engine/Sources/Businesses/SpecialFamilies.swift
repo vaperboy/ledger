@@ -75,7 +75,6 @@ public enum SpecialFamilies {
     /// Used for football clubs, which are bought or founded rather than started.
     public static func blankCompany(_ s: inout GameState, tradeID: String, country: Country, cityID: String, name: String, size: Double, data: GameData) -> Int? {
         guard let bd = data.catalog[tradeID] else { return nil }
-        let currency = Currency(country: country, rates: ExchangeRates(drift: s.exchangeRates.values))
         var co = Company(raw: [:])
         co.id = s.makeID()
         co.type = tradeID; co.countryCode = country.code
@@ -84,7 +83,7 @@ public enum SpecialFamilies {
         co.foundedWeek = s.week; co.openedWeek = nil; co.cash = 0; co.ownership = 100
         co.set("holders", .array([])); co.set("docs", .object([:])); co.set("eq", .object([:])); co.set("veh", .array([])); co.set("lease", .object([:]))
         co.set("staff", .array([])); co.set("mgrWage", 0); co.set("mgrBonus", 0)
-        co.set("auth", .object(["lvl": 0, "buy": .number(currency.scaledPrice(25000)), "hire": .number(currency.scaledPrice(8000)), "ad": .number(currency.scaledPrice(3000))]))
+        co.set("auth", Budget.initialAuth)
         co.set("region", 0); co.set("mkt", .object([:])); co.awareness = 25
         co.set("knob", .object([:]))
         co.priceLevel = 0; co.ownerHours = 0; co.reputation = 45; co.quality = 45; co.ownerSkill = 40; co.maintenance = 1

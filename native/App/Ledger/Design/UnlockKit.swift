@@ -48,7 +48,7 @@ extension GameStore {
 
     /// The announcement to show now: the first in the queue, once the day's reports, rewards and notices have been read.
     var unlockReady: UnlockPrompt? {
-        guard !isAdvancing, reportSheet == nil, dailySheet == nil, !ambitionPrompt, celebrationQueue.isEmpty, !popupOpen else { return nil }
+        guard !isAdvancing, reportSheet == nil, !ambitionPrompt, celebrationQueue.isEmpty, !popupOpen else { return nil }
         return unlockQueue.first
     }
 

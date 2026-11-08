@@ -61,13 +61,13 @@ final class PreviewAndAdvisorTests: XCTestCase {
         XCTAssertTrue(EffectPreview.lines(.null, currency: e.homeCurrency).isEmpty)
     }
 
-    func testFirstStepsAndSuggestionsFollowTheGame() throws {
+    func testLadderFactsAndSuggestionsFollowTheGame() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
-        XCTAssertEqual(e.firstStepRewards?.filter { $0.done }.count, 0)
+        XCTAssertFalse(PlayerGoals.stepDone("co", e.state))
         XCTAssertTrue(e.suggestions().contains { $0.action == .newCompany })
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
         guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 10_000_000) else { return XCTFail() }
-        XCTAssertTrue(e.firstStepRewards?.first { $0.id == "co" }?.done == true)
+        XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
         for _ in 0..<10 { e.nextDay() }
         let h = e.dayHistory
         XCTAssertEqual(h.netWorth.count, 11, "one history entry for the start and one per day")
@@ -188,17 +188,12 @@ final class FinanceOverviewTests: XCTestCase {
 
 final class AutoDividendTests: XCTestCase {
     func testDividendsAreNeverAutomatic() throws {
-        func paid(weeks: Double) throws -> Double {
-            var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
-            e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-            var p = ManagementPolicy(); p.autoDividendWeeks = weeks; e.setPolicy(p)
-            guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { XCTFail(); return 0 }
-            for _ in 0..<(20 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
-            XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-            return e.state.company(id)?.distributed ?? 0
-        }
-        XCTAssertEqual(try paid(weeks: 0), 0, "never by default")
-        XCTAssertEqual(try paid(weeks: 4), 0, "dividends are never automatic, whatever an old save says")
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
+        e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { XCTFail(); return }
+        for _ in 0..<(20 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        XCTAssertEqual(e.state.company(id)?.distributed ?? 0, 0, "the owner decides on dividends; nothing is paid out by itself")
     }
 }
 

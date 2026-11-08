@@ -19,12 +19,6 @@ enum Motion {
     static let pulseAnimation: Animation = .easeInOut(duration: 0.6).repeatForever(autoreverses: true)
     /// `size`: a popup changing size or class as its content changes, a slightly bouncier spring than `move`.
     static let sizeAnimation: Animation = .spring(response: 0.38, dampingFraction: 0.82)
-    /// Seconds the banner layer waits before the next banner, how long a swiped banner takes to leave, and how long a toast stays.
-    static let bannerGapSeconds: Double = 0.45
-    static let bannerLeaveSeconds: Double = 0.19
-    static let toastSeconds: Double = 3.5
-    /// The gap before a toast (shorter than a banner's: a toast answers the tap just made).
-    static let toastGapSeconds: Double = 0.05
     /// How long a `quick` change takes (a bump holds this long before it settles back).
     static let quickSeconds: Double = 0.22
     /// When a `move` spring has visibly settled (a page slide finishes, taps are taken again).
@@ -35,15 +29,12 @@ enum Motion {
     static let hiddenScale: CGFloat = 0.94
 
     /// One entrance/exit per kind of popup. Confirm and decision: scale and fade. Panel and report: slide up from the bottom (the
-    /// `move` spring comes from the host's animation). Toast: slide down from the top and fade. Reduce Motion: a plain fade.
+    /// `move` spring comes from the host's animation). Reduce Motion: a plain fade.
     static func confirmTransition(_ reduceMotion: Bool) -> AnyTransition {
         reduceMotion ? .opacity : .scale(scale: hiddenScale).combined(with: .opacity)
     }
     static func panelTransition(_ reduceMotion: Bool) -> AnyTransition {
         reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
-    }
-    static func toastTransition(_ reduceMotion: Bool) -> AnyTransition {
-        reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity)
     }
     /// `celebrate`: goal complete, record line, 1.5 s in total.
     static let celebrateSeconds: Double = 1.5

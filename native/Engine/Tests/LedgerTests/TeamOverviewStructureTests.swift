@@ -101,7 +101,7 @@ final class TeamOverviewStructureTests: XCTestCase {
         ChainsTests.season(&e, first)
         let chain = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         var stores = [first]
-        for _ in 0..<2 { if case .success(let id) = e.openChainStore(chainID: chain, cityID: e.state.player.cityID, size: 1) { stores.append(id) } }
+        for _ in 0..<2 { if case .success(let id) = e.openLocation(chainID: chain, cityID: e.state.player.cityID) { stores.append(id) } }
         for id in stores { open(&e, id) }
         guard stores.count >= 2 else { throw XCTSkip("chain stores could not be opened") }
         var o = e.teamOverview()

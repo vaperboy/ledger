@@ -18,9 +18,7 @@ extension ManagerModel {
         guard let bot = CapacityModel.compute(co, bd, w).bottleneck else { return nil }
         let key = bot.key.split(separator: ":").last.map(String.init) ?? ""
         switch bot.kind {
-        case .staff:
-            guard data.catalog.tables.roles[key] != nil else { return nil }
-            return Proposal(kind: "hire", role: key, cost: marketWage(s, co, role: key, data: data) * 12)
+        case .staff: return nil   // people are the staffing plan's job
         case .equip:
             guard let e = bd.equipment.first(where: { $0.id == key }) else { return nil }
             if let vm = e.vehicleModels?.first, let v = data.catalog.tables.vehicles[vm] { return Proposal(kind: "veh", cost: EquipmentMarket.vehiclePrice(v, factor: 1, w) * 0.5, id: key) }
@@ -32,7 +30,7 @@ extension ManagerModel {
         }
     }
 
-    /// A duty the manager looks after unless you keep it (`duty56[k] = 0`): `sec` IT security, `ins` insurance, `prem` asking to expand the premises.
+    /// A duty the manager looks after unless you keep it (`duty56[k] = 0`); only `prem` (asking to expand the premises) is read.
     public static func dutyKept(_ co: Company, _ k: String) -> Bool { co.value("duty56")[k].isNull || co.value("duty56")[k].double != 0 }
     public static func setManagerDuty(_ s: inout GameState, companyID: Int, duty: String, manager: Bool) {
         guard let i = s.companyIndex(companyID) else { return }
@@ -41,13 +39,25 @@ extension ManagerModel {
         s.companies[i].set("duty56", d)
     }
 
-    /// A manager promoted for only some duties leaves the other decisions to you. Original: the `makeProposal` step of worker_roles_and_promotions.js.
+    /// A manager promoted for only some duties leaves the other decisions to you: `kind` is the duty "hire" (the staffing plan) or a purchase kind.
+    /// Original: the `makeProposal` step of worker_roles_and_promotions.js.
     static func dutyAllows(_ n: Person, _ kind: String) -> Bool {
         let k = n.value("k11")
         guard k["post"].string.hasPrefix("mgr@") else { return true }
         let need = kind == "hire" ? "hire" : ["eq", "veh", "space"].contains(kind) ? "buy" : nil
         guard let nd = need else { return true }
         return k["duties"].array.contains { $0.string == nd }
+    }
+
+    /// Proposal kinds that older saves may still hold open: hiring and seasonal help are the staffing plan's now.
+    static let legacyProposalKinds: Set<String> = ["hire", "seas"]
+
+    /// Close the open hire and seasonal-help questions of an older save so nobody is asked about something that no longer exists.
+    static func retireLegacyProposals(_ s: inout GameState, companyID: Int? = nil) {
+        for i in s.inbox.indices where s.inbox[i].status == "open" && (companyID == nil || s.inbox[i].companyID == companyID!) {
+            guard ["prop", "mprop"].contains(s.inbox[i].actionID), legacyProposalKinds.contains(s.inbox[i].value("data")["t"].string) else { continue }
+            s.inbox[i].status = "done"
+        }
     }
 
     /// Carry out a purchase the manager asked for. Original: `execProposal` for `eq`, `veh`, `space`.
@@ -85,7 +95,7 @@ extension ManagerModel {
     // MARK: Meeting: the manager brings two or three proposals
 
     public struct ManagerProposal: Equatable, Sendable {
-        public var kind: String          // hire, price_up, price_down, mkt_more, quality, cut, eq, save
+        public var kind: String          // price_up, price_down, mkt_more, quality, cut, eq, save
         public var title: String
         public var why: String
         public var role: String
@@ -107,21 +117,6 @@ extension ManagerModel {
         let tk = units > 0 ? rev / units : bd.ticket
         let cur = w.currency(co)
         var out: [ManagerProposal] = []
-        var role: String?
-        for st in CompanySetup.standardStaff(bd, size: co.size) where role == nil {
-            if co.staff.filter({ $0.role == st.role && $0.noticeWeeks <= 0 }).count < st.count, data.catalog.tables.roles[st.role] != nil { role = st.role }
-        }
-        if role == nil && util > 0.85, let f = bd.standardStaff.first?.role, data.catalog.tables.roles[f] != nil { role = f }
-        if let r = role, util > 0.75 || D > cap {
-            let per = cap > 0 ? cap / Double(max(1, co.staff.count)) : D
-            var extra = min(per, max(0, D - cap * 0.9)); if extra == 0 { extra = per * 0.3 }
-            let wage = marketWage(s, co, role: r, data: data)
-            if extra * tk > 0 {
-                out.append(ManagerProposal(kind: "hire", title: "Hire one more \((data.catalog.tables.roles[r]?.name ?? r).lowercased())",
-                                           why: "Utilisation is \(Int(jsRound(util * 100)))%\(D > cap ? " and we turn customers away" : ""). I would like to hire one more. Salary around \(cur.short(wage)) a month.",
-                                           role: r, id: "", addedCost: wage * 12 * 1.14 / 52, addedRevenue: extra * tk * 0.9, once: 0))
-            }
-        }
         let L = co.priceLevel
         let pm: [Double] = [0.7, 0.8, 0.9, 1, 1.15, 1.4, 1.9]
         func pmAt(_ l: Double) -> Double { pm[min(6, max(0, Int(l.rounded()) + 3))] }
@@ -175,7 +170,7 @@ extension ManagerModel {
         for x in props {
             s.addMessage(kind: "ask", from: n.name, title: x.title, body: x.why + "\nAdded cost " + (x.once > 0 ? "\(cur.short(x.once)) once" : "\(cur.short(x.addedCost))/wk") + ", added revenue about \(cur.short(x.addedRevenue))/wk.",
                          companyID: companyID, tone: "n", status: "open",
-                         options: [.option(x.kind == "hire" ? "Approve, I pick" : "Approve"), .option("Let \(first) decide"), .option("Not now")], action: "mprop",
+                         options: [.option("Approve"), .option("Let \(first) decide"), .option("Not now")], action: "mprop",
                          data: .object(["t": .string(x.kind), "role": .string(x.role), "id": .string(x.id), "cost": .number(x.once > 0 ? x.once : x.addedCost * 52), "cw": .number(x.addedCost), "rw": .number(x.addedRevenue), "title": .string(x.title)]),
                          expiresWeek: s.week + 2)
         }
@@ -184,7 +179,7 @@ extension ManagerModel {
 
     /// Answer a meeting proposal: 0 approve (hires wait for you to pick), 1 let the manager decide, 2 not now. Original: `ACTS.mprop`, `doProp`.
     static func answerProposal(_ s: inout GameState, message m: Message, option idx: Int, data: GameData, marketing: MarketingTables) {
-        guard idx != 2, let ci = s.companyIndex(m.companyID), let mid = s.companies[ci].managerID, let n = s.people[mid], let bd = data.catalog[s.companies[ci].type] else { return }
+        guard idx != 2, !legacyProposalKinds.contains(m.value("data")["t"].string), let ci = s.companyIndex(m.companyID), let mid = s.companies[ci].managerID, let n = s.people[mid], let bd = data.catalog[s.companies[ci].type] else { return }
         let d = m.value("data")
         let q = quality(s.companies[ci], bd, people: s.people)
         if idx == 1 && !(d["rw"].double - d["cw"].double > 0 && s.random.chance(0.55 + q * 0.4)) {
@@ -192,15 +187,7 @@ extension ManagerModel {
         }
         let kind = d["t"].string
         let dp = Proposal(kind: kind, role: d["role"].string, cost: d["cost"].double, id: d["id"].string)
-        if kind == "hire" && idx == 0 { s.note("\(n.name) waits for you to pick the new \(data.catalog.tables.roles[dp.role]?.name.lowercased() ?? "person") at \(s.companies[ci].name).", tone: "n", companyID: m.companyID); return }
-        if ["hire", "eq", "cut"].contains(kind) {
-            if kind == "hire" {
-                let need = hireShort(s, s.companies[ci], cost: dp.cost, data: data)
-                if need > 0 { guard Payments.liquid(s) >= need else { s.note("Not enough money to hire at \(s.companies[ci].name): needs \(need) first.", tone: "bad", companyID: m.companyID); return }
-                    Payments.injectCash(&s, companyID: m.companyID, amount: need) }
-            }
-            exec(&s, ci, dp, n, q, data: data); return
-        }
+        if ["eq", "cut"].contains(kind) { exec(&s, ci, dp, n, q, data: data); return }
         let keys = ["price_up": "price_up", "price_down": "price_down", "mkt_more": "mkt_more", "quality": "quality", "save": "save"]
         if let k = keys[kind], let said = ask(&s, companyID: m.companyID, key: k, data: data, marketing: marketing) { s.note("\(n.name): \(said)", tone: "n", companyID: m.companyID) }
     }

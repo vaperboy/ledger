@@ -70,7 +70,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .inbox: return "Decisions, offers and warnings"
         case .news: return "Headlines and the business paper"
         case .weather: return "Conditions, forecast and warnings"
-        case .stats: return "Your record and the account log"
+        case .stats: return "Your record, goals, reports and where money went"
         case .goals: return "What to aim for next"
         case .luxury: return "Cars, watches, art, yachts, jets and homes"
         case .ventures: return "Startups, funds and stakes"
@@ -113,11 +113,11 @@ extension PhoneApp {
     }
 }
 
-/// A page of an app that has several (Stats and Activity, Goals and Achievements). The existing screens are reused unchanged; the app is
+/// A page of an app that has several (Stats with Activity, Goals and Reports; Goals and Achievements). The existing screens are reused unchanged; the app is
 /// a table with one row per page, each opening that page.
 enum PhonePage: String, Hashable, Identifiable {
     case stats = "Stats", activity = "Activity"
-    case goals = "Goals", achievements = "Achievements"
+    case goals = "Goals", reports = "Reports", achievements = "Achievements"
     var id: String { rawValue }
 
     var glyph: String {
@@ -125,6 +125,7 @@ enum PhonePage: String, Hashable, Identifiable {
         case .stats: return Glyph.stats
         case .activity: return Glyph.list
         case .goals: return Glyph.goals
+        case .reports: return Glyph.reports
         case .achievements: return Glyph.achievements
         }
     }
@@ -132,8 +133,9 @@ enum PhonePage: String, Hashable, Identifiable {
     var note: String {
         switch self {
         case .stats: return "Your figures and how they moved"
-        case .activity: return "What you did, week by week"
+        case .activity: return "Why your money moved, in every account"
         case .goals: return "What you are working towards"
+        case .reports: return "Weekly, monthly and yearly"
         case .achievements: return "Trophies and awards"
         }
     }

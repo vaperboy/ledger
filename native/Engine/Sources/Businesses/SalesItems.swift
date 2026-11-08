@@ -7,13 +7,13 @@ import Finance
 /// revenue weight, a market price (the company's own going price times the item's price ratio), a player price (a plain real number, kept
 /// unrounded, stored as a share of the market price so it follows the market), and an optional discount (percent, weeks).
 ///
-/// Demand per item follows a constant elasticity of `elasticity` (-1.5) on price against market, clamped. The company-wide effect is
+/// Demand per item follows the trade's elasticity on price against market, kinked at a reference price (see `DemandShape`), clamped. The company-wide effect is
 /// `demandFactor` (on `Pricing.demandEffect`) and `ticketFactor` (on `Pricing.ticket`); both are exactly 1 while every item is at the market
 /// price with no discount, so a company that never touches its items plays as it did before. The record is `items27` on the company:
 /// a list of { id, n, svc, q (unit share), r (price ratio, sum of q*r = 1), pm (price / market), dp (discount percent), dw (weeks left), lg (listed) }.
 /// Until the player changes something nothing is stored: the default list is derived from the trade and company name.
 public enum SalesItems {
-    /// Price elasticity of one item's demand, and the clamps on price ratio and on the demand multiplier.
+    /// Elasticity of the sale-probability curve of one-off items (`ItemModels`), and the clamps on price ratio and on the demand multiplier.
     public static let elasticity = -1.5
     public static let ratioRange = 0.3...3.0
     /// The range a player price may take against the market price. The ceiling is well under what the demand curve is clamped at: no customer
@@ -239,10 +239,41 @@ public enum SalesItems {
 
     // MARK: Demand
 
-    /// Demand multiplier of one item against its market price: price ratio to the power of the elasticity, clamped.
-    public static func demandMultiplier(priceRatio r: Double) -> Double {
+    /// How one item's demand reacts to its price: the trade's elasticity, and the price (against market) customers see as fair. Above it demand
+    /// is more elastic, below it less, so the best price follows the reference and the cost, not a fixed multiple of cost.
+    public struct DemandShape: Equatable, Sendable {
+        public var elasticity: Double
+        public var reference: Double
+        public init(elasticity: Double, reference: Double) { self.elasticity = elasticity; self.reference = reference }
+        public static let standard = DemandShape(elasticity: 1.5, reference: 1)
+        /// Elasticity below and above the reference, as multiples of the trade's.
+        static let belowFactor = 0.75, aboveFactor = 1.3
+    }
+
+    /// The trade's elasticity (never under 0.8, so demand above the kink stays elastic) and a reference price that rises with quality and
+    /// follows what the rivals in the city charge (size-weighted, damped). Close to 1 for a middling company with ordinary rivals.
+    public static func shape(_ co: Company, _ bd: Trade, _ w: World) -> DemandShape {
+        let rivals = Rivals.rivals(w.state, for: co)
+        let size = rivals.reduce(0.0) { $0 + max(0.05, $1.size) }
+        let avg = size > 0 ? rivals.reduce(0.0) { $0 + max(0.05, $1.size) * $1.priceFactor } / size : 1
+        let quality = 1 + 0.2 * clamp((co.quality - 50) / 50, -1, 1)
+        return DemandShape(elasticity: max(0.8, bd.elasticity), reference: clamp(pow(max(0.1, avg), 0.6) * quality, 0.8, 1.3))
+    }
+
+    /// Where a price against market sits against the reference (0.1 = 10% above what customers see as fair).
+    public static func position(priceRatio r: Double, shape: DemandShape) -> Double { r / shape.reference - 1 }
+
+    static func curve(_ r: Double, _ shape: DemandShape) -> Double {
+        let x = r / shape.reference
+        return pow(x, -shape.elasticity * (x < 1 ? DemandShape.belowFactor : DemandShape.aboveFactor))
+    }
+
+    /// Demand multiplier of one item against its market price: the kinked curve relative to its value at the market price, clamped.
+    /// Exactly 1 at the market price whatever the shape.
+    public static func demandMultiplier(priceRatio r: Double, shape: DemandShape = .standard) -> Double {
         if abs(r - 1) < 1e-12 { return 1 }
-        return clamp(pow(clamp(r, ratioRange.lowerBound, ratioRange.upperBound), elasticity), demandRange.lowerBound, demandRange.upperBound)
+        let c = curve(clamp(r, ratioRange.lowerBound, ratioRange.upperBound), shape) / curve(1, shape)
+        return clamp(c, demandRange.lowerBound, demandRange.upperBound)
     }
 
     static func isNeutral(_ items: [Item]) -> Bool { items.allSatisfy { $0.effectiveMultiplier == 1 } }
@@ -254,19 +285,22 @@ public enum SalesItems {
     }
 
     /// The company-wide demand multiplier from its items (sum of unit share times item demand). Exactly 1 at market prices.
-    public static func demandFactor(_ co: Company) -> Double {
+    public static func demandFactor(_ co: Company, _ bd: Trade? = nil, _ w: World? = nil) -> Double {
         guard let items = loaded(co) else { return 1 }
-        return isNeutral(items) ? 1 : items.reduce(0.0) { $0 + $1.unitShare * demandMultiplier(priceRatio: $1.effectiveMultiplier) }
+        guard !isNeutral(items) else { return 1 }
+        let sh = bd.flatMap { b in w.map { shape(co, b, $0) } } ?? .standard
+        return items.reduce(0.0) { $0 + $1.unitShare * demandMultiplier(priceRatio: $1.effectiveMultiplier, shape: sh) }
     }
 
     /// The multiplier on the average ticket: revenue per customer after the mix shifts towards the cheaper items. Exactly 1 at market prices.
-    public static func ticketFactor(_ co: Company) -> Double {
+    public static func ticketFactor(_ co: Company, _ bd: Trade? = nil, _ w: World? = nil) -> Double {
         guard let items = loaded(co) else { return 1 }
         // With starters hidden the mix itself moves the average ticket, even at market prices.
         guard !isNeutral(items) || !hiddenIDs(co).isEmpty else { return 1 }
+        let sh = bd.flatMap { b in w.map { shape(co, b, $0) } } ?? .standard
         var g = 0.0, rev = 0.0
         for it in items {
-            let d = it.unitShare * demandMultiplier(priceRatio: it.effectiveMultiplier)
+            let d = it.unitShare * demandMultiplier(priceRatio: it.effectiveMultiplier, shape: sh)
             g += d; rev += d * it.ratio * it.effectiveMultiplier
         }
         return g > 0 ? rev / g : 1

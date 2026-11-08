@@ -22,6 +22,8 @@ struct HireOnePage: View {
     @StateObject private var model = HireFlowModel()
     @State private var pending: PendingAction?
     @State private var stage = 1
+    /// Before the company has five staff or a manager: -1 below, 0 at, 1 above the going rate.
+    @State private var tier = 0
 
     /// The figures both pages show, whatever the post.
     private struct HirePay {
@@ -123,6 +125,17 @@ struct HireOnePage: View {
         model.draft.terms(worker: isWorker, sells: sells(e), busy: opts.busyMonths)
     }
 
+    /// The contract extras (perks, promises, expenses, bonus plans) are hidden until the company has five staff or a manager.
+    private func simple(_ e: GameEngine) -> Bool {
+        guard let id = request.companyID else { return false }
+        return !e.staffTermsUnlocked(companyID: id)
+    }
+
+    /// The wage for the chosen tier: a tenth under or over the going rate, rounded to a currency step.
+    private func tierWage(_ s: HirePay, _ cur: Currency) -> Double {
+        tier == 0 ? s.market : cur.roundedStep(s.market * (tier < 0 ? 0.9 : 1.1), about: 500)
+    }
+
     private func has(_ opts: HireDraftOptions, _ field: String) -> Bool { opts.fields.contains(field) }
 
     // MARK: The page
@@ -176,12 +189,14 @@ struct HireOnePage: View {
     /// Page 1: what they ask as the one big figure (the going rate and start date as its line), then what you know about them and what
     /// the hire costs in all, so the decision is on one screen.
     private func quickStage(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
-        let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: s.market)
+        let wage: Double = simple(e) ? tierWage(s, cur) : s.market
+        let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: wage)
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
             askHero(s, cur)
             knownBlock(e)
+            if simple(e) { tierBlock(s, cur) }
             if let talk {
-                TeamBlock("At the going rate") {
+                TeamBlock(tier == 0 ? "At the going rate" : tier < 0 ? "Below the going rate" : "Above the going rate") {
                     VStack(spacing: 0) {
                         FlatRow(label: "Costs you in all", value: cur.tidyShort(talk.monthlyEmployerCost) + " a month",
                                 sub: "Wage plus employer charges \u{00B7} \(cur.tidyShort(talk.annualEmployerCost)) a year", rule: false)
@@ -204,6 +219,27 @@ struct HireOnePage: View {
             : (gap > 0 ? "\(cur.tidyShort(gap)) above" : "\(cur.tidyShort(-gap)) below") + " the going rate of \(cur.tidyShort(s.market))"
         return TeamHero(label: "\(first) asks", value: cur.tidyShort(ask), unit: "a month", context: line + " \u{00B7} starts \(startText)",
                         contextTint: gap > 0 && !near ? P.caution : nil)
+    }
+
+    /// Below, at or above the going rate, each with what it does to turnover and the quality of work.
+    private func tierBlock(_ s: HirePay, _ cur: Currency) -> some View {
+        let picks: [(Int, String)] = [(-1, "Below"), (0, "Going rate"), (1, "Above")]
+        let note: String
+        switch tier {
+        case -1: note = "Cheaper, but people leave sooner and the work is usually of lower quality. They may turn it down."
+        case 1: note = "Costs more, but people stay longer and the work is usually of higher quality."
+        default: note = "People stay about as long as in similar jobs, and the work is of usual quality."
+        }
+        return block("Pay") {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(spacing: Theme.Space.xs) {
+                    ForEach(picks, id: \.0) { pick in
+                        chipButton(pick.1, tier == pick.0, "hire-tier-\(pick.0)") { tier = pick.0 }
+                    }
+                }
+                Text(cur.tidyShort(tierWage(s, cur)) + " a month. " + note).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     /// What the CV, the first impression, the references and a trial week say, for a worker who answered an ad. Words only, never a skill figure.
@@ -234,15 +270,18 @@ struct HireOnePage: View {
 
     /// Page 1's actions: offer the going rate (the one button), or change the offer.
     private func quickActions(_ e: GameEngine, _ s: HirePay, _ cur: Currency, _ terms: Hiring.Terms, _ problem: String?) -> some View {
-        let rate: Double = s.market
+        let plain: Bool = simple(e)
+        let rate: Double = plain ? tierWage(s, cur) : s.market
         let talk: HireSalaryTalk? = e.hireSalaryTalk(post: request.post, companyID: request.companyID, chainID: request.chainID, personID: request.personID, terms: terms, offer: rate)
         let annual: Double = talk?.annualEmployerCost ?? 0
         return VStack(spacing: Theme.Space.xxs) {
-            PrimaryAction(title: "Offer the going rate \u{00B7} \(cur.tidyShort(rate))", blockedReason: problem, identifier: "hire-quick-offer") { confirm(rate, annual, cur, terms) }
+            PrimaryAction(title: (tier == 0 || !plain ? "Offer the going rate" : "Make the offer") + " \u{00B7} \(cur.tidyShort(rate))", blockedReason: problem, identifier: "hire-quick-offer") { confirm(rate, annual, cur, terms) }
             HStack(spacing: 0) {
-                Button("Change the offer") { go(2) }
-                    .buttonStyle(TertiaryButtonStyle(fullWidth: true))
-                    .accessibilityIdentifier("hire-next")
+                if !plain {
+                    Button("Change the offer") { go(2) }
+                        .buttonStyle(TertiaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("hire-next")
+                }
                 Button("Walk away") { Haptics.tap(); dismiss() }
                     .buttonStyle(TertiaryButtonStyle(fullWidth: true, tint: P.inkSoft)).accessibilityIdentifier("hire-walk-away")
             }
@@ -577,14 +616,16 @@ struct HireOnePage: View {
         let said = HireOutcomeWords.line(result, name: name, cur: cur, hourFactor: hourFactor)
         model.lines.append(HireLine(mine: true, text: "I can offer \(cur.tidyShort(amount)) a month."))
         model.lines.append(HireLine(mine: false, text: said.text))
+        // The answer to the offer is told in one outcome popup, whatever it was.
+        let chosen: String = "Offer \(cur.tidyShort(amount)) a month"
         switch result {
         case .hired:
             model.hired = true; model.closing = "\(name) has joined as \(request.roleTitle.lowercased())."
-            Haptics.option(); store.show(model.closing, tone: "good"); request.onHired()
-        case .countered(let amount, _): model.offer = amount; model.offerSet = true; Haptics.tap()
-        case .refused, .termsRefused, .blocked: Haptics.warning(); if case .blocked = result { store.show(said.text, tone: "warn") }
+            Haptics.option(); store.outcome(chosen: chosen, result: model.closing); request.onHired()
+        case .countered(let amount, _): model.offer = amount; model.offerSet = true; Haptics.tap(); store.outcome(chosen: chosen, result: said.text)
+        case .refused, .termsRefused, .blocked: Haptics.warning(); store.outcome(chosen: chosen, result: said.text)
         case .walkedAway, .taken:
-            model.gone = true; model.closing = said.text; Haptics.warning(); store.show(said.text, tone: "warn")
+            model.gone = true; model.closing = said.text; Haptics.warning(); store.outcome(chosen: chosen, result: said.text)
         }
     }
 

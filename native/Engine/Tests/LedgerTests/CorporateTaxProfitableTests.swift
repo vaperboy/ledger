@@ -6,7 +6,7 @@ import Businesses
 @testable import Simulation
 
 /// Audit part 2: a profitable limited company for one fiscal year in each of the 23 countries.
-/// Tax = rate x (profit - loss carried forward), accrued month by month, settled once due (the country's `corporateTaxDueWeeks` after year end).
+/// Tax = rate x (profit - loss carried forward), worked out on the profit so far each month and paid in that month; the year end only trues it up.
 final class CorporateTaxProfitableTests: XCTestCase {
     func testProfitableLimitedCompanyPaysRateTimesProfitAfterLossCarryInEveryCountry() throws {
         let codes = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1).data.countries.countries.map { $0.code }
@@ -23,8 +23,10 @@ final class CorporateTaxProfitableTests: XCTestCase {
                 s.companies[i].status = .open
                 s.companies[i].lossCarryForward = carry
                 s.companies[i].payables["tax"] = 0
+                Ledger.moveRaw(&s, .company(id), 100_000_000)   // the account can carry the tax
                 let rate = data.countries.resolve(s.companies[i].countryCode, orHome: s.homeCountryCode).corporateTax
                 XCTAssertGreaterThan(rate, 0.05, code); XCTAssertLessThan(rate, 0.5, code)
+                let cash0 = s.companies[i].cash, paid0 = s.stats.taxPaid
                 for _ in 0..<12 {
                     var b = s.companies[i].books
                     b.month = ["rev": profit / 12]
@@ -34,28 +36,45 @@ final class CorporateTaxProfitableTests: XCTestCase {
                 let expected = (profit - carry) * rate
                 let co = s.companies[i]
                 XCTAssertEqual(co.taxAccrued, expected, accuracy: 1, "\(code) accrual")
-                XCTAssertEqual(co.payables["tax"] ?? 0, expected, accuracy: 1, "\(code) payable")
+                XCTAssertEqual(co.payables["tax"] ?? 0, 0, accuracy: 1, "\(code) nothing left owing: paid as it arose")
+                XCTAssertEqual(cash0 - co.cash, expected, accuracy: 2, "\(code) tax paid out of the account during the year")
+                XCTAssertEqual(s.stats.taxPaid - paid0, expected, accuracy: 2, "\(code) counted as tax paid")
                 XCTAssertEqual(co.lossCarryForward, 0, accuracy: 1e-6, "\(code) loss used up")
                 MonthEnd.closeYear(&s, data: data, context: ctx)
                 let c2 = s.companies[s.companyIndex(id)!]
-                XCTAssertTrue(c2.taxDue, code)
-                XCTAssertEqual(c2.taxPrevYear, expected, accuracy: 1, code)
-                XCTAssertEqual(c2.taxDueWeek, s.week + data.countries.resolve(code, orHome: code).corporateTaxDueWeeks, code)
-                // Not paid early: a month end before the due week leaves the cash alone.
-                Ledger.moveRaw(&s, .company(id), 100_000_000)
-                s.week = c2.taxDueWeek - 1
+                XCTAssertFalse(c2.taxDue, "\(code) no arrears at the year end")
+                XCTAssertEqual(c2.taxPrevYear, 0, accuracy: 1, code)
+                // The next month of the new year charges nothing for the old one.
                 var b = s.companies[i].books; b.month = [:]; s.companies[i].books = b
                 let before = s.companies[i].cash
                 MonthEnd.closeMonth(&s, companyIndex: i, data: data, context: ctx)
-                XCTAssertEqual(s.companies[i].cash, before, accuracy: 1, "\(code) not paid before the due week")
-                s.week = c2.taxDueWeek
-                let cashBefore = s.companies[i].cash
-                MonthEnd.closeMonth(&s, companyIndex: i, data: data, context: ctx)
-                XCTAssertEqual(cashBefore - s.companies[i].cash, expected, accuracy: 2, "\(code) paid on the due date")
-                XCTAssertFalse(s.companies[i].taxDue, code)
-                XCTAssertEqual(s.companies[i].payables["tax"] ?? 0, 0, accuracy: 1, code)
+                XCTAssertEqual(s.companies[i].cash, before, accuracy: 1, "\(code) nothing more to pay")
             }
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(code) ledger gaps")
+        }
+    }
+
+    /// Tax paid on a profit that later turns into a loss comes back as a refund, and the loss is carried forward as before.
+    func testTaxPaidOnProfitSoFarIsRefundedWhenTheYearTurnsToALoss() throws {
+        var e = try GameEngine.newGame(countryCode: "US", playerName: "T", seed: 12)
+        e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        e.update { s, data, ctx in
+            let i = s.companyIndex(id)!
+            s.companies[i].status = .open
+            s.companies[i].payables["tax"] = 0
+            Ledger.moveRaw(&s, .company(id), 100_000_000)
+            let cash0 = s.companies[i].cash
+            for m in 0..<12 {
+                var b = s.companies[i].books
+                b.month = m < 6 ? ["rev": 2_000_000] : ["oth": 4_000_000]
+                s.companies[i].books = b
+                MonthEnd.closeMonth(&s, companyIndex: i, data: data, context: ctx)
+                if m == 5 { XCTAssertLessThan(s.companies[i].cash, cash0, "tax was paid on the profit so far") }
+            }
+            XCTAssertEqual(s.companies[i].taxAccrued, 0, accuracy: 1)
+            XCTAssertEqual(s.companies[i].cash, cash0, accuracy: 2, "everything paid came back")
+            XCTAssertEqual(s.companies[i].lossCarryForward, 12_000_000, accuracy: 1, "the year's loss is carried forward")
         }
     }
 }

@@ -48,7 +48,7 @@ public enum DemandModel {
         if own < 1 { parts.append(("own", own)) }
         let events = modifier(co, "dem")
         apply("events", events)
-        let fy = w.balance.firstYear.demandMultiplier(week: w.state.week)
+        let fy = w.balance.firstYear.demandMultiplier(week: FirstYear.companyAge(co, week: w.state.week))
         if fy != 1 { apply("firstYear", fy) }
         if co.value("franchise")["fran"].bool { D *= 1 + co.value("franchise")["brand"].double * 0.002 }
 

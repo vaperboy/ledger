@@ -40,7 +40,7 @@ struct GroupEntityPage: View {
     private func visibleSections(_ e: GameEngine) -> [GroupSection] { GroupSection.allCases }
 
     private func badges(_ e: GameEngine) -> [GroupSection: Int] {
-        guard let key = e.boardKey(companyID: entity.companyID), e.boardIsActive(key: key) else { return [:] }
+        guard let key = e.boardKey(companyID: entity.companyID) else { return [:] }
         let n: Int = e.boardOpenDecisions(key: key)
         return n > 0 ? [.board: n] : [:]
     }

@@ -183,7 +183,7 @@ final class ContractTalkTests: XCTestCase {
         let full = ManagerModel.promotionNeed(post, terms: .init(authority: 2))
         let limited = ManagerModel.promotionNeed(post, terms: .init(authority: 1))
         XCTAssertLessThan(full, limited)
-        let preview = e.contractPreview(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask, choice: post.id, terms: .init(duties: ["hire", "buy"], authority: 2)))
+        let preview = e.contractPreview(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask, choice: post.id, terms: .init(authority: 2)))
         XCTAssertTrue(preview.blocked.isEmpty)
         XCTAssertTrue(preview.lines.contains { $0.contains("New post") })
         XCTAssertTrue(preview.lines.contains { $0.contains("Authority") || $0.contains("authority") })
@@ -504,7 +504,7 @@ final class ContractTalkTests: XCTestCase {
 
     // MARK: Delegation and saves
 
-    func testAManagerWithAuthorityHandlesRequestsInsideTheirLimitOnly() throws {
+    func testAManagerHandlesRequestsInsideTheirBudgetOnly() throws {
         var (e, id) = try shop()
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)
@@ -513,16 +513,15 @@ final class ContractTalkTests: XCTestCase {
         e.setManagerAuthority(companyID: id, level: 0)
         XCTAssertNil(e.contractHandler(companyID: id))
         guard case .notPossible = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("no authority") }
-        e.setManagerAuthority(companyID: id, level: 1, pay: 1)
+        e.setManagerBudget(companyID: id, budget: .normal)
         let h = try XCTUnwrap(e.contractHandler(companyID: id))
         XCTAssertEqual(h.level, 1)
-        guard case .notPossible(let why) = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("above the limit") }
-        XCTAssertTrue(why.contains("limit"))
-        XCTAssertNotNil(e.contractTalk(personID: pid), "it stays with you")
-        let big = World(state: e.state, data: e.data).currency(e.state.company(id)!).scaledPrice(1_000_000)
-        e.setManagerAuthority(companyID: id, level: 1, pay: big)
+        // a rise above the normal budget's monthly pay limit stays with the owner
+        let co = try XCTUnwrap(e.state.company(id))
+        XCTAssertFalse(ContractTalk.managerMayDecide(co, extraMonthly: h.payLimit * 2, e.state, data: e.data))
+        XCTAssertTrue(ContractTalk.managerMayDecide(co, extraMonthly: h.payLimit / 2, e.state, data: e.data))
         let before = wage(e, id, pid)
-        guard case .agreed = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("inside the limit") }
+        guard case .agreed = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("inside the budget") }
         XCTAssertGreaterThan(wage(e, id, pid), before)
     }
 
@@ -550,11 +549,10 @@ final class ContractTalkTests: XCTestCase {
         var (e, id) = try shop()
         let pid = hire(&e, id)
         let post = try XCTUnwrap(ManagerModel.promotionPosts(e.state, companyID: id, personID: pid, data: e.data).first { $0.kind == "mgr" && $0.companyID == id })
-        guard case .counter = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 0.6, choice: post.id, terms: .init(duties: ["hire"], authority: 2, report: "week", bonus: 0.1))) else { return XCTFail("counter") }
+        guard case .counter = e.contractPropose(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask * 0.6, choice: post.id, terms: .init(authority: 2))) else { return XCTFail("counter") }
         let open = try XCTUnwrap(e.contractTalk(personID: pid))
         let back = try JSONDecoder().decode(GameState.self, from: try JSONEncoder().encode(e.state))
         XCTAssertEqual(ContractTalk.openTalk(back, personID: pid), open)
-        XCTAssertEqual(open.proposal.terms.duties, ["hire"])
         XCTAssertEqual(open.proposal.terms.authority, 2)
     }
 

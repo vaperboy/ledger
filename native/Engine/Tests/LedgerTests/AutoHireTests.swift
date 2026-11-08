@@ -91,8 +91,8 @@ final class AutoHireTests: XCTestCase {
         XCTAssertLessThan(better, worse)
     }
 
-    /// The cadence is unchanged: whenever a company is short of someone and can pay, the standing instruction fills the gap in that same week, as before.
-    func testEveryGapIsFilledInTheWeekItIsFound() throws {
+    /// Whenever a company is short of someone and can pay, the standing instruction fills the gap once the search has run its few weeks.
+    func testEveryGapIsFilledOnceTheSearchHasRun() throws {
         var gaps = 0, filled = 0
         for seed in 1...60 {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
@@ -111,12 +111,12 @@ final class AutoHireTests: XCTestCase {
                 }
             }
             let before = e.state.company(id)!.staff.count
-            e.update { s, d, _ in AutoStaff.weekly(&s, data: d) }
+            e.update { s, d, _ in for _ in 0..<6 { s.week += 1; StaffingPlan.weekly(&s, data: d) } }
             gaps += 1
             if e.state.company(id)!.staff.count == before + 1 { filled += 1 }
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
         }
-        XCTAssertEqual(filled, gaps, "every gap is filled in the week it is found")
+        XCTAssertEqual(filled, gaps, "every gap is filled")
     }
 
     /// Whole-game sanity check, not an exact pin (a different price changes who stays and who leaves, so the random paths differ): over 10 runs of 104 weeks

@@ -13,12 +13,16 @@ import Finance
 ///  - authority 2 (full control), or authority 1 and a wage within their limit: they hire and the owner gets an inbox note;
 ///  - authority 0 (asks first), or a wage above their limit: the owner gets a request ("hier") naming the person and the wage and decides;
 ///  - nobody above the post: the vacancy stays with the owner (the Team vacancy screen).
-/// The owner can always hire into the post themselves. Saved only when used: `rest["hier"]` holds the week each post may be tried again.
+/// The owner can always hire into the post themselves. A post is searched for only once it has been open `searchWeeks` (the staffing plan's timing), and the
+/// company that gets the manager pays a recruiting fee. Saved only when used: `rest["hier"]` holds the week each post may be tried again and, under "o:" + key, the week it opened.
 public enum HierarchyHiring {
     public static let action = "hier"
     /// A city with this many open stores of one chain gets its own regional manager.
     public static let regionalMinStores = 4
     static let retryWeeks = 2
+    /// Weeks a post is open before the search ends in an offer, and the fee in months of the wage once someone is appointed.
+    static let searchWeeks = StaffingPlan.searchWeeks
+    static let feeMonths = 0.5
     static let declineWeeks = 8
 
     public enum Post: Equatable, Sendable {
@@ -96,6 +100,27 @@ public enum HierarchyHiring {
     // MARK: When to try again
 
     static func nextTry(_ s: GameState, _ key: String) -> Int { s.rest["hier"]?[key].int ?? 0 }
+    /// The week a post was first seen open (set on first sight, cleared when it is filled).
+    static func openSince(_ s: inout GameState, _ post: Post, open: Bool) -> Int {
+        let k = "o:" + post.key
+        let now = s.rest["hier"]?[k]
+        guard open else {
+            if let n = now, !n.isNull { var h = s.rest["hier"] ?? .object([:]); h[k] = .null; s.rest["hier"] = h }
+            return s.week
+        }
+        if let n = now, !n.isNull { return n.int }
+        var h = s.rest["hier"] ?? .object([:])
+        h[k] = .number(Double(s.week))
+        s.rest["hier"] = h
+        return s.week
+    }
+
+    /// Weeks a post has been open, for the staffing plan.
+    public static func weeksOpen(_ s: GameState, _ post: Post) -> Int {
+        guard let n = s.rest["hier"]?["o:" + post.key], !n.isNull else { return 0 }
+        return max(0, s.week - n.int)
+    }
+
     static func setNext(_ s: inout GameState, _ key: String, _ week: Int) {
         var h = s.rest["hier"] ?? .object([:])
         h[key] = .number(Double(week))
@@ -118,7 +143,7 @@ public enum HierarchyHiring {
             }
         }
         for id in s.companies.map({ $0.id }) {
-            guard let co = s.company(id), needsStoreManager(s, co, data: data) else { continue }
+            guard let co = s.company(id), needsStoreManager(s, co, data: data) else { _ = openSince(&s, .storeManager(companyID: id), open: false); continue }
             attempt(&s, post: .storeManager(companyID: id), data: data)
         }
     }
@@ -149,8 +174,11 @@ public enum HierarchyHiring {
 
     /// One appointer, one post: search, bargain, then hire, or ask the owner.
     static func attempt(_ s: inout GameState, post: Post, data: GameData) {
-        guard stillOpen(s, post, data: data), let boss = appointer(s, post: post, data: data), let bossPerson = s.people[boss.personID], let d = describe(s, post, data: data) else { return }
+        guard stillOpen(s, post, data: data) else { _ = openSince(&s, post, open: false); return }
+        let opened = openSince(&s, post, open: true)
+        guard let boss = appointer(s, post: post, data: data), let bossPerson = s.people[boss.personID], let d = describe(s, post, data: data) else { return }
         let key = post.key
+        if s.week - opened < searchWeeks { return }
         if s.week < nextTry(s, key) { return }
         if s.inbox.contains(where: { $0.actionID == action && $0.status == "open" && $0.value("data")["key"].string == key }) { return }
         setNext(&s, key, s.week + retryWeeks)
@@ -199,6 +227,7 @@ public enum HierarchyHiring {
             if recentProfit(all) < wage { return }
         }
         guard execute(&s, post: post, personID: deal.person.id, wage: wage, data: data) else { return }
+        payFee(&s, post: post, wage: wage, data: data)
         s.addMessage(kind: "info", from: boss.name, title: "\(deal.person.name) appointed as \(d.what)",
                      body: "\(boss.name) (\(boss.title.lowercased())) appointed \(deal.person.name) as \(d.what) at \(cur.display(wage)) a month, within the authority you gave. You can change the pay or let them go in Team.",
                      companyID: d.companyID, tone: "good", status: "done")
@@ -212,6 +241,12 @@ public enum HierarchyHiring {
         case .regional(let cid, let city): return ManagerModel.hireExecutive(&s, level: .region, personID: personID, monthlyWage: wage, chainID: cid, city: city, data: data) == .ok
         case .chainManager(let cid): return ManagerModel.hireExecutive(&s, level: .chainmgr, personID: personID, monthlyWage: wage, chainID: cid, city: nil, data: data) == .ok
         }
+    }
+
+    /// The recruiting fee for an appointment, paid by the company the post belongs to.
+    static func payFee(_ s: inout GameState, post: Post, wage: Double, data: GameData) {
+        guard let id = describe(s, post, data: data)?.companyID else { return }
+        Payments.companyPays(&s, companyID: id, amount: jsRound(wage * feeMonths), category: "oth", label: "Recruiting: manager")
     }
 
     static func post(from key: String) -> Post? {
@@ -240,5 +275,6 @@ public enum HierarchyHiring {
             }
             return
         }
+        payFee(&s, post: post, wage: max(1, d["wage"].double), data: data)
     }
 }

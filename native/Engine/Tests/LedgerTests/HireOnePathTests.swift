@@ -122,7 +122,7 @@ final class HireOnePathTests: XCTestCase {
         }
         XCTAssertTrue(Set(callers).isSubset(of: ["AutoHire.swift", "MiscActions.swift", "RivalAbsorb.swift", "CompanySetup.swift", "HiringNegotiation.swift"]), "\(callers)")
         XCTAssertTrue(callers.contains("AutoHire.swift"))
-        XCTAssertFalse(callers.contains("AutoStaff.swift") || callers.contains("ManagerWeek.swift") || callers.contains("ManagerSeasonal.swift"))
+        XCTAssertFalse(callers.contains("StaffingPlan.swift") || callers.contains("ManagerWeek.swift") || callers.contains("ManagerSeasonal.swift"))
     }
 
     // MARK: Only one function makes staff records

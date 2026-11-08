@@ -7,7 +7,7 @@ import Simulation
 
 /// Which sheet a stake's menu opens.
 enum HoldingStakeSheet: Identifiable, Hashable {
-    case sell(Int), sellRival(Int), board(Int), merge(Int), division(Int), talk(Int)
+    case sell(Int), sellRival(Int), board(Int), merge(Int), division(Int), talk(Int), buy(String)
 
     var id: String {
         switch self {
@@ -17,6 +17,7 @@ enum HoldingStakeSheet: Identifiable, Hashable {
         case .merge(let n): return "merge-\(n)"
         case .division(let n): return "division-\(n)"
         case .talk(let n): return "talk-\(n)"
+        case .buy(let s): return "buy-\(s)"
         }
     }
 }
@@ -44,7 +45,7 @@ struct HoldingSellSheet: View {
             }
         }
         .confirmAction($pending)
-        .centerSheetTitle("Sell part of a stake")
+        .centerSheetTitle("Sell some shares")
     }
 
     private func close() { popupClose?() }
@@ -174,7 +175,7 @@ struct HoldingMergeSheet: View {
             }
         }
         .confirmAction($pending)
-        .centerSheetTitle("Merge into the holding")
+        .centerSheetTitle("Buy out the other owners and merge")
     }
 
     @ViewBuilder private func content(_ e: GameEngine, _ h: Company, _ c: Company) -> some View {

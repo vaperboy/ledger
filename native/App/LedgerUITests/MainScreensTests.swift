@@ -98,7 +98,7 @@ final class MainScreensTests: TourCase {
         open("Group"); sleep(1); shot("45-group")
         scrollDown(); shot("46-group-lower")
         scrollUp()
-        for home in ["Staff", "Suppliers", "Companies"] {
+        for home in ["People", "Suppliers", "Structure"] {
             let t = app.buttons["group-home-tab-\(home)"]
             if t.waitForExistence(timeout: 2), t.isHittable { t.tap(); sleep(1); shot("46-group-\(home.lowercased())") } else { note("no \(home) tab on Group") }
         }
@@ -106,9 +106,9 @@ final class MainScreensTests: TourCase {
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         if entity.waitForExistence(timeout: 3), entity.isHittable {
             entity.tap(); sleep(1); shot("47-group-entity")
-            for name in ["Management", "Boardroom", "Money", "Expansion", "Ownership"] {
+            for name in ["Management", "Boardroom", "Money", "Grow", "Owners and sales"] {
                 let tab = app.buttons["group-tab-\(name)"]
-                if tab.waitForExistence(timeout: 2), tab.isHittable { tab.tap(); sleep(1); shot("48-group-\(name.lowercased())") } else { note("no \(name) tab on the entity page") }
+                if tab.waitForExistence(timeout: 2), tab.isHittable { tab.tap(); sleep(1); shot("48-group-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))") } else { note("no \(name) tab on the entity page") }
             }
             let moneyTab = app.buttons["group-tab-Money"]
             if moneyTab.exists && moneyTab.isHittable {
@@ -136,8 +136,8 @@ final class MainScreensTests: TourCase {
     }
 }
 
-/// Group > Board with a meeting that has a point on its agenda (the `-showcase-board` game: a co-owner, a CFO and three loss months), and the
-/// board page with the point's effect, cost and risk, the seats, the rhythm and the minutes. The entity pages are toured in MainScreensTests.
+/// Group > Boardroom with a point on the decision list (the `-showcase-board` game: a co-owner and three loss months): who sits on the board,
+/// the point's recommendation, effect, cost and risk, and the quarterly review. The entity pages are toured in MainScreensTests.
 final class BoardTourTests: TourCase {
     override var extraLaunchArguments: [String] { ["-showcase-board"] }
 
@@ -146,7 +146,7 @@ final class BoardTourTests: TourCase {
         let group = app.buttons["tab-Group"]
         if group.waitForExistence(timeout: 3) { group.tap(); sleep(1) } else { note("no Group tab"); return }
         shot("60-group-with-board-point")
-        let companies = app.buttons["group-home-tab-Companies"]
+        let companies = app.buttons["group-home-tab-Structure"]
         if companies.waitForExistence(timeout: 2), companies.isHittable { companies.tap(); sleep(1) }
         let entity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "group-entity-")).firstMatch
         guard entity.waitForExistence(timeout: 2), entity.isHittable else { note("no entity in the Group picker"); return }
@@ -154,10 +154,7 @@ final class BoardTourTests: TourCase {
         let board = app.buttons["group-tab-Boardroom"]
         guard board.waitForExistence(timeout: 2), board.isHittable else { note("no Board tab on the entity page"); return }
         board.tap(); sleep(1); shot("61-group-board-decision")
-        let open = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Board room")).firstMatch
-        guard open.waitForExistence(timeout: 2), open.isHittable else { note("no board decision card"); return }
-        open.tap(); sleep(1); shot("62-board-page-agenda")
-        app.swipeUp(); sleep(1); shot("63-board-page-lower")
-        app.swipeUp(); sleep(1); shot("64-board-page-minutes")
+        app.swipeUp(); sleep(1); shot("62-board-decision-list")
+        app.swipeUp(); sleep(1); shot("63-board-quarterly-review")
     }
 }

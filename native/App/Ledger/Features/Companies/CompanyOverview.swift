@@ -203,6 +203,7 @@ struct CompanyOverview: View {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 hero(co, h, ops)
                 strip(co, h, ops)
+                structureStrip(co)
             }
             let list: [CompanyIssue] = issues(co, h, ops)
             if list.isEmpty {
@@ -252,6 +253,38 @@ struct CompanyOverview: View {
         let marginCell = KeyFigures.Item(label: "Margin", value: margin, tint: (h.marginTTM ?? 0) < 0 ? P.loss : P.ink)
         let healthCell = KeyFigures.Item(label: "Health", value: h.label, tint: HealthChip.tint(h.label))
         FigureRow(items: heroIsCash ? [revCell, marginCell, healthCell] : [cashCell, revCell, marginCell], combineCells: true)
+    }
+
+    /// Where the company sits, plainly: the chain or holding it belongs to, who runs it and who owns it. Text only; the way to each is in Group.
+    @ViewBuilder private func structureStrip(_ co: Company) -> some View {
+        let line: String = structureLine(co)
+        if !line.isEmpty {
+            Text(line).textStyle(.caption, tint: P.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("overview-structure-strip")
+        }
+    }
+
+    /// "Part of Khan Shop · run by Maria Lopez · owned by you 100%"; empty for a company that is gone.
+    private func structureLine(_ co: Company) -> String {
+        guard co.status.isLive else { return "" }
+        var parts: [String] = []
+        if let pos = engine.branchParent(companyID: co.id), let chain = engine.chainSummary(id: pos.chainID) {
+            parts.append("Part of " + chain.name)
+        } else if co.type != "hold" {
+            if let hid = engine.ownerLine(companyID: co.id).holdingID, let holding = engine.state.company(hid) {
+                parts.append("Part of " + holding.name)
+            } else if let host = HoldingStakes.divisionHostID(co).flatMap({ (id: Int) -> Company? in engine.state.company(id) }) {
+                parts.append("Division of " + host.name)
+            }
+        }
+        if co.status != .setup {
+            let gm: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
+            parts.append("run by " + ChainWords.runnerName(gm, companyID: co.id))
+        }
+        parts.append(ChainWords.lowered(ChainWords.ownerText(engine, companyID: co.id, showFull: true)))
+        let joined: String = parts.joined(separator: " \u{00B7} ")
+        return joined.prefix(1).uppercased() + joined.dropFirst()
     }
 
     private func verdict(_ co: Company, _ h: CompanyHealth) -> String {

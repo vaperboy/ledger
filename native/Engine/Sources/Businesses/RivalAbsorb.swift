@@ -51,9 +51,8 @@ public enum RivalAbsorb {
             case .notEnoughCash: return .notEnoughCash
             case .failed(let m): return .failed(m)
             case .ok(let id):
-                let k = s.companies.filter { !$0.value("branch").isNull && $0.value("branch")["of"].int == companyID }.count + 2
                 guard let i = s.companyIndex(id) else { return .failed("The new company could not be found.") }
-                s.companies[i].name = "\(co.name) \(k)"
+                s.companies[i].name = ChainLocations.branchName(s, of: co, newCompany: s.companies[i], data: data)
                 s.companies[i].set("branch", .object(["of": .number(Double(companyID))]))
                 s.companies[i].awareness = max(s.companies[i].awareness, co.awareness * 0.9)
                 s.companies[i].reputation = max(s.companies[i].reputation, co.reputation * 0.95)
@@ -143,8 +142,8 @@ public enum RivalAbsorb {
     public static func openBranchNextToRival(_ s: inout GameState, companyID: Int, rivalID: Int, data: GameData, context fc: FinanceContext) -> BranchResult {
         guard let co = s.company(companyID), co.status == .open, rivalOf(s, co, rivalID) != nil else { return .failed("That rival is gone.") }
         guard co.value("docs")["fran"]["st"].string == "ok" else { return .needsFranchisePapers }
-        let n0 = s.companies.filter { $0.type == co.type && $0.name.hasPrefix(co.name) }.count
-        switch CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, form: co.form, name: "\(co.name) \(n0 + 1)", countryCode: co.countryCode, data: data, context: fc) {
+        let place = ChainLocations.brand(s, co, data: data)
+        switch CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, form: co.form, name: LocationNames.locationName(s, brand: place, countryCode: co.countryCode, cityID: co.cityID, cityName: ChainLocations.cityName(co, data: data), data: data), countryCode: co.countryCode, data: data, context: fc) {
         case .failure(.notEnoughCash): return .notEnoughCash
         case .failure(let e): return .failed("Could not start the site: \(e)")
         case .success(let id):

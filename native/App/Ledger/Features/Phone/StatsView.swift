@@ -28,7 +28,13 @@ struct StatsView: View {
                     documentsCard(e)
                 }
                 LedgerSection("More") {
-                    activityLink
+                    VStack(spacing: 0) {
+                        activityLink
+                        Hairline()
+                        goalsLink
+                        Hairline()
+                        reportsLink
+                    }
                 }
                 if store.gateOpen(.bank) { TrophiesPreview() }
             }
@@ -225,7 +231,25 @@ struct StatsView: View {
         NavigationLink {
             ActivityView().appScreen(title: "Activity", subtitle: PhonePage.activity.note)
         } label: {
-            LedgerRow(leading: .glyph(Glyph.list), title: "Activity", subtitle: PhonePage.activity.note, chevron: true)
+            LedgerRow(leading: .glyph(Glyph.list), title: "Activity", subtitle: PhonePage.activity.note, chevron: true, identifier: "stats-activity")
+        }
+        .buttonStyle(AcctPressStyle())
+    }
+
+    private var goalsLink: some View {
+        NavigationLink {
+            GoalsView().appScreen(title: "Goals", subtitle: PhonePage.goals.note)
+        } label: {
+            LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: PhonePage.goals.note, chevron: true, identifier: "stats-goals")
+        }
+        .buttonStyle(AcctPressStyle())
+    }
+
+    private var reportsLink: some View {
+        NavigationLink {
+            ReportsScreen()
+        } label: {
+            LedgerRow(leading: .glyph(Glyph.reports), title: "Reports", subtitle: PhonePage.reports.note, chevron: true, identifier: "stats-reports")
         }
         .buttonStyle(AcctPressStyle())
     }

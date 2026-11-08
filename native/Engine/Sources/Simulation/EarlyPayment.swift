@@ -13,7 +13,7 @@ public enum EarlyPaymentOutcome: Equatable, Sendable {
 
 public extension GameEngine {
     /// Pay a coming bill now instead of on its date (Bank > Bills). It is the same payment the due date makes, through the same code:
-    /// rent and supplier bills (`Payday.payBillsEarly`, landlord paid too), supplier invoices (`SupplyTerms.payNow`), last year's corporate tax
+    /// rent and supplier bills (`Payday.payBillsEarly`, landlord paid too), supplier invoices (`SupplyTerms.payNow`), unpaid corporate tax
     /// (`MonthEnd.settleTax`) and the VAT return (booked as the filing books it). Once paid the liability is gone, so the date charges nothing
     /// more for it; only costs that build up afterwards are still charged then. All or nothing: if the company's account (with its overdraft
     /// room) cannot cover the whole amount, nothing moves. Payroll and loan instalments have their own actions (`resolvePayrollAlert`, `repayLoan`).
@@ -46,10 +46,10 @@ public extension GameEngine {
                 if short(owed) { return }
                 result = .paid(amount: SupplyTerms.payEarly(&s, buyer: co.id, providerName: name, dueWeek: week))
             case .tax where o.id.hasPrefix("ctax"):
-                let due = min(co.payables["tax"] ?? 0, co.taxPrevYear)
+                let due = co.payables["tax"] ?? 0
                 guard co.taxDue, due > 1 else { result = .refused("No corporate tax is waiting to be paid."); return }
                 if short(due) { return }
-                let left = MonthEnd.settleTax(&s, companyIndex: i, context: ctx, early: true)
+                let left = MonthEnd.settleTax(&s, companyIndex: i, context: ctx)
                 result = .paid(amount: due - left)
             case .tax where o.id.hasPrefix("vat"):
                 let v = jsRound(co.vatBalance)

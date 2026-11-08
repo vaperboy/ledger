@@ -17,7 +17,7 @@ public extension GameEngine {
     @discardableResult
     mutating func closeBranch(storeID: Int) -> Result<ChainBranches.ClosurePlan, ChainBranches.Refusal> {
         var r: Result<ChainBranches.ClosurePlan, ChainBranches.Refusal> = .failure(.notABranch)
-        update { s, d, _ in r = ChainBranches.close(&s, storeID: storeID, data: d) }
+        update { s, d, _ in r = ChainBranches.closeByVote(&s, storeID: storeID, data: d) }
         return r
     }
 

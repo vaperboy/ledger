@@ -69,3 +69,132 @@ struct HoldingCashNeed: View {
         }
     }
 }
+
+/// The three ways a holding holds a company: control (over 50%), a big stake (20% to 50%) or a small one (under 20%).
+enum HoldingStakeGroup: Int, CaseIterable, Identifiable {
+    case controlled, big, small
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .controlled: return "Controlled"
+        case .big: return "Big stakes"
+        case .small: return "Small stakes"
+        }
+    }
+
+    /// What one stake of this kind is called on its row.
+    var word: String {
+        switch self {
+        case .controlled: return "Controlled"
+        case .big: return "Big stake"
+        case .small: return "Small stake"
+        }
+    }
+
+    var range: String {
+        switch self {
+        case .controlled: return "over 50%"
+        case .big: return "20% to 50%"
+        case .small: return "under 20%"
+        }
+    }
+
+    static func of(percent: Double) -> HoldingStakeGroup {
+        switch HoldingStakes.tier(forPercent: percent) {
+        case .control, .squeezeOut, .whole: return .controlled
+        case .influence: return .big
+        case .passive, .none: return .small
+        }
+    }
+}
+
+/// One stake of a holding: the company, who runs it and how it is doing, its share of the value, ONE main action as a button and the rest
+/// under a "More" menu. The row opens nothing by itself, so it carries no chevron.
+struct HoldingStakeRow<More: View>: View {
+    var tradeKey: String
+    var title: String
+    var subtitle: String
+    var value: String
+    var valueNote: String
+    var showRunner: Bool
+    var runnerName: String?
+    var runnerRole: String?
+    var runnerFace: String?
+    var health: StructureNode.Health?
+    var primary: String
+    /// Suffix of the accessibility identifiers ("held-12").
+    var key: String
+    var onPrimary: () -> Void
+    @ViewBuilder var more: () -> More
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                ThumbnailView(kind: .trade, key: tradeKey, size: 40, glyph: Glyph.home)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(title).textStyle(.body, weight: .medium).lineLimit(1)
+                    Text(subtitle).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
+                }
+                Spacer(minLength: Theme.Space.s)
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    Text(value).textStyle(.body, numeric: true, weight: .medium).lineLimit(1)
+                    Text(valueNote).textStyle(.caption, tint: Theme.inkFaint, numeric: true).lineLimit(1)
+                }
+            }
+            if showRunner || health != nil {
+                HStack(alignment: .center, spacing: Theme.Space.s) {
+                    runner
+                    Spacer(minLength: Theme.Space.s)
+                    if let health { StructureHealthPill(health: health) }
+                }
+            }
+            HStack(spacing: Theme.Space.s) {
+                Button { Haptics.tap(); onPrimary() } label: {
+                    Text(primary).textStyle(.caption, tint: Theme.accent, weight: .semibold)
+                        .lineLimit(2).multilineTextAlignment(.leading)
+                        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.s)
+                        .frame(minHeight: 36)
+                        .background(Capsule().fill(Theme.accent.opacity(0.14)))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel(primary + ", " + title)
+                .accessibilityIdentifier("holding-\(key)")
+                Spacer(minLength: Theme.Space.s)
+                Menu {
+                    more()
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("More for " + title)
+                .accessibilityIdentifier("holding-more-\(key)")
+            }
+        }
+        .padding(.vertical, Theme.Space.m)
+    }
+
+    /// The manager's portrait and name, or "You run it" when nobody does.
+    @ViewBuilder private var runner: some View {
+        if !showRunner {
+            EmptyView()
+        } else if let name = runnerName {
+            HStack(spacing: Theme.Space.s) {
+                StructureAvatar(name: name, role: runnerRole, face: runnerFace, size: 28)
+                Text(name).textStyle(.caption).lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+        } else {
+            HStack(spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: Glyph.person, size: Theme.Icon.small, tint: Theme.inkFaint)
+                Text("You run it").textStyle(.caption)
+            }
+        }
+    }
+}

@@ -314,6 +314,8 @@ public extension GameEngine {
         }
         let change = ownerCash(p.owner) - before
         if change == 0 && q.cashChange != 0 { return Self.refused("The sale did not go through.") }
+        // The tax on the gain is paid at the sale, after the proceeds are measured.
+        if case .player = p.owner { update { s, _, ctx in PersonalFinance.withholdNow(&s, context: ctx) } }
         return MarketTradeResult(done: true, refusal: nil, units: q.units, cashChange: change, fee: q.fee, realizedGain: change - q.costBasisSold)
     }
 }

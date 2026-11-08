@@ -166,13 +166,14 @@ final class InboxReportsGoalsTests: XCTestCase {
 
     func testAmbitionCanBeChangedFreelyInTheFirstFourWeeksOnly() throws {
         var (e, _) = try cafeGame(seed: 12)
-        XCTAssertFalse(e.ambitionPromptPending, "held back until the first profitable month")
+        XCTAssertFalse(e.ambitionCardPending, "held back until the first profitable month")
         e.update { s, _, _ in var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l }   // M7 claimed; the window runs four weeks from the choice
         XCTAssertTrue(e.ambitionChangeIsFree)
-        XCTAssertTrue(e.ambitionPromptPending, "asked once, after the first profitable month")
+        XCTAssertTrue(e.ambitionCardPending, "offered once, after the first profitable month")
+        XCTAssertFalse(e.ambitionPromptPending, "the card never holds up play")
         e.chooseAmbition(path: "champion")
         e.markAmbitionPromptShown()
-        XCTAssertFalse(e.ambitionPromptPending)
+        XCTAssertFalse(e.ambitionCardPending)
         for _ in 0..<(2 * 7) { e.nextDay() }
         XCTAssertTrue(e.ambitionChangeIsFree)
         e.chooseAmbition(path: "dynasty")
@@ -189,10 +190,10 @@ final class InboxReportsGoalsTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 13)
         XCTAssertNil(e.state.rest["ambPrompt"])
         e.markAmbitionPromptShown()
-        XCTAssertFalse(e.ambitionPromptPending)
+        XCTAssertFalse(e.ambitionCardPending)
         XCTAssertNil(e.currentAmbition, "Decide later leaves it open")
         let with = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 13, ambition: "titan")
-        XCTAssertFalse(with.ambitionPromptPending, "already chosen")
+        XCTAssertFalse(with.ambitionCardPending, "already chosen")
     }
 
     func testSetupAmbitionSkipsTheLaterAskMessage() throws {
@@ -228,25 +229,21 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertEqual(Celebrations.pending(back).last?.title, "Goal 19")
     }
 
-    func testFinishedFirstStepIsCelebratedOnceWithItsRealReward() throws {
-        // Rule change (missions rework): setup steps such as "Start a business" are no longer announced; a result step (a profitable month) is.
+    func testFinishedLadderGoalIsCelebratedOnceAndItsRewardIsNotCash() throws {
         var (e, id) = try cafeGame(weeks: 0)
-        XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
-        e.update { s, _, _ in PlayerGoals.announceFirstSteps(&s) }
-        XCTAssertTrue(e.pendingCelebrations.isEmpty, "a setup step earns no popup")
+        let cur = e.homeCurrency
         e.update { s, _, _ in var c = s.companies[s.companyIndex(id)!]; c.monthlyHistory = [MonthRecord(monthIndex: 1, revenue: 10, profit: 5, cash: 10)]; s.companies[s.companyIndex(id)!] = c }
-        e.update { s, _, _ in PlayerGoals.announceFirstSteps(&s); PlayerGoals.announceFirstSteps(&s) }
+        let cash = e.state.cash
+        let credit = e.state.credit
+        e.update { s, _, _ in
+            s.rest["ldr"] = .object(["done": .object(Dictionary(uniqueKeysWithValues: (1...6).map { ("M\($0)", JSONValue.object(["w": .number(0)])) }))])
+            XCTAssertEqual(PlayerGoals.ladderSweep(&s, currency: cur), ["M7"])
+            XCTAssertEqual(PlayerGoals.ladderSweep(&s, currency: cur), [], "finished once")
+        }
         let list = e.pendingCelebrations.filter { $0.kind == "goal" && $0.title == "Make a profit in a month" }
         XCTAssertEqual(list.count, 1)
-        XCTAssertTrue(list.first?.reward.contains("Better terms") == true)
-        _ = e.takeCelebrations()
-        e.update { s, _, _ in PlayerGoals.announceFirstSteps(&s) }
-        XCTAssertFalse(e.pendingCelebrations.contains { $0.title == "Make a profit in a month" }, "announced once, not again")
-        // A hidden checklist stays quiet.
-        var (e2, _) = try cafeGame(weeks: 0)
-        e2.setFirstStepsHidden(true)
-        e2.update { s, _, _ in PlayerGoals.announceFirstSteps(&s) }
-        XCTAssertTrue(e2.pendingCelebrations.isEmpty)
+        XCTAssertGreaterThan(e.state.credit, credit)
+        XCTAssertEqual(e.state.cash, cash, accuracy: 0.001, "no cash is handed out")
     }
 
     func testAmbitionMilestoneIsCelebratedWithLegacyPoints() throws {
@@ -268,28 +265,30 @@ final class InboxReportsGoalsTests: XCTestCase {
         e.setDailyGoalsOff(true)
         XCTAssertTrue(e.dailyGoalsOff)
         XCTAssertNil(e.dailyGoal())
-        XCTAssertFalse(e.celebrateDailyGoal())
-        XCTAssertNil(e.claimDailyGoal())
         e.setDailyGoalsOff(false)
         XCTAssertNotNil(e.dailyGoal())
         let fresh = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         XCTAssertNil(fresh.state.rest["dy59"], "no key is written until the goal is used or the setting changes")
     }
 
-    func testDoneDailyMissionIsCelebratedOncePerDay() throws {
+    func testDoneDailyGoalGrowsTheStreakOnceAndPaysNothing() throws {
         var (e, id) = try cafeGame(weeks: 4)
         XCTAssertEqual(e.state.company(id)?.status, .open)
         let day = Date(timeIntervalSince1970: 1_800_000_000)
-        // Force a goal that is already done ("grow": net worth is far above the tiny base). Setup goals ("start", "hire") are no longer announced.
+        // Force a goal that is already done ("grow": net worth is far above the tiny base).
         e.update { s, _, _ in
             s.rest["dy59"] = .object(["streak": 0, "last": "", "d": .string(GameEngine.dayString(day)), "got": 0, "k": "grow",
                                       "b": .object(["week": 0, "staff": 0, "cmp": 0, "nw": 1])])
         }
-        XCTAssertTrue(e.celebrateDailyGoal(now: day))
-        XCTAssertFalse(e.celebrateDailyGoal(now: day), "once per day")
-        let c = try XCTUnwrap(e.pendingCelebrations.first { $0.kind == "mission" })
-        XCTAssertTrue(c.reward.hasPrefix("Reward "))
-        XCTAssertFalse(c.reward.contains("claim it in Goals"), "the popup has its own Claim button")
+        let cash = e.state.cash
+        let first = try XCTUnwrap(e.dailyGoal(now: day))
+        XCTAssertTrue(first.done)
+        XCTAssertEqual(first.streak, 1)
+        XCTAssertEqual(try XCTUnwrap(e.dailyGoal(now: day)).streak, 1, "counted once per day")
+        XCTAssertEqual(e.state.cash, cash, accuracy: 0.001)
+        let next = day.addingTimeInterval(86400)
+        XCTAssertEqual(try XCTUnwrap(e.dailyGoal(now: next)).streak, 1, "a new day starts from yesterday's streak until it is done")
+        XCTAssertFalse(e.pendingCelebrations.contains { $0.kind == "mission" })
     }
 
     // MARK: 7A Home shortcuts

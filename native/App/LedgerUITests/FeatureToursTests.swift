@@ -117,7 +117,7 @@ final class FeatureToursTests: FeatureTourCase {
 
     /// The Group entity to work on: the café (it has the co-owner of the board game), else the first one.
     private func groupEntity() -> String {
-        guard goGroup("Companies") else { return "" }
+        guard goGroup("Structure") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-co", wait: 1).first ?? ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
@@ -142,7 +142,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     private func openEntityTab(_ entity: String, _ name: String) -> Bool {
-        guard !entity.isEmpty, goGroup("Companies") else { return false }
+        guard !entity.isEmpty, goGroup("Structure") else { return false }
         guard tapID(entity, wait: 4) else { return false }
         return tapGroupTab(name)
     }
@@ -150,10 +150,10 @@ final class FeatureToursTests: FeatureTourCase {
     func testT04_Group() {
         step("group tab: opens on Overview") { goTab("Group") ? (isSelected("group-home-tab-Overview") ? .pass(signature().text) : .fail("Overview not selected: " + tabState())) : .fail("no Group tab") }
         step("group tab: health") { health("Group", title: false) }
-        for home in ["Companies", "Staff", "Suppliers"] {
+        for home in ["Structure", "People", "Suppliers"] {
             step("group tab: \(home) opens and is clean") {
                 guard goGroup(home) else { return .fail("no \(home) tab") }
-                if home == "Companies" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
+                if home == "Structure" && ids(prefix: "group-entity-").isEmpty { return .fail("no group-entity-* rows: " + tabState()) }
                 return health("Group \(home)", title: false)
             }
         }
@@ -166,7 +166,7 @@ final class FeatureToursTests: FeatureTourCase {
             if !has("group-back") && find(wait: 3, { $0.id.hasPrefix("group-entity-") }) != nil { return h }
             return .fail("Back did not return to the picker: \(signature().text)")
         }
-        for name in ["Overview", "Management", "Boardroom", "Money", "Expansion", "Ownership"] {
+        for name in ["Overview", "Management", "Boardroom", "Money", "Grow", "Owners and sales"] {
             step("group entity page: \(name) tab opens, is selected and is clean") {
                 guard openEntityTab(entity, name) else { return .skip("no \(name) tab on the entity page") }
                 if !isSelected("group-tab-\(name)") { return .fail("tapped but not selected") }
@@ -180,32 +180,21 @@ final class FeatureToursTests: FeatureTourCase {
         }
         roundTrip("group money: Policy popup closes and keeps the page", prepare: { openEntityTab(entity, "Money") }) { tapID("money-policy") }
         roundTrip("group: Add menu opens and closes back to Overview", prepare: { goGroup("Overview") }) { tapID("group-add") }
-        roundTrip("boardroom: Talk to a manager opens the talk and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-talk-", wait: 4) }
-        step("boardroom: talk goes through a choice and ends with a result") {
-            guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-talk-", wait: 4) else { return .skip("nobody to talk to") }
-            guard popupUp(3) else { return .fail("the talk did not open") }
-            var picks = 0
-            // Answer the talk with the first option on each screen until it ends (at most 4 screens).
-            while picks < 4 && popupUp(1) {
-                let opts: [Hit] = hits().filter { $0.type == .button && !$0.label.isEmpty && !["popup-close", "popup-backdrop", "confirm-cancel"].contains($0.id) }
-                guard let first = opts.first(where: { !$0.label.lowercased().contains("close") }) else { break }
-                touch(first); picks += 1; pause(0.6)
-            }
-            let raw: [String] = rawProblems("boardroom talk")
+        roundTrip("boardroom: the quarterly review opens and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-review-", wait: 4) }
+        step("boardroom: the review settles a direction and a budget and ends with a result") {
+            guard openEntityTab(entity, "Boardroom"), tapPrefix("boardroom-review-", wait: 4) else { return .skip("nobody to review with") }
+            guard popupUp(3) else { return .fail("the review did not open") }
+            // Pick a direction and a budget, then settle; the settle button stays off when both picks are already in force.
+            tapID("boardroom-choice-dir:lean", wait: 2)
+            tapID("boardroom-choice-bud:2", wait: 2)
+            let settled: Bool = tapID("boardroom-review-settle", wait: 2)
+            let raw: [String] = rawProblems("boardroom review")
             var n = 0
             while popupUp() && n < 3 { closePopup(); n += 1 }
-            if popupUp(1) { return .fail("the talk popup did not close") }
-            if !isSelected("group-tab-Boardroom") { return .fail("after the talk the Boardroom is not showing: \(signature().text)") }
-            return raw.isEmpty ? .pass("\(picks) taps") : .fail(raw.joined(separator: "; "))
+            if popupUp(1) { return .fail("the review popup did not close") }
+            if !isSelected("group-tab-Boardroom") { return .fail("after the review the Boardroom is not showing: \(signature().text)") }
+            return raw.isEmpty ? .pass(settled ? "settled" : "nothing to change") : .fail(raw.joined(separator: "; "))
         }
-        roundTrip("boardroom: Call the board opens a popup and closes back to the Boardroom", prepare: { openEntityTab(entity, "Boardroom") }) { tapPrefix("boardroom-call-", wait: 4) }
-        step("board room: opens and Back returns to the Boardroom") {
-            guard openEntityTab(entity, "Boardroom"), tapID("group-board-room", wait: 4) else { return .skip("no board room (needs a co-owner)") }
-            let h: R = health("board room")
-            guard tapBack() else { return .fail("no Back in the board room") }
-            return isSelected("group-tab-Boardroom") ? h : .fail("Back did not return to the Boardroom: \(signature().text)")
-        }
-        roundTrip("board room: Remove from board -> Cancel keeps the screen", closeWith: ["confirm-cancel"], prepare: { openEntityTab(entity, "Boardroom") }) { tapID("board-remove-seat", wait: 4) }
     }
 
     // MARK: T07 Group > Ownership: parts and the sell route picker
@@ -214,19 +203,19 @@ final class FeatureToursTests: FeatureTourCase {
         let entity: String = groupEntity()
         for part in ["Owners", "Sell", "Raise", "Offers"] {
             step("ownership: \(part) page opens and is clean") {
-                guard openEntityTab(entity, "Ownership"), tapID("group-ownership-\(part)") else { return .skip("no Ownership > \(part) segment") }
+                guard openEntityTab(entity, "Owners and sales"), tapID("group-ownership-\(part)") else { return .skip("no Ownership > \(part) segment") }
                 return health("ownership \(part)", title: false)
             }
         }
         step("ownership: Sell lists the route picker") {
-            guard openEntityTab(entity, "Ownership"), tapID("group-ownership-Sell") else { return .skip("no Ownership > Sell segment") }
+            guard openEntityTab(entity, "Owners and sales"), tapID("group-ownership-Sell") else { return .skip("no Ownership > Sell segment") }
             let routes: [String] = ids(prefix: "sell-route-")
             if routes.isEmpty { return .fail("Sell shows no sell-route-* rows (a limited company with a route is expected): " + tabState()) }
             return .pass("\(routes.count) routes: " + routes.map { String($0.dropFirst(11)) }.joined(separator: ","))
         }
         for route in ["auction", "merger", "stake", "private"] {
             step("ownership: sell route \(route) opens and Cancel/close keeps Sell") {
-                guard openEntityTab(entity, "Ownership"), tapID("group-ownership-Sell") else { return .skip("no Sell segment") }
+                guard openEntityTab(entity, "Owners and sales"), tapID("group-ownership-Sell") else { return .skip("no Sell segment") }
                 let before: TourSig = signature()
                 guard tapID("sell-route-\(route)", wait: 2) else { return .skip("no sell-route-\(route)") }
                 if popupUp(2) {

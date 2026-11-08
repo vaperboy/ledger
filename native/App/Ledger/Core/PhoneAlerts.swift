@@ -3,11 +3,11 @@ import UserNotifications
 import GameCore
 import Simulation
 
-/// One thing on the Phone that asks for the player: the banner at the top of the Phone home shows the first one, and the app that
+/// One thing on the Phone that asks for the player: the app that
 /// owns it carries a red bubble. Built from the engine by `PhoneAlerts`; no game rules here.
 struct PhoneAlert: Identifiable, Equatable {
     var id: String
-    /// The app that opens when the banner is tapped.
+    /// The app that owns this alert.
     var app: PhoneApp
     /// Small caps source line ("Bank").
     var source: String

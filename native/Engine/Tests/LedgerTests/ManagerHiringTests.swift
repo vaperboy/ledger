@@ -5,9 +5,9 @@ import Finance
 import Businesses
 @testable import Simulation
 
-/// Only a hired manager hires; a manager never overfills and hires early only for a leaver when the demand is there; a demand-limited
-/// company can be proposed bigger premises; staff grow, are promoted, and a named successor takes over. Rules: Businesses/ManagerHiring.swift,
-/// PremisesProposals.swift, GrowthPaths.swift.
+/// Only a hired manager hires, through the staffing plan: a vacancy waits a few weeks, costs a recruiting fee, and a manager never overfills; the owner's
+/// target is filled without asking again; a demand-limited company can be proposed bigger premises; staff grow, are promoted, and a named successor
+/// takes over. Rules: Businesses/StaffingPlan.swift, ManagerHiring.swift, PremisesProposals.swift, GrowthPaths.swift.
 final class ManagerHiringTests: XCTestCase {
     /// A running company with its standard team and a real hired manager.
     private func managed(_ seed: Int, trade: String = "grocery", manager: Bool = true, cash: Double = 300_000_000) throws -> (GameEngine, Int) {
@@ -43,6 +43,11 @@ final class ManagerHiringTests: XCTestCase {
         return role
     }
 
+    /// Run the staffing plan for a number of weeks.
+    private func weeks(_ e: inout GameEngine, _ n: Int) {
+        e.update { s, d, _ in for _ in 0..<n { s.week += 1; StaffingPlan.weekly(&s, data: d) } }
+    }
+
     private func target(_ e: GameEngine, _ id: Int, _ role: String) -> Int {
         let co = e.state.company(id)!
         return CompanySetup.standardStaff(e.data.catalog[co.type]!, size: co.size).first { $0.role == role }?.count ?? 0
@@ -65,14 +70,16 @@ final class ManagerHiringTests: XCTestCase {
         let role = removeOne(&e, id)
         let before = e.state.company(id)!.staff.count
         XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: target(e, id, role)).allowed)
-        for _ in 0..<8 { e.update { s, d, _ in AutoStaff.weekly(&s, data: d) } }
+        weeks(&e, 8)
         XCTAssertEqual(e.state.company(id)!.staff.count, before, "nobody is hired automatically without a manager")
         // the same company with a manager fills the gap
         var (m, mid) = try managed(1)
         let r = removeOne(&m, mid)
         XCTAssertEqual(m.managerMayHire(companyID: mid, role: r, target: target(m, mid, r)), .replace)
         let n = m.state.company(mid)!.staff.count
-        m.update { s, d, _ in AutoStaff.weekly(&s, data: d) }
+        weeks(&m, 1)
+        XCTAssertEqual(m.state.company(mid)!.staff.count, n, "the search takes weeks: nobody is offered the job in the week the post falls empty")
+        weeks(&m, 6)
         XCTAssertEqual(m.state.company(mid)!.staff.count, n + 1)
     }
 
@@ -96,37 +103,75 @@ final class ManagerHiringTests: XCTestCase {
         if e.workplaces(companyID: id)?.free == 0 {
             XCTAssertFalse(v.allowed, "a manager does not hire into a full office")
             let n = e.state.company(id)!.staff.count
-            for _ in 0..<6 { e.update { s, d, _ in AutoStaff.weekly(&s, data: d) } }
+            weeks(&e, 6)
             XCTAssertLessThanOrEqual(e.state.company(id)!.staff.count, n)
         }
     }
 
-    func testEarlyHireOnlyWithALeaverAndTheDemand() throws {
+    func testReplacementIsSoughtWhileTheLeaverWorksTheirNotice() throws {
         var (e, id) = try managed(3)
         let first = e.state.company(id)!.staff[0]
         let role = first.role, want = target(e, id, role)
         let have = e.state.company(id)!.staff.filter { $0.role == role }.count
-        guard have >= want else { throw XCTSkip("team incomplete") }
-        // demand but nobody leaving: no hire
-        setLoad(&e, id, util: 0.95)
-        XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: want).allowed, "\(e.managerMayHire(companyID: id, role: role, target: want))")
-        // a leaver (notice) but no demand: no hire
-        e.update { s, _, _ in if let i = s.companyIndex(id), let k = s.companies[i].staff.firstIndex(where: { $0.id == first.id }) { var st = s.companies[i].staff; st[k].noticeWeeks = 4; s.companies[i].staff = st } }
+        guard have == want else { throw XCTSkip("team incomplete") }
+        // nobody leaving: the team is complete, whatever the load
         setLoad(&e, id, util: 0.4)
-        XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: want).allowed, "no hire before the leaver goes when there is not the work")
-        // a leaver and the demand: hire early
-        setLoad(&e, id, util: 0.95)
+        XCTAssertFalse(e.managerMayHire(companyID: id, role: role, target: want).allowed)
+        XCTAssertEqual(e.staffingPlan(companyID: id).first { $0.role == role }?.vacancies, 0)
+        // a leaver on notice: the post is a vacancy at once, and the plan says someone is leaving
+        e.update { s, _, _ in if let i = s.companyIndex(id), let k = s.companies[i].staff.firstIndex(where: { $0.id == first.id }) { var st = s.companies[i].staff; st[k].noticeWeeks = 8; s.companies[i].staff = st } }
         guard case .early = e.managerMayHire(companyID: id, role: role, target: want) else { return XCTFail("expected an early hire") }
+        let row = try XCTUnwrap(e.staffingPlan(companyID: id).first { $0.role == role })
+        XCTAssertEqual(row.leaving, 1); XCTAssertEqual(row.vacancies, 1)
         let n = e.state.company(id)!.staff.count
-        e.update { s, d, _ in AutoStaff.weekly(&s, data: d) }
+        weeks(&e, 6)
         XCTAssertEqual(e.state.company(id)!.staff.count, n + 1, "hired before the leaver went")
         XCTAssertTrue(e.state.company(id)!.staff.contains { $0.id == first.id }, "the leaver is still on the payroll")
+        XCTAssertEqual(e.staffingPlan(companyID: id).first { $0.role == role }?.vacancies, 0)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        // and a fixed term that ends soon counts as a leaver too
+        // a fixed term that ends within weeks counts as a leaver too
         var (f, fid) = try managed(3)
-        f.update { s, _, _ in if let i = s.companyIndex(fid) { var st = s.companies[i].staff; st[0].set("ft", s.week + 5); s.companies[i].staff = st } }
-        setLoad(&f, fid, util: 0.95)
-        XCTAssertNotNil(f.state.company(fid).flatMap { ManagerHiring.leaverReason(f.state, $0, $0.staff[0], data: f.data) })
+        f.update { s, _, _ in if let i = s.companyIndex(fid) { var st = s.companies[i].staff; st[0].set("ft", s.week + 3); s.companies[i].staff = st } }
+        XCTAssertEqual(f.staffingPlan(companyID: fid).first { $0.role == f.state.company(fid)!.staff[0].role }?.leaving, 1)
+    }
+
+    // MARK: The staffing plan
+
+    func testAVacancyWaitsCostsAFeeAndShowsHowLongItHasBeenOpen() throws {
+        var (e, id) = try managed(6)
+        let role = removeOne(&e, id)
+        let n = e.state.company(id)!.staff.count
+        let cash0 = e.state.company(id)!.cash
+        weeks(&e, 1)
+        var row = try XCTUnwrap(e.staffingPlan(companyID: id).first { $0.role == role })
+        XCTAssertEqual(row.vacancies, 1); XCTAssertEqual(row.weeksOpen, 0); XCTAssertFalse(row.ownerSet)
+        weeks(&e, 1)
+        row = try XCTUnwrap(e.staffingPlan(companyID: id).first { $0.role == role })
+        XCTAssertEqual(row.weeksOpen, 1)
+        XCTAssertEqual(e.state.company(id)!.staff.count, n, "still searching")
+        weeks(&e, 6)
+        XCTAssertEqual(e.state.company(id)!.staff.count, n + 1)
+        XCTAssertLessThan(e.state.company(id)!.cash, cash0, "recruiting costs money")
+        XCTAssertEqual(e.staffingPlan(companyID: id).first { $0.role == role }?.vacancies, 0)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+    }
+
+    func testTheOwnersTargetIsFilledAndCanBeReset() throws {
+        var (e, id) = try managed(7)
+        let role = e.state.company(id)!.staff[0].role
+        if e.workplaces(companyID: id)?.free == 0 { throw XCTSkip("no free place") }
+        let have = e.staffingPlan(companyID: id).first { $0.role == role }?.filled ?? 0
+        XCTAssertTrue(e.setHeadcountTarget(companyID: id, role: role, target: have + 1))
+        var row = try XCTUnwrap(e.staffingPlan(companyID: id).first { $0.role == role })
+        XCTAssertEqual(row.target, have + 1); XCTAssertTrue(row.ownerSet); XCTAssertEqual(row.vacancies, 1)
+        XCTAssertFalse(e.setHeadcountTarget(companyID: id, role: "no-such-role", target: 2))
+        let n = e.state.company(id)!.staff.count
+        weeks(&e, 8)
+        XCTAssertEqual(e.state.company(id)!.staff.count, n + 1, "the manager fills the owner's target without asking again")
+        XCTAssertTrue(e.resetHeadcountTarget(companyID: id, role: role))
+        row = try XCTUnwrap(e.staffingPlan(companyID: id).first { $0.role == role })
+        XCTAssertFalse(row.ownerSet)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
     // MARK: Bigger premises

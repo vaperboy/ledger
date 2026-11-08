@@ -141,8 +141,9 @@ struct GroupDividendsPage: View {
         guard let co = engine.state.company(r.id) else { return }
         let cur: Currency = engine.currency(for: co)
         let amount: Double = (r.payable * share).rounded(.down)
-        let to: String = r.holdingName ?? "you"
-        pending = PendingAction(title: "Pay \(cur.tidyShort(amount)) from \(r.name)?", message: "It goes to \(to) from retained profit. It is taxed as income and cannot be paid back in as a dividend.", button: "Pay", amount: amount, currency: cur) {
+        let rule: String = r.holdingName.map { (h: String) -> String in "It goes to \(h) from retained profit and is not taxed on you until \(h) pays you." }
+            ?? "It goes to you from retained profit and is added to your dividends for the year, with \(PayRules.dividendTaxText(engine))."
+        pending = PendingAction(title: "Pay \(cur.tidyShort(amount)) from \(r.name)?", message: rule + " It cannot be paid back in as a dividend.", button: "Pay", amount: amount, currency: cur) {
             let paid: Double = store.act { $0.payDividendShare(companyID: r.id, share: share) } ?? 0
             store.show(paid > 0 ? "Dividend of \(cur.tidyShort(paid)) paid." : "Nothing could be paid.", tone: paid > 0 ? "good" : "warn")
             if paid > 0 { store.flyChip("Dividend", amount: paid) }

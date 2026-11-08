@@ -85,7 +85,7 @@ final class TeamOverviewTests: XCTestCase {
         ChainsTests.season(&e, first)
         let chain = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         var stores = [first]
-        for _ in 0..<4 { if case .success(let id) = e.openChainStore(chainID: chain, cityID: e.state.player.cityID, size: 1) { stores.append(id) } }
+        for _ in 0..<4 { if case .success(let id) = e.openLocation(chainID: chain, cityID: e.state.player.cityID) { stores.append(id) } }
         for id in stores { open(&e, id) }
         if stores.count >= 5 { XCTAssertTrue(e.teamOverview().issues.contains { $0.kind == .chainVacancy && $0.chainID == chain }) }
         let cand = try XCTUnwrap(e.searchExecutive(.region)?.first)
@@ -166,7 +166,7 @@ final class TeamOverviewTests: XCTestCase {
         open(&e, first)
         let o = e.teamOverview()
         XCTAssertNil(o.vacancies.first { $0.id == "chainmgr-\(chain)" }, "one store is not yet a chain that needs a chain manager")
-        if case .success(let second) = e.openChainStore(chainID: chain, cityID: e.state.player.cityID, size: 1) {
+        if case .success(let second) = e.openLocation(chainID: chain, cityID: e.state.player.cityID) {
             open(&e, second)
             XCTAssertEqual(e.teamOverview().vacancies.first { $0.id == "chainmgr-\(chain)" }?.scope, "chain", "from two stores a chain manager is offered")
         }

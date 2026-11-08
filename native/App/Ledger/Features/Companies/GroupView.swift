@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 import Simulation
 
-/// The Group tab: its title, then four tabs (Overview, Companies, Staff, Suppliers; `GroupHome`). A company, holding or chain pushes its own
+/// The Group tab: its title, then four tabs (Overview, Structure, People, Suppliers; `GroupHome`). A company, holding or chain pushes its own
 /// page (`NavRoute.entity`); any other tab can push the same page (`GameStore.openGroupEntity`). Choosing the Group tab again returns to Overview.
 struct GroupView: View {
     @EnvironmentObject var store: GameStore
@@ -60,7 +60,7 @@ struct GroupView: View {
     }
 }
 
-/// The pushed Group entity page on any tab: the entity's own page, with the entity switcher above its header. Back (its chevron, or the
+/// The pushed Group entity page on any tab: the entity's own page, with the breadcrumb above its header. Back (its chevron, or the
 /// edge swipe) pops it like any pushed screen.
 struct GroupEntityScreen: View {
     @EnvironmentObject var store: GameStore
@@ -77,7 +77,7 @@ struct GroupEntityScreen: View {
         Group {
             if let e = store.engine, let entity = (GroupEntities.cached(store) ?? GroupEntities.build(e)).first(where: { (g: GroupEntity) -> Bool in g.id == entityID }) {
                 GroupEntityPage(entity: entity, section: $section, onBack: { dismiss() })
-                    .safeAreaInset(edge: .top, spacing: 0) { EntitySwitcherBar(entity: entity, section: section) }
+                    .safeAreaInset(edge: .top, spacing: 0) { EntityBreadcrumb(entity: entity, section: section, onGroup: { dismiss() }) }
             } else {
                 EmptyState(glyph: Glyph.group, title: "This company is no longer in your group")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -90,53 +90,36 @@ struct GroupEntityScreen: View {
     }
 }
 
-/// One line above an entity page's header: its place in the group, and a menu that pushes one of its companies (the stores of a chain, the
-/// companies of a holding, or the company itself) or swaps this page for another entity's on the same section, in place.
-struct EntitySwitcherBar: View {
+/// One line above an entity page's header: "Group > Chain" (or "Group > Holding > Company"). The parents are buttons: Group goes back,
+/// a holding swaps this page for its own on the same tab.
+struct EntityBreadcrumb: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var entity: GroupEntity
     var section: GroupSection
+    var onGroup: () -> Void
 
     var body: some View {
         if let e = store.engine {
             let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(e)
-            let others: [GroupEntity] = list.filter { (g: GroupEntity) -> Bool in g.id != entity.id }
-            let own: [Int] = entity.members.filter { (id: Int) -> Bool in e.state.company(id) != nil }
-            let place: Int = (list.firstIndex(where: { (g: GroupEntity) -> Bool in g.id == entity.id }) ?? 0) + 1
-            let context: String = list.count > 1 ? "Group \u{00B7} \(place) of \(list.count)" : "Group"
-            let ownTitle: String = entity.isChain ? "Stores" : (entity.isHolding ? "Companies" : "Company page")
-            Menu {
-                Section(ownTitle) {
-                    ForEach(own, id: \.self) { (id: Int) in companyButton(e, id) }
-                }
-                if !others.isEmpty {
-                    Section("Other companies and chains") {
-                        ForEach(others) { (g: GroupEntity) in
-                            Button { store.replaceTop(with: .entity(g.id, section)) } label: { Text("\(g.name) \u{00B7} \(g.kind)") }
-                                .accessibilityIdentifier("entity-switch-\(g.id)")
-                        }
-                    }
-                }
-            } label: {
-                SwitcherLabel(text: context)
-            }
-            .accessibilityIdentifier("entity-switcher")
-            .accessibilityLabel("Switch company")
-            .accessibilityValue(context)
-            .padding(.horizontal, Theme.Space.page)
-            .background(P.ground.ignoresSafeArea(edges: .top))
+            StructureCrumbs(crumbs: crumbs(e, list))
+                .padding(.horizontal, Theme.Space.page)
+                .background(P.ground.ignoresSafeArea(edges: .top))
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("entity-breadcrumb")
         }
     }
 
-    /// Pushes one company of the entity (a holding opens on its holding page).
-    @ViewBuilder private func companyButton(_ e: GameEngine, _ id: Int) -> some View {
-        if let co = e.state.company(id) {
-            let route: NavRoute = co.type == "hold" ? .companyAt(id, .holding) : .company(id)
-            Button { Haptics.tap(); store.push(route) } label: {
-                Text(entity.isChain ? "\(co.name) \u{00B7} \(e.cityName(co))" : co.name)
-            }
-            .accessibilityIdentifier("entity-open-company-\(id)")
+    private func crumbs(_ e: GameEngine, _ list: [GroupEntity]) -> [StructureCrumb] {
+        var out: [StructureCrumb] = [StructureCrumb(id: "group", title: "Group", action: onGroup)]
+        if entity.indent, let co = e.state.company(entity.companyID), co.holdingID != 0,
+           let parent = list.first(where: { (g: GroupEntity) -> Bool in g.isHolding && g.companyID == co.holdingID }) {
+            let pid: String = parent.id
+            let s: GroupSection = section
+            out.append(StructureCrumb(id: pid, title: parent.name, action: { store.replaceTop(with: .entity(pid, s)) }))
         }
+        out.append(StructureCrumb(id: "here", title: entity.name))
+        return out
     }
 }
+

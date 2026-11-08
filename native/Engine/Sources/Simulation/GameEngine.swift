@@ -98,7 +98,6 @@ public struct GameEngine {
         }
         state.economy.set("rate0", state.economy.policyRate)
         state.rest["gameID"] = .string("g\(seed)")   // deterministic: the same seed gives the same state; the app clears remembered details at every new game
-        PlayerGoals.startFirstSteps(&state)
         PlayerGoals.startLadder(&state)   // the M1 to M10 ladder and its gates
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
@@ -159,6 +158,7 @@ public struct GameEngine {
             if m.actionID == HierarchyHiring.action { HierarchyHiring.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "staffx" { StaffTalks.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FixedTerm.action { FixedTerm.answer(&s, message: m, option: idx); return true }
+            if m.actionID == PersonalFinance.dueAction { return TaxSettlement.answer(&s, message: m, option: idx, data: d, context: c) }
             if ["prop", "mgrraise", "mgrpoach"].contains(m.actionID) { ManagerModel.answer(&s, message: m, option: idx, data: d); return true }
             if ManagerTargets.handlesAnswer(m.actionID) { ManagerTargets.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == FirstYear.frozenAction { return true }
@@ -379,7 +379,7 @@ public struct GameEngine {
         MarketMap.weekly(&state, data: data)
         SoftwareProducts.weekly(&state, data: data)
         ProjectTenders.weekly(&state, data: data, context: context)
-        AutoStaff.weekly(&state, data: data)
+        StaffingPlan.weekly(&state, data: data)   // vacancies, replacements, growth and seasonal crews (Businesses/StaffingPlan.swift)
         Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
         EventEngine.expire(&state, data: data, context: context)
         StrategicDecisions.weekly(&state, data: data, context: context)

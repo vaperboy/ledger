@@ -22,7 +22,6 @@ final class NewLookEngineReadsTests: XCTestCase {
 
     func testPayrollAlertClearsWhenAnAccountantIsAppointedOrTheOwnerApproves() throws {
         var e = try game()
-        e.update { s, _, _ in s.policy.autoPayroll = false }
         let id = try cafe(&e)
         var days = 0
         while e.payrollAlerts().isEmpty, days < 200 * 7 { e.nextDay(); days += 1 }
@@ -50,7 +49,6 @@ final class NewLookEngineReadsTests: XCTestCase {
 
     func testRoutinePayrollTheCompanyCanPayIsNotAnAlert() throws {
         var e = try game()
-        e.update { s, _, _ in s.policy.autoPayroll = true }
         let id = try cafe(&e)
         for _ in 0..<(60 * 7) { e.nextDay() }
         XCTAssertNil(e.payrollAlerts().first { $0.companyID == id && !$0.isLate }, "the 'Approve routine payroll' rule covers it")

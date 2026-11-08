@@ -15,7 +15,7 @@ final class HierarchyHiringTests: XCTestCase {
         ChainsTests.season(&e, first)
         let id = try XCTUnwrap(e.makeChain(companyID: first, name: "Test Cafe"))
         var stores = [first]
-        for _ in 1..<count { if case .success(let s) = e.openChainStore(chainID: id, cityID: e.state.player.cityID, size: 1) { stores.append(s) } }
+        for _ in 1..<count { if case .success(let s) = e.openLocation(chainID: id, cityID: e.state.player.cityID) { stores.append(s) } }
         guard stores.count == count else { throw XCTSkip("chain stores could not be opened") }
         e.update { s, _, _ in
             for sid in stores {
@@ -66,6 +66,14 @@ final class HierarchyHiringTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
+    func testAStoreManagerPostWaitsBeforeTheSearchBegins() throws {
+        var (e, cid, stores) = try chain(2)
+        _ = try hireExec(&e, .chainmgr, chain: cid, authority: 2)
+        run(&e, times: 1)
+        XCTAssertTrue(stores.allSatisfy { e.state.company($0)?.managerID == nil }, "the post has only just opened")
+        XCTAssertEqual(e.staffingPlan(companyID: stores[0]).first { $0.role == StaffingPlan.managerRole }?.vacancies, 1)
+    }
+
     func testChainManagerWithoutRegionalLayerHiresStoreManagersDirectly() throws {
         var (e, cid, stores) = try chain(3)
         let cm = try hireExec(&e, .chainmgr, chain: cid, authority: 2)
@@ -95,12 +103,17 @@ final class HierarchyHiringTests: XCTestCase {
         XCTAssertFalse(e.openDecisions.contains { $0.actionID == HierarchyHiring.action && $0.companyID == otherStore }, "declined: not asked again within eight weeks")
     }
 
-    func testAboveTheLimitTheBossAsksEvenWithAuthorityOne() throws {
+    func testAboveTheBudgetTheBossAsksEvenOnANormalBudget() throws {
         var (e, cid, stores) = try chain(2)
-        _ = try hireExec(&e, .chainmgr, chain: cid, authority: 1, buy: 1)
-        run(&e, times: 4)
-        XCTAssertTrue(stores.allSatisfy { e.state.company($0)?.managerID == nil })
-        XCTAssertNotNil(e.openDecisions.first { $0.actionID == HierarchyHiring.action })
+        _ = try hireExec(&e, .chainmgr, chain: cid, authority: 1)
+        let boss = try XCTUnwrap(HierarchyHiring.appointer(e.state, post: .storeManager(companyID: stores[0]), data: e.data))
+        XCTAssertEqual(boss.level, Budget.normal.rawValue)
+        XCTAssertTrue(HierarchyHiring.withinAuthority(boss, wage: boss.buy), "a pay at the budget is theirs to agree")
+        XCTAssertFalse(HierarchyHiring.withinAuthority(boss, wage: boss.buy * 1.01), "a pay above the budget goes to the owner")
+        let rid = try XCTUnwrap(ManagerModel.regionals(e.state).first { $0["scope"].string == "chain:\(cid)" }?["id"].int)
+        e.setExecutiveBudget(.chainmgr, chainID: cid, regionalID: rid, budget: .free)
+        let free = try XCTUnwrap(HierarchyHiring.appointer(e.state, post: .storeManager(companyID: stores[0]), data: e.data))
+        XCTAssertTrue(HierarchyHiring.withinAuthority(free, wage: boss.buy * 100), "a free budget covers any pay")
     }
 
     func testNobodyAboveMeansTheVacancyStaysWithTheOwner() throws {

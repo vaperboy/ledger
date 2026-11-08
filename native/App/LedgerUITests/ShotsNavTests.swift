@@ -94,19 +94,23 @@ final class ShotsNavTests: FeatureTourCase {
         }
     }
 
-    /// Group > entity > its company > another company through the switcher > Back to the entity; the entity switcher; Back to the picker.
+    /// Group > Structure > an entity page > the breadcrumb back to Structure > a company > another company through the switcher > Back to Structure.
     private func groupToCompanyAndSwitch() {
-        guard goGroup("Companies") else { expect(false, "no Group tab"); return }
+        guard goGroup("Structure") else { expect(false, "no Group tab"); return }
         shot("B0-group")
         guard tapPrefix("group-entity-co", wait: 4) || tapPrefix("group-entity-", wait: 2) else { expect(false, "Group: no entity row"); return }
         expect(has("group-back", wait: 4), "Group > entity: the entity page did not open")
         shot("B1-group-entity")
         sameTab("Group", "Group > entity")
-        let toCompany: Bool = tapLabel("Open the", wait: 3) || pick("entity-switcher", "entity-open-company-", shotName: "B1b-group-entity-switcher")
-        expect(toCompany && companyShowing(), "Group > entity: could not open its company")
-        shot("B2-group-company")
-        sameTab("Group", "Group > entity > company")
+        // The breadcrumb's Group goes back to Structure; a location, division or stake card there opens its company.
+        expect(tapID("entity-crumb-group", wait: 3), "Group > entity: the breadcrumb has no Group step")
+        expect(find(wait: 4, { $0.id.hasPrefix("group-entity-") }) != nil, "Group > entity > breadcrumb: not on Structure")
+        shot("B1b-group-structure")
+        let toCompany: Bool = tapPrefix("structure-action-", wait: 3)
+        if toCompany { expect(companyShowing(), "Group > Structure: could not open its company") }
         if toCompany {
+            shot("B2-group-company")
+            sameTab("Group", "Group > Structure > company")
             let before: [String] = signature().heads
             if pick("company-switcher", "company-switch-", label: { $0.contains("\u{00B7}") && !$0.hasSuffix(" in Group") }, shotName: "B3-group-company-switcher") {
                 expect(companyShowing(), "Group > company > switch: no company page after switching")
@@ -117,18 +121,10 @@ final class ShotsNavTests: FeatureTourCase {
                 shot("B4-no-other-company")
             }
             expect(tapBack(), "Group > company: no Back")
-            expect(has("group-back", wait: 4), "Group > company > Back: not on the entity page")
+            expect(find(wait: 4, { $0.id.hasPrefix("group-entity-") }) != nil, "Group > company > Back: not on Structure")
             shot("B5-group-company-back")
             sameTab("Group", "Group > company > Back")
         }
-        if pick("entity-switcher", "entity-switch-", label: { $0.contains("\u{00B7}") }, shotName: "B6-group-entity-switcher") {
-            expect(has("group-back", wait: 4), "Group > entity > switch: no entity page after switching")
-            shot("B7-group-entity-switched")
-            sameTab("Group", "Group > entity > switch")
-        }
-        expect(tapBack(), "Group > entity: no Back")
-        expect(find(wait: 4, { $0.id.hasPrefix("group-entity-") }) != nil, "Group > entity > Back: not on the picker")
-        shot("B8-group-back")
     }
 
     /// Phone > Inbox > a message's company > Back to the Inbox, on the Phone tab.

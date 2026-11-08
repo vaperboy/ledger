@@ -37,7 +37,6 @@ final class MissionsReworkTests: XCTestCase {
     func testSetupStepsEarnAtMostOneAwardInTheFirstFourteenDays() throws {
         var (e, _) = try setupGame(ladder: false)
         days(&e, 14)
-        _ = e.celebrateDailyGoal()
         // The 80M test funding makes net-worth and cash milestones fire (career goals, art "goal.career"); those are results, not setup awards.
         let setupAwards = e.pendingAwards().filter { !$0.title.contains("Net worth") && !$0.title.contains("million") && $0.artKey != "goal.career" }
         XCTAssertLessThanOrEqual(setupAwards.count, 1, "\(setupAwards.map { $0.title })")
@@ -45,12 +44,11 @@ final class MissionsReworkTests: XCTestCase {
         XCTAssertFalse(trophies.contains("cust") || trophies.contains("emp") || trophies.contains("mgr") || trophies.contains("branch"), "\(trophies)")
     }
 
-    func testSetupStepsStayClaimableButSilent() throws {
+    func testSetupStepsStaySilent() throws {
         var (e, _) = try setupGame(ladder: false)
         days(&e, 7)
         XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
         XCTAssertFalse(e.pendingCelebrations.contains { $0.kind == "goal" && $0.art != "goal.career" }, "no popup for a setup step (career cash goals are results and may fire on the test funding)")
-        XCTAssertFalse(PlayerGoals.firstSteps(e.state)!.first { $0.id == "co" }!.claimed, "the checklist still lists it")
     }
 
     func testResultAwardsFireWhenTheirConditionIsMet() throws {
@@ -68,7 +66,7 @@ final class MissionsReworkTests: XCTestCase {
         }
         trophyCheck(&e)
         for t in ["q3", "emp", "mgr", "cust"] { XCTAssertTrue(got(e, t), t) }
-        XCTAssertTrue(PlayerGoals.stepCelebrates("mgr", e.state))
+        XCTAssertTrue(PlayerGoals.stepDone("mgr", e.state))
         // Debt-free needs a loan that was held and then repaid.
         e.update { s, _, _ in var l = Loan(raw: [:]); l.id = s.makeID(); l.balance = 1; s.loans.append(l) }
         trophyCheck(&e)

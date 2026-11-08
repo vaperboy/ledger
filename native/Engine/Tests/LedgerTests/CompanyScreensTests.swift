@@ -113,7 +113,6 @@ final class CompanyScreensTests: XCTestCase {
     /// Two owner-run companies with staff, played until the Inbox asks to approve payroll for them.
     private func twoCompaniesAwaitingPayrollApproval() throws -> (GameEngine, [Int], Message) {
         var e = try game()
-        e.update { s, _, _ in s.policy.autoPayroll = false }   // routine payroll is approved by policy otherwise
         var ids: [Int] = []
         for _ in 0..<2 {
             guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 50_000_000) else { throw XCTSkip("no company") }   // no accountant or manager: the player runs payroll

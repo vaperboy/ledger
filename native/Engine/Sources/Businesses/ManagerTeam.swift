@@ -148,21 +148,27 @@ extension ManagerModel {
     public struct Boss: Equatable, Sendable {
         public var kind: String        // mgr, region, chainmgr, ceo56, mdir, md
         public var personID: Int
+        /// The budget preset (`Budget.rawValue`): 0 tight, 1 normal, 2 free.
         public var level: Int
+        /// What they decide alone for one purchase or hire (`Budget.spendLimit`).
         public var buy: Double
         public var regionalID: Int?
         public var name: String
+        /// The fixed rule: they decide a commitment alone when it is within their budget, otherwise it goes up the chain.
+        public func decides(_ cost: Double) -> Bool { level >= 1 && cost <= buy }
     }
 
     /// Who stands above a company's manager, lowest first. Original: `chainOf`.
     public static func decisionChain(_ s: GameState, _ co: Company, data: GameData) -> [Boss] {
         var out: [Boss] = []
+        let execCurrency = playerCurrency(s, data)
         func add(_ kind: String, _ rec: JSONValue, rg: Int? = nil) {
             guard let n = person(s, rec) else { return }
-            out.append(Boss(kind: kind, personID: n.id, level: Int(rec["lvl"].double), buy: rec["buy"].double, regionalID: rg, name: n.name))
+            let b = Budget.of(rec)
+            out.append(Boss(kind: kind, personID: n.id, level: b.rawValue, buy: b.spendLimit(execCurrency, kind: kind), regionalID: rg, name: n.name))
         }
         if let mid = co.managerID, let n = s.people[mid] {
-            out.append(Boss(kind: "mgr", personID: n.id, level: Int(co.value("auth")["lvl"].double), buy: co.value("auth")["buy"].double, regionalID: nil, name: n.name))
+            out.append(Boss(kind: "mgr", personID: n.id, level: budget(of: co).rawValue, buy: spendLimit(of: co, s, data: data), regionalID: nil, name: n.name))
         }
         let regs = s.rest["group"]?["regional"].array ?? []
         if let ch = Chains.chain(s, of: co) {
@@ -190,6 +196,7 @@ extension ManagerModel {
         public var detail: String
         public var personID: Int?
         public var monthlyWage: Double
+        /// The budget preset (`Budget.rawValue`).
         public var level: Int
         public var buy: Double
         public var since: Int
@@ -203,8 +210,10 @@ extension ManagerModel {
         var out: [TeamSlot] = []
         func slot(_ key: String, rec: JSONValue, rg: Int? = nil) -> TeamSlot {
             let n = person(s, rec)
+            let b = Budget.of(rec)
             return TeamSlot(id: rg.map { "reg:\($0)" } ?? key, key: key, title: slotTitle(s, co, key, data: data), detail: slotText(s, co, key), personID: n?.id,
-                            monthlyWage: n == nil ? 0 : rec["wage"].double, level: Int(rec["lvl"].double), buy: rec["buy"].double, since: rec["w0"].int, regionalID: rg)
+                            monthlyWage: n == nil ? 0 : rec["wage"].double, level: b.rawValue, buy: b.spendLimit(World(state: s, data: data).currency(co), kind: key == "reg" ? "region" : "mdir"),
+                            since: rec["w0"].int, regionalID: rg)
         }
         let md = t["ceo"]
         if person(s, md) != nil || mdOK(s, co) { out.append(slot("ceo", rec: md)) }
@@ -264,6 +273,14 @@ extension ManagerModel {
     public static func hireTeam(_ s: inout GameState, companyID: Int, key: String, personID: Int, monthlyWage w: Double, data: GameData) -> OfferResult {
         guard let ci = s.companyIndex(companyID), let n0 = s.people[personID] else { return .refused }
         if n0.employerID != 0 { return .taken }
+        // With outside directors the board approves a new CEO; a refusal changes nothing.
+        if key == "ceo" {
+            let d = ceoDirectors(s, companyID: companyID, appointing: personID)
+            if d.decide && !d.passes {
+                s.note("The board of \(s.companies[ci].name) did not approve \(n0.name) as CEO: \(d.yes) of \(d.total) directors were for it.", tone: "n", companyID: companyID)
+                return .refused
+            }
+        }
         let reply = Hiring.answer(personID: personID, employer: companyID, rank: teamRank(key), offer: w, currency: World(state: s, data: data).currency(s.companies[ci]), about: 500, state: &s)
         if let r = offerResult(reply.answer) { return r }
         guard var n = s.people[personID] else { return .refused }
@@ -274,13 +291,11 @@ extension ManagerModel {
         n.set("stats", n.value("stats"))
         s.people[personID] = n
         if key == "ceo" {
-            let buy = World(state: s, data: data).currency(co).roundedStep(max(co.value("lastW")["rev"].double * 4, Playing.scaled(s, data, co, 50000)), about: 1000)
-            t["ceo"] = .object(["npc": .number(Double(personID)), "wage": .number(hq), "w0": .number(Double(s.week)), "lvl": 1, "buy": .number(buy)])
+            t["ceo"] = .object(["npc": .number(Double(personID)), "wage": .number(hq), "w0": .number(Double(s.week)), "bud": .number(Double(Budget.normal.rawValue))])
         } else if key == "reg" {
             let id = s.makeID()
-            let buy = Playing.scaled(s, data, co, 50000)
-            let rg: JSONValue = .object(["id": .number(Double(id)), "npc": .number(Double(personID)), "scope": .string("co:\(co.id)"), "wage": .number(hq), "lvl": 1,
-                                         "buy": .number(buy), "payCo": .number(Double(co.id)), "w0": .number(Double(s.week))])
+            let rg: JSONValue = .object(["id": .number(Double(id)), "npc": .number(Double(personID)), "scope": .string("co:\(co.id)"), "wage": .number(hq), "bud": .number(Double(Budget.normal.rawValue)),
+                                         "payCo": .number(Double(co.id)), "w0": .number(Double(s.week))])
             updateGroup(&s) { g in var l = g["regional"].array; l.append(rg); g["regional"] = .array(l) }
             for c in [co] + branchesOf(s, co) { if let k = s.companyIndex(c.id) { s.companies[k].set("region", id) } }
         } else {
@@ -298,6 +313,14 @@ extension ManagerModel {
     public static func releaseTeam(_ s: inout GameState, companyID: Int, key: String, regionalID: Int? = nil, data: GameData) -> Bool {
         guard let ci = s.companyIndex(companyID) else { return false }
         let co = s.companies[ci]
+        // With outside directors the board decides whether the CEO goes.
+        if key == "ceo", !team(co)["ceo"].isNull {
+            let d = ceoDirectors(s, companyID: companyID)
+            if d.decide && !d.passes {
+                s.note("The board of \(co.name) voted against letting the CEO go: \(d.yes) of \(d.total) directors were for it.", tone: "n", companyID: companyID)
+                return false
+            }
+        }
         var t = team(co)
         var rec: JSONValue = .null
         if key == "ceo" { rec = t["ceo"] } else if key == "reg" { rec = regionals(s).first { $0["id"].int == regionalID } ?? .null } else { rec = t["heads"][key] }
@@ -315,14 +338,10 @@ extension ManagerModel {
         return true
     }
 
-    /// What the managing director may decide: level 0 to 2, and how much they may spend at level 1. Original: `ACT.tm56auth`.
+    /// What the managing director may decide: the budget (`level` 0 tight, 1 normal, 2 free). The old spending limit is the preset's now, so `buy` is ignored.
     public static func setTeamAuthority(_ s: inout GameState, companyID: Int, level: Int? = nil, buy: Double? = nil) {
-        guard let ci = s.companyIndex(companyID) else { return }
-        var t = team(s.companies[ci])
-        guard !t["ceo"].isNull else { return }
-        if let l = level { t["ceo"]["lvl"] = .number(Double(min(2, max(0, l)))) }
-        if let b = buy { t["ceo"]["buy"] = .number(b) }
-        s.companies[ci].set("team", t)
+        guard let l = level else { return }
+        setTeamBudget(&s, companyID: companyID, budget: Budget(rawValue: min(2, max(0, l))) ?? .normal)
     }
 
     // MARK: Chain and group levels
@@ -330,7 +349,6 @@ extension ManagerModel {
     public enum ExecLevel: String, Sendable, CaseIterable { case md, ceo56, chainmgr, region
         public var title: String { self == .md ? "Managing director" : self == .ceo56 ? "CEO" : self == .chainmgr ? "Chain manager" : "Regional manager" }
         var pay: Double { self == .md ? 130000 : self == .ceo56 ? 95000 : self == .chainmgr ? 70000 : 58000 }
-        var buy: Double { self == .md ? 2_000_000 : self == .ceo56 ? 600_000 : self == .chainmgr ? 250_000 : 80_000 }
         public var text: String {
             switch self {
             case .md: return "Runs the whole group under you and approves what the chains cannot. Part of your group office; the pay is shared by your companies by revenue."
@@ -384,8 +402,7 @@ extension ManagerModel {
         let reply = Hiring.answer(personID: personID, employer: chainID ?? 0, rank: execRank(level), offer: w, currency: playerCurrency(s, data), about: 500, state: &s)
         if let r = offerResult(reply.answer) { return r }
         guard var n = s.people[personID] else { return .refused }
-        let cur = playerCurrency(s, data)
-        let rec: JSONValue = .object(["npc": .number(Double(personID)), "wage": .number(w), "lvl": 1, "buy": .number(cur.scaledPrice(level.buy)), "w0": .number(Double(s.week))])
+        let rec: JSONValue = .object(["npc": .number(Double(personID)), "wage": .number(w), "bud": .number(Double(Budget.normal.rawValue)), "w0": .number(Double(s.week))])
         switch level {
         case .md:
             n.employerID = -2
@@ -395,17 +412,15 @@ extension ManagerModel {
             n.employerID = -2
             ch["ceo56"] = rec
             Chains.save(&s, ch)
-            addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(personID)), "kind": "exec", "t": "CEO"])
         case .chainmgr, .region:
             guard let chainID = chainID, Chains.chain(s, id: chainID) != nil else { return .refused }
             n.employerID = -1
             let id = s.makeID()
             let scope = "chain:\(chainID)" + (level == .region ? ":\(city ?? "")" : "")
-            let rg: JSONValue = .object(["id": .number(Double(id)), "npc": .number(Double(personID)), "scope": .string(scope), "wage": .number(w), "lvl": 1,
-                                         "buy": .number(cur.scaledPrice(level.buy)), "payCo": "chain", "w0": .number(Double(s.week))])
+            let rg: JSONValue = .object(["id": .number(Double(id)), "npc": .number(Double(personID)), "scope": .string(scope), "wage": .number(w), "bud": .number(Double(Budget.normal.rawValue)),
+                                         "payCo": "chain", "w0": .number(Double(s.week))])
             updateGroup(&s) { g in var l = g["regional"].array; l.append(rg); g["regional"] = .array(l) }
             assignRegions(&s, chainID: chainID)
-            addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(personID)), "kind": "exec", "t": .string(level.title)])
             n.set("k11", .object(["post": .string(scope), "t": .string(level.title), "wage": .number(w), "bonus": 0, "duties": .array(["quality", "coach"]), "auth": 1, "rep": "month", "w0": .number(Double(s.week))]))
         }
         s.people[personID] = n
@@ -449,23 +464,10 @@ extension ManagerModel {
         return true
     }
 
-    /// Authority of a chain or group executive (also the older group CEO). `kind` is md, ceo56, region, chainmgr or gceo.
+    /// Budget of a chain or group executive (`authority` 0 tight, 1 normal, 2 free). The old spending limit is the preset's now, so `buy` is ignored.
     public static func setExecutiveAuthority(_ s: inout GameState, level: ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, authority: Int? = nil, buy: Double? = nil) {
-        func patch(_ r: inout JSONValue) {
-            if let a = authority { r["lvl"] = .number(Double(min(2, max(0, a)))) }
-            if let b = buy { r["buy"] = .number(b) }
-        }
-        switch level {
-        case .md: var m = s.rest["org56"]?["md"] ?? .null; guard !m.isNull else { return }; patch(&m); s.rest["org56"] = (s.rest["org56"] ?? .object([:])).with("md", m)
-        case .ceo56:
-            guard let id = chainID, var ch = Chains.chain(s, id: id), !ch["ceo56"].isNull else { return }
-            var c = ch["ceo56"]; patch(&c); ch["ceo56"] = c; Chains.save(&s, ch)
-        default:
-            updateGroup(&s) { g in
-                var l = g["regional"].array
-                if let k = l.firstIndex(where: { $0["id"].int == regionalID }) { patch(&l[k]); g["regional"] = .array(l) }
-            }
-        }
+        guard let a = authority else { return }
+        setExecutiveBudget(&s, level: level, chainID: chainID, regionalID: regionalID, budget: Budget(rawValue: min(2, max(0, a))) ?? .normal)
     }
 
     /// How much the group may decide before it comes to you. Original: `ACT.setbig`.

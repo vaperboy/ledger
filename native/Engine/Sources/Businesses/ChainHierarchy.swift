@@ -79,15 +79,15 @@ extension ManagerModel {
         let h = co.monthlyHistory.suffix(3)
         let prof = h.isEmpty ? 0 : h.reduce(0) { $0 + $1.profit } / 3
         switch dp.kind {
-        case "hire", "eq", "veh", "space": return over >= 1.2 && u >= 0.9 ? 1 : (over < 0.95 || u < 0.75 ? -1 : 0)
+        case "eq", "veh", "space": return over >= 1.2 && u >= 0.9 ? 1 : (over < 0.95 || u < 0.75 ? -1 : 0)
         case "cut": return u < 0.5 && prof < 0 ? 1 : (u > 0.7 ? -1 : 0)
         case "ad": return co.awareness < 20 && co.cash > 0 ? 1 : 0
         default: return 0
         }
     }
-    static let proposalWhy: [String: String] = ["hire": "customers are being turned away and people are the limit", "eq": "the equipment is full and customers wait", "veh": "every vehicle is busy",
+    static let proposalWhy: [String: String] = ["eq": "the equipment is full and customers wait", "veh": "every vehicle is busy",
                                                 "space": "the place is too small for the customers it gets", "cut": "the team has too little to do", "ad": "too few people know the store"]
-    static let proposalNo: [String: String] = ["hire": "there is not enough work for one more", "eq": "what we have is not full yet", "veh": "the vehicles are not all busy",
+    static let proposalNo: [String: String] = ["eq": "what we have is not full yet", "veh": "the vehicles are not all busy",
                                                "space": "there is room in the place we have", "cut": "the team is busy enough", "ad": "the money is better kept for now"]
 
     /// The boss above the manager judges a request first. True when they dealt with it; false when it comes to you (with their view in `view`).
@@ -98,28 +98,24 @@ extension ManagerModel {
         guard let boss = L.first else { return false }
         let cur = World(state: s, data: data).currency(co)
         let who = "\(boss.name) (\(titleFor(co, kind: boss.kind, data: data, state: s)))"
-        let cost = dp.kind == "hire" ? dp.cost / 12 : dp.cost
-        let inBudget = boss.level >= 2 || (boss.level >= 1 && cost <= boss.buy)
-        var afford = affordable
-        let title = dp.kind == "hire" ? "hire a \(data.catalog.tables.roles[dp.role]?.name.lowercased() ?? "person") at \(co.name)" : dp.kind == "eq" ? "buy equipment for \(co.name)"
+        let inBudget = boss.decides(dp.cost)
+        let title = dp.kind == "eq" ? "buy equipment for \(co.name)"
             : dp.kind == "veh" ? "add a vehicle at \(co.name)" : dp.kind == "space" ? "expand the premises of \(co.name)" : dp.kind == "cut" ? "reduce staffing at \(co.name)" : dp.kind == "ad" ? "start advertising at \(co.name)" : "cash at \(co.name)"
-        if dp.kind == "cash" || (dp.kind == "hire" && !affordable) {
-            let need = dp.kind == "cash" ? max(cur.scaledPrice(50000), weekCost(s, co, data: data) * 6 - co.cash) : hireShort(s, co, cost: dp.cost, data: data)
-            if need > 0, let from = sisterCash(&s, to: co, need: need, data: data) {
-                s.note("\(who) moved \(cur.short(need)) from \(from.name) to \(co.name) as a group loan\(dp.kind == "hire" ? ", so the hire can go ahead." : ".")", tone: "n", companyID: co.id)
-                if dp.kind == "cash" { return true }
-                afford = true
-            } else if dp.kind == "cash" { return false }
+        if dp.kind == "cash" {
+            let need = max(cur.scaledPrice(50000), weekCost(s, co, data: data) * 6 - co.cash)
+            guard let from = sisterCash(&s, to: co, need: need, data: data) else { return false }
+            s.note("\(who) moved \(cur.short(need)) from \(from.name) to \(co.name) as a group loan.", tone: "n", companyID: co.id)
+            return true
         }
         let m = merit(s, co, dp)
         let cap = { (t: String) in t.prefix(1).uppercased() + t.dropFirst() }
         if m < 0 { s.note("\(who) said no to \(n.name): \(title). \(cap(proposalNo[dp.kind] ?? "not now")).", tone: "n", companyID: co.id); return true }
-        if inBudget && afford {
+        if inBudget && affordable {
             exec(&s, ci, dp, n, quality(s.companies[ci], data.catalog[co.type]!, people: s.people), data: data)
             s.note("\(who) approved: \(title). \(cap(m > 0 ? proposalWhy[dp.kind] ?? "" : "a close call, but the store can afford it and it should grow")).", tone: "n", companyID: co.id)
             return true
         }
-        if inBudget && !afford { s.note("\(who) put off \(title) until \(co.name) has the cash.", tone: "n", companyID: co.id); return true }
+        if inBudget && !affordable { s.note("\(who) put off \(title) until \(co.name) has the cash.", tone: "n", companyID: co.id); return true }
         if m <= 0 { s.note("\(who) said no to \(title): above their budget and not clearly worth it.", tone: "n", companyID: co.id); return true }
         view = "\(boss.name) recommends it: \(proposalWhy[dp.kind] ?? "")\(inBudget ? "" : ", but it is above the budget you gave them")."
         return false
@@ -201,7 +197,7 @@ extension ManagerModel {
         let L = decisionChain(s, co, data: data)
         let i = L.firstIndex { $0.kind == from } ?? 0
         let up = Array(L.dropFirst(i + 1))
-        if let b = up.first(where: { $0.level >= 2 || ($0.level >= 1 && cost <= $0.buy) }) {
+        if let b = up.first(where: { $0.decides(cost) }) {
             runOrganisation(&s, .object(action), data: data, context: fc)
             s.note("\(b.name) (\(titleFor(co, kind: b.kind, data: data, state: s))) approved: \(title). \(why)", tone: "n", companyID: co.id)
             return
@@ -234,7 +230,7 @@ extension ManagerModel {
             if x > 1000 { parts[st.id] = x; need -= x }
         }
         if need > 1000 { return nil }
-        if case .success(let id) = Chains.openStore(&s, chainID: chainID, cityID: cityID, size: 1, data: data, context: fc, fundedBy: parts) {
+        if case .success(let id) = ChainLocations.open(&s, chainID: chainID, cityID: cityID, size: 1, data: data, context: fc, fundedBy: parts) {
             s.note("\(s.company(id)?.name ?? "A new store") opens in about three weeks.", tone: "good", companyID: id)
             return id
         }
@@ -250,7 +246,7 @@ extension ManagerModel {
             let cost = cur.roundedStep(cur.scaledPrice(450) * Double(max(1, co.staff.count)), about: 100)
             if co.cash < cost * 3 { continue }
             if let i = s.companyIndex(co.id) { s.companies[i].set("org56c", s.week) }
-            if co.managerID != nil, co.value("auth")["lvl"].double >= 1, cost <= co.value("auth")["buy"].double {
+            if co.managerID != nil, withinBudget(co, amount: cost, s, data: data) {
                 runOrganisation(&s, .object(["a": "course", "co": .number(Double(co.id)), "cost": .number(cost)]), data: data, context: fc)
                 s.note("\(s.people[co.value("asst")["npc"].int]?.name ?? "The assistant") (assistant) booked a course for the team at \(co.name), approved by \(s.people[co.managerID!]?.name ?? "the manager"): service had slipped.", tone: "n", companyID: co.id)
             }

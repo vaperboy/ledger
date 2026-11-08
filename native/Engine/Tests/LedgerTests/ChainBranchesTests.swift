@@ -16,7 +16,7 @@ final class ChainBranchesTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(a) { s.companies[i].set("mgr", 0) } }
         let id = try XCTUnwrap(e.makeChain(companyID: a, name: "Test Cafe"))
         XCTAssertFalse(e.isBranch(companyID: a), "a chain of one store is just the company")
-        guard case .success(let b) = e.openChainStore(chainID: id, cityID: e.state.player.cityID, size: 1) else { throw XCTSkip("store not opened") }
+        guard case .success(let b) = e.openLocation(chainID: id, cityID: e.state.player.cityID) else { throw XCTSkip("store not opened") }
         _ = e.openCompany(companyID: b)
         XCTAssertTrue(e.isBranch(companyID: a) && e.isBranch(companyID: b))
         return (e, id, a, b)
@@ -50,7 +50,7 @@ final class ChainBranchesTests: XCTestCase {
         XCTAssertEqual(e.payDividend(companyID: b, amount: amount), .ok)
         let paid = [a, b].compactMap { e.state.company($0)?.distributed }.reduce(0, +)
         XCTAssertEqual(paid, amount, accuracy: 1)
-        XCTAssertEqual(e.state.cash - me0, amount * (e.state.company(a)?.ownership ?? 100) / 100, accuracy: 1)
+        XCTAssertEqual(e.state.cash - me0 + e.state.tax.paidDividend, amount * (e.state.company(a)?.ownership ?? 100) / 100, accuracy: 1, "your share, less the dividend tax withheld")
         XCTAssertEqual(e.payDividend(companyID: a, amount: m), .noRetainedProfit, "the rest of the chain's retained profit is what is left")
         balanced(e, "chain dividend")
     }

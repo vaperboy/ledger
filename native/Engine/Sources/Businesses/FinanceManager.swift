@@ -121,7 +121,7 @@ public enum FinanceManager {
         return true
     }
 
-    /// Take money out. A gain is taxed as a capital gain at year end. Original: `fmWithdraw`.
+    /// Take money out. A gain is taxed as a capital gain when it is taken out (the weekly sweep pays it). Original: `fmWithdraw`.
     @discardableResult
     public static func withdraw(_ s: inout GameState, amount: Double) -> Bool {
         guard var f = s.rest["fm"], !f.isNull, f["bal"].double > 0, amount > 0 else { return false }

@@ -4,8 +4,8 @@ import Finance
 import Businesses
 import Simulation
 
-/// Pins the "meet a counterpart" rule: supplier lunch, rival lunch, key-account dinner and the manager meeting. Each costs a set
-/// amount (scaled), can be repeated only after four weeks, and warms the relationship. Written against the four separate copies and
+/// Pins the "meet a counterpart" rule: supplier lunch, rival lunch and key-account dinner. Each costs a set
+/// amount (scaled), can be repeated only after four weeks, and warms the relationship. Written against the separate copies and
 /// kept green after they were merged into `CounterpartMeeting`.
 final class CounterpartMeetingTests: XCTestCase {
     private func game(_ country: String = "UK", seed: Int = 7) throws -> (GameEngine, Int) {
@@ -137,32 +137,6 @@ final class CounterpartMeetingTests: XCTestCase {
         XCTAssertEqual(e.state.cash, cash)
     }
 
-    // MARK: Manager meeting
-
-    private func gameWithManager() throws -> (GameEngine, Int) {
-        var (e, id) = try game()
-        let cands = try XCTUnwrap(e.searchManagers(companyID: id))
-        XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.2), .ok)
-        return (e, id)
-    }
-
-    func testManagerMeetingIsFreeAndWaitsFourWeeks() throws {
-        var (e, id) = try gameWithManager()
-        let cash0 = e.state.cash, inbox0 = e.state.inbox.count, comp0 = e.state.company(id)!.cash
-        let wk = e.state.week
-        XCTAssertTrue(e.meetManager(companyID: id))
-        XCTAssertEqual(e.state.cash, cash0); XCTAssertEqual(e.state.company(id)!.cash, comp0)
-        XCTAssertEqual(e.state.inbox.count, inbox0 + 1)
-        XCTAssertEqual(e.state.inbox.last?.title, "Re: \(e.state.company(id)!.name)")
-        XCTAssertEqual(e.state.company(id)!.value("meetW").int, wk)
-        XCTAssertFalse(e.meetManager(companyID: id))
-        setWeek(&e, 3); XCTAssertFalse(e.meetManager(companyID: id))
-        setWeek(&e, 1); XCTAssertTrue(e.meetManager(companyID: id))
-        var e2 = try game()
-        XCTAssertFalse(e2.0.meetManager(companyID: e2.1), "no manager")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
     /// A fifth copy of the cool-down must not appear: the meeting files compare the last-meeting week only through `CounterpartMeeting`.
     func testNoHandWrittenMeetingCoolDown() throws {
         let dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Businesses")
@@ -174,14 +148,5 @@ final class CounterpartMeetingTests: XCTestCase {
             }
         }
         XCTAssertTrue(hits.isEmpty, "Use CounterpartMeeting.isCoolingDown / meet instead: \(hits)")
-    }
-
-    /// The board "call a meeting" uses a three-week cool-down on the same stamp (original: `callMeeting`), not four.
-    func testCallMeetingCoolDownIsThreeWeeks() throws {
-        var (e, id) = try gameWithManager()
-        XCTAssertEqual(e.callMeeting(companyID: id, goal: "review", tone: "casual"), .ok(1))
-        XCTAssertEqual(e.callMeeting(companyID: id, goal: "review", tone: "casual"), .wait)
-        setWeek(&e, 2); XCTAssertEqual(e.callMeeting(companyID: id, goal: "review", tone: "casual"), .wait)
-        setWeek(&e, 1); XCTAssertEqual(e.callMeeting(companyID: id, goal: "review", tone: "casual"), .ok(1))
     }
 }

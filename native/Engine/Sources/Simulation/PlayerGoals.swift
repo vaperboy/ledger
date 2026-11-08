@@ -4,9 +4,8 @@ import Countries
 import Finance
 import Businesses
 
-/// The player's own goals and how they are tracked: the daily goal with its streak, the first-steps checklist, and the
-/// (Ambitions live in Businesses/Ambitions.swift.) State lives in `rest["dy59"]`, `rest["fs58"]`.
-/// Originals: features/player/daily_goals.js (`DY59`), first_steps.js (`FS58`), ambitions.js (`R27` amb).
+/// The player's own goals: the ten-goal ladder (the one teaching spine) and the daily goal, a streak badge that pays nothing.
+/// (Ambitions live in Businesses/Ambitions.swift.) State lives in `rest["ldr"]` and `rest["dy59"]`.
 public enum PlayerGoals {
     // MARK: Shared facts
 
@@ -16,11 +15,11 @@ public enum PlayerGoals {
 
     // MARK: Daily goal
 
+    /// Today's goal and the streak it keeps. There is no cash: the badge counts days in a row.
     public struct DailyGoal: Equatable, Sendable {
         public var id: String, title: String, progress: String
-        public var done: Bool, claimed: Bool
-        public var reward: Double
-        /// Days in a row including today once claimed.
+        public var done: Bool
+        /// Days in a row, counting today once the goal is done.
         public var streak: Int
         /// Where today's goal is done (a `GameStore.openLadderLink` key).
         public var link: String { ["start": "newCompany", "weeks": "inbox", "hire": "hire", "cmp": "customers", "grow": "money"][id] ?? "" }
@@ -62,7 +61,8 @@ public enum PlayerGoals {
         }
     }
 
-    /// Today's goal; a new one is picked when the real day changes. `today` and `yesterday` are "yyyy-m-d" (the phone's own date).
+    /// Today's goal; a new one is picked when the real day changes, and the streak grows the first time it is seen done.
+    /// `today` and `yesterday` are "yyyy-m-d" (the phone's own date).
     public static func dailyGoal(_ s: inout GameState, today: String, yesterday: String, data: GameData, currency cur: Currency) -> DailyGoal? {
         if dailyGoalsOff(s) { return nil }
         var d = s.rest["dy59"] ?? .object(["streak": 0, "last": ""])
@@ -77,13 +77,18 @@ public enum PlayerGoals {
         }
         let id = d["k"].string
         guard let g = dailyIDs.first(where: { $0.id == id }) ?? dailyIDs.first(where: { $0.id == "grow" }) else { return nil }
-        let streak = d["last"].string == yesterday || d["last"].string == today ? d["streak"].int : 0
-        let reward = cur.roundedStep(max(cur.scaledPrice(2500), nw * 0.0005) * Double(min(7, streak + 1)), about: 500)
-        return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, cur), done: dailyDone(g.id, d["b"], s, nw: nw),
-                         claimed: d["got"].int != 0, reward: reward, streak: streak)
+        var streak = d["last"].string == yesterday || d["last"].string == today ? d["streak"].int : 0
+        let counted = d["got"].int != 0
+        let done = counted || dailyDone(g.id, d["b"], s, nw: nw)
+        if done && !counted {
+            streak += 1
+            d["streak"] = .number(Double(streak)); d["last"] = .string(today); d["got"] = 1
+            s.rest["dy59"] = d
+        }
+        return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, cur), done: done, streak: streak)
     }
 
-    /// Missions are optional: a player who turns them off sees no daily goal, no popup and no reward prompt. The key exists only once it was set.
+    /// Missions are optional: a player who turns them off sees no daily goal. The key exists only once it was set.
     public static func dailyGoalsOff(_ s: GameState) -> Bool { (s.rest["dy59"]?["off"].int ?? 0) != 0 }
 
     public static func setDailyGoalsOff(_ s: inout GameState, _ off: Bool) {
@@ -92,79 +97,12 @@ public enum PlayerGoals {
         s.rest["dy59"] = d
     }
 
-    static let announcedDaily: Set<String> = ["cmp", "grow"]
-
-    /// Queues a celebration the first time today's goal is done (its reward still has to be claimed in Goals). Returns true when one was queued.
-    @discardableResult
-    public static func announceDailyGoal(_ s: inout GameState, today: String, yesterday: String, data: GameData, currency cur: Currency) -> Bool {
-        guard let g = dailyGoal(&s, today: today, yesterday: yesterday, data: data, currency: cur), g.done, !g.claimed else { return false }
-        // Only goals that ask for a result are announced; setup goals and plain waiting stay quiet (still claimable in Goals).
-        guard announcedDaily.contains(g.id) else { return false }
-        var d = s.rest["dy59"] ?? .object([:])
-        if d["said"].string == today { return false }
-        d["said"] = .string(today)
-        s.rest["dy59"] = d
-        Celebrations.add(&s, kind: "mission", title: g.title, detail: "Today's goal is done", reward: "Reward " + cur.display(g.reward), art: "mission.daily", tier: 1)
-        return true
-    }
-
-    /// Only steps that show a result get a popup: a profitable month, and a manager once a quarter has paid. Setup steps (company, hire, opening, report, prices, ad, answer, pay) stay on the checklist, quietly.
-    static func stepCelebrates(_ id: String, _ s: GameState) -> Bool {
-        switch id {
-        case "profit": return true
-        case "mgr": return stepsLive(s).contains { c in c.managerID != nil && c.monthlyHistory.suffix(3).count == 3 && c.monthlyHistory.suffix(3).allSatisfy { $0.profit > 0 } }
-        default: return false
-        }
-    }
-
-    /// Queues a celebration for each first step that has just been finished (once each; hidden checklists stay quiet).
-    public static func announceFirstSteps(_ s: inout GameState) {
-        guard var st = s.rest["fs58"], st["off"].int == 0 else { return }
-        var said = st["said"]
-        if said.isNull { said = .object([:]) }
-        var changed = false
-        for step in stepList where st["got"][step.id].isNull && said[step.id].isNull && stepDone(step.id, s) && stepCelebrates(step.id, s) {
-            said[step.id] = .number(Double(s.week))
-            Celebrations.add(&s, kind: "goal", title: step.title, detail: "First step done", reward: step.reward, art: "goal." + step.id, tier: 1)
-            changed = true
-        }
-        if changed { st["said"] = said; s.rest["fs58"] = st }
-    }
-
-    /// Claim the daily reward. Original: `ACT.dy59claim`.
-    @discardableResult
-    public static func claimDailyGoal(_ s: inout GameState, today: String, yesterday: String, data: GameData, currency cur: Currency) -> Double? {
-        guard let g = dailyGoal(&s, today: today, yesterday: yesterday, data: data, currency: cur), g.done, !g.claimed else { return nil }
-        var d = s.rest["dy59"] ?? .object([:])
-        d["streak"] = .number(Double(g.streak + 1)); d["last"] = .string(today); d["got"] = 1
-        s.rest["dy59"] = d
-        Payments.playerReceives(&s, g.reward, label: "Daily goal reached")
-        return g.reward
-    }
-
-    // MARK: First steps
-
-    public struct FirstStep: Equatable, Sendable {
-        public var id: String, title: String, how: String, reward: String
-        public var done: Bool, claimed: Bool
-    }
-
-    static let stepList: [(id: String, title: String, how: String, reward: String)] = [
-        ("co", "Start a business", "New company: pick a trade. The small ones are cheap to start.", "A start-up grant from the town"),
-        ("staff", "Hire your first worker", "In the company: Manage, Find workers. Check what they claim before you hire.", "The job centre pays a month of payroll tax"),
-        ("open", "Open the doors", "Papers, premises, equipment and people in place: it opens by itself.", "The local paper writes about you"),
-        ("week", "Read your week report", "Play until the week ends; the report shows what happened and where the money went.", "The bank likes what it sees"),
-        ("sell", "Choose how you sell", "Sales: who you are for, and what else you offer. Or set your prices.", "Word gets around"),
-        ("ad", "Run an ad", "Sales, Marketing: even a small campaign brings people in.", "The ad agency refunds your first week"),
-        ("inbox", "Answer a decision", "Inbox: problems and offers wait there for your answer.", "People learn they can count on you"),
-        ("pay", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Your accountant's first month is free"),
-        ("profit", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Better terms from the bank"),
-        ("mgr", "Hire a manager or an assistant", "Manage, Management: they run it day to day while you grow.", "The agency waives its fee"),
-    ]
+    // MARK: Facts the ladder reads
 
     static func stepsLive(_ s: GameState) -> [Company] { s.companies.filter { $0.status.isLive && $0.type != "hold" } }
 
-    static func stepDone(_ id: String, _ s: GameState) -> Bool {
+    /// Has the player done this early thing? Ids: co, staff, open, week, sell, ad, inbox, pay, profit, mgr. The ladder goals are built on these.
+    public static func stepDone(_ id: String, _ s: GameState) -> Bool {
         let L = stepsLive(s)
         switch id {
         case "co": return !L.isEmpty
@@ -182,46 +120,6 @@ public enum PlayerGoals {
         }
     }
 
-    /// Start the checklist on a new game (older saves do not get it). Original: `FS58.start`.
-    public static func startFirstSteps(_ s: inout GameState) { s.rest["fs58"] = .object(["got": .object([:]), "off": 0, "w0": .number(Double(s.week))]) }
-
-    public static func firstSteps(_ s: GameState) -> [FirstStep]? {
-        guard let st = s.rest["fs58"] else { return nil }
-        return stepList.map { FirstStep(id: $0.id, title: $0.title, how: $0.how, reward: $0.reward, done: stepDone($0.id, s), claimed: !st["got"][$0.id].isNull) }
-    }
-    public static func firstStepsHidden(_ s: GameState) -> Bool { s.rest["ldr"] != nil || s.rest["fs58"]?["off"].int ?? 1 != 0 }
-
-    /// Claim the reward of a finished step; returns the line to show. Original: `FS58.claim`, `ACT.fs58claim`.
-    public static func claimFirstStep(_ s: inout GameState, id: String, currency cur: Currency) -> String? {
-        guard var st = s.rest["fs58"], st["got"][id].isNull, stepList.contains(where: { $0.id == id }), stepDone(id, s) else { return nil }
-        var got = st["got"]; got[id] = .object(["w": .number(Double(s.week))]); st["got"] = got; s.rest["fs58"] = st
-        func cash(_ v: Double, _ why: String) -> String { let a = cur.scaledPrice(v); Payments.playerReceives(&s, a, label: why); return cur.display(a) }
-        func each(_ f: (inout Company) -> Void) { for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].type != "hold" { f(&s.companies[i]) } }
-        switch id {
-        case "co": return "The town gives new businesses a small grant: \(cash(25000, "Start-up grant from the town"))."
-        case "staff": return "The job centre pays a month of payroll tax for your first hire: \(cash(6000, "Job centre: first hire"))."
-        case "open":
-            var name = "you"
-            if let i = s.companies.firstIndex(where: { $0.status == .open && $0.type != "hold" }) { s.companies[i].awareness = min(100, s.companies[i].awareness + 8); name = s.companies[i].name }
-            return "The local paper writes about \(name): more people know the name."
-        case "week": s.credit = min(100, s.credit + 3); return "The bank likes a good start: your credit score is a little better."
-        case "sell":
-            if let i = s.companies.firstIndex(where: { $0.status.isLive && $0.type != "hold" && ($0.priceLevel != 0 || $0.value("knob").object.values.contains { $0.double != 0 }) }) { s.companies[i].awareness = min(100, s.companies[i].awareness + 5) }
-            return "People talk about what you offer: more of them know the name."
-        case "ad": return "The ad agency refunds your first week: \(cash(3000, "Ad agency: first week refunded"))."
-        case "inbox": each { $0.reputation = min(100, $0.reputation + 1) }; return "People learn they can count on you: a little better reputation."
-        case "pay": return "Your accountant waives the first month: \(cash(2500, "Accountant: first month free"))."
-        case "profit": s.credit = min(100, s.credit + 5); return "A profitable month: the bank offers you better terms."
-        default: return "The recruitment agency waives its fee for your first hire: \(cash(15000, "Recruitment agency: fee waived"))."
-        }
-    }
-
-    public static func setFirstStepsHidden(_ s: inout GameState, _ hidden: Bool) {
-        guard var st = s.rest["fs58"] else { return }
-        st["off"] = hidden ? 1 : 0
-        s.rest["fs58"] = st
-    }
-
     // MARK: Ladder M1 to M10
 
     /// One goal of the linear ladder: the spine of the first 90 days. Exactly one is open at a time.
@@ -231,25 +129,28 @@ public enum PlayerGoals {
         public var button: String, link: String
         /// Sentence for the week report when the goal finishes in the period ("You hired your first worker.").
         public var pastTense: String
+        /// What finishing the goal changes, in words ("" when it changes nothing).
         public var reward: String
         public var done: Bool
     }
 
-    static let ladderList: [(id: String, title: String, body: String, button: String, link: String, past: String, reward: String, step: String)] = [
-        ("M1", "Get through your first week", "Tap Next day. Each day trades, each week ends with a report.", "", "", "You got through your first week.", "The bank likes a good start: credit score up", "week"),
-        ("M2", "Choose how you sell", "Pick who you are for and what else you offer.", "Open sales", "sales", "You chose how you sell.", "The local paper writes about you", "open"),
-        ("M3", "Hire your first worker", "Check what they claim before you hire.", "Find workers", "hire", "You hired your first worker.", "The job centre pays a month of payroll tax", "staff"),
-        ("M4", "Answer a decision", "Problems and offers wait in the Inbox for your answer.", "Open Inbox", "inbox", "You answered your first decision.", "Accountant: first month free", "pay"),
-        ("M5", "Word gets around", "Even a small campaign brings people in.", "Open marketing", "marketing", "Your first campaign ran.", "The ad agency refunds your first week", "ad"),
-        ("M6", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Open money", "money", "You paid yourself.", "A start-up grant from the town", "co"),
-        ("M7", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Open company", "company", "Your first profitable month.", "Better terms from the bank", "profit"),
-        ("M8", "Hire a manager", "They run it day to day while you grow.", "Open management", "management", "You hired a manager.", "The agency waives its fee", "mgr"),
-        ("M9", "Open a second company", "Pick a trade and see the full start-up cost before you decide.", "New company", "newCompany", "You opened a second company.", "World ranking unlocks", ""),
-        ("M10", "Survive a bad week", "Something will go wrong. Keep the lights on.", "Open Inbox", "inbox", "You survived a bad week.", "Insurance: first premium free", ""),
+    /// Weeks after M9 when M10 completes by itself if no bad week came: the player has kept the lights on all that time.
+    public static let quietWeeksForM10 = 12
+
+    static let ladderList: [(id: String, title: String, body: String, button: String, link: String, past: String, reward: String)] = [
+        ("M1", "Get through your first week", "Tap Next day. Each day trades, each week ends with a report.", "", "", "You got through your first week.", "Your credit score goes up a little"),
+        ("M2", "Choose how you sell", "Pick who you are for and what else you offer.", "Open sales", "sales", "You chose how you sell.", "More people know the name"),
+        ("M3", "Hire your first worker", "Check what they claim before you hire.", "Find workers", "hire", "You hired your first worker.", "A better name as an employer"),
+        ("M4", "Answer a decision", "Problems and offers wait in the Inbox for your answer.", "Open Inbox", "inbox", "You answered your first decision.", "A little better reputation"),
+        ("M5", "Word gets around", "Even a small campaign brings people in.", "Open marketing", "marketing", "Your first campaign ran.", ""),
+        ("M6", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Open money", "money", "You paid yourself.", ""),
+        ("M7", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Open company", "company", "Your first profitable month.", "Your credit score goes up, and you can choose an ambition"),
+        ("M8", "Hire a manager", "They run it day to day while you grow.", "Open management", "management", "You hired a manager.", "A better reputation"),
+        ("M9", "Open a second company", "Pick a trade and see the full start-up cost before you decide.", "New company", "newCompany", "You opened a second company.", "World ranking unlocks"),
+        ("M10", "Survive a bad week", "Something will go wrong. Keep the lights on.", "", "", "You survived a bad week.", "Your credit score goes up a little"),
     ]
 
     /// Start the ladder on a new game (older saves have none and nothing is gated). Adds `rest["ldr"]` = { done: { "M1": week, ... } }.
-    /// The old first-steps checklist is not shown while the ladder runs (`firstStepsHidden`), so no reward is offered twice.
     public static func startLadder(_ s: inout GameState) { s.rest["ldr"] = .object(["done": .object([:])]) }
 
     /// Is this ladder goal's condition met right now? (The ladder only looks at the open one, so earlier work counts.)
@@ -265,6 +166,9 @@ public enum PlayerGoals {
         case "M8": return stepDone("mgr", s)
         case "M9": return stepsLive(s).count >= 2
         case "M10":
+            // Nothing else waits on this goal: it finishes when a bad week was survived, or on its own once enough quiet weeks have passed.
+            let since: Int = s.rest["ldr"]?["done"]["M9"]["w"].int ?? s.week
+            if s.week >= since + quietWeeksForM10 { return true }
             // A bad event that cost money in a closed week, and every company still has money in the bank two weeks later.
             let weeks = Reports.stored(s, .week)
             guard let hit = weeks.first(where: { r in r.group.events.contains { $0.tone == "bad" } && r.group.pnl.fines + r.group.pnl.losses > 0 }) else { return false }
@@ -279,8 +183,8 @@ public enum PlayerGoals {
         return ladderList.map { LadderGoal(id: $0.id, title: $0.title, body: $0.body, button: $0.button, link: $0.link, pastTense: $0.past, reward: $0.reward, done: !l["done"][$0.id].isNull) }
     }
 
-    /// The one open goal; nil after M10 (the guide card is gone) or without a ladder.
-    public static func currentLadderGoal(_ s: GameState) -> LadderGoal? { ladder(s)?.first { !$0.done } }
+    /// The one open goal; nil after M9 (M10 finishes quietly in the background, so no card asks for it) or without a ladder.
+    public static func currentLadderGoal(_ s: GameState) -> LadderGoal? { ladder(s)?.first { !$0.done && $0.id != "M10" } }
 
     /// The past tense of the first goal finished in the weeks `first...last` (for the story sentence of a report), nil if none.
     public static func ladderPastTense(_ s: GameState, firstWeek: Int, lastWeek: Int) -> String? {
@@ -289,7 +193,7 @@ public enum PlayerGoals {
         return hit.first?.past
     }
 
-    /// Finish every goal whose turn has come and whose condition holds (several can fall at once), pay its reward once. Returns the ids finished.
+    /// Finish every goal whose turn has come and whose condition holds (several can fall at once), apply its reward once. Returns the ids finished.
     @discardableResult
     public static func ladderSweep(_ s: inout GameState, currency cur: Currency) -> [String] {
         guard s.rest["ldr"] != nil else { return [] }
@@ -299,41 +203,44 @@ public enum PlayerGoals {
             var l = s.rest["ldr"] ?? .object([:])
             var d = l["done"]; d[g.id] = .object(["w": .number(Double(s.week))]); l["done"] = d
             s.rest["ldr"] = l
-            let paid: String = ladderReward(&s, g.id, cur)
-            s.note(paid, tone: "good")
+            let line: String = ladderReward(&s, g.id, cur)
+            if !line.isEmpty { s.note(line, tone: "good") }
             Celebrations.add(&s, kind: "goal", title: g.title, detail: g.past, reward: g.reward, art: "goal." + g.id, tier: 1)   // a goal completion celebrates
             finished.append(g.id)
         }
         return finished
     }
 
-    /// Pays the reward of a finished goal and returns the line for the report. Values are those of the first steps they replace.
+    /// Applies the reward of a finished goal and returns the line for the report ("" when the goal changes nothing). Rewards are real
+    /// consequences (credit score, reputation, awareness, an opened feature), never cash.
     public static func ladderReward(_ s: inout GameState, _ id: String, _ cur: Currency) -> String {
-        func cash(_ v: Double, _ why: String) -> String { let a = cur.scaledPrice(v); Payments.playerReceives(&s, a, label: why); return cur.display(a) }
+        func each(_ f: (inout Company) -> Void) { for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].type != "hold" { f(&s.companies[i]) } }
         switch id {
         case "M1": s.credit = min(100, s.credit + 3); return "The bank likes a good start: your credit score is a little better."
         case "M2":
             var name = "you"
             if let i = s.companies.firstIndex(where: { $0.status.isLive && $0.type != "hold" }) { s.companies[i].awareness = min(100, s.companies[i].awareness + 8); name = s.companies[i].name }
             return "The local paper writes about \(name): more people know the name."
-        case "M3": return "The job centre pays a month of payroll tax for your first hire: \(cash(6000, "Job centre: first hire"))."
-        case "M4": return "Your accountant waives the first month: \(cash(2500, "Accountant: first month free"))."
-        case "M5": return "The ad agency refunds your first week: \(cash(3000, "Ad agency: first week refunded"))."
-        case "M6": return "The town gives new businesses a small grant: \(cash(25000, "Start-up grant from the town"))."
+        case "M3":
+            if let i = s.companies.firstIndex(where: { $0.status.isLive && $0.type != "hold" && !$0.staff.isEmpty }) { s.companies[i].reputation = min(100, s.companies[i].reputation + 2) }
+            return "Word gets round that you hire fairly: your reputation as an employer is a little better."
+        case "M4": each { $0.reputation = min(100, $0.reputation + 1) }; return "People learn they can count on you: a little better reputation."
         case "M7":
             s.credit = min(100, s.credit + 5)
-            var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l   // the ambition prompt may appear now
+            var l = s.rest["ldr"] ?? .object([:]); l["amb"] = 1; s.rest["ldr"] = l   // the ambition card may appear now
             return "A profitable month: the bank offers you better terms."
         case "M8":
+            each { $0.reputation = min(100, $0.reputation + 2) }
             var l = s.rest["ldr"] ?? .object([:]); l["classic"] = 1; s.rest["ldr"] = l   // the app turns this into `ledger.classicStartUnlocked`
-            return "The recruitment agency waives its fee for your first manager: \(cash(15000, "Recruitment agency: fee waived"))."
+            return "A company that runs without you looks steadier: customers and suppliers think better of it."
         case "M9":
             var l = s.rest["ldr"] ?? .object([:]); l["rank"] = 1; s.rest["ldr"] = l   // world ranking opens
             return "The world ranking is open to you."
-        default: return "Your insurer gives you the first premium free: \(cash(3000, "Insurance: first premium free"))."
+        case "M10": s.credit = min(100, s.credit + 3); return "Lenders see that you came through a hard stretch: your credit score is a little better."
+        default: return ""   // M5 and M6 are their own reward
         }
     }
 
-    /// A flag the ladder raised: "amb" (M7, ambition prompt), "classic" (M8, classic start) or "rank" (M9, world ranking).
+    /// A flag the ladder raised: "amb" (M7, ambition card), "classic" (M8, classic start) or "rank" (M9, world ranking).
     public static func ladderFlag(_ s: GameState, _ key: String) -> Bool { s.rest["ldr"].map { $0[key].int != 0 } ?? false }
 }

@@ -4,10 +4,10 @@ import Countries
 import Events
 import Simulation
 
-/// What the player must read or decide is a popup on the main screen: the notice queue (a serious problem, the outcome of an answer),
-/// a top-priority decision, the daily report, the week, month and year reports and the rewards. A refusal or a minor warning is a
-/// toast instead (`GameStore.show`). This view only REGISTERS the popups with the app's popup host (see `PopupHost`, `PopupPriority`):
-/// the host draws them, one at a time, in the order confirm, decision, alert (error, red alert, notice), report and daily, reward and
+/// What the player must read or decide is a popup on the main screen: the notice queue (a refusal or a serious problem), the outcome of
+/// an answered decision, a top-priority decision, the week, month and year reports and the rewards. An ordinary day is not a popup:
+/// Home shows it in `DayReportBar`. Plain information goes to its own page, never to a popup or banner. This view only REGISTERS the popups with the app's popup host (see `PopupHost`, `PopupPriority`):
+/// the host draws them, one at a time, in the order confirm, decision, alert (error, red alert, notice), report, reward and
 /// feature unlock, panel.
 struct PopupLayer: View {
     @EnvironmentObject var store: GameStore
@@ -27,14 +27,11 @@ struct PopupLayer: View {
             .hostedPopup(key: "notice-\(store.toast?.id.uuidString ?? "")", priority: .notice, active: store.toast != nil, onClose: { store.dismissNotice() }) {
                 if let n = store.toast { NoticePopup(notice: n).environmentObject(store) }
             }
+            .hostedPopup(key: "outcome-\(store.outcomes.first?.id.uuidString ?? "")", priority: .notice, active: !store.outcomes.isEmpty, onClose: { store.dismissOutcome() }) {
+                if let n = store.outcomes.first { OutcomePopup(note: n).environmentObject(store) }
+            }
             .hostedPopup(key: "report-\(store.reportSheet?.reportID ?? 0)", priority: .report, active: store.reportSheet != nil, onClose: { }) {
                 if let r = store.reportSheet { ReportDigestSheet(digest: r).environmentObject(store) }
-            }
-            .hostedPopup(key: "daily", priority: .report, active: store.dailySheet != nil && store.reportSheet == nil, onClose: { }) {
-                if let d = store.dailySheet { DailyReportPopup(digest: d).environmentObject(store) }
-            }
-            .hostedPopup(key: "ambition", priority: .report, active: store.ambitionPrompt, onClose: { }) {
-                AmbitionPrompt().environmentObject(store)
             }
             .hostedPopup(key: "celebration-\(store.celebrationQueue.first?.id ?? 0)", priority: .celebration, active: !store.celebrationQueue.isEmpty, onClose: { }) {
                 if let c = store.celebrationQueue.first { CelebrationPopup(item: c).environmentObject(store) }
@@ -83,7 +80,7 @@ struct NoticePopup: View {
     }
 
     var body: some View {
-        if notice.style == "answered" { answered } else if notice.style == "luxury" { luxury } else { plain }
+        if notice.style == "luxury" { luxury } else { plain }
     }
 
     /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
@@ -103,35 +100,6 @@ struct NoticePopup: View {
         }
     }
 
-    /// The result of an answered decision: a check, what was chosen, which company, and every change it made.
-    private var answered: some View {
-        GamePopup(title: "Done", showsClose: false, category: .compact, tone: .success, icon: "checkmark", onClose: { store.dismissNotice() }) {
-            PopupBody {
-                HStack(spacing: 10) {
-                    GlyphView(glyph: Glyph.check, size: 22, weight: 1.8, tint: Theme.gain)
-                        .frame(width: 40, height: 40).background(Circle().fill(Theme.gain.opacity(0.14)))
-                    VStack(alignment: .leading, spacing: PopupSpace.tight) {
-                        Text(notice.title).popupText(.title).fixedSize(horizontal: false, vertical: true)
-                        if !notice.subtitle.isEmpty { Text(notice.subtitle.tidyMoney).popupText(.subtitle) }
-                    }
-                }
-                if !notice.rows.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(notice.rows, id: \.self) { (line: String) in
-                            HStack(alignment: .firstTextBaseline, spacing: PopupSpace.row) {
-                                Circle().fill(Theme.gold).frame(width: 5, height: 5).offset(y: -2)
-                                Text(line.tidyMoney).popupText(.body)
-                            }
-                        }
-                    }
-                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.table, style: .continuous).fill(Theme.surface))
-                }
-                PopupOptionButton(title: "Done", highlighted: true, identifier: "notice-ok") { store.dismissNotice() }
-            }
-        }
-    }
-
     private var plain: some View {
         GamePopup(title: heading, showsClose: false, category: .compact, tone: .danger, icon: "exclamationmark.triangle", onClose: { store.dismissNotice() }) {
             PopupBody {
@@ -142,8 +110,31 @@ struct NoticePopup: View {
     }
 }
 
+/// The one small popup after a decision was answered or an action confirmed: what was chosen and what came of it, one OK. Fed by
+/// `GameStore.outcome(chosen:result:)`; queued, so only one shows at a time.
+struct OutcomePopup: View {
+    @EnvironmentObject var store: GameStore
+    var note: OutcomeNote
+
+    /// "Done: X" already says what was chosen, so the chosen line is left out then.
+    private var showsChoice: Bool { note.result != "Done: " + note.chosen }
+    private var lines: [String] { note.result.split(separator: "\n").map { String($0) } }
+
+    var body: some View {
+        GamePopup(title: "Done", showsClose: false, category: .compact, tone: .success, icon: "checkmark", onClose: { store.dismissOutcome() }) {
+            PopupBody {
+                if showsChoice { Text("You chose: " + note.chosen).popupText(.title).fixedSize(horizontal: false, vertical: true) }
+                ForEach(Array(lines.enumerated()), id: \.offset) { (pair: (offset: Int, element: String)) in
+                    Text(pair.element.tidyMoney).popupText(.body).fixedSize(horizontal: false, vertical: true)
+                }
+                PopupOptionButton(title: "OK", highlighted: true, identifier: "outcome-ok") { store.dismissOutcome() }
+            }
+        }
+    }
+}
+
 /// A decision from Home's Needs you, answered where the player is: the message, every option with what it does, and the same
-/// "Are you sure" rule as the Inbox. The result is a toast, so a routine answer is two taps (the row, then the option).
+/// "Are you sure" rule as the Inbox. The outcome is one small popup after it.
 struct DecisionPopup: View {
     @EnvironmentObject var store: GameStore
     var messageID: Int
@@ -215,19 +206,14 @@ struct DecisionPopup: View {
     }
 
     private func send(_ e: GameEngine, _ m: Message, _ index: Int, _ label: String) {
-        let effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
+        var effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
+        if effects.isEmpty, m.options.indices.contains(index) {
+            let d: String = e.displayText(m.options[index]["d"].string, companyID: m.companyID)
+            if !d.isEmpty { effects = [d] }
+        }
         let ok: Bool = store.act { $0.answer(messageID: m.id, option: index) } ?? false
         store.decisionPopup = nil
-        store.toastAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
-    }
-}
-
-extension GameStore {
-    /// An answered decision is told in one toast (what was chosen and its first effect) that needs no tap; a failed one stays a popup.
-    func toastAnswer(label: String, effects: [String], ok: Bool, messageTitle: String, companyID: Int) {
-        guard ok else { announceAnswer(label: label, effects: effects, ok: false, messageTitle: messageTitle, companyID: companyID); return }
-        Haptics.success()
-        show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
+        store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
     }
 }
 

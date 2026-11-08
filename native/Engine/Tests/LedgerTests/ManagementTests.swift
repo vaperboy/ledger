@@ -25,8 +25,8 @@ final class ManagementTests: XCTestCase {
         XCTAssertEqual(e.state.company(id)?.managerID, pick.id)
         XCTAssertEqual(e.state.company(id)?.ownerHours, 0)
         XCTAssertEqual(e.hireManager(personID: pick.id, companyID: id, monthlyWage: 1), .taken)
-        e.setManagerAuthority(companyID: id, level: 2)
-        XCTAssertEqual(e.state.company(id)?.value("auth")["lvl"].int, 2)
+        e.setManagerBudget(companyID: id, budget: .free)
+        XCTAssertEqual(e.state.company(id).map { ManagerModel.budget(of: $0) }, .free)
         XCTAssertNotNil(e.askManager(companyID: id, key: "price_up"))
         for _ in 0..<(30 * 7) {
             e.nextDay()

@@ -6,7 +6,7 @@ import Finance
 /// First-year economics. Kinder numbers while the player learns; the behaviours themselves
 /// (demand, supplier cut-off, competition authority, bankruptcy) are unchanged and only ask this table whether they apply yet.
 public struct FirstYear: Sendable, Equatable {
-    /// Demand multiplier by quarter of the first game year (weeks 0 to 51), applied to all companies.
+    /// Demand multiplier by quarter of a company's first year (weeks 0 to 51 after it opened): a new-business honeymoon that fades.
     public var demandMult: [Double] = [1.25, 1.15, 1.05, 1.0]
     /// False: suppliers do not cut a buyer off until `supplierCutoffWeek`.
     public var supplierCutoffEnabled = false
@@ -42,7 +42,7 @@ public struct FirstYear: Sendable, Equatable {
     /// The bundled table (for code that has no `GameData` at hand).
     public static let bundled: FirstYear = (try? Balance.bundled().firstYear) ?? FirstYear()
 
-    /// Multiplier on demand in a game week: by quarter of the first year, 1 afterwards.
+    /// Multiplier on demand for a company this many weeks old: by quarter of its first year, 1 afterwards.
     public func demandMultiplier(week: Int) -> Double {
         guard week >= 0, week < 52, !demandMult.isEmpty else { return 1 }
         return demandMult[min(demandMult.count - 1, week / 13)]
@@ -62,6 +62,7 @@ public struct FirstYear: Sendable, Equatable {
     /// (once per spell below zero). The engine skips bankruptcy while `bankruptcyActive` is false.
     public static func freezeSweep(_ s: inout GameState, balance: Balance) {
         let f = balance.firstYear
+        noticeSweep(&s, balance: balance)
         guard !f.bankruptcyActive(week: s.week) else { return }
         for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
             let c = s.companies[i]
@@ -70,6 +71,48 @@ public struct FirstYear: Sendable, Equatable {
             s.companies[i].set("frz", 1)
             s.addMessage(kind: "ask", from: "Your bank", title: "Account frozen at \(c.name)", body: frozenText, companyID: c.id, tone: "bad", status: "open",
                          options: [.option("Understood", "")], action: frozenAction)
+        }
+    }
+
+    /// Weeks a company has traded: game week minus the week it opened (founded, until it opens).
+    public static func companyAge(_ co: Company, week: Int) -> Int { week - (co.openedWeek ?? co.foundedWeek) }
+
+    /// Weekly: tell the player, once, when each first-year protection ends. Game-wide ones are keyed to the game week
+    /// (a save loaded long after that week stays quiet), the demand honeymoon to each company's own first anniversary.
+    public static func noticeSweep(_ s: inout GameState, balance: Balance) {
+        let f = balance.firstYear
+        var done = s.rest["fyNotes"] ?? .object([:])
+        func due(_ key: String, week: Int) -> Bool {
+            guard s.week >= week, s.week < week + 2, done[key].isNull else { return false }
+            done[key] = .number(1)
+            return true
+        }
+        if Gates.ladderOn(s), due("overdraft", week: f.noOverdraftWeeks) {
+            s.addMessage(from: "Your bank", title: "Overdraft protection has ended",
+                         body: "Until now the bank held back any bill your cash could not cover. From now on an account can go into overdraft, and that costs interest. Keep some cash in reserve.",
+                         tone: "n")
+        }
+        if !(f.bankruptcyEnabled && f.supplierCutoffEnabled), due("week27", week: min(f.bankruptcyWeek, f.supplierCutoffWeek)) {
+            s.addMessage(from: "Your accountant", title: "The first-year safety nets are off",
+                         body: "A company in the red can now go bankrupt instead of being frozen, and suppliers can stop selling to a buyer who keeps paying late. Pay bills on time and watch your cash.",
+                         tone: "bad")
+        }
+        if !f.competitionAuthorityEnabled, done["authority"].isNull, Gates.companiesOwned(s) >= f.competitionAuthorityCompanies {
+            done["authority"] = .number(1)
+            s.addMessage(from: "Your accountant", title: "The competition authority is watching you",
+                         body: "With \(f.competitionAuthorityCompanies) companies you are a group. The competition authority can now look into a company that holds a big share of its market.",
+                         tone: "n")
+        }
+        s.rest["fyNotes"] = done
+        guard let first = f.demandMult.first, first > 1 else { return }
+        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
+            let age = companyAge(s.companies[i], week: s.week)
+            guard age >= 52, age < 54, s.companies[i].raw["fyEnd"] == nil else { continue }
+            s.companies[i].set("fyEnd", 1)
+            let c = s.companies[i]
+            s.addMessage(from: "Your accountant", title: "\(c.name) has finished its first year",
+                         body: "New businesses draw extra curiosity in their first year. That boost has now faded, so expect fewer customers unless you keep winning them with price, quality and marketing.",
+                         companyID: c.id, tone: "n")
         }
     }
 }

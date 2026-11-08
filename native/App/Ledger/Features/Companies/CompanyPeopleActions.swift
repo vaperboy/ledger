@@ -6,7 +6,7 @@ import Businesses
 import Simulation
 
 // Three people actions of Company > Team, each grouped by its purpose and each with its own layout:
-//   Goals      (CompanyTargetsCard)  what the manager is judged on: month targets as progress bars, the year's budget, a history strip, and a setter.
+//   Goals      (CompanyTargetsCard)  what the manager is judged on: month targets as progress bars, the year's budget, a history strip.
 //   Rewards    (CompanyPerksPopup)   what keeps people: a popup list of perks, each switched on or off for every worker.
 //   Succession (SuccessorSection)    what happens when the manager leaves: the search and the shortlist.
 // Every card says what an action costs, what it gains and what it risks before it is confirmed. The engine decides all of it.
@@ -70,43 +70,39 @@ private struct GoalsBlock<Content: View>: View {
 
 // MARK: - Goals: targets and the budget
 
-/// Manager targets and the yearly budget (Company > Team). Shows cost, benefit and risk before the targets are set.
+/// What the manager is judged on (Company > Team > Goals), read only: this month's targets, which follow the direction the owner gave, the
+/// year's budget with its one approval, and the last months. The direction itself is an order on the manager's sheet.
 struct CompanyTargetsCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @State private var mode = 1
-    @State private var bonus = 1
 
     private static let names = ["rev": "Sales", "profit": "Profit", "rating": "Rating", "util": "How busy", "aware": "Awareness"]
-    private static let modeNames = ["Easy", "Realistic", "Stretch"]
     private func value(_ key: String, _ v: Double, _ cur: Currency) -> String { key == "rev" || key == "profit" ? cur.tidyShort(v) : String(format: "%.0f", v) }
     private func share(_ now: Double, _ target: Double) -> Double { target > 0 ? min(1, max(0, now / target)) : 0 }
+
+    /// Who set the targets, in the words of the header.
+    private func setterNote(_ st: ManagerTargets.Status) -> String { st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())" }
+
+    /// The direction the targets follow, in a short line.
+    private func directionNote(_ st: ManagerTargets.Status) -> String {
+        guard let key = st.direction, let d = ManagerModel.Direction(rawValue: key) else {
+            return "No direction given: the targets are a fair aim from last year and the market."
+        }
+        return "Direction: \(d.title). The targets lean that way. " + d.text
+    }
 
     var body: some View {
         if let st = engine.targetStatus(companyID: company.id) {
             let cur = engine.currency(for: company)
             TeamGroup(title: "Goals", trailing: {
-                Text(st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())").textStyle(.caption, tint: Theme.inkFaint)
+                Text(setterNote(st)).textStyle(.caption, tint: Theme.inkFaint)
             }) {
                 monthCard(st, cur)
                 budgetCard(st, cur)
                 historyCard(st, cur)
-                setterCard(st, cur)
             }
-            .onAppear { bonus = min(2, max(0, st.bonusLevel)) }
         }
-    }
-
-    /// Setting the month's targets costs nothing and can be set again, so it is applied at once; the message says what was set.
-    private func setTargets(_ cur: Currency) {
-        if store.act({ $0.setTargets(companyID: company.id, mode: mode, bonus: bonus) }) == true { Haptics.success(); store.show("Targets set. " + confirmMessage(cur), tone: "good") }
-        else { Haptics.warning(); store.show("Targets cannot be set now.", tone: "warn") }
-    }
-
-    private func confirmMessage(_ cur: Currency) -> String {
-        let perTarget: Double = engine.targetPreview(companyID: company.id, mode: mode).map { $0.hasManager ? $0.bonusPerTarget[min(2, max(0, bonus))] : 0 } ?? 0
-        return (perTarget > 0 ? "Bonus up to \(cur.tidyDisplay(perTarget * 3)) a month if all three are met. " : "No bonus is paid. ") + "The year's budget is confirmed with them."
     }
 
     // This month: one bar per target.
@@ -114,6 +110,7 @@ struct CompanyTargetsCard: View {
         GoalsBlock {
             VStack(alignment: .leading, spacing: 12) {
                 PurposeHeader(glyph: Glyph.goals, title: "This month", note: "Where each target stands")
+                Text(directionNote(st)).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 if st.standing.isEmpty {
                     Text("No targets this month yet.").textStyle(.body, tint: Theme.inkSoft)
                 }
@@ -167,12 +164,18 @@ struct CompanyTargetsCard: View {
     private func approval(_ b: ManagerTargets.Status.Budget, _ cur: Currency) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             CardLine()
-            Text("Waiting for your approval. Approving makes these the numbers the manager is judged on this year; you can still change targets each month.")
+            Text("Waiting for your approval. These become the numbers the manager is judged on this year.")
                 .textStyle(.caption, tint: Theme.warn, weight: .medium).fixedSize(horizontal: false, vertical: true)
-            QuietButton(title: "Approve the budget") {
-                if store.act({ $0.approveBudget(companyID: company.id) }) == true { Haptics.success(); store.show("Budget \(b.year) approved: sales \(cur.tidyShort(b.rev)), profit \(cur.tidyShort(b.profit)).", tone: "good") }
-                else { Haptics.warning(); store.show("The budget could not be approved now.", tone: "warn") }
+            QuietButton(title: "Approve the yearly budget") {
+                if store.act({ $0.approveBudget(companyID: company.id) }) == true {
+                    Haptics.success()
+                    store.outcome(chosen: "Approve the yearly budget", result: "Budget \(b.year) approved: sales \(cur.tidyShort(b.rev)), profit \(cur.tidyShort(b.profit)).")
+                } else {
+                    Haptics.warning()
+                    store.show("The budget could not be approved now.", tone: "warn")
+                }
             }
+            .accessibilityIdentifier("approve-yearly-budget")
         }
     }
 
@@ -183,14 +186,14 @@ struct CompanyTargetsCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     PurposeHeader(glyph: Glyph.calendar, title: "Last months", note: "Targets met each month, oldest first")
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 56), spacing: 8)], alignment: .leading, spacing: 10) {
-                        ForEach(Array(st.log.enumerated()), id: \.offset) { _, l in monthPips(l, cur) }
+                        ForEach(Array(st.log.enumerated()), id: \.offset) { _, l in monthPips(l) }
                     }
                 }
             }
         }
     }
 
-    private func monthPips(_ l: ManagerTargets.Status.LogLine, _ cur: Currency) -> some View {
+    private func monthPips(_ l: ManagerTargets.Status.LogLine) -> some View {
         let tint: Color = l.met == 3 ? Theme.gain : l.met == 0 ? Theme.loss : Theme.caution
         return VStack(spacing: 4) {
             HStack(spacing: 3) {
@@ -199,68 +202,9 @@ struct CompanyTargetsCard: View {
                 }
             }
             Text("\(l.met) of 3").font(.system(size: 10.5)).foregroundStyle(tint)
-            Text(l.bonus > 0 ? cur.tidyShort(l.bonus) : "no bonus").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.ivoryFaint).lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-    }
-
-    // Setting the month's targets.
-    @ViewBuilder private func setterCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
-        if st.canSet, let pv = engine.targetPreview(companyID: company.id, mode: mode) {
-            GoalsBlock {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    PurposeHeader(glyph: Glyph.arrowOut, title: "Set this month's targets", note: "How hard to push")
-                    modeChoices
-                    previewTable(pv, cur)
-                    if pv.hasManager {
-                        Text("Bonus for the manager").capsLabel(Theme.ivoryFaint)
-                        SegmentedPill(items: [0, 1, 2], title: { ManagerTargets.bonusLevels[$0].name }, selection: $bonus)
-                    }
-                    ConsequenceNote(cost: costLine(pv, cur), benefit: benefitLine + " This also approves the year's budget.", risk: riskLine)
-                    Button("Set targets") { Haptics.tap(); setTargets(cur) }
-                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                }
-            }
-        } else if !st.canSet && !st.setter.isOwner {
-            EmptyState(glyph: Glyph.lock, title: "\(st.setter.name) sets the targets here.", centered: false)
-        }
-    }
-
-    private var modeChoices: some View {
-        VStack(spacing: 8) {
-            ForEach([0, 1, 2], id: \.self) { m in
-                ChoiceCard(title: Self.modeNames[m], subtitle: modeNote(m), selected: mode == m) { mode = m }
-            }
-        }
-    }
-
-    private func modeNote(_ m: Int) -> String {
-        m == 0 ? "Usually met, so the bonus is nearly always earned." : m == 2 ? "Pushes for the most; often missed." : "A fair aim from the last year and the market."
-    }
-
-    private func previewTable(_ pv: ManagerTargets.Preview, _ cur: Currency) -> some View {
-        let cols: [TableColumn] = [TableColumn(title: "Target"), TableColumn(title: "Aim", width: 110)]
-        return SharpTable {
-            TableHeader(columns: cols)
-            ForEach(pv.rows, id: \.key) { r in
-                TableRow(columns: cols, title: Self.names[r.key] ?? r.key, values: [value(r.key, r.target, cur)])
-            }
-        }
-    }
-
-    private func costLine(_ pv: ManagerTargets.Preview, _ cur: Currency) -> String {
-        let perTarget: Double = pv.hasManager ? pv.bonusPerTarget[min(2, max(0, bonus))] : 0
-        if !pv.hasManager { return "none, you run it yourself." }
-        return perTarget > 0 ? "\(cur.tidyShort(perTarget)) for each target met, up to \(cur.tidyShort(perTarget * 3)) a month." : "no bonus is paid."
-    }
-
-    private var benefitLine: String {
-        mode == 2 ? "a stretch pushes for the most, and a manager with a bonus works to it." : mode == 0 ? "easy numbers are usually met, so the bonus is nearly always earned." : "a fair aim based on the last year and the market."
-    }
-
-    private var riskLine: String {
-        mode == 2 ? "stretch targets are often missed, and a manager who misses again and again can lose heart." : mode == 0 ? "you may pay bonuses for what would have happened anyway." : "a bad month still misses them."
     }
 }
 
@@ -290,10 +234,17 @@ struct CompanyPerksPopup: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let cur: Currency = e.currency(for: co)
             let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
+            // Perks open at five staff or a manager; any already switched on stay visible so they can be switched off.
+            let locked: Bool = !e.staffTermsUnlocked(companyID: companyID) && total <= 0
             VStack(alignment: .leading, spacing: 10) {
-                Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
-                    .popupText(.subtitle)
-                VStack(spacing: 0) { perkRows(e, co, cur) }
+                if locked {
+                    Text("Perks open once you have five staff or a manager. Until then, pay the going rate and people stay or go on that.")
+                        .popupText(.subtitle)
+                } else {
+                    Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
+                        .popupText(.subtitle)
+                    VStack(spacing: 0) { perkRows(e, co, cur) }
+                }
             }
             .centerSheetTitle("Perks")
         } else {

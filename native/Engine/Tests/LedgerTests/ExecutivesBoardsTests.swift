@@ -23,11 +23,8 @@ final class ExecutivesBoardsTests: XCTestCase {
             _ = e.hireOffice(role: "pa", personID: n.id, monthlyWage: n.askingMonthlyWage * 1.1)
         }
         // board and meetings
-        let key = e.boardKey(companyID: ids[0])!
-        _ = e.searchForSeat(key: key, role: "director")
-        _ = e.holdBoardMeeting(key: key)
+        _ = e.boardDecisionList()
         _ = e.requestAnalystReport(companyID: nil)
-        _ = e.callMeeting(companyID: nil, goal: "review", tone: "casual")
         _ = e.boardVote(kind: "sell", companyID: ids[0])
         _ = e.teamSlots(companyID: ids[0])
         _ = e.searchExecutive(.md)
@@ -61,8 +58,8 @@ final class ExecutivesBoardsTests: XCTestCase {
         XCTAssertEqual(e.rentOffice(tier: "home"), .ok)
         XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.25), .ok)
         XCTAssertFalse(e.groupManagingDirector.isNull)
-        e.setExecutiveAuthority(.md, authority: 2)
-        XCTAssertEqual(e.groupManagingDirector["lvl"].int, 2)
+        e.setExecutiveBudget(.md, budget: .free)
+        XCTAssertEqual(Budget.of(e.groupManagingDirector), .free)
         XCTAssertTrue(e.releaseExecutive(.md))
         XCTAssertTrue(e.groupManagingDirector.isNull)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

@@ -85,7 +85,7 @@ extension FeatureToursTests {
             return ok ? .pass() : .fail("no hire-engage-agency after choosing Agency: " + tabState())
         }
         roundTrip("hire: Post the ad -> confirm, Cancel keeps the hiring screen", closeWith: ["confirm-cancel"], prepare: { openHiring() && pickFirstRole() }) { tapEnabled("hire-post-ad") }
-        roundTrip("hire: Post the ad -> confirm, Post keeps the hiring screen (toast, no popup)", closeWith: ["confirm-go"], strictText: false, prepare: { openHiring() && pickFirstRole() }) { tapEnabled("hire-post-ad") }
+        roundTrip("hire: Post the ad -> confirm, Post keeps the hiring screen (its outcome popup is closed)", closeWith: ["confirm-go"], strictText: false, prepare: { openHiring() && pickFirstRole() }) { tapEnabled("hire-post-ad") }
         step("hire: an applicant arrives within a few days of the ad") {
             if openHiring() && has("hire-talk-terms", wait: 2) { return .pass("already waiting") }
             let played: Int = advanceDays(4) { openHiring() && has("hire-talk-terms", wait: 2) }
@@ -229,7 +229,7 @@ extension FeatureToursTests {
             if case .fail(let m) = r { return .fail(m) }
             return h
         }
-        step("sales: dragging the price slider changes the price (toast), Back returns to Sales") {
+        step("sales: dragging the price slider changes the price, Back returns to Sales") {
             guard onSales, openCompany("Caf"), tapID("company-tab-sales") else { return .skip("Sales not reachable") }
             let sales: TourSig = signature()
             guard openFirstItem(), let sl = hit("sales-item-price", wait: 3) else { return .fail("no item page with a price slider") }
@@ -238,7 +238,6 @@ extension FeatureToursTests {
             let y: CGFloat = sl.frame.midY
             o.withOffset(CGVector(dx: sl.frame.minX + sl.frame.width * 0.45, dy: y)).press(forDuration: 0.2, thenDragTo: o.withOffset(CGVector(dx: sl.frame.minX + sl.frame.width * 0.7, dy: y)))
             pause(1)
-            let toast: String = find(wait: 2, { $0.id == "notification-banner" })?.label ?? ""
             let moved: Bool = readout() != before
             var problems: [String] = []
             if !moved { problems.append("the price readout did not change when the slider was dragged") }
@@ -251,7 +250,7 @@ extension FeatureToursTests {
             if !tapBack() { problems.append("no Back on the item page") }
             let after: TourSig = signature()
             if !sales.same(after, strictText: false) { problems.append("Back changed the screen: \(sales.text) -> \(after.text)") }
-            return problems.isEmpty ? .pass(toast.isEmpty ? "no toast seen" : "toast: " + String(toast.prefix(50))) : .fail(problems.prefix(3).joined(separator: "; "))
+            return problems.isEmpty ? .pass("") : .fail(problems.prefix(3).joined(separator: "; "))
         }
         step("sales: typing a price in the price field sets it") {
             guard onSales, openCompany("Caf"), tapID("company-tab-sales"), openFirstItem() else { return .skip("no item page") }

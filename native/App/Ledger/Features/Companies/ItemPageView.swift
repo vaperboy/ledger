@@ -136,7 +136,7 @@ struct ItemPageView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xxl) {
                     priceBlock(pg, co, cur, price, f, setBy: pg.item.priceSetter.isOwner ? nil : pg.item.priceSetter.label)
-                    demandBlock(pg, f, cur)
+                    demandBlock(pg, f, cur, move: base.item.price > 0 ? price / base.item.price - 1 : 0)
                     promotionBlock(co, pg.item)
                     supplyBlock(pg, cur)
                     TradeItemBlocks(e: e, companyID: companyID, itemID: itemID, price: price, cur: cur)
@@ -307,7 +307,7 @@ struct ItemPageView: View {
 
     // MARK: What the price does
 
-    private func demandBlock(_ p: ItemPageData, _ f: ItemForecast, _ cur: Currency) -> some View {
+    private func demandBlock(_ p: ItemPageData, _ f: ItemForecast, _ cur: Currency, move: Double) -> some View {
         let profit: String = (f.profitChange >= 0 ? "+" : "\u{2212}") + cur.tidyShort(abs(f.profitChange))
         let chance: String = String(format: "%.0f%%", p.saleProbability * 100)
         return PageGroup("At this price, a week") {
@@ -317,10 +317,43 @@ struct ItemPageView: View {
                     KeyFigures.Item(label: "Profit change", value: profit, tint: f.profitChange >= 0 ? P.gain : P.loss),
                     KeyFigures.Item(label: "Demand", value: String(format: "%+.0f%%", f.demandChange * 100), tint: f.demandChange >= 0 ? P.gain : P.loss, sub: "vs market price"),
                 ], combineCells: true)
+                marketMarker(f.marketPosition)
+                Text(forecastLine(p, f, move: move)).textStyle(.caption, tint: P.inkFaint, numeric: true)
                 Text("\(chance) of interested buyers buy \u{00B7} fair value \(itemAmount(p.fairValue, cur))").textStyle(.caption, tint: P.inkFaint, numeric: true)
             }
             .padding(.top, Theme.Space.xs)
         }
+    }
+
+    /// The one market marker: the price against what customers see as fair (the reference moves with quality and what rivals charge).
+    private func marketMarker(_ position: Double) -> some View {
+        let shown: Double = min(max(position, -0.3), 0.3)
+        let word: String = abs(position) < 0.02 ? "At the market price" : String(format: "%.0f%% ", abs(position) * 100) + (position > 0 ? "above the market" : "below the market")
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            GeometryReader { (g: GeometryProxy) in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(P.inkFaint.opacity(0.25)).frame(height: 4)
+                    Circle().fill(position > 0.02 ? P.loss : position < -0.02 ? P.gain : P.accent).frame(width: 10, height: 10)
+                        .offset(x: (shown + 0.3) / 0.6 * (g.size.width - 10))
+                }
+                .frame(maxHeight: .infinity)
+            }
+            .frame(height: 10)
+            Text(word).textStyle(.caption, tint: P.inkSoft, numeric: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// One forecast line: demand now, demand once customers are used to the price, margin, and the warning about a cut that rivals may match.
+    private func forecastLine(_ p: ItemPageData, _ f: ItemForecast, move: Double) -> String {
+        var parts: [String] = [String(format: "Demand %+.0f%% now", f.demandChange * 100)]
+        if abs(move) > 0.001, let pf = store.engine?.priceForecast(companyID: companyID, byShare: move * p.item.revenueWeight)?.forecast {
+            let later: Double = f.demandChange + (pf.customersLater - pf.customersAtFirst)
+            parts.append(String(format: "%+.0f%% once customers are used to it", later * 100))
+            if let m = pf.marginAfter { parts.append(String(format: "margin %.0f%%", m * 100)) }
+        }
+        if move < -0.08 { parts.append("rivals may match") }
+        return parts.joined(separator: " \u{00B7} ")
     }
 
     // MARK: Supply

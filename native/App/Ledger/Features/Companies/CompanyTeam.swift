@@ -13,8 +13,7 @@ enum TeamPage: String, Hashable, Identifiable {
 }
 
 /// One company's Team tab on ONE page, STAFF ONLY. A hero (head count and what the team costs a month, then Hire, the one action), the people
-/// as clean rows with role and mood (a tap pushes the profile), then a short list of team settings (applicants, goals, perks, the way to the
-/// managers). Managers, the owner and executive posts live in Group > the company > Management. Labour rules are in Stats; payroll in Accounting.
+/// as clean rows with role and mood (a tap pushes the profile), then a short list of team settings (applicants, goals, perks). Managers, the owner and executive posts live in Group > the company > Management. Labour rules are in Stats; payroll in Accounting.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -96,10 +95,11 @@ struct CompanyTeam: View {
 
     // MARK: Team settings
 
-    /// Applicants, goals, perks and the way to the managers, as one flat list of rows.
+    /// Applicants, goals and perks, as one flat list of rows.
     private var settingsList: some View {
         let cur: Currency = engine.currency(for: company)
-        let goals: String = engine.targetStatus(companyID: company.id) == nil ? "Not set" : "Set"
+        let status: ManagerTargets.Status? = engine.targetStatus(companyID: company.id)
+        let goals: String = status == nil ? "None" : (status?.budget.map { !$0.approved } ?? false) ? "To approve" : "Set"
         let perksOn: Int = engine.staffPerkOptions.filter { engine.staffPerkIsOn(companyID: company.id, perk: $0.id) }.count
         let perksCost: Double = engine.staffPerksMonthlyTotal(companyID: company.id)
         let perksValue: String = perksOn == 0 ? "None" : "\(perksOn) on"
@@ -109,7 +109,7 @@ struct CompanyTeam: View {
             VStack(spacing: 0) {
                 ApplicantsLinkRow(engine: engine, companyID: company.id)
                 Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-                LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: "Monthly targets and bonus", value: goals, identifier: "team-goals") { page = .targets }
+                LedgerRow(leading: .glyph(Glyph.goals), title: "Goals", subtitle: "Monthly targets and the yearly budget", value: goals, identifier: "team-goals") { page = .targets }
                 Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
                 LedgerRow(leading: .glyph(Glyph.person), title: "Perks", subtitle: "Cars and benefits for every worker", value: perksValue, valueNote: perksNote, identifier: "team-perks") { showPerks = true }
             }

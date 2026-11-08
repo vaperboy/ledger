@@ -289,20 +289,21 @@ public enum ManagerVoice {
         s.companies[ci].set("mgrLog", .array(Array(log.suffix(12))))
     }
 
-    /// Level 2 managers report every week, level 1 every second week; level 0 does nothing alone, so there is nothing to report.
+    /// A manager on a free budget reports every week, on a normal one every second week; on a tight one they do nothing alone, so there is nothing to report.
     static func digestWeek(_ s: inout GameState, companyIndex ci: Int, manager n: Person, bd: Trade, utilisation util: Double) {
         let co = s.companies[ci]
-        let lvl = Int(co.value("auth")["lvl"].double)
-        guard lvl >= 1, lvl == 2 || s.week % 2 == 0 else { return }
-        let span = Double(lvl == 2 ? 1 : 2)
+        let budget = ManagerModel.budget(of: co)
+        let weekly = budget == .free
+        guard budget.actsAlone, weekly || s.week % 2 == 0 else { return }
+        let span = Double(weekly ? 1 : 2)
         let fresh = co.value("mgrLog").array.filter { $0["w"].double > Double(s.week) - span - 1 }
         guard !fresh.isEmpty else { return }
         let fam = familyOf(n, bd)
         let v = vocab[fam] ?? vocab[.general]!
         let dir = util > 0.85 ? "strong" : util < 0.55 ? "soft" : "steady"
         let opener = pick(&s, companyIndex: ci, situation: "digest", seed: n.id, variants: [
-            "This \(lvl == 2 ? "week" : "fortnight"), on my own authority:", "Done since the last report (\(v.kpi) \(dir)):",
-            "What I did, within the limits you set:", "Handled \(lvl == 2 ? "this week" : "this fortnight"):"])
+            "This \(weekly ? "week" : "fortnight"), on my own authority:", "Done since the last report (\(v.kpi) \(dir)):",
+            "What I did, within the limits you set:", "Handled \(weekly ? "this week" : "this fortnight"):"])
         var body = opener + "\n" + fresh.prefix(5).map { "• " + $0["t"].string }.joined(separator: "\n")
         body += "\n" + (util > 0.95 ? "Next: \(v.kpi) is at the limit; expect a capacity request." : util < 0.5 ? "Next: \(v.kpi) is soft; I will look at pricing and promotion." : stance(n))
         s.addMessage(kind: "info", from: n.name, title: "\(co.name): what I did", body: body, companyID: co.id, tone: "n", status: "done")

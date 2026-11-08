@@ -113,7 +113,7 @@ final class KnobChangeTests: XCTestCase {
         ChainsTests.season(&e, first)
         e.update { s, _, _ in if let i = s.companyIndex(first) { s.companies[i].set("mgr", 0) } }
         let chain = try XCTUnwrap(e.makeChain(companyID: first, name: "Beans"))
-        guard case .success(let second) = e.openChainStore(chainID: chain, cityID: e.state.player.cityID, size: 1) else { return XCTFail("store") }
+        guard case .success(let second) = e.openLocation(chainID: chain, cityID: e.state.player.cityID) else { return XCTFail("store") }
         e.update { s, _, _ in if let i = s.companyIndex(second) { s.companies[i].status = .open } }
         let (k, from, to) = try singleKnob(e, "cafe")
         e.releaseChainKnob(chainID: chain, knob: k.id)

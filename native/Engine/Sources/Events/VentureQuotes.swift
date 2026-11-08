@@ -203,7 +203,8 @@ public extension PrivateEquity {
         }
         let amt = jsRound(amount)
         let nw = Valuation.netWorth(s, trades: data.catalog).total
-        let result: CommitResult = amt < o["min"].double ? .tooSmall : nw < amt * netWorthMultiple ? .notRichEnough : .ok
+        // The amount is whole money, so compare it with the whole-money minimum: a scaled minimum can carry a fraction.
+        let result: CommitResult = amt < jsRound(o["min"].double) ? .tooSmall : nw < amt * netWorthMultiple ? .notRichEnough : .ok
         return CommitCheck(offerID: offerID, name: o["n"].string, amount: amt, minimum: o["min"].double, netWorth: nw, requiredNetWorth: amt * netWorthMultiple,
                            largestCommitment: max(0, (nw / netWorthMultiple).rounded(.down)), result: result)
     }

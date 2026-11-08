@@ -23,6 +23,7 @@ struct GroupEntityManagement: View {
             if members.count > 1 { picker(members, selected: co?.id ?? chosen) }
             if let co {
                 header(co)
+                chainOfCommand(co)
                 people(co)
                 approvalNote(co)
                 ApplicantsLinkRow(engine: engine, companyID: co.id)
@@ -71,8 +72,9 @@ struct GroupEntityManagement: View {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 Text(count).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if let line {
-                    Text("Complaints: \(line.complaints) \u{00B7} Payroll: \(line.payroll) \u{00B7} Re-hiring: \(line.rehire)")
-                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+                    Text(delegationSentence(line, co))
+                        .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("management-delegation")
                     Text("Highest rank here: \(line.top)").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 if stakes > 0 {
@@ -81,6 +83,68 @@ struct GroupEntityManagement: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    /// "Complaints go to Sam. Payroll is approved by the accountant. Hiring is approved by you."
+    private func delegationSentence(_ line: DelegationLine, _ co: Company) -> String {
+        let runner: String? = engine.groupManagement().lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == co.id })?.runner?.name
+        func who(_ role: String) -> String {
+            switch role {
+            case "Manager": return runner ?? "the manager"
+            case "You", "You (a reminder)": return "you"
+            case "Staff": return "the staff"
+            default: return "the " + role.lowercased()
+            }
+        }
+        return "Complaints go to \(who(line.complaints)). Payroll is approved by \(who(line.payroll)). Hiring is approved by \(who(line.rehire))."
+    }
+
+    // MARK: Chain of command
+
+    /// Everyone between you and the company, top first: you, then the bosses above the runner, then the runner, each with what they may decide.
+    private func rungs(_ co: Company) -> [GroupManagement.Rung] {
+        guard let line = engine.groupManagement().lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == co.id }) else { return [] }
+        var out: [GroupManagement.Rung] = Array(line.above.reversed())
+        if let r = line.runner { out.append(r) }
+        return out
+    }
+
+    private func commandRow(name: String, title: String, authority: String?, personID: Int?) -> some View {
+        let person: Person? = personID.flatMap { (id: Int) -> Person? in engine.state.people[id] }
+        return HStack(spacing: Theme.Space.m) {
+            StructureAvatar(name: name, role: person?.role, face: person?.faceKey, size: 36)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(name).textStyle(.headline).lineLimit(1)
+                Text(title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+            }
+            Spacer(minLength: Theme.Space.s)
+            if let authority { AcctPill(text: authority, tone: .neutral) }
+        }
+        .padding(.vertical, Theme.Space.s).padding(.horizontal, Theme.Space.s)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func chainOfCommand(_ co: Company) -> some View {
+        let list: [GroupManagement.Rung] = rungs(co)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text("CHAIN OF COMMAND").capsLabel()
+            Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
+                VStack(spacing: 0) {
+                    commandRow(name: engine.state.player.name, title: "Owner", authority: nil, personID: nil)
+                    ForEach(list) { (r: GroupManagement.Rung) in
+                        Hairline()
+                        commandRow(name: r.name, title: r.title, authority: r.authorityText, personID: r.personID)
+                    }
+                    if list.isEmpty {
+                        Hairline()
+                        Text("Nobody manages \(co.name): you run it yourself.").textStyle(.caption, tint: Theme.inkFaint)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(Theme.Space.s)
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier("management-chain-of-command")
     }
 
     // MARK: People

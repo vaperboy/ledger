@@ -242,7 +242,7 @@ struct FundManagerCard: View {
     }
 
     private func askToLetGo() {
-        pending = PendingAction(title: "Let the fund manager go?", message: "All the managed money comes back to your account now. A gain is taxed as a capital gain at year end.", button: "Let go", destructive: true) {
+        pending = PendingAction(title: "Let the fund manager go?", message: "All the managed money comes back to your account now. A gain is taxed as a capital gain when it comes back to you.", button: "Let go", destructive: true) {
             if store.act({ $0.dismissFundManager() }) == true { Haptics.warning(); store.show("The fund manager is gone. The managed money is back in your account.", tone: "n") }
             else { store.show("You have no fund manager.", tone: "warn") }
         }

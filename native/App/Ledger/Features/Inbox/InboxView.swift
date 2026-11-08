@@ -3,6 +3,7 @@ import GameCore
 import Simulation
 import Events
 import Countries
+import Finance
 
 /// Decisions and news. Decisions come first, by how soon they expire; each shows what every choice does before you commit and
 /// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
@@ -88,6 +89,13 @@ struct InboxView: View {
         guard let e = store.engine, message.options.indices.contains(index) else { return }
         let opt = message.options[index]
         let label = e.displayText(opt["l"].string, companyID: message.companyID)
+        if message.actionID == PersonalFinance.dueAction {
+            // Every way of settling the tax commits money or a loan: always say what it does first.
+            pending = PendingAction(title: label, message: e.displayText(opt["d"].string, companyID: message.companyID), button: label, alwaysAsk: true) {
+                answer(message, index, label, inline: inline)
+            }
+            return
+        }
         let need: DecisionConfirmation = DecisionConfirm.confirmation(for: message, option: index)
         guard need.needsQuestion else { answer(message, index, label, inline: inline); return }
         var lines: [String] = []
@@ -115,12 +123,21 @@ struct InboxView: View {
     private func answer(_ message: Message, _ index: Int, _ label: String, inline: Bool = false) {
         var effects: [String] = []
         if let e = store.engine, message.options.indices.contains(index) { effects = MessageCard.preview(e, message, message.options[index]) }
+        // An option with no preview lines is told by its own description.
+        if effects.isEmpty, let e = store.engine, message.options.indices.contains(index) {
+            let d: String = e.displayText(message.options[index]["d"].string, companyID: message.companyID)
+            if !d.isEmpty { effects = [d] }
+        }
         let ok = store.act { $0.answer(messageID: message.id, option: index) } ?? false
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // The answer is told in a one-line toast; the player stays on the Inbox.
-            store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
+            // What was chosen and what it does: one outcome popup (the tax decision names the payment route it took).
+            store.announceAnswer(label: label, effects: effects, ok: true, messageTitle: message.title, companyID: message.companyID)
+        } else if message.actionID == PersonalFinance.dueAction {
+            // The tax decision stays open when a route cannot cover the bill: say so and let the player choose another.
+            Haptics.warning()
+            store.tell("Not applied", "That way of paying could not cover the bill, so it is still open. Choose another way.", tone: "warn")
         } else {
             store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: message.title, companyID: message.companyID)
         }
@@ -544,10 +561,12 @@ struct MessageCard: View {
     /// A full-width option: its label, and under it one grey line of what it does (`EffectPreview`); no line when the preview is empty.
     private func optionButton(_ idx: Int, _ opt: JSONValue) -> some View {
         let effect: String = preview(opt).joined(separator: ". ")
+        // An option that carries its own sentence (the tax payment choices) shows it when it has no computed effect.
+        let detail: String = effect.isEmpty ? text(opt["d"].string) : effect + "."
         return Button { ask(message, idx) } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(text(opt["l"].string)).popupText(.button)
-                if !effect.isEmpty { Text(effect + ".").popupText(.caption).multilineTextAlignment(.leading) }
+                if !detail.isEmpty { Text(detail).popupText(.caption).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true) }
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(.vertical, Theme.Space.s).padding(.leading, Theme.Space.m).padding(.trailing, Theme.Space.xxl)

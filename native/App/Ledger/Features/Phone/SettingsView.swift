@@ -19,7 +19,6 @@ struct SettingsView: View {
     @State private var giftCode = ""
     @State private var giftNote = ""
     @State private var pasted = ""
-    @State private var policy = ManagementPolicy()
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
     @State private var showWardrobe = false
@@ -38,16 +37,9 @@ struct SettingsView: View {
         }
         .scrollIndicators(.hidden)
         .modifier(SettingsBackdrop(embedded: embedded))
-        .onAppear { policy = store.engine?.state.policy ?? ManagementPolicy() }
         .onChange(of: askStep) { _, v in ConfirmThreshold.step = v; store.saved("asking before spending: " + askLabel(v).lowercased()) }
         .onChange(of: haptics) { _, v in Haptics.enabled = v; store.saved("haptic feedback " + (v ? "on" : "off")) }
         .onChange(of: reminders) { _, v in Reminders.enabled = v; store.saved("reminders " + (v ? "on" : "off")) }
-        .onChange(of: policy) { old, v in
-            // Loading the page sets `policy` from the game; only a real change by the player is saved and reported.
-            guard let current = store.engine?.state.policy, current != v else { return }
-            store.act { $0.setPolicy(v) }
-            store.saved(policyChange(from: old, to: v))
-        }
         .confirmAction($pending)
         .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
@@ -239,16 +231,6 @@ struct SettingsView: View {
     }
 
     // MARK: Words
-
-    /// What the player just changed, in words, for the "Saved" message.
-    private func policyChange(from old: ManagementPolicy, to v: ManagementPolicy) -> String {
-        if old.autoPayroll != v.autoPayroll { return "routine payroll " + (v.autoPayroll ? "approved for you" : "comes to you") }
-        if old.autoRehire != v.autoRehire { return "replacing people who leave is " + (v.autoRehire ? "on" : "off") }
-        if old.autoComplaints != v.autoComplaints { return "staff " + (v.autoComplaints ? "answer" : "no longer answer") + " routine complaints" }
-        if old.reserveWeeks != v.reserveWeeks { return v.reserveWeeks == 0 ? "no cash reserve" : "cash reserve of \(v.reserveWeeks.formatted()) weeks of costs" }
-        if old.autoDividendWeeks != v.autoDividendWeeks { return v.autoDividendWeeks == 0 ? "no automatic dividends" : "dividends above \(Int(v.autoDividendWeeks)) weeks of spare cash" }
-        return "how much you decide"
-    }
 
     /// "Always ask", or the size under which small spends are not asked, in the home currency.
     private func askLabel(_ step: Int) -> String {

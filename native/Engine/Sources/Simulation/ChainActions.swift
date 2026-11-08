@@ -17,7 +17,6 @@ public extension GameEngine {
     var looseStoreGroups: [Chains.LooseGroup] { Chains.looseGroups(state, data: data) }
     func chainRules(chainID: Int) -> JSONValue { Chains.chain(state, id: chainID)?["rules"] ?? .null }
     func reach(companyID: Int) -> Chains.Reach? { state.company(companyID).map { Chains.reach(state, $0, data: data) } }
-    func chainCost(chainID: Int, cityID: String, size: Double) -> Double? { Chains.newStoreCost(state, chainID: chainID, cityID: cityID, size: size, data: data) }
     /// Companies of the chain's trade that could join it.
     func companiesThatCanJoin(chainID: Int) -> [Company] {
         guard let ch = Chains.chain(state, id: chainID) else { return [] }
@@ -45,7 +44,7 @@ public extension GameEngine {
     @discardableResult
     mutating func makeChain(companyID: Int, name: String) -> Int? {
         var id: Int?
-        update { s, _, _ in id = Chains.make(&s, companyID: companyID, name: name) }
+        update { s, d, _ in id = Chains.make(&s, companyID: companyID, name: name, data: d) }
         return id
     }
 
@@ -93,12 +92,6 @@ public extension GameEngine {
             guard let co = s.company(companyID) else { return "That store no longer exists." }
             return Chains.chain(s, of: co) == nil ? "That store is not part of a chain." : nil
         }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in Chains.setStoreRule(&s, companyID: companyID, rule: rule) }
-    }
-
-    mutating func openChainStore(chainID: Int, cityID: String, size: Double) -> Result<Int, CompanySetup.StartError> {
-        var r: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
-        update { s, d, c in r = Chains.openStore(&s, chainID: chainID, cityID: cityID, size: size, data: d, context: c) }
-        return r
     }
 
     // MARK: Franchisor

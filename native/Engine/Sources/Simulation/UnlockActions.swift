@@ -12,4 +12,6 @@ public extension GameEngine {
     mutating func markUnlockShown(id: String, companyID: Int) { update { s, _, _ in Unlocks.markShown(&s, id: id, companyID: companyID) } }
     /// One item of one company.
     func unlockItem(_ id: String, companyID: Int) -> UnlockItem? { unlockState(companyID: companyID).first { (u: UnlockItem) -> Bool in u.id == id } }
+    /// Everything still locked with the condition in plain words and the progress, closest first: one list for a "what unlocks next" screen.
+    func unlockRoadmap() -> [UnlockRoadmapItem] { Gates.roadmap(state, data: data, context: context) }
 }

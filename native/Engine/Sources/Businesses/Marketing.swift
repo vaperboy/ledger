@@ -235,7 +235,7 @@ public enum Marketing {
         var primeTimeActive = false
         // Advertising is paid in advance: with too little cash (after the owner's reserve) the campaigns pause instead of running up debt.
         let planned = co.value("mkt").object.sorted(by: { $0.key < $1.key }).reduce(0) { $0 + $1.value["b"].double }
-        let reserve = s.policy.reserveWeeks * FinanceContext(countries: data.countries, trades: data.catalog).weeklyCost(co, s)
+        let reserve = Delegation.cashReserveWeeks * FinanceContext(countries: data.countries, trades: data.catalog).weeklyCost(co, s)
         let paused = planned > 0 && co.cash - planned < reserve
         if paused { var f = co.value("flags"); f["mktPausedWeek"] = .number(Double(s.week)); co.set("flags", f) }
         if paused && s.week % 4 == 0 {

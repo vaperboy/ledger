@@ -25,7 +25,7 @@ enum Haptics {
     static func goalDone() { guard enabled else { return }; notify.notificationOccurred(.success) }
     /// An option chosen in the Inbox.
     static func option() { guard enabled else { return }; select.selectionChanged() }
-    /// The cash-below-zero banner appeared.
+    /// Cash went below zero.
     static func cashWarning() { guard enabled else { return }; notify.notificationOccurred(.warning) }
 
     /// A popup appeared or a popup action was confirmed: a soft tap, a success, or a warning. Silent when haptics are off.

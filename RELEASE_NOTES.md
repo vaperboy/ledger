@@ -1,4 +1,22 @@
 # What's new
+- The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval
+- Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows
+- Taxes are paid as they arise: dividend tax when a dividend is paid, gains tax at the sale, interest and wealth tax monthly, company tax monthly, and the year end only settles the small difference
+- No banners or toasts at the top: a decision is answered in a popup and a result popup follows with what you chose and what happened; plain information lives in Stats, Inbox and the ledger pages
+- Managers act realistically: they move prices within a band set by your Direction, order stock and run marketing within their budget, and each department head owns one decision; you give five orders (Direction, Budget, Headcount, Pay and bonus, Replace)
+- Hiring starts simple (offer the going rate, below or above) and the perks, promises and expenses unlock with five staff or a manager; settings show sole trader and limited company side by side at your current profit
+- The daily report is a one-line bar on Home instead of a blocking popup, and Stats has one ledger that answers why money moved, with search and filters, plus Goals and Reports as pages
+- Pricing: each trade has its own price sensitivity with a market reference that follows quality and rivals; the price popup shows how far you are from the market and a one-line forecast
+- Chain page leads with a head office and location cards (manager, health, one action), holding stakes are grouped by size with one clear button each, and every company shows who it belongs to and who runs it
+- Managers have one budget (tight, normal or free) instead of several limits; tax screens explain the yearly tax and a pay-yourself sheet compares salary, dividend and keeping profit in the company
+- Goals: one ladder with no cash gifts (rewards raise credit, awareness or reputation), a streak-only daily goal, and the ambition choice is a Home card after the first profitable month; unlocks follow one rule table and insurance and suppliers open earlier
+- Group has a Structure tab: a tree of what you own and who runs it, with ownership, manager, health and one action per entry; Boardroom says whose board it is; tabs renamed (People, Grow, Owners and sales)
+- Personal tax: a monthly estimate with an early warning, paid from cash then savings with each tax shown separately, a credit line that grows with wealth, and payment options (sell investments, loan, 12-month plan) before any forced sale
+- Hiring is one staffing plan: a target headcount per role, filled by the responsible manager after a two-week search with a recruiting fee, seasonal crews included
+- Each company gets its own first-year demand boost, you are told in the Inbox when the early protections end, and bad events now give a real second choice
+- Chains: a chain has its own head-office page, new locations are named after districts (never numbers), adding a location is one step, and a chain manager fills every location manager automatically
+- Boards: a branch shares its parent company board, managers are no longer seated as directors, and directors decide the CEO when an outside owner sits on the board
+- Fixes: a holding loan always covers the full price, and a fund commitment at exactly the shown minimum is accepted
 - Interface polish: cards have a soft edge and top highlight, sliders have a larger thumb with a ring and only snap when close to a stop, popup corners are tighter, corner radii are slightly rounder, and screens that do not fit now scroll instead of cropping
 - Ventures quotes come from the engine; set your own asking price when selling a stake (counter-offers and declines are shown); holdings can buy stakes in other founders' startups; Group stakes can be bought
 - Holdings can borrow to buy a stake, turn a fully owned company into a division, sell shares you moved in, and hold board talks; a single chosen first product no longer sells like a full range

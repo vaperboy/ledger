@@ -58,7 +58,7 @@ public extension GameEngine {
     @discardableResult mutating func renameChain(chainID: Int, to newName: String) -> RenameResult {
         let n = newName.trimmingCharacters(in: .whitespaces)
         var r = RenameResult.unknown
-        update { s, _, ctx in
+        update { s, d, ctx in
             guard var ch = Chains.chain(s, id: chainID) else { return }
             if n.count < 2 || n == ch["name"].string { r = .tooShort; return }
             if Chains.all(s).contains(where: { $0["id"].int != chainID && $0["name"].string.lowercased() == n.lowercased() }) { r = .nameTaken; return }
@@ -76,9 +76,7 @@ public extension GameEngine {
             for c in stores {
                 guard let i = s.companyIndex(c.id) else { continue }
                 _ = Payments.companyPays(&s, companyID: c.id, amount: cost(c), category: "oth", label: "Rebranding to \(n)")
-                var nm = stores.count == 1 ? n : "\(n) \(c.cityID)", k = 2
-                while s.companies.contains(where: { $0.status.isLive && $0.id != c.id && $0.name.lowercased() == nm.lowercased() }) { nm = "\(n) \(c.cityID) \(k)"; k += 1 }
-                s.companies[i].name = nm
+                s.companies[i].name = Chains.storeName(s, chain: ch, c, data: d)
                 s.companies[i].awareness = jsRound(s.companies[i].awareness * 0.75 * 10) / 10
                 s.companies[i].set("hype", min(100, s.companies[i].num("hype") + 12))
                 s.companies[i].reputation = jsRound((s.companies[i].reputation + (55 - s.companies[i].reputation) * 0.35) * 10) / 10
@@ -320,29 +318,17 @@ public extension GameEngine {
         return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
     }
 
+    /// Today's goal with its streak (the streak grows the first time the goal is seen done).
     mutating func dailyGoal(now: Date = Date()) -> PlayerGoals.DailyGoal? {
         var r: PlayerGoals.DailyGoal?
         let cur = homeCurrency
         update { s, d, _ in r = PlayerGoals.dailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
         return r
     }
-    @discardableResult mutating func claimDailyGoal(now: Date = Date()) -> Double? {
-        var r: Double?
-        let cur = homeCurrency
-        update { s, d, _ in r = PlayerGoals.claimDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
-        return r
-    }
     /// True when the player turned the daily mission off (it is optional).
     var dailyGoalsOff: Bool { PlayerGoals.dailyGoalsOff(state) }
     mutating func setDailyGoalsOff(_ off: Bool) { update { s, _, _ in PlayerGoals.setDailyGoalsOff(&s, off) } }
-    /// Queues the "mission done" celebration once per day. Called by the app after a day has run.
-    @discardableResult mutating func celebrateDailyGoal(now: Date = Date()) -> Bool {
-        var r = false
-        let cur = homeCurrency
-        update { s, d, _ in r = PlayerGoals.announceDailyGoal(&s, today: Self.dayString(now), yesterday: Self.dayString(now.addingTimeInterval(-86400)), data: d, currency: cur) }
-        return r
-    }
-    /// Celebrations earned and not yet shown (trophies, ambition milestones, finished first steps, the daily mission).
+    /// Celebrations earned and not yet shown (trophies, ambition milestones, finished ladder goals).
     var pendingCelebrations: [Celebration] { Celebrations.pending(state) }
     /// The same waiting list as the popup needs it: id, title, detail, tier and art key.
     func pendingAwards() -> [AwardInfo] {
@@ -354,16 +340,6 @@ public extension GameEngine {
         update { s, _, _ in r = Celebrations.take(&s) }
         return r
     }
-    var firstStepRewards: [PlayerGoals.FirstStep]? { PlayerGoals.firstSteps(state) }
-    var firstStepRewardsHidden: Bool { PlayerGoals.firstStepsHidden(state) }
-    mutating func claimFirstStep(id: String) -> String? {
-        var r: String?
-        let cur = homeCurrency
-        update { s, _, _ in r = PlayerGoals.claimFirstStep(&s, id: id, currency: cur) }
-        return r
-    }
-    mutating func setFirstStepsHidden(_ hidden: Bool) { update { s, _, _ in PlayerGoals.setFirstStepsHidden(&s, hidden) } }
-
 
     private mutating func setFlag(_ companyID: Int, _ key: String, _ on: Bool) {
         update { s, _, _ in

@@ -30,25 +30,27 @@ extension ManagerModel {
         case unavailable(String)
     }
 
-    /// What is on the table besides pay. Original: `ui.p11`.
+    /// What is on the table besides pay: how much they decide alone (the budget preset) and shares in the company. Duties and the report they
+    /// give are fixed by the post (`fixedManagerDuties`, `fixedExecutiveDuties`); the only pay on results is the profit share of the contract talk.
     public struct PromotionTerms: Equatable, Sendable {
-        public var duties: [String] = []
-        /// 0 ask me first, 1 within limits, 2 full control
+        /// The budget preset (`Budget.rawValue`): 0 tight (ask me first), 1 normal (within limits), 2 free (full control).
         public var authority: Int = 1
-        /// week, month, need
-        public var report: String = "month"
-        /// Share of the yearly pay as a yearly bonus (0, 0.05, 0.1, 0.2)
-        public var bonus: Double = 0
+        public var budget: Budget {
+            get { Budget(rawValue: min(2, max(0, authority))) ?? .normal }
+            set { authority = newValue.rawValue }
+        }
         /// Percent of the company's shares (limited companies only)
         public var sharesPercent: Double = 0
-        public init(duties: [String] = [], authority: Int = 1, report: String = "month", bonus: Double = 0, sharesPercent: Double = 0) {
-            self.duties = duties; self.authority = authority; self.report = report; self.bonus = bonus; self.sharesPercent = sharesPercent
+        public init(authority: Int = 1, sharesPercent: Double = 0) {
+            self.authority = authority; self.sharesPercent = sharesPercent
         }
     }
 
-    public static let managerDuties: [(key: String, label: String)] = [("hire", "Hiring staff"), ("buy", "Buying equipment and space")]
-    public static let executiveDuties: [(key: String, label: String)] = [("quality", "Quality checks"), ("coach", "Coaching managers"), ("hire", "Finding managers")]
-    public static let reportChoices: [(key: String, label: String)] = [("week", "Weekly update"), ("month", "Monthly report"), ("need", "Only when needed")]
+    /// A promoted manager looks after hiring and buying; the owner keeps the rest.
+    static let fixedManagerDuties = ["hire", "buy"]
+    /// Every chief (chain manager, regional manager, managing director) checks quality, coaches the managers and finds managers for empty stores,
+    /// and reports once a month.
+    static let fixedExecutiveDuties = ["quality", "coach", "hire"]
     static let hqForRole: [String: String] = ["hr": "hr", "acct": "acc", "lawyer": "law", "analyst2": "ana", "analyst": "ana", "marketer": "mkt", "buyer": "proc", "consult": "strat", "designer": "mkt"]
     static let hqForManager = ["perf", "strat", "proc", "hr"]
 
@@ -119,19 +121,16 @@ extension ManagerModel {
 
     // MARK: The talk
 
-    /// What this person asks for the post as offered: pay, with the extra duties, the authority and the reporting counted. The price the shared
-    /// `Negotiation` works from.
+    /// What this person asks for the post as offered: pay, with the authority counted. The price the shared `Negotiation` works from.
     static func promotionNeed(_ post: PromotionPost, terms: PromotionTerms) -> Double {
-        var need = post.ask * (1 + Double(max(0, terms.duties.count - 1)) * 0.03)
+        var need = post.ask
         if post.kind != "role" { need *= 1 + (terms.authority == 2 ? -0.03 : terms.authority == 0 && post.kind == "exec" ? 0.03 : 0) }
-        if post.kind == "exec" && terms.report == "week" { need *= 1.02 }
         return need
     }
 
-    /// What the extras in the package are worth a month to the person: the yearly bonus at 60% and the shares spread over three years.
-    static func promotionExtras(_ s: GameState, _ c: Candidate, wage w: Double, terms: PromotionTerms, data: GameData) -> Double {
-        let eq: Double = terms.sharesPercent > 0 && c.co.form == .limited ? max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 : 0
-        return w * terms.bonus * 0.6 + eq
+    /// What the shares in the package are worth a month to the person, spread over three years.
+    static func promotionExtras(_ s: GameState, _ c: Candidate, terms: PromotionTerms, data: GameData) -> Double {
+        terms.sharesPercent > 0 && c.co.form == .limited ? max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 : 0
     }
 
     /// Offer the post. At or above what the person asks they accept. Below it they ask for more through the shared `Negotiation` (patience by the level of
@@ -143,7 +142,7 @@ extension ManagerModel {
         if !post.blocked.isEmpty { return .unavailable(post.blocked) }
         let first = firstName(c.n.name)
         let need = promotionNeed(post, terms: terms)
-        let extras = promotionExtras(s, c, wage: w, terms: terms, data: data)
+        let extras = promotionExtras(s, c, terms: terms, data: data)
         let cur = World(state: s, data: data).currency(c.co)
         func accept(grudging: Bool) -> PromotionOutcome {
             talk = Negotiation.State()
@@ -191,8 +190,9 @@ extension ManagerModel {
         let co = s.companies[ci]
         let first = firstName(n.name)
         let cur = World(state: s, data: data).currency(co)
-        let k11: JSONValue = .object(["post": .string(post.id), "t": .string(post.title), "wage": .number(w), "bonus": .number(u.bonus), "duties": .array(u.duties.map { .string($0) }), "auth": .number(Double(u.authority)),
-                                      "rep": .string(u.report), "w0": .number(Double(s.week)), "from": .object(["co": .number(Double(co.id)), "role": .string(c.role)])])
+        let duties: [String] = post.kind == "exec" ? fixedExecutiveDuties : post.kind == "mgr" ? fixedManagerDuties : []
+        let k11: JSONValue = .object(["post": .string(post.id), "t": .string(post.title), "wage": .number(w), "duties": .array(duties.map { .string($0) }), "auth": .number(Double(u.authority)),
+                                      "w0": .number(Double(s.week)), "from": .object(["co": .number(Double(co.id)), "role": .string(c.role)])])
         let shares = u.sharesPercent > 0 && co.form == .limited && co.ownership > u.sharesPercent
         if post.kind == "role" {
             let role = String(post.id.dropFirst(5))
@@ -210,8 +210,7 @@ extension ManagerModel {
             n.role = "manager"; n.set("k11", k11); n.set("p11", .null)
             leaveJob(&s, c)
             appoint(&s, companyIndex: ti, person: n, wage: w, data: data)
-            s.companies[ti].managerProfitBonus = u.bonus > 0 ? min(0.3, u.bonus * 0.5) : 0
-            var a = s.companies[ti].value("auth"); a["lvl"] = .number(Double(u.authority)); a["set22"] = true; s.companies[ti].set("auth", a)
+            setBudget(&s, companyID: post.companyID, budget: u.budget, data: data)
             s.companies[ti].set("mood", max(mood(s.companies[ti]), 62))
             s.note("\(first) now manages \(s.companies[ti].name) on \(cur.display(w)) a month.", tone: "good", companyID: post.companyID)
             return "\(first) now manages \(s.companies[ti].name)." + (shares ? giveShares(&s, companyID: post.companyID, personID: n.id, percent: u.sharesPercent) : "")
@@ -226,14 +225,11 @@ extension ManagerModel {
         if post.id.hasPrefix("chain:") {
             let parts = post.id.dropFirst(6).split(separator: ":").map(String.init)
             if let chainID = Int(parts[0]) {
-                let level: ExecLevel = parts.count > 1 ? .region : .chainmgr
-                let cur0 = playerCurrency(s, data)
-                let rec: JSONValue = .object(["id": .number(Double(s.makeID())), "npc": .number(Double(n.id)), "scope": .string("chain:\(post.id.dropFirst(6))"), "wage": .number(w), "lvl": .number(Double(u.authority)),
-                                              "buy": .number([0, cur0.scaledPrice(level.buy), 1e9][min(2, max(0, u.authority))]), "payCo": "chain", "w0": .number(Double(s.week))])
+                let rec: JSONValue = .object(["id": .number(Double(s.makeID())), "npc": .number(Double(n.id)), "scope": .string("chain:\(post.id.dropFirst(6))"), "wage": .number(w), "bud": .number(Double(u.budget.rawValue)),
+                                              "payCo": "chain", "w0": .number(Double(s.week))])
                 updateGroup(&s) { g in var l = g["regional"].array; l.append(rec); g["regional"] = .array(l) }
                 var nn = s.people[n.id]!; nn.employerID = -1; s.people[n.id] = nn
                 assignRegions(&s, chainID: chainID)
-                addSeat(&s, boardKey: "ch:\(chainID)", seat: ["id": .number(Double(n.id)), "kind": "exec", "t": .string(post.title)])
                 ok = true
             }
         } else if post.id.hasPrefix("hq:") {
@@ -265,7 +261,8 @@ extension ManagerModel {
         guard let ci = s.companyIndex(c.co.id) else { return }
         if c.isManager {
             s.companies[ci].managerID = nil; s.companies[ci].managerMonthlyWage = 0; s.companies[ci].managerProfitBonus = 0
-            var a = s.companies[ci].value("auth"); a["lvl"] = 0; s.companies[ci].set("auth", a)
+            let a = s.companies[ci].value("auth")
+            s.companies[ci].set("auth", Budget.authRecord(.tight, spend: 0, chosen: Budget.isChosen(a)))
             s.companies[ci].ownerHours = 40
         } else { s.companies[ci].staff = s.companies[ci].staff.filter { $0.id != c.n.id } }
         if var n = s.people[c.n.id] { n.employerID = 0; s.people[n.id] = n }
@@ -341,7 +338,7 @@ extension ManagerModel {
         return true
     }
 
-    /// What a chief does each week, and the reports and bonus they were promised. Original: `execWeek`.
+    /// What a chief does each week (`fixedExecutiveDuties`) and their monthly report to the owner.
     static func executivesWeekly(_ s: inout GameState, data: GameData) {
         var ex: [Int] = []
         if let g = s.rest["group"]?["ceo"], !g.isNull { ex.append(g["npc"].int) }
@@ -349,27 +346,20 @@ extension ManagerModel {
         for id in ex {
             guard let n = s.people[id], !n.value("k11").isNull else { continue }
             let q = leadership(n), L = scopeCompanies(s, person: n, data: data).filter { $0.status == .open }
-            let d = n.value("k11")["duties"].array.map { $0.string }
             for c in L {
                 guard let i = s.companyIndex(c.id) else { continue }
-                if d.contains("quality") { s.companies[i].quality = clamp(c.quality + 0.4 * q, 0, 100) }
-                if d.contains("coach") && c.managerID != nil { s.companies[i].set("mood", min(85, max(mood(c), mood(c) + 0.5 * q))) }
+                s.companies[i].quality = clamp(c.quality + 0.4 * q, 0, 100)
+                if c.managerID != nil { s.companies[i].set("mood", min(85, max(mood(c), mood(c) + 0.5 * q))) }
             }
-            if d.contains("hire"), let need = L.first(where: { $0.managerID == nil && $0.staff.count >= 2 && !(Double(s.week) - $0.value("flags")["f11"].double < 8 && !$0.value("flags")["f11"].isNull) }), let bd = data.catalog[need.type] {
+            if let need = L.first(where: { $0.managerID == nil && $0.staff.count >= 2 && !(Double(s.week) - $0.value("flags")["f11"].double < 8 && !$0.value("flags")["f11"].isNull) }), let bd = data.catalog[need.type] {
                 var f = need.value("flags"); f["f11"] = .number(Double(s.week)); if let i = s.companyIndex(need.id) { s.companies[i].set("flags", f) }
                 offerManagerCandidate(&s, need: need, bd: bd, from: n, data: data)
             }
-            let rep = n.value("k11")["rep"].string, me = GameCalendar.isMonthEnd(week: s.week)
+            guard GameCalendar.isMonthEnd(week: s.week) else { continue }
             let bad = L.filter { ($0.monthlyHistory.last?.profit ?? 0) < 0 }
-            if rep == "week" || (rep == "month" && me) || (rep == "need" && me && !bad.isEmpty) {
-                let lines = L.prefix(8).map { c -> String in let h = c.monthlyHistory.last; let cu = World(state: s, data: data).currency(c)
-                    return "\(c.name): revenue \(cu.short(h?.revenue ?? 0)), profit \(cu.short(h?.profit ?? 0))" + (c.managerID == nil ? " (no manager)" : "") }
-                s.addMessage(kind: "info", from: n.name, title: "\(rep == "week" ? "Weekly update" : "Monthly report") from your \(n.value("k11")["t"].string.isEmpty ? "manager" : n.value("k11")["t"].string.lowercased())", body: lines.isEmpty ? "Nothing to report." : lines.joined(separator: "\n"), tone: bad.isEmpty ? "n" : "bad", status: "done", sev: 1)
-            }
-            if GameCalendar.isYearEnd(week: s.week) && n.value("k11")["bonus"].double > 0 {
-                let pr = L.reduce(0.0) { $0 + $1.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit } }
-                if pr > 0 { Headquarters.payHeadOffice(&s, n.value("k11")["wage"].double * 12 * n.value("k11")["bonus"].double, label: "Bonus: \(n.name)") }
-            }
+            let lines = L.prefix(8).map { c -> String in let h = c.monthlyHistory.last; let cu = World(state: s, data: data).currency(c)
+                return "\(c.name): revenue \(cu.short(h?.revenue ?? 0)), profit \(cu.short(h?.profit ?? 0))" + (c.managerID == nil ? " (no manager)" : "") }
+            s.addMessage(kind: "info", from: n.name, title: "Monthly report from your \(n.value("k11")["t"].string.isEmpty ? "manager" : n.value("k11")["t"].string.lowercased())", body: lines.isEmpty ? "Nothing to report." : lines.joined(separator: "\n"), tone: bad.isEmpty ? "n" : "bad", status: "done", sev: 1)
         }
     }
 }

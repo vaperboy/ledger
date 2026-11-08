@@ -180,7 +180,7 @@ public enum EventEngine {
         if e.options.isEmpty { s.note(title, tone: e.tone, companyID: co.id); return }
         if e.lawyerHelps && co.value("law")["own"].bool { title += " Your law firm handles it, costs drop." }
         let options = e.options.map { JSONValue.option($0.label, $0.detail, effects: resolve($0.effects, ctx, currency: cur).object) }
-        let decision = decider(co, options: options, state: s)
+        let decision = decider(co, options: options, state: s, data: data)
         if decision == .manager {
             let pick = choose(co, options: options, ctx: ctx, quality: ManagerModel.quality(co, bd(data, co), people: s.people), random: &s.random)
             let who = s.people[co.managerID ?? 0]?.name ?? "The manager"
@@ -202,16 +202,13 @@ public enum EventEngine {
 
     enum Decider { case owner, manager }
 
-    /// Who decides: you, or a manager with authority for this size of decision. Original: `decider`.
-    static func decider(_ co: Company, options: [JSONValue], state s: GameState) -> Decider {
+    /// Who decides: you, or a manager whose budget covers this size of decision. Original: `decider`.
+    static func decider(_ co: Company, options: [JSONValue], state s: GameState, data: GameData) -> Decider {
         guard co.managerID != nil, s.people[co.managerID!] != nil else { return .owner }
         let cost = options.map { max(abs($0["fx"]["cash"].double), abs($0["fx"]["loss"].double), $0["fx"]["fine"].double) }.max() ?? 0
-        let auth = co.value("auth")
-        let level = auth["lvl"].int
         let big = s.rest["group"]?["big"].double ?? 5_000_000
         if cost > big { return .owner }
-        if level >= 2 || (level == 1 && cost <= auth["buy"].double) { return .manager }
-        return .owner
+        return ManagerModel.withinBudget(co, amount: cost, s, data: data) ? .manager : .owner
     }
 
     /// A manager's pick: the option that scores best for the business, with some noise that shrinks with quality.

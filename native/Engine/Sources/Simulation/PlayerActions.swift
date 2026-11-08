@@ -299,7 +299,10 @@ public extension GameEngine {
         return r
     }
     mutating func sellInvestment(_ kind: Brokerage.Kind, symbol: String, fraction: Double) {
-        update { s, _, ctx in Brokerage.sell(&s, kind, symbol, fraction: fraction, currency: ctx.homeCurrency(s)) }
+        update { s, _, ctx in
+            Brokerage.sell(&s, kind, symbol, fraction: fraction, currency: ctx.homeCurrency(s))
+            PersonalFinance.withholdNow(&s, context: ctx)   // the tax on the gain is paid at the sale
+        }
     }
     mutating func moveToSavings(_ amount: Double) -> Bool {
         var ok = false
@@ -314,8 +317,8 @@ public extension GameEngine {
 
     // MARK: Policies
 
-    /// The owner's standing instructions (see `ManagementPolicy`).
-    mutating func setPolicy(_ policy: ManagementPolicy) { update { s, _, _ in s.policy = policy } }
+    /// Does nothing: the standing rules are fixed (see `ManagementPolicy`). Kept so a caller of the old setting still compiles.
+    mutating func setPolicy(_ policy: ManagementPolicy) {}
 
     // MARK: Payroll
 

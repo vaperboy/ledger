@@ -31,6 +31,7 @@ public enum ChainBranches {
             if L.isEmpty { continue }
             if L.count >= 2 { pool(&s, chainID: id, data: data) }
             mergeStoreBoards(&s, chainID: id)
+            ChainLocations.leadProposals(&s, chainID: id, data: data)
             guard var c = Chains.chain(s, id: id) else { continue }
             let n = combinedCash(s, chainID: id) < 0 ? c["neg"].int + 1 : 0
             if c["neg"].int != n { c["neg"] = .number(Double(n)); Chains.save(&s, c) }
@@ -98,9 +99,12 @@ public enum ChainBranches {
         case runsFranchising
         /// It is listed for sale as a company: withdraw that first.
         case listed
+        /// The chain's co-owners voted against closing it: the percent of the shares that were for it.
+        case votedDown(Int)
 
         public var text: String {
             switch self {
+            case .votedDown(let pct): return "The co-owners voted against closing it: \(pct)% of the shares were for it."
             case .notABranch: return "This is not a branch of a chain of two or more stores: close or sell the company itself."
             case .runsFranchising: return "This store runs the brand's franchising, so it stays in the chain."
             case .listed: return "It is on the market as a company: withdraw that listing first."
@@ -194,6 +198,15 @@ public enum ChainBranches {
                            transfers: moves, redundancies: going.count + (co.managerID != nil ? 1 : 0), redundancyPay: jsRound(pay),
                            equipmentSale: jsRound(eq.filter { $0.key != "fit" }.reduce(0) { $0 + $1.value["bv"].double } * 0.7), fitOutWrittenOff: eq["fit"]?["bv"].double ?? 0,
                            stockMoved: co.inventory, vehiclesMoved: co.value("veh").array.filter { $0["mode"].string != "lease" }.count)
+    }
+
+    /// You propose closing a branch and the chain's board votes at once: with nobody else owning part of the chain it is yours to decide;
+    /// co-owners may vote it down (`BoardVote`, kind "close"), and then nothing closes.
+    public static func closeByVote(_ s: inout GameState, storeID: Int, data: GameData) -> Result<ClosurePlan, Refusal> {
+        guard let co = s.company(storeID) else { return .failure(.notABranch) }
+        if let r = refusal(s, co) { return .failure(r) }
+        if let pct = ManagerModel.boardGate(s, kind: "close", companyID: storeID) { return .failure(.votedDown(pct)) }
+        return close(&s, storeID: storeID, data: data)
     }
 
     /// Close a branch for good: the lease is given up (notice rent, deposit back) or the owned site sold, staff move to sister branches short of

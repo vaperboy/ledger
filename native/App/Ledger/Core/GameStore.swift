@@ -63,16 +63,30 @@ enum AppRequest: Equatable {
     case ventures
 }
 
-/// One notice, told in the in-game popup (never a banner): a refusal, a warning or an outcome the player must see.
+/// One notice, told in the in-game popup: a refusal, a warning or a problem the player must see.
 struct Toast: Identifiable, Equatable {
     let id = UUID()
     var title: String = ""
     var text: String
     var tone: String
-    /// "answered": the result card for an answered decision (what was chosen, where, and what changed).
+    /// "luxury": the gold reveal card of a high-value purchase.
     var style = ""
     var subtitle = ""
     var rows: [String] = []
+}
+
+/// One outcome popup: what the player chose and what came of it.
+struct OutcomeNote: Identifiable, Equatable {
+    let id = UUID()
+    var chosen: String
+    var result: String
+}
+
+/// What a confirmed action reported while it ran (see `GameStore.runConfirmed`).
+struct OutcomeCapture {
+    var lines: [String] = []
+    var refused = false
+    var told = false
 }
 
 /// What one day changed, from before/after snapshots of the engine state (no engine code): feeds the animation layer.
@@ -137,8 +151,10 @@ final class GameStore: ObservableObject {
     @Published private(set) var redAlerts: [Message] = []
     func dismissRedAlert() { if !redAlerts.isEmpty { redAlerts.removeFirst() } }
     var toast: Toast? { notices.first }
-    /// The iOS-style notification banners (see `NotificationBannerLayer`).
-    let banners = BannerQueue()
+    /// Outcome popups waiting to be read, oldest first; the first is on screen (see `OutcomePopup`).
+    @Published private(set) var outcomes: [OutcomeNote] = []
+    /// Set while a confirmed action runs: what it reported, so its outcome popup can say it (see `runConfirmed`).
+    var outcomeCapture: OutcomeCapture?
     /// The open decision (an Inbox message id) being answered in a popup on the main screen, or nil.
     @Published var decisionPopup: Int?
     @Published var errorText: String?
@@ -172,18 +188,17 @@ final class GameStore: ObservableObject {
     @Published private(set) var dayChip: DayChip?
     /// What the last day changed (net worth, cash, revenue, debt), for the animation layer.
     @Published private(set) var lastDayChanges = DayChanges()
-    /// The one payment notice of the day (a big customer payment), shown as a self-dismissing banner.
+    /// The one payment notice of the day (a big customer payment), logged to Home's events.
     @Published private(set) var paymentNotice: PaymentNotice?
-    /// What each Phone app has shown the player so far (badges count what is newer), and what was already announced in a banner.
+    /// What each Phone app has shown the player so far (badges count what is newer).
     @Published var seenMarks: UpdateMarks = UpdateMarks.load("seen") { didSet { memoBox["badges"] = nil } }
-    var announcedMarks = UpdateMarks.load("announced")
     /// Item marks seen in the last moment, written to `seenMarks` together (ItemMarks.swift): one publish for a screenful of markers.
     var pendingSeen: [String] = []
     var seenFlushScheduled = false
     /// Per Phone app (by raw value): the marks when the app was opened, and the item ids that were new then (ItemMarks.swift).
     var visitBaselines: [String: UpdateMarks] = [:]
     @Published var visitFresh: [String: Set<String>] = [:]
-    /// A worker's profile opened from a Recognition banner.
+    /// A worker's profile shown as a popup.
     @Published var workerPopup: WorkerPopupRef?
     /// The last important events (big payments, loan repayments, good news, milestones), newest first, at most 12.
     @Published private(set) var homeEvents: [HomeEvent] = []
@@ -197,6 +212,8 @@ final class GameStore: ObservableObject {
     func clearChip() { transferChip = nil }
     /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
+    /// Goals finished on an ordinary day: told in the day bar on Home, not in a popup (a week, month or year report carries them itself).
+    @Published private(set) var dayGoals: [String] = []
     /// True while the start-of-game ambition prompt is waiting to be answered (before the first day).
     @Published private(set) var ambitionPrompt = false
 
@@ -212,7 +229,7 @@ final class GameStore: ObservableObject {
     @Published var customTarget: CustomTabTarget? = CustomTabTarget.stored()
     /// The "Change the Custom tab" popup.
     @Published var customPickerOpen = false
-    /// Set by a banner for the Market app: it opens on its Overview, where the latest market events are.
+    /// Set for the Market app: it opens on its Overview, where the latest market events are.
     var marketNewsPending = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
     @Published private(set) var rootTokens: [AppTab: Int] = [:]
@@ -324,7 +341,7 @@ final class GameStore: ObservableObject {
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
     func importLegacy(text: String) {
         guard let saves else { return }
-        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save(); tell("Save imported", "The original file is kept untouched.", tone: "good") }
+        do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save() }
         catch { errorText = "That save could not be imported. " + Self.describe(error) }
     }
 
@@ -416,7 +433,7 @@ final class GameStore: ObservableObject {
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
-        celebrationQueue.append(contentsOf: celebrations)
+        if digest == nil && !out.gameOver { dayGoals = celebrations.map { $0.title } } else { dayGoals = []; celebrationQueue.append(contentsOf: celebrations) }
         if out.completedWeek { queueUnlocks() }
         reportSheet = digest
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
@@ -428,21 +445,20 @@ final class GameStore: ObservableObject {
         }
         let debtAfter: Double = e.state.loans.reduce(0) { $0 + $1.balance }
         lastDayChanges = DayChanges(netWorth: daily.netWorthChange ?? 0, cash: daily.cashChange ?? 0, revenue: daily.revenue, debt: debtAfter - debtBefore)
-        // A major payment (the day's takings above 1.5 percent of net worth) is logged for Home only; it never raises a banner.
+        // A major payment (the day's takings above 1.5 percent of net worth) is logged for Home only.
         var todaysPayment: PaymentNotice?
         if !out.gameOver, let p = bigPayment(e) {
             let notice = PaymentNotice(amount: p.amount, from: p.from)
             todaysPayment = notice
             paymentNotice = notice
         }
-        if !out.gameOver { postUpdateBanners(e) }
         var logged: [HomeEvent] = []
         if let n = todaysPayment { logged.append(HomeEvent(glyph: Glyph.ovCoin, text: "Payments of \(short(n.amount)) from \(n.from)", day: daily.dateLabel)) }
         if lastDayChanges.debt < -0.5 { logged.append(HomeEvent(glyph: Glyph.bank, text: "Loans repaid by \(short(-lastDayChanges.debt))", day: daily.dateLabel)) }
         for line in daily.wentWell.prefix(2) { logged.append(HomeEvent(glyph: Glyph.check, text: line.tidyMoney, day: daily.dateLabel)) }
         for c in celebrations.prefix(2) { logged.append(HomeEvent(glyph: Glyph.achievements, text: c.title, day: daily.dateLabel)) }
         logEvents(logged)
-        // Every ordinary day has a report, quiet or busy; only Continue closes it.
+        // Every ordinary day has a one-line bar on Home, quiet or busy; it never blocks the next day.
         dailySheet = (digest == nil && !out.gameOver) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
             let cashAfter: Double = e.dayHistory.cash.last ?? 0
@@ -490,7 +506,7 @@ final class GameStore: ObservableObject {
         if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Home scrolls to Needs you and the expiry pill pulses once
     }
 
-    func dismissDailySheet() { dailySheet = nil }
+    func dismissDailySheet() { dailySheet = nil; dayGoals = [] }
 
     /// The popup on screen has been seen: the next one (if any) shows.
     func dismissCelebration() {
@@ -509,7 +525,7 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// A buzz when something needs the player; the words are in the daily popup (and the Inbox), not in a banner.
+    /// A buzz when something needs the player; the words are in the daily popup and the Inbox.
     private func report(_ fresh: [Message]) {
         if fresh.contains(where: { $0.isOwnerAddressed && ($0.status == "open" || $0.severity >= 3) }) { Haptics.warning() }
         let alerts: [Message] = fresh.filter { (m: Message) -> Bool in m.isAlert && !redAlerts.contains(where: { (a: Message) -> Bool in a.id == m.id }) }
@@ -567,18 +583,21 @@ final class GameStore: ObservableObject {
     /// For a setting the engine applies without a result of its own (a limit, a duty, a slider): a short "Saved" with what it is now.
     func saved(_ what: String) { show("Saved: \(what)", tone: "n") }
 
-    /// A result line from an action. A refusal or a minor warning (tone "warn") is a toast: one compact line that leaves by itself and
-    /// never stops the game. A problem the player must read (tone "bad") is a popup; a plain confirmation ("Saved", "Hired") is a banner.
+    /// A result line from an action. A refusal or a problem the player must read (tone "warn" or "bad") is a popup. Plain information
+    /// ("Saved", "Hired") never interrupts: the screen shows the change, and while a confirmed action runs the line becomes its
+    /// outcome popup (see `runConfirmed`).
     func show(_ text: String, tone: String = "n") {
         switch tone {
-        case "bad": tell("", text, tone: tone)
-        case "warn": notify(text, tone: tone)
-        default: banner(text)
+        case "bad", "warn":
+            tell("", text, tone: tone)
+        default:
+            outcomeCapture?.lines.append(text.tidyText)
         }
     }
 
     /// Important information, always told in the popup (an answer with an immediate effect, a result the player waits for).
     func tell(_ title: String, _ text: String, tone: String = "n") {
+        outcomeCapture?.refused = true
         let t = Toast(title: title, text: text.tidyText, tone: tone)
         if notices.last?.text == t.text && notices.last?.title == t.title { return }
         notices.append(t)
@@ -593,13 +612,36 @@ final class GameStore: ObservableObject {
         notices.append(t)
     }
 
-    /// An answer to an open decision has an effect at once, so it is told at once, in a popup (what was chosen and what it does).
+    /// An answer to an open decision: the outcome popup says what was chosen and what it does; a failed answer is an error popup.
     func announceAnswer(label: String, effects: [String], ok: Bool, messageTitle: String = "", companyID: Int = 0) {
         guard ok else { Haptics.warning(); tell("Not applied", "That answer could not be applied: the message is no longer open.", tone: "warn"); return }
-        // A successful answer is a minor result: one toast, no popup to dismiss.
         Haptics.success()
-        show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
+        outcome(chosen: label, result: effects.joined(separator: "\n"))
     }
+
+    /// The one outcome popup after a decision was answered: what was chosen and what came of it, in plain words. Queued, one at a
+    /// time; an empty result reads "Done: <chosen>".
+    func outcome(chosen: String, result: String) {
+        let c: String = chosen.tidyText
+        let r: String = result.tidyText
+        outcomeCapture?.told = true
+        outcomes.append(OutcomeNote(chosen: c, result: r.isEmpty ? "Done: " + c : r))
+    }
+
+    /// Runs a confirmed action and tells its outcome: the result lines it reported, or "Done: <button>". A refusal (its own popup)
+    /// or an action that told its own outcome adds none.
+    func runConfirmed(_ action: PendingAction) {
+        let outer: OutcomeCapture? = outcomeCapture
+        outcomeCapture = OutcomeCapture()
+        action.run()
+        let c: OutcomeCapture = outcomeCapture ?? OutcomeCapture()
+        outcomeCapture = outer
+        guard !c.refused, !c.told else { return }
+        outcome(chosen: action.button, result: c.lines.joined(separator: "\n"))
+    }
+
+    /// The outcome popup on screen has been read: the next one (if any) shows.
+    func dismissOutcome() { if !outcomes.isEmpty { outcomes.removeFirst() } }
 
     /// The popup on screen has been read: the next notice (if any) shows.
     func dismissNotice() { if !notices.isEmpty { notices.removeFirst() } }
@@ -844,7 +886,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         tab = .company
         stacks = [:]; rootTokens = [:]; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); banners.reset(); notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; dayGoals = []; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); outcomes = []; notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {

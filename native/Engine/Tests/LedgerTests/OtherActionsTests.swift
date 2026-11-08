@@ -82,17 +82,10 @@ final class OtherActionsTests: XCTestCase {
         XCTAssertEqual(e.startDevelopment(companyID: id, project: first.id), e.state.company(id)!.value("rd56")["done"].array.isEmpty ? .ok : .recent)
     }
 
-    func testDailyGoalAndFirstSteps() throws {
+    func testDailyGoalAndAmbition() throws {
         var (e, _) = try cafe()
         let g = e.dailyGoal(now: Date(timeIntervalSince1970: 1_800_000_000))
         XCTAssertNotNil(g)
-        XCTAssertNotNil(e.firstStepRewards)
-        XCTAssertEqual(e.firstStepRewards?.count, 10)
-        XCTAssertNil(e.claimFirstStep(id: "profit"), "an unfinished step gives no reward")
-        let cash = e.state.cash
-        XCTAssertNotNil(e.claimFirstStep(id: "co"))
-        XCTAssertGreaterThan(e.state.cash, cash)
-        XCTAssertNil(e.claimFirstStep(id: "co"), "a reward is claimed once")
         XCTAssertTrue(e.chooseAmbition(path: "dynasty"))
         XCTAssertEqual(e.currentAmbition, "dynasty")
         XCTAssertFalse(e.ambitionMilestones(path: "dynasty").isEmpty)

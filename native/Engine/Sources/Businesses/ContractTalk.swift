@@ -75,7 +75,7 @@ public enum ContractTalk {
 
     /// One thing proposed: a topic, a figure and a choice inside the topic.
     ///  - payRise: `amount` = the rise as a share (0.05 = +5 %).
-    ///  - promotion: `choice` = the post (`PromotionPost.id`), `amount` = the monthly pay offered, `terms` = duties, authority, reporting, bonus, shares.
+    ///  - promotion: `choice` = the post (`PromotionPost.id`), `amount` = the monthly pay offered, `terms` = authority (the budget) and shares.
     ///  - hours: `choice` "hours" (`amount` = hours a week), "full", "part" (part time all year for a seasonal worker) or "season:<id>".
     ///  - payBasis: `choice` "fix", "mix", "com" (`amount` = the commission share, 0 = the usual one) or "salary" (an hourly worker's fixed salary).
     ///  - bonus: `amount` = a manager's profit share (0 to 0.3) or a seller's commission share.
@@ -92,13 +92,12 @@ public enum ContractTalk {
         }
 
         var json: JSONValue {
-            .object(["t": .string(topic.rawValue), "a": .number(amount), "c": .string(choice), "du": .array(terms.duties.map { .string($0) }), "au": .number(Double(terms.authority)),
-                     "rp": .string(terms.report), "bo": .number(terms.bonus), "sh": .number(terms.sharesPercent)])
+            .object(["t": .string(topic.rawValue), "a": .number(amount), "c": .string(choice), "au": .number(Double(terms.authority)), "sh": .number(terms.sharesPercent)])
         }
         init?(json j: JSONValue) {
             guard let t = Topic(rawValue: j["t"].string) else { return nil }
             self.init(t, amount: j["a"].double, choice: j["c"].string,
-                      terms: .init(duties: j["du"].array.map { $0.string }, authority: j["au"].int, report: j["rp"].string, bonus: j["bo"].double, sharesPercent: j["sh"].double))
+                      terms: .init(authority: j["au"].int, sharesPercent: j["sh"].double))
         }
     }
 
@@ -316,20 +315,19 @@ public enum ContractTalk {
 
     // MARK: Who decides (delegation)
 
-    /// May the manager decide this on your behalf? Level 2 decides anything, level 1 up to the pay-and-promotions limit set on the manager's card
-    /// (the same rule the manager already follows in `ManagerModel`'s pay reviews).
-    public static func managerMayDecide(_ co: Company, extraMonthly: Double) -> Bool {
-        guard co.managerID != nil else { return false }
-        let a = co.value("auth"), lvl = Int(a["lvl"].double)
-        return lvl >= 2 || (lvl == 1 && extraMonthly <= a["hire"].double)
+    /// May the manager decide this on your behalf? The one budget rule: free decides anything, normal up to its monthly pay limit, tight nothing
+    /// (the same rule the manager follows in `ManagerModel`'s pay reviews).
+    public static func managerMayDecide(_ co: Company, extraMonthly: Double, _ s: GameState, data: GameData) -> Bool {
+        ManagerModel.withinBudget(co, amount: extraMonthly, monthly: true, s, data: data)
     }
 
     public struct Handler: Equatable, Sendable { public var name: String; public var level: Int; public var payLimit: Double }
 
-    /// The manager who may handle a company's contract talks (level 1 or 2 on their card), with the limit; nil when they all come to you.
+    /// The manager who may handle a company's contract talks (normal or free budget), with the monthly pay limit; nil when they all come to you.
     public static func handler(_ s: GameState, companyID: Int, data: GameData) -> Handler? {
         guard let co = s.company(companyID), let boss = ManagerModel.decisionChain(s, co, data: data).first(where: { $0.kind == "mgr" }), boss.level >= 1 else { return nil }
-        return Handler(name: boss.name, level: boss.level, payLimit: co.value("auth")["hire"].double)
+        let payLimit = ManagerModel.budget(of: co).payLimit(World(state: s, data: data).currency(co), monthlyRevenue: ManagerModel.recentMonthlyRevenue(co))
+        return Handler(name: boss.name, level: boss.level, payLimit: payLimit)
     }
 
     // MARK: Consequences
@@ -461,7 +459,7 @@ public enum ContractTalk {
         case .promotion:
             if let post = ManagerModel.promotionPosts(s, companyID: companyID, personID: personID, data: data).first(where: { $0.id == p.choice }) {
                 c.lines.append("New post: \(post.title) at \(post.place). They ask about \(cur.display(post.ask)) a month for it.")
-                if !p.terms.duties.isEmpty { c.lines.append("Duties: \(p.terms.duties.joined(separator: ", ")). Authority \(["asks you first", "within limits", "full control"][min(2, max(0, p.terms.authority))]).") }
+                if post.kind != "role" { c.lines.append("Budget \(p.terms.budget.title.lowercased()): \(p.terms.budget.text).") }
                 if post.kind != "role", sub.member != nil || sub.isManager { c.peers.append("They leave their present job; it is empty until it is filled.") }
             }
         case .hours:
@@ -1008,7 +1006,7 @@ public enum ContractTalk {
         var t = s
         _ = applyFinal(&t, sub, talk.proposal, data: data)
         let extra = (subject(t, companyID: companyID, personID: personID)?.member?.monthlyWage ?? before) - before
-        guard managerMayDecide(co, extraMonthly: max(0, extra)) else {
+        guard managerMayDecide(co, extraMonthly: max(0, extra), s, data: data) else {
             return .notPossible("This is above \(h.name)'s limit of \(World(state: s, data: data).currency(co).display(h.payLimit)) a month for pay and promotions. It stays with you.")
         }
         let r = respond(&s, sub, talk, .accept, data: data)

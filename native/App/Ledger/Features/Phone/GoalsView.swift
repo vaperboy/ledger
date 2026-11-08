@@ -3,9 +3,8 @@ import GameCore
 import Events
 import Simulation
 
-/// Goals app: a checklist with a progress ring for every goal (a tick when it is done), the reward under each line, and the trophies
-/// as a shelf row at the end. Today's goal, the first-step rewards and the chosen ambition keep their engine calls; every claim
-/// reports the engine's own result.
+/// Goals app: the rank, the open ladder goal, the next career goals, today's goal with its streak, the chosen ambition and the trophies
+/// as a shelf row at the end.
 struct GoalsView: View {
     @EnvironmentObject var store: GameStore
     @State private var daily: PlayerGoals.DailyGoal?
@@ -17,7 +16,6 @@ struct GoalsView: View {
                 ladderCard(e)
                 nextUpCard(e)
                 todayCard(e)
-                stepsCard(e)
                 if e.ambitionVisible { ambitionCard(e) }
                 if store.gateOpen(.bank) { TrophyShelfRow(engine: e) }
             }
@@ -29,26 +27,6 @@ struct GoalsView: View {
     }
 
     private func refresh() { daily = store.dailyGoal() }
-
-    // MARK: Summary
-
-    private func summaryCard(_ e: GameEngine) -> some View {
-        let steps: [PlayerGoals.FirstStep] = e.firstStepRewards ?? []
-        let done: Int = steps.filter { $0.done || $0.claimed }.count
-        let total: Int = max(steps.count, 1)
-        let fraction: Double = Double(done) / Double(total)
-        let line: String = steps.isEmpty ? "Your goals for today and your ambition." : "\(done) of \(steps.count) first steps done"
-        return Card(padding: 16, radius: Theme.Radius.hero) {
-            HStack(spacing: 16) {
-                GoalRing(progress: fraction, done: steps.count > 0 && done == steps.count, size: 64, label: steps.isEmpty ? "" : "\(Int((fraction * 100).rounded()))%")
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Your goals").capsLabel()
-                    Text(line).textStyle(.figure).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-    }
 
     // MARK: Rank and next goals
 
@@ -95,7 +73,7 @@ struct GoalsView: View {
             let link: String = g.link
             CardSection("Next goal") {
                 GoalRow(ring: GoalRing(progress: 0, done: false), title: g.title, detail: g.body,
-                        reward: "Reward: " + g.reward.lowercased(), action: g.button.isEmpty ? nil : g.button) {
+                        reward: g.reward.isEmpty ? "" : "Reward: " + g.reward.lowercased(), action: g.button.isEmpty ? nil : g.button) {
                     Haptics.tap()
                     _ = store.openLadderLink(link)
                 }
@@ -105,22 +83,17 @@ struct GoalsView: View {
 
     // MARK: Today
 
+    /// Today's goal and the days in a row it has been done: a badge, no payout.
     @ViewBuilder private func todayCard(_ e: GameEngine) -> some View {
         if let g = daily {
-            let cur = e.homeCurrency
-            let streak: String = g.streak > 0 ? " \u{00B7} \(g.streak + 1) days in a row" : ""
-            let sub: String = g.claimed ? "Claimed. A new goal comes tomorrow." : g.progress
+            let streak: String = g.streak > 0 ? "\(g.streak) \(g.streak == 1 ? "day" : "days") in a row" : ""
             CardSection("Today") {
-                GoalRow(ring: GoalRing(progress: g.done || g.claimed ? 1 : 0, done: g.done || g.claimed),
-                        title: g.title, detail: sub,
-                        reward: "Reward " + cur.tidyShort(g.reward) + streak,
-                        action: g.done && !g.claimed ? "Claim" : (g.claimed || g.link.isEmpty ? nil : "Go")) {
-                    if !g.done && !g.claimed { Haptics.tap(); _ = store.openLadderLink(g.link); return }
-                    if let r = store.act({ $0.claimDailyGoal() }) ?? nil {
-                        Haptics.success(); store.show("Daily goal: \(cur.tidyShort(r)). A new goal comes tomorrow.", tone: "good"); refresh()
-                    } else { Haptics.warning(); store.show("That goal cannot be claimed yet.", tone: "warn") }
+                GoalRow(ring: GoalRing(progress: g.done ? 1 : 0, done: g.done),
+                        title: g.title, detail: g.done ? "Done. A new goal comes tomorrow." : g.progress,
+                        reward: streak,
+                        action: g.done || g.link.isEmpty ? nil : "Go") {
+                    Haptics.tap(); _ = store.openLadderLink(g.link)
                 }
-                .flagMarker(g.done && !g.claimed, alignment: .topLeading)
                 missionSwitch(off: false)
             }
         } else if e.dailyGoalsOff {
@@ -128,47 +101,14 @@ struct GoalsView: View {
         }
     }
 
-    /// Daily missions are optional: off means no mission here, no popup and no reward prompt.
+    /// The daily goal is optional: off means none is shown here.
     private func missionSwitch(off: Bool) -> some View {
-        Button(off ? "Turn the daily mission on" : "Turn daily missions off") {
+        Button(off ? "Turn the daily goal on" : "Turn the daily goal off") {
             store.act { $0.setDailyGoalsOff(!off) }
             Haptics.tap()
             refresh()
         }
         .textStyle(.caption, tint: Theme.accent, weight: .medium).buttonStyle(PressableStyle()).frame(minHeight: 36)
-    }
-
-    // MARK: First steps
-
-    @ViewBuilder private func stepsCard(_ e: GameEngine) -> some View {
-        if let steps = e.firstStepRewards {
-            let hidden: Bool = e.firstStepRewardsHidden
-            CardSection("First steps") {
-                if !hidden {
-                    ForEach(Array(steps.enumerated()), id: \.element.id) { i, step in
-                        if i > 0 { CardLine() }
-                        stepRow(step)
-                    }
-                }
-                Button(hidden ? "Show the first-step rewards again" : "Hide the first-step rewards") {
-                    let ok: Bool = store.act { $0.setFirstStepsHidden(!hidden) } != nil
-                    if ok { store.show(hidden ? "First-step rewards are back." : "First-step rewards hidden. Rewards you have not claimed stay available.", tone: "n") }
-                    else { store.show("That could not be changed.", tone: "warn") }
-                }
-                .textStyle(.caption, tint: Theme.accent, weight: .medium).buttonStyle(PressableStyle()).frame(minHeight: 36)
-            }
-        }
-    }
-
-    private func stepRow(_ step: PlayerGoals.FirstStep) -> some View {
-        let finished: Bool = step.done || step.claimed
-        let detail: String = step.claimed ? "Claimed" : step.done ? "Done" : step.how
-        return GoalRow(ring: GoalRing(progress: finished ? 1 : 0, done: finished), title: step.title, detail: detail,
-                       reward: "Reward: " + step.reward.lowercased(), action: step.done && !step.claimed ? "Claim" : nil) {
-            if let t = store.act({ $0.claimFirstStep(id: step.id) }) ?? nil { Haptics.success(); store.show(t, tone: "good") }
-            else { Haptics.warning(); store.show("That reward cannot be claimed yet.", tone: "warn") }
-        }
-        .flagMarker(step.done && !step.claimed, alignment: .topLeading)
     }
 
     // MARK: Ambition
@@ -250,7 +190,7 @@ struct GoalRing: View {
     }
 }
 
-/// One line of the checklist: ring, title, a grey line, the reward line in champagne, and a Claim button when it can be claimed.
+/// One line of the checklist: ring, title, a grey line, the reward line in champagne, and an action button when there is one.
 struct GoalRow: View {
     var ring: GoalRing
     var title: String

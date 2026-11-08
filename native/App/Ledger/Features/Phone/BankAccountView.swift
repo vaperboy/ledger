@@ -5,7 +5,7 @@ import Finance
 import Simulation
 
 /// One account (BankAccount.dc.html): the tabs, the balance with the available / overdraft / rate strip, the action
-/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a toast. Investing is in the
+/// tiles and the tab's content. Every money action is the engine's existing one; each reports its result in a popup. Investing is in the
 /// Market app, so the Bank opens cash accounts only.
 struct BankAccountScreen: View {
     @Environment(\.outsidePalette) private var P
@@ -145,6 +145,7 @@ struct BankAccountScreen: View {
             if let cid = id.companyID, let reserves = e.companyReserves(companyID: cid) {
                 BankReservesCard(reserves: reserves, fmt: fmt)
             }
+            if id == .personal { TaxEstimateCard(engine: e) }
             comingUp(d, fmt)
             recent(d, fmt)
             if let cid = id.companyID, let co = e.state.company(cid), co.form == .limited {
@@ -152,7 +153,7 @@ struct BankAccountScreen: View {
             }
             if id == .personal {
                 NavigationLink { ActivityView().environment(\.outsidePalette, OutsidePalette.game) } label: {
-                    LedgerRow(title: "Every movement on your account", chevron: true)
+                    LedgerRow(title: "Why did my money move?", chevron: true)
                 }
                 .buttonStyle(AcctPressStyle())
             }
@@ -239,6 +240,7 @@ struct BankOwnerSalary: View {
     @EnvironmentObject var store: GameStore
     var company: Company
     @State private var salary = 0.0
+    @State private var compare = false
 
     var body: some View {
         if let e = store.engine {
@@ -251,11 +253,13 @@ struct BankOwnerSalary: View {
                         Button("Set salary") { set(salary, cur) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
                         if now > 0 { Button("Stop salary") { set(0, cur) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.loss)) }
                     }
+                    Button("Compare salary, dividend or keeping it in") { compare = true }.buttonStyle(TertiaryButtonStyle(size: .compact))
                     Text("Paid with payroll while the company is open, with employer contributions on top; income tax is withheld. A salary is a cost to the company, a dividend is not.")
                         .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .onAppear { salary = now }
+            .centerSheet(isPresented: $compare, title: "Pay yourself") { PayYourselfSheet(companyID: company.id).environmentObject(store) }
         }
     }
 
