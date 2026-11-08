@@ -62,7 +62,7 @@ enum PopupTone: Equatable, CaseIterable {
 /// The pure size and shape rules (no view state).
 enum PopupLayout {
     /// Corner radius of every card.
-    static let radius: CGFloat = 34
+    static let radius: CGFloat = 28
     /// Inner padding of the card body.
     static let inset: CGFloat = 20
     /// The smallest gap between a card and the screen edges.

@@ -28,8 +28,8 @@ struct LedgerSlider: View {
     }
 
     private var span: Double { max(range.upperBound - range.lowerBound, 0.000001) }
-    private let thumb: CGFloat = 20
-    private var hit: CGFloat = 44
+    private let thumb: CGFloat = 22
+    private var hit: CGFloat = 48
     /// Uneven snap points (sorted, inside the range); empty: `step` or a free value.
     private var stops: [Double] = []
 
@@ -54,7 +54,10 @@ struct LedgerSlider: View {
 
     private func snapped(_ raw: Double) -> Double {
         var v: Double = min(range.upperBound, max(range.lowerBound, raw))
-        if let near = stops.min(by: { (a: Double, b: Double) -> Bool in abs(a - v) < abs(b - v) }) { return near }
+        if let near = stops.min(by: { (a: Double, b: Double) -> Bool in abs(a - v) < abs(b - v) }),
+           abs(near - v) <= span * 0.012 {
+            return near
+        }
         if let step, step > 0 {
             let n: Double = ((v - range.lowerBound) / step).rounded()
             v = min(range.upperBound, range.lowerBound + n * step)
@@ -120,11 +123,13 @@ struct LedgerSlider: View {
             let usable: CGFloat = max(1, w - thumb)
             let x: CGFloat = thumb / 2 + usable * fraction(value)
             ZStack(alignment: .leading) {
-                Capsule().fill(P.lineStrong).frame(height: 3)
-                Capsule().fill(P.accent).frame(width: x, height: 3)
+                Capsule().fill(P.lineStrong.opacity(0.9)).frame(height: 4)
+                Capsule().fill(P.accent).frame(width: x, height: 4)
                 Circle()
                     .fill(P.ink)
                     .frame(width: thumb, height: thumb)
+                    .overlay(Circle().strokeBorder(P.accent.opacity(dragging ? 0.95 : 0.55), lineWidth: 1.5))
+                    .shadow(color: Color.black.opacity(0.22), radius: 3, x: 0, y: 1)
                     .scaleEffect(dragging ? 1.12 : 1)
                     .offset(x: x - thumb / 2)
             }
