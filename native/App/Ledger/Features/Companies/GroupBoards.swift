@@ -146,7 +146,7 @@ struct BoardView: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             ForEach(Array(m.options.enumerated()), id: \.offset) { (i: Int, o: String) in
                 Button(o) {
-                    pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true, chosen: o) {
+                    pending = PendingAction(title: "Decide: \(o)?", message: "An emergency decision of the board takes effect at once and cannot be undone.", button: "Decide", destructive: true) {
                         let r: String? = store.act { $0.pickEmergency(key: key, meetingID: m.id, option: i) } ?? nil
                         message = r == "hire" ? "Decided. Pick a new manager in the company's Team." : "Decided: \(o)."
                         Haptics.success()
@@ -184,7 +184,6 @@ struct BoardView: View {
     }
 
     private func decline(_ m: ManagerModel.BoardMeeting, _ it: ManagerModel.MeetingItem) {
-        store.chose(isConcern(it) ? "Leave it" : "Decline")
         let r = store.act { $0.decideMeetingItem(key: key, meetingID: m.id, item: it.id, approve: false) }
         if case .gone? = r { message = "That point is no longer on the agenda." } else { message = isConcern(it) ? "Left as it is. It goes in the minutes." : "Declined. It goes in the minutes." }
     }

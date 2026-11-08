@@ -605,7 +605,7 @@ struct HireOnePage: View {
     private func confirm(_ amount: Double, _ annual: Double, _ cur: Currency, _ terms: Hiring.Terms) {
         let cost: String = annual > 0 ? " The company pays about \(cur.tidyShort(annual)) a year in total employer cost." : ""
         let message: String = "If \(first) accepts, they start at once at \(cur.tidyShort(amount)) a month.\(cost) If not, they may name a figure of their own, take offence or lose patience."
-        pending = PendingAction(title: "Offer \(cur.tidyShort(amount)) a month to \(first)?", message: message, button: "Make the offer", tone: .info, icon: "banknote", chosen: "Offer \(cur.tidyShort(amount)) a month") { send(amount, cur, terms) }
+        pending = PendingAction(title: "Offer \(cur.tidyShort(amount)) a month to \(first)?", message: message, button: "Make the offer", tone: .info, icon: "banknote") { send(amount, cur, terms) }
     }
 
     private func send(_ amount: Double, _ cur: Currency, _ terms: Hiring.Terms) {

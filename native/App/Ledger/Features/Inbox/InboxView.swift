@@ -127,8 +127,7 @@ struct InboxView: View {
         if ok { Haptics.option() }
         detailID = nil
         if ok {
-            // The answer is confirmed and its effect told in top toasts; the player stays on the Inbox.
-            store.chose(label)
+            // The answer is told in a one-line toast; the player stays on the Inbox.
             store.show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
         } else if message.actionID == PersonalFinance.dueAction {
             // The tax decision stays open when a route cannot cover the bill: say so and let the player choose another.

@@ -3,8 +3,9 @@ import GameCore
 import Simulation
 
 // Banners and toasts: the one way the game tells the player something without a blocking popup. A banner is a card below the
-// status bar (source, title, body); a toast is the compact form for any notification (a result, a warning, "Chosen: Agree"), tinted by its tone,
-// gone after 2.5 s, at most two at once, tap or swipe up to leave, and never held back by a popup. A banner waits while a report or a blocking popup is open. No game rules here.
+// status bar (source, title, body); a toast is the compact one-line form for a result ("Not enough cash"), accented by its tone and
+// gone after a few seconds. Both slide down with a spring, swipe up to leave, show one at a time (a toast first, then the most
+// severe), and wait while a report or a blocking popup is open. No game rules here.
 
 /// What a tap on a banner does.
 enum BannerTarget {
@@ -55,9 +56,6 @@ struct BannerConfirm: Identifiable {
 final class BannerQueue: ObservableObject {
     @Published private(set) var current: BannerItem?
     @Published private(set) var pending: [BannerItem] = []
-    /// Toasts on screen, oldest first: at most `maxToasts`, shown at once and never held back by a popup.
-    @Published private(set) var toasts: [BannerItem] = []
-    static let maxToasts = 2
     @Published var confirm: BannerConfirm?
     /// Alert keys already announced, so a standing alert is shown once and again only after it went away.
     private var announced: Set<String> = []
@@ -66,18 +64,14 @@ final class BannerQueue: ObservableObject {
 
     /// Adds a banner; one with the same key (or the same words) replaces what is waiting instead of piling up.
     func post(_ item: BannerItem) {
-        // A toast is the answer to something the player just did: it shows at once, beside any banner, and the oldest leaves at the third.
-        if item.compact {
-            toasts.removeAll { (t: BannerItem) -> Bool in t.key == item.key }
-            toasts.append(item)
-            if toasts.count > Self.maxToasts { toasts.removeFirst(toasts.count - Self.maxToasts) }
-            return
-        }
         if let c = current, c.key == item.key { return }
         pending.removeAll { (p: BannerItem) -> Bool in p.key == item.key }
+        // A toast is the answer to something the player just did: it takes the slot from a banner, which waits its turn again.
+        if item.compact, let c = current, !c.compact { pending.append(c); current = nil }
         pending.append(item)
         pending = pending.enumerated().sorted { (a: (offset: Int, element: BannerItem), b: (offset: Int, element: BannerItem)) -> Bool in
-            a.element.severity != b.element.severity ? a.element.severity > b.element.severity : a.offset < b.offset
+            if a.element.compact != b.element.compact { return a.element.compact }
+            return a.element.severity != b.element.severity ? a.element.severity > b.element.severity : a.offset < b.offset
         }.map { $0.element }
     }
 
@@ -87,10 +81,7 @@ final class BannerQueue: ObservableObject {
         current = pending.removeFirst()
     }
 
-    func dismiss(_ id: UUID) {
-        if current?.id == id { current = nil }
-        toasts.removeAll { (t: BannerItem) -> Bool in t.id == id }
-    }
+    func dismiss(_ id: UUID) { if current?.id == id { current = nil } }
 
     /// Standing alerts: announces new ones once, and withdraws banners of alerts that are gone.
     func sync(alerts: [BannerItem]) {
@@ -101,29 +92,20 @@ final class BannerQueue: ObservableObject {
         for a in alerts where !announced.contains(a.key) { announced.insert(a.key); post(a) }
     }
 
-    func reset() { current = nil; pending = []; toasts = []; confirm = nil; announced = [] }
+    func reset() { current = nil; pending = []; confirm = nil; announced = [] }
 }
 
 extension GameStore {
-    /// Ordinary feedback ("Dividend paid", "Payment received"): a good-tone toast; a body is joined to the title.
+    /// A low-severity banner for ordinary feedback ("Dividend paid", "Payment received"): 3 s, no tap action.
     func banner(_ title: String, body: String = "", source: String = "Ledger", glyph: String = Glyph.check) {
-        notify(body.isEmpty ? title : title + ". " + body, tone: "good")
+        banners.post(BannerItem(key: "note-" + title + body, source: source, title: title.tidyText, body: body.tidyText, glyph: glyph, severity: 1, lifetime: 3))
     }
 
-    /// The one notification channel: a result, warning or news line told in a small top toast that leaves by itself.
-    /// Tone "good", "warn", "bad" or "n" (info).
+    /// The toast: a refusal or a minor warning told in one compact line that leaves by itself (the ToastCenter is this banner queue).
     func notify(_ text: String, tone: String = "warn") {
         let line: String = text.tidyText
-        let glyph: String = tone == "good" ? Glyph.check : (tone == "n" ? Glyph.info : Glyph.warning)
-        banners.post(BannerItem(key: "toast-" + line, source: "", title: line, glyph: glyph,
+        banners.post(BannerItem(key: "toast-" + line, source: "", title: line, glyph: tone == "good" ? Glyph.check : Glyph.warning,
                                 severity: 3, lifetime: Motion.toastSeconds, compact: true, tone: tone))
-    }
-
-    /// Confirms the player's answer at the top of the screen: "Chosen: Agree".
-    func chose(_ label: String) {
-        let l: String = label.tidyText
-        if l.isEmpty { return }
-        notify("Chosen: " + l, tone: "n")
     }
 }
 
@@ -145,19 +127,10 @@ struct NotificationBannerLayer: View {
     var body: some View {
         let key = PumpKey(blocked: blocked, hasPending: queue.hasPending, hasCurrent: queue.current != nil)
         ZStack(alignment: .top) {
-            VStack(spacing: 0) {
-                if store.engine != nil {
-                    ForEach(queue.toasts) { (item: BannerItem) in
-                        BannerCard(item: item, reduceMotion: reduceMotion, onTap: { tapped(item) }, onClose: { close(item) })
-                            .id(item.id)
-                            .transition(Motion.toastTransition(reduceMotion))
-                    }
-                    if let item = queue.current {
-                        BannerCard(item: item, reduceMotion: reduceMotion, onTap: { tapped(item) }, onClose: { close(item) })
-                            .id(item.id)
-                            .transition(Motion.toastTransition(reduceMotion))
-                    }
-                }
+            if store.engine != nil, let item = queue.current {
+                BannerCard(item: item, reduceMotion: reduceMotion, onTap: { tapped(item) }, onClose: { close(item) })
+                    .id(item.id)
+                    .transition(Motion.toastTransition(reduceMotion))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -165,10 +138,9 @@ struct NotificationBannerLayer: View {
             if let c = queue.confirm { confirmPopup(c) }
         }
         .animation(slide, value: queue.current?.id)
-        .animation(slide, value: queue.toasts.map { $0.id })
         .task(id: key) {
             if key.blocked || key.hasCurrent || !key.hasPending { return }
-            let gap: Double = Motion.bannerGapSeconds
+            let gap: Double = queue.pending.first?.compact == true ? Motion.toastGapSeconds : Motion.bannerGapSeconds
             try? await Task.sleep(nanoseconds: UInt64(gap * 1_000_000_000))
             if Task.isCancelled { return }
             Motion.animate(slide) { queue.advance() }

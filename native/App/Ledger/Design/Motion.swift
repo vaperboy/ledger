@@ -22,7 +22,7 @@ enum Motion {
     /// Seconds the banner layer waits before the next banner, how long a swiped banner takes to leave, and how long a toast stays.
     static let bannerGapSeconds: Double = 0.45
     static let bannerLeaveSeconds: Double = 0.19
-    static let toastSeconds: Double = 2.5
+    static let toastSeconds: Double = 3.5
     /// The gap before a toast (shorter than a banner's: a toast answers the tap just made).
     static let toastGapSeconds: Double = 0.05
     /// How long a `quick` change takes (a bump holds this long before it settles back).

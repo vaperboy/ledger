@@ -108,13 +108,11 @@ struct ContractDiscussionView: View {
                     }
                     if termsOpen(e) {
                         promiseMaker(e, label: "Promise instead") { draft in
-                            store.chose("Promise instead")
                             show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) })
                         }
                     }
                     if e.contractHandler(companyID: companyID) != nil {
                         Button("Leave it to the manager") {
-                            store.chose("Leave it to the manager")
                             show(store.act { $0.contractLeaveToManager(companyID: companyID, personID: personID) })
                         }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft))
                     }
@@ -126,7 +124,6 @@ struct ContractDiscussionView: View {
                     Text((talk.isFinal ? "Their final word: " : "They ask: ") + requestFigure(talk, cur)).popupText(.body)
                     partWay(talk, cur)
                     Button("Drop this talk") {
-                        store.chose("Drop this talk")
                         _ = store.act { $0.contractWithdraw(personID: personID) }
                         reply = ""
                         store.show("Talk dropped. Nothing changes for \(first(n)).", tone: "n")

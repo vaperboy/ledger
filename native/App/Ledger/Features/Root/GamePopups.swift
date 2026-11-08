@@ -221,7 +221,6 @@ extension GameStore {
     func toastAnswer(label: String, effects: [String], ok: Bool, messageTitle: String, companyID: Int) {
         guard ok else { announceAnswer(label: label, effects: effects, ok: false, messageTitle: messageTitle, companyID: companyID); return }
         Haptics.success()
-        chose(label)
         show(label + (effects.first.map { ". " + $0 } ?? ""), tone: "good")
     }
 }
