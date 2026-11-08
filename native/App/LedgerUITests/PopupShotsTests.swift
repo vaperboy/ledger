@@ -62,6 +62,7 @@ final class PopupShotsTests: CompanyBatchTourCase {
             return true
         }
         site("week-report") {
+            _ = tapID("skip-menu", wait: 3)
             guard tapID("play-week", wait: 5) else { return false }
             guard exists("report-open", 15) || exists("report-continue", 5) else { return false }
             popup("week-report-1")

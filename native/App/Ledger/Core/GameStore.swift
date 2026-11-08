@@ -375,10 +375,10 @@ final class GameStore: ObservableObject {
         return id == Int.min ? nil : id
     }
 
-    /// "Play to end of week" is offered from week 2 (the engine's week counter is 0-based).
+    /// "Skip week" is free and available from the first day, until the game ends.
     var canPlayWeek: Bool {
         guard let e = engine else { return false }
-        return e.state.week >= 1 && !e.state.isGameOver
+        return !e.state.isGameOver
     }
 
     /// Runs the days left in this week one by one, 0.4 s apart, then leaves the week report. Stops early when a report, a reward or a
