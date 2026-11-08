@@ -115,7 +115,7 @@ public extension GameEngine {
             let hp = holdingID.map { HoldingStakes.sharePercent(of: c, holdingID: $0) }
             let hl = label(c)
             var waiting = 0
-            if decisions, let key = boardKey(companyID: c.id), boardIsActive(key: key) { waiting = boardOpenDecisions(key: key) }
+            if decisions, let key = boardKey(companyID: c.id) { waiting = boardOpenDecisions(key: key) }
             var action = StructureNode.Action.open
             if waiting > 0 { action = .decide(waiting) }
             else if hl == .struggling { action = .fix(h.bottleneck ?? (c.cash < 0 ? "The account is overdrawn." : "Cash is running out.")) }
@@ -141,7 +141,7 @@ public extension GameEngine {
             guard stores.count >= 2, let ch = Chains.chain(s, of: c), let head = stores.first else { return false }
             let cid = "chain:\(ch["id"].int)"
             let key = "ch:\(ch["id"].int)"
-            let waiting = boardIsActive(key: key) ? boardOpenDecisions(key: key) : 0
+            let waiting = boardOpenDecisions(key: key)
             let hl = Self.worstHealth(stores.map(label))
             let boss = mgmt[head.id]?.above.first
             var action = StructureNode.Action.open
