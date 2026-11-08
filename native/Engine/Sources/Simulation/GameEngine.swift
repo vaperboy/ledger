@@ -9,18 +9,15 @@ import Events
 
 /// The game itself: creates a new game, moves time forward one day at a time, and answers the player's actions.
 ///
-/// ORDER OF A DAY (documented so every change of money and state has a reason):
-///  Monday..Saturday (days 1-6):  1. the day number moves on
-///                                2. every open company trades the day (customers, sales, cash in)
-///                                3. payroll and bills that fall due today are paid (see `Payday`)
-///                                4. the week's already-worked-out money flows release a slice of themselves
-///  Sunday -> Monday (week change): the whole week is worked out in this order, then released over the next 7 days:
-///                                1. economy, stock markets, competitors, funds, investments
-///                                2. for each company: documents, customers sold, books, costs, staff, marketing, events
-///                                3. unanswered decisions expire
-///                                4. month end (every company, then you), year end
-///                                5. companies that cannot pay are declared bankrupt
-///                                6. net worth history, bank checks, game over
+/// ORDER OF A DAY (documented so every change of money and state has a reason). Every day is the same; the calendar only decides
+/// which weekday a process has and which day closes a month:
+///  1. the day number moves on (after day 6 the week counter turns and the week just ended is reported from what the days did)
+///  2. the day's slice of the weekly processes: companies whose slot is today (`GameCalendar.slot`) run their seven-day model,
+///     then the world process of today's weekday (see `runWorldProcesses`); the money and messages of the slice are held back
+///  3. on the last day of a month the books close (every company, then you), on 31 December the year too
+///  4. every open company trades the day (customers, sales, cash in)
+///  5. payroll and bills that fall due today are paid (see `Payday`)
+///  6. a seventh of every held-back batch (this slice's and the six before it) lands
 public struct GameEngine {
     public private(set) var state: GameState { didSet { stateStamp = ReadMemo.nextStamp() } }
     /// Changes whenever `state` does (see `ReadMemo`).
@@ -38,6 +35,7 @@ public struct GameEngine {
         var state = state
         Markets.refreshNames(&state, country: data.countries.resolve(state.homeCountryCode, orHome: state.homeCountryCode))
         MarketBook.backfillCostBases(&state)
+        HeldMoney.normalise(&state)
         self.state = state
         self.data = data
         self.events = events
@@ -210,7 +208,7 @@ public struct GameEngine {
         public var gameOver: Bool
     }
 
-    /// Move one day forward. Original: `dayStep`.
+    /// Move one day forward. Original: `dayStep`. Every simulation step runs inside a day: nothing waits for the week to end.
     @discardableResult
     public mutating func nextDay() -> DayOutcome {
         let before = Set(state.inbox.map { $0.id })
@@ -219,20 +217,20 @@ public struct GameEngine {
         if state.isGameOver { return DayOutcome(newMessages: [], completedWeek: false, gameOver: true) }
         if state.day < 6 {
             state.day += 1
-            tradeAndPay(day: state.day)
-            releaseDay(state.day)
         } else {
-            // The seventh day is over: the week's money has all been released, so the week (and a month or year that ends with it) can be reported.
+            // The seventh day is over: the calendar counter turns and the week, month and year just ended are reported. The reports only
+            // read what the days already did.
             closeReportPeriods()
             sweepLadder()   // M1 (first week closed) finishes in the week it closed
-            state.rest["pend"] = .null
+            openWeekReport()
+            state.week += 1
             state.day = 0
-            stageWeek()
-            if !state.isGameOver {
-                tradeAndPay(day: 0)
-                releaseDay(0)
-            }
             completed = true
+        }
+        runDaySlices()
+        if !state.isGameOver {
+            tradeAndPay(day: state.day)
+            releaseDay(state.day)
         }
         recordDay()
         sweepLadder()
@@ -257,109 +255,149 @@ public struct GameEngine {
         Payday.onDay(&state, data: data, context: context)
     }
 
-    // MARK: The week, worked out at once and released over the next seven days
+    // MARK: The day's slice of the weekly processes
 
-    mutating func stageWeek() {
-        let meBefore = state.cash
+    /// The part of the world that changes in one day beyond trade and pay: each company's seven-day model on its own weekday, every
+    /// world process on a weekday of its own, and the month and year books on their real last day. The money a slice works out is held
+    /// and released over the next seven days (`endSlice` / `releaseDay`), so cash moves a little every day.
+    mutating func runDaySlices() {
+        if state.isGameOver { return }
+        HeldMoney.normalise(&state)
+        // A save from the weekly turn already worked out the week it was saved in: the slices start with the next one.
+        if let from = state.rest["sliceStart"], !from.isNull, state.week < from.int { return }
+        let day = state.day
+        let mark = beginSlice()
+        runCompanyModels(day: day)
+        runWorldProcesses(day: day)
+        endSlice(mark)
+        if !state.isGameOver, GameCalendar.isMonthEnd(week: state.week, day: day) { runMonthEnd() }
+    }
+
+    /// What a slice must remember to hold back the money and messages it creates.
+    struct SliceMark {
+        var meBefore: Double
+        var coBefore: [Int: Double]
+        var txBefore: [Int: String]
+        var inboxBefore: Set<Int>
+        var newsBefore: Int
+    }
+
+    mutating func beginSlice() -> SliceMark {
         var coBefore: [Int: Double] = [:]
         var txBefore: [Int: String] = [:]
         for c in state.companies { coBefore[c.id] = c.cash; txBefore[c.id] = c.transactions.first.map { "\($0["w"].int):\($0["a"].double):\($0["l"].string)" } }
-        let inboxBefore = Set(state.inbox.map { $0.id })
-        let newsBefore = (state.rest["news"]?.array ?? []).count
         state.transient.stagedPlayerLines = []
-        state.rest["rep"] = .object(["ev": .array([]), "w": .number(Double(state.week)), "from": .number(Double(state.week)),
-                                     "nw0": .number(netWorth.total), "cash0": .number(state.cash)])
-        advanceWeek()
+        state.transient.simulatingWeek = true
+        return SliceMark(meBefore: state.cash, coBefore: coBefore, txBefore: txBefore, inboxBefore: Set(state.inbox.map { $0.id }),
+                         newsBefore: (state.rest["news"]?.array ?? []).count)
+    }
+
+    /// Hold back the slice's money, messages and news and spread them over the next seven days (day 0 of the spread is today).
+    mutating func endSlice(_ mark: SliceMark) {
         let rows = state.transient.stagedPlayerLines ?? []
         state.transient.stagedPlayerLines = nil
+        state.transient.simulatingWeek = false
         if state.isGameOver {
             for r in rows { Ledger.addStatementLine(&state, amount: r.amount, label: r.label, companyID: r.companyID) }
             state.rest["pend"] = .null
             return
         }
-        var pend: [String: JSONValue] = [:]
-        let meDelta = state.cash - meBefore
+        let now = HeldMoney.today(state)
+        var pend = state.rest["pend"] ?? .null
+        if pend.isNull { pend = .object(["v": 2, "rows": .array([]), "co": .array([]), "msgs": .array([]), "news": .array([])]) }
+        let meDelta = state.cash - mark.meBefore
         var staged = rows.map { (amount: $0.amount, label: $0.label, companyID: $0.companyID) }
         let left = meDelta - staged.reduce(0) { $0 + $1.amount }
         if abs(left) >= 1 { staged.append((left, "Other", 0)) }
-        var rm = HashedRandom("\(state.seed):me:\(state.week)")
-        pend["me"] = .number(meDelta)
-        pend["rows"] = .array(staged.map { .object(["a": .number($0.amount), "l": .string($0.label), "co": .number(Double($0.companyID)), "d": .number((rm.next() * 7).rounded(.down))]) })
+        var rm = HashedRandom("\(state.seed):me:\(state.week):\(state.day)")
+        var rowList = pend["rows"].array
+        for x in staged {
+            rowList.append(.object(["a": .number(x.amount), "l": .string(x.label), "co": .number(Double(x.companyID)), "d": .number(Double(now) + (rm.next() * 7).rounded(.down))]))
+        }
         if meDelta != 0 { Ledger.moveRaw(&state, .me, -meDelta) }
-        var coList: [JSONValue] = []
+        var coList = pend["co"].array
         for i in state.companies.indices {
             let id = state.companies[i].id
-            guard let b = coBefore[id] else { continue }
-            guard state.companies[i].status.isLive else { continue }   // sold or bust during the week: nothing is held back for a company that is gone
+            guard let b = mark.coBefore[id] else { continue }
+            guard state.companies[i].status.isLive else { continue }   // sold or bust during the slice: nothing is held back for a company that is gone
             let d = state.companies[i].cash - b
             if d != 0 {
                 var one = 0.0
                 for t in state.companies[i].transactions {
-                    if "\(t["w"].int):\(t["a"].double):\(t["l"].string)" == txBefore[id] { break }
+                    if "\(t["w"].int):\(t["a"].double):\(t["l"].string)" == mark.txBefore[id] { break }
                     if t["a"].double < 0 { one += t["a"].double }
                 }
-                coList.append(.array([.number(Double(id)), .number(d), .number(jsRound(one))]))
+                coList.append(.array([.number(Double(id)), .number(d), .number(jsRound(one)), .number(Double(now))]))
                 Ledger.moveRaw(&state, .company(id), -d)
             }
         }
-        pend["co"] = .array(coList)
-        var r = HashedRandom("\(state.seed):day:\(state.week)")
-        var msgs: [JSONValue] = []
-        let fresh = state.inbox.filter { !inboxBefore.contains($0.id) }
-        state.inbox.removeAll { !inboxBefore.contains($0.id) }
-        for m in fresh { msgs.append(.object(["m": .object(m.raw), "d": .number((r.next() * 7).rounded(.down))])) }
-        pend["msgs"] = .array(msgs)
+        var r = HashedRandom("\(state.seed):day:\(state.week):\(state.day)")
+        var msgs = pend["msgs"].array
+        let fresh = state.inbox.filter { !mark.inboxBefore.contains($0.id) }
+        state.inbox.removeAll { !mark.inboxBefore.contains($0.id) }
+        for m in fresh { msgs.append(.object(["m": .object(m.raw), "d": .number(Double(now) + (r.next() * 7).rounded(.down))])) }
+        var newsList = pend["news"].array
         let allNews = state.rest["news"]?.array ?? []
-        let addedNews = Array(allNews.prefix(max(0, allNews.count - newsBefore)))
-        state.rest["news"] = .array(Array(allNews.dropFirst(max(0, allNews.count - newsBefore))))
-        pend["news"] = .array(addedNews.map { .object(["n": $0, "d": .number((r.next() * 7).rounded(.down))]) })
-        state.rest["pend"] = .object(pend)
+        let addedNews = Array(allNews.prefix(max(0, allNews.count - mark.newsBefore)))
+        state.rest["news"] = .array(Array(allNews.dropFirst(max(0, allNews.count - mark.newsBefore))))
+        for n in addedNews { newsList.append(.object(["n": n, "d": .number(Double(now) + (r.next() * 7).rounded(.down))])) }
+        pend["rows"] = .array(rowList)
+        pend["co"] = .array(coList)
+        pend["msgs"] = .array(msgs)
+        pend["news"] = .array(newsList)
+        state.rest["pend"] = pend
     }
 
-    /// The part of the staged week that lands today. Original: `releaseDay`.
+    /// Lands today's part of everything held back: a seventh of each company's money (its one-off bills at once), the player's lines
+    /// and the messages and news whose day has come. Original: `releaseDay`.
     mutating func releaseDay(_ day: Int) {
-        guard let P = state.rest["pend"], !P.isNull else { return }
-        let d = Double(day)
-        func part(_ total: Double) -> Double { jsRound(total * (d + 1) / 7) - jsRound(total * d / 7) }
-        for row in P["rows"].array where row["d"].double == d {
+        HeldMoney.normalise(&state)
+        guard var P = state.rest["pend"], !P.isNull else { return }
+        let now = state.week * 7 + day
+        func part(_ total: Double, _ offset: Int) -> Double { jsRound(total * Double(offset + 1) / 7) - jsRound(total * Double(offset) / 7) }
+        var keepRows: [JSONValue] = []
+        for row in P["rows"].array {
+            if row["d"].int > now { keepRows.append(row); continue }
             Ledger.moveRaw(&state, .me, row["a"].double)
             Ledger.addStatementLine(&state, amount: row["a"].double, label: row["l"].string, companyID: row["co"].int)
         }
+        var keepCo: [JSONValue] = []
         for x in P["co"].array {
             let id = x[0].int, total = x[1].double, one = x[2].double
+            let offset = now - x[3].int
+            if offset < 0 { keepCo.append(x); continue }
+            if offset > 6 { continue }
             let oneOff = one + min(0, total - one)
-            let v = part(total - oneOff) + (day == 0 ? oneOff : 0)
+            let v = part(total - oneOff, offset) + (offset == 0 ? oneOff : 0)
             if v != 0, state.companyIndex(id) != nil { Ledger.moveRaw(&state, .company(id), v) }
+            if offset < 6 { keepCo.append(x) }
         }
-        var got: [Message] = []
-        for x in P["msgs"].array.reversed() where x["d"].double == d {
-            let m = Message(raw: x["m"].object)
-            state.inbox.insert(m, at: 0)
-            got.append(m)
-        }
+        var dueMsgs: [JSONValue] = [], keepMsgs: [JSONValue] = []
+        for x in P["msgs"].array { if x["d"].int <= now { dueMsgs.append(x) } else { keepMsgs.append(x) } }
+        for x in dueMsgs.reversed() { state.inbox.insert(Message(raw: x["m"].object), at: 0) }
         var news = state.rest["news"]?.array ?? []
-        for x in P["news"].array.reversed() where x["d"].double == d { news.insert(x["n"], at: 0) }
+        var keepNews: [JSONValue] = []
+        for x in P["news"].array.reversed() { if x["d"].int <= now { news.insert(x["n"], at: 0) } else { keepNews.insert(x, at: 0) } }
         state.rest["news"] = .array(news)
+        P["rows"] = .array(keepRows)
+        P["co"] = .array(keepCo)
+        P["msgs"] = .array(keepMsgs)
+        P["news"] = .array(keepNews)
+        state.rest["pend"] = P
     }
 
-    // MARK: The weekly turn
+    /// Start the week report's baseline (net worth, cash) on the day the calendar turns. Called before the week counter moves.
+    mutating func openWeekReport() {
+        state.rest["rep"] = .object(["ev": .array([]), "w": .number(Double(state.week)), "from": .number(Double(state.week)),
+                                     "nw0": .number(netWorth.total), "cash0": .number(state.cash)])
+    }
 
-    /// Everything that changes in the world in one week. Original: `nextWeek0`.
-    mutating func advanceWeek() {
-        if state.isGameOver { return }
-        state.transient.simulatingWeek = true
-        defer { state.transient.simulatingWeek = false }
-        state.week += 1
-        WorldWeek.economy(&state, data: data)
-        Markets.weekly(&state)
-        WorldWeek.competitors(&state, data: data)
-        FootballModel.leaguesWeek(&state, data: data)
-        Markets.fundsWeekly(&state)
-        Brokerage.weekly(&state)
-        FinanceManager.weekly(&state, context: context)   // your fund manager's returns, the office finance manager's holdings
-        Luxury.weekly(&state)
+    // MARK: The weekly models, one day each
+
+    /// Each company's seven-day model runs on its own weekday: documents, customers sold, books, costs, staff, marketing, events.
+    mutating func runCompanyModels(day: Int) {
         for i in state.companies.indices {
-            guard state.companies[i].status.isLive else { continue }
+            guard state.companies[i].status.isLive, GameCalendar.slot(ofCompany: state.companies[i].id) == day else { continue }
             CompanyWeek.run(&state, companyIndex: i, data: data, marketing: marketing)
             if state.companies[i].status == .open, let bd = data.catalog[state.companies[i].type], CompanyWeek.isSupported(bd) {
                 EventEngine.spawn(&state, companyIndex: i, library: events, data: data, context: context)
@@ -370,32 +408,61 @@ public struct GameEngine {
                 if trf.count > 52 { trf.removeFirst() }
                 state.companies[i].set("trf", .array(trf))
             }
+            state.companies[i].set("slotRun", .number(Double(HeldMoney.today(state))))
         }
-        // Customers, competition and reputation: rivals and their groups, price moves, lawsuits, cyber attacks, market shares.
-        Rivals.weekly(&state, data: data)
-        PriceMoves.weekly(&state, data: data)
-        Lawsuits.weekly(&state, data: data)
-        Cyber.weekly(&state, data: data)
-        MarketMap.weekly(&state, data: data)
-        SoftwareProducts.weekly(&state, data: data)
-        ProjectTenders.weekly(&state, data: data, context: context)
-        StaffingPlan.weekly(&state, data: data)   // vacancies, replacements, growth and seasonal crews (Businesses/StaffingPlan.swift)
-        Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
-        EventEngine.expire(&state, data: data, context: context)
-        StrategicDecisions.weekly(&state, data: data, context: context)
-        Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies
-        Awards.weekly(&state, data: data, context: context)
-        SpecialFamilies.weeklyAfter(&state, data: data, context: context)
-        Chains.weekly(&state, data: data, context: context, marketing: marketing)   // chains, franchises, supply between your companies
-        MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
-        if GameCalendar.isMonthEnd(week: state.week) { MonthEnd.closeMonth(&state, data: data, context: context) }
-        if GameCalendar.isYearEnd(week: state.week) { MonthEnd.closeYear(&state, data: data, context: context) }
-        MarketEvents.weekly(&state, data: data)   // log of market facts for the app (no inbox messages)
-        Marketplace.weekly(&state)   // forget talks and purchases of expired listings
-        MarketResearch.weekly(&state, data: data)   // ordered research reports arrive (inbox message)
-        Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
-        ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
-        ChainBranches.weekly(&state, data: data)   // a chain is one company: a branch short of cash is covered by the chain first
+    }
+
+    /// The processes of the world, each once in seven days on its own weekday (0 = the first day of a game week):
+    ///  0 economy, stock markets, luxury, market facts          1 competitors, leagues, rivals, price moves, market shares
+    ///  2 funds, brokerage, finance manager, software, tenders, research   3 lawsuits, cyber, staffing plan, follow-ups, expiry, unlocks
+    ///  4 decisions, ventures, awards, special families, chains  5 staff record, ambitions, giving, weather, perks, manager targets
+    ///  6 failure checks, bankruptcy, portraits, the net worth point, game over
+    mutating func runWorldProcesses(day: Int) {
+        switch day {
+        case 0:
+            WorldWeek.economy(&state, data: data)
+            Markets.weekly(&state)
+            Luxury.weekly(&state)
+            MarketEvents.weekly(&state, data: data)   // log of market facts for the app (no inbox messages)
+            Marketplace.weekly(&state)   // forget talks and purchases of expired listings
+        case 1:
+            WorldWeek.competitors(&state, data: data)
+            FootballModel.leaguesWeek(&state, data: data)
+            Rivals.weekly(&state, data: data)
+            PriceMoves.weekly(&state, data: data)
+            MarketMap.weekly(&state, data: data)
+        case 2:
+            Markets.fundsWeekly(&state)
+            Brokerage.weekly(&state)
+            FinanceManager.weekly(&state, context: context)   // your fund manager's returns, the office finance manager's holdings
+            SoftwareProducts.weekly(&state, data: data)
+            ProjectTenders.weekly(&state, data: data, context: context)
+            MarketResearch.weekly(&state, data: data)   // ordered research reports arrive (inbox message)
+        case 3:
+            Lawsuits.weekly(&state, data: data)
+            Cyber.weekly(&state, data: data)
+            StaffingPlan.weekly(&state, data: data)   // vacancies, replacements, growth and seasonal crews (Businesses/StaffingPlan.swift)
+            Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
+            EventEngine.expire(&state, data: data, context: context)
+            Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
+        case 4:
+            StrategicDecisions.weekly(&state, data: data, context: context)
+            Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies
+            Awards.weekly(&state, data: data, context: context)
+            SpecialFamilies.weeklyAfter(&state, data: data, context: context)
+            Chains.weekly(&state, data: data, context: context, marketing: marketing)   // chains, franchises, supply between your companies
+            ChainBranches.weekly(&state, data: data)   // a chain is one company: a branch short of cash is covered by the chain first
+        case 5:
+            MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
+            // In the week that holds a month end the targets are set by the month's own close (`runMonthEnd`), after the books are in.
+            if !GameCalendar.isMonthEnd(week: state.week) { ManagerTargets.weekly(&state, data: data) }
+        default:
+            runFailureChecks()
+        }
+    }
+
+    /// Companies that cannot pay are warned, frozen in their first year, or declared bankrupt; then the net worth point and game over.
+    mutating func runFailureChecks() {
         Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
         FirstYear.freezeSweep(&state, balance: data.balance)   // before week 27 a company in the red is frozen, not bankrupt (Businesses/FirstYear.swift)
         let bankruptcyOn = data.balance.firstYear.bankruptcyActive(week: state.week)
@@ -423,5 +490,17 @@ public struct GameEngine {
         snapshot()
         let ctx = context
         Failure.checkOver(&state, data: data, context: ctx, liquidate: { s, need in Brokerage.liquidate(&s, need: need, currency: ctx.homeCurrency(s)); FinanceManager.cashIn(&s, need: need) })
+    }
+
+    // MARK: Calendar steps
+
+    /// The books of the month (and of the year, on 31 December) close on the real last day, with the money moving that day.
+    mutating func runMonthEnd() {
+        state.transient.simulatingWeek = true
+        defer { state.transient.simulatingWeek = false }
+        MiscWeekly.monthly(&state, data: data, context: context)
+        MonthEnd.closeMonth(&state, data: data, context: context)
+        if GameCalendar.isYearEnd(week: state.week, day: state.day) { MonthEnd.closeYear(&state, data: data, context: context) }
+        ManagerTargets.weekly(&state, data: data)   // monthly targets and yearly budget of managed companies (after the month is closed)
     }
 }

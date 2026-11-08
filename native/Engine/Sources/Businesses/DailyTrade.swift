@@ -127,10 +127,11 @@ public enum DailyTrade {
         for i in s.companies.indices {
             let co0 = s.companies[i]
             guard let bd = data.catalog[co0.type], tradesDaily(co0, bd) else { continue }
-            var log = (!co0.value("dl")["w"].isNull && co0.value("dl")["w"].int == s.week) ? Log(json: co0.value("dl")) : newLog(for: co0, week: s.week)
+            let cycle = GameCalendar.cycle(companyID: co0.id, week: s.week, day: d)   // the log belongs to the company's own seven-day cycle
+            var log = (!co0.value("dl")["w"].isNull && co0.value("dl")["w"].int == cycle) ? Log(json: co0.value("dl")) : newLog(for: co0, week: cycle)
             if log.days[String(d)] != nil { continue }
             // Read-only view for the calculations; it is dropped before the state changes.
-            let (dm, cp, price, vat, stockF, salesRoles, week, people): (DemandResult, CapacityResult, Double, Double, Double, Set<String>, Int, [Int: Person]) = {
+            let (dm, cp, price, vat, stockF, salesRoles, _, people): (DemandResult, CapacityResult, Double, Double, Double, Set<String>, Int, [Int: Person]) = {
                 let w = World(state: s, data: data)
                 let dm = DemandModel.compute(co0, bd, w)
                 let cp = CapacityModel.compute(co0, bd, w)
@@ -140,13 +141,24 @@ public enum DailyTrade {
                         w.catalog.tables.salesRoles, w.week, s.people)
             }()
             var co = co0
-            let result = tradeDay(&co, bd, &log, week: week, day: d, demand: dm.customers, capacity: cp.capacity, price: price, vat: vat,
+            let result = tradeDay(&co, bd, &log, week: cycle, day: d, demand: dm.customers, capacity: cp.capacity, price: price, vat: vat,
                                   stockFactor: stockF, salesRoles: salesRoles, people: people, random: &s.random)
             co.set("dl", log.json)
             s.companies[i] = co
             if result.cash != 0 { Payments.companyReceives(&s, companyID: co.id, amount: result.cash, category: nil, label: nil); MarketEvents.notePayment(&s, companyID: co.id, amount: result.cash, from: "Customers") }
             if result.writeOff > 0 { Payments.companyPays(&s, companyID: co.id, amount: result.writeOff, category: "loss", label: nil) }
         }
+    }
+
+    /// What a company sold on game day (`week`, `day`), read from its open log or the one closed last (a cycle spans two calendar weeks).
+    /// Null when nothing was logged for that day.
+    public static func soldOn(_ co: Company, week: Int, day: Int) -> JSONValue {
+        let cycle = GameCalendar.cycle(companyID: co.id, week: week, day: day)
+        for key in ["dl", "dlast"] {
+            let log = co.value(key)
+            if !log["w"].isNull, log["w"].int == cycle { return log["days"][String(day)] }
+        }
+        return .null
     }
 
     static func stockFactor(_ co: Company, _ bd: Trade, demand D: Double, capacity cap: Double, w: World) -> Double {
@@ -267,10 +279,11 @@ public enum DailyTrade {
     static func closeWeek(_ s: inout GameState, companyIndex i: Int, _ bd: Trade, demand D: Double, capacity cap: Double, price: Double, data: GameData) -> WeekClose {
         var co = s.companies[i]
         let wk = s.week - 1
+        let cycle = GameCalendar.cycle(companyID: co.id, week: s.week, day: s.day) - 1   // the cycle that ended on the company's slot day
         var L: Log
-        if !co.value("dl")["w"].isNull && co.value("dl")["w"].int == wk { L = Log(json: co.value("dl")) }
+        if !co.value("dl")["w"].isNull && co.value("dl")["w"].int == cycle { L = Log(json: co.value("dl")) }
         else {
-            L = newLog(for: co, week: wk)
+            L = newLog(for: co, week: cycle)
             // Played week by week (no days were traded): trade all seven days now.
             if !s.dayMode {
                 let w = World(state: s, data: data)
@@ -303,14 +316,14 @@ public enum DailyTrade {
                 co.staff = staff
             }
         }
-        co.set("dlast", .object(["w": .number(Double(wk)), "days": .object(L.days), "u": .number(L.units), "ot": .number(overtime), "lost": .number(L.lost), "so": .number(L.soldOutDays)]))
+        co.set("dlast", .object(["w": .number(Double(cycle)), "days": .object(L.days), "u": .number(L.units), "ot": .number(overtime), "lost": .number(L.lost), "so": .number(L.soldOutDays)]))
         co.set("dl", .object(["w": -1, "days": .object([:]), "u": .number(L.units), "r": 0, "paid": 0, "q": .number(L.queue), "ca": .number(L.carry), "cap": .number(L.capacity ?? cap)]))
         // Each seller's week of sales (for commission), reset for the new week.
         let salesRoles = data.catalog.tables.salesRoles
         var staff = co.staff
         for k in staff.indices where PayPlans.sells(staff[k], salesRoles: salesRoles) {
             let ws = staff[k].value("ws")
-            let mine = (!ws.isNull && ws["w"].int == wk) ? ws : .object(["u": 0, "r": 0])
+            let mine = (!ws.isNull && ws["w"].int == cycle) ? ws : .object(["u": 0, "r": 0])
             staff[k].set("lw", .object(["w": .number(Double(s.week)), "u": .number(mine["u"].double), "r": .number(mine["r"].double)]))
             staff[k].raw["ws"] = .null
         }

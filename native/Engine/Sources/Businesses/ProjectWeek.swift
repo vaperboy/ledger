@@ -22,7 +22,8 @@ public enum ProjectWeek {
         for i in s.companies.indices {
             guard s.companies[i].status == .open, let bd = data.catalog[s.companies[i].type], ProjectModel.sellsHours(bd) else { continue }
             let fm0 = s.companies[i].value("fm")
-            var log = (!fm0["d41"].isNull && fm0["d41"]["w"].int == s.week) ? ProjectModel.DayLog(json: fm0["d41"]) : ProjectModel.DayLog(week: s.week)
+            let cycle = GameCalendar.cycle(companyID: s.companies[i].id, week: s.week, day: d)   // the log belongs to the company's own seven-day cycle
+            var log = (!fm0["d41"].isNull && fm0["d41"]["w"].int == cycle) ? ProjectModel.DayLog(json: fm0["d41"]) : ProjectModel.DayLog(week: cycle)
             workDay(&s, i, bd, &log, week: s.week, day: d, data: data)
             var fm = s.companies[i].value("fm")
             fm["d41"] = log.json
@@ -267,10 +268,12 @@ public enum ProjectWeek {
     /// The figures the week's books take from the days that happened. Original: 'the week’s books take what happened on its days'.
     static func closeWeek(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) -> CompanyWeek.WeekContext {
         let wk = s.week - 1
+        let cycle = GameCalendar.cycle(companyID: s.companies[i].id, week: s.week, day: s.day) - 1   // the cycle that ended on the company's slot day
         let fm0 = s.companies[i].value("fm")
-        var L = (!fm0["d41"].isNull && fm0["d41"]["w"].int == wk) ? ProjectModel.DayLog(json: fm0["d41"]) : ProjectModel.DayLog(week: wk)
-        // A week played without the days (or a company that opened during it): the missing days are worked now.
-        for d in 0..<7 where !L.days.contains(d) { workDay(&s, i, bd, &L, week: wk, day: d, data: data) }
+        var L = (!fm0["d41"].isNull && fm0["d41"]["w"].int == cycle) ? ProjectModel.DayLog(json: fm0["d41"]) : ProjectModel.DayLog(week: cycle)
+        // A week played without the days (or a company that opened during it): the missing days are worked now. Not in the first week of
+        // the game, where the cycle that closes is only the days before the company's slot.
+        if s.week > 0 { for d in 0..<7 where !L.days.contains(d) { workDay(&s, i, bd, &L, week: wk, day: d, data: data) } }
         var fm = s.companies[i].value("fm")
         let spec = ProjectModel.specs[bd.id]!
         let avgH = fm["avgH41"].double != 0 ? fm["avgH41"].double : ProjectModel.averageHours(spec, ProjectModel.mix(s.companies[i], bd))

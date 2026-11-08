@@ -39,6 +39,23 @@ public enum GameCalendar {
     /// Original: `isYearEnd`.
     public static func isYearEnd(week: Int) -> Bool { year(week: week + 1) != year(week: week) }
 
+    /// True when game day (`week`, `day`) is the last day of its calendar month: the day the month's books close.
+    public static func isMonthEnd(week: Int, day: Int) -> Bool {
+        date(week: week, dayOffset: day + 1).month != date(week: week, dayOffset: day).month
+    }
+    /// True when game day (`week`, `day`) is 31 December.
+    public static func isYearEnd(week: Int, day: Int) -> Bool {
+        date(week: week, dayOffset: day + 1).year != date(week: week, dayOffset: day).year
+    }
+
+    /// The weekday (0 = Monday ... 6) on which a company's weekly model, and every process keyed to the company, runs. Companies are
+    /// spread over the week by id so the work never lands on one day.
+    public static func slot(ofCompany id: Int) -> Int { ((id % 7) + 7) % 7 }
+
+    /// The number of the seven-day trading cycle a company is in on game day (`week`, `day`). A cycle starts on the company's slot day, so
+    /// it runs over two calendar weeks; on the slot day it equals the calendar week. Daily sales logs are kept per cycle.
+    public static func cycle(companyID: Int, week: Int, day: Int) -> Int { week - (day < slot(ofCompany: companyID) ? 1 : 0) }
+
     /// Weeks of the calendar year that have run by game week `week` (at least 1). The game starts on 5 October, so this is not `week % 52`.
     public static func weeksIntoYear(week: Int) -> Int {
         let day = startDay + week * 7
