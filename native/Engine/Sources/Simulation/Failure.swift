@@ -178,6 +178,7 @@ public enum Failure {
         TaxSettlement.collectIfRefused(&s, context: context)
         TaxSettlement.refresh(&s, data: data, context: context)
         coverFromSoleTraders(&s, context: context)
+        CreditorPressure.weekly(&s, data: data)   // very large groups: lenders lose confidence and ask for cash back (CreditorPressure.swift)
         var od = s.rest["flags"]?["od"].int ?? 0
         // While the player is choosing how to pay a tax bill, the bank's clock waits.
         let choosingTaxPayment = s.inbox.contains { $0.status == "open" && $0.actionID == PersonalFinance.dueAction }

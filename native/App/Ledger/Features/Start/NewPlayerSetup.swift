@@ -2,6 +2,7 @@ import SwiftUI
 import GameCore
 import Countries
 import Finance
+import Businesses
 import Simulation
 
 /// The new-player setup: three steps, one screen each. Country (largest first), trade (the in-game picker's table: twelve starters, or
@@ -11,7 +12,7 @@ struct NewPlayerSetup: View {
     enum Step { case country, trade, name }
 
     var onClose: () -> Void
-    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String) -> Void
+    var begin: (_ countryCode: String, _ tradeID: String, _ companyName: String, _ playerName: String, _ difficulty: Difficulty) -> Void
 
     @State private var step: Step = .country
     @State private var countryCode = ""
@@ -20,6 +21,8 @@ struct NewPlayerSetup: View {
     /// The owner's own name (stored as the player name); empty keeps the engine's default.
     @State private var playerName = ""
     @State private var suggested = ""
+    /// The game mode, chosen on the last step (Classic unless changed); fixed once the game starts.
+    @State private var difficulty: Difficulty = .classic
     @State private var allTrades: [StarterTrade] = []
     @State private var loading = false
     @State private var showAll = false
@@ -229,6 +232,7 @@ struct NewPlayerSetup: View {
                 .textStyle(.figure)
                 .padding(.vertical, Theme.Space.s)
                 .overlay(alignment: .bottom) { Hairline() }
+            difficultyRow
             Spacer(minLength: 0)
             Button("Start") { Haptics.tap(); start() }
                 .buttonStyle(PrimaryButtonStyle(fullWidth: true))
@@ -237,8 +241,21 @@ struct NewPlayerSetup: View {
         .onAppear { nameFocused = true }
     }
 
+    /// Three modes in one row with a sentence about the one picked.
+    private var difficultyRow: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text("Difficulty").textStyle(.label, tint: Theme.inkFaint)
+            Picker("Difficulty", selection: $difficulty) {
+                ForEach(Difficulty.allCases) { (d: Difficulty) in Text(d.name).tag(d) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("setup-difficulty")
+            Text(difficulty.blurb).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private func start() {
         let n: String = companyName.trimmingCharacters(in: .whitespacesAndNewlines)
-        begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines))
+        begin(countryCode, tradeID, n.isEmpty ? suggested : n, playerName.trimmingCharacters(in: .whitespacesAndNewlines), difficulty)
     }
 }

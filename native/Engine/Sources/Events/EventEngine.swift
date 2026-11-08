@@ -76,10 +76,13 @@ public enum EventEngine {
             if co.staff.isEmpty && mentionsStaff(e) { continue }
             if co.staff.isEmpty && co.managerID == nil && !soloAllowed(id, co) { continue }
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
-            if e.tone == "bad" { p *= data.balance.eventRampMultiplier(week: s.week) }   // first-year easing, tuned in balance.json `eventRamp`
+            if e.tone == "bad" { p *= Difficulty.of(s).eventRamp(data.balance, week: s.week) }   // first-year easing, tuned in balance.json `eventRamp`, stretched or tightened by the game mode
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
-            if Sourcing.shields(s, companyID: co.id, eventID: id) { continue }   // supplied from inside: outside supplier trouble does not reach it
+            if Sourcing.shields(s, companyID: co.id, eventID: id) {   // supplied from inside: outside supplier trouble does not reach it
+                if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "supplier trouble at \(co.name) never reached it: its own supply chain absorbed it.") }
+                continue
+            }
             if !e.options.isEmpty && s.companies[i].value("flags")["evCool"].double > 0 { continue }
             if e.tone == "bad" && !takeBadSlot(&s, companyID: co.id, eventID: id) { continue }   // weeks 1-12: one bad event a week, the rest wait
             if !e.options.isEmpty { setFlag(&s, i, "evCool", 6) }
@@ -87,13 +90,10 @@ public enum EventEngine {
         }
     }
 
-    /// Last week of the one-bad-event-a-week rule.
-    static let badCapLastWeek = 12
-
-    /// In weeks 1 to 12 only one bad event may fire a week across all companies; a second one is put off to the next week
+    /// In the first weeks (12 on Classic, see `Difficulty.badEventCapWeeks`) only one bad event may fire a week across all companies; a second one is put off to the next week
     /// (state kept in `rest["evBad"]`: `week`, `n`, and `later` = [{c: company, e: event}]). Returns whether this event may fire now.
     static func takeBadSlot(_ s: inout GameState, companyID: Int, eventID: String) -> Bool {
-        guard s.week <= badCapLastWeek else { return true }
+        guard s.week <= Difficulty.of(s).badEventCapWeeks else { return true }
         var st = s.rest["evBad"] ?? .object([:])
         if st["week"].int != s.week { st["week"] = .number(Double(s.week)); st["n"] = .number(0) }
         if st["n"].int >= 1 {
@@ -170,7 +170,10 @@ public enum EventEngine {
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)
         title = title.replacingOccurrences(of: "{eq}", with: machine)
         title = TextTokens.resolve(title, country: fc.country(of: co, s), currency: cur)
-        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) { return }   // under warranty: no decision
+        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) {   // under warranty: no decision
+            Threat.survived(&s, companyID: co.id, text: "\(title) at \(co.name), covered by the warranty.")
+            return
+        }
         if e.automatic {
             apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx, currency: cur), ctx: ctx, event: e, data: data, context: fc)
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone)
@@ -187,7 +190,8 @@ public enum EventEngine {
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, options: options)
             if let k = s.inbox.indices.first, true { s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("mgrName", who); s.inbox[k].set("ev", e.id) }
             apply(&s, companyIndex: i, options[pick]["fx"], ctx: ctx, event: e, data: data, context: fc)
-            s.note("\(co.name): \(who) handled \"\(title)\" by choosing: \(options[pick]["l"].string).", tone: "n", companyID: co.id)
+            if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "\"\(title)\" at \(co.name). \(who) handled it: \(options[pick]["l"].string).") }
+            else { s.note("\(co.name): \(who) handled \"\(title)\" by choosing: \(options[pick]["l"].string).", tone: "n", companyID: co.id) }
         } else {
             let id = s.addMessage(kind: "decision", from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, status: "open", options: options,
                                   expiresWeek: s.week + e.expiresAfterWeeks)

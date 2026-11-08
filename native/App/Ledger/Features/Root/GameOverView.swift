@@ -1,6 +1,7 @@
 import SwiftUI
 import GameCore
 import Events
+import Businesses
 import Simulation
 
 /// Shown when the bank has taken everything. The save is kept. The hero is the final net worth with why the run ended; under it, unboxed,
@@ -37,6 +38,7 @@ struct GameOverView: View {
                         .accessibilityHidden(true)
                     Text("\(s.player.name)'s net worth at the end").textStyle(.body, tint: Theme.inkSoft)
                     Text(reason).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    Text("\(engine.difficulty.name) mode").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 .padding(.top, Theme.Space.xxl)
                 group("The run") {

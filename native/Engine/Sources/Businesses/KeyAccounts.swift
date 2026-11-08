@@ -160,6 +160,26 @@ public enum KeyAccounts {
         }
     }
 
+    /// A rival bids for the account that buys most (accounts under eight weeks old are left alone). It stays when the relationship, any
+    /// discount, a manager's attention and the quality of the work outweigh the offer; either way the owner is told. Called by `Threat`.
+    static func rivalApproach(_ s: inout GameState, _ i: Int, rival: String, _ h: inout HashedRandom) {
+        var list = s.companies[i].value("accts").array
+        let co = s.companies[i]
+        let old = list.indices.filter { s.week - list[$0]["w0"].int >= 8 }
+        guard let k = old.max(by: { list[$0]["f"].double < list[$1]["f"].double }) else { return }
+        let name = list[k]["name"].string
+        let hold = list[k]["rel"].double + list[k]["disc"].double * 1.5 + (co.managerID != nil ? 10 : 0) + (co.quality - 50) * 0.3 + h.next() * 25
+        if hold >= 50 {
+            list[k]["rel"] = .number(min(100, list[k]["rel"].double + 3))
+            s.companies[i].set("accts", .array(list))
+            Threat.survived(&s, companyID: co.id, text: "\(rival) bid for \(name) and lost: the account stayed with \(co.name).")
+        } else {
+            list.remove(at: k)
+            s.companies[i].set("accts", .array(list))
+            s.note("\(name) took \(rival)'s offer and left \(co.name). Warm relationships and fair terms keep accounts.", tone: "bad", companyID: co.id)
+        }
+    }
+
     /// A bigger business asks to buy regularly. A manager signs it; otherwise it waits in the inbox. Original: `acctOffer`.
     static func offer(_ s: inout GameState, _ i: Int, _ h: inout HashedRandom, data: GameData) {
         let co = s.companies[i]
