@@ -1,4 +1,5 @@
 # What's new
+- A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests
 - Events can chain (an ignored breach becomes a claim, then a press story; late invoices, a skipped inspection and price wars escalate), each of the twelve starter trades has its own events, big owners get a fourth answer, daily goals vary with streak perks, a recap shows when you return, and Stats has a "How you are playing" panel
 - Choose Classic, Sandbox or Hard when you start; rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
 - Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a game-over screen with a one-tap retry, a four-step first-session tour, and a short help sheet the first time you open each phone app
