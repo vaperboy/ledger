@@ -24,10 +24,9 @@ enum MiscWeekly {
         Stories.weekly(&s, data: data)   // staff stories, the rivalry, the Top 50 (before the paper picks its front page)
         Press.weekly(&s, data: data)
         WeatherEvents.weekly(&s, data: data)
-        if GameCalendar.isMonthEnd(week: s.week) { monthly(&s, data: data, context: context) }
     }
 
-    /// Original: `regulationMonth` and the other month-end steps of these systems.
+    /// Original: `regulationMonth` and the other month-end steps of these systems. Runs on the last day of the month (`GameEngine.runMonthEnd`).
     static func monthly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         Suppliers.monthly(&s)
         Agency.monthly(&s, data: data)

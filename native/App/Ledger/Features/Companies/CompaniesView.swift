@@ -4,12 +4,14 @@ import Businesses
 import Simulation
 
 /// The Home tab: one screen with net worth, what needs the owner and the companies that need attention most (every company in a
-/// table on iPad). The Next day bar stays pinned at the bottom.
+/// table on iPad). Next day floats at the bottom right (`NextDayDock`).
 struct CompaniesView: View {
     enum Sort: String, CaseIterable, Hashable { case attention = "Needs attention", profit = "Profit", revenue = "Revenue", cash = "Cash", name = "Name" }
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Height of the floating tab bar (0 on iPad); the Next day dock sits just above it.
+    @Environment(\.tabBarClearance) private var tabBarClearance
     @State private var sort: Sort = .attention
     @State private var showAll = false
 
@@ -32,10 +34,13 @@ struct CompaniesView: View {
                         }
                         .environmentObject(store)
                     }
-                    .safeAreaInset(edge: .bottom, spacing: 0) { AdvanceBar(engine: e) }
+                    .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: NextDayDock.reserve) }
                 }
             }
             .ledgerBackground()
+            .overlay(alignment: .bottomTrailing) {
+                if let e = store.engine { NextDayDock(engine: e).padding(.bottom, tabBarClearance == 0 ? Theme.Space.s : tabBarClearance) }
+            }
             .onAppear { store.refreshPending() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
@@ -54,24 +59,41 @@ struct CompaniesView: View {
             ScrollView(.vertical) { page(e, rows: rows, limit: nil, compact: false) }
                 .scrollIndicators(.hidden)
         } else {
-            ViewThatFits(in: .vertical) {
-                page(e, rows: rows, limit: 5, compact: false, fills: true)
-                page(e, rows: rows, limit: 4, compact: false, fills: true)
-                page(e, rows: rows, limit: 3, compact: false, fills: true)
-                page(e, rows: rows, limit: 4, compact: true, fills: true)
-                page(e, rows: rows, limit: 3, compact: true, fills: true)
-                page(e, rows: rows, limit: 2, compact: true, fills: true)
-                page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
-                page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
-                ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
-                    .scrollIndicators(.hidden)
-                    .scrollBounceBehavior(.basedOnSize)
+            if rows.count <= 1 {
+                // Height budget at regular text size on the shortest phone (667 pt tall: 20 top inset, 90 tab bar clearance, 64 dock
+                // reserve, 20 page padding leave about 470 pt). Blocks, full / compact: top line 44 / 44, net worth hero 200 / 175
+                // (figure 50, change line 20, balance row 52, chart 36 / 28), milestone line 32, insight strip 88, needs-you card
+                // 140 / 120, companies 90 (one row), gaps 16 / 12 each. Full is about 650, so each step below drops the least
+                // important block: compact, no milestone (-32), no insight strip (-100), no balance row (-52), no chart (-28):
+                // about 390, which fits. The last step is never a scroll; only very large text can clip it.
+                ViewThatFits(in: .vertical) {
+                    page(e, rows: rows, limit: 1, compact: false, fills: true)
+                    page(e, rows: rows, limit: 1, compact: true, fills: true)
+                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 1)
+                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 2)
+                    page(e, rows: rows, limit: 1, compact: true, fills: true, trim: 3)
+                    page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false, trim: 3)
+                }
+            } else {
+                ViewThatFits(in: .vertical) {
+                    page(e, rows: rows, limit: 5, compact: false, fills: true)
+                    page(e, rows: rows, limit: 4, compact: false, fills: true)
+                    page(e, rows: rows, limit: 3, compact: false, fills: true)
+                    page(e, rows: rows, limit: 4, compact: true, fills: true)
+                    page(e, rows: rows, limit: 3, compact: true, fills: true)
+                    page(e, rows: rows, limit: 2, compact: true, fills: true)
+                    page(e, rows: rows, limit: 2, compact: true, fills: true, chart: false)
+                    page(e, rows: rows, limit: 1, compact: true, fills: true, chart: false)
+                    ScrollView(.vertical) { page(e, rows: rows, limit: 3, compact: false) }
+                        .scrollIndicators(.hidden)
+                        .scrollBounceBehavior(.basedOnSize)
+                }
             }
         }
     }
 
-    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true) -> some View {
-        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, onNewCompany: { store.push(.newCompany, on: .company) }) {
+    private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true, trim: Int = 0) -> some View {
+        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim, onNewCompany: { store.push(.newCompany, on: .company) }) {
             companiesBlock(e, rows: rows, limit: limit)
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, compact ? Theme.Space.xs : Theme.Space.s).padding(.bottom, Theme.Space.m)

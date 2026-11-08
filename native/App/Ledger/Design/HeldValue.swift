@@ -1,10 +1,10 @@
 import SwiftUI
 
 extension GameStore {
-    /// True while Home must keep showing the figures of the day before: a day is running, or a report, an ambition
+    /// True while Home must keep showing the figures of the day before: a day is running, or a report, the daily report, an ambition
     /// prompt or a queued reward is still waiting for its Continue. It is derived from the store, so it can never be left on.
     var holdsHomeFigures: Bool {
-        isAdvancing || reportSheet != nil || ambitionPrompt || !celebrationQueue.isEmpty || !unlockQueue.isEmpty
+        isAdvancing || reportSheet != nil || dailySheet != nil || ambitionPrompt || !celebrationQueue.isEmpty || !unlockQueue.isEmpty
     }
 }
 

@@ -195,7 +195,7 @@ struct UsedCarYardSection: View {
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.bottom, 8)
                 }
                 ForEach(Array(recs.enumerated()), id: \.offset) { (i: Int, r: UsedCarBuyerRecord) in
-                    FlatRow(label: r.name + " (" + roleWord(r.role) + ")", value: "Skill \(Int(r.rating.rounded()))", sub: track(r), rule: i > 0)
+                    FlatRow(label: r.name + " (" + roleWord(r.role) + ")", value: Words.level(r.rating, scale: .quality), sub: track(r), rule: i > 0)
                 }
                 if company.status == .open {
                     Button("Hire a buyer") { Haptics.tap(); showHire = true }

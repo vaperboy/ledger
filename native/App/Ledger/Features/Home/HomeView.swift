@@ -5,7 +5,8 @@ import Businesses
 
 /// The Home tab (route name `.company`) as one calm screen that fits an iPhone without scrolling: the date, the owner and their rank,
 /// the net worth hero (tap for Insights), the one thing that needs the owner, the top companies (passed in by CompaniesView). Next day
-/// is pinned under it (`AdvanceBar`). `compact` tightens the spacing for a shorter screen.
+/// floats over the bottom right (`NextDayDock`). `compact` tightens the spacing for a shorter screen; `trim` drops the lower-priority
+/// blocks one step at a time (1 milestone line, 2 insight strip, 3 balance row) so a short screen never needs a scroll.
 struct HomeSummary<Companies: View>: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject var store: GameStore
@@ -16,6 +17,7 @@ struct HomeSummary<Companies: View>: View {
     var fills: Bool = false
     /// False drops the net worth line, for the shortest screens.
     var chart: Bool = true
+    var trim: Int = 0
     var onNewCompany: () -> Void
     @ViewBuilder var companies: () -> Companies
     @State private var showInsights = false
@@ -37,14 +39,15 @@ struct HomeSummary<Companies: View>: View {
                         TopPriorities(engine: e).frame(maxWidth: .infinity)
                     }
                 } else {
-                    NetWorthCard(engine: e, chartHeight: chart ? (compact ? 24 : 32) : 0) { showInsights = true }
-                    HomeMilestoneLine(engine: e)
+                    NetWorthCard(engine: e, chartHeight: chart ? (compact ? 24 : 32) : 0, showBalances: trim < 3) { showInsights = true }
+                    if trim < 1 { HomeMilestoneLine(engine: e) }
                 }
             }
             if fills { Self.gap }
-            DayReportBar()
-            HomeProgressStrip(engine: e)
-            if fills { Self.gap }
+            if trim < 2 {
+                HomeProgressStrip(engine: e)
+                if fills { Self.gap }
+            }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact) }
             if fills { Self.gap }
             companies()
@@ -109,6 +112,8 @@ struct NetWorthCard: View {
     @Environment(Entitlements.self) private var ent
     var engine: GameEngine
     var chartHeight: CGFloat = 40
+    /// False drops the personal account and past-value columns, for the shortest screens.
+    var showBalances: Bool = true
     var onInsights: () -> Void
     @State private var snap: NetWorthSnap?
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 42
@@ -165,7 +170,7 @@ struct NetWorthCard: View {
                         .minimumScaleFactor(0.5).lineLimit(1)
                 }
                 changeLine(today: store.dayChip?.profit, week: week, month: month)
-                balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo)
+                if showBalances { balanceRow(personal: nw.personal, total: nw.total, weekAgo: weekAgo, monthAgo: monthAgo) }
                 if series.count >= 2 && chartHeight > 0 {
                     // Scaled to the series' own range, so a year's real shape shows instead of a flat line on a band.
                     let rising: Bool = (series.last ?? 0) >= (series.first ?? 0)
@@ -444,125 +449,5 @@ struct TopPriorities: View {
 
     private func tint(_ t: Suggestion.Tone) -> Color {
         switch t { case .bad: return Theme.loss; case .warn: return Theme.warn; case .good: return Theme.gain; case .neutral: return Theme.inkFaint }
-    }
-}
-
-// MARK: Next day
-
-/// Pinned under Home: the day line (day, what the last day did to net worth, the week's seven segments), then Next day with a labelled
-/// "Skip week" beside it. Skip week is free in the first 12 weeks, then Pro (a lock on it, the paywall when tapped). While the week plays
-/// the two buttons give way to its progress (day n of 7) and a Stop.
-struct AdvanceBar: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    var engine: GameEngine
-    @Environment(Entitlements.self) private var ent
-
-    var body: some View {
-        VStack(spacing: Theme.Space.s) {
-            HStack(alignment: .center, spacing: Theme.Space.m) {
-                caption
-                Spacer(minLength: Theme.Space.s)
-                HStack(spacing: 3) {
-                    ForEach(0..<7, id: \.self) { d in
-                        Capsule().fill(d <= engine.state.day ? Theme.ink.opacity(0.85) : Theme.line).frame(width: 12, height: 3)
-                    }
-                }
-                .accessibilityHidden(true)
-                .animation(Motion.quick(reduceMotion), value: engine.state.day)
-            }
-            if store.playingWeek {
-                playingRow
-            } else {
-                HStack(spacing: Theme.Space.s) {
-                    nextButton
-                    skipButton
-                }
-            }
-        }
-        .animation(Motion.quick(reduceMotion), value: store.playingWeek)
-        .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.s)
-        .background(Theme.page)
-        .overlay(alignment: .top) { Hairline() }
-    }
-
-    /// "Day 3 of 7", and after a day the real change in net worth. The line keeps its height, so nothing jumps.
-    private var caption: some View {
-        HStack(spacing: Theme.Space.s) {
-            Text("Day \(engine.state.day + 1) of 7").textStyle(.caption, tint: Theme.inkSoft)
-            if let chip = store.dayChip {
-                let c: Double = chip.netWorthChange
-                Text((c > 0.5 ? "▲ " : c < -0.5 ? "▼ " : "") + store.short(abs(c)))
-                    .textStyle(.caption, tint: Theme.change(c), numeric: true, weight: .medium)
-                    .id(chip.id)
-                    .transition(.opacity)
-            }
-        }
-        .lineLimit(1)
-        .animation(Motion.quick(reduceMotion), value: store.dayChip?.id)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var locked: Bool { !engine.state.isGameOver && !ent.effective.canPlayToEndOfWeek(week: engine.state.week + 1, now: Date()) }
-
-    /// "Skip week ▸▸": plays the rest of the week; with a lock (and the paywall on tap) once it needs Pro. Shown from week 2.
-    @ViewBuilder private var skipButton: some View {
-        if store.canPlayWeek {
-            let isLocked: Bool = locked
-            Button {
-                if isLocked { ent.run(.playToEndOfWeek, "Skip week") {} } else { store.playToEndOfWeek() }
-            } label: {
-                HStack(spacing: Theme.Space.xs) {
-                    if isLocked { Image(systemName: "lock.fill").font(.caption.weight(.bold)).accessibilityHidden(true) }
-                    Text("Skip week")
-                    Image(systemName: "forward.fill").font(.caption.weight(.semibold)).accessibilityHidden(true)
-                }
-                .fixedSize()
-            }
-            .buttonStyle(SecondaryButtonStyle(tint: isLocked ? Theme.inkSoft : Theme.ink))
-            .disabled(store.isAdvancing || store.blockingMessageID != nil || store.reportSheet != nil)
-            .accessibilityLabel(isLocked ? "Skip week, needs Ledger Pro" : "Skip week")
-            .accessibilityIdentifier("play-week")
-        }
-    }
-
-    /// The week playing: which day it is on, a bar of the seven days, and Stop (the day already running finishes first).
-    private var playingRow: some View {
-        let day: Int = min(7, engine.state.day + 1)
-        return HStack(spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                HStack(spacing: Theme.Space.s) {
-                    ProgressView().controlSize(.small).tint(Theme.ink)
-                    Text("Skipping the week · day \(day) of 7").textStyle(.body, tint: Theme.ink, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
-                }
-                ProgressLine(fraction: Double(day) / 7, tint: Theme.accent, height: 3)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Stop") { Haptics.tap(); store.stopPlayingWeek() }
-                .buttonStyle(SecondaryButtonStyle())
-                .accessibilityIdentifier("stop-week")
-        }
-        .frame(minHeight: 44)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("week-playing")
-    }
-
-    private var nextButton: some View {
-        let busy: Bool = store.isAdvancing
-        let over: Bool = engine.state.isGameOver
-        let blockID: Int? = store.blockingMessageID
-        let label: String = over ? "Game over" : busy ? "Running" : blockID != nil ? "Answer first" : "Next day"
-        return Button {
-            Haptics.tap()
-            if let id = blockID { store.openApp(.inbox, request: .message(id)) } else { store.nextDay() }
-        } label: {
-            HStack(spacing: Theme.Space.s) {
-                if busy { ProgressView().controlSize(.small).tint(Theme.accentInk) }
-                Text(label)
-            }
-        }
-        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-        .disabled(over || busy || (blockID == nil && store.reportSheet != nil))
-        .accessibilityIdentifier("next-day")
     }
 }

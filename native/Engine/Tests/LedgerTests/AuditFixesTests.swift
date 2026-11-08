@@ -128,13 +128,13 @@ final class AuditFixesTests: XCTestCase {
 
     // MARK: Week money held back
 
-    /// Play until the company has money from this week still held back (the company trades, so its weekly change is not zero).
+    /// Play until the company has money from its latest seven-day step still held back (the company trades, so its weekly change is not zero).
     private func playToHeldMoney(_ e: inout GameEngine, _ id: Int) {
         hireOne(&e, id)
         for _ in 0..<(7 * 30) {
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            if e.state.company(id)?.status == .open, e.state.day == 1, abs(HeldMoney.remaining(e.state, companyID: id)) > 50 { return }
+            if e.state.company(id)?.status == .open, abs(HeldMoney.remaining(e.state, companyID: id)) > 50 { return }
         }
     }
 
@@ -142,7 +142,7 @@ final class AuditFixesTests: XCTestCase {
         var (e, id) = try cafe()
         playToHeldMoney(&e, id)
         let held = HeldMoney.remaining(e.state, companyID: id)
-        XCTAssertNotEqual(held, 0, "part of the week's change is still held on day 1")
+        XCTAssertNotEqual(held, 0, "part of the company's seven-day change is still held")
         let before = e.state.companies[e.state.companyIndex(id)!].cash
         XCTAssertTrue(e.windUpCompany(companyID: id))
         XCTAssertEqual(HeldMoney.remaining(e.state, companyID: id), 0, "nothing is left held for a company that is gone")

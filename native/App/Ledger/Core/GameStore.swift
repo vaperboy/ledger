@@ -212,8 +212,6 @@ final class GameStore: ObservableObject {
     func clearChip() { transferChip = nil }
     /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
-    /// Goals finished on an ordinary day: told in the day bar on Home, not in a popup (a week, month or year report carries them itself).
-    @Published private(set) var dayGoals: [String] = []
     /// True while the start-of-game ambition prompt is waiting to be answered (before the first day).
     @Published private(set) var ambitionPrompt = false
 
@@ -377,10 +375,10 @@ final class GameStore: ObservableObject {
         return id == Int.min ? nil : id
     }
 
-    /// "Play to end of week" is offered from week 2 (the engine's week counter is 0-based).
+    /// "Skip week" is free and available from the first day, until the game ends.
     var canPlayWeek: Bool {
         guard let e = engine else { return false }
-        return e.state.week >= 1 && !e.state.isGameOver
+        return !e.state.isGameOver
     }
 
     /// Runs the days left in this week one by one, 0.4 s apart, then leaves the week report. Stops early when a report, a reward or a
@@ -433,7 +431,7 @@ final class GameStore: ObservableObject {
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
-        if digest == nil && !out.gameOver { dayGoals = celebrations.map { $0.title } } else { dayGoals = []; celebrationQueue.append(contentsOf: celebrations) }
+        celebrationQueue.append(contentsOf: celebrations)
         if out.completedWeek { queueUnlocks() }
         reportSheet = digest
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
@@ -458,7 +456,7 @@ final class GameStore: ObservableObject {
         for line in daily.wentWell.prefix(2) { logged.append(HomeEvent(glyph: Glyph.check, text: line.tidyMoney, day: daily.dateLabel)) }
         for c in celebrations.prefix(2) { logged.append(HomeEvent(glyph: Glyph.achievements, text: c.title, day: daily.dateLabel)) }
         logEvents(logged)
-        // Every ordinary day has a one-line bar on Home, quiet or busy; it never blocks the next day.
+        // Every ordinary day has a report, quiet or busy; only Continue closes it.
         dailySheet = (digest == nil && !out.gameOver) ? daily : nil
         if digest == nil, let nwAfter = e.dayHistory.netWorth.last, let nwBefore {
             let cashAfter: Double = e.dayHistory.cash.last ?? 0
@@ -506,7 +504,7 @@ final class GameStore: ObservableObject {
         if let e = engine, SessionHooks.cliffhanger(e.state) { homeCliffhanger += 1 }   // Home scrolls to Needs you and the expiry pill pulses once
     }
 
-    func dismissDailySheet() { dailySheet = nil; dayGoals = [] }
+    func dismissDailySheet() { dailySheet = nil }
 
     /// The popup on screen has been seen: the next one (if any) shows.
     func dismissCelebration() {
@@ -886,7 +884,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         tab = .company
         stacks = [:]; rootTokens = [:]; appRequest = nil
-        reportSheet = nil; dailySheet = nil; dayGoals = []; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); outcomes = []; notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); outcomes = []; notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
     }
 
     func go(_ action: Suggestion.Action) {

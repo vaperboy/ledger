@@ -464,16 +464,22 @@ struct Meter: View {
     }
 }
 
-/// A labelled share (capacity used, demand met): label, the one progress line, percent.
+/// A labelled share (capacity used, demand met): label, the one progress line, percent. Give `word` for a standing that is not
+/// measured in real life (reputation, brand, awareness): the bar then carries a word instead of a percent.
 struct RateBar: View {
     var label: String
     var fraction: Double
     var tint: Color = Theme.accent
+    var word: String? = nil
     var body: some View {
         HStack(spacing: Theme.Space.s) {
             Text(label).textStyle(.caption).lineLimit(1).minimumScaleFactor(0.85).frame(width: 104, alignment: .leading)
             ProgressLine(fraction: fraction, tint: tint)
-            Text(String(format: "%.0f%%", fraction * 100)).textStyle(.caption, tint: Theme.ink, numeric: true).frame(width: 42, alignment: .trailing)
+            if let word {
+                Text(word).textStyle(.caption, tint: Theme.ink).lineLimit(1).minimumScaleFactor(0.8).frame(minWidth: 42, alignment: .trailing)
+            } else {
+                Text(String(format: "%.0f%%", fraction * 100)).textStyle(.caption, tint: Theme.ink, numeric: true).frame(width: 42, alignment: .trailing)
+            }
         }
         .accessibilityElement(children: .combine)
     }

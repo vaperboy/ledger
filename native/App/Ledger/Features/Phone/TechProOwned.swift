@@ -51,7 +51,7 @@ struct TechProOwnedView: View {
         }
         let h: Double? = e.equipmentHealth(companyID: companyID)
         let note: String = (units == 1 ? "1 unit" : "\(units) units") + (repairs > 0 ? " \u{00B7} \(repairs) in repair" : "") + " \u{00B7} old kit breaks more often"
-        return ShopHero(label: "Condition", value: h.map { (x: Double) -> String in "\(Int((x * 100).rounded()))%" } ?? "\u{2013}", note: note,
+        return ShopHero(label: "Condition", value: h.map { (x: Double) -> String in Words.level(x * 100, scale: .condition) } ?? "\u{2013}", note: note,
                         noteTint: repairs > 0 ? P.loss : nil, valueTint: h.map { (x: Double) -> Color in tint(x) == P.inkSoft ? P.ink : tint(x) })
     }
 

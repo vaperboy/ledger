@@ -157,7 +157,7 @@ struct ChainFigures: View {
             .accessibilityElement(children: .combine)
             FigureRow(items: items, columns: 2, combineCells: true)
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                RateBar(label: "Name known by", fraction: r.awarenessCap / 100)
+                RateBar(label: "Name known by", fraction: r.awarenessCap / 100, word: StandingWords.awareness(r.awarenessCap))
                 Text(reachNote).textStyle(.caption, tint: Theme.inkFaint)
             }
         }

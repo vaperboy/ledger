@@ -388,12 +388,16 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertEqual(ev.map(at), lastDays, tag("company \(id): bills on the last day of the month"))
         }
 
-        // Month close: the first day of the week before a month turns, once per month.
-        let closeWeeks = (1...W).filter { GameCalendar.isMonthEnd(week: $0) }
+        // Month close: the real last day of the month, once per month. It falls in the last week that starts inside the month.
+        func closeDay(_ w: Int) -> Int? { (0..<7).first { GameCalendar.isMonthEnd(week: w, day: $0) } }
+        let closeWeeks = (1...W).filter { w in
+            guard GameCalendar.isMonthEnd(week: w), let d = closeDay(w) else { return false }
+            return Self.isoDay(week: w, day: d) <= end
+        }
         for id in r.companies {
             let ev = r.events.filter { $0.kind == "monthClose" && $0.co == id }
             XCTAssertEqual(ev.map { $0.week }, closeWeeks, tag("company \(id): month closes in the right weeks"))
-            XCTAssertTrue(ev.allSatisfy { $0.day == 0 }, tag("month closes on the first day of the week"))
+            XCTAssertTrue(ev.allSatisfy { $0.day == closeDay($0.week) }, tag("month closes on the last day of the month"))
             XCTAssertEqual(ev.map { $0.month }, closeWeeks.map { GameCalendar.monthIndex(week: $0) }, tag("company \(id): month numbers"))
         }
 
@@ -401,7 +405,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         let filingWeeks = closeWeeks.filter { GameCalendar.monthIndex(week: $0) % r.filing == r.filing - 1 }
         for id in r.companies {
             let ev = r.events.filter { $0.kind == "vat" && $0.co == id }
-            XCTAssertTrue(ev.allSatisfy { filingWeeks.contains($0.week) && $0.day == 0 }, tag("company \(id): VAT only in filing months: \(ev.map { $0.week })"))
+            XCTAssertTrue(ev.allSatisfy { filingWeeks.contains($0.week) && $0.day == closeDay($0.week) }, tag("company \(id): VAT only in filing months: \(ev.map { $0.week })"))
             XCTAssertEqual(Set(ev.map { $0.week }).count, ev.count, tag("company \(id): never two VAT payments in one filing"))
             let charges = r.events.first { $0.kind == "vatSeen" && $0.co == id }
             XCTAssertTrue(charges != nil || ev.isEmpty, tag("company \(id): no VAT is filed when none was ever charged"))
@@ -415,7 +419,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         for (loanID, ev) in byLoan.sorted(by: { $0.key < $1.key }) {
             let unique = Set(ev.map { $0.week }).sorted()
             XCTAssertEqual(unique, Array(closeWeeks.prefix(unique.count)), tag("loan \(loanID): instalments in consecutive month-close weeks from the first"))
-            XCTAssertTrue(ev.allSatisfy { $0.day == 0 }, tag("loan \(loanID): instalments on the month-close day"))
+            XCTAssertTrue(ev.allSatisfy { $0.day == closeDay($0.week) }, tag("loan \(loanID): instalments on the month-close day"))
         }
         if W == 156, let biz = byLoan.values.first(where: { list in list.contains { $0.co != 0 } }) {
             let n = Set(biz.map { $0.week }).count
@@ -424,11 +428,14 @@ final class DeterminismSavesDatesTests: XCTestCase {
         }
 
         // Year end: company tax is paid at the month closes from the profit so far (never between them); the personal true-up runs at each year end.
-        let yearEnds = (1...W).filter { GameCalendar.isYearEnd(week: $0) }
+        let yearEnds = (1...W).filter { w in
+            guard GameCalendar.isYearEnd(week: w), let d = (0..<7).first(where: { GameCalendar.isYearEnd(week: w, day: $0) }) else { return false }
+            return Self.isoDay(week: w, day: d) <= end
+        }
         XCTAssertEqual(r.events.filter { $0.kind == "personalYear" }.map { $0.week }, yearEnds, tag("the year-end personal tax settlement runs at each year end"))
         for id in r.companies {
             let paid = r.events.filter { $0.kind == "corpTax" && $0.co == id }
-            XCTAssertTrue(paid.allSatisfy { closeWeeks.contains($0.week) && $0.day == 0 }, tag("company \(id): tax is paid only at a month close: \(paid.map { $0.week })"))
+            XCTAssertTrue(paid.allSatisfy { closeWeeks.contains($0.week) && $0.day == closeDay($0.week) }, tag("company \(id): tax is paid only at a month close: \(paid.map { $0.week })"))
         }
 
         // Expiry dates: a fixed deposit pays out in the week it ends, a fixed-term worker leaves on the date and was asked before it.

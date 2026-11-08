@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Countries
+import Businesses
 
 /// What the report sheet shows when a week, a month or a year closes: the figures a player reads at a glance, taken from the
 /// stored report (real books only), plus the risks and decisions that exist right now. Nothing here is invented: a line
@@ -84,17 +85,11 @@ public extension GameEngine {
         var earlierBest = 0.0   // the best takings of an earlier day this week, all companies together
         let live = state.companies.filter { $0.status.isLive }
         for d in 0..<max(state.day, 0) {
-            let key = String(d)
-            let total: Double = live.reduce(0.0) { acc, co in
-                let log = co.value("dl")
-                return (!log["w"].isNull && log["w"].int == state.week) ? acc + log["days"][key]["r"].double : acc
-            }
+            let total: Double = live.reduce(0.0) { acc, co in acc + DailyTrade.soldOn(co, week: state.week, day: d)["r"].double }
             earlierBest = max(earlierBest, total)
         }
         for co in live {
-            let log = co.value("dl")
-            guard !log["w"].isNull, log["w"].int == state.week else { continue }
-            let today = log["days"][String(state.day)]
+            let today = DailyTrade.soldOn(co, week: state.week, day: state.day)
             guard !today.isNull else { continue }
             let units = Int(today["u"].double.rounded())
             guard units > 0 else { continue }

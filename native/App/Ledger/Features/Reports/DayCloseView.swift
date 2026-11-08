@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The day's close inside the daily report: a thin 7-segment bar of the week (filled up to today, the seventh outlined), the day's
-/// profit on one line (counting from 0, green or red with sign) and one priority line. Shown by `DayReportBar` when it is opened.
+/// profit on one line (counting from 0, green or red with sign) and one priority line. Shown by `DailyReportPopup`.
 struct DayCloseView: View {
     var profit: Double?
     /// Days played in the week so far (1 to 6 on an ordinary day).
