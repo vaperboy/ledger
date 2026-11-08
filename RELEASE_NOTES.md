@@ -1,4 +1,5 @@
 # What's new
+- Next day is a floating button above the tab bar, Skip week is free and always there, the daily report popup is back, and Home never scrolls with one company
 - Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once
 - The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval
 - Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows
