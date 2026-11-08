@@ -25,12 +25,6 @@ public extension GameEngine {
     mutating func setTeamBudget(companyID: Int, budget: Budget) -> SettingResult {
         applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setTeamBudget(&s, companyID: companyID, budget: budget) }
     }
-    /// The old authority setting: `level` 0, 1, 2 is the budget tight, normal, free; `buy` is ignored (the budget sets the limit).
-    @discardableResult
-    mutating func setTeamAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil) -> SettingResult {
-        guard let level else { return .unchanged }
-        return setTeamBudget(companyID: companyID, budget: Budget(rawValue: min(2, max(0, level))) ?? .normal)
-    }
     /// Who decides above the manager, lowest first.
     func decisionChain(companyID: Int) -> [ManagerModel.Boss] { state.company(companyID).map { ManagerModel.decisionChain(state, $0, data: data) } ?? [] }
 
@@ -52,12 +46,6 @@ public extension GameEngine {
         applySetting(probe: { s in .array([.object(s.rest), Chains.chain(s, id: chainID ?? -1) ?? .null]) }) { s, _, _ in
             ManagerModel.setExecutiveBudget(&s, level: level, chainID: chainID, regionalID: regionalID, budget: budget)
         }
-    }
-    /// The old authority setting: `authority` 0, 1, 2 is the budget tight, normal, free; `buy` is ignored (the budget sets the limit).
-    @discardableResult
-    mutating func setExecutiveAuthority(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, authority: Int? = nil, buy: Double? = nil) -> SettingResult {
-        guard let authority else { return .unchanged }
-        return setExecutiveBudget(level, chainID: chainID, regionalID: regionalID, budget: Budget(rawValue: min(2, max(0, authority))) ?? .normal)
     }
     /// Deals above this amount always come to you.
     @discardableResult

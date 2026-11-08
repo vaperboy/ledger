@@ -315,11 +315,6 @@ public extension GameEngine {
         return ok
     }
 
-    // MARK: Policies
-
-    /// Does nothing: the standing rules are fixed (see `ManagementPolicy`). Kept so a caller of the old setting still compiles.
-    mutating func setPolicy(_ policy: ManagementPolicy) {}
-
     // MARK: Payroll
 
     /// Change a company's pay day (1, 5, 10, 12, 15, 20, 25, 28 or 0 = last day). The change is queued until this month's payroll is paid.

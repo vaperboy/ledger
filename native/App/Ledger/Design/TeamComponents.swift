@@ -29,24 +29,6 @@ enum HireFeedback: Equatable {
     }
 }
 
-/// The words for authority levels, the same on every screen: 0 asks you, 1 within limits, 2 full control.
-enum AuthorityWords {
-    static let labels = ["Asks you", "Within limits", "Full control"]
-    static func label(_ level: Int) -> String { labels[min(2, max(0, level))] }
-    static func consequence(_ level: Int) -> String {
-        ["Every decision and spend comes to you as a message. Safe, but you will be asked a lot.",
-         "Handles things up to the limits you set; anything bigger comes to you.",
-         "Decides everything on their own. Fewer messages; you see results, not choices."][min(2, max(0, level))]
-    }
-}
-
-/// Picks an authority level, with what it means under the picker. The same `AuthorityPicker` as the executive posts, without a spend limit.
-struct AuthorityLevelPicker: View {
-    var level: Int
-    var set: (Int) -> Void
-    var body: some View { AuthorityPicker(level: level, style: .full, setLevel: set) }
-}
-
 /// Role plus scope (store, company, chain, region, group) as one badge, as on every management list.
 struct RoleScopeBadge: View {
     var role: String

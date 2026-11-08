@@ -103,7 +103,9 @@ final class CompanyConversionTests: XCTestCase {
                 // Group/ownership/net worth consistent: still 100%, counted once.
                 XCTAssertEqual(co.ownership, 100)
                 let nw = e.netWorth
-                XCTAssertEqual(nw.companies, Valuation.companyValue(co, state: e.state, trades: e.data.catalog) * co.ownership / 100, accuracy: 1)
+                // Net worth also counts the company's money still on its way in (staged cash), so it is added to the value here.
+                let held = HeldMoney.remaining(e.state, companyID: id)
+                XCTAssertEqual(nw.companies, (Valuation.companyValue(co, state: e.state, trades: e.data.catalog) + held) * co.ownership / 100, accuracy: 1)
             }
         }
     }
