@@ -27,7 +27,7 @@ extension GameStore {
     func queueUnlocks() {
         guard let e = engine else { return }
         for u in e.pendingUnlocks() {
-            let pid: String = "\(u.companyID):\(u.id)"
+            let pid: String = u.id   // an unlock belongs to the player: one prompt, whichever company earned it
             if unlockQueue.contains(where: { (p: UnlockPrompt) -> Bool in p.id == pid }) { continue }
             let name: String = e.state.company(u.companyID)?.name ?? "This company"
             unlockQueue.append(UnlockPrompt(id: pid, companyID: u.companyID, featureID: u.id, title: u.title, line: Self.unlockLine(u.id, name), target: u.target))

@@ -724,7 +724,9 @@ final class PlaytestReworkTours: XCTestCase {
             let mine = later.first { $0.id == id }?.unlocked ?? false
             if mine { ex(sb.first { $0.id == id }?.unlocked == true, "\(id) follows the player to a new company") }
         }
-        ex(sb.first { $0.id == "board" }?.unlocked == false, "the board stays per company (locked at the new one)")
+        for id in ["board", "dividends"] where later.first(where: { $0.id == id })?.unlocked == true {
+            ex(sb.first { $0.id == id }?.unlocked == true, "\(id) follows the player to a new company")
+        }
         e.markUnlockShown(id: "chain", companyID: a)
         for _ in 0..<12 { run(&e, weeks: 1) }
         let pend = e.pendingUnlocks().filter { $0.companyID == b }

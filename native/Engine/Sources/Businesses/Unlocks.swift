@@ -5,8 +5,10 @@ import Finance
 
 /// Progressive unlocks: a small registry of features that open when they make sense in real
 /// life. Locked items stay visible with a one-line reason, except those marked `hiddenUntilUnlocked` (meaningless before). Nothing ever locks
-/// something the company already uses. The weekly sweep records a newly satisfied unlock once per company in `rest["unlk"]`
-/// { "<companyID>": { "<id>": { w: week it opened, shown: 0 or 1 } } }; a save without `unlk` is seeded silently (all satisfied unlocks shown).
+/// something the company already uses. Unlocks belong to the player: the first company to meet a condition opens the feature for every
+/// company, present and future, and the weekly sweep records it once in `rest["unlkG"]` { "<id>": { w: week it opened, shown: 0 or 1,
+/// c: company that earned it } }. A save without it is seeded silently (all satisfied unlocks shown); the older per-company table
+/// `rest["unlk"]` is merged into it on the first sweep.
 public struct UnlockItem: Equatable, Sendable {
     public var id: String
     public var companyID: Int
@@ -26,6 +28,7 @@ public struct UnlockItem: Equatable, Sendable {
 
 public enum Unlocks {
     static let key = "unlk"
+    static let globalKey = "unlkG"
     public static let weeksChain = 52
     public static let weeksResearch = 8
 
@@ -35,16 +38,6 @@ public enum Unlocks {
         var hidden: Bool
         var silent: Bool
         var target: String
-    }
-    /// Unlocks that belong to the player, not to one company: once any company has earned one, every company of theirs has it, and it is
-    /// announced only once. (Board and dividends depend on the company's own legal form and profit, so they stay per company.)
-    static let playerLevel: Set<String> = ["chain", "franchise", "abroad", "research"]
-
-    /// True when any company of the player has already recorded this unlock.
-    static func playerHas(_ s: GameState, _ id: String) -> Bool {
-        guard case .some(let t) = s.rest[key] else { return false }
-        for cid in t.object.keys where !t[cid][id].isNull { return true }
-        return false
     }
 
     static let defs: [Def] = [
@@ -56,6 +49,19 @@ public enum Unlocks {
         Def(id: "dividends", title: "Dividends", hidden: false, silent: false, target: "money"),
         Def(id: "marketplace", title: "Marketplace", hidden: false, silent: true, target: "marketplace"),
     ]
+
+    /// True when the player has already earned this unlock through any company (or the older per-company table holds it).
+    static func playerHas(_ s: GameState, _ id: String) -> Bool {
+        if case .some(let g) = s.rest[globalKey], !g[id].isNull { return true }
+        guard case .some(let t) = s.rest[key] else { return false }
+        for cid in t.object.keys where !t[cid][id].isNull { return true }
+        return false
+    }
+
+    /// Ids of every unlock the player has earned, in registry order.
+    public static func unlockedFeatures(_ s: GameState) -> [String] {
+        defs.map { (d: Def) -> String in d.id }.filter { (id: String) -> Bool in playerHas(s, id) }
+    }
 
     /// Weeks the company has traded (0 until it opens).
     public static func weeksTraded(_ s: GameState, _ co: Company) -> Int {
@@ -101,31 +107,48 @@ public enum Unlocks {
 
     // MARK: Records
 
-    static func record(_ s: GameState, _ cid: Int, _ id: String) -> JSONValue? {
-        guard let t: JSONValue = s.rest[key] else { return Optional<JSONValue>.none }
-        let r: JSONValue = t["\(cid)"][id]
+    /// JSONValue is ExpressibleByNilLiteral, so `x == nil` on an optional JSONValue does not mean "absent": test with a pattern instead.
+    static func record(_ s: GameState, _ id: String) -> JSONValue? {
+        guard let g: JSONValue = s.rest[globalKey] else { return Optional<JSONValue>.none }
+        let r: JSONValue = g[id]
         if r.isNull { return Optional<JSONValue>.none }
         return Optional<JSONValue>.some(r)
     }
 
-    /// JSONValue is ExpressibleByNilLiteral, so `x == nil` on an optional JSONValue does not mean "absent": test with a pattern instead.
-    static func hasTable(_ s: GameState) -> Bool {
-        if case .some = s.rest[key] { return true }
+    static func hasRecord(_ s: GameState, _ id: String) -> Bool {
+        if case .some = record(s, id) { return true }
         return false
     }
 
-    static func hasRecord(_ s: GameState, _ cid: Int, _ id: String) -> Bool {
-        if case .some = record(s, cid, id) { return true }
-        return false
+    static func put(_ s: inout GameState, _ id: String, week: Int, shown: Bool, company: Int) {
+        var g: JSONValue = s.rest[globalKey] ?? .object([:])
+        g[id] = .object(["w": .number(Double(week)), "shown": .number(shown ? 1 : 0), "c": .number(Double(company))])
+        s.rest[globalKey] = g
     }
 
-    static func put(_ s: inout GameState, _ cid: Int, _ id: String, week: Int, shown: Bool) {
-        var t: JSONValue = s.rest[key] ?? .object([:])
-        var c: JSONValue = t["\(cid)"]
-        if c.isNull { c = .object([:]) }
-        c[id] = .object(["w": .number(Double(week)), "shown": .number(shown ? 1 : 0)])
-        t["\(cid)"] = c
-        s.rest[key] = t
+    /// Merges the older per-company records into the player's table: the earliest week wins, and an unlock counts as shown only when
+    /// every record of it was shown.
+    public static func migrate(_ s: inout GameState) {
+        if case .some = s.rest[globalKey] { return }
+        guard case .some(let t) = s.rest[key] else { return }
+        var g: JSONValue = .object([:])
+        for cid in t.object.keys.sorted() {
+            for id in t[cid].object.keys.sorted() {
+                let r: JSONValue = t[cid][id]
+                let w: Int = r["w"].int
+                let shown: Bool = r["shown"].int != 0
+                let comp: Double = Double(Int(cid) ?? 0)
+                let old: JSONValue = g[id]
+                if old.isNull {
+                    g[id] = .object(["w": .number(Double(w)), "shown": .number(shown ? 1 : 0), "c": .number(comp)])
+                } else {
+                    let earlier: Bool = w < old["w"].int
+                    g[id] = .object(["w": .number(Double(min(w, old["w"].int))), "shown": .number(shown && old["shown"].int != 0 ? 1 : 0),
+                                     "c": earlier ? .number(comp) : old["c"]])
+                }
+            }
+        }
+        s.rest[globalKey] = g
     }
 
     // MARK: Reads
@@ -135,46 +158,49 @@ public enum Unlocks {
         var out: [UnlockItem] = []
         for d in defs {
             let c = check(d, s, co, context: context)
-            let ok: Bool = c.ok || (co.type == "hold" && d.id != "board") || (playerLevel.contains(d.id) && playerHas(s, d.id))
+            let ok: Bool = c.ok || (co.type == "hold" && d.id != "board") || playerHas(s, d.id)
             out.append(UnlockItem(id: d.id, companyID: companyID, title: d.title, unlocked: ok, reason: ok ? "Open" : c.reason,
-                                  since: record(s, companyID, d.id)?["w"].int, hiddenUntilUnlocked: d.hidden, silent: d.silent, target: d.target))
+                                  since: record(s, d.id)?["w"].int, hiddenUntilUnlocked: d.hidden, silent: d.silent, target: d.target))
         }
         return out
     }
 
-    /// Recorded unlocks that were never shown to the player, oldest first.
+    /// Unlocks the player earned and has not been told about yet, oldest first: one per unlock, not one per company. Each item names the
+    /// company that earned it (or the first live company when that one is gone) for the announcement and its target.
     public static func pending(_ s: GameState, context: FinanceContext) -> [UnlockItem] {
-        guard hasTable(s) else { return [] }
+        guard case .some(let g) = s.rest[globalKey] else { return [] }
+        let live: [Company] = s.companies.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
         var out: [UnlockItem] = []
-        for co in s.companies where co.status.isLive {
-            for it in state(s, companyID: co.id, context: context) where it.unlocked && !it.silent {
-                guard let r = record(s, co.id, it.id), r["shown"].int == 0 else { continue }
-                out.append(it)
-            }
+        for d in defs where !d.silent {
+            let r: JSONValue = g[d.id]
+            if r.isNull || r["shown"].int != 0 { continue }
+            guard let co = live.first(where: { (c: Company) -> Bool in c.id == r["c"].int }) ?? live.first else { continue }
+            if let it = state(s, companyID: co.id, context: context).first(where: { (u: UnlockItem) -> Bool in u.id == d.id }) { out.append(it) }
         }
         return out.sorted { (a: UnlockItem, b: UnlockItem) -> Bool in
             let wa: Int = a.since ?? 0
             let wb: Int = b.since ?? 0
             if wa != wb { return wa < wb }
-            if a.companyID != b.companyID { return a.companyID < b.companyID }
             return a.id < b.id
         }
     }
 
+    /// The player has seen the announcement. The unlock is the player's, so `companyID` is not used.
     public static func markShown(_ s: inout GameState, id: String, companyID: Int) {
-        guard let r = record(s, companyID, id) else { return }
-        put(&s, companyID, id, week: r["w"].int, shown: true)
+        guard let r = record(s, id) else { return }
+        put(&s, id, week: r["w"].int, shown: true, company: r["c"].int)
     }
 
     // MARK: Weekly sweep
 
     public static func weekly(_ s: inout GameState, context: FinanceContext) {
-        let first: Bool = !hasTable(s)
-        if first { s.rest[key] = .object([:]) }
+        migrate(&s)
+        var first: Bool = true
+        if case .some = s.rest[globalKey] { first = false } else { s.rest[globalKey] = .object([:]) }
         let ids: [Int] = s.companies.filter { (c: Company) -> Bool in (first ? c.status.isLive : (c.status == .open || c.status == .closed)) && c.type != "hold" }.map { (c: Company) -> Int in c.id }
         for id in ids {
-            for it in state(s, companyID: id, context: context) where it.unlocked && !hasRecord(s, id, it.id) {
-                put(&s, id, it.id, week: s.week, shown: first || it.silent || (playerLevel.contains(it.id) && playerHas(s, it.id)))
+            for it in state(s, companyID: id, context: context) where it.unlocked && !hasRecord(s, it.id) {
+                put(&s, it.id, week: s.week, shown: first || it.silent, company: id)
             }
         }
     }
