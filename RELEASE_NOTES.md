@@ -1,4 +1,5 @@
 # What's new
+- Managers act realistically: they move prices within a band set by your Direction, order stock and run marketing within their budget, and each department head owns one decision; you give five orders (Direction, Budget, Headcount, Pay and bonus, Replace)
 - Hiring starts simple (offer the going rate, below or above) and the perks, promises and expenses unlock with five staff or a manager; settings show sole trader and limited company side by side at your current profit
 - The daily report is a one-line bar on Home instead of a blocking popup, and Stats has one ledger that answers why money moved, with search and filters, plus Goals and Reports as pages
 - Pricing: each trade has its own price sensitivity with a market reference that follows quality and rivals; the price popup shows how far you are from the market and a one-line forecast
