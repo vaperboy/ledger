@@ -556,24 +556,7 @@ extension ManagerModel {
 
     // MARK: Meetings with managers
 
-    public static let meetingGoals: [(key: String, label: String)] = [("review", "Go through the results"), ("growth", "Push for growth"), ("costs", "Cut costs"),
-                                                                       ("quality", "Raise quality"), ("morale", "Boost morale"), ("pay", "Talk about pay")]
-    public static let meetingTones: [(key: String, label: String)] = [("casual", "A casual chat"), ("serious", "A serious talk"), ("final", "A final warning")]
-
-    public enum MeetingResult: Equatable, Sendable { case ok(Int), wait, none }
-
-    /// Meet one manager (`companyID`) or all of them (nil). Companies met in the last three weeks are skipped. Original: `callMeeting`, `meetOne`.
-    public static func callMeeting(_ s: inout GameState, companyID: Int?, goal: String, tone: String, data: GameData, marketing: MarketingTables) -> MeetingResult {
-        let cos = s.companies.filter { c in
-            c.status.isLive && c.managerID != nil && s.people[c.managerID!] != nil && (companyID == nil || c.id == companyID)
-        }
-        if cos.isEmpty { return .none }
-        let fresh = cos.filter { !CounterpartMeeting.isCoolingDown(lastWeek: $0.value("meetW").isNull ? nil : $0.num("meetW"), now: s.week, weeks: 3) }
-        if fresh.isEmpty { return .wait }
-        for c in fresh { meetOne(&s, companyID: c.id, goal: goal, tone: tone, data: data, marketing: marketing) }
-        return .ok(fresh.count)
-    }
-
+    /// Carry out the manager's proposal `key` and drop the message it would leave in the owner's inbox.
     static func quietAsk(_ s: inout GameState, _ id: Int, _ key: String, data: GameData, marketing: MarketingTables) {
         let n0 = s.inbox.count
         if let i = s.companyIndex(id) { s.companies[i].set("askW", .null) }
@@ -581,6 +564,7 @@ extension ManagerModel {
         if s.inbox.count > n0 { s.inbox.removeFirst(s.inbox.count - n0) }
     }
 
+    /// A short talk with the manager about one goal (`morale`, `review`, ...) in a tone (`casual`, `serious`, `final`).
     static func meetOne(_ s: inout GameState, companyID: Int, goal: String, tone: String, data: GameData, marketing: MarketingTables) {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid] else { return }
         let t = tone == "casual" ? 0 : tone == "serious" ? 1 : 2

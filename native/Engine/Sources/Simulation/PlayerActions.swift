@@ -314,8 +314,8 @@ public extension GameEngine {
 
     // MARK: Policies
 
-    /// The owner's standing instructions (see `ManagementPolicy`).
-    mutating func setPolicy(_ policy: ManagementPolicy) { update { s, _, _ in s.policy = policy } }
+    /// Does nothing: the standing rules are fixed (see `ManagementPolicy`). Kept so a caller of the old setting still compiles.
+    mutating func setPolicy(_ policy: ManagementPolicy) {}
 
     // MARK: Payroll
 

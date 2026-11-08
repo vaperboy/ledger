@@ -58,15 +58,17 @@ public extension GameEngine {
         return sev
     }
 
+    /// How much the manager decides alone: the one budget (tight, normal, free). Anything above it comes to the owner.
     @discardableResult
-    mutating func setManagerAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) -> SettingResult {
-        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setAuthority(&s, companyID: companyID, level: level, buy: buy, pay: pay, ad: ad) }
+    mutating func setManagerBudget(companyID: Int, budget: Budget) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, data, _ in ManagerModel.setBudget(&s, companyID: companyID, budget: budget, data: data) }
     }
 
-    mutating func meetManager(companyID: Int) -> Bool {
-        var ok = false
-        update { s, data, _ in ok = ManagerModel.meet(&s, companyID: companyID, data: data) }
-        return ok
+    /// The old authority setting: `level` 0, 1, 2 is the budget tight, normal, free. The spending, pay and advertising limits no longer exist (the budget sets them), so `buy`, `pay` and `ad` are ignored.
+    @discardableResult
+    mutating func setManagerAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) -> SettingResult {
+        guard let level else { return .unchanged }
+        return setManagerBudget(companyID: companyID, budget: Budget(rawValue: min(2, max(0, level))) ?? .normal)
     }
 
     /// Ask the manager for a change (a key of `ManagerModel.askOptions`); returns what they answered.

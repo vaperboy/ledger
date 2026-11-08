@@ -99,6 +99,7 @@ final class HiringRebuildTests: XCTestCase {
                 s.people[m.id]?.employerID = id
                 if let i = s.companyIndex(id) { s.companies[i].managerID = m.id }
             }
+            e.setManagerBudget(companyID: id, budget: .normal)
         }
         return (e, id, pid, promiseID)
     }

@@ -99,7 +99,7 @@ extension ManagerModel {
         let cur = World(state: s, data: data).currency(co)
         let who = "\(boss.name) (\(titleFor(co, kind: boss.kind, data: data, state: s)))"
         let cost = dp.kind == "hire" ? dp.cost / 12 : dp.cost
-        let inBudget = boss.level >= 2 || (boss.level >= 1 && cost <= boss.buy)
+        let inBudget = boss.decides(cost)
         var afford = affordable
         let title = dp.kind == "hire" ? "hire a \(data.catalog.tables.roles[dp.role]?.name.lowercased() ?? "person") at \(co.name)" : dp.kind == "eq" ? "buy equipment for \(co.name)"
             : dp.kind == "veh" ? "add a vehicle at \(co.name)" : dp.kind == "space" ? "expand the premises of \(co.name)" : dp.kind == "cut" ? "reduce staffing at \(co.name)" : dp.kind == "ad" ? "start advertising at \(co.name)" : "cash at \(co.name)"
@@ -201,7 +201,7 @@ extension ManagerModel {
         let L = decisionChain(s, co, data: data)
         let i = L.firstIndex { $0.kind == from } ?? 0
         let up = Array(L.dropFirst(i + 1))
-        if let b = up.first(where: { $0.level >= 2 || ($0.level >= 1 && cost <= $0.buy) }) {
+        if let b = up.first(where: { $0.decides(cost) }) {
             runOrganisation(&s, .object(action), data: data, context: fc)
             s.note("\(b.name) (\(titleFor(co, kind: b.kind, data: data, state: s))) approved: \(title). \(why)", tone: "n", companyID: co.id)
             return
@@ -250,7 +250,7 @@ extension ManagerModel {
             let cost = cur.roundedStep(cur.scaledPrice(450) * Double(max(1, co.staff.count)), about: 100)
             if co.cash < cost * 3 { continue }
             if let i = s.companyIndex(co.id) { s.companies[i].set("org56c", s.week) }
-            if co.managerID != nil, co.value("auth")["lvl"].double >= 1, cost <= co.value("auth")["buy"].double {
+            if co.managerID != nil, withinBudget(co, amount: cost, s, data: data) {
                 runOrganisation(&s, .object(["a": "course", "co": .number(Double(co.id)), "cost": .number(cost)]), data: data, context: fc)
                 s.note("\(s.people[co.value("asst")["npc"].int]?.name ?? "The assistant") (assistant) booked a course for the team at \(co.name), approved by \(s.people[co.managerID!]?.name ?? "the manager"): service had slipped.", tone: "n", companyID: co.id)
             }

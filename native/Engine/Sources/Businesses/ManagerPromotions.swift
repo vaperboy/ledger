@@ -33,8 +33,12 @@ extension ManagerModel {
     /// What is on the table besides pay. Original: `ui.p11`.
     public struct PromotionTerms: Equatable, Sendable {
         public var duties: [String] = []
-        /// 0 ask me first, 1 within limits, 2 full control
+        /// The budget preset (`Budget.rawValue`): 0 tight (ask me first), 1 normal (within limits), 2 free (full control).
         public var authority: Int = 1
+        public var budget: Budget {
+            get { Budget(rawValue: min(2, max(0, authority))) ?? .normal }
+            set { authority = newValue.rawValue }
+        }
         /// week, month, need
         public var report: String = "month"
         /// Share of the yearly pay as a yearly bonus (0, 0.05, 0.1, 0.2)
@@ -211,7 +215,7 @@ extension ManagerModel {
             leaveJob(&s, c)
             appoint(&s, companyIndex: ti, person: n, wage: w, data: data)
             s.companies[ti].managerProfitBonus = u.bonus > 0 ? min(0.3, u.bonus * 0.5) : 0
-            var a = s.companies[ti].value("auth"); a["lvl"] = .number(Double(u.authority)); a["set22"] = true; s.companies[ti].set("auth", a)
+            setBudget(&s, companyID: post.companyID, budget: u.budget, data: data)
             s.companies[ti].set("mood", max(mood(s.companies[ti]), 62))
             s.note("\(first) now manages \(s.companies[ti].name) on \(cur.display(w)) a month.", tone: "good", companyID: post.companyID)
             return "\(first) now manages \(s.companies[ti].name)." + (shares ? giveShares(&s, companyID: post.companyID, personID: n.id, percent: u.sharesPercent) : "")
@@ -226,10 +230,8 @@ extension ManagerModel {
         if post.id.hasPrefix("chain:") {
             let parts = post.id.dropFirst(6).split(separator: ":").map(String.init)
             if let chainID = Int(parts[0]) {
-                let level: ExecLevel = parts.count > 1 ? .region : .chainmgr
-                let cur0 = playerCurrency(s, data)
-                let rec: JSONValue = .object(["id": .number(Double(s.makeID())), "npc": .number(Double(n.id)), "scope": .string("chain:\(post.id.dropFirst(6))"), "wage": .number(w), "lvl": .number(Double(u.authority)),
-                                              "buy": .number([0, cur0.scaledPrice(level.buy), 1e9][min(2, max(0, u.authority))]), "payCo": "chain", "w0": .number(Double(s.week))])
+                let rec: JSONValue = .object(["id": .number(Double(s.makeID())), "npc": .number(Double(n.id)), "scope": .string("chain:\(post.id.dropFirst(6))"), "wage": .number(w), "bud": .number(Double(u.budget.rawValue)),
+                                              "payCo": "chain", "w0": .number(Double(s.week))])
                 updateGroup(&s) { g in var l = g["regional"].array; l.append(rec); g["regional"] = .array(l) }
                 var nn = s.people[n.id]!; nn.employerID = -1; s.people[n.id] = nn
                 assignRegions(&s, chainID: chainID)
@@ -264,7 +266,8 @@ extension ManagerModel {
         guard let ci = s.companyIndex(c.co.id) else { return }
         if c.isManager {
             s.companies[ci].managerID = nil; s.companies[ci].managerMonthlyWage = 0; s.companies[ci].managerProfitBonus = 0
-            var a = s.companies[ci].value("auth"); a["lvl"] = 0; s.companies[ci].set("auth", a)
+            let a = s.companies[ci].value("auth")
+            s.companies[ci].set("auth", Budget.authRecord(.tight, spend: 0, chosen: Budget.isChosen(a)))
             s.companies[ci].ownerHours = 40
         } else { s.companies[ci].staff = s.companies[ci].staff.filter { $0.id != c.n.id } }
         if var n = s.people[c.n.id] { n.employerID = 0; s.people[n.id] = n }

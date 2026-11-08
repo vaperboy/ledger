@@ -55,7 +55,7 @@ extension ManagerModel {
         ManagerVoice.digestWeek(&s, companyIndex: ci, manager: n, bd: bd, utilisation: util)
         guard s.week % 3 == 0, s.companies[ci].value("flags")["mgrCool"].double <= 0 else { return }
         if let dp = decideProposal(s, ci, bd, data: data, quality: q, utilisation: util, demand: D, capacity: cap) { propose(&s, ci, dp, n, q, data: data) }
-        if s.companies[ci].value("auth")["lvl"].double >= 1 { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
+        if budget(of: s.companies[ci]).actsAlone { tune(&s, ci, n, q, utilisation: util, balance: data.balance) }
     }
 
     static func weekCost(_ s: GameState, _ co: Company, data: GameData) -> Double {
@@ -71,7 +71,7 @@ extension ManagerModel {
     /// Paperwork, mistakes of the inexperienced, and the monthly pay review. Original: `mgrStaffWork`.
     static func staffWork(_ s: inout GameState, _ ci: Int, _ bd: Trade, _ n: Person, _ q: Double, data: GameData, revenue: Double) {
         var co = s.companies[ci]
-        let lvl = Int(co.value("auth")["lvl"].double)
+        let actsAlone = budget(of: co).actsAlone
         let doesAll = co.value("flags")["onbAll"].bool || n.num("exp") >= 5
         let risk = n.value("stats")["risk"].double
         var staff = co.staff
@@ -108,7 +108,7 @@ extension ManagerModel {
             let lrW = s.week - (m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek)
             let sk = StaffTalks.skill(m, nn, salesRoles: salesRoles)
             if m.payBasis == "hour", (m.weeklyHours ?? 0) == 0, !m.flag("seas"), ten >= 26, sk >= 60, m.raw["flag"] == nil || m.raw["flag"]!.isNull,
-               StaffTalks.wantsFixedSalary(nn), lvl >= 1 {
+               StaffTalks.wantsFixedSalary(nn), actsAlone {
                 StaffTalks.setFixedPay(&s, companyIndex: ci, staffID: m.id, data: data)
                 if let k = s.companies[ci].staff.firstIndex(where: { $0.id == m.id }) { var st = s.companies[ci].staff; st[k].happyUntilWeek = max(st[k].happyUntilWeek, s.week + 26); s.companies[ci].staff = st }
                 s.note("\(n.name) moved \(nn.name) to a fixed salary at \(co.name).", tone: "n", companyID: co.id)
@@ -124,7 +124,7 @@ extension ManagerModel {
             let target = yearOn && mk0 <= m.monthlyWage * (1 + felt) ? cur.roundedStep(m.monthlyWage * (1 + felt + (1 - q) * 0.01), about: 100)
                 : max(m.monthlyWage + 100, cur.roundedStep(m.monthlyWage + (mk0 - m.monthlyWage) * (1 - 0.55 * q), about: 100))
             let d = target - m.monthlyWage
-            if ContractTalk.managerMayDecide(co, extraMonthly: d) {
+            if ContractTalk.managerMayDecide(co, extraMonthly: d, s, data: data) {
                 let had = m.noticeWeeks > 0
                 StaffTalks.raise(&s, companyIndex: ci, staffID: m.id, percent: target / m.monthlyWage - 1, data: data)
                 if had { s.note("\(nn.name) withdrew the notice after the raise.", tone: "good", companyID: co.id) }
@@ -228,13 +228,13 @@ extension ManagerModel {
         let bd = data.catalog[co.type]
         let utilText = "\(Int(max(0, min(1.5, co.value("lastW")["util"].double)) * 100))"
         let short = dp.kind == "hire" ? hireShort(s, co, cost: dp.cost, data: data) : 0
-        var auth = co.value("auth")
         // A manager promoted with only some duties leaves the other decisions to you.
-        if !dutyAllows(n, dp.kind) { auth["lvl"] = 0 }
+        let mayDecide = dutyAllows(n, dp.kind)
         // Within the budget the owner gave, a manager buys what the business is short of without waiting for an answer.
         let affordable = dp.kind == "hire" ? short <= 0 : co.cash > dp.cost * 0.5 + weekCost(s, co, data: data) * 6
-        // A quarter more space in the same premises is routine: within a manager's authority like a hire or a vehicle.
-        if ["hire", "eq", "veh", "space"].contains(dp.kind), auth["lvl"].double >= 1, affordable, (dp.kind == "hire" ? dp.cost / 12 : dp.cost) <= auth["buy"].double * ManagerVoice.budgetUse(n) {
+        // A quarter more space in the same premises is routine: within the manager's budget like a hire or a vehicle. A cautious manager uses less of it.
+        let amount = (dp.kind == "hire" ? dp.cost / 12 : dp.cost) / ManagerVoice.budgetUse(n)
+        if ["hire", "eq", "veh", "space"].contains(dp.kind), mayDecide, affordable, withinBudget(co, amount: amount, s, data: data) {
             exec(&s, ci, dp, n, q, data: data)
             if dp.kind != "hire" { ManagerVoice.record(&s, companyIndex: ci, "\(dp.kind == "veh" ? "added a vehicle" : dp.kind == "space" ? "took more space" : "bought equipment") within your budget: customers were being turned away") }
             return

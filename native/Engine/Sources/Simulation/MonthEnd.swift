@@ -234,21 +234,6 @@ public enum MonthEnd {
     }
 
     /// All month-end processing. Original: `monthEnd`.
-    /// The owner's standing instruction (`ManagementPolicy.autoDividendWeeks`): a limited company with more spare cash than
-    /// that many weeks of costs pays out the surplus, keeping that buffer.
-    static func autoDividends(_ s: inout GameState, context: FinanceContext) {
-        let weeks = s.policy.autoDividendWeeks
-        guard weeks > 0 else { return }
-        for co in s.companies where co.status == .open && co.form == .limited {
-            // A chain pays once, at its head office, keeping the buffer for all its branches.
-            let br = s.chainStores(of: co)
-            if br.count >= 2 && br[0].id != co.id { continue }
-            let buffer = (br.count >= 2 ? br : [co]).reduce(0) { $0 + context.weeklyCost($1, s) } * weeks
-            let surplus = (Payments.maximumDividend(co, state: s, context: context) - buffer).rounded(.down)
-            if surplus > 0 { _ = Payments.payDividend(&s, companyID: co.id, amount: surplus, context: context) }
-        }
-    }
-
     public static func closeMonth(_ s: inout GameState, data: GameData, context: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive { closeMonth(&s, companyIndex: i, data: data, context: context) }
         // A tax group is settled once every member's month is in. Original: 'a tax group is settled once every member's month is in'.

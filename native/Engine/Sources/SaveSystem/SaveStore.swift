@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 
 /// Saves on disk, safely.
 ///
@@ -71,7 +72,8 @@ public final class SaveStore {
         guard let env = (try? JSONDecoder().decode(JSONValue.self, from: data))?.object, env["format"]?.string == NativeSaveFormat.formatName else { throw SaveError.notAGameSave }
         try NativeSaveFormat.check(env)
         let stateData = try JSONEncoder().encode(env["state"] ?? .null)
-        let state = try JSONDecoder().decode(GameState.self, from: stateData)
+        var state = try JSONDecoder().decode(GameState.self, from: stateData)
+        Budget.migrate(&state)   // saves from before the one budget keep their managers' authority as the nearest preset
         let summary = try? JSONDecoder().decode(SaveSummary.self, from: JSONEncoder().encode(env["summary"] ?? .null))
         return (state, summary)
     }

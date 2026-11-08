@@ -130,10 +130,8 @@ public extension GameEngine {
         }
     }
 
-    /// What someone at an authority level may decide (0 asks you, 1 within limits, 2 full control), in the words every screen uses.
-    static func authorityText(level: Int) -> String {
-        switch level { case ...0: return "asks you first"; case 1: return "decides within your limits"; default: return "decides on their own" }
-    }
+    /// What someone on a budget may decide (0 tight asks you, 1 normal within limits, 2 free full control), in the words every screen uses.
+    static func authorityText(level: Int) -> String { (Budget(rawValue: min(2, max(0, level))) ?? .tight).text }
 
     func teamOverview() -> TeamOverview {
         let s = state
@@ -206,7 +204,7 @@ public extension GameEngine {
             if let card { cards.append(card) }
             let chainName: String? = chainID.flatMap { cid in chains.first { $0["id"].int == cid } }.map { $0["name"].string.isEmpty ? "Your chain" : $0["name"].string }
             lines.append(.init(id: co.id, name: co.name, managedBy: runner, managerTitle: first.map { GameEngine.bossTitle($0.kind, trade: trade) },
-                               delegated: delegated, authority: co.managerID == nil ? -1 : Int(co.value("auth")["lvl"].double),
+                               delegated: delegated, authority: co.managerID == nil ? -1 : ManagerModel.budget(of: co).rawValue,
                                staff: co.staff.count, monthlyWages: wages, chainID: chainID, holdingID: co.holdingID == 0 ? nil : co.holdingID,
                                issues: mine.filter { $0.needsOwner }.count,
                                chainName: chainName, holdingName: co.holdingID == 0 ? nil : s.company(co.holdingID)?.name,

@@ -8,8 +8,8 @@ import Finance
 /// managers), department heads, head-office staff and the data analyst. They have no `StaffMember`, so promises to them are tied to these actions, which are
 /// real: each changes pay, authority or costs money. The promise text names the action, so nothing is taken on trust:
 ///  - a pay review: `raise` (their pay rises, the payroll that reads their wage pays it);
-///  - a promotion: `promote` (a higher level of authority and a raise of at least 5 percent);
-///  - additional responsibility: `setLevel` (authority: asks you first, within limits, full control);
+///  - a promotion: `promote` (a bigger budget and a raise of at least 5 percent);
+///  - additional responsibility: `setLevel` (the budget: tight asks you first, normal within limits, free full control);
 ///  - training: `train` (a course, paid by you);
 ///  - better conditions / a future benefit: `setExpense` (a reimbursement entitlement, paid every week);
 ///  - a change of working percentage: `setPercent` (pay follows the percentage).
@@ -53,7 +53,8 @@ public enum GroupPeople {
     public static func isGroupPerson(_ s: GameState, _ id: Int) -> Bool { locate(s, id) != nil }
 
     public static func wage(_ s: GameState, personID: Int) -> Double? { locate(s, personID).map { $0.read(s)["wage"].double } }
-    public static func level(_ s: GameState, personID: Int) -> Int { locate(s, personID).map { $0.read(s)["lvl"].int } ?? 0 }
+    /// The person's budget preset (`Budget.rawValue`): 0 tight, 1 normal, 2 free.
+    public static func level(_ s: GameState, personID: Int) -> Int { locate(s, personID).map { Budget.of($0.read(s)).rawValue } ?? 0 }
     public static func percent(_ s: GameState, personID: Int) -> Double { s.people[personID].map { $0.value("gp").isNull ? 100 : $0.num("gp") } ?? 100 }
     public static func expenseItems(_ s: GameState, personID: Int) -> [String] {
         (s.people[personID]?.value("gx").object ?? [:]).filter { $0.value.double != 0 }.map { $0.key }.sorted()
@@ -71,23 +72,23 @@ public enum GroupPeople {
         return true
     }
 
-    /// A promotion: one level more authority (to full control at most) and a raise of at least 5 percent.
+    /// A promotion: one budget step up (to free at most) and a raise of at least 5 percent.
     @discardableResult
     public static func promote(_ s: inout GameState, personID: Int, data: GameData) -> Bool {
         guard let loc = locate(s, personID), var n = s.people[personID] else { return false }
         let cur = currency(s, data)
-        loc.write(&s) { $0["lvl"] = .number(Double(min(2, $0["lvl"].int + 1))); $0["wage"] = .number(cur.roundedStep($0["wage"].double * 1.05, about: 100)) }
+        loc.write(&s) { Budget.write(Budget(rawValue: min(2, Budget.of($0).rawValue + 1)) ?? .free, into: &$0); $0["wage"] = .number(cur.roundedStep($0["wage"].double * 1.05, about: 100)) }
         n.set("gpro", n.int("gpro") + 1)
         s.people[personID] = n
         StaffPromises.noticeChange(&s, companyID: 0)
         return true
     }
 
-    /// Authority: 0 asks you first, 1 within limits, 2 full control.
+    /// Budget: 0 tight (asks you first), 1 normal (within limits), 2 free (full control).
     @discardableResult
     public static func setLevel(_ s: inout GameState, personID: Int, level: Int) -> Bool {
         guard let loc = locate(s, personID) else { return false }
-        loc.write(&s) { $0["lvl"] = .number(Double(min(2, max(0, level)))) }
+        loc.write(&s) { Budget.write(Budget(rawValue: min(2, max(0, level))) ?? .normal, into: &$0) }
         StaffPromises.noticeChange(&s, companyID: 0)
         return true
     }

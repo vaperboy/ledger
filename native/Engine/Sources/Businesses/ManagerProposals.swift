@@ -32,7 +32,7 @@ extension ManagerModel {
         }
     }
 
-    /// A duty the manager looks after unless you keep it (`duty56[k] = 0`): `sec` IT security, `ins` insurance, `prem` asking to expand the premises.
+    /// A duty the manager looks after unless you keep it (`duty56[k] = 0`); only `prem` (asking to expand the premises) is read.
     public static func dutyKept(_ co: Company, _ k: String) -> Bool { co.value("duty56")[k].isNull || co.value("duty56")[k].double != 0 }
     public static func setManagerDuty(_ s: inout GameState, companyID: Int, duty: String, manager: Bool) {
         guard let i = s.companyIndex(companyID) else { return }

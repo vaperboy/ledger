@@ -38,6 +38,8 @@ public extension GameEngine {
             guard level < 5 else { continue }
             let rank = Delegation.handler(level: level, state, co, data: data)
             guard rank != .owner else { continue }
+            // With a manager in the company the decision is theirs only within their budget.
+            if rank.rawValue <= Delegation.Rank.manager.rawValue, co.managerID != nil, !Delegation.managerMayTake(m, co, state, data: data) { continue }
             let scale = max(currency(for: co).scaledPrice(1000), co.lastWeekRevenue * 3)
             var best = 0, bestScore = -Double.infinity
             for (i, o) in m.options.enumerated() {

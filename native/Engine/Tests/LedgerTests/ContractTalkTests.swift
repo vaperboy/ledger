@@ -504,7 +504,7 @@ final class ContractTalkTests: XCTestCase {
 
     // MARK: Delegation and saves
 
-    func testAManagerWithAuthorityHandlesRequestsInsideTheirLimitOnly() throws {
+    func testAManagerHandlesRequestsInsideTheirBudgetOnly() throws {
         var (e, id) = try shop()
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)
@@ -513,16 +513,15 @@ final class ContractTalkTests: XCTestCase {
         e.setManagerAuthority(companyID: id, level: 0)
         XCTAssertNil(e.contractHandler(companyID: id))
         guard case .notPossible = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("no authority") }
-        e.setManagerAuthority(companyID: id, level: 1, pay: 1)
+        e.setManagerBudget(companyID: id, budget: .normal)
         let h = try XCTUnwrap(e.contractHandler(companyID: id))
         XCTAssertEqual(h.level, 1)
-        guard case .notPossible(let why) = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("above the limit") }
-        XCTAssertTrue(why.contains("limit"))
-        XCTAssertNotNil(e.contractTalk(personID: pid), "it stays with you")
-        let big = World(state: e.state, data: e.data).currency(e.state.company(id)!).scaledPrice(1_000_000)
-        e.setManagerAuthority(companyID: id, level: 1, pay: big)
+        // a rise above the normal budget's monthly pay limit stays with the owner
+        let co = try XCTUnwrap(e.state.company(id))
+        XCTAssertFalse(ContractTalk.managerMayDecide(co, extraMonthly: h.payLimit * 2, e.state, data: e.data))
+        XCTAssertTrue(ContractTalk.managerMayDecide(co, extraMonthly: h.payLimit / 2, e.state, data: e.data))
         let before = wage(e, id, pid)
-        guard case .agreed = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("inside the limit") }
+        guard case .agreed = e.contractLeaveToManager(companyID: id, personID: pid) else { return XCTFail("inside the budget") }
         XCTAssertGreaterThan(wage(e, id, pid), before)
     }
 

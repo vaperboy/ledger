@@ -23,8 +23,6 @@ final class SimulationSmokeTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + fund)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
-        // LEDGER_FAITHFUL=1: play like the original does in the comparison script (no automatic replacement of people who leave).
-        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
         XCTAssertNotEqual(id, 0)
         return id
     }
@@ -414,7 +412,6 @@ extension SimulationSmokeTests {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { return }
-        e.setPolicy({ var p = ManagementPolicy(); p.autoPayroll = false; return p }())
         for d in 0..<(20 * 7) {
             e.nextDay()
             if d % 14 == 0 { let c = e.state.company(id)!; print("PAYDBG wk=\(e.state.week) st=\(c.status) staff=\(c.staff.count) cash=\(Int(c.cash)) msgs=\(e.state.inbox.filter { $0.actionID.hasPrefix("pay") }.map { $0.actionID + ":" + $0.status })") }

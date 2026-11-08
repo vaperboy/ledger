@@ -20,9 +20,16 @@ public extension GameEngine {
     mutating func releaseTeam(companyID: Int, key: String, regionalID: Int? = nil) -> Bool {
         var r = false; update { s, d, _ in r = ManagerModel.releaseTeam(&s, companyID: companyID, key: key, regionalID: regionalID, data: d) }; return r
     }
+    /// The budget of the company's managing director.
+    @discardableResult
+    mutating func setTeamBudget(companyID: Int, budget: Budget) -> SettingResult {
+        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setTeamBudget(&s, companyID: companyID, budget: budget) }
+    }
+    /// The old authority setting: `level` 0, 1, 2 is the budget tight, normal, free; `buy` is ignored (the budget sets the limit).
     @discardableResult
     mutating func setTeamAuthority(companyID: Int, level: Int? = nil, buy: Double? = nil) -> SettingResult {
-        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in ManagerModel.setTeamAuthority(&s, companyID: companyID, level: level, buy: buy) }
+        guard let level else { return .unchanged }
+        return setTeamBudget(companyID: companyID, budget: Budget(rawValue: min(2, max(0, level))) ?? .normal)
     }
     /// Who decides above the manager, lowest first.
     func decisionChain(companyID: Int) -> [ManagerModel.Boss] { state.company(companyID).map { ManagerModel.decisionChain(state, $0, data: data) } ?? [] }
@@ -39,11 +46,18 @@ public extension GameEngine {
     mutating func releaseExecutive(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil) -> Bool {
         var r = false; update { s, d, _ in r = ManagerModel.releaseExecutive(&s, level: level, chainID: chainID, regionalID: regionalID, data: d) }; return r
     }
+    /// The budget of a chain or group executive.
+    @discardableResult
+    mutating func setExecutiveBudget(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, budget: Budget) -> SettingResult {
+        applySetting(probe: { s in .array([.object(s.rest), Chains.chain(s, id: chainID ?? -1) ?? .null]) }) { s, _, _ in
+            ManagerModel.setExecutiveBudget(&s, level: level, chainID: chainID, regionalID: regionalID, budget: budget)
+        }
+    }
+    /// The old authority setting: `authority` 0, 1, 2 is the budget tight, normal, free; `buy` is ignored (the budget sets the limit).
     @discardableResult
     mutating func setExecutiveAuthority(_ level: ManagerModel.ExecLevel, chainID: Int? = nil, regionalID: Int? = nil, authority: Int? = nil, buy: Double? = nil) -> SettingResult {
-        applySetting(probe: { s in .array([.object(s.rest), Chains.chain(s, id: chainID ?? -1) ?? .null]) }) { s, _, _ in
-            ManagerModel.setExecutiveAuthority(&s, level: level, chainID: chainID, regionalID: regionalID, authority: authority, buy: buy)
-        }
+        guard let authority else { return .unchanged }
+        return setExecutiveBudget(level, chainID: chainID, regionalID: regionalID, budget: Budget(rawValue: min(2, max(0, authority))) ?? .normal)
     }
     /// Deals above this amount always come to you.
     @discardableResult
@@ -143,12 +157,6 @@ public extension GameEngine {
 
     // MARK: Meetings with managers
 
-    var meetingGoals: [(key: String, label: String)] { ManagerModel.meetingGoals }
-    var meetingTones: [(key: String, label: String)] { ManagerModel.meetingTones }
-    /// Meet one manager (companyID) or all managers (nil) about one thing in a tone. Original: `callMeeting`.
-    mutating func callMeeting(companyID: Int?, goal: String, tone: String) -> ManagerModel.MeetingResult {
-        var r = ManagerModel.MeetingResult.none; let m = marketing; update { s, d, _ in r = ManagerModel.callMeeting(&s, companyID: companyID, goal: goal, tone: tone, data: d, marketing: m) }; return r
-    }
     /// The manager brings proposals to the table as messages. Returns how many.
     @discardableResult
     mutating func meetForProposals(companyID: Int) -> Int? { var r: Int?; update { s, d, _ in r = ManagerModel.meetForProposals(&s, companyID: companyID, data: d) }; return r }

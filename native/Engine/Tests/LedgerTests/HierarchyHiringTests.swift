@@ -103,12 +103,17 @@ final class HierarchyHiringTests: XCTestCase {
         XCTAssertFalse(e.openDecisions.contains { $0.actionID == HierarchyHiring.action && $0.companyID == otherStore }, "declined: not asked again within eight weeks")
     }
 
-    func testAboveTheLimitTheBossAsksEvenWithAuthorityOne() throws {
+    func testAboveTheBudgetTheBossAsksEvenOnANormalBudget() throws {
         var (e, cid, stores) = try chain(2)
-        _ = try hireExec(&e, .chainmgr, chain: cid, authority: 1, buy: 1)
-        run(&e, times: 4)
-        XCTAssertTrue(stores.allSatisfy { e.state.company($0)?.managerID == nil })
-        XCTAssertNotNil(e.openDecisions.first { $0.actionID == HierarchyHiring.action })
+        _ = try hireExec(&e, .chainmgr, chain: cid, authority: 1)
+        let boss = try XCTUnwrap(HierarchyHiring.appointer(e.state, post: .storeManager(companyID: stores[0]), data: e.data))
+        XCTAssertEqual(boss.level, Budget.normal.rawValue)
+        XCTAssertTrue(HierarchyHiring.withinAuthority(boss, wage: boss.buy), "a pay at the budget is theirs to agree")
+        XCTAssertFalse(HierarchyHiring.withinAuthority(boss, wage: boss.buy * 1.01), "a pay above the budget goes to the owner")
+        let rid = try XCTUnwrap(ManagerModel.regionals(e.state).first { $0["scope"].string == "chain:\(cid)" }?["id"].int)
+        e.setExecutiveBudget(.chainmgr, chainID: cid, regionalID: rid, budget: .free)
+        let free = try XCTUnwrap(HierarchyHiring.appointer(e.state, post: .storeManager(companyID: stores[0]), data: e.data))
+        XCTAssertTrue(HierarchyHiring.withinAuthority(free, wage: boss.buy * 100), "a free budget covers any pay")
     }
 
     func testNobodyAboveMeansTheVacancyStaysWithTheOwner() throws {

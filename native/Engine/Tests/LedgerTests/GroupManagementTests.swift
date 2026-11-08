@@ -22,14 +22,14 @@ final class GroupManagementTests: XCTestCase {
         XCTAssertEqual(g0.managerCount, 0)
         XCTAssertTrue(g0.lines.allSatisfy { $0.runner == nil && $0.above.isEmpty && $0.firstToDecide == "You" })
 
-        // Appoint a store manager to the first company with authority level 1: the line shows who runs it and what they may decide.
+        // Appoint a store manager to the first company on a normal budget: the line shows who runs it and what they may decide.
         e.update { s, _, _ in
             guard let i = s.companyIndex(ids[0]) else { return }
             var p = Person(raw: [:]); p.id = s.makeID(); p.name = "Anna Reed"
             s.people[p.id] = p
             s.companies[i].managerID = p.id
-            s.companies[i].set("auth", .object(["lvl": 1, "buy": 0]))
         }
+        e.setManagerBudget(companyID: ids[0], budget: .normal)
         let g1 = e.groupManagement()
         let line = try XCTUnwrap(g1.lines.first { $0.id == ids[0] })
         XCTAssertEqual(line.runner?.name, "Anna Reed")

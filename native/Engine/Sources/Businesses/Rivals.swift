@@ -431,8 +431,7 @@ public enum Rivals {
             opts = [.option("Be friendly, say nothing"), .option("Warn them off", "They may react aggressively.", effects: ["dem": .array([1, 1]), "warn": true]),
                     .option("Hint at a price understanding", "Illegal collusion.", effects: ["coord": true])]
         }
-        let level = co.value("auth")["lvl"].int
-        if co.managerID != nil, let mgr = s.people[co.managerID!], level >= 1 {
+        if co.managerID != nil, let mgr = s.people[co.managerID!], ManagerModel.budget(of: co).actsAlone {
             // A manager with authority takes the call and holds the line (the original's manager never agrees to collude).
             s.addMessage(from: co.name, title: "Rival call handled by \(mgr.name)", body: title, companyID: co.id)
             return

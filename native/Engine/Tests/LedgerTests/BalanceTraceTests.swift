@@ -9,7 +9,7 @@ import Employees
 /// Week-by-week averages over 12 seeds, the native twin of tools/ref/snippets/trace_weeks.js.
 /// Prints JSON in the same shape as the original script. Not a pass/fail test: it only runs with LEDGER_STATS=1.
 final class BalanceTraceTests: XCTestCase {
-    /// LEDGER_FAITHFUL=1: set-up and staffing as the original's test script does (one offer per job, nobody replaced when they leave).
+    /// LEDGER_FAITHFUL=1: set-up and staffing as the original's test script does (one offer per job).
     static var faithful: Bool { ProcessInfo.processInfo.environment["LEDGER_FAITHFUL"] != nil }
     func testPrintWeekTrace() throws {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
@@ -31,7 +31,6 @@ final class BalanceTraceTests: XCTestCase {
                     Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
                     _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
                 }
-                if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
                 for d in 0..<(26 * 7) {
                     e.nextDay()
                     for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
@@ -90,7 +89,6 @@ final class BalanceTraceTests: XCTestCase {
                 Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
             }
-            if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
             for _ in 0..<(20 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
             let co = e.state.company(id)!
             let bd = e.data.catalog[t]!
@@ -116,7 +114,6 @@ final class BalanceTraceTests: XCTestCase {
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
-        if BalanceTraceTests.faithful { e.setPolicy({ var p = ManagementPolicy(); p.autoRehire = false; p.autoComplaints = false; return p }()) }
         for d in 0..<(26 * 7) {
             e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             if d % 7 == 6 {

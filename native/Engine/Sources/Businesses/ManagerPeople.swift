@@ -193,11 +193,11 @@ extension ManagerModel {
         co.ownerHours = 0
         co.set("mood", 60)
         var fl = co.value("flags"); fl["fraud"] = 0; co.set("flags", fl)
-        var auth = co.value("auth")
-        if !auth["set22"].bool, auth["lvl"].double < 1 { auth["lvl"] = 1 }
+        // An appointed manager decides routine matters from the first day unless the owner chose a budget.
         let cur = World(state: s, data: data).currency(co)
-        auth["buy"] = .number(max(auth["buy"].double, cur.roundedStep(max(cur.scaledPrice(10000), rev * 0.08), about: 1000)))
-        co.set("auth", auth)
+        let chosen = Budget.isChosen(co.value("auth"))
+        let b: Budget = chosen ? Budget.of(co.value("auth")) : max(Budget.of(co.value("auth")), .normal)
+        co.set("auth", Budget.authRecord(b, spend: b.spendLimit(cur, monthlyRevenue: rev), chosen: chosen))
         if co.status == .closed, co.flag("idle") { co.status = .open; co.set("idle", 0); co.set("closeW", 0) }
         s.companies[ci] = co
         var p = n; p.employerID = co.id; s.people[n.id] = p
@@ -258,32 +258,6 @@ extension ManagerModel {
     }
 
     static func mood(_ co: Company) -> Double { co.value("mood").isNull ? 60 : co.num("mood") }
-
-    /// How much the manager may decide: 0 asks you, 1 within limits, 2 full control. Original: `setAuth` and the limit buttons.
-    public static func setAuthority(_ s: inout GameState, companyID: Int, level: Int? = nil, buy: Double? = nil, pay: Double? = nil, ad: Double? = nil) {
-        guard let ci = s.companyIndex(companyID) else { return }
-        var a = s.companies[ci].value("auth")
-        if let l = level { a["lvl"] = .number(Double(min(2, max(0, l)))) }
-        if let b = buy { a["buy"] = .number(b) }
-        if let p = pay { a["hire"] = .number(p) }
-        if let d = ad { a["ad"] = .number(d) }
-        a["set22"] = true
-        s.companies[ci].set("auth", a)
-    }
-
-    /// Meet the manager: they report, and a manager nobody checks on stops slipping. Original: `callMeeting` (casual review).
-    public static func meet(_ s: inout GameState, companyID: Int, data: GameData) -> Bool {
-        guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid] else { return false }
-        let co = s.companies[ci]
-        let last: Double? = co.value("meetW").isNull ? nil : co.num("meetW")
-        return CounterpartMeeting.meet(&s, lastWeek: last, cost: nil, label: "") { t in
-            t.companies[ci].set("meetW", t.week)
-            let cur = World(state: t, data: data).currency(co)
-            let line = co.monthlyHistory.last.map { "Last month: revenue \(cur.short($0.revenue)), profit \(cur.short($0.profit))." } ?? "It is too early to say how it is going."
-            t.addMessage(kind: "info", from: n.name, title: "Re: \(co.name)",
-                         body: "Thanks for taking the time. \(line) We are using \(Int(jsRound(co.value("lastW")["util"].double * 100)))% of our capacity.", companyID: co.id, tone: "n", status: "done")
-        } == .ok
-    }
 
     /// How much experience a manager keeps when moved from one business to another. Original: `moveLoss`.
     public static func moveFactor(from a: Company, to b: Company, data: GameData) -> Double {

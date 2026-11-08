@@ -299,7 +299,7 @@ public enum CompanySetup {
         co.foundedWeek = s.week; co.openedWeek = nil; co.cash = 0; co.ownership = 100
         co.set("holders", .array([])); co.set("docs", .object([:])); co.set("eq", .object([:])); co.set("veh", .array([])); co.set("lease", .object([:]))
         co.set("staff", .array([])); co.set("mgrWage", 0); co.set("mgrBonus", 0)
-        co.set("auth", .object(["lvl": 0, "buy": .number(currency.scaledPrice(25000)), "hire": .number(currency.scaledPrice(8000)), "ad": .number(currency.scaledPrice(3000))]))
+        co.set("auth", Budget.initialAuth)
         co.set("region", 0); co.set("mkt", .object([:])); co.awareness = 25
         var knob: [String: JSONValue] = [:]
         for k in bd.knobs { knob[k.id] = .number(Double(k.defaultIndex)) }
