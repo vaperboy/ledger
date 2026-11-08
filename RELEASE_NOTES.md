@@ -1,4 +1,5 @@
 # What's new
+- Ventures quotes come from the engine; set your own asking price when selling a stake (counter-offers and declines are shown); holdings can buy stakes in other founders' startups; Group stakes can be bought
 - Holdings can borrow to buy a stake, turn a fully owned company into a division, sell shares you moved in, and hold board talks; a single chosen first product no longer sells like a full range
 - Ventures is one portfolio page inside Projects: your startups, backing others, funds, group stakes and software, with a cost summary before founding and buy/sell popups; the Venture tile opens it in place
 - Holding companies can buy full or partial stakes in your companies and in rivals (passive, influence, control, squeeze-out), take board seats, sell and merge stakes
