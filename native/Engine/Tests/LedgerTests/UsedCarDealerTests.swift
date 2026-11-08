@@ -138,6 +138,8 @@ final class UsedCarDealerTests: XCTestCase {
         e.update { s, _, _ in if let i = s.companyIndex(rid) { s.companies[i].status = .open } }
         let lemon = try XCTUnwrap(cars(e, id, lemons: true).first { $0.h.kind == 2 })
         buy(&e, id, lemon)
+        // Priced out of reach, so no customer reserves it and it is not sold in the same step the job is billed.
+        mutateCar(&e, id, stock(e, id)[0]["id"].int) { $0["ask"] = .number($0["fair"].double * 10) }
         days(&e, 15)
         let c = try XCTUnwrap(e.usedCarStock(companyID: id).first)
         XCTAssertEqual(c.status, "repair")
