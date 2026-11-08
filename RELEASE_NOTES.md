@@ -1,4 +1,5 @@
 # What's new
+- The daily report is a one-line bar on Home instead of a blocking popup, and Stats has one ledger that answers why money moved, with search and filters, plus Goals and Reports as pages
 - Pricing: each trade has its own price sensitivity with a market reference that follows quality and rivals; the price popup shows how far you are from the market and a one-line forecast
 - Chain page leads with a head office and location cards (manager, health, one action), holding stakes are grouped by size with one clear button each, and every company shows who it belongs to and who runs it
 - Managers have one budget (tight, normal or free) instead of several limits; tax screens explain the yearly tax and a pay-yourself sheet compares salary, dividend and keeping profit in the company
