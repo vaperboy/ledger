@@ -264,7 +264,7 @@ public enum SalesItems {
 
     static func curve(_ r: Double, _ shape: DemandShape) -> Double {
         let x = r / shape.reference
-        return pow(x, -shape.elasticity * (x < 1 ? shape.belowFactor : shape.aboveFactor))
+        return pow(x, -shape.elasticity * (x < 1 ? DemandShape.belowFactor : DemandShape.aboveFactor))
     }
 
     /// Demand multiplier of one item against its market price: the kinked curve relative to its value at the market price, clamped.
