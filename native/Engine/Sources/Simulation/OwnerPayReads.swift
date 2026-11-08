@@ -16,7 +16,7 @@ public struct OwnerPayOption: Equatable, Sendable, Identifiable {
     public var employerContributions = 0.0
     /// Change in the company's profit tax: negative when the pay is a deductible cost.
     public var companyTaxChange = 0.0
-    /// Personal tax this adds to your year-end bill (income tax on a salary, dividend tax on a dividend).
+    /// Personal tax this adds (income tax on a salary, withheld from pay; dividend tax on a dividend, withheld on payout).
     public var personalTax = 0.0
     public var netInHand = 0.0
     /// Contributions plus personal tax plus the change in company tax.
@@ -65,7 +65,7 @@ public extension GameEngine {
         let toYou = co.holdingID == 0 ? amount * co.ownership / 100 : 0
         dividend.personalTax = Taxes.dividendTax(est.dividends + toYou, shield: est.shield, in: home) - Taxes.dividendTax(est.dividends, shield: est.shield, in: home)
         dividend.netInHand = toYou - dividend.personalTax
-        dividend.explanation = "Not a cost: the company's profit tax does not change. You pay \(Currency.percent(home.dividendTax, decimals: 1)) dividend tax at year end on dividends above the tax-free shield."
+        dividend.explanation = "Not a cost: the company's profit tax does not change. You pay \(Currency.percent(home.dividendTax, decimals: 1)) dividend tax, withheld when it is paid, on dividends above the tax-free shield."
 
         // Retain: nothing leaves and nothing is added now.
         var retain = OwnerPayOption(route: .retain, title: "Keep it in the company")

@@ -299,7 +299,10 @@ public extension GameEngine {
         return r
     }
     mutating func sellInvestment(_ kind: Brokerage.Kind, symbol: String, fraction: Double) {
-        update { s, _, ctx in Brokerage.sell(&s, kind, symbol, fraction: fraction, currency: ctx.homeCurrency(s)) }
+        update { s, _, ctx in
+            Brokerage.sell(&s, kind, symbol, fraction: fraction, currency: ctx.homeCurrency(s))
+            PersonalFinance.withholdNow(&s, context: ctx)   // the tax on the gain is paid at the sale
+        }
     }
     mutating func moveToSavings(_ amount: Double) -> Bool {
         var ok = false

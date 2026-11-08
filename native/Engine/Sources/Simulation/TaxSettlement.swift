@@ -5,8 +5,8 @@ import Finance
 import Businesses
 import Investments
 
-/// Personal tax between assessments: the monthly estimate with its warning, the overdraft line that grows with wealth,
-/// and the player's answer when the year-end bill is more than the accounts hold.
+/// Personal tax around the year-end true-up: the monthly estimate of what is still to settle with its warning, monthly wealth tax,
+/// the overdraft line that grows with wealth, and the player's answer when the true-up is more than the accounts hold.
 public enum TaxSettlement {
     /// Weeks before year end from which a bill larger than liquid funds is warned about.
     static let warnWeeks = 13
@@ -18,8 +18,15 @@ public enum TaxSettlement {
         s.companies.filter { $0.status != .sold }.reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * $1.ownership / 100 }
     }
 
-    /// Refresh the stored estimate (`rest["taxEst"]`) and the overdraft line about monthly; warn once a year when the coming bill
-    /// is more than cash plus savings.
+    /// Pay this month's wealth tax (one twelfth of the year's amount, caught up for the months so far).
+    static func withholdWealthTax(_ s: inout GameState, data: GameData, context: FinanceContext) {
+        guard context.homeCountry(s).wealthRate > 0 else { return }
+        let nw = Valuation.netWorth(s, trades: data.catalog).total
+        PersonalFinance.withholdWealthTax(&s, context: context, netWorth: nw, ownedCompanyValue: ownedCompanyValue(s, data: data))
+    }
+
+    /// Refresh the stored estimate (`rest["taxEst"]`) and the overdraft line about monthly; warn once a year when the coming true-up
+    /// (tax still to settle after what was paid as it arose) is more than cash plus savings.
     static func refresh(_ s: inout GameState, data: GameData, context: FinanceContext) {
         if let last = s.rest["taxEst"], !last.isNull, s.week - last["week"].int < refreshWeeks, s.week >= last["week"].int { return }
         let nw = Valuation.netWorth(s, trades: data.catalog).total
@@ -37,8 +44,8 @@ public enum TaxSettlement {
         guard b.total > liquid, PersonalFinance.weeksToYearEnd(week: s.week) <= warnWeeks, s.rest["taxWarn"]?.int != year else { return }
         s.rest["taxWarn"] = .number(Double(year))
         let cur = context.homeCurrency(s)
-        s.addMessage(from: "Tax office", title: "Your tax bill may be more than your cash",
-                     body: "About \(cur.display(b.total)) of personal tax is due at year end, and cash plus savings come to \(cur.display(liquid)). "
+        s.addMessage(from: "Tax office", title: "Your year-end tax settlement may be more than your cash",
+                     body: "About \(cur.display(b.total)) of personal tax is still to settle at year end, and cash plus savings come to \(cur.display(liquid)). "
                          + "Take dividends or a salary, sell investments or arrange a loan before then.",
                      tone: "bad", sev: 2)
     }
@@ -71,6 +78,7 @@ public enum TaxSettlement {
                 Brokerage.sell(&s, h.kind, h.symbol, fraction: f, currency: cur)
                 left -= h.value * f
             }
+            PersonalFinance.withholdNow(&s, context: context)   // the tax on the gains of these sales is paid at once
             Payments.transferFromSavings(&s, need: owed)
             Payments.playerPays(&s, owed, label: "Annual tax: balance paid from investments")
         case 1:
@@ -136,7 +144,7 @@ public enum TaxSettlement {
 }
 
 public extension GameEngine {
-    /// What the year's personal tax would be now: the monthly stored estimate, or one worked out on the spot before the first refresh.
+    /// What the year's personal tax would be now (`annual`, `paidSoFar`, and `total` still to settle): the monthly stored estimate, or one worked out on the spot before the first refresh.
     func taxEstimate() -> PersonalFinance.TaxBreakdown {
         if let b = PersonalFinance.storedEstimate(state) { return b }
         let nw = Valuation.netWorth(state, trades: data.catalog).total

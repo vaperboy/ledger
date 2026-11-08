@@ -238,6 +238,7 @@ public enum Payments {
         let shield = context.homeCountry(s).dividendShield
         let injected = s.companies.filter { $0.status.isLive && $0.form == .limited }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }
         s.tax.dividendShield = max(s.tax.dividendShield, injected * shield)
+        PersonalFinance.withholdNow(&s, context: context)   // dividend tax is withheld on payout
     }
 
     // MARK: Loan instalments

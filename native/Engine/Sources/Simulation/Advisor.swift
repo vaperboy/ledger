@@ -60,10 +60,10 @@ public extension GameEngine {
             out.append(Suggestion(id: "tax", symbol: "doc.text", title: "Tax to pay", detail: "\(cur.display(s.tax.pending)) is still owed. Keep cash for it.", tone: .warn, action: .openTax, actionLabel: "See tax"))
         } else if est > liquid, PersonalFinance.weeksToYearEnd(week: s.week) <= TaxSettlement.warnWeeks {
             out.append(Suggestion(id: "taxshort", symbol: "doc.text", title: "Tax bill is bigger than your cash",
-                                  detail: "About \(cur.display(est)) is due at year end; cash and savings hold \(cur.display(liquid)). Take dividends, sell investments or arrange a loan.",
+                                  detail: "About \(cur.display(est)) is left to settle at year end; cash and savings hold \(cur.display(liquid)). Take dividends, sell investments or arrange a loan.",
                                   tone: .bad, action: .openTax, actionLabel: "See tax"))
         } else if est > 0 {
-            out.append(Suggestion(id: "taxest", symbol: "doc.text", title: "Tax estimate", detail: "About \(cur.display(est)) so far this year.", tone: .neutral, action: .openTax, actionLabel: "See tax"))
+            out.append(Suggestion(id: "taxest", symbol: "doc.text", title: "Tax estimate", detail: "About \(cur.display(est)) still to settle at year end; the rest was paid as it arose.", tone: .neutral, action: .openTax, actionLabel: "See tax"))
         }
         if s.companies.isEmpty {
             out.append(Suggestion(id: "first", symbol: "building.2", title: "Start your first business",

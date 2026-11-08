@@ -66,6 +66,11 @@ public struct PersonalTaxYear: JSONRecord {
     public var soleTraderFrozenProfit: Double { get { num("enkFrozen") } set { set("enkFrozen", newValue) } }
     public var headOfficeDeduction: Double { get { num("hqDed") } set { set("hqDed", newValue) } }
     public var pending: Double { get { num("pending") } set { set("pending", newValue) } }
+    /// Tax already paid this year on dividends, gains, interest and wealth as they arose; the year-end true-up settles the difference.
+    public var paidDividend: Double { get { num("pDiv") } set { set("pDiv", newValue) } }
+    public var paidGains: Double { get { num("pGain") } set { set("pGain", newValue) } }
+    public var paidInterest: Double { get { num("pInt") } set { set("pInt", newValue) } }
+    public var paidWealth: Double { get { num("pWealth") } set { set("pWealth", newValue) } }
 }
 
 /// Lifetime statistics. Original: `S.stats`.

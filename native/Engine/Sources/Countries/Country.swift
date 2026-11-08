@@ -99,8 +99,6 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var capitalGainsTax: Double
     /// Tax on savings and deposit interest (`tax.savingsInterest`; the dividend rate when the data has none).
     public var savingsInterestTax: Double
-    /// Weeks after the year end when a limited company's corporate tax falls due (`tax.payWeeks`, 26 when missing).
-    public var corporateTaxDueWeeks: Int
     /// Loss carry-forward limits (`tax.loss`): losses offset up to `free` of profit plus `share` of profit above it (share 1 and free 0 = no cap);
     /// a loss expires after `years` years (0 = never).
     public var lossFree: Double
@@ -225,7 +223,6 @@ extension Country {
         dividendShield = tax["dividendShield"].double
         capitalGainsTax = tax["capitalGains"].isNull ? tax["dividend"].double : tax["capitalGains"].double
         savingsInterestTax = tax["savingsInterest"].isNull ? tax["dividend"].double : tax["savingsInterest"].double
-        corporateTaxDueWeeks = tax["payWeeks"].isNull ? 26 : tax["payWeeks"].int
         lossFree = B(tax["loss"]["free"].double)
         lossShare = tax["loss"]["share"].isNull ? 1 : tax["loss"]["share"].double
         lossYears = tax["loss"]["years"].int

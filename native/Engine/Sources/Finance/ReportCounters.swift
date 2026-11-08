@@ -17,7 +17,7 @@ public enum ReportCounters {
         public static let drawings = "p.drawings"       // drawings from a sole trader business
         public static let markets = "p.markets"         // shares, crypto and funds bought and sold, and their dividends
         public static let savings = "p.savings"         // savings and fixed deposits (transfers to and from the account)
-        public static let tax = "p.tax"                 // personal income, advance and wealth tax
+        public static let tax = "p.tax"                 // personal income, advance, dividend, gains, interest and wealth tax
         public static let loans = "p.loans"             // loans drawn and instalments paid
         public static let interest = "p.interest"       // overdraft interest
         public static let companies = "p.companies"     // founding, selling and winding up companies
@@ -34,6 +34,7 @@ public enum ReportCounters {
         if has("Dividend from") { return Key.dividends }
         if has("Salary from") { return Key.salary }
         if has("Drawing from") { return Key.drawings }
+        if has("Dividend tax") || has("Tax on ") || has("Wealth tax") { return Key.tax }
         if has("Bought ") || has("Sold ") || has("Dividend ") { return Key.markets }
         if has("To savings") || has("From savings") || has("Fixed deposit") || has("Deposit matured") || has("Savings emptied") { return Key.savings }
         if has("Annual tax") || has("Advance tax") { return Key.tax }

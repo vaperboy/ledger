@@ -49,7 +49,7 @@ public enum Brokerage {
         return .ok
     }
 
-    /// Sell a share (0...1) of a holding; returns the sale value. Gains are taxed at the year end.
+    /// Sell a share (0...1) of a holding; returns the sale value. The gain goes to the tax year; the caller pays its tax at the sale (`PersonalFinance.withholdNow`).
     @discardableResult
     public static func sell(_ s: inout GameState, _ kind: Kind, _ sym: String, fraction frac: Double, currency: Currency? = nil) -> Double {
         var inv = s.rest["inv"] ?? .object([:])

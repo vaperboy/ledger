@@ -174,6 +174,7 @@ public enum Failure {
 
     /// The end-of-week check: overdraft limit, bank warnings, forced sales, game over. Original: `checkOver`.
     public static func checkOver(_ s: inout GameState, data: GameData, context: FinanceContext, liquidate: (inout GameState, Double) -> Void) {
+        PersonalFinance.withholdNow(&s, context: context)   // sweep: gains, dividends and interest that had no call of their own
         TaxSettlement.collectIfRefused(&s, context: context)
         TaxSettlement.refresh(&s, data: data, context: context)
         coverFromSoleTraders(&s, context: context)

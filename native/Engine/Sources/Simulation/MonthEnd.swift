@@ -9,9 +9,9 @@ import Businesses
 ///
 /// Order at a month end (documented so cash never moves by surprise):
 ///  1. each company: manager bonus, corporate tax accrual (profit minus losses carried forward), VAT registration
-///     reminder, tax paid when due, VAT settled when the return is due, bills that could not be paid counted,
+///     reminder, the tax accrued so far paid at once, VAT settled when the return is due, bills that could not be paid counted,
 ///     monthly history line written, month's books closed;
-///  2. the player: overdraft and savings interest, loan instalments, credit score; advance tax each quarter;
+///  2. the player: overdraft and savings interest, loan instalments, credit score; tax on interest, sole-trader income tax and wealth tax;
 ///  3. the currencies drift.
 /// Payroll and supplier bills are NOT paid here: they have their own days (see `Payday`).
 public enum MonthEnd {
@@ -49,9 +49,17 @@ public enum MonthEnd {
             s.companies[i].addPayable("tax", delta)
             Payments.book(&s, companyID: co.id, category: "tax", amount: delta)
         } else if delta < 0 {
-            let back = min(-delta, s.companies[i].payables["tax"] ?? 0)
-            s.companies[i].addPayable("tax", -back)
-            Payments.book(&s, companyID: co.id, category: "tax", amount: -back)
+            // Profit fell since the last month: first cancel what is still unpaid, then refund what was already paid.
+            let unpaid = min(-delta, s.companies[i].payables["tax"] ?? 0)
+            s.companies[i].addPayable("tax", -unpaid)
+            Payments.book(&s, companyID: co.id, category: "tax", amount: delta)
+            let refund = jsRound(-delta - unpaid)
+            if refund > 0 {
+                AccountingLedger.note(category: "tax", label: "Corporate tax refund")
+                Ledger.moveRaw(&s, .company(co.id), refund)
+                s.companies[i].addTransaction(week: s.week, amount: refund, label: "Corporate tax refund")
+                s.stats.taxPaid -= refund
+            }
         }
     }
 
@@ -76,29 +84,27 @@ public enum MonthEnd {
         co.set("lossLots", .array(lots.map { .array([.number(Double($0.year)), .number($0.amount)]) }))
     }
 
-    /// Pay corporate tax once it is due (`Country.corporateTaxDueWeeks` after year end). Returns what could not be paid.
-    /// In day mode wages, rent and suppliers are settled on their own days, so only tax is settled here.
-    /// Original: `settle` under R29.
+    /// Pay the corporate tax owed so far as far as the account (with its overdraft room) allows. Run right after each month's accrual, so tax is
+    /// paid as it arises; whatever could not be paid stays owed and is retried next month. Returns what could not be paid.
+    /// In day mode wages, rent and suppliers are settled on their own days, so only tax is settled here. Original: `settle` under R29.
     @discardableResult
-    /// `early`: the owner pays before the due week (`GameEngine.payObligationNow`); the same payment, booked the same way.
-    static func settleTax(_ s: inout GameState, companyIndex i: Int, context: FinanceContext, early: Bool = false) -> Double {
+    static func settleTax(_ s: inout GameState, companyIndex i: Int, context: FinanceContext) -> Double {
         var co = s.companies[i]
-        guard co.taxDue, early || s.week >= co.taxDueWeek else { return 0 }
-        let room = context.overdraftRoom(co, s)
-        let left = max(0, co.cash + room)
-        let due = min(co.payables["tax"] ?? 0, co.taxPrevYear)
-        if due <= 0 { return 0 }
-        let paid = min(due, left)
-        AccountingLedger.note(category: "tax", label: "Corporate tax")
-        Ledger.moveRaw(&s, .company(co.id), -paid)
-        co = s.companies[i]
-        co.payables["tax"] = max(0, (co.payables["tax"] ?? 0) - paid)
-        if paid > 0 { co.addTransaction(week: s.week, amount: -jsRound(paid), label: "Corporate tax") }
-        s.stats.taxPaid += paid
-        co.taxPrevYear = max(0, co.taxPrevYear - paid)
+        let owed = co.payables["tax"] ?? 0
+        let paid = max(0, min(owed, max(0, co.cash + context.overdraftRoom(co, s))))
+        if paid > 0 {
+            AccountingLedger.note(category: "tax", label: "Corporate tax")
+            Ledger.moveRaw(&s, .company(co.id), -paid)
+            co = s.companies[i]
+            co.payables["tax"] = max(0, owed - paid)
+            co.addTransaction(week: s.week, amount: -jsRound(paid), label: "Corporate tax")
+            s.stats.taxPaid += paid
+        }
+        // What is left of last year's tax after the year end is the arrears; it cannot exceed what is still owed.
+        co.taxPrevYear = min(co.taxPrevYear, co.payables["tax"] ?? 0)
         if co.taxPrevYear < 1 { co.taxDue = false }
         s.companies[i] = co
-        return due - paid
+        return owed - paid
     }
 
     /// A company's month. Original: `monthEndCoCore`.
@@ -239,12 +245,17 @@ public enum MonthEnd {
         // A tax group is settled once every member's month is in. Original: 'a tax group is settled once every member's month is in'.
         for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].form == .limited && s.companies[i].status != .setup
             && s.companies[i].lossCarryAtYearStart != nil && HoldingModel.taxGroup(of: s.companies[i], in: s) != nil {
-            if let bd = data.catalog[s.companies[i].type] { accrueTax(&s, companyIndex: i, bd, data: data) }
+            if let bd = data.catalog[s.companies[i].type] {
+                accrueTax(&s, companyIndex: i, bd, data: data)
+                settleTax(&s, companyIndex: i, context: context)
+            }
         }
         FootballModel.monthly(&s)
         // Dividends are never automatic: the owner decides in Group.
         PersonalFinance.monthly(&s, context: context)
+        PersonalFinance.withholdNow(&s, context: context)
         PersonalFinance.advanceTaxMonthly(&s, context: context)
+        TaxSettlement.withholdWealthTax(&s, data: data, context: context)
         var rates = ExchangeRates(drift: s.exchangeRates.values)
         rates.monthlyDrift(book: data.countries, homeCode: s.homeCountryCode, random: &s.random)
         // Euro countries move together. Original: 'euro countries move together'.
@@ -266,9 +277,10 @@ public enum MonthEnd {
             if co.form == .limited {
                 let country = world.country(co)
                 rollLossLots(&co, country: country, closingYear: closingYear)
-                co.taxDue = true
+                // The year's tax was paid month by month on the profit so far, so the last month's accrual was the true-up; only unpaid tax is arrears.
                 co.taxPrevYear = co.payables["tax"] ?? 0
-                co.taxDueWeek = s.week + country.corporateTaxDueWeeks
+                co.taxDue = co.taxPrevYear >= 1
+                co.taxDueWeek = s.week
                 co.set("gcLy", co.value("gc")); co.set("gc", .null)
                 co.lossCarryAtYearStart = co.lossCarryForward
                 co.yearProfitSoFar = 0

@@ -112,7 +112,7 @@ public extension GameEngine {
                 let rate = bd.map { MonthEnd.taxRate(co, $0, country) } ?? country.corporateTax
                 let owed = co.payables["tax"] ?? 0
                 o.taxes.append(FinanceLine(id: "ct\(co.id)", label: "Corporate tax · \(co.name)", amount: owed,
-                                           detail: "\(Currency.percent(rate, decimals: 1)) of taxable profit; \(currency(for: co).display(co.taxAccrued)) set aside for this year"))
+                                           detail: "\(Currency.percent(rate, decimals: 1)) of taxable profit; \(currency(for: co).display(co.taxAccrued)) charged so far this year, paid each month on the profit to date"))
                 o.taxesOwed += owed
             }
             if abs(co.vatBalance) > 1 {
@@ -125,7 +125,7 @@ public extension GameEngine {
             let est = PersonalFinance.storedEstimate(s)?.total ?? PersonalFinance.taxEstimate(s, context: context)
             if est > 0 || s.tax.pending > 0 {
                 o.taxes.append(FinanceLine(id: "personal", label: "Your personal tax", amount: max(est, s.tax.pending),
-                                           detail: "Estimated for this year (income, dividends, gains, interest, wealth); settled at year end"))
+                                           detail: "Year to date after what was already paid as it arose (income, dividends, gains, interest, wealth); only the difference is settled at year end"))
                 o.taxesOwed += s.tax.pending
             }
         }

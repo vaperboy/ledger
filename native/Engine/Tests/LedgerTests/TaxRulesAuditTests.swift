@@ -7,7 +7,7 @@ import Businesses
 @testable import Investments
 @testable import Simulation
 
-/// Capital gains and savings interest rates, the corporate tax deadline, loss carry-forward limits, monotonic income brackets,
+/// Capital gains and savings interest rates, corporate tax arrears, loss carry-forward limits, monotonic income brackets,
 /// statutory sick pay and the scaled broker minimums.
 final class TaxRulesAuditTests: XCTestCase {
     private func book() throws -> CountryBook { try CountryBook.bundled() }
@@ -55,13 +55,7 @@ final class TaxRulesAuditTests: XCTestCase {
         }
     }
 
-    func testCorporateTaxFallsDueAtTheCountrysLag() throws {
-        let b = try book()
-        func c(_ code: String) -> Country { b.countries.first { $0.code == code }! }
-        XCTAssertEqual(c("UK").corporateTaxDueWeeks, 39, "9 months and a day")
-        XCTAssertEqual(c("US").corporateTaxDueWeeks, 15, "15 April")
-        XCTAssertEqual(c("PL").corporateTaxDueWeeks, 13)
-        XCTAssertEqual(Set(b.countries.map { $0.corporateTaxDueWeeks }).count > 5, true, "not 26 weeks everywhere")
+    func testUnpaidCorporateTaxIsArrearsDueAtOnceAtTheYearEnd() throws {
         for code in ["UK", "US", "JP"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 3)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
@@ -70,8 +64,13 @@ final class TaxRulesAuditTests: XCTestCase {
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open
                 s.companies[i].payables["tax"] = 1000
+                let cash0 = s.companies[i].cash
                 MonthEnd.closeYear(&s, data: data, context: ctx)
-                XCTAssertEqual(s.companies[i].taxDueWeek, s.week + data.countries.resolve(code, orHome: code).corporateTaxDueWeeks, code)
+                // Tax is paid monthly, so no country gives a lag after the year end: what is still owed is paid at once.
+                XCTAssertEqual(s.companies[i].taxDueWeek, s.week, code)
+                XCTAssertEqual(s.companies[i].payables["tax"] ?? 0, 0, accuracy: 0.5, code)
+                XCTAssertFalse(s.companies[i].taxDue, code)
+                XCTAssertEqual(cash0 - s.companies[i].cash, 1000, accuracy: 1, code)
             }
         }
     }

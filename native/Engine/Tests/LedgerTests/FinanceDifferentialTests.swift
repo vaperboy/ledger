@@ -63,7 +63,7 @@ final class FinanceDifferentialTests: XCTestCase {
 }
 
 /// A whole sequence of personal finance steps (loan instalments, overdraft, savings interest, advance tax,
-/// annual assessment) must produce the same money as the original.
+/// year-end settlement) must produce the same money as the original.
 final class PersonalFinanceDifferentialTests: XCTestCase {
     func testMonthlyAdvanceTaxAndYearEndMatchOriginal() throws {
         let g = try Golden.load("case_personal")
@@ -97,8 +97,12 @@ final class PersonalFinanceDifferentialTests: XCTestCase {
 
         PersonalFinance.monthly(&s, context: ctx)
         check("after month", g["afterMonth"])
-        s.week = 17; PersonalFinance.advanceTaxMonthly(&s, context: ctx)
-        s.week = 21; s.tax.advancePaid = 0; s.tax.withheld = 40000; PersonalFinance.advanceTaxMonthly(&s, context: ctx)
+        // The original paid advance tax quarterly on 90% of a projection; the shipped rule is monthly on the actual profit
+        // (TaxAtSourceTests). The replay restores the original's payment so the year-end settlement is still checked against it.
+        s.week = 21
+        let adv = g["afterAdv2"]
+        s.tax.advancePaid = adv["tax"]["adv"].double; s.tax.withheld = adv["tax"]["withheld"].double
+        Payments.playerPays(&s, -adv["log"][0]["a"].double, label: adv["log"][0]["l"].string)
         check("after advance tax", g["afterAdv2"])
         assertClose(PersonalFinance.taxEstimate(s, context: ctx), g["est"].double, tol: 1e-9, "estimate")
         let nw = Valuation.netWorth(s, trades: cat)

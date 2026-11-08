@@ -285,7 +285,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         }
         XCTAssertNotEqual(fixedStaff, 0, "\(country): the barber has somebody to put on a fixed term")
 
-        struct Snap { var pm = -99, bm = -99, lastMonth = -99, taxDueWeek = -1, txHead = "" }
+        struct Snap { var pm = -99, bm = -99, lastMonth = -99, txHead = "" }
         var snaps: [Int: Snap] = [:]
         var loanBalances: [Int: Double] = [:]
         var years = e.state.stats.yearsPlayed
@@ -296,7 +296,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             let co = e.state.company(id)!
             let t = Payday.dayNumber(week: 0, day: 0)
             let cfg = Payday.config(co, today: t)
-            snaps[id] = Snap(pm: cfg.paidMonth, bm: cfg.billsMonth, lastMonth: co.monthlyHistory.last?.monthIndex ?? -99, taxDueWeek: co.taxDueWeek, txHead: co.transactions.first.map(key) ?? "")
+            snaps[id] = Snap(pm: cfg.paidMonth, bm: cfg.billsMonth, lastMonth: co.monthlyHistory.last?.monthIndex ?? -99, txHead: co.transactions.first.map(key) ?? "")
         }
         for l in e.state.loans { loanBalances[l.id] = l.balance }
         var fixedGone = false
@@ -320,7 +320,6 @@ final class DeterminismSavesDatesTests: XCTestCase {
                 if co.vatBalance != 0, !out.events.contains(where: { $0.kind == "vatSeen" && $0.co == id }) { out.events.append(Ev(kind: "vatSeen", co: id, week: w, day: d)) }
                 if cfg.lateSince != nil { out.events.append(Ev(kind: "latePayroll", co: id, week: w, day: d, note: cfg.lateWhy)) }
                 if let last = co.monthlyHistory.last?.monthIndex, last != sn.lastMonth { out.events.append(Ev(kind: "monthClose", co: id, week: w, day: d, month: last)); sn.lastMonth = last }
-                if co.taxDueWeek != sn.taxDueWeek, co.taxDue { out.events.append(Ev(kind: "yearEnd", co: id, week: w, day: d, month: co.taxDueWeek, note: "\(co.taxPrevYear)")); sn.taxDueWeek = co.taxDueWeek }
                 for tx in co.transactions {
                     if key(tx) == sn.txHead { break }
                     let l = tx["l"].string
@@ -424,20 +423,12 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertTrue(biz.contains { $0.note == "last" }, tag("the 36 month loan is paid off and gone"))
         }
 
-        // Year end: company tax falls due the country's number of weeks later and is paid at the first month close from then on; the personal assessment runs at each year end.
+        // Year end: company tax is paid at the month closes from the profit so far (never between them); the personal true-up runs at each year end.
         let yearEnds = (1...W).filter { GameCalendar.isYearEnd(week: $0) }
-        XCTAssertEqual(r.events.filter { $0.kind == "personalYear" }.map { $0.week }, yearEnds, tag("the annual personal tax assessment runs at each year end"))
+        XCTAssertEqual(r.events.filter { $0.kind == "personalYear" }.map { $0.week }, yearEnds, tag("the year-end personal tax settlement runs at each year end"))
         for id in r.companies {
-            let ye = r.events.filter { $0.kind == "yearEnd" && $0.co == id }
-            XCTAssertEqual(ye.map { $0.week }, yearEnds, tag("company \(id): year ends"))
             let paid = r.events.filter { $0.kind == "corpTax" && $0.co == id }
-            let owing = ye.filter { (Double($0.note) ?? 0) >= 1 }
-            for y in owing {
-                let due = y.month
-                let first = closeWeeks.first { $0 >= due }
-                if let first, first <= W { XCTAssertTrue(paid.contains { $0.week == first }, tag("company \(id): tax from the year end of week \(y.week) is paid in week \(first); payments: \(paid.map { $0.week })")) }
-            }
-            XCTAssertTrue(paid.allSatisfy { p in ye.contains { y in closeWeeks.first(where: { $0 >= y.month }) == p.week } }, tag("company \(id): tax is paid only when due: \(paid.map { $0.week })"))
+            XCTAssertTrue(paid.allSatisfy { closeWeeks.contains($0.week) && $0.day == 0 }, tag("company \(id): tax is paid only at a month close: \(paid.map { $0.week })"))
         }
 
         // Expiry dates: a fixed deposit pays out in the week it ends, a fixed-term worker leaves on the date and was asked before it.
