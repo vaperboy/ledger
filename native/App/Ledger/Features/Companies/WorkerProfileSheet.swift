@@ -230,7 +230,7 @@ struct WorkerProfileBody: View {
             promisesSection(e)
             if let s { moodSection(s) } else if !p.moodBad.isEmpty || !p.moodGood.isEmpty { TeamBlock("Why they feel this way") { moodLines(p.moodBad, p.moodGood) } }
             if let s { workSection(s) }
-            details(p, s, cur)
+            details(p, s, cur, extras: e.staffTermsUnlocked(companyID: companyID))
         }
     }
 
@@ -392,7 +392,8 @@ struct WorkerProfileBody: View {
 
     // MARK: Contract and record (one row that opens them)
 
-    private func details(_ p: WorkerProfile, _ s: StaffProfile.Profile?, _ cur: Currency) -> some View {
+    /// `extras`: bonus, perks and paid expenses show only once the company has five staff or a manager.
+    private func details(_ p: WorkerProfile, _ s: StaffProfile.Profile?, _ cur: Currency, extras: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Hairline()
             Button {
@@ -402,7 +403,7 @@ struct WorkerProfileBody: View {
                 HStack(spacing: Theme.Space.m) {
                     VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                         Text("Contract and record").textStyle(.headline)
-                        Text("Dates, notice, raises, bonus, perks, warnings").textStyle(.caption)
+                        Text(extras ? "Dates, notice, raises, bonus, perks, warnings" : "Dates, notice, raises, warnings").textStyle(.caption)
                     }
                     Spacer(minLength: Theme.Space.s)
                     LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint).rotationEffect(.degrees(showDetails ? 90 : 0))
@@ -416,7 +417,7 @@ struct WorkerProfileBody: View {
             if showDetails {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     contractSection(p, s)
-                    if let s { recordSection(s, p, cur) }
+                    if let s { recordSection(s, p, cur, extras: extras) }
                 }
                 .padding(.top, Theme.Space.s)
             }
@@ -447,16 +448,16 @@ struct WorkerProfileBody: View {
         }
     }
 
-    private func recordSection(_ s: StaffProfile.Profile, _ p: WorkerProfile, _ cur: Currency) -> some View {
+    private func recordSection(_ s: StaffProfile.Profile, _ p: WorkerProfile, _ cur: Currency, extras: Bool) -> some View {
         let week: Int = store.engine?.state.week ?? 0
         let raise: String = s.lastRaiseWeek.map { "\(max(0, week - $0)) weeks ago" } ?? "never"
         return TeamBlock("Record") {
             VStack(spacing: 0) {
                 FlatRow(label: "Last raise", value: raise, sub: s.underpaid ? "Paid less than the job usually pays" : "", rule: false)
                 FlatRow(label: "Hours worked", value: "\(Int(p.hoursWorked.rounded()))", sub: "In all, since they started")
-                if let plan = s.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: s.bonusPaidThisYear > 0 ? "\(cur.tidyShort(s.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
-                if !s.perks.isEmpty { FlatRow(label: "Perks", value: s.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(s.perksWorth)) a month to them, counted as pay") }
-                if !s.expenses.isEmpty { FlatRow(label: "Expenses paid", value: s.expenses.joined(separator: ", ")) }
+                if extras, let plan = s.bonusPlan { FlatRow(label: "Bonus plan", value: plan, sub: s.bonusPaidThisYear > 0 ? "\(cur.tidyShort(s.bonusPaidThisYear)) paid this year" : "Nothing paid yet this year") }
+                if extras, !s.perks.isEmpty { FlatRow(label: "Perks", value: s.perks.joined(separator: ", "), sub: "Worth about \(cur.tidyShort(s.perksWorth)) a month to them, counted as pay") }
+                if extras, !s.expenses.isEmpty { FlatRow(label: "Expenses paid", value: s.expenses.joined(separator: ", ")) }
                 FlatRow(label: "Written warnings", value: "\(s.warnings)", sub: s.dismissalDocumented ? "Enough on file to let them go for cause" : "")
             }
         }

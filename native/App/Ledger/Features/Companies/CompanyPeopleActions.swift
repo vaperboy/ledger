@@ -290,10 +290,17 @@ struct CompanyPerksPopup: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let cur: Currency = e.currency(for: co)
             let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
+            // Perks open at five staff or a manager; any already switched on stay visible so they can be switched off.
+            let locked: Bool = !e.staffTermsUnlocked(companyID: companyID) && total <= 0
             VStack(alignment: .leading, spacing: 10) {
-                Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
-                    .popupText(.subtitle)
-                VStack(spacing: 0) { perkRows(e, co, cur) }
+                if locked {
+                    Text("Perks open once you have five staff or a manager. Until then, pay the going rate and people stay or go on that.")
+                        .popupText(.subtitle)
+                } else {
+                    Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
+                        .popupText(.subtitle)
+                    VStack(spacing: 0) { perkRows(e, co, cur) }
+                }
             }
             .centerSheetTitle("Perks")
         } else {

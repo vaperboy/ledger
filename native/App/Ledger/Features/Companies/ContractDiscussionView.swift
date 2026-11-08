@@ -47,7 +47,7 @@ struct ContractDiscussionView: View {
                 preview(e, co, cur)
                 if !reply.isEmpty { SpeechBubble(text: reply, mine: false) }
                 send(e, co, n, cur)
-                promiseSection(e, co, n)
+                if termsOpen(e) { promiseSection(e, co, n) }
                 historySection(e)
             } else {
                 Text("This person no longer works here.").foregroundStyle(Theme.ivoryMuted)
@@ -59,6 +59,10 @@ struct ContractDiscussionView: View {
     }
 
     // MARK: Who and what
+
+    /// Bonus plans, benefits and promises open once the company has five staff or a manager; a request already on the table stays answerable.
+    private func termsOpen(_ e: GameEngine) -> Bool { e.staffTermsUnlocked(companyID: companyID) }
+    private func extra(_ t: ContractTalk.Topic) -> Bool { t == .bonus || t == .benefits }
 
     private func isEmployee(_ co: Company) -> Bool { co.managerID == personID || co.staff.contains { $0.id == personID } }
     private func first(_ n: Person) -> String { n.name.split(separator: " ").first.map(String.init) ?? n.name }
@@ -102,8 +106,10 @@ struct ContractDiscussionView: View {
                         if talk.delayUntil == 0 { Button("Delay \(ContractTalk.delayWeeks) weeks") { answer(.delay, e, n, cur, pv) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.inkSoft)) }
                         Button("Decline") { answer(.decline, e, n, cur, pv) }.buttonStyle(TertiaryButtonStyle(size: .compact, tint: Theme.loss))
                     }
-                    promiseMaker(e, label: "Promise instead") { draft in
-                        show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) })
+                    if termsOpen(e) {
+                        promiseMaker(e, label: "Promise instead") { draft in
+                            show(store.act { $0.contractRespond(companyID: companyID, personID: personID, decision: .promise(draft)) })
+                        }
                     }
                     if e.contractHandler(companyID: companyID) != nil {
                         Button("Leave it to the manager") {
@@ -165,7 +171,9 @@ struct ContractDiscussionView: View {
     // MARK: Topics and the editor
 
     private func topics(_ e: GameEngine) -> some View {
-        let list = e.contractTopics(companyID: companyID, personID: personID)
+        let unlocked: Bool = termsOpen(e)
+        let asked: ContractTalk.Topic? = e.contractTalk(personID: personID)?.proposal.topic
+        let list = e.contractTopics(companyID: companyID, personID: personID).filter { unlocked || !extra($0.topic) || $0.topic == asked }
         return TeamBlock("Discuss") {
             VStack(alignment: .leading, spacing: 8) {
                 WrapRow(spacing: Theme.Space.xs) {
@@ -475,6 +483,7 @@ struct ContractDiscussionView: View {
         seeded = true
         let talk = e.contractTalk(personID: personID)
         topic = startTopic ?? talk?.proposal.topic ?? .payRise
+        if !e.staffTermsUnlocked(companyID: companyID), extra(topic), talk?.proposal.topic != topic { topic = .payRise }
         if let m = co.staff.first(where: { $0.id == personID }) { hours = m.weeklyHours ?? 30 }
         if let c = e.employmentContract(companyID: companyID, personID: personID) { workPercent = max(10, min(100, c.workingPercent.rounded())) }
         if let t = talk {

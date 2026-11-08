@@ -40,16 +40,18 @@ struct CompanySettings: View {
         CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").textStyle(.caption) }) {
             if let cost = engine.convertToLimitedCost(companyID: company.id) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Sole trader: you are liable for every debt.")
-                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    LegalFormAdvisor(companyID: company.id)
                     FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
                     FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
                     Button("Review the conversion\u{2026}") { converting = true }.buttonStyle(QuietButtonStyle())
                         .accessibilityIdentifier("company-convert-review")
                 }
             } else {
-                Text("Limited: debts stay with the company unless you guaranteed them.")
-                    .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    Text("Limited: debts stay with the company unless you guaranteed them.")
+                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    LegalFormAdvisor(companyID: company.id)
+                }
             }
         }
     }
