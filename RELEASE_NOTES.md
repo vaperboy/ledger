@@ -1,4 +1,5 @@
 # What's new
+- Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
 - Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists
 - Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
 - Each company starts by choosing one of three products, the rest come later under add product, Sandbox mode needs Ledger Pro, and the New range option is gone
