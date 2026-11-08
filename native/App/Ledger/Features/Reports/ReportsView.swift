@@ -154,24 +154,21 @@ struct ReportsPage: View {
     private func hero(_ r: PeriodReport) -> some View {
         let f = format
         let net = r.group.pnl.netProfit
-        let profitChange = ReportChangeText(now: net, before: r.previous?.pnl.netProfit, isCost: false, format: f)
         let worthChange = r.netWorthChange
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text("Profit after tax").textStyle(.label, tint: Theme.inkFaint)
-            CountedFigure(value: net, format: f.short, tint: net < -0.5 ? Theme.loss : Theme.ink)
-                .font(.hero(heroSize)).lineLimit(1).minimumScaleFactor(0.5)
-            if let prev = r.previous {
-                HStack(spacing: Theme.Space.xs) {
-                    Text(profitChange.text).textStyle(.body, tint: profitChange.tint, numeric: true, weight: .medium)
-                    Text("vs " + prev.title.tidyMoney).textStyle(.body, tint: Theme.inkSoft).lineLimit(1)
-                }
+            ArrowAmount(gain: net, format: f.short, live: true, font: .hero(heroSize), arrowSide: heroSize * 0.4)
+                .lineLimit(2).minimumScaleFactor(0.8)
+            if r.previous != nil {
+                ChangeNote(now: net, before: r.previous?.pnl.netProfit, against: "last " + kind.noun, format: f.short, step: .body)
             } else {
                 Text("Nothing earlier to compare with.").textStyle(.body, tint: Theme.inkFaint)
             }
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                 Text(companyID == nil ? "Net worth" : "Your share").textStyle(.caption, tint: Theme.inkFaint)
                 Text(f.short(r.netWorthEnd.total)).textStyle(.headline, numeric: true)
-                Text(f.signed(worthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? "")).textStyle(.caption, tint: Theme.change(worthChange), numeric: true)
+                ArrowAmount(gain: worthChange, format: f.short, live: true, step: .caption)
+                if let share = r.netWorthShare { Text(f.percent(share)).textStyle(.caption, tint: Theme.change(worthChange), numeric: true) }
             }
             .lineLimit(1).minimumScaleFactor(0.8)
             .padding(.top, Theme.Space.s)
@@ -200,7 +197,8 @@ struct ReportsPage: View {
         let tint: Color = key.id == "net" ? Theme.change(now) : Theme.ivory
         return OverviewRowData(id: key.id, glyph: key.glyph, title: key.title, value: format.short(now),
                                valueTint: tint,
-                               note: c.text, noteTint: c.tint, live: now, liveText: format.short, action: { opened = .line(key) })
+                               note: c.text, noteTint: c.tint, live: now, liveText: format.short, arrow: true,
+                               before: before, isCost: key.isCost, against: "last " + kind.noun, action: { opened = .line(key) })
     }
 
     private func linesTable(_ r: PeriodReport) -> some View {
@@ -220,8 +218,8 @@ struct ReportsPage: View {
         let f = format
         var rows: [OverviewRowData] = []
         rows.append(OverviewRowData(id: "worth", glyph: Glyph.richList, title: companyID == nil ? "Net worth" : "Value of your share",
-                                    subtitle: "Start, end and what moved it", value: f.signed(r.netWorthChange),
-                                    valueTint: Theme.change(r.netWorthChange), live: r.netWorthChange, liveText: f.signed, action: { opened = .worth }))
+                                    subtitle: "Start, end and what moved it", value: f.short(abs(r.netWorthChange)),
+                                    valueTint: Theme.change(r.netWorthChange), live: r.netWorthChange, liveText: f.short, arrow: true, action: { opened = .worth }))
         rows.append(OverviewRowData(id: "cash", glyph: Glyph.bank, title: "Cash", subtitle: "Where the money went",
                                     value: f.short(r.group.companyCashEnd), live: r.group.companyCashEnd, liveText: f.short, action: { opened = .cash }))
         rows.append(OverviewRowData(id: "people", glyph: Glyph.team, title: "Customers and people",
@@ -273,10 +271,8 @@ struct ReportsPage: View {
                             }
                             Spacer(minLength: 8)
                             VStack(alignment: .trailing, spacing: 2) {
-                                CountedFigure(value: c.pnl.netProfit, format: f.short, tint: c.pnl.netProfit < 0 ? Theme.loss : Theme.ivory).textStyle(.body, numeric: true)
-                                if let b = before {
-                                    Text(f.percent(ReportMath.share(c.pnl.netProfit, b))).textStyle(.caption, tint: Theme.change(c.pnl.netProfit - b), numeric: true)
-                                }
+                                ArrowAmount(gain: c.pnl.netProfit, format: f.short, live: true)
+                                ChangeNote(now: c.pnl.netProfit, before: before, against: "last " + kind.noun, format: f.short)
                             }
                         }
                         .padding(.vertical, 9)
@@ -294,7 +290,7 @@ struct ReportsPage: View {
         let a = r.netWorthStart, b = r.netWorthEnd
         func row(_ label: String, _ x: Double, _ y: Double, debt: Bool = false, strong: Bool = false) -> some View {
             let d = y - x
-            return ReportTableRow(label: label, first: f.short(x), second: f.short(y), third: f.signed(d), thirdTint: abs(d) < 0.5 ? Theme.ivoryMuted : Theme.change(debt ? -d : d), strong: strong, nums: [x, y, d], fmt: f)
+            return ReportTableRow(label: label, first: f.short(x), second: f.short(y), third: f.short(abs(d)), thirdTint: abs(d) < 0.5 ? Theme.ivoryMuted : Theme.change(debt ? -d : d), strong: strong, nums: [x, y, d], fmt: f, gain: debt ? -d : d)
         }
         return CardSection(companyID == nil ? "Net worth" : "Value of your share") {
             VStack(spacing: 0) {
@@ -319,7 +315,7 @@ struct ReportsPage: View {
         let f = format
         let g = r.group
         func line(_ label: String, _ v: Double) -> some View {
-            ReportLine(label: label, value: f.signed(v), tint: abs(v) < 0.5 ? Theme.ivoryMuted : Theme.change(v), live: v, liveText: f.signed)
+            ReportLine(label: label, value: f.short(abs(v)), tint: abs(v) < 0.5 ? Theme.ivoryMuted : Theme.change(v), live: v, liveText: f.short, arrow: true)
         }
         let other = g.companyCashEnd - g.companyCashStart - g.ownerIn + g.ownerOut - g.loansTaken + g.loansRepaid
         return CardSection("Cash") {
@@ -431,8 +427,8 @@ struct ReportsPage: View {
                         ReportLine(label: "Income tax already withheld", value: f.short(engine.yearInProgress.taxWithheld))
                     }
                     CardLine()
-                    ReportLine(label: "Wealth change", value: f.signed(r.netWorthChange) + (r.netWorthShare.map { "  " + f.percent($0) } ?? ""),
-                               tint: Theme.change(r.netWorthChange), strong: true)
+                    ReportLine(label: "Wealth change" + (r.netWorthShare.map { " (" + f.percent($0) + ")" } ?? ""), value: f.short(abs(r.netWorthChange)),
+                               tint: Theme.change(r.netWorthChange), strong: true, live: r.netWorthChange, liveText: f.short, arrow: true)
                 }
             }
         }

@@ -60,7 +60,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testLowerPriceRaisesUnitsAndHigherLowers() throws {
-        let (e, id) = try engine()
+        let (e, id) = try engine(opened: true)
         let it = e.salesItems(companyID: id)[0]
         let cheap = e.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 0.8, discountPercent: 0)
         let dear = e.itemForecast(companyID: id, itemID: it.id, price: it.marketPrice * 1.2, discountPercent: 0)
@@ -82,7 +82,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testUnroundedPriceIsKeptAndDiscountExpires() throws {
-        var (e, id) = try engine()
+        var (e, id) = try engine(opened: true)
         let it = e.salesItems(companyID: id)[0]
         let p = it.marketPrice * 1.0371234567
         XCTAssertEqual(e.setItemPrice(companyID: id, itemID: it.id, price: p), .applied)
@@ -103,7 +103,7 @@ final class SalesItemsTests: XCTestCase {
     }
 
     func testSaveReloadAndDeterminism() throws {
-        var (a, id) = try engine()
+        var (a, id) = try engine(opened: true)
         var b = a
         let it = a.salesItems(companyID: id)[1]
         for k in 0..<2 {

@@ -123,7 +123,7 @@ private struct PopupTextStyle: ViewModifier {
         case .figure:
             content.textStyle(big ? .title : .figure, tint: variant == .reward ? P.accent : ink, numeric: true)
         case .hero:
-            content.textStyle(.display, tint: ink).minimumScaleFactor(0.6).lineLimit(1)
+            content.textStyle(.display, tint: ink).minimumScaleFactor(0.8).lineLimit(2)
         case .rowLabel:
             content.textStyle(.body, tint: soft)
         case .rowValue:

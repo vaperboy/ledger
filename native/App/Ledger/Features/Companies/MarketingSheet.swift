@@ -103,6 +103,7 @@ struct MarketingSheet: View {
         }
         .buttonStyle(SecondaryButtonStyle(size: .compact))
         .disabled(!enabled)
+        .accessibilityLabel(symbol == "minus" ? "Spend less" : "Spend more")
         .accessibilityIdentifier(id)
     }
 

@@ -61,7 +61,7 @@ public struct FirstYear: Sendable, Equatable {
     /// Weekly, before the bankruptcy checks: a company below zero for `frozenAfterWeeks` weeks before the cut-off week gets one Inbox item
     /// (once per spell below zero). The engine skips bankruptcy while `bankruptcyActive` is false.
     public static func freezeSweep(_ s: inout GameState, balance: Balance) {
-        let f = balance.firstYear
+        let f = effective(s, balance: balance)
         noticeSweep(&s, balance: balance)
         guard !f.bankruptcyActive(week: s.week) else { return }
         for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
@@ -80,7 +80,7 @@ public struct FirstYear: Sendable, Equatable {
     /// Weekly: tell the player, once, when each first-year protection ends. Game-wide ones are keyed to the game week
     /// (a save loaded long after that week stays quiet), the demand honeymoon to each company's own first anniversary.
     public static func noticeSweep(_ s: inout GameState, balance: Balance) {
-        let f = balance.firstYear
+        let f = effective(s, balance: balance)
         var done = s.rest["fyNotes"] ?? .object([:])
         func due(_ key: String, week: Int) -> Bool {
             guard s.week >= week, s.week < week + 2, done[key].isNull else { return false }

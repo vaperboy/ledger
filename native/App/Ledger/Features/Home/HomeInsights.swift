@@ -34,7 +34,7 @@ struct InsightsView: View {
 
     private var lockCard: some View {
         VStack(spacing: 10) {
-            Image(systemName: "lock.fill").font(.title2).foregroundStyle(Theme.accent).accessibilityHidden(true)
+            LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.large, tint: Theme.accent)
             Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
             Button("Unlock with Ledger Pro") {
                 Haptics.tap()

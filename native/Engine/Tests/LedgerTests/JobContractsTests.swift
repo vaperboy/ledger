@@ -167,6 +167,10 @@ final class JobContractsTests: XCTestCase {
 
     func testHandyKitStockRunsDownAndIsReordered() throws {
         var (e, id) = try start("handy", weeks: 6, setup: true)
+        // the kit only sells down once the company is open and has traded a full week of its own cycle
+        var extra = 0
+        while (e.state.company(id)?.status != .open || e.state.company(id)?.value("lastW")["units"].double ?? 0 <= 0), extra < 30 { e.w7week(); extra += 1 }
+        XCTAssertEqual(e.state.company(id)?.status, .open, "handy should have opened")
         e.update { s, d, _ in JobContracts.install(&s, companyID: id, data: d) }
         var sawOrder = false, sawArrival = false
         var last: Int?

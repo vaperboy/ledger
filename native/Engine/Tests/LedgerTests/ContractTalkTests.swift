@@ -186,7 +186,7 @@ final class ContractTalkTests: XCTestCase {
         let preview = e.contractPreview(companyID: id, personID: pid, proposal: .init(.promotion, amount: post.ask, choice: post.id, terms: .init(authority: 2)))
         XCTAssertTrue(preview.blocked.isEmpty)
         XCTAssertTrue(preview.lines.contains { $0.contains("New post") })
-        XCTAssertTrue(preview.lines.contains { $0.contains("Authority") || $0.contains("authority") })
+        XCTAssertTrue(preview.lines.contains { $0.contains("Budget free") && $0.contains("decides on their own") }, "the budget term is stated in the preview")
     }
 
     func testHoursSetFullTimeAndSeasons() throws {

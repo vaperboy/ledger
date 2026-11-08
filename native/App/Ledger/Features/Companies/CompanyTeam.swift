@@ -79,7 +79,7 @@ struct CompanyTeam: View {
 
     private func heroFigure(_ value: String, _ unit: String, trailing: Bool = false) -> some View {
         VStack(alignment: trailing ? .trailing : .leading, spacing: 0) {
-            Text(value).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6)
+            Text(value).textStyle(.display).lineLimit(2).minimumScaleFactor(0.8)
             Text(unit).textStyle(.caption, tint: P.inkFaint)
         }
     }

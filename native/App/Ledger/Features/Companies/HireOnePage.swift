@@ -332,7 +332,7 @@ struct HireOnePage: View {
                         Spacer(minLength: 6)
                         Text("in \(HireWords.weeksText(d.dueInWeeks))").popupText(.caption)
                         Button { model.draft.promises.remove(at: i) } label: {
-                            Image(systemName: "xmark.circle").foregroundStyle(P.inkFaint).frame(width: 44, height: 44).contentShape(Rectangle())
+                            LedgerGlyph(glyph: Glyph.close, size: Theme.Icon.small, tint: P.inkFaint).frame(width: 44, height: 44).contentShape(Rectangle())
                         }
                         .buttonStyle(PressableStyle()).accessibilityLabel("Remove this promise")
                     })
@@ -441,10 +441,10 @@ struct HireOnePage: View {
             model.offerSet = true
         })
         return HStack(spacing: Theme.Space.s) {
-            Button { Haptics.choose(); model.offer = max(low, shown - step); model.offerSet = true } label: { Image(systemName: "minus") }
+            Button { Haptics.choose(); model.offer = max(low, shown - step); model.offerSet = true } label: { LedgerGlyph(glyph: Glyph.minus, size: Theme.Icon.small) }
                 .buttonStyle(SecondaryButtonStyle(size: .compact)).accessibilityLabel("Offer less")
             LedgerSlider(value: binding, in: low...high).tint(P.accent)
-            Button { Haptics.choose(); model.offer = shown + step; model.offerSet = true } label: { Image(systemName: "plus") }
+            Button { Haptics.choose(); model.offer = shown + step; model.offerSet = true } label: { LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.small) }
                 .buttonStyle(SecondaryButtonStyle(size: .compact)).accessibilityLabel("Offer more")
         }
     }

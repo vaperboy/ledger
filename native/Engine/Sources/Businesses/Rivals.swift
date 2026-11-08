@@ -275,6 +275,7 @@ public enum Rivals {
         if GameCalendar.isMonthEnd(week: s.week) { monthly(&s) }
         RivalGroups.weekly(&s, data: data)
         WorldAround.weekly(&s, data: data)
+        Threat.weekly(&s, data: data)   // rival bids for key accounts and staff, complaint debt (Threat.swift)
     }
 
     static func behave(_ s: inout GameState, key k: String, idx: [Int], bd: Trade, data: GameData) {
@@ -288,6 +289,7 @@ public enum Rivals {
         let w = World(state: s, data: data)
         let cityName = data.countries.city(co0.cityID, preferring: co0.countryCode)?.city.name ?? "town"
         let newYear = week / 52 != (week - 1) / 52
+        let sharp = Difficulty.of(s).rivalSharpness   // Hard: rivals open, discount and phone more often; Sandbox: less
         let infl = s.economy.inflation
         let util = co0.value("lastW")["util"].isNull ? 0.7 : co0.value("lastW")["util"].double
         let myP = Pricing.priceIndex(co0, w) / max(0.01, co0.num("ig", 1))
@@ -321,7 +323,7 @@ public enum Rivals {
             // Discounts where the trade does them
             if running(r["camp16"], week) == false { r["camp16"] = .null }
             let dm = PriceMoves.maxDiscount(co0.type)
-            if dm > 0, r["camp16"].isNull, h.next() < 0.012 + (util < 0.6 ? 0.01 : 0) {
+            if dm > 0, r["camp16"].isNull, h.next() < (0.012 + (util < 0.6 ? 0.01 : 0)) * sharp {
                 let pct = min(dm, [10, 15, 20, 25][Int(h.next() * 4) % 4])
                 let end = week + 1 + Int(h.next() * 3)
                 r["camp16"] = .object(["pct": .number(Double(pct)), "end": .number(Double(end))])
@@ -361,7 +363,7 @@ public enum Rivals {
         // Opening next to you
         var hm = HashedRandom("\(s.seed):next:\(week):\(k)")
         let busy = cos.contains { $0.value("lastW")["util"].double > 0.85 || Reviews.rating($0) > 4 }
-        if hm.next() < 0.0025 * (m["aggr"].isNull ? 1 : m["aggr"].double), busy, let bigK = riv.indices.max(by: { riv[$0]["size"].double < riv[$1]["size"].double }) {
+        if hm.next() < 0.0025 * (m["aggr"].isNull ? 1 : m["aggr"].double) * sharp, busy, let bigK = riv.indices.max(by: { riv[$0]["size"].double < riv[$1]["size"].double }) {
             let tgt = cos[Int(hm.next() * Double(cos.count)) % cos.count]
             riv[bigK]["size"] = .number(jsRound(riv[bigK]["size"].double * 1.12 * 100) / 100)
             m["n"] = .number(m["n"].double + 1)
@@ -399,7 +401,7 @@ public enum Rivals {
     static func rivalCalls(_ s: inout GameState, cos idx: [Int], market m: JSONValue, riv: [JSONValue], bd: Trade, data: GameData) {
         guard !riv.isEmpty else { return }
         let w = World(state: s, data: data)
-        let aggr = m["aggr"].isNull ? 1 : m["aggr"].double
+        let aggr = (m["aggr"].isNull ? 1 : m["aggr"].double) * Difficulty.of(s).rivalSharpness
         var h = HashedRandom("\(s.seed):rcall:\(s.week):\(idx.first ?? 0)")
         for i in idx where s.companies[i].status == .open {
             let co = s.companies[i]

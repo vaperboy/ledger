@@ -74,7 +74,10 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertEqual(e.state.companies.count, n0 + 1)
         let b = try XCTUnwrap(e.state.company(branchID))
         XCTAssertEqual(b.value("branch")["of"].int, id)
-        XCTAssertEqual(b.name, "\(try XCTUnwrap(e.state.company(id)).name) 2")
+        // Branches are named by place, never by a number, and each name is its own.
+        XCTAssertNotEqual(b.name, try XCTUnwrap(e.state.company(id)).name)
+        XCTAssertNil(b.name.split(separator: " ").last.flatMap { Int($0) }, "the name is not numbered: \(b.name)")
+        XCTAssertEqual(e.state.companies.filter { $0.name == b.name }.count, 1, "the name is unique: \(b.name)")
         XCTAssertGreaterThanOrEqual(b.reputation, try XCTUnwrap(e.state.company(id)).reputation * 0.95 - 1e-9)
 
         e.update { s, _, _ in

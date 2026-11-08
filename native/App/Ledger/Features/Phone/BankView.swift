@@ -14,6 +14,7 @@ struct BankLoansTab: View {
     var loans: [BankLoan]
 
     @State private var applying = false
+    @State private var prefill: Double?
 
     var body: some View {
         if let e = store.engine {
@@ -21,8 +22,18 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(account: account) }
+            .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(account: account, prefill: prefill) }
+            .onAppear { openWithAmount() }
+            .onChange(of: store.pendingLoanApply) { _, _ in openWithAmount() }
         }
+    }
+
+    /// A link that named an amount opens the application straight on the choice, with that amount.
+    private func openWithAmount() {
+        guard let amount = store.pendingLoanApply, account != .investments else { return }
+        store.pendingLoanApply = nil
+        prefill = amount
+        applying = true
     }
 
     @ViewBuilder private func loansFor(_ e: GameEngine) -> some View {
@@ -38,7 +49,7 @@ struct BankLoansTab: View {
 
     private func applyCard(_ e: GameEngine) -> some View {
         let sub: String = "Ask the bank, see its offer, then choose how much"
-        return Button { Haptics.tap(); applying = true } label: {
+        return Button { Haptics.tap(); prefill = nil; applying = true } label: {
             CardRow(glyph: BankGlyph.transfer, title: "Apply for a loan", subtitle: sub)
         }
         .buttonStyle(PressableStyle())
@@ -109,7 +120,7 @@ struct BankPersonalLoans: View {
                 Text(cur.tidyShort(l.balance)).textStyle(.body, numeric: true).moneyFlash(l.balance)
                 Text("left to pay").font(.caption2).foregroundStyle(P.inkFaint)
             }
-            Image(systemName: "chevron.right").textStyle(.caption, tint: P.inkFaint)
+            LedgerGlyph(glyph: Glyph.chevron, size: 12, tint: P.inkFaint)
         }
         .padding(.vertical, 9).contentShape(Rectangle())
     }

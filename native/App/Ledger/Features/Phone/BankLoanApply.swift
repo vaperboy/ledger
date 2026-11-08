@@ -13,6 +13,9 @@ struct BankLoanApplyFlow: View {
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var account: BankAccountID
+    /// An amount a link asked for: when the bank approves, the flow opens on the choice with it (within the bank's limits).
+    var prefill: Double? = nil
+    @State private var burst: MoneyBurst?
     @State private var step = 1   // 1 Offer, 2 Choose, 3 Confirm
     @State private var amount = 0.0
     @State private var term = 36
@@ -51,7 +54,14 @@ struct BankLoanApplyFlow: View {
             .toolbar(.hidden, for: .navigationBar)
             .swipeBackEnabled(canStep: { approved == nil && step > 1 }, step: { back() })
             .confirmAction($pending)
-            .onAppear { if name.isEmpty { name = e.state.player.name } }
+            .moneyTravel($burst)
+            .onAppear {
+                if name.isEmpty { name = e.state.player.name }
+                if let want = prefill, step == 1, amount == 0, a.approved {
+                    startChoosing(a)
+                    amount = min(a.maximum, max(a.minimum, want))
+                }
+            }
         }
     }
 
@@ -123,6 +133,7 @@ struct BankLoanApplyFlow: View {
             approved = result
             refusal = nil
             store.show("\(cur.tidyShort(disbursed)) is in the account.", tone: "good")
+            burst = MoneyBurst(label: "Loan", amount: disbursed, text: cur.tidyShort(disbursed))
         case .refused(let why)?:
             Haptics.warning(); refusal = why
         case nil:

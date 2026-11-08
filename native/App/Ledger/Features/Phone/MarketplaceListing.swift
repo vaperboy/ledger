@@ -180,7 +180,7 @@ struct MarketplaceDealView: View {
             Text(listing.title).textStyle(.headline, tint: P.inkSoft).multilineTextAlignment(.center).lineLimit(2)
             CountedFigure(value: p, format: { (v: Double) -> String in cur.tidyShort(v) }, tint: green ? P.gain : P.ink)
                 .textStyle(.display)
-                .lineLimit(1).minimumScaleFactor(0.6)
+                .lineLimit(2).minimumScaleFactor(0.8)
                 .shake(shakes)
                 .accessibilityLabel("Price " + priceText)
             Text(closedDoor ? "Not selling to you." : (neg?.lastMessage ?? " "))

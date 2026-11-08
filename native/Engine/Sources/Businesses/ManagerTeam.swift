@@ -338,12 +338,6 @@ extension ManagerModel {
         return true
     }
 
-    /// What the managing director may decide: the budget (`level` 0 tight, 1 normal, 2 free). The old spending limit is the preset's now, so `buy` is ignored.
-    public static func setTeamAuthority(_ s: inout GameState, companyID: Int, level: Int? = nil, buy: Double? = nil) {
-        guard let l = level else { return }
-        setTeamBudget(&s, companyID: companyID, budget: Budget(rawValue: min(2, max(0, l))) ?? .normal)
-    }
-
     // MARK: Chain and group levels
 
     public enum ExecLevel: String, Sendable, CaseIterable { case md, ceo56, chainmgr, region

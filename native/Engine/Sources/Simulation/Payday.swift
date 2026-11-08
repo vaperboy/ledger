@@ -421,7 +421,7 @@ public enum Payday {
             if cfg.billShortMonths >= 2 { s.companies[i].reputation = clamp(s.companies[i].reputation - 1, 0, 100) }
         } else { cfg.billShortMonths = 0 }
         // Repeated misses: suppliers tighten terms (2 months: stock only against cash in the account) and then stop delivering stock (3 months).
-        let cutoffOn = (data?.balance.firstYear ?? FirstYear.bundled).supplierCutoffActive(week: s.week)
+        let cutoffOn = FirstYear.effective(s, base: data?.balance.firstYear ?? FirstYear.bundled).supplierCutoffActive(week: s.week)
         let level = !cutoffOn ? 0 : cfg.billShortMonths >= 3 ? 2 : cfg.billShortMonths >= 2 ? 1 : 0
         // Bills and invoices each cut suppliers off; stock buying reads the stricter of the two (`SupplyTerms.refreshCut`).
         if level > 0 || s.companies[i].raw["supCutB"] != nil { s.companies[i].set("supCutB", level); if level == 0 { s.companies[i].raw.removeValue(forKey: "supCutB") } }
@@ -517,7 +517,7 @@ public enum Payday {
     /// New-player start: in the first weeks a payment the account cannot cover is not made today and not made late either; it waits for
     /// tomorrow, with no fee and no message beyond the Home banner (`rest["tight"]`). Returns true when today's payment should wait.
     static func waitsForCash(_ s: inout GameState, _ i: Int, due: Double, today t: Int, data: GameData) -> Bool {
-        guard due > 0, data.balance.firstYear.noOverdraftActive(s), due > s.companies[i].cash else { return false }
+        guard due > 0, FirstYear.effective(s, balance: data.balance).noOverdraftActive(s), due > s.companies[i].cash else { return false }
         s.rest["tight"] = .number(Double(t))
         return true
     }

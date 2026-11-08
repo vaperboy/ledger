@@ -8,10 +8,12 @@ enum BankTab: String, CaseIterable, Hashable {
     case account = "Account", loans = "Loans", deposits = "Deposits", bills = "Bills", statements = "Statements"
 }
 
-/// Where a link into the Bank app lands: an account, and optionally one of its tabs.
+/// Where a link into the Bank app lands: an account, and optionally one of its tabs. `applyLoan` opens the loan application on that
+/// account's Loans tab with the amount chosen (the shortfall a "cash is tight" card names).
 struct BankRequest: Equatable {
     var account: BankAccountID
     var tab: BankTab = .account
+    var applyLoan: Double? = nil
 }
 
 /// Money in an account's own currency, through the store formatter (a company's in its own currency, the others in the home currency).
@@ -104,6 +106,7 @@ struct BankApp: View {
 
     private func take() {
         guard let r = store.takeBankRequest() else { return }
+        if let amount = r.applyLoan { store.pendingLoanApply = amount }
         tab = r.tab
         account = r.account
         session = r.account

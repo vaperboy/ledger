@@ -116,6 +116,9 @@ struct AcctRow: View {
     var valueTint: Color? = nil
     var valueNote: String = ""
     var valueNoteTint: Color? = nil
+    /// An arrow and amount in place of `value` (see `ArrowAmount`).
+    var gain: Double? = nil
+    var gainFormat: ((Double) -> String)? = nil
     var pill: String? = nil
     var pillTone: AcctPill.Tone = .neutral
     var identifier: String = ""
@@ -123,7 +126,7 @@ struct AcctRow: View {
 
     var body: some View {
         LedgerRow(leading: leading, leadingTint: glyph != nil ? P.accent2 : nil, title: title, subtitle: subtitle, value: value,
-                  valueTint: valueTint, valueNote: valueNote, valueNoteTint: valueNoteTint, pill: pill, pillTone: pillTone,
+                  valueTint: valueTint, valueNote: valueNote, valueNoteTint: valueNoteTint, gain: gain, gainFormat: gainFormat, pill: pill, pillTone: pillTone,
                   inset: 14, identifier: identifier.isEmpty ? title : identifier, action: action)
     }
 

@@ -46,18 +46,21 @@ public enum SessionHooks {
     }
 
     /// The reminders for a player who has just left the app. The third only when neither of the first two applies.
-    public static func reminders(_ s: GameState) -> [Reminder] {
+    public static func reminders(_ s: GameState, now: Date = Date()) -> [Reminder] {
         var out: [Reminder] = []
+        // A live daily-goal streak of two days or more leads every text ("Day 6 streak. ...").
+        let days: Int = PlayerGoals.streakInfo(s, now: now).count
+        let lead: String = days >= 2 ? "Day \(days) streak. " : ""
         if let hit = expiring(s) {
             let who: String = s.companies.first(where: { $0.id == hit.message.companyID })?.name ?? s.companies.first?.name ?? "Ledger"
             let weeks: String = hit.weeksLeft == 1 ? "1 week left" : "\(hit.weeksLeft) weeks left"
-            out.append(Reminder(id: "ledger.expiry", title: who, body: "\(who): \(hit.message.title). \(weeks).", after: 20 * 3600))
+            out.append(Reminder(id: "ledger.expiry", title: who, body: lead + "\(who): \(hit.message.title). \(weeks).", after: 20 * 3600))
         }
         if let g = PlayerGoals.currentLadderGoal(s) {
-            out.append(Reminder(id: "ledger.goal", title: g.title, body: g.body, after: 48 * 3600))
+            out.append(Reminder(id: "ledger.goal", title: g.title, body: lead + g.body, after: 48 * 3600))
         }
         if out.isEmpty, let name = s.companies.first?.name {
-            out.append(Reminder(id: "ledger.idle", title: name, body: "\(name) is waiting for its next day.", after: 7 * 86400))
+            out.append(Reminder(id: "ledger.idle", title: name, body: lead + "\(name) is waiting for its next day.", after: 7 * 86400))
         }
         return out
     }

@@ -44,16 +44,16 @@ struct CompanyStatsFigures: View {
     // MARK: Margins (no title)
 
     private func resultCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        let profitTint: Color = s.profit < 0 ? Theme.loss : Theme.ink
         let marginText: String = s.margin.map { Currency.percent($0, decimals: 0) } ?? "\u{2013}"
         let marginTint: Color = (s.margin ?? 0) < 0 ? Theme.loss : Theme.ink
-        let cells: [KeyFigures.Item] = [
-            .init(label: "Revenue", value: cur.tidyShort(s.revenue)),
-            .init(label: "Profit", value: cur.tidyShort(s.profit), tint: profitTint),
-            .init(label: "Margin", value: marginText, tint: marginTint),
-        ]
+        let money: (Double) -> String = { (v: Double) -> String in cur.tidyShort(v) }
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            FigureRow(items: cells, combineCells: true)
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                resultCell("Revenue") { ArrowAmount(gain: s.revenue, format: money, live: true, step: .headline) }
+                resultCell("Profit") { ArrowAmount(gain: s.profit, format: money, live: true, step: .headline) }
+                resultCell("Margin") { Text(marginText).textStyle(.headline, tint: marginTint, numeric: true) }
+            }
+            .accessibilityElement(children: .combine)
             if s.taxBooked > 0.5 {
                 FlatRow(label: "Company tax booked", value: cur.tidyShort(s.taxBooked), sub: "shown apart: it is not in the profit above")
             }
@@ -62,6 +62,14 @@ struct CompanyStatsFigures: View {
                 FlatRow(label: "Loans you guarantee", value: cur.tidyShort(s.guaranteedLoans), sub: "you pay these if the company cannot")
             }
         }
+    }
+
+    private func resultCell<V: View>(_ label: String, @ViewBuilder _ value: () -> V) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(label).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
+            value().lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Where the money goes (no title): the total, the period, the split from the books
@@ -102,7 +110,14 @@ struct CompanyStatsFigures: View {
                 }
                 VStack(spacing: 0) {
                     ForEach(Array(s.expenses.enumerated()), id: \.element.id) { n, l in
-                        FlatRow(label: l.label, value: cur.tidyShort(l.amount), rule: n > 0)
+                        if n > 0 { CardLine() }
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                            Text(l.label).textStyle(.body).lineLimit(2)
+                            Spacer(minLength: Theme.Space.s)
+                            ArrowAmount(gain: -l.amount, amount: l.amount, format: { (v: Double) -> String in cur.tidyShort(v) }, live: true)
+                        }
+                        .padding(.vertical, Theme.Space.s)
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }

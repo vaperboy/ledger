@@ -152,7 +152,7 @@ struct FundManagerCard: View {
                             Text("Fund manager · \(a.mandate.title) · fee \(pct(a.fee)) a year").textStyle(.caption)
                         }
                     }
-                    Text(cur.tidyShort(a.balance)).textStyle(.display).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(cur.tidyShort(a.balance)).textStyle(.display).minimumScaleFactor(0.8).lineLimit(2)
                     Text("\(a.result >= 0 ? "+" : "−")\(pct(abs(a.result))) on \(cur.tidyShort(a.cost)) handed over").font(.system(size: 12.5).monospacedDigit()).foregroundStyle(Theme.change(a.result))
                 }
             }

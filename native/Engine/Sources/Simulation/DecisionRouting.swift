@@ -42,7 +42,7 @@ public extension GameEngine {
             if rank.rawValue <= Delegation.Rank.manager.rawValue, co.managerID != nil, !Delegation.managerMayTake(m, co, state, data: data) { continue }
             let scale = max(currency(for: co).scaledPrice(1000), co.lastWeekRevenue * 3)
             var best = 0, bestScore = -Double.infinity
-            for (i, o) in m.options.enumerated() {
+            for (i, o) in m.options.enumerated() where o["fx"]["tier"].isNull {   // the owner-only late-game extra answer is not for a hired rank
                 let sc = Self.score(o["fx"], scale: scale)
                 if sc > bestScore { bestScore = sc; best = i }
             }

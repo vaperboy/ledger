@@ -285,10 +285,6 @@ extension ManagerModel {
 
     // MARK: Asking the manager
 
-    public static let askOptions: [(key: String, label: String)] = [
-        ("price_up", "Raise prices a little"), ("price_down", "Lower prices a little"), ("cut", "Cut staff costs"),
-        ("mkt_more", "Spend more on marketing"), ("mkt_less", "Spend less on marketing"), ("quality", "Improve maintenance and quality"), ("save", "Reduce running costs")]
-
     /// The owner asks the manager for a change; the answer arrives in the inbox. Original: `askManager`.
     public static func ask(_ s: inout GameState, companyID: Int, key: String, data: GameData, marketing: MarketingTables) -> String? {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID, let n = s.people[mid], let bd = data.catalog[s.companies[ci].type] else { return nil }

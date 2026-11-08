@@ -37,9 +37,9 @@ struct StartView: View {
     }
 
     /// The new-player start: the company is created fully set up and open on day 1 (`LifeStory.fresh`).
-    private func begin(country: String, trade: String, company: String, player: String) {
+    private func begin(country: String, trade: String, company: String, player: String, difficulty: Difficulty) {
         replacingSave("Start a new game?", button: "Start new game") {
-            store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company)
+            store.newGame(name: player, countryCode: country, story: .fresh, tradeID: trade, companyName: company, difficulty: difficulty)
             ads.resetForNewSave()
         }
     }
@@ -47,7 +47,7 @@ struct StartView: View {
     var body: some View {
         Group {
             if settingUp {
-                NewPlayerSetup(onClose: { settingUp = false }, begin: { (country: String, trade: String, company: String, player: String) in begin(country: country, trade: trade, company: company, player: player) })
+                NewPlayerSetup(onClose: { settingUp = false }, begin: { (country: String, trade: String, company: String, player: String, difficulty: Difficulty) in begin(country: country, trade: trade, company: company, player: player, difficulty: difficulty) })
             } else {
                 home
             }

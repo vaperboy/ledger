@@ -33,37 +33,45 @@ struct HeldValue<Content: View>: View {
     }
 }
 
-/// Text of a money figure that counts from its previous value to the new one (a real interpolation, so every step shows). Reduce Motion
-/// jumps straight to the new value. Used inside `HeldValue`, so the count starts when the report closes, not under it.
+/// Text of a money figure whose digits roll when it changes: only the digits that differ scroll, upward and tinted green for a rise, downward
+/// and red for a fall, and the tint fades back to the surrounding colour while the old digits leave. Reduce Motion skips the roll and keeps
+/// the colour flash only. Used inside `HeldValue`, so the roll starts when the report closes, not under it.
 struct RollingMoney: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var value: Double
     var format: (Double) -> String
+    /// False for a figure that is a cost or loss shown without its sign: a rise is then bad news (red).
+    var betterWhenHigher: Bool = true
     @State private var shown: Double
+    @State private var falling: Bool = false
+    @State private var flash: Color = Theme.gain
+    @State private var flashAmount: Double = 0
 
-    init(value: Double, format: @escaping (Double) -> String) {
+    init(value: Double, betterWhenHigher: Bool = true, format: @escaping (Double) -> String) {
         self.value = value
+        self.betterWhenHigher = betterWhenHigher
         self.format = format
         _shown = State(initialValue: value)
     }
 
     var body: some View {
-        RollingText(value: shown, format: format)
-            .onChange(of: value) { _, new in
-                if reduceMotion { shown = new } else { withAnimation(.easeOut(duration: 1.1)) { shown = new } }
+        Text(format(shown)).monospacedDigit()
+            .overlay { Text(format(shown)).monospacedDigit().foregroundStyle(flash).opacity(flashAmount).allowsHitTesting(false) }
+            .contentTransition(reduceMotion ? .identity : .numericText(countsDown: falling))
+            .onChange(of: value) { old, new in
+                guard abs(new - old) > 0.0001 else { return }
+                falling = new < old
+                flash = (falling != betterWhenHigher) ? Theme.gain : Theme.loss
+                flashAmount = 1
+                if reduceMotion {
+                    shown = new
+                    withAnimation(.linear(duration: 0.8)) { flashAmount = 0 }
+                } else {
+                    withAnimation(.easeOut(duration: 0.7)) { shown = new }
+                    withAnimation(.easeOut(duration: 1.6).delay(0.3)) { flashAmount = 0 }
+                }
             }
     }
-}
-
-/// A `Text` whose number is the animated property: SwiftUI feeds it every in-between value while an animation runs.
-private struct RollingText: View, Animatable {
-    var value: Double
-    var format: (Double) -> String
-    var animatableData: Double {
-        get { value }
-        set { value = newValue }
-    }
-    var body: some View { Text(format(value)) }
 }
 
 extension View {

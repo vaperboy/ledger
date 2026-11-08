@@ -55,7 +55,8 @@ public struct GameEngine {
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil,
-                               tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false) throws -> GameEngine {
+                               tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false,
+                               difficulty: Difficulty = .classic) throws -> GameEngine {
         let (data, events, marketing) = try loadResources()
         guard let country = data.countries[countryCode] ?? data.countries.countries.first else { throw CocoaError(.fileReadUnknown) }
         let seed = seed ?? Int(Date().timeIntervalSince1970) % 2147483647
@@ -96,6 +97,7 @@ public struct GameEngine {
         }
         state.economy.set("rate0", state.economy.policyRate)
         state.rest["gameID"] = .string("g\(seed)")   // deterministic: the same seed gives the same state; the app clears remembered details at every new game
+        state.rest[Difficulty.restKey] = .string(difficulty.rawValue)
         PlayerGoals.startLadder(&state)   // the M1 to M10 ladder and its gates
         Markets.initialize(&state, country: country)
         _ = Providers.pool(for: country.code, state: &state, countries: data.countries)
@@ -465,7 +467,7 @@ public struct GameEngine {
     mutating func runFailureChecks() {
         Failure.warn(&state, context: context)   // a company close to a forced sale says so first (red alert)
         FirstYear.freezeSweep(&state, balance: data.balance)   // before week 27 a company in the red is frozen, not bankrupt (Businesses/FirstYear.swift)
-        let bankruptcyOn = data.balance.firstYear.bankruptcyActive(week: state.week)
+        let bankruptcyOn = FirstYear.effective(state, balance: data.balance).bankruptcyActive(week: state.week)
         for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
             if state.isBranch(c) { continue }   // a branch is not a legal entity: only its whole chain can fail (Failure.chainChecks)

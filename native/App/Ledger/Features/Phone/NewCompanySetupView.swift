@@ -128,7 +128,7 @@ struct NewCompanyDetailedSetupView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(cityName).textStyle(.body)
-                        Image(systemName: "chevron.down").textStyle(.caption, tint: Theme.inkFaint, weight: .semibold)
+                        LedgerGlyph(glyph: Glyph.chevronDown, size: 12, tint: Theme.inkFaint)
                     }
                 }
             }

@@ -16,7 +16,7 @@ enum Haptics {
     private static let notify = UINotificationFeedbackGenerator()
     private static let select = UISelectionFeedbackGenerator()
 
-    // Exactly six haptics. The older helpers below keep their names so call sites compile, but they are silent.
+    // The named helpers below are the call-site vocabulary; every one respects `enabled`.
     /// Next day pressed.
     static func nextDay() { guard enabled else { return }; light.impactOccurred() }
     /// The week report number finished counting.
@@ -38,11 +38,25 @@ enum Haptics {
         }
     }
 
-    static func tap() {}
-    static func advanceDay() {}
-    static func weekDone() {}
-    static func choose() {}
-    static func success() {}
-    static func warning() {}
-    static func failure() {}
+    /// A generic press. Generators are prepared the first time they are used, so the first tap is not late.
+    static func tap() { fire { soft.impactOccurred(intensity: 0.6) } }
+    /// Next day pressed.
+    static func advanceDay() { fire { light.impactOccurred() } }
+    /// A week report is ready.
+    static func weekDone() { fire { notify.notificationOccurred(.success) } }
+    /// An option or segment chosen.
+    static func choose() { fire { select.selectionChanged() } }
+    static func success() { fire { notify.notificationOccurred(.success) } }
+    static func warning() { fire { notify.notificationOccurred(.warning) } }
+    static func failure() { fire { notify.notificationOccurred(.error) } }
+
+    private static var prepared = false
+    private static func fire(_ play: () -> Void) {
+        guard enabled else { return }
+        if !prepared {
+            prepared = true
+            soft.prepare(); light.prepare(); notify.prepare(); select.prepare()
+        }
+        play()
+    }
 }

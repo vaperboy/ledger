@@ -25,15 +25,84 @@ struct CompanyRouteDestination: View {
                     .appScreen(title: "Suppliers", subtitle: "Every supplier your companies use")
             }
         }
+        .zoomDestination(route)
         // A fresh view per route: a link that changes the part of a screen already on the stack must not keep that screen's old state.
         .id(route)
     }
 }
 
+// MARK: Zoom transition
+
+private struct ZoomNamespaceKey: EnvironmentKey { static let defaultValue: Namespace.ID? = nil }
+
+extension EnvironmentValues {
+    /// The namespace of the navigation stack a screen sits on; nil outside a stack, where a zoom source does nothing.
+    var zoomNamespace: Namespace.ID? {
+        get { self[ZoomNamespaceKey.self] }
+        set { self[ZoomNamespaceKey.self] = newValue }
+    }
+}
+
+/// Registers the route table and the stack's zoom namespace; one per tab root.
+private struct RouteDestinations: ViewModifier {
+    @Namespace private var zoomNS
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.zoomNamespace, zoomNS)
+            .navigationDestination(for: NavRoute.self) { route in
+                CompanyRouteDestination(route: route).environment(\.zoomNamespace, zoomNS)
+            }
+    }
+}
+
+/// Marks a row or tile as the origin the pushed screen of `route` grows out of (iOS 18; earlier systems and Reduce Motion use the plain push).
+private struct ZoomSource: ViewModifier {
+    @Environment(\.zoomNamespace) private var ns
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var route: NavRoute
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 18.0, *), let ns, !reduceMotion {
+            content.matchedTransitionSource(id: route.key, in: ns)
+        } else {
+            content
+        }
+    }
+}
+
+/// The pushed screen zooms out of its source when it is a company or a Phone app.
+private struct ZoomDestination: ViewModifier {
+    @Environment(\.zoomNamespace) private var ns
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var route: NavRoute
+
+    private var zooms: Bool {
+        switch route {
+        case .company, .companyAt, .companyPart, .app: return true
+        default: return false
+        }
+    }
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 18.0, *), zooms, let ns, !reduceMotion {
+            content.navigationTransition(.zoom(sourceID: route.key, in: ns))
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Marks this view as where `route` opens from (a company row, a Phone app tile): the screen grows out of it.
+    func zoomSource(_ route: NavRoute) -> some View { modifier(ZoomSource(route: route)) }
+    fileprivate func zoomDestination(_ route: NavRoute) -> some View { modifier(ZoomDestination(route: route)) }
+}
+
 extension View {
     /// Registers the shared destinations on the navigation stack this view roots. Every tab root calls it exactly once.
     func companyRouteDestinations() -> some View {
-        navigationDestination(for: NavRoute.self) { route in CompanyRouteDestination(route: route) }
+        modifier(RouteDestinations())
     }
 
     /// The company switcher above a company screen's header.

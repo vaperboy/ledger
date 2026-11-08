@@ -22,43 +22,121 @@ public enum PlayerGoals {
         /// Days in a row, counting today once the goal is done.
         public var streak: Int
         /// Where today's goal is done (a `GameStore.openLadderLink` key).
-        public var link: String { ["start": "newCompany", "weeks": "inbox", "hire": "hire", "cmp": "customers", "grow": "money"][id] ?? "" }
+        public var link: String { PlayerGoals.dailyDefs.first { $0.id == id }?.link ?? "" }
     }
 
-    static let dailyIDs: [(id: String, title: String)] = [
-        ("start", "Open your first business"), ("weeks", "Play two weeks"), ("hire", "Hire someone"),
-        ("cmp", "Answer the complaints waiting"), ("grow", "Grow your net worth by 1%")]
+    /// One kind of daily goal. `visit` is the Phone app (`PhoneApp` raw value) whose opening completes it; empty when the goal reads game state.
+    struct DailyDef { var id: String, title: String, link: String, visit: String = "" }
 
-    static func dailyFits(_ id: String, _ s: GameState) -> Bool {
+    /// The pool. "start", "hire" and "weeks" are setup steps that are no longer offered (a goal already picked in an older save still works);
+    /// the rest depend on what the player owns (`dailyFits`).
+    static let dailyDefs: [DailyDef] = [
+        DailyDef(id: "start", title: "Open your first business", link: "newCompany"),
+        DailyDef(id: "weeks", title: "Play two weeks", link: "inbox"),
+        DailyDef(id: "hire", title: "Hire someone", link: "hire"),
+        DailyDef(id: "cmp", title: "Answer the complaints waiting", link: "customers"),
+        DailyDef(id: "grow", title: "Grow your net worth by 1%", link: "money"),
+        DailyDef(id: "pay", title: "Approve payroll early", link: "accounting"),
+        DailyDef(id: "ans", title: "Answer an Inbox decision today", link: "inbox"),
+        DailyDef(id: "news", title: "Read one news story", link: "news", visit: "news"),
+        DailyDef(id: "stock", title: "Check the stock page", link: "market", visit: "market"),
+        DailyDef(id: "quote", title: "Review a supplier quote", link: "techPro", visit: "techPro"),
+        DailyDef(id: "collect", title: "Chase an unpaid invoice", link: "money"),
+        DailyDef(id: "reviews", title: "Read what customers say", link: "reviews", visit: "reviews"),
+        DailyDef(id: "weather", title: "Check the weather outlook", link: "weather", visit: "weather")]
+
+    static func families(_ s: GameState, _ data: GameData) -> Set<String> { Set(live(s).compactMap { data.catalog[$0.type]?.family }) }
+    static func openPayrollAsks(_ s: GameState) -> Int { s.inbox.filter { $0.status == "open" && $0.actionID.hasPrefix("pay29") }.count }
+    static func openDecisionCount(_ s: GameState) -> Int { s.inbox.filter { $0.status == "open" && !$0.options.isEmpty && !$0.actionID.hasPrefix("pay29") }.count }
+    /// Decisions the player answered himself (not a manager, not a default).
+    static func answeredCount(_ s: GameState) -> Int {
+        s.inbox.filter { !$0.options.isEmpty && !$0.value("pick").isNull && $0.value("pick").int >= 0 && !$0.flag("auto") && $0.value("mgrName").isNull }.count
+    }
+    static func receivableCount(_ s: GameState) -> Int { live(s).reduce(0) { $0 + $1.receivables.count } }
+
+    /// Has a Phone app been opened on this day? (`noteVisit` records it.)
+    static func visited(_ s: GameState, _ app: String, today: String) -> Bool {
+        guard let v = s.rest["dy59"]?["vis"], v["d"].string == today else { return false }
+        return v["k"].array.contains { $0.string == app }
+    }
+
+    /// The app opened a Phone app. Recorded only for the apps a daily goal watches; returns whether anything changed.
+    @discardableResult
+    public static func noteVisit(_ s: inout GameState, app: String, today: String) -> Bool {
+        guard dailyDefs.contains(where: { $0.visit == app }) else { return false }
+        var d = s.rest["dy59"] ?? .object(["streak": 0, "last": ""])
+        var keys: [JSONValue] = d["vis"]["d"].string == today ? d["vis"]["k"].array : []
+        if keys.contains(where: { $0.string == app }) { return false }
+        keys.append(.string(app))
+        d["vis"] = .object(["d": .string(today), "k": .array(keys)])
+        s.rest["dy59"] = d
+        return true
+    }
+
+    static func dailyFits(_ id: String, _ s: GameState, _ data: GameData) -> Bool {
         switch id {
         // "start" and "hire" are setup steps: they are no longer offered as a new daily goal (a goal already picked in an older save still works).
         case "start", "hire", "weeks": return false
-        case "grow": return !live(s).isEmpty
+        case "grow", "news", "stock", "quote": return !live(s).isEmpty
         case "cmp": return openComplaints(s) > 0
+        case "pay": return openPayrollAsks(s) > 0
+        case "ans": return openDecisionCount(s) > 0
+        case "collect": return receivableCount(s) > 0 && !families(s, data).isDisjoint(with: ["svc", "project"])
+        case "reviews": return !families(s, data).isDisjoint(with: ["venue", "retail"])
+        case "weather": return !families(s, data).isDisjoint(with: ["venue", "logi", "prod"])
         default: return false
         }
     }
 
-    static func dailyDone(_ id: String, _ b: JSONValue, _ s: GameState, nw: Double) -> Bool {
+    static func dailyDone(_ id: String, _ b: JSONValue, _ s: GameState, nw: Double, today: String) -> Bool {
+        if let v = dailyDefs.first(where: { $0.id == id })?.visit, !v.isEmpty { return visited(s, v, today: today) }
         switch id {
         case "start": return !live(s).isEmpty
         case "weeks": return s.week - b["week"].int >= 2
         case "hire": return staffCount(s) > b["staff"].int
         case "cmp": return openComplaints(s) < b["cmp"].int
         case "grow": return b["nw"].double > 0 && nw >= b["nw"].double * 1.01
+        case "pay": return openPayrollAsks(s) < b["pay"].int
+        case "ans": return answeredCount(s) > b["ans"].int
+        case "collect": return receivableCount(s) < b["rcv"].int
         default: return false
         }
     }
 
-    static func dailyProgress(_ id: String, _ b: JSONValue, _ s: GameState, nw: Double, _ cur: Currency) -> String {
+    static func dailyProgress(_ id: String, _ b: JSONValue, _ s: GameState, nw: Double, today: String, _ cur: Currency) -> String {
+        if let v = dailyDefs.first(where: { $0.id == id })?.visit, !v.isEmpty { return visited(s, v, today: today) ? "Done" : "Not yet" }
         switch id {
         case "start": return live(s).isEmpty ? "Not yet" : "Open"
         case "weeks": return "\(min(2, s.week - b["week"].int)) of 2 weeks"
         case "hire": return staffCount(s) > b["staff"].int ? "Done" : "Not yet"
         case "cmp": return "\(openComplaints(s)) still open"
         case "grow": return (nw >= b["nw"].double ? "+" : "-") + cur.display(abs(nw - b["nw"].double)) + " of " + cur.display(b["nw"].double * 0.01) + " so far"
+        case "pay": return "\(openPayrollAsks(s)) waiting"
+        case "ans": return answeredCount(s) > b["ans"].int ? "Done" : "\(openDecisionCount(s)) waiting"
+        case "collect": return "\(receivableCount(s)) invoices waiting"
         default: return ""
         }
+    }
+
+    /// "yyyy-m-d" of a real date: the key of the daily goal.
+    public static func dayKey(_ date: Date) -> String {
+        let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: date)
+        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
+    }
+
+    /// The day number of a "yyyy-m-d" key (days since 1970), nil when it is not one.
+    static func dayNumber(_ key: String) -> Int? {
+        let p = key.split(separator: "-").compactMap { Int($0) }
+        return p.count == 3 ? GameCalendar.daysFromCivil(year: p[0], month: p[1], day: p[2]) : nil
+    }
+
+    /// The streak as it stands today: kept when the last goal was done today or yesterday, and also when exactly one day was missed
+    /// and a protection token is held (`protected`: returning today is what restores it).
+    static func streakNow(_ d: JSONValue, today: String, yesterday: String) -> (count: Int, protected: Bool) {
+        let last = d["last"].string
+        if last == today || last == yesterday { return (d["streak"].int, false) }
+        if d["prot"].int > 0, let t = dayNumber(today), let l = dayNumber(last), t - l == 2 { return (d["streak"].int, true) }
+        return (0, false)
     }
 
     /// Today's goal; a new one is picked when the real day changes, and the streak grows the first time it is seen done.
@@ -68,24 +146,34 @@ public enum PlayerGoals {
         var d = s.rest["dy59"] ?? .object(["streak": 0, "last": ""])
         let nw = Valuation.netWorth(s, trades: data.catalog).total
         if d["d"].string != today {
-            let fit = dailyIDs.filter { dailyFits($0.id, s) }
+            // Not the same goal two days running when there is a choice.
+            var fit = dailyDefs.filter { dailyFits($0.id, s, data) }
+            if fit.count > 1 { fit.removeAll { $0.id == d["k"].string } }
             let h = today.split(separator: "-").reduce(7) { ($0 * 31 + (Int($1) ?? 0)) & 0x7fffffff }
             d["d"] = .string(today); d["got"] = 0
             d["k"] = .string(fit.isEmpty ? "grow" : fit[h % fit.count].id)
-            d["b"] = .object(["week": .number(Double(s.week)), "staff": .number(Double(staffCount(s))), "cmp": .number(Double(openComplaints(s))), "nw": .number(nw)])
+            d["b"] = .object(["week": .number(Double(s.week)), "staff": .number(Double(staffCount(s))), "cmp": .number(Double(openComplaints(s))), "nw": .number(nw),
+                              "pay": .number(Double(openPayrollAsks(s))), "ans": .number(Double(answeredCount(s))), "rcv": .number(Double(receivableCount(s)))])
             s.rest["dy59"] = d
         }
         let id = d["k"].string
-        guard let g = dailyIDs.first(where: { $0.id == id }) ?? dailyIDs.first(where: { $0.id == "grow" }) else { return nil }
-        var streak = d["last"].string == yesterday || d["last"].string == today ? d["streak"].int : 0
+        guard let g = dailyDefs.first(where: { $0.id == id }) ?? dailyDefs.first(where: { $0.id == "grow" }) else { return nil }
+        let now = streakNow(d, today: today, yesterday: yesterday)
+        var streak = now.count
         let counted = d["got"].int != 0
-        let done = counted || dailyDone(g.id, d["b"], s, nw: nw)
+        let done = counted || dailyDone(g.id, d["b"], s, nw: nw, today: today)
         if done && !counted {
+            if now.protected {
+                d["prot"] = .number(Double(max(0, d["prot"].int - 1)))
+                s.note("Your streak protection kept the \(streak)-day streak alive.", tone: "good")
+            }
             streak += 1
             d["streak"] = .number(Double(streak)); d["last"] = .string(today); d["got"] = 1
+            if streak > d["best"].int { d["best"] = .number(Double(streak)) }
+            grantStreakPerks(&s, &d, streak: streak)
             s.rest["dy59"] = d
         }
-        return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, cur), done: done, streak: streak)
+        return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, today: today, cur), done: done, streak: streak)
     }
 
     /// Missions are optional: a player who turns them off sees no daily goal. The key exists only once it was set.
@@ -132,6 +220,8 @@ public enum PlayerGoals {
         /// What finishing the goal changes, in words ("" when it changes nothing).
         public var reward: String
         public var done: Bool
+        /// An optional goal after the ladder (`advancedGoals`); the ten ladder goals are never advanced.
+        public var advanced: Bool = false
     }
 
     /// Weeks after M9 when M10 completes by itself if no bad week came: the player has kept the lights on all that time.
@@ -208,6 +298,7 @@ public enum PlayerGoals {
             Celebrations.add(&s, kind: "goal", title: g.title, detail: g.past, reward: g.reward, art: "goal." + g.id, tier: 1)   // a goal completion celebrates
             finished.append(g.id)
         }
+        advancedSweep(&s)
         return finished
     }
 

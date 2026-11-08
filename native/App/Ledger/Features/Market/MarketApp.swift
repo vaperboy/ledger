@@ -148,7 +148,7 @@ struct MarketHero: View {
             Text(value.tidyText)
                 .font(.system(size: size, weight: .medium, design: .serif)).monospacedDigit()
                 .foregroundStyle(P.ink)
-                .lineLimit(1).minimumScaleFactor(0.5)
+                .lineLimit(2).minimumScaleFactor(0.8)
                 .accessibilityIdentifier(identifier.isEmpty ? "market-hero" : identifier)
             if !context.isEmpty {
                 Text(context.tidyText).textStyle(.body, tint: contextTint ?? P.inkSoft, numeric: true)

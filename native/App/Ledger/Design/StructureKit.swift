@@ -164,9 +164,7 @@ struct StructureCard: View {
                     }
                 }
                 if canExpand {
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(P.inkFaint)
+                    LedgerGlyph(glyph: expanded ? Glyph.chevronUp : Glyph.chevronDown, size: 12, tint: P.inkFaint)
                         .frame(width: 20, height: 28)
                         .accessibilityHidden(true)
                 }
@@ -275,9 +273,7 @@ struct StructureCrumbs: View {
             HStack(spacing: Theme.Space.xs) {
                 ForEach(Array(crumbs.enumerated()), id: \.element.id) { (n: Int, c: StructureCrumb) in
                     if n > 0 {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(P.inkFaint)
+                        LedgerGlyph(glyph: Glyph.chevron, size: 10, tint: P.inkFaint)
                             .accessibilityHidden(true)
                     }
                     crumb(c)

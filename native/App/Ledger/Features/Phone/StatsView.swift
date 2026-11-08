@@ -19,6 +19,7 @@ struct StatsView: View {
         if let e = store.engine {
             PhonePageScroll(spacing: Theme.Space.xl) {
                 figureTiles(e)
+                playingCard(e)
                 trendCard(e)
                 makeUpCard(e)
                 compareCard(e)
@@ -58,6 +59,22 @@ struct StatsView: View {
                 KeyFigures.Item(label: "Companies sold", value: "\(s.stats.companiesSold)", tint: s.stats.bankruptcies > 0 ? Theme.loss : Theme.ink,
                                 sub: s.stats.bankruptcies > 0 ? "\(s.stats.bankruptcies) bankruptcies" : "No bankruptcies")
             ])
+        }
+    }
+
+    // MARK: How you are playing
+
+    /// The levers a good operator pulls, each with a short reading (words where it cannot be measured) and why it matters.
+    private func playingCard(_ e: GameEngine) -> some View {
+        let rows: [PlayingRow] = e.playingPanel()
+        return LedgerSection("How you are playing") {
+            VStack(spacing: 0) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { (i: Int, r: PlayingRow) in
+                    if i > 0 { Hairline() }
+                    LedgerRow(title: r.title, subtitle: r.why, value: r.value,
+                              valueTint: r.tone == "good" ? Theme.gain : r.tone == "weak" ? Theme.warn : Theme.ink, density: .compact, identifier: "stats-playing-" + r.id)
+                }
+            }
         }
     }
 
@@ -118,6 +135,7 @@ struct StatsView: View {
                         AxisValueLabel { if let d = v.as(Double.self) { Text(store.short(d)).font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) } }
                     }
                 }
+                .drawsItself()
             }
             makeUpNow(e, colours)
         }
@@ -222,6 +240,7 @@ struct StatsView: View {
             .chartYAxis {
                 AxisMarks(position: .leading) { _ in AxisValueLabel().font(ChartPalette.axisFont).foregroundStyle(ChartPalette.axis) }
             }
+            .drawsItself()
         }
     }
 

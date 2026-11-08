@@ -82,7 +82,7 @@ struct ProjectsView: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text("Committed to running work").textStyle(.label, tint: Theme.inkFaint)
                 Text(running.isEmpty ? "Nothing yet" : store.short(committed)).textStyle(.display, tint: running.isEmpty ? Theme.inkSoft : nil)
-                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .lineLimit(2).minimumScaleFactor(0.8)
                 Text(running.isEmpty ? "No job, event or development is running" : "\(running.count) running \(running.count == 1 ? "project" : "projects")")
                     .textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
             }

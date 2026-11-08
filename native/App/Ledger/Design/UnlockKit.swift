@@ -93,6 +93,10 @@ struct UnlockPopup: View {
                 .scaleEffect(shown || reduceMotion ? 1 : 0.9)
             Text(prompt.line)
                 .popupText(.subtitle).multilineTextAlignment(.center)
+            if let purpose = GatePurposes.purpose(prompt.featureID) {
+                Text(purpose).textStyle(.caption, tint: Theme.inkSoft).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             VStack(spacing: 6) {
                 Button { Haptics.tap(); store.goToUnlock(prompt) } label: {
                     Text("Take me there").frame(maxWidth: .infinity)
@@ -108,6 +112,7 @@ struct UnlockPopup: View {
         .centerSheetLocked()
         .onAppear {
             Motion.animate(Motion.moveAnimation) { shown = true }
+            SoundCues.play(.unlock)
         }
     }
 

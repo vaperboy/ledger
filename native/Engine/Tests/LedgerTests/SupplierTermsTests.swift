@@ -28,6 +28,14 @@ final class SupplierTermsTests: XCTestCase {
         return try XCTUnwrap(goods.options.first { $0.vendorID != nil && !$0.isCurrent }?.vendorID)
     }
 
+    /// Each company's paperwork clears and its model runs on its own weekday: play on until every one is open and the buyer has sold for a week.
+    private func playUntilTrading(_ e: inout GameEngine, buyer: Int, _ others: Int...) {
+        var extra = 0
+        while extra < 20 * 7, !([buyer] + others).allSatisfy({ e.state.company($0)?.status == .open }) || (e.state.company(buyer)?.lastWeekRevenue ?? 0) <= 0 {
+            ChainsTests.play(&e, days: 1); extra += 1
+        }
+    }
+
     private func setCash(_ e: inout GameEngine, _ id: Int, to v: Double) {
         e.update { s, _, _ in Ledger.set(&s, .company(id), to: v) }
     }
@@ -164,6 +172,7 @@ final class SupplierTermsTests: XCTestCase {
         let hotel = ChainsTests.start(&e, "hotel")
         let cleaning = ChainsTests.start(&e, "cleaning")
         ChainsTests.play(&e, days: 10 * 7)
+        playUntilTrading(&e, buyer: hotel, cleaning)
         e.switchSupplier(companyID: hotel, input: "clean", to: .ownCompany(cleaning, mode: "mkt"))
         e.setSupplyPaymentTerms(companyID: hotel, input: "clean", term: "net14")
         ChainsTests.play(&e, days: 2 * 7)
@@ -344,6 +353,7 @@ final class SupplierTermsTests: XCTestCase {
         let hotel = ChainsTests.start(&e, "hotel")
         let cleaning = ChainsTests.start(&e, "cleaning")
         ChainsTests.play(&e, days: 8 * 7)
+        playUntilTrading(&e, buyer: hotel, cleaning)
         e.switchSupplier(companyID: hotel, input: "clean", to: .ownCompany(cleaning, mode: "mkt"))
         e.setSupplyPaymentTerms(companyID: hotel, input: "clean", term: "net30")
         ChainsTests.play(&e, days: 3 * 7)

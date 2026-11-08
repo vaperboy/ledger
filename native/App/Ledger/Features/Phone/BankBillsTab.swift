@@ -120,7 +120,7 @@ struct BankBillsTab: View {
                     HStack {
                         Text(showRules ? "Hide the tax rules and licences" : "Show the tax rules and licences").textStyle(.body, tint: P.accent)
                         Spacer()
-                        Image(systemName: showRules ? "chevron.up" : "chevron.down").textStyle(.caption, tint: P.accent)
+                        LedgerGlyph(glyph: showRules ? Glyph.chevronUp : Glyph.chevronDown, size: 12, tint: P.accent)
                     }.frame(minHeight: 44).contentShape(Rectangle())
                 }.buttonStyle(PressableStyle())
                 if showRules {

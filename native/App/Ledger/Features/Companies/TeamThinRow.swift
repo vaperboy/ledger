@@ -116,7 +116,7 @@ struct TeamHero: View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if !label.isEmpty { Text(label).textStyle(.label, tint: P.inkFaint) }
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Text(value.tidyText).textStyle(.display, tint: valueTint).lineLimit(1).minimumScaleFactor(0.6)
+                Text(value.tidyText).textStyle(.display, tint: valueTint).lineLimit(2).minimumScaleFactor(0.8)
                 if !unit.isEmpty { Text(unit.tidyText).textStyle(.body, tint: P.inkSoft).lineLimit(1) }
             }
             if !context.isEmpty {

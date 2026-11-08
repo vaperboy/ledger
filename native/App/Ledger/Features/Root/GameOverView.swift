@@ -1,13 +1,20 @@
 import SwiftUI
 import GameCore
 import Events
+import Businesses
 import Simulation
 
 /// Shown when the bank has taken everything. The save is kept. The hero is the final net worth with why the run ended; under it, unboxed,
 /// how long it lasted, what became of every company and the lifetime totals in `stats`. One action, pinned: back to the start screen.
 struct GameOverView: View {
     @EnvironmentObject var store: GameStore
+    @Environment(AdCoordinator.self) private var ads
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var engine: GameEngine
+    /// Entrance progress: the gold rule and the company bar grow to 1; `rowsShown` counts how many total rows and trophies have appeared.
+    @State private var ruleGrown: CGFloat = 0
+    @State private var barGrown: CGFloat = 0
+    @State private var rowsShown = 0
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 42
 
     var body: some View {
@@ -23,12 +30,15 @@ struct GameOverView: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxl) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("The ledger is closed").textStyle(.label, tint: Theme.inkFaint)
-                    Text(store.short(endWorth))
+                    CountedFigure(value: endWorth, format: { (v: Double) -> String in store.short(v) }, tint: endWorth < 0 ? Theme.loss : Theme.ink, duration: 1.4)
                         .font(.hero(heroSize))
-                        .foregroundStyle(endWorth < 0 ? Theme.loss : Theme.ink)
-                        .lineLimit(1).minimumScaleFactor(0.5)
+                        .lineLimit(2).minimumScaleFactor(0.8)
+                    Rectangle().fill(Theme.gold).frame(height: 2)
+                        .scaleEffect(x: reduceMotion ? 1 : ruleGrown, anchor: .leading)
+                        .accessibilityHidden(true)
                     Text("\(s.player.name)'s net worth at the end").textStyle(.body, tint: Theme.inkSoft)
                     Text(reason).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    Text("\(engine.difficulty.name) mode").textStyle(.caption, tint: Theme.inkFaint)
                 }
                 .padding(.top, Theme.Space.xxl)
                 group("The run") {
@@ -46,10 +56,16 @@ struct GameOverView: View {
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
+        .task { await playEntrance() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: Theme.Space.s) {
+                if store.canRetrySameSetup {
+                    Button("Retry with the same setup") { Haptics.tap(); store.retryWithSameSetup(); ads.resetForNewSave() }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("game-over-retry")
+                }
                 Button("Back to the start screen") { Haptics.tap(); store.quitToMenu() }
-                    .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .buttonStyle(SecondaryButtonStyle(fullWidth: true))
                     .accessibilityIdentifier("game-over-start")
             }
             .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)
@@ -92,9 +108,9 @@ struct GameOverView: View {
         let total = CGFloat(max(1, standing + sold + bust))
         return GeometryReader { g in
             HStack(spacing: 2) {
-                if standing > 0 { Rectangle().fill(Theme.gain).frame(width: g.size.width * CGFloat(standing) / total) }
-                if sold > 0 { Rectangle().fill(Theme.inkSoft).frame(width: g.size.width * CGFloat(sold) / total) }
-                if bust > 0 { Rectangle().fill(Theme.loss).frame(width: g.size.width * CGFloat(bust) / total) }
+                if standing > 0 { Rectangle().fill(Theme.gain).frame(width: g.size.width * barGrown * CGFloat(standing) / total) }
+                if sold > 0 { Rectangle().fill(Theme.inkSoft).frame(width: g.size.width * barGrown * CGFloat(sold) / total) }
+                if bust > 0 { Rectangle().fill(Theme.loss).frame(width: g.size.width * barGrown * CGFloat(bust) / total) }
             }
             .clipShape(Capsule())
         }
@@ -118,8 +134,41 @@ struct GameOverView: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { (i: Int, r: (glyph: String, title: String, value: String)) in
                     if i > 0 { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
                     LedgerRow(leading: .glyph(r.glyph), leadingTint: Theme.inkSoft, title: r.title, value: r.value)
+                        .opacity(reduceMotion || rowsShown > i ? 1 : 0)
+                        .offset(y: reduceMotion || rowsShown > i ? 0 : 8)
                 }
+                trophyStrip(trophies.filter { $0.reachedWeek != nil }, firstIndex: rows.count)
             }
+        }
+    }
+
+    /// The trophies reached, each landing a beat after the one before (the first few only, so the row stays one line).
+    @ViewBuilder private func trophyStrip(_ reached: [Trophies.Entry], firstIndex: Int) -> some View {
+        let shown: [Trophies.Entry] = Array(reached.prefix(6))
+        if !shown.isEmpty {
+            HStack(spacing: Theme.Space.s) {
+                ForEach(Array(shown.enumerated()), id: \.offset) { (i: Int, t: Trophies.Entry) in
+                    let on: Bool = reduceMotion || rowsShown > firstIndex + i
+                    ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: t.id, group: t.group), size: 40, shape: .round, glyph: Glyph.achievements)
+                        .overlay(Circle().strokeBorder(Theme.gold, lineWidth: 1.5))
+                        .scaleEffect(on ? 1 : 0.5).opacity(on ? 1 : 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, Theme.Space.m)
+        }
+    }
+
+    /// The closing sequence: the rule is drawn, the bar grows, then the rows and trophies appear one by one. All of it is instant under Reduce Motion.
+    private func playEntrance() async {
+        if reduceMotion { ruleGrown = 1; barGrown = 1; rowsShown = 99; return }
+        Motion.animate(.easeOut(duration: 0.9)) { ruleGrown = 1 }
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        Motion.animate(Motion.revealAnimation) { barGrown = 1 }
+        try? await Task.sleep(nanoseconds: 700_000_000)
+        for _ in 0..<12 {
+            Motion.animate(Motion.quickAnimation) { rowsShown += 1 }
+            try? await Task.sleep(nanoseconds: 140_000_000)
         }
     }
 

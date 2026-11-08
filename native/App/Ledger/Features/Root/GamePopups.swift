@@ -83,7 +83,19 @@ struct NoticePopup: View {
     }
 
     var body: some View {
-        if notice.style == "luxury" { luxury } else { plain }
+        if notice.style == "luxury" { luxury } else if notice.style == "recap" { recap } else { plain }
+    }
+
+    /// The card shown on coming back: what changed while the player was away, one line each.
+    private var recap: some View {
+        GamePopup(title: notice.title, showsClose: false, category: .compact, tone: .info, icon: "clock", onClose: { store.dismissNotice() }) {
+            PopupBody {
+                ForEach(notice.text.split(separator: "\n").map { String($0) }, id: \.self) { line in
+                    Text(line).popupText(.body).fixedSize(horizontal: false, vertical: true)
+                }
+                PopupOptionButton(title: "Continue", highlighted: true, identifier: "recap-ok") { store.dismissNotice() }
+            }
+        }
     }
 
     /// A high-value purchase: a gold-edged card whose edge draws round while it fades in (variant: reward).
@@ -183,13 +195,22 @@ struct DecisionPopup: View {
         }
     }
 
-    /// The same rule as the Inbox: a routine answer goes at once; an irreversible one, or a spend above the player's size, is asked first.
+    /// The same rule as the Inbox, shared with Home's inline answers (`DecisionAnswering`).
     private func choose(_ e: GameEngine, _ m: Message, _ index: Int) {
+        DecisionAnswering.choose(store, e, m, index, ask: { (a: PendingAction) in pending = a }, done: { store.decisionPopup = nil })
+    }
+}
+
+/// Answers an open decision from anywhere (the popup, Home's card): a routine answer goes at once; an irreversible one, or a spend above
+/// the player's size, is asked first. The outcome is the one outcome popup (`store.outcome`).
+enum DecisionAnswering {
+    @MainActor static func choose(_ store: GameStore, _ e: GameEngine, _ m: Message, _ index: Int,
+                                  ask: @escaping (PendingAction) -> Void, done: @escaping () -> Void) {
         guard m.options.indices.contains(index) else { return }
         let opt: JSONValue = m.options[index]
         let label: String = e.displayText(opt["l"].string, companyID: m.companyID)
         let need: DecisionConfirmation = DecisionConfirm.confirmation(for: m, option: index)
-        guard need.needsQuestion else { send(e, m, index, label); return }
+        guard need.needsQuestion else { send(store, e, m, index, label, done); return }
         var lines: [String] = []
         let d: String = e.displayText(opt["d"].string, companyID: m.companyID)
         if !d.isEmpty { lines.append(d) }
@@ -199,23 +220,23 @@ struct DecisionPopup: View {
         let place: String = company?.name ?? ""
         let fallback: String = e.displayText(m.title, companyID: m.companyID)
         var action = MessageCard.answerConfirm(title: label + (place.isEmpty ? "" : " · " + place), message: lines.isEmpty ? fallback : lines.joined(separator: "\n"),
-                                               button: label, need: need) { send(e, m, index, label) }
+                                               button: label, need: need) { send(store, e, m, index, label, done) }
         if !need.irreversible, let amount = need.amount {
             action.amount = amount
             action.currency = company.map { e.currency(for: $0) } ?? e.homeCurrency
         }
-        if ConfirmThreshold.skips(action) { send(e, m, index, label); return }
-        pending = action
+        if ConfirmThreshold.skips(action) { send(store, e, m, index, label, done); return }
+        ask(action)
     }
 
-    private func send(_ e: GameEngine, _ m: Message, _ index: Int, _ label: String) {
+    @MainActor private static func send(_ store: GameStore, _ e: GameEngine, _ m: Message, _ index: Int, _ label: String, _ done: () -> Void) {
         var effects: [String] = m.options.indices.contains(index) ? MessageCard.preview(e, m, m.options[index]) : []
         if effects.isEmpty, m.options.indices.contains(index) {
             let d: String = e.displayText(m.options[index]["d"].string, companyID: m.companyID)
             if !d.isEmpty { effects = [d] }
         }
         let ok: Bool = store.act { $0.answer(messageID: m.id, option: index) } ?? false
-        store.decisionPopup = nil
+        done()
         store.announceAnswer(label: label, effects: effects, ok: ok, messageTitle: m.title, companyID: m.companyID)
     }
 }

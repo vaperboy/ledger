@@ -409,7 +409,7 @@ struct ReturnLine: View {
                 store.returnToOrigin()
             } label: {
                 HStack(spacing: Theme.Space.xs) {
-                    Image(systemName: "chevron.left").textStyle(.caption, tint: Theme.accent, weight: .semibold)
+                    LedgerGlyph(glyph: Glyph.back, size: 12, tint: Theme.accent)
                     Text("Back to \(store.title(for: r.from))").textStyle(.body, tint: Theme.accent, weight: .medium)
                     Spacer()
                 }
@@ -710,6 +710,8 @@ struct PillTabItem: Identifiable, Equatable {
     var badge: Int = 0
     /// True for the tab the player can re-point with a long press (the Custom tab).
     var changeable: Bool = false
+    /// A small label drawn on the tab (the Custom tab's "Edit" while it points nowhere); empty for none.
+    var chip: String = ""
 }
 
 /// The floating tab bar: a 66 pt bordered capsule over the page, the selected tab washed in a champagne pill, red bubbles for counts.
@@ -722,6 +724,9 @@ struct PillTabBar: View {
     /// Called with the item's id when a `changeable` item is long-pressed.
     var onLongPress: (String) -> Void = { _ in }
     @State private var longPressed: String?
+    /// The tab that flashes for a moment when a re-tap sends it back to its root.
+    @State private var flashing: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
     static let height: CGFloat = 66 + 8
 
@@ -732,7 +737,7 @@ struct PillTabBar: View {
                 let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
                 Button {
                     if longPressed == item.id { longPressed = nil; return }
-                    if on { onReselect(item.id) } else { selection = item.id }
+                    if on { onReselect(item.id); flash(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
                         LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? Theme.accent : Theme.inkSoft)
@@ -744,6 +749,16 @@ struct PillTabBar: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(on ? Theme.goldWash : Color.clear))
+                    .overlay(Capsule().fill(Theme.accent.opacity(flashing == item.id ? 0.28 : 0)))
+                    .overlay(alignment: .topTrailing) {
+                        if !item.chip.isEmpty {
+                            Text(item.chip).font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.accentInk)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(Theme.accent))
+                                .offset(x: -4, y: -2)
+                                .accessibilityHidden(true)
+                        }
+                    }
                     .overlay(alignment: .topTrailing) { RedBubble(count: item.badge, size: .small).padding(.trailing, 14).offset(y: -4) }
                     .contentShape(Rectangle())
                 }
@@ -758,6 +773,7 @@ struct PillTabBar: View {
                     }
                 }, including: item.changeable ? .all : .subviews)
                 .animation(Motion.quickAnimation, value: on)
+                .coachAnchor(.phoneTab, enabled: item.id == AppTab.phone.rawValue)
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
@@ -771,5 +787,14 @@ struct PillTabBar: View {
         .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 0.5))
         .elevation(.raised)
         .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
+    }
+
+    /// A brief wash on the re-tapped tab so the jump back to its root is visible (a plain, instant change under Reduce Motion).
+    private func flash(_ id: String) {
+        withAnimation(Motion.quick(reduceMotion)) { flashing = id }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 220_000_000)
+            withAnimation(Motion.quick(reduceMotion)) { flashing = nil }
+        }
     }
 }

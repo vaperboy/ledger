@@ -382,7 +382,7 @@ struct RivalOfferSheet: View {
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text("Your offer for \(d.rival.name)").textStyle(.label, tint: P.inkFaint)
-                Text(cur.tidyShort(price)).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6).accessibilityIdentifier("rival-offer-price")
+                Text(cur.tidyShort(price)).textStyle(.display).lineLimit(2).minimumScaleFactor(0.8).accessibilityIdentifier("rival-offer-price")
                 Text(String(format: "%.2f\u{00D7} its value of %@", multiple, cur.tidyShort(value))).textStyle(.caption)
             }
             LedgerSlider(value: $multiple, in: 0.8...3, step: 0.05)

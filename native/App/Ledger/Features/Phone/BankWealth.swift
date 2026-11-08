@@ -15,7 +15,7 @@ struct BankTotalPanel: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Total balance").textStyle(.caption)
-                Text(totalText).textStyle(.display, tint: negative ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                Text(totalText).textStyle(.display, tint: negative ? P.loss : P.ink).minimumScaleFactor(0.8).lineLimit(2)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
@@ -46,7 +46,7 @@ struct BankWealthCard: View {
         BankCard(title: "Your wealth", trailing: "estimate") {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(store.money(b.total)).textStyle(.display, tint: b.total < 0 ? P.loss : P.ink).minimumScaleFactor(0.6).lineLimit(1)
+                    Text(store.money(b.total)).textStyle(.display, tint: b.total < 0 ? P.loss : P.ink).minimumScaleFactor(0.8).lineLimit(2)
                     Spacer(minLength: 8)
                     Text("net worth").textStyle(.caption, tint: P.inkFaint)
                 }

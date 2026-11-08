@@ -16,6 +16,10 @@ import Businesses
 ///  6 supplier bankrupt/dearer -> `negotiate` (6-8 wk)      7 supplier bankrupt, waited -> `shortage` (2 wk)
 ///  8 cyber attack -> `secreview` (3 wk)      9 failed inspection -> `reinspect` (4 wk)
 /// 10 new rival -> `distressed` rival for sale (8 wk)   11 big order taken -> `bulk` standing deal (6 wk)   12 roadworks over -> `premises` offer (8 wk)
+///
+/// Longer chains (steps in events.json as `chain<kind>`; an answer's `next` effect decides which step follows):
+///  A cyber breach left open -> `breachclaim` (4 wk) -> `breachpress`      B late supplier invoices -> `suppnotice` -> `suppcash` -> `suppstop`
+///  C failed re-inspection -> `licwarn` -> `licreview`                     D a price cut -> `pwreply` -> `pwlong` -> `pwtruce`
 public enum Aftermath {
     static let prefix = "aft_"
 
@@ -28,16 +32,23 @@ public enum Aftermath {
         "negotiate": #"{"t":"The supplier of {n} wants to settle terms after the disruption.","cat":"none","tone":"n","exp":3,"opts":[{"l":"Do nothing","d":"Free. Costs stay up about 6% for 8 weeks.","fx":{"price":[1.06,8]}},{"l":"Sign a 26-week fixed-price contract","d":"Deposit now. Costs only +3% for 26 weeks, even if the market rises.","fx":{"cash":-3000,"price":[1.03,26]}},{"l":"Audition a cheaper new supplier","d":"Trial order now. 60%: costs 3% below today's for 20 weeks. 40%: quality slips, reputation falls and costs +4%.","fx":{"cash":-2000,"gamble":{"p":0.6,"ok":{"price":[0.97,20]},"bad":{"q":-3,"rep":-1,"price":[1.04,8]}}}}]}"#,
         "shortage": #"{"t":"Stock is running short at {n} while the supplier trouble drags on.","cat":"none","tone":"bad","exp":2,"opts":[{"l":"Ration and take back-orders","d":"Free. Demand -10% for 3 weeks and reputation falls.","fx":{"dem":[0.9,3],"rep":-1}},{"l":"Buy at a wholesaler","d":"Cash-and-carry prices: a twentieth of a week's sales, costs +4% for 3 weeks, demand -4%.","fx":{"cash":{"expr":"-wk * 0.05"},"dem":[0.96,3],"price":[1.04,3]}},{"l":"Buy emergency stock at spot prices","d":"An eighth of a week's sales, costs +8% for 4 weeks. Shelves stay full.","fx":{"cash":{"expr":"-wk * 0.12"},"price":[1.08,4]}}]}"#,
         "secreview": #"{"t":"The attack on {n} showed where the gaps are. What do you fix?","cat":"none","tone":"bad","exp":3,"opts":[{"l":"Leave it","d":"Free. Attackers mark you as a soft target: attack odds x1.8 for 26 weeks.","fx":{"cyberTarget":1}},{"l":"Train the staff","d":"About a tenth of a week's sales. Trained staff cut odds by a quarter for a year.","fx":{"cash":{"expr":"-max(1500, wk * 0.1)"},"cyberTrain":1}},{"l":"Upgrade security and train","d":"Over half a week's sales now, then the monthly fee of managed security. Odds fall to a quarter.","fx":{"cash":{"expr":"-wk * 0.6"},"cyberLvl":2,"cyberTrain":1}}]}"#,
-        "reinspect": #"{"t":"The inspectors are coming back to {n} to check the fixes.","cat":"none","tone":"bad","exp":3,"opts":[{"l":"Ignore it","d":"Free. 65% chance of a repeat fine, reputation -3 and a warning that scares customers for 6 weeks.","fx":{"gamble":{"p":0.65,"ok":{"fine":15000,"rep":-3,"warn":1},"bad":{}}}},{"l":"Quick self-check","d":"Small cost. 55% pass and reputation +0.5; 45% a fine and reputation -2.","fx":{"cash":-1500,"gamble":{"p":0.55,"ok":{"rep":0.5},"bad":{"fine":12000,"rep":-2}}}},{"l":"Hire a consultant and fix it all","d":"Costs 15% of a week's sales (min 5,000). Quality +2, reputation +0.5, passes.","fx":{"cash":{"expr":"-max(5000, wk * 0.15)"},"q":2,"rep":0.5}}]}"#,
+        "reinspect": #"{"t":"The inspectors are coming back to {n} to check the fixes.","cat":"none","tone":"bad","exp":3,"opts":[{"l":"Ignore it","d":"Free. 65% chance of a repeat fine, reputation -3 and a warning that scares customers for 6 weeks.","fx":{"gamble":{"p":0.65,"ok":{"fine":15000,"rep":-3,"warn":1,"next":{"k":"licwarn","d":3,"why":"The authority may write about the licence."}},"bad":{}}}},{"l":"Quick self-check","d":"Small cost. 55% pass and reputation +0.5; 45% a fine and reputation -2.","fx":{"cash":-1500,"gamble":{"p":0.55,"ok":{"rep":0.5},"bad":{"fine":12000,"rep":-2,"next":{"k":"licwarn","d":4,"why":"The authority may write about the licence."}}}}},{"l":"Hire a consultant and fix it all","d":"Costs 15% of a week's sales (min 5,000). Quality +2, reputation +0.5, passes.","fx":{"cash":{"expr":"-max(5000, wk * 0.15)"},"q":2,"rep":0.5}}]}"#,
         "distressed": #"{"t":"A struggling rival near {n} is selling up. Offers close soon.","cat":"none","tone":"good","exp":3,"opts":[{"l":"Pass","d":"Free. Someone else takes the customers.","fx":{}},{"l":"Make a small offer for the customer list","d":"Half a week's sales. 50%: demand +12% for 10 weeks. 50%: they refuse, money lost.","fx":{"cash":{"expr":"-wk * 0.5"},"gamble":{"p":0.5,"ok":{"dem":[1.12,10]},"bad":{}}}},{"l":"Buy the customers and stock","d":"Three weeks of sales. Demand +18% for 12 weeks and awareness +6, but you need spare capacity.","fx":{"cash":{"expr":"-wk * 3"},"dem":[1.18,12],"aware":6,"needCap":1}}]}"#,
         "bulk": #"{"t":"The big customer wants a standing supply deal with {n}. Reply within two weeks.","cat":"none","tone":"good","exp":2,"opts":[{"l":"Decline","d":"Free. They go elsewhere.","fx":{}},{"l":"Hold out for a fair price","d":"50%: demand +20% for 20 weeks. 50%: they walk, nothing changes.","fx":{"gamble":{"p":0.5,"ok":{"dem":[1.2,20]},"bad":{}}}},{"l":"Sign at a keen price","d":"Lower prices for good, demand +25% for 26 weeks. Needs spare capacity or you cannot deliver.","fx":{"pr":-1,"dem":[1.25,26],"needCap":1}}]}"#,
         "premises": #"{"t":"The landlord of {n} makes an offer now the roadworks are over.","cat":"none","tone":"good","exp":3,"opts":[{"l":"Decline","d":"Free. Nothing changes.","fx":{}},{"l":"Negotiate a rent break","d":"60%: a rebate of most of a week's sales. 40%: the landlord stands firm.","fx":{"gamble":{"p":0.6,"ok":{"cash":{"expr":"wk * 0.8"}},"bad":{}}}},{"l":"Renovate and relaunch","d":"A week and a half of sales, landlord pays half. Quality +3, awareness +6, demand +8% for 26 weeks.","fx":{"cash":{"expr":"-wk * 1.5"},"q":3,"aware":6,"dem":[1.08,26]}}]}"#,
     ]
 
 
+    /// Chain steps that live in events.json (ids `chain<kind>`, weight 0: they are only ever fired from here).
+    static let chainLibrary: EventLibrary? = try? EventLibrary.bundled()
+
     static func event(_ kind: String) -> GameEvent? {
-        guard let src = templates[kind], let json = try? JSONDecoder().decode(JSONValue.self, from: Data(src.utf8)) else { return nil }
-        return GameEvent(id: prefix + kind, json: json)
+        if let src = templates[kind], let json = try? JSONDecoder().decode(JSONValue.self, from: Data(src.utf8)) {
+            return GameEvent(id: prefix + kind, json: json)
+        }
+        guard var e = chainLibrary?["chain" + kind] else { return nil }
+        e.id = prefix + kind
+        return e
     }
 
     static func jitter(_ s: GameState, _ id: Int, _ tag: String, _ n: Int) -> Int {
@@ -58,6 +69,8 @@ public enum Aftermath {
     static func afterEffects(_ s: inout GameState, _ i: Int, event e: GameEvent, fx: JSONValue, data: GameData) {
         extras(&s, i, fx: fx, data: data)
         let co = s.companies[i]
+        // A deliberate price move is not itself a reason for a rival to reply: note the new level so the weekly scan only reacts to other cuts.
+        if fx["pr"].double != 0 { EventEngine.setFlag(&s, i, "plSeen", Double(s.companies[i].priceLevel)) }
         switch e.id {
         case "g_break", "pr_machine", "l_break":
             if fx["fixeq"].double == 1 { queue(&s, i, "relapse", delay: 4 + jitter(s, co.id, e.id, 3), why: "The quick fix may not hold.") }
@@ -91,6 +104,12 @@ public enum Aftermath {
             s.companies[i].set("flags", f)
             s.note("\(co.name): insurance premiums +\(Int((fx["premUp"].double * 100).rounded()))% for \(fx["premWeeks"].int) weeks.", tone: "bad", companyID: co.id)
         }
+        // A step of a chain can queue the next one, so the answer decides what comes next (`next`: {k, d, why}).
+        if !fx["next"].isNull {
+            let n = fx["next"]
+            queue(&s, i, n["k"].string, delay: max(1, n["d"].int), why: n["why"].string.isEmpty ? "The story is not over." : n["why"].string)
+        }
+        if fx["cyberTarget"].bool { queue(&s, i, "breachclaim", delay: 4, why: "Customers hit by the leak may claim damages.") }
         if fx["cyberLvl"].double != 0 || fx["cyberTrain"].bool || fx["cyberTarget"].bool {
             var c = s.companies[i].value("cy56")
             var said: [String] = []
@@ -106,6 +125,7 @@ public enum Aftermath {
 
     /// Fire what has fallen due. Called every week before decisions expire.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
+        scanTriggers(&s)
         for item in AftermathQueue.takeDue(&s) {
             guard let i = s.companyIndex(item.companyID), s.companies[i].status == .open else { continue }
             let co = s.companies[i]

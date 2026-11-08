@@ -177,7 +177,7 @@ struct CompanyInMarketPage: View {
                     } label: {
                         HStack(spacing: Theme.Space.xs) {
                             Text(them.name.tidyText).textStyle(.body, tint: P.accent, weight: .medium).lineLimit(1)
-                            Image(systemName: "chevron.down").font(.caption.weight(.semibold)).foregroundStyle(P.accent)
+                            LedgerGlyph(glyph: Glyph.chevronDown, size: 12, tint: P.accent)
                         }
                         .frame(minHeight: 44)
                     }

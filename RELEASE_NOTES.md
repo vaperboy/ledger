@@ -1,4 +1,10 @@
 # What's new
+- Money in is a green up arrow and money out a red down arrow instead of plus and minus; a company shows this week so far live with its change on last week; only the change in a figure rolls (up in green, down in red); the net worth chart adds each new day instead of redrawing
+- A holding company sells nothing and no longer earns interest on idle cash; its income is dividends from your companies and gains on money it invests
+- Events can chain (an ignored breach becomes a claim, then a press story; late invoices, a skipped inspection and price wars escalate), each of the twelve starter trades has its own events, big owners get a fourth answer, daily goals vary with streak perks, a recap shows when you return, and Stats has a "How you are playing" panel
+- Choose Classic, Sandbox or Hard when you start; rivals bid for the best accounts and staff of a top company, markets warn before a crash, big groups lose creditor confidence, and a bad event your team handled shows as "Survived it"
+- Better feel: every button press and choice has a haptic, milestones and trophies are celebrated full-screen, a sounds option (off by default), a game-over screen with a one-tap retry, a four-step first-session tour, and a short help sheet the first time you open each phone app
+- Companies and Phone apps open with a zoom, payroll, loans and large sales send a small chip to your net worth, charts draw in from the left, a cash shortfall opens the loan application with the amount filled in, and two-answer decisions are answered on the Home card
 - The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month
 - Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers
 - Next day is a floating button above the tab bar and Skip week is gone, the daily report popup is back, and Home never scrolls with one company

@@ -129,12 +129,11 @@ struct WeekReportShell<More: View>: View {
         let word: String = vsWord(r)
         return VStack(alignment: .leading, spacing: 4) {
             Text("Profit").textStyle(.label, tint: Theme.inkFaint)
-            CountedFigure(value: r.profit, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(r.profit), duration: Motion.revealSeconds)
-                .font(PopupVariant.report.figureFont).lineLimit(1).minimumScaleFactor(0.5)
+            ArrowAmount(gain: r.profit, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.report.figureFont, arrowSide: 18)
+                .lineLimit(2).minimumScaleFactor(0.8)
                 .scaleEffect(numberShown || reduceMotion ? 1 : 0.9, anchor: .leading)
-            if let d = r.delta {
-                CountedFigure(value: d, format: { (v: Double) -> String in signed(v) + " vs " + word }, tint: Theme.change(d), duration: Motion.revealSeconds)
-                    .font(PopupVariant.standard.valueFont).lineLimit(1).minimumScaleFactor(0.7)
+            if r.delta != nil {
+                ChangeNote(now: r.profit, before: r.previousProfit, against: word, format: { (v: Double) -> String in store.short(v) }, step: .body)
             }
         }
     }
@@ -161,8 +160,12 @@ struct WeekReportShell<More: View>: View {
             HStack {
                 Text(label).popupText(.rowLabel)
                 Spacer(minLength: 8)
-                CountedFigure(value: value, format: { (v: Double) -> String in withSign ? signed(v) : store.short(v) }, tint: Theme.ivory, duration: Motion.revealSeconds)
-                    .font(PopupVariant.standard.valueFont).lineLimit(1)
+                if withSign {
+                    ArrowAmount(gain: value, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.valueFont).lineLimit(1)
+                } else {
+                    CountedFigure(value: value, format: { (v: Double) -> String in store.short(v) }, tint: Theme.ivory, duration: Motion.revealSeconds)
+                        .font(PopupVariant.standard.valueFont).lineLimit(1)
+                }
             }
             GeometryReader { (geo: GeometryProxy) in
                 let full: CGFloat = max(6, geo.size.width * CGFloat(share))
@@ -181,8 +184,11 @@ struct WeekReportShell<More: View>: View {
         if r.kind != .week {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(r.movers.enumerated()), id: \.offset) { (_: Int, m: WeekMover) in moverRow(m) }
-                if let line = r.extremes {
-                    Text(line).popupText(.subtitle)
+                ForEach(Array(r.extremeItems.enumerated()), id: \.offset) { (_: Int, x: WeekExtreme) in
+                    HStack(spacing: Theme.Space.xs) {
+                        Text(x.heading + ": " + x.title).popupText(.subtitle)
+                        ArrowAmount(gain: x.profit, format: { (v: Double) -> String in store.short(v) }, step: .caption)
+                    }
                 }
                 if r.kind == .year { yearBlock(r) }
             }
@@ -190,12 +196,11 @@ struct WeekReportShell<More: View>: View {
     }
 
     private func moverRow(_ m: WeekMover) -> some View {
-        let tint: Color = m.isCost ? (m.change > 0 ? Theme.loss : Theme.gain) : Theme.change(m.change)
         return HStack {
             Text(m.label).popupText(.body).lineLimit(1)
             Spacer(minLength: 8)
-            CountedFigure(value: m.change, format: { (v: Double) -> String in signed(v) }, tint: tint, duration: Motion.revealSeconds)
-                .font(PopupVariant.standard.valueFont).lineLimit(1)
+            ArrowAmount(gain: m.isCost ? -m.change : m.change, amount: m.change, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.valueFont)
+                .lineLimit(1)
         }
     }
 
@@ -213,8 +218,12 @@ struct WeekReportShell<More: View>: View {
     private func yearFigure(_ label: String, _ value: Double, _ tint: Color, _ withSign: Bool) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label).popupText(.rowLabel)
-            CountedFigure(value: value, format: { (v: Double) -> String in withSign ? signed(v) : store.short(v) }, tint: tint, duration: Motion.revealSeconds)
-                .font(PopupVariant.standard.figureFont).lineLimit(1).minimumScaleFactor(0.7)
+            if withSign {
+                ArrowAmount(gain: value, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
+            } else {
+                CountedFigure(value: value, format: { (v: Double) -> String in store.short(v) }, tint: tint, duration: Motion.revealSeconds)
+                    .font(PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -301,10 +310,6 @@ struct WeekReportShell<More: View>: View {
 
     // MARK: Helpers and timing
 
-    private func signed(_ v: Double) -> String {
-        abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "-") + store.short(abs(v))
-    }
-
     /// Sets the recap, then plays the reveal: title 0.2 s, number and bars 0.6 s (bars staggered 0.08 s), story, card, record.
     private func start() async {
         let made: WeekRecap? = store.engine?.weekRecap(kind: digest.kind, id: digest.reportID)
@@ -313,7 +318,7 @@ struct WeekReportShell<More: View>: View {
         if reduceMotion {
             titleShown = true; numberShown = true; bars = [1, 1, 1]; strip = true; storyShown = true; cardShown = true; trophyShown = true
             Haptics.countDone()
-            if made?.record != nil { Haptics.goalDone() }
+            if made?.record != nil { Haptics.goalDone(); SoundCues.play(.record) }
             return
         }
         try? await Task.sleep(nanoseconds: 30_000_000)
@@ -332,6 +337,7 @@ struct WeekReportShell<More: View>: View {
         guard made?.record != nil else { return }
         try? await Task.sleep(nanoseconds: 1_100_000_000)
         Haptics.goalDone()
+        SoundCues.play(.record)
         Motion.animate(Motion.move(false)) { trophyShown = true }
         burst = 1
         try? await Task.sleep(nanoseconds: 60_000_000)

@@ -244,7 +244,7 @@ private struct LoanSummaryPanel: View {
         let repaid: Double = rec.principal > 0 ? max(0, min(1, 1 - rec.balance / rec.principal)) : 0
         VStack(alignment: .leading, spacing: 8) {
             Text(rec.name).textStyle(.body, tint: P.inkSoft, weight: .medium)
-            Text(cur.tidyDisplay(rec.balance)).textStyle(.display).minimumScaleFactor(0.6).lineLimit(1).moneyFlash(rec.balance)
+            Text(cur.tidyDisplay(rec.balance)).textStyle(.display).minimumScaleFactor(0.8).lineLimit(2).moneyFlash(rec.balance)
             Text("left to pay of " + cur.tidyDisplay(rec.principal)).textStyle(.caption, tint: P.inkFaint)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {

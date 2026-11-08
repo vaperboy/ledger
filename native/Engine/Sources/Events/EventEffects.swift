@@ -43,6 +43,7 @@ extension EventEngine {
                     if paid > 0 {
                         Payments.companyReceives(&s, companyID: id, amount: paid, category: nil, label: "Insurance payout")
                         Payments.book(&s, companyID: id, category: "loss", amount: -paid)
+                        Threat.survived(&s, companyID: id, text: "a loss at \(s.companies[i].name), mostly paid by your insurance.")
                     }
                 }
             }

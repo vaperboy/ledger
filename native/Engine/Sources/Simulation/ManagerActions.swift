@@ -71,7 +71,7 @@ public extension GameEngine {
         return setManagerBudget(companyID: companyID, budget: Budget(rawValue: min(2, max(0, level))) ?? .normal)
     }
 
-    /// Ask the manager for a change (a key of `ManagerModel.askOptions`); returns what they answered.
+    /// Ask the manager for a change (`price_up`, `price_down`, `cut`, `mkt_more`, `mkt_less`, `quality` or `save`); returns what they answered.
     @discardableResult
     mutating func askManager(companyID: Int, key: String) -> String? {
         var say: String?

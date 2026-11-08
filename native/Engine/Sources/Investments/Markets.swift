@@ -59,22 +59,61 @@ public enum Markets {
         s.rest["inv"] = .object(["stocks": .object([:]), "crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
     }
 
+    static let transitions: [String: [String]] = [
+        "bull": ["bull", "correction", "bear"], "correction": ["bull", "bear"], "bear": ["bull", "recovery"],
+        "recovery": ["bull", "bull", "bear"], "crash": ["bear", "recovery"],
+    ]
+
+    /// The mood that follows the current one. It is fixed by the game seed and the number of moods so far (not drawn from the game's random
+    /// stream), so the early warning and the change itself always agree. The game mode moves the crash chance.
+    static func nextRegime(_ s: GameState, _ M: JSONValue) -> String {
+        var h = HashedRandom("\(s.seed):regime:\(M["n"].int)")
+        let options = transitions[M["regime"].string] ?? ["bull"]
+        let crash = h.next() < crashChance(s)
+        let pick = options[min(options.count - 1, Int(h.next() * Double(options.count)))]
+        return crash ? "crash" : pick
+    }
+
+    /// Per mood change, from the game mode in `rest["difficulty"]` (the mode type lives in a module this one does not see).
+    static func crashChance(_ s: GameState) -> Double {
+        let mode = s.rest["difficulty"]?.string ?? ""
+        return mode == "sandbox" ? 0.015 : mode == "hard" ? 0.04 : 0.03
+    }
+
+    /// Weeks of notice before a downturn: two, one on Hard.
+    static func warningLead(_ s: GameState) -> Int { s.rest["difficulty"]?.string == "hard" ? 1 : 2 }
+
+    /// A News item (and, for a crash or a bear market, an Inbox note) a week or two before the mood turns, so it is survivable but felt.
+    static func warn(_ s: inout GameState, next: String, weeks: Int) {
+        let when = weeks == 1 ? "next week" : "within \(weeks) weeks"
+        switch next {
+        case "crash":
+            s.news("MARKET WARNING: traders expect a sharp sell-off \(when).", tone: "bad")
+            s.addMessage(from: "Your broker", title: "A market crash looks close",
+                         body: "Signs of panic are building: stocks and crypto may fall hard \(when). If you hold investments, decide now what you can sit through, and keep cash back for bills and payroll.",
+                         tone: "bad")
+        case "bear":
+            s.news("MARKET WARNING: analysts see a bear market starting \(when).", tone: "bad")
+            s.addMessage(from: "Your broker", title: "Markets look set to turn down",
+                         body: "Analysts expect a longer fall \(when). Prices drift lower in a bear market rather than crash, but it can last months.", tone: "n")
+        case "correction":
+            s.news("Analysts expect a pullback in the markets \(when).", tone: "n")
+        default: break
+        }
+    }
+
     /// Market mood, stock and crypto prices for the week. Original: `marketWeek`.
     public static func weekly(_ s: inout GameState) {
         var M = s.rest["mkt"] ?? .object(["regime": "bull", "left": 40, "m": 0])
         M["left"] = .number(M["left"].double - 1)
+        let lead = warningLead(s)
+        if M["left"].int == lead { warn(&s, next: nextRegime(s, M), weeks: lead) }
         if M["left"].double <= 0 {
-            var next: [String: [String]] = [:]
-            next["bull"] = ["bull", "correction", "bear"]
-            next["correction"] = ["bull", "bear"]
-            next["bear"] = ["bull", "recovery"]
-            next["recovery"] = ["bull", "bull", "bear"]
-            next["crash"] = ["bear", "recovery"]
-            let regime = M["regime"].string
-            let options = next[regime] ?? ["bull"]
-            let r = s.random.chance(0.03) ? "crash" : s.random.pick(options)
+            let r = nextRegime(s, M)
+            var len = HashedRandom("\(s.seed):regimeLen:\(M["n"].int)")
             M["regime"] = .string(r)
-            M["left"] = .number(Double(r == "crash" ? s.random.int(3, 8) : s.random.int(10, 40)))
+            M["n"] = .number(Double(M["n"].int + 1))
+            M["left"] = .number(Double(r == "crash" ? 3 + Int(len.next() * 6) : 10 + Int(len.next() * 31)))
             if r == "crash" { s.news("MARKETS PANIC: stocks and crypto plunge.", tone: "bad") }
         }
         let regime = M["regime"].string

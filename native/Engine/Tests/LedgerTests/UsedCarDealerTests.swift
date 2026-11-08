@@ -144,7 +144,9 @@ final class UsedCarDealerTests: XCTestCase {
         XCTAssertEqual(c.repairSupplierID, rid, "the job order goes to your own mechanic company")
         let need = try XCTUnwrap(e.state.company(id)!.value("stk").array.first)["rq"].double
         XCTAssertEqual(c.repairQuote, need * UsedCarDealer.ownRepairFactor, accuracy: 0.01, "group price under the market price")
-        days(&e, 7 * (c.repairWeeksLeft + 2))
+        // Stop on the day the job is done: a ready car can be sold by the dealer's own weekday within the next days.
+        var waited = 0
+        while e.usedCarStock(companyID: id).first(where: { $0.id == c.id })?.status == "repair" && waited < 7 * (c.repairWeeksLeft + 4) { days(&e, 1); waited += 1 }
         let after = e.state.company(rid)!
         let billed = AccountingLedger.rows(after).filter { $0.label.hasPrefix("Repairs for") && $0.amount > 0 }.reduce(0) { $0 + $1.amount }
         XCTAssertEqual(billed, c.repairQuote, accuracy: 1, "the mechanic company bills the dealer the job price")

@@ -33,6 +33,9 @@ struct LedgerRow: View {
     var valueTint: Color? = nil
     var valueNote: String = ""
     var valueNoteTint: Color? = nil
+    /// A money movement shown as an arrow and amount in place of `value` (see `ArrowAmount`): positive green up, negative red down.
+    var gain: Double? = nil
+    var gainFormat: ((Double) -> String)? = nil
     var pill: String? = nil
     var pillTone: AcctPill.Tone = .neutral
     var badge: Int = 0
@@ -59,7 +62,7 @@ struct LedgerRow: View {
         }
     }
 
-    private var hasTrailing: Bool { !value.isEmpty || !valueNote.isEmpty || pill != nil }
+    private var hasTrailing: Bool { !value.isEmpty || gain != nil || !valueNote.isEmpty || pill != nil }
 
     private func row(chevron: Bool) -> some View {
         HStack(spacing: Theme.Space.m) {
@@ -74,7 +77,9 @@ struct LedgerRow: View {
             RedBubble(count: badge)
             if hasTrailing {
                 VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                    if !value.isEmpty {
+                    if let gain, let gainFormat {
+                        ArrowAmount(gain: gain, format: gainFormat, step: .headline).lineLimit(1).minimumScaleFactor(0.7)
+                    } else if !value.isEmpty {
                         Text(value.tidyText).textStyle(.headline, tint: valueTint, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
                     }
                     if let pill { AcctPill(text: pill, tone: pillTone) }
@@ -169,9 +174,9 @@ struct Figure: View {
     @ViewBuilder private var valueText: some View {
         switch size {
         case .display:
-            Text(value.tidyText).textStyle(.display, tint: tint).lineLimit(1).minimumScaleFactor(0.6)
+            Text(value.tidyText).textStyle(.display, tint: tint).lineLimit(2).minimumScaleFactor(0.8)
         case .figure:
-            Text(value.tidyText).textStyle(.figure, tint: tint).lineLimit(1).minimumScaleFactor(0.7)
+            Text(value.tidyText).textStyle(.figure, tint: tint).lineLimit(2).minimumScaleFactor(0.8)
         case .inline:
             Text(value.tidyText).textStyle(.headline, tint: tint, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
         }

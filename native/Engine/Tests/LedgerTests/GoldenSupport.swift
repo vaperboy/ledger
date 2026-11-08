@@ -2,6 +2,7 @@ import Foundation
 import GameCore
 import XCTest
 import SaveSystem
+import Businesses
 
 /// Reference data produced by running the ORIGINAL HTML game (see native/tools/ref). Tests compare the Swift
 /// engine with these numbers.
@@ -17,7 +18,9 @@ enum Golden {
     static func state(_ name: String) throws -> GameState {
         var root = try load(name).object
         LegacyIds.migrate(&root)
-        return try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(JSONValue.object(root)))
+        var state = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(JSONValue.object(root)))
+        Budget.migrate(&state)   // as the importer and the save store do: an old manager record becomes a budget
+        return state
     }
 }
 

@@ -71,29 +71,43 @@ public enum EventEngine {
             let co = s.companies[i]
             guard let e = library[id] else { continue }
             if e.minimumCompanyAgeWeeks > 0 && s.week - co.foundedWeek < e.minimumCompanyAgeWeeks { continue }
-            // Praise, awards and big orders need real customers.
-            if (e.tone == "good" || id == "g_press" || id == "g_offer") && !(co.lastWeekUnits > 0.5 && co.openedWeek != nil && s.week - co.openedWeek! >= 12) { continue }
+            // Praise, awards and big orders need real customers: a first company must have traded for 12 weeks, a second or later one 6
+            // (the owner has been through it before and the trade is already known).
+            if (e.tone == "good" || id == "g_press" || id == "g_offer") && !(co.lastWeekUnits > 0.5 && co.openedWeek != nil && s.week - co.openedWeek! >= goodEventMinimumWeeks(s, companyIndex: i)) { continue }
             if co.staff.isEmpty && mentionsStaff(e) { continue }
             if co.staff.isEmpty && co.managerID == nil && !soloAllowed(id, co) { continue }
             var p = e.weight * risk * 0.6 * (e.condition?.evaluate(c.variables) ?? 1)
-            if e.tone == "bad" { p *= data.balance.eventRampMultiplier(week: s.week) }   // first-year easing, tuned in balance.json `eventRamp`
+            if e.tone == "bad" { p *= Difficulty.of(s).eventRamp(data.balance, week: s.week) }   // first-year easing, tuned in balance.json `eventRamp`, stretched or tightened by the game mode
             if !(p > 0) { p = 0 }
             if p <= 0 || !s.random.chance(p) { continue }
-            if Sourcing.shields(s, companyID: co.id, eventID: id) { continue }   // supplied from inside: outside supplier trouble does not reach it
+            if Sourcing.shields(s, companyID: co.id, eventID: id) {   // supplied from inside: outside supplier trouble does not reach it
+                if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "supplier trouble at \(co.name) never reached it: its own supply chain absorbed it.") }
+                continue
+            }
             if !e.options.isEmpty && s.companies[i].value("flags")["evCool"].double > 0 { continue }
             if e.tone == "bad" && !takeBadSlot(&s, companyID: co.id, eventID: id) { continue }   // weeks 1-12: one bad event a week, the rest wait
-            if !e.options.isEmpty { setFlag(&s, i, "evCool", 6) }
+            if !e.options.isEmpty { setFlag(&s, i, "evCool", cooldownWeeks(s, companyID: co.id, event: e)) }
             fire(&s, companyIndex: i, e, ctx: c, data: data, context: fc)
         }
     }
 
-    /// Last week of the one-bad-event-a-week rule.
-    static let badCapLastWeek = 12
+    /// Weeks of trading a company needs before good events and big orders can reach it: 12 for the first, 6 for later ones.
+    static func goodEventMinimumWeeks(_ s: GameState, companyIndex i: Int) -> Int {
+        s.companies.prefix(i).contains { $0.type != "hold" } ? 6 : 12
+    }
 
-    /// In weeks 1 to 12 only one bad event may fire a week across all companies; a second one is put off to the next week
+    /// Quiet weeks after a decision event: good news is allowed back sooner than trouble, and each draw varies a little (hashed, so
+    /// the main random stream is untouched).
+    static func cooldownWeeks(_ s: GameState, companyID: Int, event e: GameEvent) -> Double {
+        var h = HashedRandom("\(s.seed):evcool:\(s.week):\(companyID):\(e.id)")
+        let base: Double = e.tone == "good" ? 3 : (e.tone == "bad" ? 6 : 4)
+        return base + Double(min(2, Int(h.next() * 3)))
+    }
+
+    /// In the first weeks (12 on Classic, see `Difficulty.badEventCapWeeks`) only one bad event may fire a week across all companies; a second one is put off to the next week
     /// (state kept in `rest["evBad"]`: `week`, `n`, and `later` = [{c: company, e: event}]). Returns whether this event may fire now.
     static func takeBadSlot(_ s: inout GameState, companyID: Int, eventID: String) -> Bool {
-        guard s.week <= badCapLastWeek else { return true }
+        guard s.week <= Difficulty.of(s).badEventCapWeeks else { return true }
         var st = s.rest["evBad"] ?? .object([:])
         if st["week"].int != s.week { st["week"] = .number(Double(s.week)); st["n"] = .number(0) }
         if st["n"].int >= 1 {
@@ -142,9 +156,12 @@ public enum EventEngine {
     static let soloCustomerEvents: Set<String> = ["g_late", "g_review", "g_lawsuit", "g_offer", "c_scope", "c_clientloss", "c_damage", "c_wedding", "c_malprac", "c_patient",
                                                   "v_critic", "v_poison", "v_overbook", "v_injury", "v_churn", "v_bigwin", "v_cheat", "v_addict"]
     static let soloMarketingEvents: Set<String> = ["g_press", "g_award", "v_ota"]
+    static let packTrades: Set<String> = ["cons", "tutor", "carclean", "photo", "handy", "cleaning", "webdev", "mktg", "law", "acctfirm", "staffing", "barber"]
     static func soloAllowed(_ id: String, _ co: Company) -> Bool {
         if soloCustomerEvents.contains(id) { return true }
         if soloMarketingEvents.contains(id) { return co.value("mkt").object.values.contains { $0["b"].double > 0 } }
+        // The trade packs of the starter trades are about clients, so a one-person business gets them (events that name staff were skipped above).
+        if let trade = id.split(separator: "_").first, id.contains("_"), packTrades.contains(String(trade)) { return true }
         return false
     }
 
@@ -170,7 +187,10 @@ public enum EventEngine {
         let machine = pickEquipmentName(&s, companyIndex: i, data: data)
         title = title.replacingOccurrences(of: "{eq}", with: machine)
         title = TextTokens.resolve(title, country: fc.country(of: co, s), currency: cur)
-        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) { return }   // under warranty: no decision
+        if e.id == "g_break", EquipmentWarranty.repairIfCovered(&s, companyIndex: i, itemName: machine, data: data) {   // under warranty: no decision
+            Threat.survived(&s, companyID: co.id, text: "\(title) at \(co.name), covered by the warranty.")
+            return
+        }
         if e.automatic {
             apply(&s, companyIndex: i, resolve(e.automaticEffects, ctx, currency: cur), ctx: ctx, event: e, data: data, context: fc)
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone)
@@ -187,9 +207,12 @@ public enum EventEngine {
             s.addMessage(from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, options: options)
             if let k = s.inbox.indices.first, true { s.inbox[k].set("status", "done"); s.inbox[k].set("pick", pick); s.inbox[k].set("mgrName", who); s.inbox[k].set("ev", e.id) }
             apply(&s, companyIndex: i, options[pick]["fx"], ctx: ctx, event: e, data: data, context: fc)
-            s.note("\(co.name): \(who) handled \"\(title)\" by choosing: \(options[pick]["l"].string).", tone: "n", companyID: co.id)
+            if e.tone == "bad" { Threat.survived(&s, companyID: co.id, text: "\"\(title)\" at \(co.name). \(who) handled it: \(options[pick]["l"].string).") }
+            else { s.note("\(co.name): \(who) handled \"\(title)\" by choosing: \(options[pick]["l"].string).", tone: "n", companyID: co.id) }
         } else {
-            let id = s.addMessage(kind: "decision", from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, status: "open", options: options,
+            var shown = options
+            if let extra = lateGameOption(e, options: options, ctx: ctx, company: co, state: s) { shown.append(extra) }
+            let id = s.addMessage(kind: "decision", from: co.name, title: title, body: "", companyID: co.id, tone: e.tone, status: "open", options: shown,
                                   expiresWeek: s.week + e.expiresAfterWeeks)
             if let k = s.inbox.firstIndex(where: { $0.id == id }) {
                 s.inbox[k].set("ev", e.id)
@@ -252,7 +275,7 @@ public enum EventEngine {
         if m.kind == "decision", let i = s.companyIndex(m.companyID) {
             let ctx = context(for: s.companies[i], data: data, country: fc.country(of: s.companies[i], s))
             let e = GameEvent(id: m.str("ev"), json: .object(["cat": .string(m.str("cat", "none"))]))
-            apply(&s, companyIndex: i, m.options[idx]["fx"], ctx: ctx, event: e, data: data, context: fc)
+            applyAnswer(&s, companyIndex: i, message: m, option: idx, ctx: ctx, event: e, data: data, context: fc)
         } else if !m.actionID.isEmpty {
             if !actions(&s, m, idx) { return false }
         }
@@ -272,7 +295,7 @@ public enum EventEngine {
             if m.kind == "decision" {
                 guard let ci = i else { s.inbox[k].set("status", "done"); continue }
                 var bestIndex = 0, best = -Double.infinity
-                for (n, o) in m.options.enumerated() {
+                for (n, o) in m.options.enumerated() where o["fx"]["tier"].isNull {   // the late-game extra answer is never a default
                     let v = -abs(o["fx"]["cash"].double)
                     if v > best { best = v; bestIndex = n }
                 }

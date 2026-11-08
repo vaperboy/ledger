@@ -3,8 +3,7 @@ import SwiftUI
 import UIKit
 #endif
 
-/// The four families of things that can carry a picture. The raw value is the middle part of the asset name:
-/// `thumb-<kind>-<key>`.
+/// The families of things that can carry a picture.
 enum ThumbKind: String, CaseIterable {
     case premises
     case person
@@ -51,9 +50,8 @@ struct ThumbSpec {
     var face: String? = nil
 }
 
-/// One picture slot for a premises, a person (by role), a trade (company) or a luxury item. If the asset catalogue holds
-/// `thumb-<kind>-<key>` the picture fills the slot; otherwise the slot shows the house icon circle (or the person's initials), so nothing
-/// changes before art arrives. The slot is always exactly `size` square, with or without art, so rows never reflow.
+/// One picture slot for a premises, a person (by role), a trade (company) or a luxury item. A sheet picture fills the slot when there
+/// is one; otherwise it shows the house icon circle (or the person's initials). The slot is always exactly `size` square, with or without art, so rows never reflow.
 struct ThumbnailView: View {
     var kind: ThumbKind
     var key: String
@@ -74,16 +72,6 @@ struct ThumbnailView: View {
 
     init(_ spec: ThumbSpec, size: CGFloat = 40, tint: Color = Theme.gold) {
         self.init(kind: spec.kind, key: spec.key, size: size, shape: spec.shape, glyph: spec.glyph, initials: spec.initials, tint: tint, face: spec.face)
-    }
-
-    /// The asset name for a kind and key: lower case, anything that is not a letter or digit becomes a hyphen.
-    static func assetName(_ kind: ThumbKind, _ key: String) -> String {
-        var slug = ""
-        for ch in key.lowercased() {
-            if ch.isLetter || ch.isNumber { slug.append(ch) } else if !slug.hasSuffix("-") { slug.append("-") }
-        }
-        while slug.hasSuffix("-") { slug.removeLast() }
-        return "thumb-\(kind.rawValue)-\(slug)"
     }
 
     private var corner: CGFloat { max(6, size * 0.22) }
@@ -121,13 +109,13 @@ struct ThumbnailView: View {
     }
 
     #if canImport(UIKit)
-    /// The catalogue asset wins; otherwise the sliced sheet cell for the kind.
+    /// The sliced sheet cell for the kind; premises, people and trades have no picture and show their icon or initials.
     private var picture: UIImage? {
         switch kind {
         case .premises, .person, .trade:
-            return UIImage(named: Self.assetName(kind, key))
+            return nil
         case .luxury:
-            return UIImage(named: Self.assetName(kind, key)) ?? ArtLibrary.luxuryImage(itemID: key)
+            return ArtLibrary.luxuryImage(itemID: key)
         case .premisesPhoto:
             return ArtLibrary.image(.premises, key)
         case .logo:

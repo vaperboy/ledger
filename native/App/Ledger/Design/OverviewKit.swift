@@ -46,9 +46,9 @@ struct OverviewFigureCard: View {
 
     @ViewBuilder private var figureText: some View {
         if let live, let countFormat {
-            CountedFigure(value: live, format: countFormat, tint: valueTint).font(TextStep.display.fixedFont).lineLimit(1).minimumScaleFactor(0.6)
+            CountedFigure(value: live, format: countFormat, tint: valueTint).font(TextStep.display.fixedFont).lineLimit(2).minimumScaleFactor(0.8)
         } else {
-            Text(value).textStyle(.display).lineLimit(1).minimumScaleFactor(0.6).moneyFlash(live ?? 0)
+            Text(value).textStyle(.display).lineLimit(2).minimumScaleFactor(0.8).moneyFlash(live ?? 0)
         }
     }
 }
@@ -76,6 +76,12 @@ struct OverviewRowData: Identifiable {
     /// The number behind `value` and its text: the value counts up to it (see `CountedFigure`) instead of showing at once.
     var live: Double? = nil
     var liveText: ((Double) -> String)? = nil
+    /// Show `live` as an arrow and amount (green up, red down) instead of text; `liveText` then formats the positive size.
+    var arrow: Bool = false
+    /// The same figure in the period before, to show how it moved ("up 12% on last week") under the value; a cost counts a rise as bad news.
+    var before: Double? = nil
+    var isCost: Bool = false
+    var against: String = ""
     var menu: [OverviewMenuItem] = []
     var action: () -> Void = {}
 }
@@ -94,7 +100,9 @@ struct OverviewRow: View {
     }
 
     @ViewBuilder private var valueView: some View {
-        if let live = row.live, let text = row.liveText {
+        if row.arrow, let live = row.live, let text = row.liveText {
+            ArrowAmount(gain: row.isCost ? -live : live, amount: live, format: text, live: true, step: .headline)
+        } else if let live = row.live, let text = row.liveText {
             CountedFigure(value: live, format: text, tint: row.valueTint).font(TextStep.headline.font(size: TextStep.headline.size, numeric: true, weight: nil))
         } else {
             Text(row.value.tidyText).textStyle(.headline, tint: row.valueTint, numeric: true)
@@ -116,7 +124,9 @@ struct OverviewRow: View {
                     valueView
                         .lineLimit(2).multilineTextAlignment(.trailing).minimumScaleFactor(0.8)
                 }
-                if !row.note.isEmpty {
+                if let before = row.before, !row.against.isEmpty, let live = row.live {
+                    ChangeNote(now: live, before: before, isCost: row.isCost, against: row.against, format: row.liveText ?? { (v: Double) -> String in String(Int(v)) })
+                } else if !row.note.isEmpty {
                     Text(row.note.tidyText).textStyle(.caption, tint: row.noteTint, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
                 }
             }

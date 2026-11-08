@@ -15,6 +15,9 @@ final class NewItemOptionsTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
         guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 100_000_000) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
+        // items can only be added to an open company, and licences take a while
+        var extra = 0
+        while e.state.company(id)?.status != .open, extra < 40 { e.week(); extra += 1 }
         return (e, id)
     }
 

@@ -113,11 +113,16 @@ struct HomeEvent: Equatable, Identifiable {
     var day: String
 }
 
-/// An amount chip that travels once (dividend received, transfer made).
+/// An amount chip that travels once (dividend received, transfer made). With `origin` (a point in screen space) it flies from there
+/// to the top of the screen in 0.5 s; `outgoing` marks money that leaves (a minus sign, the loss tint).
 struct TransferChip: Equatable, Identifiable {
     let id = UUID()
     var label: String
     var amount: Double
+    var origin: CGPoint? = nil
+    var outgoing: Bool = false
+    /// The amount as the payer's currency writes it; nil shows `amount` in the home currency.
+    var text: String? = nil
 }
 
 /// Owns the running game and the save files. Views read `engine` and call the methods here; no game rules live in views.
@@ -182,6 +187,31 @@ final class GameStore: ObservableObject {
         guard let e = engine else { return }
         Reminders.schedule(SessionHooks.reminders(e.state))
     }
+    private static let leftAtKey = "ledger.leftAt"
+    /// Seconds away after which coming back shows the recap card.
+    private static let recapAfterAway: Double = 15 * 60
+    /// The app went to the background: remember the game day and when, for the recap on return.
+    func noteLeaving() {
+        guard var e = engine else { return }
+        e.markSeen()
+        engine = e
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: GameStore.leftAtKey)
+    }
+    /// The app came back after a while: one notice card with what changed since the player left (engine `sinceYouLeft`). It waits its turn:
+    /// nothing is added while a report, another notice or an outcome is on screen.
+    func showReturnRecap() {
+        let left: Double = UserDefaults.standard.double(forKey: GameStore.leftAtKey)
+        guard left > 0, Date().timeIntervalSince1970 - left >= GameStore.recapAfterAway else { return }
+        UserDefaults.standard.removeObject(forKey: GameStore.leftAtKey)
+        guard var e = engine, !isAdvancing, reportSheet == nil, notices.isEmpty, outcomes.isEmpty, let seen: Int = e.lastSeenDay else { return }
+        if let recap: ReturnRecap = e.sinceYouLeft(lastSeenDay: seen) {
+            var t = Toast(title: recap.title, text: recap.lines.joined(separator: "\n"), tone: "n")
+            t.style = "recap"
+            notices.append(t)
+        }
+        e.markSeen()
+        engine = e
+    }
     /// Newly opened features waiting for their announcement popup, oldest first (UnlockKit.swift). One shows at a time, after the day's popups.
     @Published var unlockQueue: [UnlockPrompt] = []
     /// What the last ordinary day did to net worth and cash (real figures); cleared when a report sheet takes its place.
@@ -208,7 +238,9 @@ final class GameStore: ObservableObject {
     }
     /// A chip that flies from a company to the personal account (a view calls `flyChip` after a dividend is paid out).
     @Published private(set) var transferChip: TransferChip?
-    func flyChip(_ label: String, amount: Double) { transferChip = TransferChip(label: label, amount: amount) }
+    func flyChip(_ label: String, amount: Double, from origin: CGPoint? = nil, outgoing: Bool = false, text: String? = nil) {
+        transferChip = TransferChip(label: label, amount: amount, origin: origin, outgoing: outgoing, text: text)
+    }
     func clearChip() { transferChip = nil }
     /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
@@ -331,9 +363,27 @@ final class GameStore: ObservableObject {
     func renameSlot(_ slot: String, to raw: String) -> Bool { (try? saves?.renameSlot(slot, to: raw)) ?? false }
 
     /// `story: .fresh` is the new-player start: `tradeID` and `companyName` are the player's two choices after the country.
-    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil) {
+    func newGame(name: String, countryCode: String, story: LifeStory = .loan, cityID: String? = nil, ambition: String? = nil, tradeID: String? = nil, companyName: String? = nil, difficulty: Difficulty = .classic) {
         RememberedDetails.clearAll()
-        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+        do { engine = try GameEngine.newGame(countryCode: countryCode, playerName: name, cityID: cityID, story: story, ambition: ambition, tradeID: tradeID, companyName: companyName, chooseFirstItem: true, difficulty: difficulty); loadProblem = nil; resetNavigation(); save() } catch { errorText = "Could not start a game: \(error)" }
+    }
+
+    /// Whether the run that ended can be started again with the same country, trade and names (the new-player start needs a company to copy).
+    var canRetrySameSetup: Bool {
+        guard let s = engine?.state else { return false }
+        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
+        return story != .fresh || s.companies.contains(where: { (c: Company) -> Bool in c.type != "hold" })
+    }
+
+    /// Starts a new game with the same country, trade, company name and player name as the current run, going straight in.
+    func retryWithSameSetup() {
+        guard let s = engine?.state else { return }
+        let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
+        if story == .fresh, let c = s.companies.first(where: { (c: Company) -> Bool in c.type != "hold" }) {
+            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name)
+        } else if story != .fresh {
+            newGame(name: s.player.name, countryCode: s.homeCountryCode, story: story)
+        }
     }
 
     /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
@@ -390,14 +440,15 @@ final class GameStore: ObservableObject {
         let out = e.nextDay()
         let today: Int = GameStore.calendarDay()
         e.update { s, _, _ in PlayStreak.record(&s, today: today) }
-        // Only a finished ladder goal celebrates; trophies, milestones and daily missions are taken and dropped.
-        let celebrations: [Celebration] = e.takeCelebrations().filter { $0.kind == "goal" }
-        if !celebrations.isEmpty { Haptics.goalDone() }
-        if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning() }
+        // Goals, milestones and trophies all queue for the celebration popup (one shown at a time).
+        let celebrations: [Celebration] = e.takeCelebrations()
+        if !celebrations.isEmpty { Haptics.goalDone(); SoundCues.play(.goal) }
+        if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning(); SoundCues.play(.warning) }
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
         if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
+        SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
         report(out.newMessages)
         if out.completedWeek { save(backup: e.state.week % 4 == 0) } else { save() }
         if out.gameOver { Haptics.failure() }
@@ -453,11 +504,10 @@ final class GameStore: ObservableObject {
         ambitionPrompt = e.ambitionPromptPending
         if reportSheet == nil { reportSheet = e.pendingReportDigest() }
         let taken: [Celebration] = e.takeCelebrations()
-        let waiting: [Celebration] = taken.filter { $0.kind == "goal" }
         if !taken.isEmpty {
             engine = e
             save()
-            celebrationQueue.append(contentsOf: waiting)
+            celebrationQueue.append(contentsOf: taken)
         }
         queueUnlocks()
     }
@@ -605,6 +655,7 @@ final class GameStore: ObservableObject {
         let c: OutcomeCapture = outcomeCapture ?? OutcomeCapture()
         outcomeCapture = outer
         guard !c.refused, !c.told else { return }
+        SoundCues.play(.paymentOut)
         outcome(chosen: action.button, result: c.lines.joined(separator: "\n"))
     }
 
@@ -741,15 +792,19 @@ final class GameStore: ObservableObject {
     /// Opens an app of the Phone (Inbox, Bank, News ...) on the open tab: pushed on its stack (or, when already on it, gone back to), so
     /// Back returns to where the link was. Ventures is a part of the Projects tab: on that tab's root it switches to Portfolio.
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
+        if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }   // a daily goal may be waiting on this app
         if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
         appRequest = app == .ventures ? nil : request
         push(.app(app))
     }
 
     /// Opens one account of the Bank app (and optionally one of its tabs) from anywhere: a company's "Open in Bank", a loan or tax prompt.
-    func openBank(_ account: BankAccountID, tab: BankTab = .account) {
-        openApp(.bank, request: .bank(BankRequest(account: account, tab: tab)))
+    func openBank(_ account: BankAccountID, tab: BankTab = .account, applyLoan: Double? = nil) {
+        openApp(.bank, request: .bank(BankRequest(account: account, tab: tab, applyLoan: applyLoan)))
     }
+
+    /// The loan amount a link asked the Bank's loan application to start with; the Loans tab takes it when it appears.
+    @Published var pendingLoanApply: Double?
 
     /// Opens the Accounting app on one company, on its Payroll page when `payroll` is true: the link Team and the Bank use instead of a payroll run of their own.
     func openAccounting(companyID: Int, payroll: Bool = false) {
@@ -862,7 +917,10 @@ final class GameStore: ObservableObject {
         switch action {
         case .openMessage(let id): openMessage(id)
         case .openCompany(let id, let key): openCompany(id, section: key.flatMap { CompanySection(key: $0) })
-        case .openLoans: openBank(.personal, tab: .loans)
+        // An overdrawn account opens the loan application with the shortfall (to the next 100) already chosen.
+        case .openLoans:
+            let short: Double = max(0, -(engine?.state.cash ?? 0))
+            openBank(.personal, tab: .loans, applyLoan: short > 0 ? (short / 100).rounded(.up) * 100 : nil)
         case .openInvest: openMarket(tab: .invest)
         case .openTax: openBank(.personal, tab: .bills)
         case .newCompany: push(.newCompany)

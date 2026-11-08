@@ -56,11 +56,14 @@ struct GameShell: View {
 /// The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var tipVisible = false
 
     private var items: [PillTabItem] {
         let waiting: Int = store.waitingCount
         return AppTab.allCases.map { tab in
-            PillTabItem(id: tab.rawValue, title: store.title(for: tab), glyph: store.glyph(for: tab), badge: tab == .phone ? waiting : 0, changeable: tab == .custom)
+            PillTabItem(id: tab.rawValue, title: store.title(for: tab), glyph: store.glyph(for: tab), badge: tab == .phone ? waiting : 0, changeable: tab == .custom,
+                         chip: tab == .custom && store.customTarget == nil ? "Edit" : "")
         }
     }
 
@@ -74,13 +77,46 @@ struct PhoneShell: View {
         }
         .environment(\.tabBarClearance, PillTabBar.height + 16)
         .overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
+            if tipVisible && !store.popupOpen { customTip }
             PillTabBar(items: items, selection: selection, onReselect: { raw in
                 if let t = AppTab(rawValue: raw) { Haptics.tap(); store.selectTab(t) }
             }, onLongPress: { raw in
                 if raw == AppTab.custom.rawValue { store.customPickerOpen = true }
             })
+            }
         }
-        .onChange(of: store.tab) { _, _ in Haptics.tap() }
+        .modifier(CoachTourHost())
+        .onChange(of: store.tab) { _, now in
+            Haptics.tap()
+            if now != .custom { showCustomTip() }
+        }
+    }
+
+    /// One-time hint on the first tab change: the Custom tab is the player's own and is changed with a long press.
+    private var customTip: some View {
+        Button { tipVisible = false } label: {
+            Text("Tip: press and hold the Custom tab to choose what it opens.").textStyle(.caption, tint: Theme.ink)
+                .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.s)
+                .background(Capsule().fill(Theme.surfaceRaised))
+                .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1))
+        }
+        .buttonStyle(PressableStyle())
+        .padding(.horizontal, Theme.Space.l)
+        .transition(.opacity)
+        .accessibilityLabel("Tip: press and hold the Custom tab to choose what it opens. Double tap to dismiss.")
+        .accessibilityIdentifier("custom-tab-tip")
+    }
+
+    private func showCustomTip() {
+        guard !FirstRunFlags.seen(FirstRunFlags.customTabTip) else { return }
+        FirstRunFlags.mark(FirstRunFlags.customTabTip)
+        withAnimation(Motion.quick(reduceMotion)) { tipVisible = true }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 7_000_000_000)
+            withAnimation(Motion.quick(reduceMotion)) { tipVisible = false }
+        }
     }
 }
 

@@ -50,7 +50,11 @@ struct ReportDigestSheet: View {
             VStack(spacing: 10) {
                 HStack(alignment: .top, spacing: 12) {
                     figure("Revenue", digest.revenue, Theme.ivory) { store.short($0) }
-                    figure("Profit", profit, Theme.change(profit)) { signed($0) }.profitGlow(profit)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Profit").popupText(.rowLabel)
+                        ArrowAmount(gain: profit, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 HStack(alignment: .top, spacing: 12) {
                     figure("Cash", digest.cashEnd, digest.cashEnd < 0 ? Theme.loss : Theme.ivory) { store.short($0) }
@@ -65,7 +69,7 @@ struct ReportDigestSheet: View {
                     Text("Net worth").popupText(.rowLabel)
                     Spacer()
                     CountedFigure(value: digest.netWorthEnd, format: { (v: Double) -> String in store.short(v) }, tint: Theme.ivory).font(PopupVariant.standard.valueFont)
-                    CountedFigure(value: digest.netWorthChange, format: { (v: Double) -> String in signed(v) }, tint: Theme.change(digest.netWorthChange)).font(PopupVariant.standard.valueFont)
+                    ArrowAmount(gain: digest.netWorthChange, format: { (v: Double) -> String in store.short(v) }, live: true, font: PopupVariant.standard.valueFont)
                 }
             }
         }
@@ -74,7 +78,7 @@ struct ReportDigestSheet: View {
     private func figure(_ label: String, _ value: Double, _ tint: Color, _ text: @escaping (Double) -> String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label).popupText(.rowLabel)
-            CountedFigure(value: value, format: text, tint: tint).font(PopupVariant.standard.figureFont).lineLimit(1).minimumScaleFactor(0.7)
+            CountedFigure(value: value, format: text, tint: tint).font(PopupVariant.standard.figureFont).lineLimit(2).minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -99,10 +103,10 @@ struct ReportDigestSheet: View {
         return VStack(alignment: .leading, spacing: 4) {
             Text("Decisions").capsLabel()
             Text(answered + ", " + waiting).popupText(.body)
+            if !digest.delegation.isEmpty { Text(digest.delegation).popupText(.caption) }
         }
     }
 
-    private func signed(_ v: Double) -> String { abs(v) < 0.5 ? store.short(0) : (v > 0 ? "+" : "−") + store.short(abs(v)) }
 }
 
 /// A reward popup: a trophy, a milestone or a finished ladder goal. One at a time, from the queue the store holds after a day;
@@ -118,9 +122,18 @@ struct CelebrationPopup: View {
     /// Goal complete: after `celebrate` (1.5 s) the card slides up and out with `move`.
     @State private var leaving = false
 
+    /// A trophy or a net-worth milestone fills the screen; Reduce Motion keeps the card.
+    private var fullScreen: Bool { !reduceMotion && (item.kind == "trophy" || (item.kind == "milestone" && item.art == "milestone.networth")) }
+
     var body: some View {
-        GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, category: .compact, tone: .investment, icon: "trophy", onClose: { }) {
-            card
+        Group {
+            if fullScreen {
+                FullScreenCelebration(kicker: kindLabel, title: item.title, detail: item.detail, reward: item.reward, onClaim: { dismiss() }) { badge }
+            } else {
+                GamePopup(title: kindLabel, showsClose: false, dismissOnBackdrop: false, variant: .reward, category: .compact, tone: .investment, icon: "trophy", onClose: { }) {
+                    card
+                }
+            }
         }
         .offset(y: leaving ? -900 : 0)
         .onAppear {
@@ -187,12 +200,12 @@ struct CelebrationPopup: View {
                 .overlay(Circle().strokeBorder(Theme.gain, lineWidth: 2))
                 .accessibilityHidden(true)
         } else if let entry = trophyEntry {
-            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: entry.id, group: entry.group), size: 112, shape: .round, glyph: Glyph.achievements)
+            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: entry.id, group: entry.group), size: fullScreen ? 168 : 112, shape: .round, glyph: Glyph.achievements)
                 .padding(6)
-                .overlay(Circle().strokeBorder(Theme.gold, lineWidth: 3))
+                .overlay(Circle().strokeBorder(Theme.gold, lineWidth: fullScreen ? 5 : 3))
                 .padding(8)
         } else {
-            GoldRingMark(glyph: Glyph.achievements, size: item.kind == "trophy" ? 96 : 64)
+            GoldRingMark(glyph: Glyph.achievements, size: fullScreen ? 150 : (item.kind == "trophy" ? 96 : 64))
         }
     }
 

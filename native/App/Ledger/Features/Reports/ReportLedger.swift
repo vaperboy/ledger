@@ -14,7 +14,6 @@ enum ReportPage: String, CaseIterable, Hashable, Identifiable { case summary = "
         if id != 0, let co = engine.state.company(id) { return store.short(v, in: co) }
         return store.short(v)
     }
-    func signed(_ v: Double, company id: Int) -> String { abs(v) < 0.5 ? short(0, company: id) : (v > 0 ? "+" : "−") + short(abs(v), company: id) }
 }
 
 /// The bank movements of the companies in a report's weeks, newest first, with a filter by kind. Each company keeps its
@@ -99,7 +98,7 @@ struct ReportMovements: View {
                         .textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                Text(fmt.signed(m.amount, company: m.companyID)).textStyle(.body, tint: m.amount > 0 ? Theme.gain : Theme.ink, numeric: true)
+                ArrowAmount(gain: m.amount, format: { (v: Double) -> String in fmt.short(v, company: m.companyID) })
             }
             .padding(.vertical, 8)
     }
@@ -162,7 +161,7 @@ struct ReportBills: View {
                                         .textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
                                 }
                                 Spacer(minLength: 8)
-                                Text(fmt.signed(m.amount, company: m.companyID)).textStyle(.body, numeric: true)
+                                ArrowAmount(gain: m.amount, format: { (v: Double) -> String in fmt.short(v, company: m.companyID) })
                             }
                             .padding(.vertical, 8)
                         }
