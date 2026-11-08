@@ -1,4 +1,5 @@
 # What's new
+- Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once
 - The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval
 - Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows
 - Taxes are paid as they arise: dividend tax when a dividend is paid, gains tax at the sale, interest and wealth tax monthly, company tax monthly, and the year end only settles the small difference
