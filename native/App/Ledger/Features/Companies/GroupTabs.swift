@@ -4,13 +4,23 @@ import Countries
 import Businesses
 import Simulation
 
-// The Group tab has four tabs (GroupHome.swift); each company, holding and chain is managed on its own page (GroupEntityPage.swift and
+// The Group tab has four tabs: Overview, Structure, People, Suppliers (GroupHome.swift); each company, holding and chain is managed on its own page (GroupEntityPage.swift and
 // the GroupEntity*.swift files). Every figure comes from the engine.
 
 /// The tabs of an entity page. `key` is the name other screens use to ask for one (`GameStore.openGroupEntity(companyID:section:)`).
 enum GroupSection: String, CaseIterable, Hashable {
-    case overview = "Overview", management = "Management", board = "Boardroom", money = "Money", expansion = "Expansion", deals = "Ownership"
-    var key: String { rawValue.lowercased() }
+    case overview = "Overview", management = "Management", board = "Boardroom", money = "Money", expansion = "Grow", deals = "Owners and sales"
+    /// Stays the same when a tab is retitled, so links that name a tab keep working.
+    var key: String {
+        switch self {
+        case .overview: return "overview"
+        case .management: return "management"
+        case .board: return "boardroom"
+        case .money: return "money"
+        case .expansion: return "expansion"
+        case .deals: return "ownership"
+        }
+    }
 }
 
 /// Text tabs with a champagne underline, for the Group tab and for an entity page. When all titles fit at their natural size they share

@@ -6,7 +6,7 @@ import Simulation
 
 /// An entity's board as thin seat rows: an avatar circle (or a '+' ring for an open seat), the role, and "Appoint" in champagne at the right.
 /// The owner comes first (with a "Works here" chip where he runs the company himself). Appointing uses the board engine (a search costs a
-/// fee, the owners vote on a seat); the agenda, the minutes and the meeting rhythm stay on the board room page one tap away.
+/// fee, the owners vote on a seat); the agenda, the minutes and the meeting rhythm stay on the Boardroom page one tap away.
 struct GroupEntityBoard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -33,9 +33,9 @@ struct GroupEntityBoard: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             if !message.isEmpty { NoteCard(text: message) }
             if active { roomLink(key) }
-            LedgerSection("Board seats", rule: false) {
+            LedgerSection("Who sits on it", rule: false) {
                 VStack(spacing: 0) {
-                    ownerRow
+                    ownerRow(key: key)
                     if active { seatRows(key) }
                 }
             }
@@ -103,9 +103,12 @@ struct GroupEntityBoard: View {
         return false
     }
 
-    private var ownerRow: some View {
+    /// You, with your share of the owners: what the co-owners hold leaves the rest to you.
+    private func ownerRow(key: String) -> some View {
         let name: String = engine.state.player.name
-        return line(first: true, lead: { avatar(initials(name)) }, title: name, sub: "Owner", chip: ownerWorksHere ? "Works here" : "", trail: { EmptyView() })
+        let others: Double = key.isEmpty ? 0 : engine.boardVoters(key: key).filter { (v: ManagerModel.Voter) -> Bool in v.type == "owner" }.reduce(0) { (a: Double, v: ManagerModel.Voter) -> Double in a + v.percent }
+        let mine: Int = Int(max(0, min(100, 100 - others)).rounded())
+        return line(first: true, lead: { avatar(initials(name)) }, title: name, sub: "Owner \u{00B7} \(mine)%", chip: ownerWorksHere ? "Works here" : "", trail: { EmptyView() })
     }
 
     @ViewBuilder private func seatRows(_ key: String) -> some View {
@@ -168,7 +171,7 @@ struct GroupEntityBoard: View {
         let waiting: Int = engine.boardOpenDecisions(key: key)
         let sub: String = waiting > 0 ? "\(waiting) \(waiting == 1 ? "point waits" : "points wait") for your decision" : "Agenda, minutes and how often it meets"
         return NavigationLink { BoardView(key: key) } label: {
-            LedgerRow(leading: .glyph(Glyph.achievements), title: "Board room", subtitle: sub, badge: waiting, chevron: true)
+            LedgerRow(leading: .glyph(Glyph.achievements), title: "Boardroom", subtitle: sub, badge: waiting, chevron: true)
                 .overlay(alignment: .top) { Hairline() }
         }.buttonStyle(PressableStyle()).accessibilityIdentifier("group-board-room")
     }

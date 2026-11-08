@@ -5,11 +5,11 @@ import Simulation
 
 /// The four tabs of the Group tab.
 enum GroupHomeTab: String, CaseIterable, Hashable {
-    case overview = "Overview", companies = "Companies", staff = "Staff", suppliers = "Suppliers"
+    case overview = "Overview", structure = "Structure", people = "People", suppliers = "Suppliers"
 }
 
 /// The Group tab under its title: the tab strip and the chosen tab. Overview is the dashboard (with the way to add to the group),
-/// Companies the list that opens each entity page, Staff everyone who works for the group, Suppliers the group's supplier directory.
+/// Structure what owns and manages what (each card opens its page), People everyone who works for the group, Suppliers the group's supplier directory.
 struct GroupHome: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -32,9 +32,9 @@ struct GroupHome: View {
 
     @ViewBuilder private func content(_ t: GroupHomeTab) -> some View {
         switch t {
-        case .overview: GroupOverviewTab(engine: engine, onAdd: onAdd, onPick: onPick, onStaff: { tab = .staff })
-        case .companies: GroupCompaniesTab(engine: engine, onPick: onPick)
-        case .staff: GroupStaffTab(engine: engine, onPick: onPick)
+        case .overview: GroupOverviewTab(engine: engine, onAdd: onAdd, onPick: onPick, onStructure: { tab = .structure })
+        case .structure: GroupStructureTab(engine: engine, onPick: onPick)
+        case .people: GroupPeopleTab(engine: engine, onPick: onPick)
         case .suppliers: GroupSupplierDirectory(embedded: true)
         }
     }
@@ -57,7 +57,7 @@ struct GroupOverviewTab: View {
     var engine: GameEngine
     var onAdd: () -> Void
     var onPick: (GroupEntity, GroupSection) -> Void
-    var onStaff: () -> Void
+    var onStructure: () -> Void
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -166,73 +166,23 @@ struct GroupOverviewTab: View {
 
     // MARK: Who runs what
 
-    /// One row: how many managers run companies for you, how many you run yourself, requests passed up; it opens Staff.
+    /// One row that opens Structure: how many companies have a manager, how many you run yourself, requests passed up to you.
     private func whoRunsWhat(_ ov: TeamOverview) -> some View {
         let lines: [TeamOverview.CompanyLine] = ov.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
         let managed: Int = lines.filter { (l: TeamOverview.CompanyLine) -> Bool in l.managerTitle != nil }.count
         let passed: Int = ov.issues.filter { (i: TeamOverview.Issue) -> Bool in i.beyondAuthority }.count
-        let wages: Double = ov.companies.reduce(0) { (a: Double, l: TeamOverview.CompanyLine) -> Double in a + l.monthlyWages }
-            + ov.members.reduce(0) { (a: Double, m: TeamOverview.Member) -> Double in a + m.monthlyWage }
         var parts: [String] = ["\(managed) with a manager", "you run \(lines.count - managed)"]
         if passed > 0 { parts.append("\(passed) passed up to you") }
-        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("Who runs what").textStyle(.label, tint: P.inkFaint)
-            LedgerRow(leading: .glyph(Glyph.people), title: "Staff", subtitle: parts.joined(separator: " \u{00B7} "),
-                      value: store.short(wages), valueNote: "wages a month", badge: passed,
-                      identifier: "group-who-runs-what", action: onStaff)
-        }
+        return LedgerRow(leading: .glyph(Glyph.group), title: "Who runs what", subtitle: parts.joined(separator: " \u{00B7} "),
+                         badge: passed, identifier: "group-who-runs-what", action: onStructure)
     }
 }
 
-// MARK: - Companies
+// MARK: - People
 
-/// One row per company, holding and chain (a holding's companies indented under it), value over this month's profit; a row opens its page.
-struct GroupCompaniesTab: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var onPick: (GroupEntity, GroupSection) -> Void
-    @Environment(\.outsidePalette) private var P
-
-    var body: some View {
-        let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            if list.isEmpty {
-                EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Add one from Overview.")
-            } else {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(list.count) \(list.count == 1 ? "entry" : "entries")").textStyle(.label, tint: P.inkFaint)
-                    Spacer(minLength: Theme.Space.s)
-                    Text("Value \u{00B7} profit this month").textStyle(.caption, tint: P.inkFaint).lineLimit(1)
-                }
-                VStack(spacing: 0) {
-                    ForEach(Array(list.enumerated()), id: \.element.id) { (n: Int, g: GroupEntity) in
-                        if n > 0 { Hairline().padding(.leading, (g.indent ? Theme.Space.xl : 0) + Theme.Icon.medium + Theme.Space.m) }
-                        row(g)
-                    }
-                }
-            }
-        }
-    }
-
-    private func glyph(_ g: GroupEntity) -> String { g.isHolding ? Glyph.bank : (g.isChain ? Glyph.group : Glyph.home) }
-
-    /// One company: name over its kind, value over this month's profit (gain or loss colour).
-    private func row(_ g: GroupEntity) -> some View {
-        let sign: String = g.profit > 0.5 ? "+" : (g.profit < -0.5 ? "\u{2212}" : "")
-        return LedgerRow(leading: .glyph(glyph(g)), leadingTint: g.indent ? P.inkFaint : nil, title: g.name, subtitle: g.kind,
-                         value: store.short(g.value), valueTint: g.value < 0 ? Theme.loss : nil,
-                         valueNote: sign + store.short(abs(g.profit)), valueNoteTint: Theme.change(g.profit), badge: GroupWaiting.count(engine, g),
-                         lineLimit: 1, identifier: "group-entity-\(g.id)", action: { onPick(g, .overview) })
-            .padding(.leading, g.indent ? Theme.Space.xl : 0)
-            .frame(minHeight: 60)
-    }
-}
-
-// MARK: - Staff
-
-/// Everyone who works for the group in one place: the totals, the group's own management, then per company, holding and chain who runs
+/// The People tab: everyone who works for the group in one place: the totals, the group's own management, then per company, holding and chain who runs
 /// each company (with its headcount and wages), its executives and its board seats. A person opens their profile.
-struct GroupStaffTab: View {
+struct GroupPeopleTab: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var onPick: (GroupEntity, GroupSection) -> Void

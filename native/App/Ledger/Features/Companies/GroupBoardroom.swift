@@ -5,7 +5,7 @@ import Businesses
 import Simulation
 
 /// The Boardroom tab of an entity: sit down with the people who run each company (a short dialogue, then a choice with a visible consequence),
-/// call the board round, and propose replacing a CEO. Logic: `OwnerMeetings`, `ManagerModel.boardVote` / `proposeCEOChange`. With co-owners the
+/// ask the board, and propose replacing a CEO. Logic: `OwnerMeetings`, `ManagerModel.boardVote` / `proposeCEOChange`. With co-owners the
 /// votes are binding and weighted by shares; when you own it alone the board only advises and you decide. The seats and the agenda stay below.
 struct GroupBoardroom: View {
     @EnvironmentObject var store: GameStore
@@ -28,6 +28,10 @@ struct GroupBoardroom: View {
     var body: some View {
         let cos: [Company] = entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
+            Text("Board of " + entity.name).textStyle(.title).lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("boardroom-title")
             ForEach(cos) { (c: Company) in
                 companyCard(c, showName: cos.count > 1)
             }
@@ -73,7 +77,7 @@ struct GroupBoardroom: View {
             }
             VStack(spacing: 0) {
                 Hairline().padding(.leading, 28 + Theme.Space.m)
-                LedgerRow(leading: .glyph(Glyph.achievements), title: "Call the board",
+                LedgerRow(leading: .glyph(Glyph.achievements), title: "Ask the board",
                           identifier: "boardroom-call-\(c.id)", action: { round = RoundRef(companyID: c.id) })
             }
         }

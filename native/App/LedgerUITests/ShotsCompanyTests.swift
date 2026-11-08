@@ -91,7 +91,7 @@ final class ShotsCompanyTests: FeatureTourCase {
             guard tapWhere(wait: 2, pred) else { continue }
             pause(1)
             if has("company-tab-overview", wait: 1) { return true }
-            if tapWhere(wait: 3, { $0.type == .button && ($0.id.hasPrefix("entity-open-company-") || $0.label.hasPrefix("Open the company") || $0.label.hasPrefix("Open the flagship")) }) {
+            if tapWhere(wait: 3, { $0.type == .button && ($0.id.hasPrefix("structure-action-") || $0.label.hasPrefix("Open the company") || $0.label.hasPrefix("Open the flagship")) }) {
                 pause(1)
                 if has("company-tab-overview", wait: 3) || has("back-button", wait: 1) { return true }
             }

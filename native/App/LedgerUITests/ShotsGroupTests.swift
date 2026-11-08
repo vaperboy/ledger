@@ -26,7 +26,7 @@ final class ShotsGroupTests: FeatureTourCase {
     private func closeAll() { var n = 0; while popupUp(0.5) && n < 4 { closePopup(); n += 1 } }
 
     private func entityID() -> String {
-        guard goGroup("Companies") else { return "" }
+        guard goGroup("Structure") else { return "" }
         if let h = find(wait: 4, { $0.id.hasPrefix("group-entity-co") && $0.type == .button && $0.label.range(of: "Caf", options: [.caseInsensitive, .diacriticInsensitive]) != nil }) { return h.id }
         return ids(prefix: "group-entity-", wait: 1).first ?? ""
     }
@@ -51,7 +51,7 @@ final class ShotsGroupTests: FeatureTourCase {
 
     private func openTab(_ entity: String, _ name: String) -> Bool {
         closeAll()
-        guard !entity.isEmpty, goGroup("Companies"), tapID(entity, wait: 4) else { return false }
+        guard !entity.isEmpty, goGroup("Structure"), tapID(entity, wait: 4) else { return false }
         return groupTab(name)
     }
 
@@ -65,25 +65,25 @@ final class ShotsGroupTests: FeatureTourCase {
         pause(1)
         snapPage("overview", lower: 2)
         if tapID("group-add") { popupShot("add-menu") }
-        for home in ["Companies", "Staff", "Suppliers"] {
+        for home in ["Structure", "People", "Suppliers"] {
             if goGroup(home) { pause(0.8); snapPage("home-\(home)", lower: 2) } else { snap("home-\(home)-missing") }
         }
-        if goGroup("Staff"), tapPrefix("group-who-", wait: 3) { popupShot("staff-manager") }
+        if goGroup("People"), tapPrefix("group-who-", wait: 3) { popupShot("staff-manager") }
         if goGroup("Overview"), tapID("group-who-runs-what", wait: 3) { pause(0.6); snap("overview-to-staff") }
         let entity: String = entityID()
         if entity.isEmpty { snap("no-entity"); return }
 
         // Entity page, every tab
-        for name in ["Overview", "Management", "Boardroom", "Money", "Expansion"] {
+        for name in ["Overview", "Management", "Boardroom", "Money", "Grow"] {
             if openTab(entity, name) { pause(0.8); snapPage("entity-\(name)", lower: 2) } else { snap("entity-\(name)-missing") }
         }
         for part in ["Owners", "Sell", "Raise", "Offers"] {
-            if openTab(entity, "Ownership"), tapID("group-ownership-\(part)") { pause(0.8); snapPage("ownership-\(part)", lower: 2) } else { snap("ownership-\(part)-missing") }
+            if openTab(entity, "Owners and sales"), tapID("group-ownership-\(part)") { pause(0.8); snapPage("ownership-\(part)", lower: 2) } else { snap("ownership-\(part)-missing") }
         }
 
         // Sale routes
         for route in ["auction", "stake", "private", "merger"] {
-            if openTab(entity, "Ownership"), tapID("group-ownership-Sell"), tapID("sell-route-\(route)", wait: 2) {
+            if openTab(entity, "Owners and sales"), tapID("group-ownership-Sell"), tapID("sell-route-\(route)", wait: 2) {
                 pause(0.8)
                 if popupUp(2) { snap("sell-\(route)"); closeAll() } else { snap("sell-\(route)-page"); _ = tapBack() }
             }
@@ -111,7 +111,7 @@ final class ShotsGroupTests: FeatureTourCase {
         if openTab(entity, "Boardroom"), tapID("group-board-room", wait: 4) { pause(0.8); snapPage("board-room", lower: 1); _ = tapBack() }
 
         // Chain page (when the company is in a chain)
-        if openTab(entity, "Expansion"), tapText("Open the chain", wait: 2) { pause(0.8); snapPage("chain", lower: 2); _ = tapBack() }
+        if openTab(entity, "Grow"), tapText("Open the chain", wait: 2) { pause(0.8); snapPage("chain", lower: 2); _ = tapBack() }
 
         // Suppliers directory, Join a franchise
         closeAll()
@@ -139,7 +139,7 @@ final class ShotsGroupTests: FeatureTourCase {
             for h in hits() where h.type == .button && h.value == "Not selected" { touch(h) }
             if tapText("Create the holding", wait: 3) { pause(1.5); closeAll(); snapPage("holding-company-page", lower: 1) }
         }
-        if goGroup("Companies") {
+        if goGroup("Structure") {
             pause(1)
             snapPage("companies-with-holding", lower: 1)
             if let h = find(wait: 3, { $0.id.hasPrefix("group-entity-") && $0.type == .button && $0.label.contains("Holding") }) {
