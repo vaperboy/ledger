@@ -59,7 +59,7 @@ enum AppRequest: Equatable {
     case techPro(companyID: Int, equipmentID: String)
     /// Atlas Insurance for one company.
     case atlas(companyID: Int)
-    /// The merged Ventures screen (the Projects tab) on its Ideas and startups segment.
+    /// The merged Ventures screen (the Projects tab) on its Portfolio segment.
     case ventures
 }
 
@@ -729,7 +729,7 @@ final class GameStore: ObservableObject {
     }
 
     /// Opens an app of the Phone (Inbox, Bank, News ...) on the open tab: pushed on its stack (or, when already on it, gone back to), so
-    /// Back returns to where the link was. Ventures is a part of the Projects tab: on that tab's root it switches to Ideas and startups.
+    /// Back returns to where the link was. Ventures is a part of the Projects tab: on that tab's root it switches to Portfolio.
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
         if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
         appRequest = app == .ventures ? nil : request

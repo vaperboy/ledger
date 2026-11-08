@@ -132,8 +132,8 @@ final class ShotsAppsTests: FeatureTourCase {
     private func others() {
         if openPhoneApp("Market") { shotLong("market", drags: 2) } else { shot("market-not-opened") }
         if openPhoneApp("Reviews") { shotLong("reviews", drags: 2) } else { shot("reviews-not-opened") }
-        // The Ventures app is the Ventures tab's "Ideas and startups" part.
-        if goTab("Ventures"), tapLabel("Ideas and startups", wait: 3) {
+        // The Ventures app is the Ventures tab's "Portfolio" part.
+        if goTab("Ventures"), tapLabel("Portfolio", wait: 3) {
             shotLong("ventures-feed", drags: 2)
             if tapPrefix("ventures-part-", wait: 3) { shotLong("ventures-portfolio") }
         } else { shot("ventures-not-opened") }
