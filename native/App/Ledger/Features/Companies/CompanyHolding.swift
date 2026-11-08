@@ -71,6 +71,7 @@ struct CompanyHolding: View {
                         }
                     }
                 }
+                HoldingStartupStakes(engine: engine, company: company)
                 if !divisions.isEmpty {
                     MoreBlock(title: "Divisions", card: false, trailing: { Text("\(divisions.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
                         VStack(spacing: 0) {
