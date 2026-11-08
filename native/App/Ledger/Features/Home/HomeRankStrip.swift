@@ -36,7 +36,7 @@ struct HomeProgressStrip: View {
         content()
             .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(Theme.surface))
+            .glassSurface()
             .contentShape(Rectangle())
     }
 

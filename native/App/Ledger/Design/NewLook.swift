@@ -783,8 +783,7 @@ struct PillTabBar: View {
         }
         .padding(.horizontal, 6)
         .frame(height: PillTabBar.height - 8)
-        .background(Capsule().fill(Theme.surfaceRaised))
-        .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 0.5))
+        .glassCapsule()
         .elevation(.raised)
         .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
     }

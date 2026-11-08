@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import GameCore
 import Businesses
 import Simulation
@@ -10,8 +11,10 @@ struct CompaniesView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Height of the floating tab bar (0 on iPad); the Next day dock sits just above it.
-    @Environment(\.tabBarClearance) private var tabBarClearance
+    /// The safe-area insets this screen's layout really respects, measured outside the page; nil until the first layout pass. Where the
+    /// hosting container ignores a safe area the page would draw under the status bar or the tab bar: the difference to the device's
+    /// own insets is added back as padding.
+    @State private var ownInsets: EdgeInsets?
     @State private var sort: Sort = .attention
     @State private var showAll = false
 
@@ -37,10 +40,18 @@ struct CompaniesView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: NextDayDock.reserve) }
                 }
             }
-            .ledgerBackground()
+            // The dock is attached before `ledgerBackground()` adds the tab bar clearance (a bottom inset, 0 on iPad where the sidebar
+            // replaces the bar), so it sits that far above the bottom edge plus its own gap and never under the bar.
             .overlay(alignment: .bottomTrailing) {
-                if let e = store.engine { NextDayDock(engine: e).padding(.bottom, tabBarClearance == 0 ? Theme.Space.s : tabBarClearance) }
+                if let e = store.engine { NextDayDock(engine: e).padding(.bottom, NextDayDock.gap) }
             }
+            .padding(.bottom, missingBottom)
+            .ledgerBackground()
+            .background(GeometryReader { (g: GeometryProxy) in
+                Color.clear
+                    .onAppear { ownInsets = g.safeAreaInsets }
+                    .onChange(of: g.safeAreaInsets) { _, v in ownInsets = v }
+            })
             .onAppear { store.refreshPending() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
@@ -48,6 +59,16 @@ struct CompaniesView: View {
             .companyRouteDestinations()
             .returnBar(for: .company)
         }
+    }
+
+    /// What the device reserves at an edge beyond what this screen's layout already keeps clear (0 once they agree).
+    private var missingTop: CGFloat {
+        guard let own = ownInsets else { return 0 }
+        return max(0, Theme.windowInsets.top - own.top)
+    }
+    private var missingBottom: CGFloat {
+        guard let own = ownInsets else { return 0 }
+        return max(0, Theme.windowInsets.bottom - own.bottom)
     }
 
     // MARK: The Home page
@@ -63,7 +84,7 @@ struct CompaniesView: View {
                 // Height budget at regular text size on the shortest phone (667 pt tall: 20 top inset, 90 tab bar clearance, 64 dock
                 // reserve, 20 page padding leave about 470 pt). Blocks, full / compact: top line 44 / 44, net worth hero 200 / 175
                 // (figure 50, change line 20, balance row 52, chart 36 / 28), milestone line 32, insight strip 88, needs-you card
-                // 140 / 120, companies 90 (one row), gaps 16 / 12 each. Full is about 650, so each step below drops the least
+                // 140 / 120, companies about 110 (one company card), gaps 16 / 12 each. Full is about 650, so each step below drops the least
                 // important block: compact, no milestone (-32), no insight strip (-100), no balance row (-52), no chart (-28):
                 // about 390, which fits. The last step is never a scroll; only very large text can clip it.
                 ViewThatFits(in: .vertical) {
@@ -94,14 +115,15 @@ struct CompaniesView: View {
 
     private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true, trim: Int = 0) -> some View {
         HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim, onNewCompany: { store.push(.newCompany, on: .company) }) {
-            companiesBlock(e, rows: rows, limit: limit)
+            companiesBlock(e, rows: rows, limit: limit, compact: compact)
         }
-        .padding(.horizontal, Theme.Space.page).padding(.top, compact ? Theme.Space.xs : Theme.Space.s).padding(.bottom, Theme.Space.m)
+        // The header starts below the status bar / Dynamic Island: `missingTop` is the part of the real inset the layout does not already keep clear.
+        .padding(.horizontal, Theme.Space.page).padding(.top, (compact ? Theme.Space.xs : Theme.Space.s) + missingTop).padding(.bottom, Theme.Space.m)
         .frame(maxWidth: 1100).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     /// The companies, worst first: the top `limit` rows and "All N", which opens the full list in a popup (nil: every company, iPad).
-    @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?) -> some View {
+    @ViewBuilder private func companiesBlock(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool) -> some View {
         if rows.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 HomeGroupLabel("Companies")
@@ -122,7 +144,7 @@ struct CompaniesView: View {
                             .accessibilityIdentifier("show-all-companies")
                     }
                 }
-                companyRows(e, rows: shown)
+                companyRows(e, rows: shown, compact: compact)
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("home-companies-box")
             }
@@ -142,9 +164,14 @@ struct CompaniesView: View {
         .accessibilityLabel("Sorted by \(sort.rawValue.lowercased())")
     }
 
-    @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)]) -> some View {
+    @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], compact: Bool) -> some View {
         if sizeClass == .regular {
             CompanyTable(engine: e, rows: rows) { store.push(.company($0), on: .company) }
+        } else if rows.count == 1, let r = rows.first {
+            // A lone company gets the richer card: it has the room, and the page would otherwise leave it empty.
+            Button { Haptics.tap(); store.push(.company(r.co.id), on: .company) } label: { CompanyCard(engine: e, company: r.co, health: r.h, compact: compact) }
+                .buttonStyle(PressableStyle())
+                .accessibilityHint("Opens the company")
         } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
@@ -338,6 +365,63 @@ struct CompanyRow: View {
         if co.status == .open { tail = co.cash < 0 ? "Out of cash" : co.staff.count.peopleText }
         else { tail = co.status == .setup ? "Setting up" : co.status.rawValue.capitalized }
         return "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(tail)"
+    }
+}
+
+/// A single company on Home as a card: the trade picture, name and health pill, the profit of the last twelve months with its ▲/▼ arrow, the
+/// cash, and the Open action. `compact` drops the figures' second line spacing for short screens.
+struct CompanyCard: View {
+    @EnvironmentObject var store: GameStore
+    var engine: GameEngine
+    var company: Company
+    var health: CompanyHealth
+    var compact: Bool = false
+    @Environment(Entitlements.self) private var ent
+    @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
+    @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
+
+    var body: some View {
+        let co = company, h = health
+        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
+        let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
+        let profit: Double = h.profitTTM
+        let arrow: String = profit > 0.5 ? "▲ " : profit < -0.5 ? "▼ " : ""
+        VStack(alignment: .leading, spacing: compact ? Theme.Space.s : Theme.Space.m) {
+            HStack(spacing: Theme.Space.m) {
+                ThumbnailView(kind: .trade, key: co.type, size: 40)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    HStack(spacing: Theme.Space.xs) {
+                        Text(co.name).textStyle(.headline).lineLimit(1)
+                        CosmeticBadgeView(badge: badge, tint: accent, size: 14)
+                    }
+                    Text("\(engine.tradeName(co)) · \(engine.cityName(co))").textStyle(.caption).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if co.status == .open { HealthChip(label: h.label) } else { StatusChip(company: co) }
+            }
+            Hairline()
+            HStack(alignment: .bottom, spacing: Theme.Space.m) {
+                figure("Profit a year", arrow + store.short(abs(profit), in: co), Theme.change(profit))
+                figure("Cash", store.short(co.cash, in: co), co.cash < 0 ? Theme.loss : Theme.ink)
+                Spacer(minLength: Theme.Space.s)
+                HStack(spacing: Theme.Space.xs) {
+                    Text("Open").textStyle(.body, tint: Theme.accent, weight: .semibold)
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.accent)
+                }
+            }
+        }
+        .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.l)
+        .glassSurface()
+        .contentShape(Rectangle())
+        .zoomSource(.company(co.id))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func figure(_ title: String, _ value: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
+            Text(value).textStyle(.headline, tint: tint, numeric: true).lineLimit(1)
+        }
     }
 }
 

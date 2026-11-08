@@ -10,10 +10,12 @@ import UIKit
 // Numbers  `Figure`, `FigureRow`; charts in `ChartFrame` with `ChartPalette`; states `EmptyState`, `LoadingState`; bars `ProgressLine`.
 // Buttons  `PrimaryButtonStyle` (one per screen), `SecondaryButtonStyle`, `TertiaryButtonStyle`, `.regular` or `.compact` (44 pt hit area);
 //          `PrimaryAction` says why it is blocked. Choice `SegmentedPill`, navigation `SectionTabs`, input `LedgerField`, `LedgerSlider`.
-// Never    gradients, glows, shimmer, a border around everything or a box inside a box: tone and hairlines carry the structure.
+// Never    gradients, glows or shimmer on content, a border around everything or a box inside a box: tone and hairlines carry the structure.
+//          The page backdrop alone has a soft gradient and a faint corner glow (`LedgerBackdrop`); cards float on it as `glassSurface()`.
 enum Theme {
     // MARK: Colour roles
     static let page = Color(hex: 0x0F1011)                                    // the page
+    static let pageLift = Color(hex: 0x1A1813)                                // the warmer, lifted tone the page backdrop fades to at the bottom
     static let surface = Color(hex: 0x151617)                                 // a group or tile on the page
     static let surfaceRaised = Color(hex: 0x1A1B1D)                           // what floats: popup, tab bar, toast, menu
     static let inset = Color(hex: 0xF1EBDD, opacity: 0.05)                    // segment track, field, pressed row
@@ -95,6 +97,14 @@ enum Theme {
         switch name { case "good": return gain; case "bad": return loss; case "warn": return warn; default: return inkSoft }
     }
     static func change(_ v: Double) -> Color { v > 0.0000001 ? gain : v < -0.0000001 ? loss : inkSoft }
+
+    /// The device's real safe-area insets (status bar or Dynamic Island on top, home indicator at the bottom), read from the key window;
+    /// zero before a window exists.
+    static var windowInsets: UIEdgeInsets {
+        let scenes: [UIWindowScene] = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene: UIWindowScene? = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+        return scene?.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets ?? .zero
+    }
 }
 
 extension Color {
