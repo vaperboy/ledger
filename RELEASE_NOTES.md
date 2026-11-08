@@ -1,5 +1,5 @@
 # What's new
-- Notifications are small toasts at the top of the screen and every answer you give shows "Chosen: ..."; result messages that used to be centre popups are toasts too
+- No banners or toasts at the top: a decision is answered in a popup and a result popup follows with what you chose and what happened; plain information lives in Stats, Inbox and the ledger pages
 - Managers act realistically: they move prices within a band set by your Direction, order stock and run marketing within their budget, and each department head owns one decision; you give five orders (Direction, Budget, Headcount, Pay and bonus, Replace)
 - Hiring starts simple (offer the going rate, below or above) and the perks, promises and expenses unlock with five staff or a manager; settings show sole trader and limited company side by side at your current profit
 - The daily report is a one-line bar on Home instead of a blocking popup, and Stats has one ledger that answers why money moved, with search and filters, plus Goals and Reports as pages
