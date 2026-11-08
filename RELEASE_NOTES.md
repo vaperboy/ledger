@@ -1,4 +1,5 @@
 # What's new
+- Hiring is one staffing plan: a target headcount per role, filled by the responsible manager after a two-week search with a recruiting fee, seasonal crews included
 - Each company gets its own first-year demand boost, you are told in the Inbox when the early protections end, and bad events now give a real second choice
 - Chains: a chain has its own head-office page, new locations are named after districts (never numbers), adding a location is one step, and a chain manager fills every location manager automatically
 - Boards: a branch shares its parent company board, managers are no longer seated as directors, and directors decide the CEO when an outside owner sits on the board
