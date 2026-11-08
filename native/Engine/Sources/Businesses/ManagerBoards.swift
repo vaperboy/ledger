@@ -63,7 +63,7 @@ extension ManagerModel {
         isChainKey(key) ? Chains.chain(s, id: keyID(key))?["name"].string ?? "Chain" : s.company(keyID(key))?.name ?? "Company"
     }
     static func holders(_ s: GameState, key: String) -> [(h: JSONValue, co: Company)] {
-        boardCompanies(s, key: key).flatMap { c in c.value("holders").array.filter { $0["pct"].double > 0 }.map { ($0, c) } }
+        boardCompanies(s, key: key).flatMap { c in c.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }.map { ($0, c) } }
     }
     /// A board exists once a chain is registered, or somebody else owns part of a company. Original: `active`.
     public static func boardActive(_ s: GameState, key: String) -> Bool { isChainKey(key) ? Chains.chain(s, id: keyID(key)) != nil : !holders(s, key: key).isEmpty }
@@ -163,7 +163,7 @@ extension ManagerModel {
         let H = holders(s, key: key)
         if role == "director" && !H.isEmpty, let co0 = boardCompanies(s, key: key).first {
             let q = leadership(n)
-            var yes = co0.ownership
+            var yes = HoldingStakes.votingPercent(co0)
             for x in H where HashedRandom.first("el15:\(x.h["name"].string):\(personID)") < 0.25 + q * 0.8 { yes += x.h["pct"].double }
             if yes <= 50 { drop(); return .votedDown(Int(jsRound(yes))) }
         }
@@ -292,6 +292,10 @@ extension ManagerModel {
         let advice = all.filter { l in !active || table.first { $0.id == l.id }?.votes != true }
         let board = all.filter { l in active && table.first { $0.id == l.id }?.votes == true }
         var owners = [VoteLine(id: "you", name: "\(s.player.name) (you)", title: "Owner", yes: true, reason: "", percent: co.ownership, isYou: true)]
+        // A holding of yours with a seat (or control) votes with you.
+        for l in co.value("holders").array where l["hid"].int != 0 && l["pct"].double > 0 && (l["seat"].bool || l["pct"].double > HoldingStakes.controlAbove) {
+            owners.append(VoteLine(id: l["name"].string, name: l["name"].string, title: "Your holding", yes: true, reason: "", percent: l["pct"].double, isYou: true))
+        }
         for x in holders(s, key: key) where x.co.id == co.id {
             owners.append(VoteLine(id: x.h["name"].string, name: x.h["name"].string, title: "Co-owner", yes: ownerVote(s, kind: kind, co: co, holder: x.h),
                                    reason: kind == "ceo" ? ceoOpinion(co, holder: x.h).why : "", percent: x.h["pct"].double, isYou: false))

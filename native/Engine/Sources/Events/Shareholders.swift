@@ -58,7 +58,7 @@ public enum Shareholders {
     }
     public static func holders(_ s: GameState, companyID: Int) -> [Holder] {
         guard let co = s.company(companyID) else { return [] }
-        return co.value("holders").array.filter { $0["pct"].double > 0 }.map { var h = $0; let p = profile(&h, seed: s.seed, week: s.week); return Holder(name: h["name"].string, pct: h["pct"].double, profile: p, mood: h["sat"].double) }
+        return co.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }.map { var h = $0; let p = profile(&h, seed: s.seed, week: s.week); return Holder(name: h["name"].string, pct: h["pct"].double, profile: p, mood: h["sat"].double) }
     }
     /// The average mood of the other owners, weighted by their share. Original: `holderSat`.
     public static func averageMood(_ s: GameState, companyID: Int) -> Double {
@@ -140,7 +140,7 @@ public enum Shareholders {
         }
         s.companies[i].set("dq27", .object(["w": .number(Double(s.week)), "paid": .number(paid), "pr": .number(pr)]))
         var list = s.companies[i].value("holders").array
-        let idx = list.indices.filter { list[$0]["pct"].double > 0 }
+        let idx = list.indices.filter { list[$0]["pct"].double > 0 && list[$0]["hid"].int == 0 }
         if idx.isEmpty { return }
         let g = yearOnYear(s.companies[i])
         let below = 0   // owners also mind your own supply companies selling below cost; not ported
@@ -166,7 +166,7 @@ public enum Shareholders {
     static func maybeDemand(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         if s.week < co.int("dm27") { return }
-        var list = co.value("holders").array.filter { $0["pct"].double > 0 }
+        var list = co.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }
         guard let ix = list.indices.filter({ list[$0]["sat"].double < 38 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }) else { return }
         var unhappy = list[ix]
         s.companies[i].set("dm27", s.week + 26)
@@ -314,7 +314,7 @@ public enum Shareholders {
         }
         // a small, unhappy owner wants to sell: you are asked first (right of first refusal); no answer lets them sell
         let list = s.companies[i].value("holders").array
-        guard let k = list.indices.filter({ list[$0]["sat"].double < 40 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }), s.random.chance(0.5) else { return }
+        guard let k = list.indices.filter({ list[$0]["sat"].double < 40 && list[$0]["hid"].int == 0 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }), s.random.chance(0.5) else { return }
         let old = list[k]["name"].string
         var buyer = "", gid = JSONValue.null, gname = ""
         let gs = GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 && (($0["types"].array.contains { $0.string == co.type }) || $0["strat"].string == "acq") }

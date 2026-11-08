@@ -287,7 +287,7 @@ extension StrategicDecisions {
         L.append(Def(id: "t_activist", cls: "corp", w: 2, def: 1, global: true,
                      cond: { s, _, data in activistTarget(s, data) != nil },
                      make: { s, _, data, _ in
-                         guard let c = activistTarget(s, data), let h = c.value("holders").array.filter({ $0["pct"].double >= 10 }).max(by: { $0["pct"].double < $1["pct"].double }) else { return nil }
+                         guard let c = activistTarget(s, data), let h = c.value("holders").array.filter({ $0["pct"].double >= 10 && $0["hid"].int == 0 }).max(by: { $0["pct"].double < $1["pct"].double }) else { return nil }
                          return .object(["c": .number(Double(c.id)), "n": .string(c.name), "h": h["name"], "p": h["pct"]]) },
                      title: { _, d, _ in "\(d["h"].string) pushes for changes at \(d["n"].string)" },
                      body: { _, d, _ in "\(d["h"].string) (\(String(format: "%.1f", d["p"].double))%) wants higher dividends and lower costs, and says so to the other owners." },
@@ -364,7 +364,7 @@ extension StrategicDecisions {
             .max { value($0, s, data) < value($1, s, data) }
     }
     static func activistTarget(_ s: GameState, _ data: GameData) -> Company? {
-        liveCompanies(s, data).map { s.companies[$0] }.first { $0.value("holders").array.contains { $0["pct"].double >= 10 } }
+        liveCompanies(s, data).map { s.companies[$0] }.first { $0.value("holders").array.contains { $0["pct"].double >= 10 && $0["hid"].int == 0 } }
     }
     /// Groups of other countries that you could buy a stake in.
     static func auctionGroups(_ s: GameState) -> [JSONValue] {

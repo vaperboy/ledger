@@ -185,6 +185,7 @@ public extension GameEngine {
             s.stats.companiesSold += 1
             for k in s.inbox.indices where s.inbox[k].companyID == co.id && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
             for k in s.companies.indices where s.companies[k].holdingID == co.id { s.companies[k].holdingID = 0 }
+            HoldingStakes.releaseLines(&s, holdingID: co.id)
             s.note("\(co.name) is closed down and its things sold.", companyID: co.id)
             done = true
         }

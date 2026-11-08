@@ -56,9 +56,10 @@ public enum HoldingModel {
         if sym == indexFundKey { fm["idxBuy"] = rec } else { fm["fx"][sym]["buy"] = rec }
     }
 
-    /// Companies under a holding that still exist (also ones still being set up).
+    /// Companies under a holding that still exist (also ones still being set up): the ones moved under it and the ones it controls with a
+    /// bought stake of more than half the shares. Smaller stakes are in `HoldingStakes.stakeCompanies`.
     public static func subsidiaries(of holdingID: Int, in s: GameState) -> [Company] {
-        s.companies.filter { $0.holdingID == holdingID && $0.status.isLive }
+        s.companies.filter { $0.status.isLive && ($0.holdingID == holdingID || HoldingStakes.sharePercent(of: $0, holdingID: holdingID) > HoldingStakes.controlAbove) }
     }
 
     public static func holdings(in s: GameState, openOnly: Bool = true) -> [Company] {
@@ -82,8 +83,9 @@ public enum HoldingModel {
     /// enters or leaves the holding or is sold, so net worth never counts a company twice (inside the holding and on its own) or not at all.
     public static func refreshAssets(_ s: inout GameState, holdingID: Int, data: GameData) {
         guard let i = s.companyIndex(holdingID), s.companies[i].type == "hold" else { return }
+        let rivals = HoldingStakes.revalueRivals(&s, holdingID: holdingID, data: data)
         let h = s.companies[i]
-        let held = subsidiaries(of: h.id, in: s).reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * $1.ownership / 100 }
+        let held = HoldingStakes.stakeCompanies(of: h.id, in: s).reduce(0) { $0 + Valuation.companyValue($1, state: s, trades: data.catalog) * HoldingStakes.sharePercent(of: $1, holdingID: h.id) / 100 } + rivals
         var fm = h.value("fm")
         fm["assets"] = .number(treasuryValue(h, s) + held)
         s.companies[i].set("fm", fm)
@@ -92,6 +94,7 @@ public enum HoldingModel {
     /// A holding pays its own small costs with dividends from its companies instead of quietly going bankrupt.
     /// Original: the 'trades_in_hours weekly' step.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
+        HoldingStakes.weekly(&s)
         for hi in s.companies.indices where s.companies[hi].type == "hold" && s.companies[hi].status == .open {
             let h = s.companies[hi]
             let wc = max(fc.currency(h.countryCode, s).scaledPrice(1500), fc.weeklyCost(h, s))
@@ -224,6 +227,7 @@ public enum HoldingModel {
 
     /// When a holding goes bankrupt its companies come back to you. Original: 'companies in a failed holding return to you'.
     public static func holdingFailed(_ s: inout GameState, holdingID: Int) {
+        HoldingStakes.releaseLines(&s, holdingID: holdingID)
         for j in s.companies.indices where s.companies[j].holdingID == holdingID {
             s.companies[j].holdingID = 0
             s.note("\(s.companies[j].name) is owned by you directly now.", tone: "n", companyID: s.companies[j].id)
@@ -236,10 +240,11 @@ public enum HoldingModel {
     public static func taxGroup(of co: Company, in s: GameState) -> [Company]? {
         guard co.form == .limited else { return nil }
         let h: Company?
-        if co.type == "hold" { h = co } else if co.holdingID != 0 { h = s.company(co.holdingID) } else { h = nil }
+        if co.type == "hold" { h = co } else if co.holdingID != 0 { h = s.company(co.holdingID) } else { h = HoldingStakes.controllingHolding(of: co, in: s) }
         guard let hold = h, hold.status.isLive else { return nil }
         let members = [hold] + s.companies.filter {
-            $0.holdingID == hold.id && $0.form == .limited && $0.status.isLive && $0.status != .setup && $0.ownership >= 90 && $0.countryCode == hold.countryCode
+            $0.id != hold.id && $0.form == .limited && $0.status.isLive && $0.status != .setup && HoldingStakes.sharePercent(of: $0, holdingID: hold.id) >= HoldingStakes.squeezeOutFrom
+                && $0.countryCode == hold.countryCode
         }
         return members.count > 1 && members.contains(where: { $0.id == co.id }) ? members : nil
     }
@@ -279,6 +284,8 @@ public enum HoldingModel {
         public var revenueTTM = 0.0, profitTTM = 0.0
         public var cashInGroup = 0.0, debtInGroup = 0.0
         public var companiesValue: Double { subsidiaries.reduce(0) { $0 + $1.share } }
+        /// The holding's share of the rivals it owns part of, at the last revaluation.
+        public var rivalStakes = 0.0
         public var dividendsThisYear = 0.0
         public var taxSaved = 0.0
         public var groupCovered = 0.0
@@ -294,18 +301,23 @@ public enum HoldingModel {
             c.otherFundsCost += fundPosition(h, sym).cost
         }
         let group = taxGroup(of: h, in: s) ?? []
-        for k in subsidiaries(of: h.id, in: s) {
+        for k in HoldingStakes.stakeCompanies(of: h.id, in: s) {
             let v = max(0, Valuation.companyValue(k, state: s, trades: trades))
             let hist = k.monthlyHistory.suffix(12)
-            let own = k.ownership / 100
-            let sub = Subsidiary(id: k.id, name: k.name, trade: trades.facts(for: k.type)?.id ?? k.type, ownership: k.ownership, value: v, share: v * own,
+            let pct = HoldingStakes.sharePercent(of: k, holdingID: h.id)
+            let own = pct / 100
+            let tier = HoldingStakes.tier(forPercent: pct)
+            let sub = Subsidiary(id: k.id, name: k.name, trade: trades.facts(for: k.type)?.id ?? k.type, ownership: pct, value: v, share: v * own,
                                  revenueTTM: hist.reduce(0) { $0 + $1.revenue }, profitTTM: hist.reduce(0) { $0 + $1.profit }, cash: k.cash,
                                  inTaxGroup: group.contains { $0.id == k.id })
             c.subsidiaries.append(sub)
-            c.revenueTTM += sub.revenueTTM * own
-            c.profitTTM += sub.profitTTM * own
-            c.cashInGroup += max(0, k.cash)
-            c.debtInGroup += CompanyFigures.debts(k, loans: s.loans)
+            // An associate adds only its share of profit; a passive stake adds nothing but dividends.
+            if tier.isConsolidated { c.revenueTTM += sub.revenueTTM * own }
+            if tier.isConsolidated || tier == .influence { c.profitTTM += sub.profitTTM * own }
+            if tier.isConsolidated {
+                c.cashInGroup += max(0, k.cash)
+                c.debtInGroup += CompanyFigures.debts(k, loans: s.loans)
+            }
             let gc = groupContribution(k, in: s)
             c.groupCovered += gc.out
         }
@@ -314,7 +326,8 @@ public enum HoldingModel {
         c.profitTTM += hh.reduce(0) { $0 + $1.profit }
         c.cashInGroup += max(0, h.cash)
         c.debtInGroup += CompanyFigures.debts(h, loans: s.loans)
-        c.holdingValue = h.cash + c.indexFund + c.otherFunds + c.companiesValue
+        c.rivalStakes = HoldingStakes.rivalStakesValue(h)
+        c.holdingValue = h.cash + c.indexFund + c.otherFunds + c.companiesValue + c.rivalStakes
         return c
     }
 }

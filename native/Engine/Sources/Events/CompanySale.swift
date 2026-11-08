@@ -178,6 +178,7 @@ public enum CompanySale {
             s.rest["deferred"] = .array(d)
         }
         Payments.ownerReceivesSale(&s, from: co, amount: now, gain: gain, label: "Sold \(co.name) (\(buyer))")
+        HoldingStakes.settleSale(&s, company: co, price: price)
         for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
         for m in s.companies[i].staff { if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p } }
         s.companies[i].staff = []
@@ -187,6 +188,7 @@ public enum CompanySale {
         s.stats.companiesSold += 1
         for k in s.inbox.indices where s.inbox[k].companyID == co.id && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
         for k in s.companies.indices where s.companies[k].holdingID == co.id { s.companies[k].holdingID = 0 }
+        HoldingStakes.releaseLines(&s, holdingID: co.id)
         s.note("Sold \(co.name) for \(fc.homeCurrency(s).display(proceeds)) to \(buyer).", tone: "good")
         return now
     }
