@@ -72,7 +72,7 @@ struct ProfessionalServiceBlock: View {
                 .tint(Theme.gold)
                 .accessibilityIdentifier("service-rate")
                 ProfitBand(lo: lo, hi: hi, cost: eco.breakEvenHourly, price: rate)
-                TypedPriceField(price: rate, range: lo...hi, cur: cur, unit: eco.isGoods ? "each" : "per hour",
+                TypedPriceField(price: rate, range: lo...hi, cur: cur, unit: eco.isGoods ? "each" : "per hour", market: eco.priceVsFair > 0 ? rate / eco.priceVsFair : nil,
                                 hint: { (v: Double) -> String? in
                     let lp = ItemModels.liveProfit(price: v, cost: eco.breakEvenHourly)
                     return lp.outcome == .breakEven ? "At this price you break even." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) " + (eco.isGoods ? "on each one." : "an hour.")

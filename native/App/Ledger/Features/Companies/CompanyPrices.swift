@@ -108,10 +108,13 @@ private struct PriceRow: View {
                 }
                 Spacer(minLength: Theme.Space.s)
                 VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                    Text("Market").textStyle(.caption, tint: P.inkFaint)
+                    Text("Market price").textStyle(.caption, tint: P.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
                     Text(itemAmount(item.marketPrice, cur)).textStyle(.body, tint: P.inkSoft, numeric: true)
                 }
-                field
+                VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
+                    Text("Your price").textStyle(.caption, tint: P.inkFaint).lineLimit(1)
+                    field
+                }
             }
             if changed, lockedBy == nil {
                 HStack(spacing: Theme.Space.s) {

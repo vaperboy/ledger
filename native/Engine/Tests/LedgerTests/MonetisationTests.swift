@@ -7,13 +7,20 @@ import Finance
 final class EntitlementGatesTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
+    func testOnlyComfortItemsAreLockedForFreePlayers() {
+        let free = EntitlementSnapshot.free
+        for f in LockedFeature.allCases { XCTAssertEqual(free.isUnlocked(f, now: now), !f.isComfort, f.rawValue) }
+        XCTAssertEqual(LockedFeature.allCases.filter { $0.isComfort }.count, 2)
+        XCTAssertTrue(TradeAccess.isUnlocked(tradeID: "hotel", startUpCost: 5000, medianWage: 100, entitlements: free, now: now))
+    }
+
     func testEveryLockedItemIsLockedForFreeAndUnlockedForProFounderAndPlus() {
         let free = EntitlementSnapshot.free
         let pro = EntitlementSnapshot(owned: [.pro])
         let founder = EntitlementSnapshot(owned: [.founder])
         let plus = EntitlementSnapshot(owned: [.plusYearly], plusExpires: now.addingTimeInterval(86_400))
         XCTAssertEqual(LockedFeature.allCases.count, 8)
-        for f in LockedFeature.allCases {
+        for f in LockedFeature.allCases where f.isComfort {
             XCTAssertFalse(free.isUnlocked(f, now: now), f.rawValue)
             for (name, e) in [("pro", pro), ("founder", founder), ("plus", plus)] { XCTAssertTrue(e.isUnlocked(f, now: now), "\(f.rawValue) \(name)") }
         }
@@ -23,10 +30,10 @@ final class EntitlementGatesTests: XCTestCase {
     func testPlusRelocksWhenItExpiresButProStays() {
         let plus = EntitlementSnapshot(owned: [.plusMonthly], plusExpires: now.addingTimeInterval(100))
         let later = now.addingTimeInterval(101)
-        for f in LockedFeature.allCases { XCTAssertTrue(plus.isUnlocked(f, now: now)); XCTAssertFalse(plus.isUnlocked(f, now: later), f.rawValue) }
+        for f in LockedFeature.allCases where f.isComfort { XCTAssertTrue(plus.isUnlocked(f, now: now)); XCTAssertFalse(plus.isUnlocked(f, now: later), f.rawValue) }
         XCTAssertTrue(plus.isAdFree(now: now)); XCTAssertFalse(plus.isAdFree(now: later))
         var both = plus; both.owned.insert(.pro)
-        for f in LockedFeature.allCases { XCTAssertTrue(both.isUnlocked(f, now: later), "a Pro owner keeps Pro after Plus ends") }
+        for f in LockedFeature.allCases where f.isComfort { XCTAssertTrue(both.isUnlocked(f, now: later), "a Pro owner keeps Pro after Plus ends") }
     }
 
     func testSaveSlots() {

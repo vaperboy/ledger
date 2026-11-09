@@ -157,6 +157,7 @@ struct SupplySignBlock: View {
                     Text("\(Int(units))").popupText(.rowValue)
                     StepperPill(value: $units, range: Double(listing.minOrder)...Double(max(listing.minOrder, room)), step: 5)
                 }
+                Text("If you do this").popupText(.rowLabel)
                 if let landed { LandedCostLines(row: landed, currency: currency, priced: weeklyMarketSpend > 0, popup: true) }
                 if weeklyMarketSpend > 0 {
                     let saving: Double = weeklyMarketSpend - weeklyMarketSpend * listing.priceFactor * (landed?.landedFactor ?? 1)

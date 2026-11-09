@@ -93,12 +93,19 @@ struct HomeTopLine: View {
                 Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.6)
             }
             Spacer(minLength: Theme.Space.xxs)
-            HomeGoldChip()
+            if store.levelOpen(.store) { HomeGoldChip() }
             HomeRoundButton(glyph: Glyph.inbox, label: "Inbox", badge: store.appBadge(.inbox), identifier: "home-inbox") { store.openApp(.inbox) }
                 .coachAnchor(.phoneInbox)
             HomeRoundButton(glyph: PhoneApp.apps.glyph, label: "Apps", badge: store.appsBadge, identifier: "home-apps") { store.openApp(.apps) }
-            HomeRoundButton(glyph: Glyph.hire, label: "New company", identifier: "home-new-company", action: onNewCompany)
+            if secondCompanyOpen {
+                HomeRoundButton(glyph: Glyph.hire, label: "New company", identifier: "home-new-company", action: onNewCompany)
+            }
         }
+    }
+
+    private var secondCompanyOpen: Bool {
+        let none: Bool = !engine.state.companies.contains { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
+        return none || Gates.isOpen(.newCompany, engine.state, data: engine.data)
     }
 }
 
@@ -157,7 +164,6 @@ struct NetWorthCard: View {
                     Text("Net worth").textStyle(.label, tint: Theme.inkFaint)
                     Spacer(minLength: Theme.Space.s)
                     HStack(spacing: Theme.Space.xxs) {
-                        if !ent.isPro { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.inkFaint) }
                         Text("Insights").textStyle(.caption, tint: Theme.inkSoft)
                         LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                     }
@@ -187,7 +193,7 @@ struct NetWorthCard: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityHint(ent.isPro ? "Opens Insights" : "Opens Insights, part of Ledger Pro")
+        .accessibilityHint("Opens Insights")
         .accessibilityIdentifier("home-insights")
         .coachAnchor(.happened)
         .onAppear { if snap == nil { snap = takeSnap() } }

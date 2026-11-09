@@ -78,12 +78,15 @@ public enum PlayerGoals {
         switch id {
         // "start" and "hire" are setup steps: they are no longer offered as a new daily goal (a goal already picked in an older save still works).
         case "start", "hire", "weeks": return false
-        case "grow", "news", "stock", "quote": return !live(s).isEmpty
+        case "grow": return !live(s).isEmpty
+        case "news": return !live(s).isEmpty && Gates.isOpen(.bank, s, data: data)
+        case "stock": return !live(s).isEmpty && LevelGates.isOpen(.market, s)
+        case "quote": return !live(s).isEmpty && Gates.isOpen(.techpro, s, data: data)
         case "cmp": return openComplaints(s) > 0
         case "ans": return openDecisionCount(s) > 0
         case "collect": return receivableCount(s) > 0 && !families(s, data).isDisjoint(with: ["svc", "project"])
-        case "reviews": return !families(s, data).isDisjoint(with: ["venue", "retail"])
-        case "weather": return !families(s, data).isDisjoint(with: ["venue", "logi", "prod"])
+        case "reviews": return Gates.isOpen(.reviews, s, data: data) && !families(s, data).isDisjoint(with: ["venue", "retail"])
+        case "weather": return Gates.isOpen(.weather, s, data: data) && !families(s, data).isDisjoint(with: ["venue", "logi", "prod"])
         default: return false
         }
     }

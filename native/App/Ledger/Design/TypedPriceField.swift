@@ -9,6 +9,7 @@ struct TypedPriceField: View {
     var range: ClosedRange<Double>
     var cur: Currency
     var unit: String
+    var market: Double? = nil
     var hint: (Double) -> String? = { _ in nil }
     var onSet: (Double) -> Void
     @State private var text = ""
@@ -20,6 +21,14 @@ struct TypedPriceField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if let market {
+                HStack {
+                    Text("Market price").popupText(.caption).foregroundStyle(P.inkFaint)
+                    Spacer()
+                    Text(PriceInput.text(market, currency: cur) + " " + unit).popupText(.caption).foregroundStyle(P.inkSoft)
+                }
+            }
+            Text("Your price").popupText(.caption).foregroundStyle(P.inkFaint)
             PopupTextInput(placeholder: "Price", text: $text, prefix: cur.country.currencySymbol, suffix: unit, keyboard: .decimalPad,
                            actionTitle: "Set", actionEnabled: typed != nil, identifier: "typed-price",
                            hint: typed.flatMap { hint($0.value) }, message: nil,
