@@ -44,7 +44,7 @@ struct PlayerProfileView: View {
 
     private func header(_ p: PlayerProfile) -> some View {
         VStack(spacing: Theme.Space.s) {
-            ProfileAvatar(initials: p.initials, colour: p.avatarColour, size: 84)
+            PlayerAvatar(player: p, size: 84)
             Text(p.displayName).textStyle(.title)
             Text(p.subline).textStyle(.caption)
             if !p.badges.isEmpty {

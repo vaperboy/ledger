@@ -67,6 +67,16 @@ final class StoreSession {
         } catch { problem = message(error); return false }
     }
 
+    @discardableResult
+    func buyAvatar(_ d: AvatarDef) async -> Bool {
+        problem = nil
+        do {
+            state = try await store.buyAvatar(d.id, owned: AvatarModel.shared.owned)
+            AvatarModel.shared.grant(d.id)
+            return true
+        } catch { problem = message(error); return false }
+    }
+
     /// Opens a box (from the stock, else paid for in gold) and puts its prizes where they belong. Nil with `problem` set on failure.
     func openBox(_ kind: BoxKind, paidBoxesAllowed: Bool) async -> BoxOpening? {
         problem = nil

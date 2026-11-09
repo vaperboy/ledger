@@ -53,7 +53,7 @@ struct PlayerRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.m) {
-            ProfileAvatar(initials: player.initials, colour: player.avatarColour, size: 40)
+            PlayerAvatar(player: player, size: 40)
             VStack(alignment: .leading, spacing: 2) {
                 Text(player.displayName).textStyle(.headline).lineLimit(1)
                 Text(player.subline).textStyle(.caption).lineLimit(1)

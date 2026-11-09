@@ -24,6 +24,7 @@ struct MockStoreService: StoreService {
 
     func buyBoxBundle(_ bundleID: String, paidBoxesAllowed: Bool) async throws -> StoreState { try await vault.buyBoxBundle(bundleID, paidBoxesAllowed: paidBoxesAllowed) }
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState { try await vault.buyCosmetic(id, owned: owned) }
+    func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState { try await vault.buyAvatar(id, owned: owned) }
     func openBox(_ kind: BoxKind, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening {
         try await vault.openBox(kind, owned: owned, paidBoxesAllowed: paidBoxesAllowed)
     }

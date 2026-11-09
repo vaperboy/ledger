@@ -200,11 +200,13 @@ struct BoxResultCard: View {
         switch r.content {
         case .cosmetic(let id):
             let c: GoldCosmetic? = GoldCosmetics.cosmetic(id)
+            if let c { ItemArt(cosmetic: c, size: 96, wide: c.item.kind == .backdrop || c.item.kind == .namePlate || c.item.kind == .tradePlate) }
             Text(c?.item.title ?? "A cosmetic").textStyle(.title).multilineTextAlignment(.center)
             Text((c?.item.kind.label ?? "Cosmetic") + ". " + (c?.item.detail ?? "")).textStyle(.caption).multilineTextAlignment(.center)
             Text("Added to your wardrobe.").textStyle(.caption, tint: Theme.gain)
         case .artifact(let item):
             let def: ArtifactDef? = ArtifactCatalog.def(item.defID)
+            if let def { ItemArt(artifact: def, size: 96) }
             Text(def?.name ?? "Artifact").textStyle(.title).multilineTextAlignment(.center)
             Text(ArtifactCatalog.label(item)).textStyle(.figure, tint: r.rarity.tint, numeric: true)
             Text(def?.note ?? "").textStyle(.caption).multilineTextAlignment(.center)
