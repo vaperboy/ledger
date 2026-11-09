@@ -446,6 +446,7 @@ final class GameStore: ObservableObject {
         if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning(); SoundCues.play(.warning) }
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
+        SeasonModel.shared.observe(e.state)
         if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
         SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
@@ -559,6 +560,7 @@ final class GameStore: ObservableObject {
         let r = body(&e)
         engine = e
         save()
+        SeasonModel.shared.observe(e.state)
         return r
     }
 

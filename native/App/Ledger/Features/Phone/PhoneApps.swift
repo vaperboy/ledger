@@ -10,6 +10,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case airStay, techPro, atlas
     /// The second-hand market: every used item for sale, from private sellers, one price talk at a time.
     case marketplace
+    /// The Season Pass: eight real weeks of rewards, a free and a Ledger Plus track.
+    case season
     var id: String { rawValue }
 
     /// The apps with a tile on the Phone home. Goals and Reports are pages of Stats, and Ventures is in the Projects tab: their cases stay as routes only.
@@ -35,6 +37,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .techPro: return "TechPro Store"
         case .atlas: return "Atlas Insurance"
         case .marketplace: return "Marketplace"
+        case .season: return "Season"
         }
     }
 
@@ -59,6 +62,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .techPro: return Glyph.techPro
         case .atlas: return Glyph.atlas
         case .marketplace: return Glyph.marketplace
+        case .season: return Glyph.achievements
         }
     }
 
@@ -83,6 +87,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .techPro: return "Software, hardware, tools and vehicles"
         case .atlas: return "Cover for your companies"
         case .marketplace: return "Used items from private sellers"
+        case .season: return "Eight-week rewards, free and Plus"
         }
     }
 }
@@ -109,6 +114,7 @@ extension PhoneApp {
         case .techPro: return Color(hex: 0x7FB088)
         case .atlas: return Color(hex: 0x7F9FC8)
         case .marketplace: return Color(hex: 0x4FA39B)
+        case .season: return Color(hex: 0xD6B889)
         }
     }
 }
@@ -165,7 +171,7 @@ extension PhoneApp {
         case .atlas: return .insurance
         case .luxury: return .luxury
         case .ventures: return .venturesFeed
-        case .stats, .goals, .news, .market, .achievements: return .bank
+        case .stats, .goals, .news, .market, .achievements, .season: return .bank
         }
     }
 

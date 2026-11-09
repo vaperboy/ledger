@@ -19,7 +19,7 @@ struct SaveSlotsView: View {
         var summary: SaveSummary?
     }
 
-    private var limit: Int { ent.effective.saveSlots(now: Date()) }
+    private var limit: Int { ent.effective.saveSlots(now: Date()) + SeasonModel.shared.pass.bonusSaveSlots }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {

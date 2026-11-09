@@ -186,6 +186,8 @@ struct PhoneAppScreen: View {
             AtlasApp()
         case .marketplace:
             MarketplaceApp()
+        case .season:
+            SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
         }
     }
 }
