@@ -75,6 +75,7 @@ enum SupplyMarketEvent: Equatable {
     case sale(companyID: Int, units: Int, unitPrice: Double, unitCost: Double)
     /// A supplier the player buys from delivered less than promised this week.
     case shortDelivery(listingID: String)
+    case delivery(listingID: String, promised: Int, delivered: Int, orders: Int, late: Int)
     case supplierEnded(SupplyFallback)
 }
 
@@ -210,6 +211,8 @@ extension SupplyOrder {
             switch ev {
             case .sale(let id, let units, let price, let cost):
                 _ = store.act { $0.update { s, _, _ in _ = SupplyMarketBooks.settleSupply(&s, supplierCompanyID: id, buyerCompanyID: nil, units: units, unitPrice: price, unitCost: cost) } }
+            case .delivery(let listingID, let promised, let delivered, let orders, let late):
+                _ = store.act { $0.reportSupplyDelivery(listingID: listingID, promised: promised, delivered: delivered, orders: orders, late: late) }
             case .shortDelivery(let listingID):
                 _ = store.act { $0.reportShortDelivery(listingID: listingID) }
             case .supplierEnded(let f):

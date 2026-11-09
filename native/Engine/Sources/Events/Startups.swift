@@ -318,7 +318,7 @@ public enum Startups {
     }
     /// What your companies pay the startup for using it: 0, 25, 50 or 100 (% of the price). Original: `ACT.w17int`.
     public static func setInternalPrice(_ s: inout GameState, startupID: Int, percent: Double) {
-        edit(&s, startupID) { if !$0["sw16"].isNull { $0["sw16"]["int"] = .number(percent) } }
+        edit(&s, startupID) { if !$0["sw16"].isNull { $0["sw16"]["int"] = .number(min(100, max(0, percent))) } }
     }
 
     // MARK: Pitching the product to rivals

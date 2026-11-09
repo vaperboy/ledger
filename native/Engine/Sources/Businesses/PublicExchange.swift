@@ -249,9 +249,10 @@ public enum PublicExchange {
                     var r = HashedRandom("\(s.seed):xch:\(id):\(now)")
                     price = ExchangeRules.round4(clamp(inst.nav * (1 + (r.next() - 0.5) * 0.008), bounds.low, bounds.high))
                     for o in book.orders.filter({ $0.instrument == id }).sorted(by: { $0.seq < $1.seq }) {
-                        let crosses = o.side == .buy ? o.limit >= price : o.limit <= price
+                        let fill = o.side == .buy ? max(price, inst.nav) : min(price, inst.nav)
+                        let crosses = o.side == .buy ? o.limit >= fill : o.limit <= fill
                         guard crosses else { continue }
-                        if settleServer(&s, &book, inst, o, price: price, today: now, currency: cur) { traded += o.shares; if o.side == .sell { withhold = true } }
+                        if settleServer(&s, &book, inst, o, price: fill, today: now, currency: cur) { traded += o.shares; if o.side == .sell { withhold = true } }
                         book.orders.removeAll { $0.id == o.id }
                     }
                 } else if let co = s.company(inst.holdingID) {

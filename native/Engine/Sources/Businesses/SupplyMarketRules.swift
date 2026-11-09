@@ -316,7 +316,7 @@ public struct SupplyContract: Identifiable, Equatable, Sendable {
 }
 
 public enum SupplyEnd: String, Sendable {
-    case bankrupt, accountDeleted, stopped, expired
+    case bankrupt, accountDeleted, stopped, expired, silent
 
     public var phrase: String {
         switch self {
@@ -324,6 +324,7 @@ public enum SupplyEnd: String, Sendable {
         case .accountDeleted: return "closed their account"
         case .stopped: return "stopped supplying"
         case .expired: return "ended their offer"
+        case .silent: return "has not reported a delivery for weeks"
         }
     }
 }
@@ -370,6 +371,8 @@ public enum SupplyMarketBooks {
         return max(1, co.lastWeekRevenue / cap * 0.6)
     }
 
+    public static let standInCostShare = 0.85
+
     /// A sale to another player: revenue for the supplier company and the cost of what it delivered. Returns the revenue.
     @discardableResult
     package static func bookSaleToPlayer(_ s: inout GameState, supplierCompanyID: Int, units: Int, unitPrice: Double, unitCost: Double) -> Double {
@@ -396,7 +399,17 @@ public enum SupplyMarketBooks {
         }
         var revenue = 0.0
         if let sid = supplierCompanyID {
-            revenue = bookSaleToPlayer(&s, supplierCompanyID: sid, units: units, unitPrice: unitPrice, unitCost: unitCost)
+            var n = units
+            var cost = unitCost
+            if buyerCompanyID == nil, let i = s.companyIndex(sid) {
+                let cap = s.companies[i].value("lastW")["cap"].double
+                if cap > 0 { n = min(n, Int(cap * 0.5)) }
+                if s.companies[i].inventory > 0 { n = min(n, Int(s.companies[i].inventory)) }
+                guard n > 0 else { return nil }
+                cost = max(cost, unitPrice * standInCostShare)
+                if s.companies[i].inventory > 0 { s.companies[i].inventory -= Double(n) }
+            }
+            revenue = bookSaleToPlayer(&s, supplierCompanyID: sid, units: n, unitPrice: unitPrice, unitCost: cost)
             if let bid = buyerCompanyID { Payments.companyPays(&s, companyID: bid, amount: revenue, category: "cogs") }
         } else if let bid = buyerCompanyID {
             bookPurchaseDifference(&s, buyerCompanyID: bid, saving: buyerSaving)

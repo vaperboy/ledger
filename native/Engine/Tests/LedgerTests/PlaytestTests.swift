@@ -44,32 +44,40 @@ final class PlaytestTests: XCTestCase {
         return (code, bankrupt, liquid(e) > 0 && !e.state.isGameOver, m7, nil)
     }
 
-    func testPassiveBotSurvivesToWeek27AndMostFinishYearOneWithCash() throws {
-        var rows: [String] = [], early: [String] = [], positive = 0
+    func testPassiveBotSurvivesToWeek27ButLosesMoneyInYearOne() throws {
+        var rows: [String] = [], early: [String] = [], lost = 0
         let all = try codes()
         for c in all {
-            let r = try idle(c, answering: true)
-            rows.append("\(c) bankrupt=\(r.bankruptWeek.map(String.init) ?? "-") cash>0=\(r.cashPositive)")
-            if let w = r.bankruptWeek, w < 27 { early.append("\(c): week \(w)") }
-            if r.cashPositive { positive += 1 }
+            var e = try fresh(c)
+            let start = liquid(e)
+            var bankrupt: Int? = nil
+            for _ in 0..<364 {
+                e.nextDay()
+                answerFirst(&e)
+                if bankrupt == nil, isBroke(e) { bankrupt = e.state.week }
+            }
+            let end = liquid(e)
+            rows.append("\(c) bankrupt=\(bankrupt.map(String.init) ?? "-") change=\(Int(end - start))")
+            if let w = bankrupt, w < 27 { early.append("\(c): week \(w)") }
+            if end < start { lost += 1 }
         }
         print("PLAYTEST passive\n" + rows.joined(separator: "\n"))
         XCTAssertTrue(early.isEmpty, "bankrupt before week 27: " + early.joined(separator: "; "))
         let need = Int((Double(all.count) * 18.0 / 23.0).rounded(.up))
-        XCTAssertGreaterThanOrEqual(positive, need, "cash above 0 after year 1 in \(positive) of \(all.count) countries")
+        XCTAssertGreaterThanOrEqual(lost, need, "a shop left on its defaults lost money in year 1 in \(lost) of \(all.count) countries")
     }
 
-    func testHoarderBotReachesM7ByWeek30InFifteenCountries() throws {
+    func testHoarderBotRarelyReachesAProfitableMonthByWeek30() throws {
         var rows: [String] = [], reached = 0
         let all = try codes()
         for c in all {
-            let r = try idle(c, answering: false)   // hires nobody, markets nothing, answers nothing
+            let r = try idle(c, answering: false)
             rows.append("\(c) M7=\(r.m7Week.map(String.init) ?? "-")")
             if let w = r.m7Week, w <= 30 { reached += 1 }
         }
         print("PLAYTEST hoarder\n" + rows.joined(separator: "\n"))
-        let need = Int((Double(all.count) * 15.0 / 23.0).rounded(.up))
-        XCTAssertGreaterThanOrEqual(reached, need, "M7 by week 30 in \(reached) of \(all.count) countries")
+        let most = Int((Double(all.count) * 5.0 / 23.0).rounded(.down))
+        XCTAssertLessThanOrEqual(reached, most, "M7 by week 30 without any choice in \(reached) of \(all.count) countries")
     }
 
     // MARK: Ladder bot

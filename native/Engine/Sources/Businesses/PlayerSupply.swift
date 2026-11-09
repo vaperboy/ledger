@@ -96,6 +96,9 @@ public enum PlayerSupply {
         var list = rec["c"].array.filter { !($0["b"].int == base.buyerCompanyID && $0["ln"].string == base.lineID) }
         list.append(json(c))
         rec["c"] = .array(list)
+        var rw = rec["rw"].object
+        rw[base.id] = .number(Double(s.week))
+        rec["rw"] = .object(rw)
         s.rest["psup"] = rec
         if isCatalogueLine(line) { setChoice(&s, companyIndex: bi, line: line.id, offer: "P:" + base.id) }
         return true
@@ -111,6 +114,9 @@ public enum PlayerSupply {
         var dr = rec["dr"].object
         dr.removeValue(forKey: c.base.id)
         rec["dr"] = .object(dr)
+        var rw = rec["rw"].object
+        rw.removeValue(forKey: c.base.id)
+        rec["rw"] = .object(rw)
         s.rest["psup"] = rec
         if let i = s.companyIndex(buyer), SupplyCatalogue.chosenID(s.companies[i], line: line).hasPrefix("P:") { setChoice(&s, companyIndex: i, line: line, offer: "market") }
     }
@@ -188,14 +194,17 @@ public enum PlayerSupply {
         let short = got < promised
         var rec = record(s)
         var dr = rec["dr"].object
+        var rw = rec["rw"].object
         var list = rec["c"].array
         for c in hit {
+            rw[c.base.id] = .number(Double(s.week))
             let before: DeliveryRecord = dr[c.base.id].map { recordFrom($0) } ?? DeliveryRecord()
             let next = SupplyRecordRules.applying(before, promised: promised, delivered: got, orders: n, late: lateOrders, complaints: max(complaints, short ? 1 : 0))
             dr[c.base.id] = recordJSON(next)
             if let k = list.firstIndex(where: { $0["id"].string == c.base.id }) { list[k]["rel"] = .number(reliability(of: next)) }
         }
         rec["dr"] = .object(dr)
+        rec["rw"] = .object(rw)
         rec["c"] = .array(list)
         s.rest["psup"] = rec
         if short { recordMiss(&s, listingID: listingID) }
@@ -236,8 +245,31 @@ public enum PlayerSupply {
 
     /// Housekeeping each week: contracts of companies that are gone end (and free their line), and the player's own listings of a company that is
     /// no longer open stop at once (a bankrupt or sold supplier cannot deliver), so the market ends the contracts on them and warns the buyers.
+    public static let silentWeeksLimit = 3
+
     public static func weekly(_ s: inout GameState) {
         for c in contracts(s) where s.company(c.base.buyerCompanyID)?.status.isLive != true { end(&s, buyer: c.base.buyerCompanyID, line: c.base.lineID) }
+        for c in contracts(s) {
+            var stamps = record(s)
+            let seen = stamps["rw"][c.base.id]
+            if seen.isNull {
+                var rw = stamps["rw"].object
+                rw[c.base.id] = .number(Double(s.week))
+                stamps["rw"] = .object(rw)
+                s.rest["psup"] = stamps
+                continue
+            }
+            let quiet = s.week - seen.int
+            if quiet >= silentWeeksLimit {
+                let f = SupplyFallback(contract: c.base, reason: .silent)
+                end(&s, buyer: c.base.buyerCompanyID, line: c.base.lineID)
+                SupplyMarketBooks.tellBuyer(&s, fallback: f)
+            } else if quiet == silentWeeksLimit - 1 {
+                s.addMessage(kind: "info", from: c.base.supplierName, title: "Your supplier has gone quiet",
+                             body: "\(c.base.supplierName) has not reported a delivery for \(quiet) weeks. If nothing arrives next week the contract ends and this line goes back to a market supplier.",
+                             companyID: c.base.buyerCompanyID, tone: "bad")
+            }
+        }
         var rec = record(s)
         var ls = rec["l"].array
         var changed = false

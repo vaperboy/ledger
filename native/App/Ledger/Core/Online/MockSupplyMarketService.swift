@@ -300,7 +300,7 @@ final class MockSupplyMarketService: SupplyMarketService {
                 let sold: Int = made.reduce(0) { $0 + $1.delivered }
                 promised += want; delivered += sold; orders += made.count; late += made.filter { $0.late }.count
                 buyersOf[l.id] = made.count
-                if sold > 0 && unit > 0 { events.append(.sale(companyID: l.companyID ?? 0, units: sold, unitPrice: unit, unitCost: unit * 0.6)) }
+                if sold > 0 && unit > 0 { events.append(.sale(companyID: l.companyID ?? 0, units: sold, unitPrice: unit, unitCost: unit * 0.88)) }
                 all[i].committedUnits = contractUnits + want
             } else {
                 // Seeded suppliers: a missed delivery now and then, more for the weak.
@@ -313,7 +313,7 @@ final class MockSupplyMarketService: SupplyMarketService {
             }
             all[i].record = SupplyRecordRules.applying(all[i].record, promised: promised, delivered: delivered, orders: orders, late: late, complaints: complaints)
             // A supplier the player buys from that delivered short: the books carry the cost (customers served late or not at all).
-            if promised > delivered && contracts.contains(where: { $0.listingID == l.id }) { events.append(.shortDelivery(listingID: l.id)) }
+            if promised > 0 && contracts.contains(where: { $0.listingID == l.id }) { events.append(.delivery(listingID: l.id, promised: promised, delivered: delivered, orders: max(1, orders), late: late)) }
         }
         return events
     }
