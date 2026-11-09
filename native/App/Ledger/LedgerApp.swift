@@ -8,6 +8,7 @@ struct LedgerApp: App {
     @ObservedObject private var statusBar = StatusBarScheme.shared
     @State private var entitlements: Entitlements
     @State private var ads: AdCoordinator
+    @State private var online = OnlineSession()
 
     init() {
         let ent = Entitlements()
@@ -48,13 +49,15 @@ struct LedgerApp: App {
                 .environmentObject(store)
                 .environment(entitlements)
                 .environment(ads)
+                .environment(online)
                 .task { entitlements.start() }
+                .task { await online.start() }
                 // Dark everywhere, except while a light outside app is on screen: then the status bar text turns dark too.
                 .preferredColorScheme(statusBar.light ? .light : .dark)
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { store.scheduleReminders(); store.noteLeaving() }
+                    if phase == .background { store.scheduleReminders(); store.noteLeaving(); Task { await online.shareProgress(from: store.engine) } }
                     if phase == .active { Reminders.cancelAll(); store.showReturnRecap(); Task { await entitlements.refresh() } }
                 }
             }

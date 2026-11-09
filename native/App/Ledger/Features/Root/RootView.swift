@@ -6,6 +6,7 @@ import Simulation
 /// Chooses between the start screen and the game, and between a tab bar (iPhone) and a sidebar (iPad).
 struct RootView: View {
     @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var popups = PopupHost()
@@ -14,7 +15,10 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if let e = store.engine {
+            // The account screen comes once, on a new install, before anything else.
+            if online.needsAccountScreen && store.engine == nil {
+                AccountWelcomeView()
+            } else if let e = store.engine {
                 if e.state.isGameOver || Self.showsGameOver { GameOverView(engine: e) } else { GameShell() }
             } else { StartView() }
         }

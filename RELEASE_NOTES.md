@@ -1,4 +1,5 @@
 # What's new
+- A first-open account screen (Apple, Google or play as a guest), an Account section in Settings (link, sign out, export and delete your data), profiles with privacy levels, and a Friends app on the Phone with requests, search by name or code and friends' companies; the online side is a local stand-in for now and the game works fully offline
 - A blurred photo backdrop with Apple Liquid Glass on the Home boxes, main navigation and popups (on iOS 26 and later; earlier versions get a drawn glass look)
 - Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
 - Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists

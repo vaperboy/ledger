@@ -27,6 +27,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                AccountSettingsGroup()
                 feelGroup
                 savingGroup
                 proGroup

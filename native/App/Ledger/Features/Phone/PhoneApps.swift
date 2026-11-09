@@ -12,6 +12,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case marketplace
     /// The Season Pass: eight real weeks of rewards, a free and a Ledger Plus track.
     case season
+    /// Friends and profiles: the online side. Open without a game or an account (a guest is shown how to link one).
+    case friends
     var id: String { rawValue }
 
     /// The apps with a tile on the Phone home. Goals and Reports are pages of Stats, and Ventures is in the Projects tab: their cases stay as routes only.
@@ -38,6 +40,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .atlas: return "Atlas Insurance"
         case .marketplace: return "Marketplace"
         case .season: return "Season"
+        case .friends: return "Friends"
         }
     }
 
@@ -63,6 +66,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .atlas: return Glyph.atlas
         case .marketplace: return Glyph.marketplace
         case .season: return Glyph.achievements
+        case .friends: return Glyph.team
         }
     }
 
@@ -88,6 +92,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .atlas: return "Cover for your companies"
         case .marketplace: return "Used items from private sellers"
         case .season: return "Eight-week rewards, free and Plus"
+        case .friends: return "Players, requests and profiles"
         }
     }
 }
@@ -115,6 +120,7 @@ extension PhoneApp {
         case .atlas: return Color(hex: 0x7F9FC8)
         case .marketplace: return Color(hex: 0x4FA39B)
         case .season: return Color(hex: 0xD6B889)
+        case .friends: return Color(hex: 0x8FB0C9)
         }
     }
 }
@@ -160,7 +166,7 @@ extension PhoneApp {
     /// own gate; the rest (Stats, News, Achievements, Market and the like) wait for the bank gate, the end of the first-session ladder.
     var gate: Gate? {
         switch self {
-        case .inbox, .reports, .settings: return nil
+        case .inbox, .reports, .settings, .friends: return nil
         case .bank: return .bank
         case .accounting: return .accounting
         case .weather: return .weather
