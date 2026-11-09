@@ -65,9 +65,32 @@ extension View {
     func liquidGlass(cornerRadius: CGFloat = Theme.Radius.m, tint: Color? = nil, interactive: Bool = false) -> some View {
         modifier(LiquidGlass(shape: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous), tint: tint, interactive: interactive))
     }
+    /// Liquid Glass in a circle (round buttons).
+    func liquidGlassCircle(tint: Color? = nil, interactive: Bool = false) -> some View {
+        modifier(LiquidGlass(shape: Circle(), tint: tint, interactive: interactive))
+    }
     /// Liquid Glass in a capsule (pills, chips, floating bars).
     func liquidGlassCapsule(tint: Color? = nil, interactive: Bool = false) -> some View {
         modifier(LiquidGlass(shape: Capsule(), tint: tint, interactive: interactive))
     }
 }
 
+
+/// Wraps glass pieces that sit together (the tab bar and its selected pill) in one iOS 26 `GlassEffectContainer`, so they sample and render as one
+/// group; a plain pass-through where the real glass is not available.
+struct GlassGroup<Content: View>: View {
+    var spacing: CGFloat = 0
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content() }
+        } else {
+            content()
+        }
+        #else
+        content()
+        #endif
+    }
+}

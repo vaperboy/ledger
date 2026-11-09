@@ -217,6 +217,7 @@ struct LedgerBackdrop: View {
         ZStack {
             if palette == .game {
                 LinearGradient(colors: [Theme.page, Theme.pageLift], startPoint: .top, endPoint: .bottom)
+                photo
                 if !reduceTransparency {
                     // Faded out over the top inset so the status-bar guard strip (flat page colour) shows no edge.
                     RadialGradient(colors: [Theme.accent.opacity(0.07), Theme.accent.opacity(0)], center: .topTrailing, startRadius: 0, endRadius: 440)
@@ -229,47 +230,42 @@ struct LedgerBackdrop: View {
         .ignoresSafeArea()
         .accessibilityHidden(true)
     }
+
+    /// The game's photo: blurred, darkened, with a dark scrim along the top and bottom so text stays readable. Slightly oversized so the blur has no soft edge.
+    private var photo: some View {
+        Color.clear
+            .overlay {
+                Image("HomeBackdrop")
+                    .resizable()
+                    .scaledToFill()
+                    .scaleEffect(1.12)
+                    .blur(radius: 18)
+            }
+            .overlay { Color.black.opacity(0.28) }
+            .overlay {
+                LinearGradient(stops: [.init(color: Theme.page.opacity(0.85), location: 0), .init(color: Theme.page.opacity(0), location: 0.25),
+                                       .init(color: Theme.page.opacity(0), location: 0.6), .init(color: Theme.page.opacity(0.8), location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
+            .clipped()
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+    }
 }
 
-/// A card or tile floating on the backdrop: the surface colour at about 65% (opaque under Reduce Transparency), a faint highlight along the
-/// top edge and a hairline border that is a little brighter at the top.
+/// A card or tile floating on the backdrop: Liquid Glass in a rounded rectangle (raised cards carry the raised surface tint).
 struct GlassSurface: ViewModifier {
     var radius: CGFloat
     var raised: Bool
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        let base: Color = raised ? Theme.surfaceRaised : Theme.surface
-        content
-            .background {
-                ZStack {
-                    shape.fill(base.opacity(reduceTransparency ? 1 : 0.65))
-                    shape.fill(LinearGradient(colors: [Color.white.opacity(0.05), .clear], startPoint: .top, endPoint: .center))
-                }
-            }
-            .overlay {
-                shape.strokeBorder(LinearGradient(colors: [Color.white.opacity(0.10), Theme.line], startPoint: .top, endPoint: .bottom), lineWidth: 0.6)
-            }
+        content.modifier(LiquidGlass(shape: RoundedRectangle(cornerRadius: radius, style: .continuous), tint: raised ? Theme.surfaceRaised : nil))
     }
 }
 
-/// The floating capsule (tab bar, Next day): a thin material with the raised surface tint over it, a top highlight and a hairline rim.
-/// Opaque under Reduce Transparency.
+/// The floating capsule (tab bar, Next day): Liquid Glass in a capsule.
 struct GlassCapsule: ViewModifier {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    func body(content: Content) -> some View {
-        content
-            .background {
-                ZStack {
-                    if !reduceTransparency { Capsule().fill(.ultraThinMaterial) }
-                    Capsule().fill(Theme.surfaceRaised.opacity(reduceTransparency ? 1 : 0.62))
-                    Capsule().fill(LinearGradient(colors: [Color.white.opacity(0.06), .clear], startPoint: .top, endPoint: .center))
-                }
-            }
-            .overlay { Capsule().strokeBorder(LinearGradient(colors: [Color.white.opacity(0.14), Theme.line], startPoint: .top, endPoint: .bottom), lineWidth: 0.6) }
-    }
+    func body(content: Content) -> some View { content.modifier(LiquidGlass(shape: Capsule())) }
 }
 
 extension View {
