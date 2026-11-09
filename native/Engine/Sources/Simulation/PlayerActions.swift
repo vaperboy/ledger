@@ -287,7 +287,7 @@ public extension GameEngine {
     @discardableResult
     mutating func setOwnerSalary(companyID: Int, monthly: Double) -> SettingResult {
         let room = ownerSalaryRoom(companyID: companyID)
-        applySetting(refuse: { s in
+        return applySetting(refuse: { s in
             guard let co = s.company(companyID) else { return "That company no longer exists." }
             if let why = JointVenture.payoutBlock(s, companyID: companyID), monthly > co.ownerMonthlySalary { return why }
             if monthly > room && monthly > co.ownerMonthlySalary { return "That is more than this company can carry as owner pay. Take the rest as a dividend." }
