@@ -17,7 +17,7 @@ enum TaxExplainer {
     static func lines(_ b: PersonalFinance.TaxBreakdown, country c: Country, money: (Double) -> String) -> [TaxLine] {
         var out: [TaxLine] = []
         if b.incomeTax > 0 || b.withheld > 0 || b.incomeDue != 0 {
-            var rule: String = "\(money(b.incomeTax)) on \(money(b.taxableIncome)) of pay and business profit"
+            var rule: String = "\(money(b.incomeTax)) on \(money(b.taxableIncome)) of salary"
             if b.withheld > 0 { rule += ", less \(money(b.withheld)) already withheld or paid in advance" }
             out.append(TaxLine(id: "income", title: b.incomeDue < 0 ? "Income tax refund" : "Income tax", rule: rule + ".", amount: b.incomeDue))
         }
@@ -32,7 +32,7 @@ enum TaxExplainer {
         }
         if b.interestTax > 0, c.savingsInterestTax > 0 {
             let base: Double = b.interestTax / c.savingsInterestTax
-            out.append(TaxLine(id: "interest", title: "Tax on interest", rule: "\(Currency.percent(c.savingsInterestTax, decimals: 2)) on \(money(base)) of savings and deposit interest.", amount: b.interestTax))
+            out.append(TaxLine(id: "interest", title: "Tax on interest", rule: "\(Currency.percent(c.savingsInterestTax, decimals: 2)) on \(money(base)) of deposit interest.", amount: b.interestTax))
         }
         if b.wealthTax > 0 {
             out.append(TaxLine(id: "wealth", title: "Wealth tax", rule: "\(Currency.percent(c.wealthRate, decimals: 2)) a year on the part of your wealth above the allowance.", amount: b.wealthTax))
@@ -90,7 +90,7 @@ struct YearTaxBlock: View {
     }
 }
 
-/// "Tax this year (estimate)" on the personal account: the running bill against cash and savings, as a bar, and the date it falls due.
+/// "Tax this year (estimate)" on the personal account: the running bill against your cash, as a bar, and the date it falls due.
 struct TaxEstimateCard: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -110,7 +110,7 @@ struct TaxEstimateCard: View {
     }
 
     private func card(_ b: PersonalFinance.TaxBreakdown, owed: Double) -> some View {
-        let liquid: Double = max(0, engine.state.cash) + max(0, engine.state.savings)
+        let liquid: Double = max(0, engine.state.cash)
         let covered: Bool = b.total <= liquid
         let share: Double = b.total > 0 ? min(1, liquid / b.total) : 1
         let weeks: Int = PersonalFinance.weeksToYearEnd(week: engine.state.week)
@@ -136,7 +136,7 @@ struct TaxEstimateCard: View {
             ProgressLine(fraction: share, tint: covered ? P.gain : P.loss)
             Text(covered
                  ? "Tax is taken when you receive the money. Only the difference is settled at year end."
-                 : "Cash and savings of \(store.short(liquid)) are \(store.short(b.total - liquid)) short. Take dividends, sell investments or arrange a loan before then.")
+                 : "Your cash of \(store.short(liquid)) are \(store.short(b.total - liquid)) short. Take dividends, sell investments or arrange a loan before then.")
                 .textStyle(.caption, tint: covered ? P.inkFaint : P.warn).fixedSize(horizontal: false, vertical: true)
             if owed > 0 {
                 Text("\(store.short(owed)) from last year is still unpaid: answer the tax decision in the Inbox.")

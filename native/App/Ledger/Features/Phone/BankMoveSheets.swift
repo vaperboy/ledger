@@ -4,9 +4,9 @@ import Countries
 import Finance
 import Simulation
 
-/// Which of the money tiles was tapped.
+/// Which of the money tiles was tapped: Transfer moves money from you into a company, Deposit is the same from inside a company's account.
 enum BankMoveKind: String, Identifiable {
-    case transfer, deposit, withdraw
+    case transfer, deposit
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
@@ -49,9 +49,8 @@ enum BankPay {
     }
 }
 
-/// Transfer, Deposit and Withdraw. Personal account: Deposit and Withdraw move money to and from savings, Transfer moves it between you and
-/// a company. Company account: Deposit puts money in from you, Withdraw takes it out to you, Transfer does either. These are the engine's
-/// `moveToSavings` and `putMoneyInto`.
+/// Transfer and Deposit: both put money from your account into a company (the engine's `putMoneyInto`). A company pays money out only as
+/// salary or dividend, so there is no way back through this sheet.
 struct BankMoveSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -126,15 +125,7 @@ struct BankMoveSheet: View {
     }
 
     @ViewBuilder private func emptyState(_ e: GameEngine) -> some View {
-        if account.companyID != nil, kind != .deposit {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("A limited company cannot hand its cash to you directly.").popupText(.button)
-                Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid by the company.")
-                    .popupText(.subtitle)
-            }
-        } else {
-            Text("There is nowhere to move money to yet. Start a company first.").popupText(.subtitle)
-        }
+        Text("There is nowhere to move money to yet. Start a company first.").popupText(.subtitle)
     }
 
     // MARK: Ways of moving money
@@ -148,21 +139,11 @@ struct BankMoveSheet: View {
         switch account {
         case .personal, .investments:
             let s = e.state
-            if kind == .deposit {
-                add("Current account to savings", "Earns interest; comes back any day.", s.cash, home) { a in
-                    self.store.act({ $0.moveToSavings(a) }) == true ? "\(home.tidyShort(a)) moved to savings." : nil
-                }
-            }
-            if kind == .withdraw {
-                add("Savings to current account", "For bills and loans.", s.savings, home) { a in
-                    self.store.act({ $0.moveToSavings(-a) }) == true ? "\(home.tidyShort(a)) moved to the current account." : nil
-                }
-            }
             if kind == .transfer && account == .personal {
                 for co in s.liveCompanies {
                     let cur = e.currency(for: co)
                     let cid = co.id, name = co.name
-                    add("To \(name)", "From your current account into the company's.", s.cash, home) { a in
+                    add("To \(name)", "From your account into the company's.", s.cash, home) { a in
                         let inCompany: Double = a
                         return self.store.act({ $0.putMoneyInto(companyID: cid, amount: inCompany) }) == true ? "\(cur.tidyDisplay(a)) moved into \(name)." : nil
                     }
@@ -173,7 +154,7 @@ struct BankMoveSheet: View {
             let cur = e.currency(for: co)
             let name = co.name
             if kind == .deposit || kind == .transfer {
-                add("From your account into \(name)", "Your current account \(home.tidyShort(e.state.cash)).", e.state.cash, cur) { a in
+                add("From your account into \(name)", "Your account \(home.tidyShort(e.state.cash)).", e.state.cash, cur) { a in
                     self.store.act({ $0.putMoneyInto(companyID: cid, amount: a) }) == true ? "\(cur.tidyDisplay(a)) moved into \(name)." : nil
                 }
             }

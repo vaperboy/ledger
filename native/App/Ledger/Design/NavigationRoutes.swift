@@ -137,15 +137,15 @@ extension GameStore {
 // MARK: Shared cash wording (Home and Group > Money say the same thing)
 
 /// What each "cash" figure includes, in one place, so Home and Money cannot drift apart.
-/// Home shows personal cash plus savings; Group > Money shows that plus the cash in every company that has some.
+/// Home shows your own cash; Group > Money shows that plus the cash in every company that has some.
 enum CashWording {
-    /// Home: `NetWorth.personal` = wallet cash + savings.
+    /// Home: `NetWorth.personal` = your cash (plus money held for you).
     static let personal = "Personal cash"
-    /// Group > Money: `FinanceOverview.cashAvailable` for the whole group = company cash (not overdrawn) + personal cash + savings.
+    /// Group > Money: `FinanceOverview.cashAvailable` for the whole group = company cash (not overdrawn) + your own cash.
     static let group = "Cash across group"
     /// Money for one company: that company's cash only.
     static let company = "Company cash"
-    static let personalNote = "of which personal cash and savings"
+    static let personalNote = "of which your own cash"
     static func available(companyID: Int?) -> String { companyID == nil ? group : company }
 }
 
