@@ -27,7 +27,7 @@ struct ProfileAvatar: View {
 }
 
 /// How a company is doing, as a coloured word.
-extension CompanyHealth {
+extension OnlineCompanyHealth {
     var tint: Color {
         switch self {
         case .thriving, .growing: return Theme.gain

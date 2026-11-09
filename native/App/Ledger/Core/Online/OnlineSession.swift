@@ -120,7 +120,7 @@ final class OnlineSession {
         guard isSignedIn, let e = engine else { return }
         let week: Int = e.state.week
         let companies: [OnlineCompany] = e.state.companies.filter { $0.status == .open && $0.type != "hold" }.prefix(12).map { (co) -> OnlineCompany in
-            let health: CompanyHealth
+            let health: OnlineCompanyHealth
             if co.weeksNegative >= 4 { health = .struggling }
             else if let opened = co.openedWeek, week - opened < 8 { health = .new }
             else if co.reputation >= 70 { health = .thriving }

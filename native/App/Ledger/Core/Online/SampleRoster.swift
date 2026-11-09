@@ -61,7 +61,7 @@ enum SampleRoster {
     ]
     private static let trades: [String] = ["Bakery", "Café", "Dental clinic", "Physiotherapy clinic", "Bike shop", "Print shop", "Plumbing firm", "Pharmacy",
                                            "Garden centre", "Bookshop", "Web studio", "Care home", "Fitness studio", "Florist", "Vet practice", "Grocery shop"]
-    private static let health: [CompanyHealth] = [.thriving, .growing, .growing, .steady, .steady, .steady, .struggling, .new]
+    private static let health: [OnlineCompanyHealth] = [.thriving, .growing, .growing, .steady, .steady, .steady, .struggling, .new]
     private static let badges: [String] = ["Early player", "Cash positive", "Debt free", "Hired fifty", "Opened abroad", "Five-star shop", "Season one", "First profit", "Ten years in"]
 
     /// A repeatable pseudo-random stream from text (FNV-1a, not `hashValue`, which changes between launches).

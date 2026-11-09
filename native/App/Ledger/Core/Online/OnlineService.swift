@@ -32,7 +32,7 @@ enum PrivacyLevel: String, Codable, CaseIterable, Sendable {
 }
 
 /// How a company is doing, in words (never figures: other players do not see another player's books).
-enum CompanyHealth: String, Codable, CaseIterable, Sendable {
+enum OnlineCompanyHealth: String, Codable, CaseIterable, Sendable {
     case new, struggling, steady, growing, thriving
     var title: String {
         switch self {
@@ -53,7 +53,7 @@ struct OnlineCompany: Codable, Hashable, Identifiable, Sendable {
     var trade: String
     var city: String
     var countryCode: String
-    var health: CompanyHealth
+    var health: OnlineCompanyHealth
 }
 
 /// The viewer's relationship to a profile.
