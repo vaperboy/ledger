@@ -46,7 +46,7 @@ struct RivalsApp: View {
                         NoteCard(text: "No rivals are written down yet. They appear in the weeks after a company opens.")
                     }
                     ForEach(markets) { (m: RivalMarket) in
-                        CardSection(title: m.title) {
+                        CardSection(m.title) {
                             ForEach(Array(m.cards.enumerated()), id: \.element.id) { i, c in
                                 if i > 0 { CardLine() }
                                 rivalBlock(c)
@@ -65,7 +65,7 @@ struct RivalsApp: View {
     @ViewBuilder private func decisions(_ e: GameEngine) -> some View {
         let open: [Message] = e.openDecisions.filter { (m: Message) -> Bool in RivalStories.handlesAnswer(m.actionID) }
         if !open.isEmpty {
-            CardSection(title: "Waiting for you") {
+            CardSection("Waiting for you") {
                 ForEach(open, id: \.id) { (m: Message) in
                     LedgerRow(leading: .glyph(Glyph.rivalsFlag), title: m.title, subtitle: "Take your time: it stays until you answer or it lapses.", action: { store.decisionPopup = m.id })
                 }
@@ -122,7 +122,7 @@ struct RivalsApp: View {
     /// Everything the rivals of this market did lately, newest first.
     private func recent(_ e: GameEngine, companyID: Int) -> some View {
         let moves: [RivalStories.Move] = e.rivalMoves(companyID: companyID, limit: 12)
-        return CardSection(title: "Lately") {
+        return CardSection("Lately") {
             if moves.isEmpty {
                 Text("Quiet. Rivals move slowly, a few times a year.").textStyle(.caption)
             } else {

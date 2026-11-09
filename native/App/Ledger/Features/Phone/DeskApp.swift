@@ -70,7 +70,7 @@ struct DeskApp: View {
 
     @ViewBuilder private func todayCard(_ e: GameEngine) -> some View {
         if let t = e.deskToday(realDay: day) {
-            CardSection(title: "Today") {
+            CardSection("Today") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text(t.item.kind).textStyle(.label)
                     Text(t.item.title).textStyle(.title)
@@ -103,7 +103,7 @@ struct DeskApp: View {
     @ViewBuilder private func playingOut(_ e: GameEngine) -> some View {
         let titles: [String] = e.deskPlayingOut
         if !titles.isEmpty {
-            CardSection(title: "Playing out") {
+            CardSection("Playing out") {
                 ForEach(titles, id: \.self) { (t: String) in
                     LedgerRow(leading: .glyph(Glyph.clock), title: t, subtitle: "You will hear in the morning Inbox.")
                 }
@@ -118,7 +118,7 @@ struct DeskApp: View {
         let covers: [String] = e.deskCovers()
         let stories: Int = pages.reduce(0) { $0 + $1.stories.count }
         let tint: Color = NotebookCover.color(coverName.isEmpty ? (covers.last ?? "") : coverName)
-        return CardSection(title: "Notebook") {
+        return CardSection("Notebook") {
             HStack(spacing: Theme.Space.m) {
                 GlyphView(glyph: Glyph.deskNotebook, size: 28, weight: 1.5, tint: tint)
                 VStack(alignment: .leading, spacing: 2) {
@@ -242,7 +242,7 @@ struct WeeklyPlanCard: View {
         if let e = store.engine, e.weeklyPlanOpen {
             let sum: WeeklyFocus.Summary = e.weeklyPlan
             let results: [WeeklyFocus.Result] = Array(e.weeklyPlanResults.prefix(4))
-            CardSection(title: "Weekly plan") {
+            CardSection("Weekly plan") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     HStack(alignment: .firstTextBaseline) {
                         Text("\(sum.planned) \(sum.planned == 1 ? "week" : "weeks") planned").textStyle(.headline)
