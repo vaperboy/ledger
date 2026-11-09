@@ -141,8 +141,9 @@ public enum DailyTrade {
                         w.catalog.tables.salesRoles, w.week, s.people)
             }()
             var co = co0
+            let serve = data.balance.firstYear.serveShare(s)
             let result = tradeDay(&co, bd, &log, week: cycle, day: d, demand: dm.customers, capacity: cp.capacity, price: price, vat: vat,
-                                  stockFactor: stockF, salesRoles: salesRoles, people: people, random: &s.random)
+                                  stockFactor: stockF, salesRoles: salesRoles, people: people, serveShare: serve, random: &s.random)
             co.set("dl", log.json)
             s.companies[i] = co
             if result.cash != 0 { Payments.companyReceives(&s, companyID: co.id, amount: result.cash, category: nil, label: nil); MarketEvents.notePayment(&s, companyID: co.id, amount: result.cash, from: "Customers") }
@@ -170,7 +171,7 @@ public enum DailyTrade {
 
     /// Original: `tradeDay`. Returns units sold, the cash taken and any spoiled stock to write off.
     static func tradeDay(_ co: inout Company, _ bd: Trade, _ L: inout Log, week wk: Int, day d: Int, demand D: Double, capacity cap: Double,
-                         price: Double, vat vr: Double, stockFactor: Double, salesRoles: Set<String>, people: [Int: Person],
+                         price: Double, vat vr: Double, stockFactor: Double, salesRoles: Set<String>, people: [Int: Person], serveShare: Double = 1,
                          random r: inout DeterministicRandom) -> (sold: Double, cash: Double, writeOff: Double) {
         let wd = weekday(week: wk, day: d)
         let sh = shape(bd)
@@ -196,6 +197,7 @@ public enum DailyTrade {
             L.cumulativeRoom = (L.cumulativeRoom ?? 0) + (s > 0 ? (L.capacity! * stretch + L.carry) / L.tradingDays : 0)
             room = max(0, (min(L.capacity! * stretch + L.carry - L.units, L.cumulativeRoom!) + 1e-9).rounded(.down))
         }
+        if serveShare < 1 && L.capacity! > 0 { room = min(room, max(0, (L.capacity! * serveShare - L.units + 1e-9).rounded(.down))) }
         var sold = max(0, min(L.queue, room))
         if shelfOn {
             let have = max(0, (co.num("shelf") + 1e-9).rounded(.down))
@@ -291,9 +293,10 @@ public enum DailyTrade {
                 let vat = Vat.rate(co, bd, w)
                 let salesRoles = w.catalog.tables.salesRoles
                 let people = s.people
+                let serve = data.balance.firstYear.serveShare(s)
                 for d in 0..<7 {
                     let r = tradeDay(&co, bd, &L, week: wk, day: d, demand: D, capacity: cap, price: price, vat: vat, stockFactor: sf,
-                                     salesRoles: salesRoles, people: people, random: &s.random)
+                                     salesRoles: salesRoles, people: people, serveShare: serve, random: &s.random)
                     if r.cash != 0 { s.companies[i] = co; Payments.companyReceives(&s, companyID: co.id, amount: r.cash, category: nil, label: nil); MarketEvents.notePayment(&s, companyID: co.id, amount: r.cash, from: "Customers"); co = s.companies[i] }
                 }
             }

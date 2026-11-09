@@ -67,7 +67,7 @@ public final class TradeCatalog: TradeCatalogProviding, @unchecked Sendable {
                 dep += e.cost * e.standardCount / max(1, e.lifeYears) / 52 + e.cost * e.standardCount * 0.011 / 52
             }
         }
-        let acct = 3400.0 * 12 / 52
+        let acct = 3400.0 * 12 / 52 * 0.3
         let fit = (tables.fitOut[t.premisesKind ?? "none"] ?? 0) * t.premisesM2 / 10 / 52
         let F = wages + rent + dep + t.fixedWeekly + acct + (t.premisesKind == nil ? 0 : fit)
         let tw = t.traits
