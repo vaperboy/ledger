@@ -47,7 +47,7 @@ struct HomeSummary<Companies: View>: View {
             if trim < 2 {
                 HomeProgressStrip(engine: e)
                 HomeLevelBar(engine: e)
-                if trim < 1 { HomeMissionStrip(engine: e) }
+                HomeMissionStrip(engine: e)
                 if fills { Self.gap }
             }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact).coachAnchor(.needsYou) }
@@ -162,6 +162,7 @@ struct NetWorthCard: View {
                     Text("Net worth").textStyle(.label, tint: Theme.inkFaint)
                     Spacer(minLength: Theme.Space.s)
                     HStack(spacing: Theme.Space.xxs) {
+                        if !ent.isPro { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.inkFaint) }
                         Text("Insights").textStyle(.caption, tint: Theme.inkSoft)
                         LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                     }
@@ -191,7 +192,7 @@ struct NetWorthCard: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens Insights")
+        .accessibilityHint(ent.isPro ? "Opens Insights" : "Opens Insights, part of Ledger Pro")
         .accessibilityIdentifier("home-insights")
         .coachAnchor(.happened)
         .onAppear { if snap == nil { snap = takeSnap() } }

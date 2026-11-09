@@ -126,24 +126,24 @@ public enum Headquarters {
 
     // MARK: Roles: when they open, whether there is room
 
-    /// Roles open up as the payroll grows, whether it sits in one company or several. Original: `hqUnlocked`.
+    /// Roles open up as the group grows. Original: `hqUnlocked`.
     public static func unlocked(_ s: GameState, _ role: String, _ data: GameData) -> Bool {
         let live = s.liveCompanies
-        let mgrs = live.filter { $0.managerID != nil }.count, staffN = live.reduce(0) { $0 + $1.staff.count }
+        let n = live.count, mgrs = live.filter { $0.managerID != nil }.count, staffN = live.reduce(0) { $0 + $1.staff.count }
         switch role {
         case "pa": return true
-        case "hr": return staffN >= 8
-        case "acc", "proc": return staffN >= 15
-        case "law", "ana", "mkt": return staffN >= 30
-        case "perf": return mgrs >= 1
-        case "strat": return staffN >= 100 && Valuation.netWorth(s, trades: data.catalog).total >= ManagerModel.playerCurrency(s, data).scaledPrice(2e7)
+        case "hr": return n >= 2 || staffN >= 8
+        case "acc", "proc": return n >= 2
+        case "law", "ana", "mkt": return n >= 3
+        case "perf": return mgrs >= 2
+        case "strat": return n >= 4 && Valuation.netWorth(s, trades: data.catalog).total >= ManagerModel.playerCurrency(s, data).scaledPrice(2e7)
         case "fin": return s.companies.contains { $0.type == "hold" && $0.status == .open }
         default: return true
         }
     }
     public static func unlockText(_ role: String) -> String {
-        ["hr": "8 staff", "acc": "15 staff", "law": "30 staff", "ana": "30 staff", "proc": "15 staff", "perf": "a managed company",
-         "mkt": "30 staff", "strat": "100 staff and a large net worth", "fin": "a holding company"][role] ?? ""
+        ["hr": "2 companies or 8 staff", "acc": "2 companies", "law": "3 companies", "ana": "3 companies", "proc": "2 companies", "perf": "2 managed companies",
+         "mkt": "3 companies", "strat": "4 companies and a large net worth", "fin": "a holding company"][role] ?? ""
     }
 
     public enum RoomResult: String, Equatable, Sendable { case ok, office, bad, locked, have, homeoffice, desks }

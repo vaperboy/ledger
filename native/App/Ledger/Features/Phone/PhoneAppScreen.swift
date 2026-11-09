@@ -100,7 +100,7 @@ struct PhoneAppContent: View {
         case .friends:
             FriendsApp()
         case .season:
-            LevelGuard(feature: .season) { SeasonView().appScreen(title: app.title, subtitle: app.subtitle) }
+            SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
         case .desk:
             DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
         case .rivals:

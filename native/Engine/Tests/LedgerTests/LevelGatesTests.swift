@@ -16,16 +16,16 @@ final class LevelGatesTests: XCTestCase {
             XCTAssertFalse(LevelGates.isOpen(f, e.state), f.rawValue)
             XCTAssertTrue(LevelGates.lockLine(f).hasPrefix("Unlocks at level \(LevelGates.level(f)): "))
         }
-        XCTAssertEqual(LevelGates.nextLocked(e.state), .season)
+        XCTAssertEqual(LevelGates.nextLocked(e.state), .auctions)
     }
 
     func testAFeatureOpensAtItsLevelAndProgressCountsExperience() throws {
         var e = try fresh()
         give(&e, xp: 50)
-        XCTAssertEqual(LevelGates.progress(.season, e.state).xpToGo, PlayerLevel.threshold(2) - 50)
-        XCTAssertEqual(LevelGates.progress(.season, e.state).fraction, 0.5, accuracy: 0.001)
+        XCTAssertEqual(LevelGates.progress(.auctions, e.state).xpToGo, PlayerLevel.threshold(2) - 50)
+        XCTAssertEqual(LevelGates.progress(.auctions, e.state).fraction, 0.5, accuracy: 0.001)
         give(&e, xp: PlayerLevel.threshold(2))
-        XCTAssertTrue(LevelGates.isOpen(.season, e.state))
+        XCTAssertTrue(LevelGates.isOpen(.auctions, e.state))
         XCTAssertFalse(LevelGates.isOpen(.exchange, e.state))
         give(&e, xp: PlayerLevel.threshold(6))
         for f in LevelFeature.allCases { XCTAssertTrue(LevelGates.isOpen(f, e.state), f.rawValue) }

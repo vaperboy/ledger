@@ -298,13 +298,14 @@ public extension GameEngine {
         }
 
         // The group office is the owner's choice. Before it exists there are no group-level posts, only each company's own.
-        // After it: the group managing director, and each main-office role that is unlocked (`Headquarters.unlocked`) and has a desk.
+        // After it: the group managing director once there is more than one company, and each main-office role that is unlocked
+        // (the same `Headquarters.unlocked` rules as "Opens with N companies") and has a desk.
         let established = Headquarters.established(s)
         let groupEmployer = Headquarters.employerName(s, data)
         let md = s.rest["org56"]?["md"] ?? .null
         if !md.isNull, let p = s.people[md["npc"].int] {
             members.append(.init(id: "md", name: p.name, role: "Group managing director", scope: "group", employer: groupEmployer, monthlyWage: md["wage"].double, companyID: nil, chainID: nil, personID: p.id))
-        } else if established {
+        } else if established && s.companies.filter({ $0.status.isLive }).count >= 2 {
             var v = TeamOverview.Vacancy(id: "md", title: "Group managing director", scope: "group", place: "Your group office",
                                          detail: "Runs the group under you; deals above the limit you set still come to you.", companyID: nil, chainID: nil, needed: false, employer: groupEmployer)
             v.post = "md"

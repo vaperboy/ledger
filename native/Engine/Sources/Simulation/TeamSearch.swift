@@ -20,7 +20,7 @@ public struct TeamSearchResult: Identifiable, Equatable, Sendable {
     public var isManagement: Bool = false
     /// Short note about the person ("8 items missing", "working notice"); "steady" when all is well.
     public var note: String = ""
-    /// The note is something to act on (paperwork missing, sick, notice, worn out).
+    /// The note is something to act on (sick, notice, worn out).
     public var needsAttention: Bool = false
     /// The person record, for the portrait; nil for post-holders known only by name.
     public var personID: Int? = nil

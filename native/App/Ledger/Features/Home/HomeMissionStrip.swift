@@ -38,7 +38,7 @@ struct HomeMissionStrip: View {
         if hiddenWeek != engine.state.week {
             HStack(alignment: .top, spacing: Theme.Space.s) {
                 missionCard
-                if store.levelOpen(.season) { seasonCard }
+                seasonCard
                 Button { Haptics.tap(); hiddenWeek = engine.state.week } label: {
                     Image(systemName: "xmark").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint)
                         .frame(width: 28, height: 28).contentShape(Rectangle())

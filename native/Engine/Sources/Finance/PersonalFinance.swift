@@ -28,6 +28,8 @@ public enum PersonalFinance {
         Banking.collectMonthlyInstalments(state: &s, context: context)
         if s.cash >= 0 && Banking.totalDebt(s) > 0 { s.credit = clamp(s.credit + 0.35, 0, 100) }
         if s.loans.isEmpty { s.credit = clamp(s.credit + 0.1, 0, 100) }
+        let age = Double(s.player.age) + Double(s.week) / 52
+        if age > 60 { s.credit = clamp(s.credit - 0.02, 0, 100) }
     }
 
     // MARK: Tax paid as it arises

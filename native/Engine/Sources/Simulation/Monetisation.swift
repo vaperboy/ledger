@@ -22,14 +22,6 @@ public enum LedgerProduct: String, CaseIterable, Sendable {
 public enum LockedFeature: String, CaseIterable, Sendable {
     case tradeAboveCostLine, expansionAbroad, groupLayer, ventures, luxuryGivingFootball, saveSlots, cloudBackup, sandboxMode
 
-    /// Comfort only (more save slots, a cloud copy). Everything that is part of running or growing a business, and every way to play, is open to all.
-    public var isComfort: Bool {
-        switch self {
-        case .saveSlots, .cloudBackup: return true
-        case .tradeAboveCostLine, .expansionAbroad, .groupLayer, .ventures, .luxuryGivingFootball, .sandboxMode: return false
-        }
-    }
-
     /// Needs a Plus subscription itself, not just Pro. Nothing is Plus-only: Plus is Pro plus the season pass, which is not a locked item.
     public var plusOnly: Bool { false }
 
@@ -73,7 +65,7 @@ public struct EntitlementSnapshot: Equatable, Sendable {
     /// Ads never show to Pro, Founder or Plus (a pass counts as Pro).
     public func isAdFree(now: Date) -> Bool { isPro(now: now) }
 
-    public func isUnlocked(_ f: LockedFeature, now: Date) -> Bool { !f.isComfort || (f.plusOnly ? isPlus(now: now) : isPro(now: now)) }
+    public func isUnlocked(_ f: LockedFeature, now: Date) -> Bool { f.plusOnly ? isPlus(now: now) : isPro(now: now) }
 
     /// Free save slots: one; Pro and above three.
     public func saveSlots(now: Date) -> Int { isPro(now: now) ? 3 : 1 }

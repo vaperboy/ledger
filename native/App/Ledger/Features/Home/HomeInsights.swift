@@ -2,8 +2,8 @@ import SwiftUI
 import GameCore
 import Simulation
 
-/// "Insights": net worth over time, how each company's value moved in 30 days, and the cash runway. Drawn with plain paths from
-/// the day history (no dependencies).
+/// Pro "Insights": net worth over time, how each company's value moved in 30 days, and the cash runway. Drawn with plain paths from
+/// the day history (no dependencies). A free player sees the same shapes blurred behind one unlock button.
 struct InsightsView: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -14,13 +14,41 @@ struct InsightsView: View {
     @State private var drawn: Double = 0
 
     var body: some View {
-        let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
-        return VStack(alignment: .leading, spacing: Theme.Space.l) {
-            netWorthCard(accent: accent)
-            companiesCard(accent: accent)
-            runwayCard(accent: accent)
+        let pro: Bool = ent.isPro
+        let accent: Color = Cosmetics.resolvedTheme(themeID, pro: pro).accent
+        return VStack(spacing: 0) {
+            ZStack {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    netWorthCard(accent: accent)
+                    companiesCard(accent: accent)
+                    runwayCard(accent: accent)
+                }
+                .blur(radius: pro ? 0 : 9)
+                .allowsHitTesting(pro)
+                .accessibilityHidden(!pro)
+                if !pro { lockCard }
+            }
         }
         .onAppear { Motion.animate(Motion.reveal(reduceMotion)) { drawn = 1 } }
+    }
+
+    private var lockCard: some View {
+        VStack(spacing: 10) {
+            LedgerGlyph(glyph: Glyph.lock, size: Theme.Icon.large, tint: Theme.accent)
+            Text("See where your money is going").popupText(.body).multilineTextAlignment(.center)
+            Button("Unlock with Ledger Pro") {
+                Haptics.tap()
+                popupClose?()
+                ent.paywall = PaywallRequest(title: "Insights")
+            }
+            .buttonStyle(PopupPrimaryCapsuleStyle(tone: .prestige))
+            .accessibilityIdentifier("insights-unlock")
+        }
+        .padding(Theme.Space.l)
+        .frame(maxWidth: 320)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.large, style: .continuous).fill(Theme.surfaceRaised))
+        .elevation(.raised)
+        .padding(.horizontal, Theme.Space.xl)
     }
 
     // MARK: Cards

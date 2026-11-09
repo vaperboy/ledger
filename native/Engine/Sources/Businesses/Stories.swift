@@ -8,8 +8,8 @@ import Employees
 /// personal (the nemesis, with a running score) and the Top 50 every January.
 /// Original: features/people/staff_stories_and_nemesis.js (`staffWeek`, `nemWeek`, `top50`). The business paper and the interviews are `Press`.
 public enum Stories {
-    public static let annAction = "st28ann", lifeAction = "st28life", proAction = "st28pro"
-    public static func handlesAnswer(_ action: String) -> Bool { [annAction, lifeAction, proAction].contains(action) }
+    public static let annAction = "st28ann", retAction = "st28ret", lifeAction = "st28life", proAction = "st28pro"
+    public static func handlesAnswer(_ action: String) -> Bool { [annAction, retAction, lifeAction, proAction].contains(action) }
 
     /// Entry-level roles: a worker in one of these who has learned the job may be offered the next step up. Original: `JUN`.
     static let juniorRoles: Set<String> = ["helper", "cleaner", "cashier", "waiter", "barista", "housek", "labour", "fworker", "usher", "waiterB", "carwash", "courier", "recept", "groom", "seaman", "farmh", "teller"]
@@ -54,11 +54,15 @@ public enum Stories {
         guard let m = s.company(companyID)?.staff.first(where: { $0.id == staffID }) else { return [] }
         return m.value("st28").array.reversed().map { ($0["w"].int, $0["t"].string) }
     }
+    public static func hall(_ s: GameState) -> [(name: String, text: String, week: Int)] {
+        (s.rest["hof28"]?.array ?? []).map { ($0["n"].string, $0["t"].string, $0["w"].int) }
+    }
 
     // MARK: Every week
 
     public static func weekly(_ s: inout GameState, data: GameData) {
         for ci in s.companies.indices where s.companies[ci].status == .open { staffWeek(&s, ci, data: data) }
+        quietDefaults(&s, data: data)
         nemesisWeek(&s, data: data)
         if GameCalendar.year(week: s.week) != GameCalendar.year(week: s.week - 1) { top50(&s, data: data) }
     }
@@ -106,6 +110,15 @@ public enum Stories {
                              companyID: co.id, tone: "good", status: "open",
                              options: [.option("Promote \(first(n.name))", "Loyal, motivated, and already knows the place."), .option("Not yet", "\(first(n.name)) may look elsewhere.")],
                              action: proAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "to": .string(to), "wage": .number(wage)]), expiresWeek: s.week + 3)
+            }
+            // retirement
+            if Double(n.age) + Double(s.week - hired) / 52 >= 67 && m.value("ret28").isNull && fresh {
+                m.set("ret28", s.week); fresh = false
+                s.companies[ci].set("sl28", s.week)
+                s.addMessage(kind: "ask", from: n.name, title: "\(n.name) is retiring",
+                             body: "After \(max(1, y)) year\(y > 1 ? "s" : "") at \(co.name), \(first(n.name)) is retiring. How do you say goodbye?", companyID: co.id, tone: "n", status: "open",
+                             options: [.option("A farewell party", "\(cur.display(cur.scaledPrice(8000))). The whole team comes."), .option("A gift and a speech", "\(cur.display(cur.scaledPrice(3000)))."), .option("A card", "")],
+                             action: retAction, data: .object(["co": .number(Double(co.id)), "s": .number(Double(id)), "y": .number(Double(max(1, y)))]), expiresWeek: s.week + 2)
             }
             // thank-you notes after a raise or a course
             let raised = m.num("wl28") > 0 && m.monthlyWage >= m.num("wl28") * 1.04, trained = m.num("crs") > m.num("cr28")
@@ -174,7 +187,29 @@ public enum Stories {
         case lifeAction:
             if idx == 0 { pay(cur.scaledPrice(1500), "oth", "Gift to \(s.people[id]?.name ?? "a colleague")"); bumpMood(&s, ci, 1.5); loyal(13); addStory(&s, company: ci, staff: id, "\(d["t"].string) (the company sent a gift)") }
             else { addStory(&s, company: ci, staff: id, d["t"].string) }
+        case retAction:
+            if idx == 0 { pay(cur.scaledPrice(8000), "oth", "Farewell party"); bumpMood(&s, ci, 5); s.companies[ci].reputation = clamp(s.companies[ci].reputation + 1, 0, 100) }
+            else if idx == 1 { pay(cur.scaledPrice(3000), "oth", "Farewell gift"); bumpMood(&s, ci, 2) }
+            let n = s.people[id], years = max(1, d["y"].int)
+            let stories = st.value("st28").array
+            let started = (stories.first?["t"].string ?? "").replacingOccurrences(of: "Joined ", with: "Started at ")
+            let text = (stories.count > 2 ? "\(started), retired as \(roleName(s, data, st.role))" : "\(roleName(s, data, st.role)) at \(co.name)") + " · \(years) years · \(GameCalendar.year(week: s.week))"
+            var hof = s.rest["hof28"]?.array ?? []
+            hof.insert(.object(["n": .string(n?.name ?? "A colleague"), "t": .string(text), "w": .number(Double(s.week))]), at: 0)
+            if hof.count > 40 { hof.removeLast(hof.count - 40) }
+            s.rest["hof28"] = .array(hof)
+            Dismissal.dismiss(&s, companyID: co.id, staffID: id, reason: .resignation, data: data)
+            s.note("\(n?.name ?? "A colleague") has retired from \(co.name). You need to hire a replacement.", tone: "n", companyID: co.id)
         default: break
+        }
+    }
+
+    /// Nobody answered a farewell: the quiet default is a card, and the person still goes. Original: the `m.auto` pass.
+    static func quietDefaults(_ s: inout GameState, data: GameData) {
+        for k in s.inbox.indices where s.inbox[k].actionID == retAction && s.inbox[k].status == "done" && s.inbox[k].value("auto").double != 0 && s.inbox[k].value("done28").isNull {
+            s.inbox[k].set("done28", 1)
+            let msg = s.inbox[k]
+            answer(&s, message: msg, option: 2, data: data)
         }
     }
 

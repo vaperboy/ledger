@@ -37,6 +37,10 @@ final class TutorialTests: XCTestCase {
         XCTAssertFalse(e.setItemPrice(companyID: id, itemID: item.id, price: item.price).isRefused)
         XCTAssertEqual(e.tutorialStep, .nextDay)
         e.nextDay()
+        XCTAssertEqual(e.tutorialStep, .openInbox)
+        e.tutorialAdvance(from: .openInbox)
+        XCTAssertEqual(e.tutorialStep, .readInbox)
+        e.tutorialAdvance(from: .readInbox)
         XCTAssertEqual(e.tutorialStep, .claimGoal)
         e.tutorialAdvance(from: .claimGoal)
         XCTAssertTrue(e.tutorialComplete)
@@ -67,5 +71,18 @@ final class TutorialTests: XCTestCase {
         XCTAssertFalse(held.optionalEquipment)
         e.tutorialFinish()
         XCTAssertEqual(e.tutorialLimited(wide).team, .minimum, "never bought for the player, tutorial or not")
+    }
+
+    func testInboxGuideSkipsDecisionsAndReadMessages() throws {
+        var e = try fresh()
+        e.update { s, _, _ in
+            s.addMessage(from: "Bank", title: "First news", body: "Info")
+            s.addMessage(kind: "ask", from: "Staff", title: "A question", body: "Decide", status: "open")
+        }
+        let guide = e.tutorialInboxGuide
+        XCTAssertFalse(guide.isEmpty)
+        XCTAssertLessThanOrEqual(guide.count, 3)
+        for m in e.state.inbox where guide.contains(m.id) { XCTAssertFalse(m.status == "open" && m.isOwnerAddressed) }
+        XCTAssertFalse(guide.contains { id in e.state.inbox.first { $0.id == id }?.title == "A question" })
     }
 }

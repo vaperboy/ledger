@@ -3,18 +3,19 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Read-only records of the world around you: your rival, the Top 50, monthly results per company, and the crisis centre.
-/// Nothing is decided here; the crisis centre links to the Inbox, where each decision is answered.
+/// Read-only records of the world around you: your rival, the Top 50, monthly results per company, the crisis centre and the
+/// retirement hall. Nothing is decided here; the crisis centre links to the Inbox, where each decision is answered.
 struct WorldRecordsView: View {
     enum Page: String, CaseIterable, Hashable, Identifiable {
         var id: String { rawValue }
-        case rival = "Your rival", topFifty = "Top 50", months = "Monthly results", crisis = "Crisis centre"
+        case rival = "Your rival", topFifty = "Top 50", months = "Monthly results", crisis = "Crisis centre", hall = "Retirement hall"
         var glyph: String {
             switch self {
             case .rival: return Glyph.people
             case .topFifty: return Glyph.list
             case .months: return Glyph.calendar
             case .crisis: return Glyph.warning
+            case .hall: return Glyph.person
             }
         }
     }
@@ -51,10 +52,11 @@ struct WorldRecordsView: View {
         case .topFifty: topFifty(e)
         case .months: months(e)
         case .crisis: crisis(e)
+        case .hall: hall(e)
         }
     }
 
-    /// Four records in one table: the rival, the Top 50, monthly results and the crisis centre.
+    /// Five records in one table: the rival, the Top 50, monthly results, the crisis centre and the retirement hall.
     private func recordsTable(_ e: GameEngine) -> some View {
         OverviewSettingsCard(heading: "Records") {
             ForEach(Page.allCases) { (p: Page) in
@@ -72,6 +74,7 @@ struct WorldRecordsView: View {
         case .topFifty: return "The fifty biggest groups"
         case .months: return "Results per company, month by month"
         case .crisis: return "Open crises and what answers them"
+        case .hall: return "Owners who retired"
         }
     }
 
@@ -175,6 +178,21 @@ struct WorldRecordsView: View {
                                     subtitle: m.expiresWeek.map { w in let left = w - e.state.week; return left > 0 ? "Expires in \(left) week\(left == 1 ? "" : "s")" : "Expires this week" } ?? "No deadline",
                                     chevron: true)
                         }.buttonStyle(PressableStyle())
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func hall(_ e: GameEngine) -> some View {
+        let list = e.retirementHall
+        if list.isEmpty {
+            NoteCard(text: "Nobody has retired from your companies yet. Long-serving staff are remembered here when they do.", glyph: Glyph.person)
+        } else {
+            Card(padding: 14) {
+                VStack(spacing: 0) {
+                    ForEach(Array(list.enumerated()), id: \.offset) { i, p in
+                        FlatRow(label: p.name, value: GameCalendar.dateString(week: p.week), sub: e.displayText(p.text.tidyMoney), rule: i > 0)
                     }
                 }
             }

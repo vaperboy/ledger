@@ -122,6 +122,11 @@ private struct CoachTourLayer: View {
         if companyOnTop { store.tutorialAdvance(from: .openCompany) }
     }
 
+    /// Opening the Inbox app is the step that shows it.
+    private func noteInboxOpened() {
+        if store.showsApp(.inbox) { store.tutorialAdvance(from: .openInbox) }
+    }
+
     /// The guide has nothing left to point at when the company is gone.
     private func endIfAbandoned() {
         if store.tutorialActive && firstCompanyID == nil { store.tutorialFinish() }
@@ -162,11 +167,12 @@ private struct CoachTourLayer: View {
             }
             .onChange(of: tour?.id) { _, id in activeID = id }
         }
-        .onChange(of: store.path(for: store.tab).count) { _, _ in noteCompanyOpened() }
-        .onChange(of: store.tab) { _, _ in noteCompanyOpened() }
+        .onChange(of: store.path(for: store.tab).count) { _, _ in noteCompanyOpened(); noteInboxOpened() }
+        .onChange(of: store.tab) { _, _ in noteCompanyOpened(); noteInboxOpened() }
         .onAppear {
             endIfAbandoned()
             noteCompanyOpened()
+            noteInboxOpened()
         }
     }
 

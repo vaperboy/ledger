@@ -51,7 +51,7 @@ final class TeamOverviewStructureTests: XCTestCase {
         let md = try XCTUnwrap(o.vacancies.first { $0.id == "md" })
         XCTAssertEqual(md.scope, "group"); XCTAssertEqual(md.employer, "Your group office"); XCTAssertFalse(md.needed)
         XCTAssertNotNil(o.vacancies.first { $0.id == "hq-pa" }, "the personal assistant is the one role a home office has a desk for")
-        XCTAssertNil(o.vacancies.first { $0.id == "hq-law" }, "the in-house lawyer still opens with 30 staff (Headquarters.unlocked)")
+        XCTAssertNil(o.vacancies.first { $0.id == "hq-law" }, "the in-house lawyer still opens with 3 companies (Headquarters.unlocked)")
         XCTAssertTrue(o.vacancies.filter { $0.scope == "group" }.allSatisfy { $0.employer == "Your group office" })
         // Hired, the person is listed with the group scope and the group office as employer.
         XCTAssertEqual(e.hireExecutive(.md, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .ok)

@@ -24,7 +24,7 @@ struct ProPlansView: View {
             if ent.ownsPro {
                 ownedRow
             } else {
-                planCard(.pro, title: "Ledger Pro, once", badge: "", detail: "Three save slots, cloud backup, profile looks and no ads, for good. Nothing in the game needs it. Family Sharing on.")
+                planCard(.pro, title: "Ledger Pro, once", badge: "", detail: "Every locked item and three save slots, for good. Removes ads. Family Sharing on.")
                 Hairline().padding(.leading, 22 + Theme.Space.m)
                 planCard(.founder, title: "Founder's Edition, once", badge: "", detail: "Everything in Pro, with a Founder mark in Settings.")
             }

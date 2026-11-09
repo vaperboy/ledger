@@ -17,7 +17,7 @@ enum FirstRunFlags {
 /// A place on screen a coach mark can point at.
 enum CoachStop: Hashable {
     case nextDay, happened, needsYou, homeCompany
-    case firstPick, firstItemRow, itemPrice, itemSupplier, goalCard
+    case firstPick, firstItemRow, itemPrice, itemSupplier, goalCard, inboxGuided
     case tabBar, customTab
     case groupAdd, groupStructure, groupPeople, groupCard
     case venturesHeader, venturesFound, venturesBacking
@@ -180,7 +180,7 @@ struct CoachTour {
 
 /// Every tour of the game, in priority order: adding a tour is adding one entry here (and a `.coachAnchor` on each view it points at).
 enum CoachTours {
-    /// The new player's five steps, one entry per `TutorialStep`: the marks are the places that step can point at, most specific first, and
+    /// The new player's guided steps, one entry per `TutorialStep`: the marks are the places that step can point at, most specific first, and
     /// the first one on screen is shown, so the card also leads the player back to the right screen. Each step is done by using the
     /// highlighted control; every card can be skipped.
     static func tutorial(_ step: TutorialStep) -> [CoachMark] {
@@ -209,6 +209,17 @@ enum CoachTours {
             return [
                 CoachMark(stop: .nextDay, text: "Press Next day. One day passes: customers buy and the books move.", passThrough: true, button: ""),
                 CoachMark(stop: .tabBar, text: "Go back to the Home tab: Next day is there.", passThrough: true, button: ""),
+            ]
+        case .openInbox:
+            return [
+                CoachMark(stop: .phoneInbox, text: "Open the Inbox. Questions and news from your business arrive here.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Open the Phone tab. The Inbox is an app on it.", passThrough: true, button: ""),
+            ]
+        case .readInbox:
+            return [
+                CoachMark(stop: .inboxGuided, text: "Open the message marked Read next. Anything that needs an answer waits at the top of the Inbox.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .phoneInbox, text: "Open the Inbox again to read what came in.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .tabBar, text: "Open the Phone tab, then the Inbox.", passThrough: true, button: "", blocking: false),
             ]
         case .claimGoal:
             return [

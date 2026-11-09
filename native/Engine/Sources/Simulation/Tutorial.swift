@@ -2,10 +2,10 @@ import Foundation
 import GameCore
 import Businesses
 
-/// The five guided steps of a new player, in order. The step lives in the save (`rest["tutorial"]`). Every step can be skipped.
+/// The guided steps of a new player, in order. The step lives in the save (`rest["tutorial"]`). Every step can be skipped.
 public enum TutorialStep: String, CaseIterable, Sendable {
     // The supplier is asked when the first product is picked, so it comes before the price.
-    case openCompany, pickSupplier, setPrice, nextDay, claimGoal
+    case openCompany, pickSupplier, setPrice, nextDay, openInbox, readInbox, claimGoal
 
     var following: TutorialStep? {
         let all: [TutorialStep] = TutorialStep.allCases
@@ -39,6 +39,13 @@ public enum Tutorial {
         guard s.rest[key] != nil else { return }
         s.rest[key] = .object(["done": .bool(true)])
     }
+
+    /// The messages the player should open next while the tutorial runs: the newest few unread ones that are information, not a decision.
+    public static func inboxGuide(_ s: GameState) -> [Int] {
+        let info: [Message] = s.inbox.filter { (m: Message) -> Bool in !(m.status == "open" && m.isOwnerAddressed) && !m.isRead }
+        let sorted: [Message] = info.sorted { (a: Message, b: Message) -> Bool in a.week != b.week ? a.week > b.week : a.id > b.id }
+        return sorted.prefix(3).map { (m: Message) -> Int in m.id }
+    }
 }
 
 public extension GameEngine {
@@ -53,4 +60,6 @@ public extension GameEngine {
 
     /// Ends the tutorial early.
     mutating func tutorialFinish() { update { s, _, _ in Tutorial.finish(&s) } }
+
+    var tutorialInboxGuide: [Int] { Tutorial.inboxGuide(state) }
 }
