@@ -194,10 +194,20 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     }
 
     public mutating func equip(_ id: String) {
-        guard owned.contains(id), let r = SeasonRewards.all.first(where: { $0.id == id }), r.kind.isEquippable else { return }
+        guard owned.contains(id), let r = SeasonRewards.item(id), r.kind.isEquippable else { return }
         equipped[r.kind.rawValue] = id
     }
 
-    /// Save slots added by owned rewards (comfort only).
-    public var bonusSaveSlots: Int { SeasonRewards.all.filter { $0.kind == .saveSlot && owned.contains($0.id) }.count }
+    /// Adds a cosmetic or comfort item bought or won outside the pass (store, box, collection); the first of an equippable kind is equipped.
+    public mutating func grantOwned(_ id: String) {
+        guard let r = SeasonRewards.item(id) else { return }
+        owned.insert(id)
+        if equipped[r.kind.rawValue] == nil && r.kind.isEquippable { equipped[r.kind.rawValue] = id }
+    }
+
+    /// Save slots added by owned rewards and bought slots (comfort only).
+    public var bonusSaveSlots: Int {
+        SeasonRewards.all.filter { $0.kind == .saveSlot && owned.contains($0.id) }.count
+            + GoldCosmetics.all.filter { $0.item.kind == .saveSlot && owned.contains($0.id) }.count
+    }
 }

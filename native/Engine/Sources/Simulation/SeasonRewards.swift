@@ -4,6 +4,8 @@ import Foundation
 public struct SeasonReward: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
         case badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate
+        /// A free box (opened in the store) or a little gold; both are only ever spent on cosmetics and comfort.
+        case box, gold
         /// Kinds the player picks one of (a badge or an advisor line is simply collected).
         public var isEquippable: Bool { self == .theme || self == .namePlate || self == .backdrop || self == .richListFlair || self == .tradePlate }
         public var label: String {
@@ -16,6 +18,8 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
             case .advisorLine: return "Advisor line"
             case .richListFlair: return "Rich-list flair"
             case .tradePlate: return "Trade-name plate"
+            case .box: return "Box"
+            case .gold: return "Gold"
             }
         }
     }
@@ -28,6 +32,8 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var detail: String
     /// Hex colours the app draws a theme, backdrop, plate or flair with (tint first); empty for the rest.
     public var colors: [UInt32] = []
+    /// Boxes (kind `.box`) or gold (kind `.gold`) the reward hands out.
+    public var amount: Int = 0
 }
 
 /// The fixed reward table of the season (data, not logic). Every tier up to 30 is reachable on both tracks; rewards sit on the tiers listed.
@@ -40,6 +46,16 @@ public enum SeasonRewards {
 
     private static func r(_ id: String, _ tier: Int, _ prem: Bool, _ kind: SeasonReward.Kind, _ title: String, _ detail: String, _ colors: [UInt32] = []) -> SeasonReward {
         SeasonReward(id: id, tier: tier, premium: prem, kind: kind, title: title, detail: detail, colors: colors)
+    }
+
+    private static func b(_ id: String, _ tier: Int, _ prem: Bool, _ count: Int) -> SeasonReward {
+        SeasonReward(id: id, tier: tier, premium: prem, kind: .box, title: count == 1 ? "Season box" : "\(count) Season boxes",
+                     detail: "Free to open in the Store; it holds a cosmetic, an artifact or a little gold. Odds are shown before you open it.", amount: count)
+    }
+
+    private static func g(_ id: String, _ tier: Int, _ prem: Bool, _ gold: Int) -> SeasonReward {
+        SeasonReward(id: id, tier: tier, premium: prem, kind: .gold, title: "\(gold) gold",
+                     detail: "Gold buys cosmetics, boxes and comfort in the Store. It never buys in-game money.", amount: gold)
     }
 
     static let free: [SeasonReward] = [
@@ -59,6 +75,8 @@ public enum SeasonRewards {
         r("flair.pin", 27, false, .richListFlair, "Rich-list pin", "A small champagne pin beside your name on the rich list.", [0xD6B889]),
         r("badge.s1.gold", 29, false, .badge, "Gold badge", "Awarded for reaching tier 29."),
         r("badge.s1.complete", 30, false, .badge, "Season 1 finisher", "Every tier reached in season 1."),
+        b("box.f4", 4, false, 1), g("gold.f8", 8, false, 10), b("box.f10", 10, false, 1), g("gold.f14", 14, false, 15),
+        b("box.f16", 16, false, 1), g("gold.f22", 22, false, 20), b("box.f26", 26, false, 1)
     ]
 
     static let premium: [SeasonReward] = [
@@ -77,5 +95,7 @@ public enum SeasonRewards {
         r("theme.ocean", 27, true, .theme, "Ocean theme", "A blue tint on the usual palette.", [0x7FAAD6, 0x1D2A3B]),
         r("trade.gilded", 28, true, .tradePlate, "Gilded trade plate", "A gilded plate for your trade names.", [0xE0BC5E, 0x7A5A1C]),
         r("badge.s1.crown", 30, true, .badge, "Season 1 crown", "The premium finisher badge of season 1."),
+        b("box.p4", 4, true, 1), g("gold.p7", 7, true, 20), b("box.p10", 10, true, 2), g("gold.p13", 13, true, 30),
+        b("box.p16", 16, true, 2), g("gold.p19", 19, true, 40), b("box.p25", 25, true, 2), g("gold.p29", 29, true, 50)
     ]
 }
