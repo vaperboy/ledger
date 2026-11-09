@@ -7,7 +7,7 @@ import Finance
 
 /// Starting a company moves the owner's money into it at cost; it does not raise net worth, and no net-worth trophy or milestone is queued by the start.
 final class StartNetWorthTests: XCTestCase {
-    static let trades = ["cafe", "gym", "kiosk", "hotel", "bank", "carrental", "factory", "boutique"]
+    static let trades = ["cafe", "gym", "kiosk", "hotel", "grocery", "carrental", "factory", "boutique"]
 
     func testStartingACompanyKeepsNetWorthWithinTwoPercentOfTheMoneyPutIn() throws {
         for trade in Self.trades {

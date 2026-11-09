@@ -44,7 +44,7 @@ final class FinancialEngineFixesTests: XCTestCase {
             l.id = s.makeID(); l.kind = "cons"; l.balance = 10_000; l.companyID = 0; l.monthlyPayment = 500
             s.loans.append(l); loanID = l.id
             Ledger.set(&s, .me, to: 1_000)
-            s.savings = 20_000
+            Ledger.moveSavings(&s, 20_000 - s.savings)
         }
         var ok = false
         e.update { s, _, _ in ok = Banking.repay(loanID: loanID, amount: 10_000, state: &s) }

@@ -5,7 +5,7 @@ import Finance
 import Businesses
 import Simulation
 
-/// Property and finance companies in a running game: they can be started, keep the books balanced, respond to the player's actions and fail properly.
+/// Property and finance companies in a running game (the bank, insurer and fund are retired from the trade list, so these start them with `allowRetired`, as a saved game that owns one has them): they can be started, keep the books balanced, respond to the player's actions and fail properly.
 final class RentalFinanceTests: XCTestCase {
     static let trades = ["resrent", "comrent", "parking", "insco", "bank", "fund"]
 
@@ -14,7 +14,7 @@ final class RentalFinanceTests: XCTestCase {
             var e = try GameEngine.newGame(countryCode: "DE", playerName: "T", seed: 91)
             e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
             let est = CompanySetup.estimate(tradeID: t, cityID: e.state.player.cityID, form: .limited, size: 1, state: e.state, data: e.data)
-            let r = e.startCompany(tradeID: t, cityID: e.state.player.cityID, form: .limited, fundWith: (est?.total ?? 1_000_000) * 1.6)
+            let r = e.startCompany(tradeID: t, cityID: e.state.player.cityID, form: .limited, fundWith: (est?.total ?? 1_000_000) * 1.6, allowRetired: true)
             guard case .success(let id) = r else { XCTFail("\(t) could not be started: \(r)"); continue }
             for _ in 0..<(30 * 7) { e.nextDay() }
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(t): \(Ledger.gaps(e.state))")
@@ -87,7 +87,7 @@ final class RentalFinanceTests: XCTestCase {
     func testInsurerNeedsProductsAndVerifiedSellers() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "insco", cityID: e.state.player.cityID, form: .limited, fundWith: 120_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "insco", cityID: e.state.player.cityID, form: .limited, fundWith: 120_000_000, allowRetired: true) else { return XCTFail() }
         let products = e.insuranceProducts(companyID: id)
         XCTAssertEqual(products.count, 6)
         XCTAssertEqual(Set(products.filter { $0.isOffered }.map { $0.id }), ["motor", "home", "property"], "the standard set-up offers the starter products")
@@ -108,7 +108,7 @@ final class RentalFinanceTests: XCTestCase {
     func testBankRunDrawsOnCentralBankAndRepays() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 10)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(70 * 7) { e.nextDay() }
         // A run: most deposits leave at once, more than the bank holds in cash.
         e.update { s, _, _ in
@@ -129,7 +129,7 @@ final class RentalFinanceTests: XCTestCase {
     func testBankWithNoCapitalLeftIsClosedByTheRegulator() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 12)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(60 * 7) { e.nextDay() }
         XCTAssertEqual(e.state.company(id)?.status, .open)
         // The loan book turns out worthless.
@@ -159,7 +159,7 @@ final class RentalFinanceTests: XCTestCase {
     func testFundEarnsFeesOnAssetsUnderManagement() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 14)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "fund", cityID: e.state.player.cityID, form: .limited, fundWith: 10_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "fund", cityID: e.state.player.cityID, form: .limited, fundWith: 10_000_000, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(60 * 7) { e.nextDay() }
         let b = try XCTUnwrap(e.financeBook(companyID: id))
         XCTAssertGreaterThan(b.assetsUnderManagement, 0)

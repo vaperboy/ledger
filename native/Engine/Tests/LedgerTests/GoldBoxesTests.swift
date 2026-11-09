@@ -141,7 +141,7 @@ final class GoldBoxesTests: XCTestCase {
         XCTAssertEqual(StoreAccess.access(adultConfirmed: true, countryCode: "NO"), .open(paidBoxes: true))
         XCTAssertTrue(StoreAccess.paidBoxRestrictedCountries.isEmpty, "empty by default")
         XCTAssertEqual(StoreAccess.access(adultConfirmed: true, countryCode: "be", restricted: ["BE", "NL"]), .open(paidBoxes: false))
-        XCTAssertEqual(StoreAccess.access(adultConfirmed: true, countryCode: "GB", restricted: ["UK"]), .open(paidBoxes: false))
+        XCTAssertEqual(StoreAccess.access(adultConfirmed: true, countryCode: "uk", restricted: ["UK"]), .open(paidBoxes: false))
         XCTAssertEqual(StoreAccess.access(adultConfirmed: true, countryCode: nil, restricted: ["BE"]), .open(paidBoxes: true))
     }
 

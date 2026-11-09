@@ -582,7 +582,7 @@ final class ContractTalkTests: XCTestCase {
         let sources = engineRoot.appendingPathComponent("Sources")
         let gone = ["func raise(personID", "func giveManagerRaise", "func offerPromotion(companyID", "func setPayModel(companyID", "func setCommissionRate(companyID", "func offerFullTime(companyID",
                     "func offerPartTime(companyID", "func setStaffHours(companyID", "func offerFixedSalary(companyID", "func toggleSeason(companyID", "func toggleOwnCar(companyID",
-                    "func moveManager(", "func setManagerProfitBonus(companyID", "func promotionPosts(companyID", "func refusalReason(", "negotiateRaise", "declinedForGood", "tooLow(",
+                    "func moveManager(", "func setManagerProfitBonus(companyID", "func promotionPosts(companyID", "func refusalReason(", "negotiateRaise", "declinedForGood", "func tooLow(",
                     "promoPat", "will not talk about pay any more"]
         for f in swiftFiles(under: sources) {
             let text = try String(contentsOf: f, encoding: .utf8)

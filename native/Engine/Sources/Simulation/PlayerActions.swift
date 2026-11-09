@@ -16,10 +16,11 @@ public extension GameEngine {
 
     /// Create a company and set it up with standard choices. Returns its id.
     mutating func startCompany(tradeID: String, cityID: String, form: LegalForm, size: Double? = nil, name: String? = nil, countryCode: String? = nil,
-                               accountantID: Int? = nil, fundWith amount: Double, quickSetup: Bool = true) -> Result<Int, CompanySetup.StartError> {
+                               accountantID: Int? = nil, fundWith amount: Double, quickSetup: Bool = true, allowRetired: Bool = false) -> Result<Int, CompanySetup.StartError> {
         var result: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
-        // Trades whose weekly model is not ported yet would sit inert, so they cannot be started.
-        guard let trade = data.catalog[tradeID], SpecialFamilies.isStartable(trade) else { return .failure(.notYetAvailable) }
+        // Trades whose weekly model is not ported yet would sit inert, and retired trades are no longer offered; only a test or a tool passes `allowRetired`.
+        guard let trade = data.catalog[tradeID],
+              SpecialFamilies.isStartable(trade) || (allowRetired && SpecialFamilies.isRetired(trade) && CompanyWeek.isSupported(trade)) else { return .failure(.notYetAvailable) }
         update { s, data, ctx in
             result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
             if case .success(let id) = result {

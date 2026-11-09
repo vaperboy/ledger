@@ -205,15 +205,16 @@ final class AdRewardsTests: XCTestCase {
                 if s.statement.count > before { seen.insert(s.statement[0].label) }
             }
         }
-        XCTAssertEqual(seen, AdRewards.grantLabels)
+        XCTAssertTrue(seen.isEmpty, "the ladder pays no cash any more: \(seen)")
     }
 
     func testDoublePaysOnceCappedAndTheBooksBalance() throws {
         var e = try ChainsTests.engine()
         _ = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
-        e.update { s, _, _ in s.week = 6; _ = PlayerGoals.ladderReward(&s, "M6", cur) }   // the town grant
         let grant = cur.scaledPrice(25_000)
+        // No ladder step pays cash now, so post a line the doubling recognises.
+        e.update { s, _, _ in s.week = 6; Ledger.move(&s, .me, grant, why: "Start-up grant from the town") }
         var paid = 0.0
         let cashBefore = e.state.cash
         e.update { s, _, _ in

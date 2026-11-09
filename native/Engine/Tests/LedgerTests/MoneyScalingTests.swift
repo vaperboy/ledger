@@ -173,6 +173,14 @@ final class MoneyLiteralLintTests: XCTestCase {
         "UsedCarWeek.swift": ["15000": "kilometres a year used to turn odometer km into a car age: not money"],
         "DealerAddons.swift": ["10000": "ratio: the file's benchmark per 10 000 of the trade's ticket, scaled with the ticket (accounting units) and scaledPrice"],
         "FinanceItemBases.swift": ["1000": "unit conversion: thousand barrels / thousand policies to units, not money"],
+        "CrowdStartupRules.swift": ["150_000": "entry cost at the reference level; scaled with scaledPrice where it is quoted (CrowdStartups) and by the index in entryCost"],
+        "EnergyMarket.swift": ["400_000": "weekly MWh of the world's grid (a quantity, not money)"],
+        "TradeAssociations.swift": ["1000": "rounding of a discount rate to a tenth of a percent, not an amount"],
+        "GroupReview.swift": ["1000": "rounding of a target ratio to three decimals, not an amount"],
+        "GoldBoxes.swift": ["10_000": "drop weights out of 10 000 (odds, not money)", "1500": "drop weights out of 10 000 (odds, not money)", "3500": "drop weights out of 10 000 (odds, not money)", "3000": "drop weights out of 10 000 (odds, not money)", "2800": "drop weights out of 10 000 (odds, not money)", "1400": "drop weights out of 10 000 (odds, not money)", "1000": "drop weights out of 10 000 (odds, not money)", "2500": "drop weights out of 10 000 (odds, not money)", "2000": "drop weights out of 10 000 (odds, not money)"],
+        "GoldStore.swift": ["1_200": "gold amounts and prices in gold or cents of the store's own currency, not game money", "1_999": "store price in cents, not game money", "2_600": "gold amount, not game money", "4_999": "store price in cents, not game money", "7_000": "gold amount, not game money", "1_499": "store price in cents, not game money", "1_000": "gold amount, not game money", "1_080": "price in gold, not game money"],
+        "AuctionRules.swift": ["3_600": "seconds in an hour: real-time auction length", "86_400": "seconds in a day: real-time catch-up limit", "2_000": "gold bid ladder, not game money", "10_000": "gold bid ladder, not game money", "1_200": "gold reserve of a legendary artifact, not game money", "1_000": "gold bid rounding, not game money"],
+        "Artifacts.swift": ["5_000": "gold value of an artifact, not game money", "1_500": "gold value of an artifact, not game money"],
         "Banking.swift#annuity": ["100000": "ratio: instalment per 100 000 borrowed, any currency"],
     ]
     /// Files with technical number tables only (calendar arithmetic, hashing, encoding)
