@@ -67,7 +67,7 @@ final class VehiclesTravelTests: XCTestCase {
             Ledger.move(&s, .me, 80_000_000, why: "Test funds")
             if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
             Payments.injectCash(&s, companyID: id, amount: fund)
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+            _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))   // the usual full kit, vans included
         }
         XCTAssertNotEqual(id, 0, trade)
         return (e, id)

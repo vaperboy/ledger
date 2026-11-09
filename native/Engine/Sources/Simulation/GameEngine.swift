@@ -261,6 +261,7 @@ public struct GameEngine {
         JobAds.runDay(&state, data: data)   // applicants to job ads arrive over the weeks
         Agency.runDay(&state, data: data)
         StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
+        ManagerOpening.runDay(&state, data: data)   // a manager builds a new place up day by day
         DailyTrade.runDay(&state, day: day, data: data)
         ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)

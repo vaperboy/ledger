@@ -21,7 +21,7 @@ final class RoleTuningTests: XCTestCase {
             if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
             if let i = s.companyIndex(id) { s.companies[i].size = size }
             Payments.injectCash(&s, companyID: id, amount: 300_000_000)
-            _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
+            _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))   // a typical company has its full kit
             if let i = s.companyIndex(id) {
                 s.companies[i].status = .open; s.companies[i].ownerHours = 40
                 // a typical company advertises (the manager's first campaign: a small budget on one channel)

@@ -85,9 +85,9 @@ enum LifeStories {
     private static func build(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, cityID: String, form: LegalForm, size: Double, name: String) -> Int? {
         guard case .success(let id) = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name.isEmpty ? nil : name, data: data, context: context) else { return nil }
         _ = Payments.injectCash(&s, companyID: id, amount: s.cash)
-        // The minimum team, and all the equipment the trade needs to serve customers (some of it, such as a café's furniture, is not on the opening
-        // checklist but capacity is zero without it).
-        let options = CompanySetup.SetupOptions(team: .minimum, optionalEquipment: true, payrollMonthsReserve: 2)
+        // The minimum team and the equipment the trade needs to open and serve customers (a café's furniture is not on the opening checklist
+        // but capacity is zero without it); optional extras are bought later.
+        let options = CompanySetup.SetupOptions(team: .minimum, optionalEquipment: false, payrollMonthsReserve: 2)
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: options)
         guard let i = s.companyIndex(id), let bd = data.catalog[s.companies[i].type] else { return nil }
         // The papers are applied for (fees paid) and are in order on day 1.
@@ -120,7 +120,8 @@ enum LifeStories {
         let last = country.lastNames.isEmpty ? "Family" : s.random.pick(country.lastNames)
         guard case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city.id, form: .limited, size: size, name: "\(last) Café", data: data, context: context),
               Payments.injectCash(&s, companyID: id, amount: put) else { return false }
-        _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
+        // The family has run it for years, so the café has all its usual kit, not only what it takes to open.
+        _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))
         guard let i = s.companyIndex(id) else { return false }
         // The family has run it for years: the papers are in order and the people know the job.
         let w = World(state: s, data: data)

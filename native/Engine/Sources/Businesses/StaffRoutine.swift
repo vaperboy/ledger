@@ -106,6 +106,7 @@ public enum StaffRoutine {
             }
             staff[idx] = m
         }
+        StaffExtras.filedByAccountant(&staff, random: &s.random)
         co.staff = staff.filter { !goneIDs.contains($0.id) }
         co.set("payGap", payGap)
         s.companies[i] = co

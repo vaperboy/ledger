@@ -26,7 +26,9 @@ public enum Milestones {
 
     /// Called after each day; `weekClosed` is true on the day a week completes.
     static func check(_ s: inout GameState, data: GameData, currency cur: Currency, weekClosed: Bool) {
-        let nw = Valuation.netWorth(s, trades: data.catalog).total
+        let nw = Valuation.netWorth(s, trades: data.catalog, forGoals: true).total
+        // A game that starts with a company already trading records the thresholds its opening position meets without a fanfare.
+        let firstCheck = s.rest["miles"] == nil && s.rest["start"] != nil
         var m = s.rest["miles"] ?? .object(["w": .number(nw)])
         let today = s.week * 7 + s.day
         var reached = m["r"].array ?? []
@@ -35,7 +37,7 @@ public enum Milestones {
         while i < 80, threshold(i, cur) <= nw { reached.append(.number(Double(today))); top = i; i += 1 }
         if top >= 0 {
             m["r"] = .array(reached)
-            Celebrations.add(&s, kind: "milestone", title: "Net worth passed \(cur.display(threshold(top, cur)))", detail: "Reached on day \(today + 1) of your game", art: "milestone.networth", tier: 2)
+            if !firstCheck { Celebrations.add(&s, kind: "milestone", title: "Net worth passed \(cur.display(threshold(top, cur)))", detail: "Reached on day \(today + 1) of your game", art: "milestone.networth", tier: 2) }
         }
         if weekClosed {
             let gain = nw - m["w"].double

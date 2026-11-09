@@ -143,10 +143,11 @@ public enum Trophies {
     @discardableResult
     public static func check(_ s: inout GameState, data: GameData, context fc: FinanceContext) -> [String] {
         var rec = record(s)
-        let first = s.rest["ach28i"] == nil && s.week > 8
+        // A game that starts with a company already running (fresh start, heir) records what its opening position meets quietly, like an older game.
+        let first = s.rest["ach28i"] == nil && (s.week > 8 || s.rest["start"] != nil)
         if s.rest["ach28i"] == nil { s.rest["ach28i"] = .number(1) }
         if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }   // "had a loan", for the debt-free trophy
-        let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: Valuation.netWorth(s, trades: data.catalog),
+        let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: Valuation.netWorth(s, trades: data.catalog, forGoals: true),
                       live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies.filter { $0.type != "hold" })
         var got: [String] = []
         for t in all where rec[t.id].isNull {
