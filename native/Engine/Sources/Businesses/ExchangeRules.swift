@@ -74,12 +74,19 @@ public enum ExchangeRules {
 
     // MARK: Price limits
 
-    public static func inBand(price: Double, nav: Double) -> Bool { price >= nav * (1 - bandShare) && price <= nav * (1 + bandShare) }
-    public static func band(nav: Double) -> (low: Double, high: Double) { (round4(nav * (1 - bandShare)), round4(nav * (1 + bandShare))) }
+    /// The band is the administrator's rule (`band.exchange_low` / `band.exchange_high`, default 0.75 and 1.25 of the value per share).
+    public static func inBand(price: Double, nav: Double, rules: WorldRules = WorldRules.defaults) -> Bool {
+        let r: ClosedRange<Double> = rules.exchangeBand
+        return price >= nav * r.lowerBound && price <= nav * r.upperBound
+    }
+    public static func band(nav: Double, rules: WorldRules = WorldRules.defaults) -> (low: Double, high: Double) {
+        let r: ClosedRange<Double> = rules.exchangeBand
+        return (round4(nav * r.lowerBound), round4(nav * r.upperBound))
+    }
 
     /// Where today's closing price may land: within a tenth of the previous close, and inside the band around the value per share.
-    public static func closeBounds(previous: Double, nav: Double) -> (low: Double, high: Double) {
-        let b = band(nav: nav)
+    public static func closeBounds(previous: Double, nav: Double, rules: WorldRules = WorldRules.defaults) -> (low: Double, high: Double) {
+        let b = band(nav: nav, rules: rules)
         var lo = max(round4(previous * (1 - dayMoveShare)), b.low), hi = min(round4(previous * (1 + dayMoveShare)), b.high)
         if lo > hi { let p = round4(clamp(previous, b.low, b.high)); lo = p; hi = p }
         return (lo, hi)

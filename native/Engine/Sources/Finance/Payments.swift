@@ -190,12 +190,32 @@ public enum Payments {
         return .ok
     }
 
+    /// Keeps what a holding received as dividends, week by week (`divIn`: [[week, amount]], the latest 400 entries), so its income never depends on
+    /// how many bank movements are still remembered.
+    static func recordHoldingDividend(_ s: inout GameState, holdingIndex hi: Int, amount: Double) {
+        guard amount > 0 else { return }
+        var list: [JSONValue] = s.companies[hi].value("divIn").array
+        if let last = list.last, last[0].int == s.week {
+            list[list.count - 1] = .array([.number(Double(s.week)), .number(last[1].double + amount)])
+        } else {
+            list.append(.array([.number(Double(s.week)), .number(amount)]))
+        }
+        if list.count > 400 { list.removeFirst(list.count - 400) }
+        s.companies[hi].set("divIn", .array(list))
+    }
+
+    /// Dividends a holding received in the given weeks (all time when nil).
+    public static func holdingDividends(_ co: Company, weeks: ClosedRange<Int>? = nil) -> Double {
+        co.value("divIn").array.filter { (e: JSONValue) -> Bool in weeks?.contains(e[0].int) ?? true }.reduce(0.0) { $0 + $1[1].double }
+    }
+
     /// The owners' side of a dividend: the holding the company sits in, or you.
     static func receiveDividend(_ s: inout GameState, from co: Company, amount: Double, name: String, context: FinanceContext) {
         let mine = amount * co.ownership / 100
         if co.holdingID != 0, let hi = s.companyIndex(co.holdingID), s.companies[hi].status.isLive {
             Ledger.moveRaw(&s, .company(co.holdingID), mine)
             s.companies[hi].addTransaction(week: s.week, amount: mine, label: "Dividend from \(name)")
+            recordHoldingDividend(&s, holdingIndex: hi, amount: mine)
         } else {
             playerReceives(&s, mine, label: "Dividend from \(name)")
             s.tax.dividends += mine
@@ -207,6 +227,7 @@ public enum Payments {
             guard part > 0, let hi = s.companyIndex(l["hid"].int), s.companies[hi].status.isLive else { continue }
             Ledger.moveRaw(&s, .company(l["hid"].int), part)
             s.companies[hi].addTransaction(week: s.week, amount: part, label: "Dividend from \(name)")
+            recordHoldingDividend(&s, holdingIndex: hi, amount: part)
         }
         let shield = context.homeCountry(s).dividendShield
         let injected = s.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }

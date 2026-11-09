@@ -58,7 +58,8 @@ public struct GameEngine {
     /// current account of that size, and no companies.
     public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil,
                                tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false,
-                               difficulty: Difficulty = .classic, entitlements: EntitlementSnapshot = .free, now: Date = Date()) throws -> GameEngine {
+                               difficulty: Difficulty = .classic, entitlements: EntitlementSnapshot = .free, now: Date = Date(),
+                               admins: Set<String>? = nil, worldRules: WorldRules? = nil) throws -> GameEngine {
         // Sandbox is a Ledger Pro mode: the app passes what the player owns.
         if difficulty == .sandbox, !entitlements.isUnlocked(.sandboxMode, now: now) { throw NewGameError.sandboxNeedsPro }
         let (data, events, marketing) = try loadResources()
@@ -125,6 +126,9 @@ public struct GameEngine {
         engine.recordDay()
         // An ambition chosen on the start screen is stored like any other choice (perk active at once: there is nothing to switch from).
         if let ambition, Ambitions.path(ambition) != nil { engine.chooseAmbition(path: ambition) }
+        // The administrators' rules first, then the country's government (created only when the app passes the server's administrator list).
+        if let worldRules { engine.state.worldRules = worldRules }
+        if let admins { engine.update { s, _, ctx in GovernmentBridge.ensureHome(&s, admins: admins, context: ctx) } }
         return engine
     }
 

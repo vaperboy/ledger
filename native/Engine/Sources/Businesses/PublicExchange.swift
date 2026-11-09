@@ -20,7 +20,7 @@ public enum OrderRefusal: Equatable, Sendable {
         case .invalid: return "Enter a number of shares and a price."
         case .serverOnly: return "Orders in other players' companies go through the exchange server."
         case .ownShares: return "You cannot buy shares in your own company on the exchange."
-        case .outsideBand: return "The price must stay within 25% of the value per share."
+        case .outsideBand(let low, let high): return "The price must stay between \(low) and \(high), the band around the value per share."
         case .tooManyOrders: return "You have too many open orders. Cancel one first."
         case .tooMany(let n): return n > 0 ? "You can offer at most \(n) shares: you keep a majority of your own company." : "You have no shares to offer."
         case .positionLimit: return "That would take your position above the limit for one share."
@@ -131,7 +131,7 @@ public enum PublicExchange {
         if inst.kind == "ext" { return .refused(.serverOnly) }
         let px = ExchangeRules.round4(limit)
         guard shares > 0, px > 0 else { return .refused(.invalid) }
-        if !ExchangeRules.inBand(price: px, nav: inst.nav) { let b = ExchangeRules.band(nav: inst.nav); return .refused(.outsideBand(low: b.low, high: b.high)) }
+        if !ExchangeRules.inBand(price: px, nav: inst.nav, rules: s.worldRules) { let b = ExchangeRules.band(nav: inst.nav, rules: s.worldRules); return .refused(.outsideBand(low: b.low, high: b.high)) }
         if book.orders.count >= ExchangeRules.maxOpenOrders { return .refused(.tooManyOrders) }
         let held = book.positions[id]?.shares ?? 0
         switch side {
@@ -231,12 +231,12 @@ public enum PublicExchange {
                     inst.nav = ExchangeRules.round4(clamp(target, inst.nav * (1 - ExchangeRules.valueStepShare), inst.nav * (1 + ExchangeRules.valueStepShare)))
                 }
                 // Orders that the new value per share has left outside the band are cancelled.
-                for o in book.orders where o.instrument == id && !ExchangeRules.inBand(price: o.limit, nav: inst.nav) {
+                for o in book.orders where o.instrument == id && !ExchangeRules.inBand(price: o.limit, nav: inst.nav, rules: s.worldRules) {
                     book.orders.removeAll { $0.id == o.id }
                     s.note("Your order for \(inst.name) was cancelled: the price is outside the band after the value report.", tone: "n")
                 }
                 let previous = inst.close > 0 ? inst.close : inst.nav
-                let bounds = ExchangeRules.closeBounds(previous: previous, nav: inst.nav)
+                let bounds = ExchangeRules.closeBounds(previous: previous, nav: inst.nav, rules: s.worldRules)
                 var price = ExchangeRules.round4(clamp(previous, bounds.low, bounds.high))
                 var traded = 0
                 if inst.kind == "srv" {
@@ -375,7 +375,7 @@ public enum PublicExchange {
         ensureServerStocks(s, &book)
         let now = today(s)
         return book.instruments.values.sorted { $0.kind != $1.kind ? $0.kind > $1.kind : $0.name < $1.name }.map { i in
-            let b = ExchangeRules.band(nav: i.nav), d = ExchangeRules.closeBounds(previous: i.close, nav: i.nav)
+            let b = ExchangeRules.band(nav: i.nav, rules: s.worldRules), d = ExchangeRules.closeBounds(previous: i.close, nav: i.nav, rules: s.worldRules)
             let mine = i.isOwn ? (s.company(i.holdingID).map { CapTable.table($0).you } ?? 0) : (book.positions[i.id]?.shares ?? 0)
             let blocked = i.isOwn ? ExchangeRules.insiderBlock(listedDay: i.listedDay, disclosureDay: i.dividendDay, today: now) : nil
             let note: String

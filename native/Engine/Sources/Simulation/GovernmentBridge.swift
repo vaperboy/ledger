@@ -40,10 +40,37 @@ public enum GovernmentBridge {
     public static func world(_ s: GameState) -> GovernmentWorld { s.governmentWorld ?? GovernmentWorld() }
 
     /// Creates the country's government when it does not exist yet. `admins` come from the server.
+    /// A government nobody has used yet (no printing, no money in the treasury, no donations) takes the given supply; a used one keeps its own.
+    /// The administrator list follows the server's: the accounts given are added.
     public static func ensure(_ s: inout GameState, country: String, admins: Set<String>, startingSupply: Double) {
         var w = world(s)
-        if w.countries[country] == nil { w.countries[country] = Government(country: country, admins: admins, startingSupply: startingSupply) }
+        if var g = w.countries[country] {
+            if g.supply.mints.isEmpty, g.treasury.entries.isEmpty, g.donations.isEmpty, g.supply.base != max(1, startingSupply) { g.supply = GovMoneySupply(base: startingSupply) }
+            g.admins.formUnion(admins)
+            w.countries[country] = g
+        } else {
+            w.countries[country] = Government(country: country, admins: admins, startingSupply: startingSupply)
+        }
         s.governmentWorld = w
+    }
+
+    /// The home country's government at game start: the supply is a billion in the reference economy, scaled to the country's money, and
+    /// `admins` are the account ids the server lists as administrators (empty when there are none). `account` and `name` say who the player is
+    /// on ballots and in the audit log; nil keeps what is there.
+    public static func ensureHome(_ s: inout GameState, admins: Set<String>, account: String? = nil, name: String? = nil, context: FinanceContext) {
+        let cc: String = s.homeCountryCode
+        let supply: Double = max(1, context.currency(cc, s).scaledPrice(1_000_000_000))
+        ensure(&s, country: cc, admins: admins, startingSupply: supply)
+        var w = world(s)
+        if let account, !account.isEmpty { w.account = account }
+        if let name, !name.isEmpty { w.name = name }
+        s.governmentWorld = w
+    }
+
+    /// Every government runs on the game's last rules snapshot, else the defaults.
+    static func syncRules(_ w: inout GovernmentWorld, _ s: GameState) {
+        let r: WorldRules = s.worldRules
+        for cc in Array(w.countries.keys) { w.countries[cc]?.activeRules = r }
     }
 
     public static func citizen(_ s: GameState, _ w: GovernmentWorld) -> GovCitizen {
@@ -56,6 +83,7 @@ public enum GovernmentBridge {
     @discardableResult
     public static func act<T>(_ s: inout GameState, country: String, _ body: (inout Government, String, Int) throws -> T) throws -> T {
         var w = world(s)
+        syncRules(&w, s)
         guard var g = w.countries[country] else { throw GovError.notFound }
         let r = try body(&g, w.account, s.week)
         w.countries[country] = g
@@ -171,28 +199,46 @@ public enum GovernmentBridge {
     /// reputation. If the trick is traced back it costs a fine and a short trading ban.
     @discardableResult
     public static func trick(_ s: inout GameState, kind: DirtyTrick, companyID: Int, target: String, token: Int, confirmed: Bool, context: FinanceContext) throws -> TrickOutcome {
+        let clean: String = target.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.hasPrefix("rival:"), let id = Int(clean.dropFirst(6)) {
+            return try trick(&s, kind: kind, companyID: companyID, rivalID: id, token: token, confirmed: confirmed, context: context)
+        }
+        return try run(&s, kind: kind, companyID: companyID, targetKey: clean, rivalID: nil, token: token, confirmed: confirmed, context: context)
+    }
+
+    /// A dirty trick against a rival business, by the id its rival card carries (`MarketOpportunity.rivalID`, `MarketRivalRow.id`). The rival's
+    /// health and its mood towards you fall; a rival that is not on any market is refused before anything is paid.
+    @discardableResult
+    public static func trick(_ s: inout GameState, kind: DirtyTrick, companyID: Int, rivalID: Int, token: Int, confirmed: Bool, context: FinanceContext) throws -> TrickOutcome {
+        guard Rivals.marketKey(ofRival: rivalID, in: s) != nil else { throw GovError.notFound }
+        return try run(&s, kind: kind, companyID: companyID, targetKey: "rival:\(rivalID)", rivalID: rivalID, token: token, confirmed: confirmed, context: context)
+    }
+
+    private static func run(_ s: inout GameState, kind: DirtyTrick, companyID: Int, targetKey target: String, rivalID: Int?, token: Int, confirmed: Bool,
+                            context: FinanceContext) throws -> TrickOutcome {
         var w = world(s)
         guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { throw GovError.notOpen }
         guard !w.justice.barred(w.account, .trade, week: s.week) else { throw GovError.notEligible("You are banned from trading.") }
+        guard !target.isEmpty else { throw GovError.badAmount("Name the target.") }
+        // Your own companies are never the target: a trick is against someone else.
+        if let own = Int(target), s.companyIndex(own) != nil { throw GovError.notEligible("A trick must be against someone else, not one of your own companies.") }
         let cost = trickCost(s, kind: kind, companyID: companyID, context: context)
         guard s.companies[i].cash >= cost else { throw GovError.cannotAfford("The company cannot pay for it.") }
         let out = try w.routes.useTrick(kind, account: w.account, companyID: companyID, target: target, token: token, confirmed: confirmed, week: s.week)
         _ = Payments.companyPays(&s, companyID: companyID, amount: cost, category: "oth", label: kind.title)
-        if let tid = Int(target), let t = s.companyIndex(tid), tid != companyID {
-            s.companies[t].reputation = clamp(s.companies[t].reputation - out.effect, 0, 100)
-        }
+        if let rid = rivalID { _ = Rivals.hurt(&s, rivalID: rid, points: out.effect) }
         if out.detected {
             let cc = s.companies[i].countryCode
-            let want = jsRound(cost * 5)
+            let want = jsRound(cost * DirtyTrick.fineMultiple)
             let cash0 = s.companies[i].cash
             _ = Payments.companyPays(&s, companyID: companyID, amount: want, category: "fine", label: "Fine: \(kind.title)")
             let paid = max(0, cash0 - s.companies[i].cash)
             var g = w.countries[cc] ?? Government(country: cc, admins: [], startingSupply: 1_000_000_000)
             g.receive(paid, kind: "conviction_fine", ref: kind.rawValue, week: s.week)
             _ = w.justice.record(account: w.account, name: w.name, kind: kind.convictionKind, summary: "\(kind.title) traced back to you", fine: paid,
-                                 country: cc, week: s.week, tradeBanWeeks: 4, grave: false)
+                                 country: cc, week: s.week, tradeBanWeeks: DirtyTrick.banWeeks, grave: false)
             w.countries[cc] = g
-            s.addMessage(from: "Authorities", title: "Dirty trick traced", body: "\(kind.title) was traced back to \(s.companies[i].name). Fine \(context.currency(cc, s).display(paid)) and a four-week trading ban.",
+            s.addMessage(from: "Authorities", title: "Dirty trick traced", body: "\(kind.title) was traced back to \(s.companies[i].name). Fine \(context.currency(cc, s).display(paid)) and a \(DirtyTrick.banWeeks)-week trading ban.",
                          companyID: companyID, tone: "bad")
         }
         s.governmentWorld = w
@@ -205,6 +251,7 @@ public enum GovernmentBridge {
     public static func weekly(_ s: inout GameState, data: GameData, context: FinanceContext) {
         guard var w = s.governmentWorld, s.week > w.lastWeek else { return }
         w.lastWeek = s.week
+        syncRules(&w, s)
         let week = s.week
         for cc in w.countries.keys.sorted() {
             guard var g = w.countries[cc] else { continue }
@@ -258,12 +305,12 @@ public enum GovernmentBridge {
             s.companies[i].ownership = 0
             Failure.bankrupt(&s, companyIndex: i, reason: "closed", data: data, context: context, announce: false)
             s.companies[i].ownership = own
-            s.credit = clamp(s.credit - 15, 0, 100)
+            s.credit = clamp(s.credit - RouteRules.closureCreditLoss, 0, 100)
             let pf = jsRound(a.liability * RouteRules.convictionFineMultiple(level: a.level))
             if pf >= 1 { Payments.playerPays(&s, pf, label: "Fine: conviction") }
             let grave = a.grave
             let conv = w.justice.record(account: w.account, name: w.name, kind: a.route.convictionKind, summary: "\(a.route.title) at \(name)", fine: pf, country: cc, week: week,
-                                        tradeBanWeeks: grave ? 26 : 12, officeBanWeeks: grave ? 52 : 26, voteBanWeeks: grave ? 26 : 0, grave: grave)
+                                        tradeBanWeeks: RouteRules.tradeBanWeeks(grave: grave), officeBanWeeks: RouteRules.officeBanWeeks(grave: grave), voteBanWeeks: RouteRules.voteBanWeeks(grave: grave), grave: grave)
             g.receive(pf, kind: "conviction_fine", ref: String(conv.id), week: week)
             g.removeFromOffice(account: w.account, reason: "convicted", week: week)
             if grave { g.publish("\(w.name) is on the watchlist: \(conv.summary).", tone: "bad", week: week) }

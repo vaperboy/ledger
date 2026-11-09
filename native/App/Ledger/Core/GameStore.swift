@@ -284,6 +284,13 @@ final class GameStore: ObservableObject {
                                                         extraTrades: Self.showcaseTrades) { engine = e }
         else if let saves, saves.hasSave() { loadCurrent() }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
+        StoreSession.shared.moneyPrizeHandler = { [weak self] (amount: Int, id: String) -> Void in self?.claimBoxMoney(amount, claimID: id) }
+    }
+
+    /// The cash prize of an opened free box lands on the personal account (once per opening).
+    func claimBoxMoney(_ amount: Int, claimID: String) {
+        guard let paid = act({ $0.claimBoxMoney(amount, claimID: claimID) }) ?? nil, paid > 0 else { return }
+        if let cur = engine?.homeCurrency { tell("Prize paid", "+" + cur.display(paid) + " from your box.", tone: "good") }
     }
 
     var hasGame: Bool { engine != nil }

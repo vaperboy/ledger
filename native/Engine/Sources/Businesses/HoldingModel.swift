@@ -338,6 +338,7 @@ public enum HoldingModel {
         c.profitTTM += hh.reduce(0) { $0 + $1.profit }
         c.cashInGroup += max(0, h.cash)
         c.debtInGroup += CompanyFigures.debts(h, loans: s.loans)
+        c.dividendsThisYear = Payments.holdingDividends(h, weeks: (s.week / 52 * 52)...max(s.week / 52 * 52, s.week))
         c.rivalStakes = HoldingStakes.rivalStakesValue(h) + HoldingStartups.value(s, holdingID: h.id)
         c.holdingValue = h.cash + c.indexFund + c.otherFunds + c.companiesValue + c.rivalStakes
         return c

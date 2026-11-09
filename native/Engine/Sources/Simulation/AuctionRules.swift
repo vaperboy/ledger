@@ -43,7 +43,7 @@ public struct Auction: Codable, Equatable, Identifiable, Sendable {
 }
 
 public enum AuctionError: Error, Equatable, Sendable {
-    case notLive, sellerCannotBid, alreadyLeading, tooLow(minimum: Int), notEnoughGold(missing: Int)
+    case notLive, sellerCannotBid, linkedAccount, alreadyLeading, tooLow(minimum: Int), notEnoughGold(missing: Int)
     case notYours, hasBids, badPrice(String)
 }
 
@@ -52,6 +52,7 @@ extension AuctionError: LocalizedError {
         switch self {
         case .notLive: return "This auction has ended."
         case .sellerCannotBid: return "You cannot bid on your own auction."
+        case .linkedAccount: return "You cannot bid on an auction of a linked account."
         case .alreadyLeading: return "You already lead this auction."
         case .tooLow(let m): return "The lowest bid is \(m) gold."
         case .notEnoughGold(let m): return "You are \(m) gold short."
@@ -119,12 +120,13 @@ public enum AuctionRules {
         public var reserveMetAfter: Bool
     }
 
-    public static func preview(_ a: Auction, amount: Int, bidder: String, wallet: GoldWallet, now: Double) -> BidPreview {
+    public static func preview(_ a: Auction, amount: Int, bidder: String, wallet: GoldWallet, now: Double, linked: Bool = false) -> BidPreview {
         let minimum: Int = minimumBid(a)
         var problem: String?
         let mineNow: Int = a.leader == bidder ? a.currentPrice : 0
         if !a.isLive(at: now) { problem = "This auction has ended." }
         else if a.seller == bidder { problem = "You cannot bid on your own auction." }
+        else if linked { problem = "You cannot bid on an auction of a linked account." }
         else if a.leader == bidder { problem = "You already lead with \(a.currentPrice) gold." }
         else if amount < minimum { problem = "The lowest bid is \(minimum) gold." }
         else if amount > wallet.available + mineNow { problem = "You are \(amount - wallet.available - mineNow) gold short." }
@@ -132,6 +134,43 @@ public enum AuctionRules {
         return BidPreview(amount: amount, minimum: minimum, allowed: problem == nil, problem: problem,
                           heldAfter: wallet.held - mineNow + amount, availableAfter: wallet.available + mineNow - amount,
                           extendsAuction: ext.extended, newEnd: ext.end, reserveMetAfter: a.reserve == nil || amount >= (a.reserve ?? 0))
+    }
+}
+
+extension AuctionRules {
+    /// The fee in words, for the listing screen: shown before anything is listed.
+    public static var feeText: String {
+        "A sale costs the seller a fee of \(feePercent)% of the price (at least 1 gold). The fee is taken out of the game for good."
+    }
+
+    /// What listing a piece would do, shown before it is listed ("If you do this, this will happen").
+    public struct ListingPreview: Equatable, Sendable {
+        public var problem: String?
+        /// What the seller keeps if it sells at the start price, and at the reserve.
+        public var proceedsAtStart: Int
+        public var proceedsAtReserve: Int?
+        public var lines: [String]
+    }
+
+    public static func listingPreview(startPrice: Int, reserve: Int?, duration: AuctionDuration) -> ListingPreview {
+        let problem = listingProblem(startPrice: startPrice, reserve: reserve)
+        var lines: [String] = [
+            "The piece leaves your cabinet while it is on sale, for \(duration.title).",
+            "Bidders' gold is held while they lead and returned when they are beaten.",
+            feeText,
+            "A bid in the last \(Int(antiSnipeWindow / 60)) minutes pushes the end out to \(Int(antiSnipeWindow / 60)) minutes after that bid, at most \(maxExtensions) times."
+        ]
+        if reserve != nil { lines.append("Bidders are told only whether your reserve has been met, not what it is. Below it the piece is not sold and comes back to you.") }
+        lines.append("Accounts linked to yours cannot bid on it.")
+        return ListingPreview(problem: problem, proceedsAtStart: proceeds(forSale: startPrice), proceedsAtReserve: reserve.map { proceeds(forSale: $0) }, lines: lines)
+    }
+}
+
+extension AuctionBook {
+    /// The preview of a bid, with the link rule applied.
+    public func previewBid(_ auctionID: String, amount: Int, bidder: String, wallet: GoldWallet, now: Double) -> AuctionRules.BidPreview? {
+        guard let a = auction(auctionID) else { return nil }
+        return AuctionRules.preview(a, amount: amount, bidder: bidder, wallet: wallet, now: now, linked: a.seller != bidder && linked(a.seller, bidder))
     }
 }
 
@@ -160,8 +199,16 @@ public struct AuctionBook: Codable, Equatable, Sendable {
     /// Fees taken over the life of the book: gold that left the economy.
     public var feesBurned = 0
     public var nextNumber = 1
+    /// Accounts that share an owner carry the same key (account id to key). Linked accounts cannot trade with each other here: that would be wash
+    /// trading, a way to move gold or pieces between your own accounts or to push a price up. An account without a key counts as its own.
+    public var linkKeys: [String: String]?
 
     public init(me: String) { self.me = me }
+
+    public func linkKey(of account: String) -> String { linkKeys?[account] ?? account }
+
+    /// True for the same account or two accounts of one owner.
+    public func linked(_ a: String, _ b: String) -> Bool { a == b || linkKey(of: a) == linkKey(of: b) }
 
     public func auction(_ id: String) -> Auction? { auctions.first { $0.id == id } }
 
@@ -173,6 +220,7 @@ public struct AuctionBook: Codable, Equatable, Sendable {
         guard let i = index(auctionID), auctions[i].isLive(at: now) else { throw AuctionError.notLive }
         let a: Auction = auctions[i]
         if a.seller == bidder { throw AuctionError.sellerCannotBid }
+        if linked(a.seller, bidder) { throw AuctionError.linkedAccount }
         if a.leader == bidder { throw AuctionError.alreadyLeading }
         let minimum: Int = AuctionRules.minimumBid(a)
         if amount < minimum { throw AuctionError.tooLow(minimum: minimum) }
@@ -223,13 +271,23 @@ public struct AuctionBook: Codable, Equatable, Sendable {
         var out: [AuctionSettlement] = []
         for i in auctions.indices where auctions[i].status == .live && auctions[i].endsAt <= now {
             let a: Auction = auctions[i]
-            if let top = a.bids.last, a.reserveMet {
+            // A bid is paid out of the hold. If the hold is short, the rest must be spendable; if it is not, or the winner turned out linked
+            // to the seller, the sale does not happen and every hold is returned.
+            var payable = true
+            if let top = a.bids.last, top.bidder == me { payable = wallet.held >= top.amount || top.amount - wallet.held <= wallet.available }
+            let clean: Bool = a.bids.last.map { !linked(a.seller, $0.bidder) } ?? true
+            if let top = a.bids.last, a.reserveMet, payable, clean {
                 let fee: Int = AuctionRules.fee(forSale: top.amount)
                 auctions[i].status = .sold
                 auctions[i].soldFor = top.amount
                 feesBurned += fee
                 var done: [ArtifactCollection] = []
-                if top.bidder == me { wallet.spendHeld(top.amount); done = cabinet.add(a.item) }
+                if top.bidder == me {
+                    let heldBefore: Int = wallet.held
+                    wallet.spendHeld(top.amount)
+                    if heldBefore < top.amount { wallet.spend(top.amount - heldBefore) }
+                    done = cabinet.add(a.item)
+                }
                 if a.seller == me { wallet.credit(top.amount - fee) }
                 out.append(AuctionSettlement(auctionID: a.id, item: a.item, status: .sold, price: top.amount, fee: fee, seller: a.seller, winner: top.bidder, completed: done))
             } else {

@@ -68,7 +68,8 @@ struct FoundCrowdStartupSheet: View {
             }
             if let q = quote {
                 let enough: Bool = Payments.liquid(e.state) >= q.total
-                let blocked: String? = weeks < CrowdStartupRules.minAccountWeeks ? CrowdStartupRules.Refusal.newAccount(weeksLeft: CrowdStartupRules.minAccountWeeks - weeks).message : (enough ? nil : "You need \(cur.tidyShort(q.total - Payments.liquid(e.state))) more in cash.")
+                let gate: CrowdStartupRules.FoundGate = CrowdStartupRules.foundGate(accountWeeks: weeks, level: PlayerLevel.info(e.state).level)
+                let blocked: String? = !gate.allowed ? gate.reasons.joined(separator: " ") : (enough ? nil : "You need \(cur.tidyShort(q.total - Payments.liquid(e.state))) more in cash.")
                 if let b = blocked { Text(b).popupText(.risk) }
                 Button("Open it for \(cur.tidyShort(q.total))") { ask(e, sec, q, cur) }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true)).disabled(blocked != nil).accessibilityIdentifier("startup-found-go")
@@ -85,6 +86,7 @@ struct FoundCrowdStartupSheet: View {
             "Investors are asked for \(cur.tidyShort(q.plan.investorTarget)) in three stages, held in escrow until the milestones; their shares make yours smaller.",
             "Shares are priced by a fixed rule; you cannot name the price.",
             "If the startup fails, the money already released is lost and escrow goes back to the investors.",
+            "Only accounts at least \(CrowdStartupRules.minAccountWeeks) game weeks old and at player level \(CrowdStartupRules.minFounderLevel) can open one.",
         ], button: "Open it for \(cur.tidyShort(q.total))", risk: "Most startups fail and your own money is lost.") {
             let weeks: Int = StartupMarketStore.accountWeeks(e)
             let today: Int = StartupMarketStore.today(e)
@@ -92,7 +94,7 @@ struct FoundCrowdStartupSheet: View {
             _ = store.act { (eng: inout GameEngine) -> Bool in
                 eng.update { s, d, c in
                     out = CrowdStartups.found(&s, name: nil, sector: sid, product: product, model: model, who: "c2", seedMultiple: seedNow, planFactor: factorNow,
-                                              pitch: pitch, accountWeeks: weeks, today: today, data: d, context: c)
+                                              pitch: pitch, accountWeeks: weeks, level: PlayerLevel.info(s).level, today: today, data: d, context: c)
                 }
                 return true
             }

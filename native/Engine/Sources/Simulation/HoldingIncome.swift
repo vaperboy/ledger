@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Businesses
+import Finance
 
 /// What a holding earned, by source. A holding sells nothing and its cash earns no interest: its income is the dividends its
 /// companies paid into it and the growth of the funds in its treasury.
@@ -16,8 +17,7 @@ public extension GameEngine {
     /// The income split of a holding, or nil for a company that is not a holding.
     func holdingIncome(companyID: Int, weeks: ClosedRange<Int>? = nil) -> HoldingIncome? {
         guard let h = state.company(companyID), h.type == "hold" else { return nil }
-        let paid: Double = companyMovements(companyID: companyID, weeks: weeks)
-            .filter { $0.label == "Dividend" && $0.amount > 0 }.reduce(0) { $0 + $1.amount }
+        let paid: Double = Payments.holdingDividends(h, weeks: weeks)
         let gains: Double = HoldingModel.treasuryFunds.reduce(0) { (a: Double, sym: String) -> Double in
             a + HoldingModel.fundValue(h, state, sym) - HoldingModel.fundPosition(h, sym).cost
         }

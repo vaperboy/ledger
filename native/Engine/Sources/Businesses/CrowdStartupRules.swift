@@ -26,6 +26,31 @@ public enum CrowdStartupRules {
     public static let minTicketShare: Double = 0.02
     /// Accounts younger than this many game weeks can neither invest nor found.
     public static let minAccountWeeks = 4
+    /// Store gating: a startup that asks other players for money (it is listed in the startup store) can be opened only by an account that is at
+    /// least `minAccountWeeks` game weeks old and at player level `minFounderLevel`, so a brand-new or throwaway account cannot raise money from others.
+    public static let minFounderLevel = 2
+
+    public struct FoundGate: Equatable, Sendable {
+        public var allowed: Bool
+        /// Why it is closed (empty when open), in plain words.
+        public var reasons: [String]
+        /// "If you do this, this will happen": what the rule asks and what it protects.
+        public var lines: [String]
+    }
+
+    /// The rule in plain words, and whether this account passes it. Founding and the screens read this one place.
+    public static func foundGate(accountWeeks: Int, level: Int) -> FoundGate {
+        var why: [String] = []
+        if accountWeeks < minAccountWeeks { why.append(Refusal.newAccount(weeksLeft: minAccountWeeks - accountWeeks).message) }
+        if level < minFounderLevel { why.append(Refusal.levelTooLow(needed: minFounderLevel, have: level).message) }
+        let lines: [String] = [
+            "A startup that raises money from other players can be opened only by an account at least \(minAccountWeeks) game weeks old and at player level \(minFounderLevel).",
+            "If you open it, other players' money is held in escrow and released only when its milestones are reached; you cannot name the share price.",
+            "If it fails, the money already released is lost."
+        ]
+        return FoundGate(allowed: why.isEmpty, reasons: why, lines: lines)
+    }
+
     /// Shares cannot be resold for this many game weeks after the purchase.
     public static let lockWeeks = 12
     /// A sale price must lie within this band around the real value of the shares (assets plus recent profit).
@@ -135,6 +160,7 @@ public enum CrowdStartupRules {
 
     public enum Refusal: Equatable, Sendable {
         case newAccount(weeksLeft: Int)
+        case levelTooLow(needed: Int, have: Int)
         case linkedToFounder
         case notOpen
         case stageFull(room: Double)
@@ -145,6 +171,7 @@ public enum CrowdStartupRules {
         public var message: String {
             switch self {
             case .newAccount(let w): return "New accounts cannot invest or found for their first \(minAccountWeeks) weeks. \(w) to go."
+            case .levelTooLow(let n, let h): return "Opening a startup for other players needs player level \(n). You are level \(h)."
             case .linkedToFounder: return "You cannot invest in a company linked to you."
             case .notOpen: return "This startup is not taking money now."
             case .stageFull(let r): return r > 0 ? "This stage has room for only \(Int(r.rounded())) more." : "This stage is full."
@@ -237,9 +264,9 @@ public enum CrowdStartupRules {
         return max(0, st.assets) + max(0, st.weeklyProfit.suffix(recentProfitWeeks).reduce(0, +))
     }
     public static func fairPrice(_ st: Startup, percent: Double) -> Double { realValue(st) * percent / 100 }
-    public static func band(_ st: Startup, percent: Double) -> (low: Double, high: Double) {
+    public static func band(_ st: Startup, percent: Double, rules: WorldRules = WorldRules.defaults) -> (low: Double, high: Double) {
         let f = fairPrice(st, percent: percent)
-        return (f * bandLow, f * bandHigh)
+        return (f * rules.startupBand.lowerBound, f * rules.startupBand.upperBound)
     }
 
     public struct Holding: Codable, Equatable, Identifiable, Sendable {
@@ -293,14 +320,14 @@ public enum CrowdStartupRules {
 
     /// Can `holding` sell `percent` of the startup for `price` to this buyer? `gainsRate` is the seller's capital gains rate.
     public static func saleCheck(_ st: Startup, holding: Holding, percent: Double, price: Double, buyerID: String, buyerLinkKeys: Set<String>, buyerAccountWeeks: Int,
-                                 gainsRate: Double, today: Int) -> SaleResult {
+                                 gainsRate: Double, today: Int, rules: WorldRules = WorldRules.defaults) -> SaleResult {
         guard st.status == .live || st.status == .raising else { return .refused(.notLive) }
         guard percent > 0, percent <= holding.percent + 1e-9 else { return .refused(.tooMany) }
         if today < holding.lockedUntil() { return .refused(.locked(untilDay: holding.lockedUntil())) }
         if buyerID == holding.ownerID || buyerLinkKeys.contains(holding.linkKey) { return .refused(.linkedParties) }
         if buyerAccountWeeks < minAccountWeeks { return .refused(.buyerNotAllowed(.newAccount(weeksLeft: minAccountWeeks - buyerAccountWeeks))) }
         if buyerID == st.founderID || buyerLinkKeys.contains(st.founderLinkKey) { return .refused(.buyerNotAllowed(.linkedToFounder)) }
-        let b = band(st, percent: percent)
+        let b = band(st, percent: percent, rules: rules)
         guard price >= b.low - 0.005, price <= b.high + 0.005 else { return .refused(.outsideBand(low: b.low, high: b.high)) }
         let basis = holding.paid * percent / max(holding.percent, 1e-9)
         let gain = price - basis

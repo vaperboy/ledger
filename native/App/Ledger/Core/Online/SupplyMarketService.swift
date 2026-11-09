@@ -261,9 +261,8 @@ extension SupplyOrder {
 
     /// The contract is gone: the line goes back to a market supplier at market price, the Inbox says so, and one popup states what changed.
     func fallBack(_ store: GameStore, _ f: SupplyFallback) {
-        _ = store.act { $0.endPlayerSupplier(companyID: f.contract.buyerCompanyID, lineID: f.contract.lineID) }
+        _ = store.act { $0.applySupplierFallback(f) }
         returnToHouse(store, companyID: f.contract.buyerCompanyID, lineID: f.contract.lineID)
-        _ = store.act { $0.update { s, _, _ in SupplyMarketBooks.tellBuyer(&s, fallback: f) } }
         store.tell(f.title, f.body, tone: "bad")
     }
 

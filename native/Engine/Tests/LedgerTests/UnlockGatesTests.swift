@@ -161,11 +161,12 @@ final class UnlockGatesTests: XCTestCase {
         var e = try ChainsTests.engine()
         Self.doneUpTo(&e, 0)
         _ = ChainsTests.start(&e, "cafe")
-        for g in [Gate.group, .atlas] { XCTAssertEqual(vis(e, g), .hidden, g.rawValue) }
+        XCTAssertEqual(vis(e, .group), .hidden)
         _ = ChainsTests.start(&e, "kiosk")
-        for g in [Gate.group, .atlas] { XCTAssertEqual(vis(e, g), .locked("Unlocks with three companies"), g.rawValue) }
+        XCTAssertEqual(vis(e, .group), .locked("Unlocks with three companies"))
         _ = ChainsTests.start(&e, "barber")
-        for g in [Gate.group, .atlas] { XCTAssertEqual(vis(e, g), .open, g.rawValue) }
+        XCTAssertEqual(vis(e, .group), .open)
+        XCTAssertEqual(Gate.atlas.lockText, Gate.insurance.lockText, "Atlas opens with the insurance gate")
     }
 
     func testVenturesNeedTwoClosedYearsWithProfit() throws {
