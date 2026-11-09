@@ -125,7 +125,7 @@ protocol SupplyMarketService: AnyObject {
 }
 
 /// Observable wrapper the screens watch, so they do not depend on which service stands behind it.
-final class SupplyMarketStore: ObservableObject {
+@MainActor final class SupplyMarketStore: ObservableObject {
     static let shared = SupplyMarketStore()
 
     @Published private(set) var revision = 0
