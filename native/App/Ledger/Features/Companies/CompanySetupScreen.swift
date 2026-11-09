@@ -12,6 +12,8 @@ struct CompanySetupScreen: View {
     var engine: GameEngine
     var company: Company
     @State private var signing: String?
+    @State private var appointing = false
+    @State private var managerCands: [Int] = []
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -26,6 +28,7 @@ struct CompanySetupScreen: View {
                             context: missing.isEmpty ? "it opens once the paperwork is approved" : (cost > 0.5 ? "about \(store.short(cost, in: company)) still to spend" : "it opens by itself when all are done"))
                 ProgressLine(fraction: items.isEmpty ? 1 : Double(done) / Double(items.count), tint: missing.isEmpty ? P.gain : nil)
             }
+            managerCard
             if !missing.isEmpty {
                 PageGroup("Still missing") {
                     ForEach(Array(missing.enumerated()), id: \.element.id) { (n: Int, it: OpeningChecklist.Item) in
@@ -47,6 +50,24 @@ struct CompanySetupScreen: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .centerSheet(isPresented: Binding(get: { signing != nil }, set: { if !$0 { signing = nil } }), category: .detail, tone: .investment) {
             if let id = signing { DocumentSignSheet(companyID: company.id, documentID: id) { signing = nil }.environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear) }
+        }
+    }
+
+    /// A new location of a chain can have a manager appointed instead of the owner doing the set-up by hand: the manager hires within the head
+    /// office plan's headcount and orders stock for the demand. With no manager the owner does all of it.
+    @ViewBuilder private var managerCard: some View {
+        if engine.chainOf(companyID: company.id) != nil {
+            let has: Bool = company.managerID != nil
+            PageGroup("Appoint a manager") {
+                LedgerRow(leading: .glyph(has ? Glyph.check : Glyph.person), leadingTint: has ? P.gain : P.accent,
+                          title: has ? "A manager is appointed" : "Appoint a manager",
+                          subtitle: "The manager hires staff up to the head office plan, orders stock and equipment for the demand they see, and keeps to the budget you set (tight, normal or free). Without one, you do all of it by hand.",
+                          valueNote: has ? "Open orders" : "Choose", valueNoteTint: P.accent) { appointing = true }
+            }
+            .centerSheet(isPresented: $appointing, category: .detail, tone: .info) {
+                ManagerSheet(companyID: company.id, candidates: $managerCands).environmentObject(store)
+                    .environment(\.outsidePalette, OutsidePalette.game).presentationBackground(.clear)
+            }
         }
     }
 

@@ -110,7 +110,8 @@ public struct GameEngine {
         } else if story == .fresh {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard let tradeID, LifeStories.applyFresh(&state, data: data, context: ctx, tradeID: tradeID, name: companyName ?? "", chooseFirstItem: chooseFirstItem) else { throw CocoaError(.fileReadUnknown) }
-            state.note("Welcome to Ledger. \(state.companies.first?.name ?? "Your business") is open. Tap Next day to begin.", tone: "good")
+            state.note("Welcome to Ledger. \(state.companies.first?.name ?? "Your business") is open. Pick what it sells first; the guide shows where to press.", tone: "good")
+            if chooseFirstItem { Tutorial.start(&state) }
         } else {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }
@@ -243,6 +244,7 @@ public struct GameEngine {
         sweepCareer()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
+        Tutorial.advance(&state, from: .nextDay)
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }

@@ -47,7 +47,7 @@ struct ItemsList: View {
             LazyVStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
                     if i > 0 { RowRule(inset: 52) }
-                    row(it, cur)
+                    row(it, cur).coachAnchor(.firstItemRow, enabled: i == 0)
                 }
             }
             if company.status == .open && !items.isEmpty {
@@ -202,7 +202,18 @@ struct ItemPageView: View {
                 }
                 quickPrices(p, cur, lo: lo, hi: hi)
             }
+            keepPriceButton(setBy: setBy)
             listToggle(co, p.item)
+        }
+        .coachAnchor(.itemPrice)
+    }
+
+    /// While the first-steps guide waits for a price, a plain way to say the price shown is fine.
+    @ViewBuilder private func keepPriceButton(setBy: String?) -> some View {
+        if setBy == nil, store.tutorialStep == .setPrice {
+            Button("Keep this price") { Haptics.tap(); store.tutorialAdvance(from: .setPrice) }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
+                .accessibilityIdentifier("item-keep-price")
         }
     }
 

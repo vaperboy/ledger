@@ -40,6 +40,7 @@ struct FirstItemPicker: View {
             .buttonStyle(AcctPressStyle())
             .accessibilityIdentifier("sales-add-item")
         }
+        .coachAnchor(.firstPick)
     }
 
     private func confirm(_ itemID: String?) {

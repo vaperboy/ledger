@@ -332,11 +332,20 @@ public extension GameEngine {
         return out
     }
 
+    /// The whole standard team and the optional equipment are never bought for the player: they hire and buy by hand (or appoint a manager who does).
+    func tutorialLimited(_ c: SetupChoices) -> SetupChoices {
+        var out = c
+        out.team = .minimum
+        out.optionalEquipment = false
+        return out
+    }
+
     /// Start a company, take the picked place (rent or buy) and then do the set-up the owner chose. The set-up is budgeted: required
     /// equipment, the core team (or the whole team if chosen) only while the company's cash carries the wages, and an opening stock of the
     /// chosen share. What was left out comes back in `skipped` with its cost. `choices` default to the careful start.
     mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, form: LegalForm, size: Double?, name: String?, pick: NewCompanyPlan.Pick?, fundWith amount: Double,
-                                               choices: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
+                                               choices requested: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
+        let choices: SetupChoices = tutorialLimited(requested)
         let r = startCompany(tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, accountantID: accountantID, fundWith: amount, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }

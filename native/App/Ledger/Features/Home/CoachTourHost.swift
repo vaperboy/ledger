@@ -3,9 +3,9 @@ import GameCore
 import Businesses
 import Simulation
 
-/// Runs the guided tours of `CoachTours` over every tab: the first-session tour on Home and a short tour for each tab, company page and phone
-/// app the first time it opens. One tour at a time; it waits (hidden) while any popup is up, an announcement is queued or a day is playing,
-/// and a tour is never shown again after it ends or is skipped.
+/// Runs the guided help of `CoachTours` over every tab: the new player's step-by-step tutorial (it leads the other help while it runs) and a
+/// short tour for each tab, company page and phone app the first time it opens. One card at a time; it waits (hidden) while any popup is up,
+/// an announcement is queued or a day is playing, and a tour is never shown again after it ends or is skipped.
 struct CoachTourHost: ViewModifier {
     @Environment(\.popupHost) private var popupHost
 
@@ -18,7 +18,6 @@ struct CoachTourHost: ViewModifier {
 
 private struct CoachTourLayer: View {
     @EnvironmentObject var store: GameStore
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @ObservedObject var host: PopupHost
     var anchors: [CoachStop: Anchor<CGRect>]
     @State private var seen: Set<String> = Set(CoachTours.all.filter { (t: CoachTour) -> Bool in FirstRunFlags.seen(t.key) }.map { (t: CoachTour) -> String in t.id })
@@ -32,23 +31,15 @@ private struct CoachTourLayer: View {
 
     // MARK: Conditions
 
-    private var isFreshGame: Bool {
-        guard let e = store.engine else { return false }
-        return e.state.week == 0
-    }
-
-    private var hasCompany: Bool {
-        guard let e = store.engine else { return false }
-        return e.state.companies.contains { (c: Company) -> Bool in c.type != "hold" && c.status.isLive }
+    private var firstCompanyID: Int? {
+        guard let e = store.engine else { return nil }
+        return e.state.companies.first { (c: Company) -> Bool in c.type != "hold" && c.status.isLive }?.id
     }
 
     /// Anything that must be read or answered first: a popup, a queued announcement, a day in progress.
     private var blocked: Bool {
         host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.customPickerOpen || store.workerPopup != nil || store.isAdvancing
     }
-
-    /// The first-session tour still has to run on Home: the other tours leave Home to it.
-    private var homePending: Bool { !seen.contains("home") && isFreshGame && sizeClass != .regular }
 
     private func atRoot(_ t: AppTab) -> Bool { store.tab == t && store.path(for: t).isEmpty }
 
@@ -66,8 +57,6 @@ private struct CoachTourLayer: View {
 
     private func triggerHolds(_ t: CoachTour) -> Bool {
         switch t.trigger {
-        case .firstDay:
-            return homePending && hasCompany && (store.tab == .company || (cursor[t.id] ?? 0) >= 3)
         case .tab(let tab):
             return atRoot(tab)
         case .unlock(let id, let tab):
@@ -99,7 +88,6 @@ private struct CoachTourLayer: View {
 
     private func eligible(_ t: CoachTour, _ geo: GeometryProxy) -> Bool {
         if seen.contains(t.id) || !triggerHolds(t) { return false }
-        if t.trigger != .firstDay && homePending && store.tab == .company { return false }
         return nextIndex(t, from: cursor[t.id] ?? 0, geo) != nil
     }
 
@@ -120,16 +108,49 @@ private struct CoachTourLayer: View {
         return n
     }
 
+    // MARK: Tutorial
+
+    /// The mark the tutorial shows now: the first of the step's places that is on screen.
+    private func tutorialMark(_ step: TutorialStep, _ geo: GeometryProxy) -> CoachMark? {
+        CoachTours.tutorial(step).first { (m: CoachMark) -> Bool in available(m, geo) }
+    }
+
+    private var tutorialPosition: Int { (TutorialStep.allCases.firstIndex(where: { (s: TutorialStep) -> Bool in s == store.tutorialStep }) ?? 0) + 1 }
+
+    /// Keeps the player on the guided path: the first product is chosen on the Sales page of the company, and Next day is on Home.
+    private func guideNavigation() {
+        guard let step = store.tutorialStep, !blocked, store.tab == .company else { return }
+        let atRoot: Bool = store.path(for: .company).isEmpty
+        if step.locksPlay, atRoot, let id = firstCompanyID {
+            store.openCompany(id, section: .salesMarket)
+        } else if step == .nextDay, !atRoot {
+            store.setPath([], for: .company)
+        }
+    }
+
+    /// The guide has nothing left to point at when the company is gone.
+    private func endIfAbandoned() {
+        if store.tutorialActive && firstCompanyID == nil { store.tutorialFinish() }
+    }
+
     // MARK: Body
 
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
-            let tour: CoachTour? = pick(geo)
+            let step: TutorialStep? = store.tutorialStep
+            let tutMark: CoachMark? = step.flatMap { (s: TutorialStep) -> CoachMark? in tutorialMark(s, geo) }
+            // While the tutorial runs it leads: the other tours wait for it to end.
+            let tour: CoachTour? = step == nil ? pick(geo) : nil
             let index: Int? = tour.flatMap { (t: CoachTour) -> Int? in nextIndex(t, from: cursor[t.id] ?? 0, geo) }
-            let key: String = blocked ? "" : (tour?.id ?? "")
+            let tutKey: String = step.flatMap { (s: TutorialStep) -> String? in tutMark.map { (m: CoachMark) -> String in "tutorial.\(s.rawValue).\(m.stop)" } } ?? ""
+            let key: String = blocked ? "" : (step != nil ? tutKey : (tour?.id ?? ""))
             let drawn: Bool = !key.isEmpty && readyKey == key
             ZStack {
-                if let t = tour, let i = index {
+                if let m = tutMark {
+                    CoachMarks(marks: [m], anchors: anchors, step: 0, visible: drawn,
+                               position: tutorialPosition, total: TutorialStep.allCases.count,
+                               onNext: { }, onSkip: { store.tutorialFinish() })
+                } else if let t = tour, let i = index {
                     let later: Int = remaining(t, after: i, geo)
                     let done: Int = passed[t.id] ?? 0
                     CoachMarks(marks: [shownMark(t, i, last: later == 0)], anchors: anchors, step: 0, visible: drawn,
@@ -141,23 +162,22 @@ private struct CoachTourLayer: View {
             // A tour waits for its trigger to hold for a moment, and again after every popup.
             .task(id: key) {
                 guard !key.isEmpty else { readyKey = ""; return }
-                let wait: Double = CoachTours.all.first(where: { (t: CoachTour) -> Bool in t.id == key })?.delay ?? 0.6
+                let wait: Double = key.hasPrefix("tutorial.") ? 0.25 : (CoachTours.all.first(where: { (t: CoachTour) -> Bool in t.id == key })?.delay ?? 0.6)
                 try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
                 if !Task.isCancelled { readyKey = key }
             }
             .onChange(of: tour?.id) { _, id in activeID = id }
         }
-        .onChange(of: store.isAdvancing) { _, running in
-            // Pressing Next day is the first step of the first-session tour.
-            if running && !seen.contains("home") && (cursor["home"] ?? 0) == 0 { cursor["home"] = 1; passed["home"] = 1 }
+        .onChange(of: store.showsApp(.inbox)) { _, open in
+            if open { store.tutorialAdvance(from: .openInbox) }
         }
-        .onChange(of: store.tab) { _, t in
-            // Opening the Phone tab ends the first-session tour, whose last mark points at it.
-            if t == .phone && !seen.contains("home") && (cursor["home"] ?? 0) >= 1 { finishHome() }
-        }
+        .onChange(of: store.tutorialStep) { _, _ in guideNavigation() }
+        .onChange(of: blocked) { _, _ in guideNavigation() }
+        .onChange(of: store.path(for: .company).count) { _, _ in guideNavigation() }
         .onAppear {
-            // A game already past its first day has nothing to introduce on Home.
-            if let e = store.engine, e.state.week > 0 || e.state.day > 0 { finishHome() }
+            endIfAbandoned()
+            if store.showsApp(.inbox) { store.tutorialAdvance(from: .openInbox) }
+            guideNavigation()
         }
     }
 
@@ -181,12 +201,6 @@ private struct CoachTourLayer: View {
     private func finish(_ t: CoachTour) {
         FirstRunFlags.mark(t.key)
         seen.insert(t.id)
-        activeID = nil
-    }
-
-    private func finishHome() {
-        FirstRunFlags.mark(FirstRunFlags.tour)
-        seen.insert("home")
         activeID = nil
     }
 }

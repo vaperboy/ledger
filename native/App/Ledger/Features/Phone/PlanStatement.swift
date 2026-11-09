@@ -55,34 +55,11 @@ struct PlanStatement: View {
 
     @ViewBuilder private var optionalChoices: some View {
         let hasStock: Bool = plan.estimate.stock > 0
-        let hasExtraKit: Bool = plan.choices.optionalEquipment || plan.notChosen.contains { $0.id == "optEq" }
-        let hasTeam: Bool = plan.choices.team == .standard || plan.notChosen.contains { $0.id == "team" }
-        if hasStock || hasExtraKit || hasTeam {
-            CardSection("Optional extras") {
-                Text("Nothing here is bought unless you choose it. Each choice shows what it costs.").textStyle(.caption, tint: Theme.inkFaint)
-                if hasStock {
-                    SegmentedPill(items: SetupChoices.Stock.allCases, title: { stockTitle($0) }, selection: Binding(get: { choices.stock }, set: { choices.stock = $0 }))
-                    Text("Opening stock of the standard size costs \(cur.tidyShort(plan.estimate.stock)). It is bought when the last paper is approved.").textStyle(.caption, tint: Theme.inkFaint)
-                }
-                if hasExtraKit, let line = plan.notChosen.first(where: { $0.id == "optEq" }) {
-                    CardLine()
-                    Toggle(isOn: Binding(get: { choices.optionalEquipment }, set: { choices.optionalEquipment = $0 })) {
-                        Text("Optional equipment and vehicles · \(cur.tidyShort(line.amount))").textStyle(.body)
-                    }
-                } else if choices.optionalEquipment {
-                    CardLine()
-                    Toggle(isOn: Binding(get: { choices.optionalEquipment }, set: { choices.optionalEquipment = $0 })) {
-                        Text("Optional equipment and vehicles").textStyle(.body)
-                    }
-                }
-                if hasTeam {
-                    CardLine()
-                    Toggle(isOn: Binding(get: { choices.team == .standard }, set: { choices.team = $0 ? .standard : .minimum })) {
-                        Text("Hire the whole standard team now").textStyle(.body)
-                    }
-                    Text("By default only the core team is hired, and only while the company's cash carries two months of their wages. Every further hire is a monthly cost; the rest of the team is about \(cur.tidyShort(plan.notChosen.first { $0.id == "team" }?.amount ?? 0)) a month.")
-                        .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-                }
+        if hasStock {
+            CardSection("Opening stock") {
+                Text("Equipment and people are not bought or hired for you: you choose them yourself while setting up. Only the opening stock is chosen here.").textStyle(.caption, tint: Theme.inkFaint)
+                SegmentedPill(items: SetupChoices.Stock.allCases, title: { stockTitle($0) }, selection: Binding(get: { choices.stock }, set: { choices.stock = $0 }))
+                Text("Opening stock of the standard size costs \(cur.tidyShort(plan.estimate.stock)). It is bought when the last paper is approved.").textStyle(.caption, tint: Theme.inkFaint)
             }
         }
     }

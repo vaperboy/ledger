@@ -410,7 +410,7 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
+        guard !isAdvancing, !tutorialHoldsDay, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)

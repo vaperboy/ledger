@@ -49,6 +49,7 @@ public extension GameEngine {
             return SalesItems.starterIDs(bd, SalesItems.items(seeded.companies[i], bd)).contains(itemID) ? nil : "That choice is not on offer."
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
+            Tutorial.advance(&s, from: .pickProduct)
         }
     }
 
@@ -68,7 +69,7 @@ public extension GameEngine {
     @discardableResult
     mutating func setItemPrice(companyID: Int, itemID: String, price: Double) -> SettingResult {
         let data = self.data
-        return applySetting(refuse: { s in
+        let result = applySetting(refuse: { s in
             if let why = SalesItems.refusal(s, companyID: companyID, itemID: itemID, data: data) { return why }
             guard price.isFinite else { return "Enter a price." }
             let r = SalesItems.rows(s, companyID: companyID, data: data).first { $0.id == itemID }
@@ -80,6 +81,8 @@ public extension GameEngine {
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.setPrice(&s, companyID: companyID, itemID: itemID, price: price, data: d)
         }
+        if !result.isRefused { tutorialAdvance(from: .setPrice) }
+        return result
     }
 
     /// A discount of `percent` for `weeks` weeks (0 percent ends it). Deepest allowed is the trade's own limit.
@@ -116,6 +119,7 @@ public extension GameEngine {
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.add(&s, companyID: companyID, name: clean, isService: isService, data: d)
+            Tutorial.advance(&s, from: .pickProduct)   // a product of their own is also a first choice
         }
     }
 
