@@ -315,7 +315,9 @@ final class PublicExchangeTests: XCTestCase {
         var e = try game()
         e.placeExchangeOrder(instrument: PublicExchange.worldIndex, side: .buy, shares: 10, limit: 100)
         let rows = e.exchangeMarket
-        XCTAssertEqual(Set(rows.map { $0.id }), [PublicExchange.worldBank, PublicExchange.worldIndex])
+        XCTAssertEqual(Set(rows.filter { $0.kind == "srv" }.map { $0.id }), [PublicExchange.worldBank, PublicExchange.worldIndex])
+        XCTAssertEqual(Set(rows.filter { $0.kind == "com" }.map { $0.id }), Set(["materials", "fuel", "power", "oil", "salmon"].map { PublicExchange.commodityID($0) }))
+        XCTAssertEqual(rows.count, 7)
         XCTAssertTrue(rows.allSatisfy { $0.low < $0.nav && $0.nav < $0.high })
     }
 }

@@ -35,8 +35,8 @@ final class PlayerSupplyTests: XCTestCase {
     // MARK: Landed cost
 
     func testFarCheapSupplierLosesToANearerOne() {
-        let near = listing("near", price: 1, country: "DE")
-        let far = listing("far", price: 0, country: "AU")
+        let near = listing("near", trade: "workshop", price: 1, country: "DE")
+        let far = listing("far", trade: "workshop", price: 0, country: "AU")
         let rows = SupplyLanded.compare([far, near], buyerCountry: "UK", marketUnitPrice: 100, units: 20, priceLevel: 1)
         XCTAssertEqual(rows.map { $0.id }, ["near", "far"])
         let f = rows[1]

@@ -166,7 +166,7 @@ final class IllegalRoutesTests: XCTestCase {
         var e = try engine()
         e.update { s, _, _ in
             GovernmentBridge.ensure(&s, country: s.homeCountryCode, admins: ["boss"], startingSupply: 5_000_000)
-            _ = try? GovernmentBridge.act(&s, country: s.homeCountryCode) { g, _, w in try g.printMoney(admin: "boss", amount: 1_000, reason: "x", week: w) }
+            _ = try? GovernmentBridge.act(&s, country: s.homeCountryCode) { g, _, w in try g.printMoney(admin: "boss", amount: 1_000, reason: "test run", week: w) }
         }
         let world = try XCTUnwrap(e.state.governmentWorld)
         let data = try JSONEncoder().encode(e.state)

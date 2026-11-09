@@ -54,9 +54,8 @@ final class StarterChoiceTests: XCTestCase {
         XCTAssertEqual(e.chooseFirstItem(companyID: id, itemID: "w3-nothing"), .refused("That choice is not on offer."))
     }
 
-    func testSandboxIsLockedForFreePlayers() {
-        XCTAssertFalse(EntitlementSnapshot.free.isUnlocked(.sandboxMode, now: Date()))
-        XCTAssertTrue(EntitlementSnapshot(owned: [.pro]).isUnlocked(.sandboxMode, now: Date()))
-        XCTAssertThrowsError(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .sandbox))
+    func testSandboxIsOpenToFreePlayers() throws {
+        XCTAssertTrue(EntitlementSnapshot.free.isUnlocked(.sandboxMode, now: Date()))
+        XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .sandbox))
     }
 }

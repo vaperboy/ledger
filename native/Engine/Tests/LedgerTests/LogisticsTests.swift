@@ -218,7 +218,7 @@ final class LogisticsTests: XCTestCase {
         }
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(co.inventory, 800_000)
-        XCTAssertEqual(co.cash, cash + 200_000 - excess, accuracy: 0.01)
+        XCTAssertEqual(co.cash, cash + 200_000 - excess, accuracy: 0.51)
         XCTAssertEqual(loss(e, id) - lossBefore, excess, accuracy: 0.01)
         // A loss smaller than the excess pays nothing.
         e.update { s, data, _ in

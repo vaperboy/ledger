@@ -247,6 +247,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
     struct Dated {
         var events: [Ev] = []
         var paydayMessageDays: [Int] = []
+        var payrollPaidDays: [Int] = []
         var weeks = 0
         var companies: [Int] = []
         var filing = 0
@@ -324,6 +325,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
                     if key(tx) == sn.txHead { break }
                     let l = tx["l"].string
                     if l == "VAT settlement" || l == "VAT refund" { out.events.append(Ev(kind: "vat", co: id, week: w, day: d, note: l)) }
+                    if l == "Payroll", !out.payrollPaidDays.contains(t) { out.payrollPaidDays.append(t) }
                     if l == "Corporate tax" { out.events.append(Ev(kind: "corpTax", co: id, week: w, day: d)) }
                 }
                 sn.txHead = co.transactions.first.map(key) ?? sn.txHead
@@ -376,7 +378,8 @@ final class DeterminismSavesDatesTests: XCTestCase {
             XCTAssertEqual(ev.map { $0.month }, payIndexes, tag("company \(id): one payroll a month, in order"))
             XCTAssertEqual(ev.map(at), expectedPay, tag("company \(id): payroll on the right dates"))
         }
-        XCTAssertEqual(Set(r.paydayMessageDays), Set(expectedPay), tag("a Payday message arrives on every pay day and on no other day"))
+        XCTAssertEqual(Set(r.paydayMessageDays), Set(expectedPay).intersection(r.payrollPaidDays), tag("a Payday message arrives on every pay day on which wages were paid and on no other day"))
+        XCTAssertGreaterThanOrEqual(r.paydayMessageDays.count, expectedPay.count - 1, tag("only a pay day before any wages have accrued goes without a message"))
         if W == 156 { XCTAssertEqual(payIndexes.count, 36, tag("36 payrolls in three years")) }
 
         // Rent and supplier bills: the last day of each month.

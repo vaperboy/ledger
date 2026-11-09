@@ -92,11 +92,13 @@ final class RulesAndPrizesTests: XCTestCase {
 
     func testPreviewsLeaveTheGameAlone() throws {
         let e = try game()
-        let saved = try? JSONEncoder().encode(e.state)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let saved = try? encoder.encode(e.state)
         _ = e.previewOrder(instrument: "none", side: .buy, shares: 1, limit: 1)
         _ = e.previewListing(holdingID: 999)
         _ = e.previewDividend(holdingID: 999, amount: 10)
-        XCTAssertEqual(saved, try? JSONEncoder().encode(e.state))
+        XCTAssertEqual(saved, try? encoder.encode(e.state))
     }
 
     func testLeaderboardInitialisersAreUsable() {
