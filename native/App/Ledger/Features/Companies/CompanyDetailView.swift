@@ -123,6 +123,7 @@ struct CompanyDetailView: View {
         switch tab {
         case .overview:
             CompanyOverview(engine: e, company: co, section: sectionBinding(co, e), moneyPart: $moneyPart, openOps: { (p: OpsPart) in opsPart = p })
+            if JointVenturePartnersCard.applies(co, e) { JointVenturePartnersCard(engine: e, company: co) }
         case .team:
             if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
         case .manage:

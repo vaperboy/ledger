@@ -41,9 +41,9 @@ public extension GameEngine {
         update { s, _, _ in ok = JointVenture.castVote(&s, companyID: companyID, meetingID: meetingID, itemID: itemID, member: member, choice: choice) }
         return ok
     }
-    mutating func jvMakeItem(companyID: Int, kind: JVRules.Kind, amount: Double = 0, steps: Int = 0) -> (item: JointVenture.Item?, problem: String?) {
+    mutating func jvMakeItem(companyID: Int, kind: JVRules.Kind, by: String? = nil, amount: Double = 0, steps: Int = 0) -> (item: JointVenture.Item?, problem: String?) {
         var r: (item: JointVenture.Item?, problem: String?) = (nil, "Could not make that item.")
-        update { s, d, c in r = JointVenture.makeItem(&s, companyID: companyID, kind: kind, by: s.player.name, amount: amount, steps: steps, data: d, context: c) }
+        update { s, d, c in r = JointVenture.makeItem(&s, companyID: companyID, kind: kind, by: by ?? s.player.name, amount: amount, steps: steps, data: d, context: c) }
         return r
     }
     @discardableResult
