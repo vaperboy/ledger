@@ -20,8 +20,11 @@ struct CompanySuppliersScreen: View {
     var companyID: Int
     @State private var picked: SupplyPick?
     @State private var showTerms = false
+    @State private var browse: SupplyPick?
+    @State private var showSell = false
+    @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
 
-    struct SupplyPick: Identifiable, Equatable { var id: String }
+    struct SupplyPick: Identifiable, Equatable, Hashable { var id: String }
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
@@ -32,7 +35,11 @@ struct CompanySuppliersScreen: View {
             }
             .scrollIndicators(.hidden)
             .appScreen(title: "Suppliers", subtitle: co.name, tab: .company)
-            .centerSheet(item: $picked, category: .medium, tone: .info) { (p: SupplyPick) in SupplyOffersPopup(companyID: companyID, lineID: p.id).environmentObject(store) }
+            .centerSheet(item: $picked, category: .medium, tone: .info) { (p: SupplyPick) in SupplyOffersPopup(companyID: companyID, lineID: p.id, onBrowse: { picked = nil; browse = p }).environmentObject(store) }
+            .navigationDestination(item: $browse) { (p: SupplyPick) in SupplyBrowseScreen(companyID: companyID, lineID: p.id).environmentObject(store) }
+            .navigationDestination(isPresented: $showSell) { SupplyOtherPlayersScreen(companyID: companyID).environmentObject(store) }
+            .task { market.sync(store) }
+            .onChange(of: store.engine?.state.week) { _, _ in market.sync(store) }
             .navigationDestination(isPresented: $showTerms) {
                 SettingsPage(title: "Terms and deals", subtitle: co.name) { CompanySourcing(engine: e, company: co) }
             }
@@ -50,6 +57,10 @@ struct CompanySuppliersScreen: View {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 summary(groups, cur)
                 ForEach(groups) { (g: SupplyGroup) in group(g, cur) }
+                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Supply other players",
+                          subtitle: "Offer what this company makes to other players' companies", identifier: "suppliers-sell") { showSell = true }
+                    .padding(.horizontal, Theme.Space.m)
+                    .glassSurface()
                 if CompanySourcing.isAvailable(engine: e, company: co) {
                     LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Terms and deals",
                               subtitle: "How you pay, price talks, lunch with a supplier, companies you supply", identifier: "suppliers-terms") { showTerms = true }
@@ -88,7 +99,7 @@ struct CompanySuppliersScreen: View {
             VStack(spacing: 0) {
                 ForEach(Array(g.rows.enumerated()), id: \.element.id) { (n: Int, r: SupplyRow) in
                     if n > 0 { Hairline() }
-                    SupplyLineRow(row: r, currency: cur) { picked = SupplyPick(id: r.id) }
+                    SupplyLineRow(row: r, currency: cur, playerSupplier: market.service.contract(buyerCompanyID: companyID, lineID: r.id)?.supplierName) { picked = SupplyPick(id: r.id) }
                 }
             }
             .padding(.horizontal, Theme.Space.m)

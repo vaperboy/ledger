@@ -46,6 +46,8 @@ struct SupplyWords: View {
 struct SupplyLineRow: View {
     var row: SupplyRow
     var currency: Currency
+    /// The player supplying this line under a contract, when there is one.
+    var playerSupplier: String? = nil
     var action: () -> Void
 
     var body: some View {
@@ -56,7 +58,7 @@ struct SupplyLineRow: View {
             HStack(alignment: .top, spacing: Theme.Space.m) {
                 VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                     Text(row.title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-                    Text(row.current.tidyText).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+                    Text(playerSupplier.map { $0.tidyText + " · Player supplier" } ?? row.current.tidyText).textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
                     SupplyWords(quality: row.quality, reliability: row.reliability)
                     if let note = row.governed ?? row.note {
                         Text(note.tidyText).textStyle(.caption, tint: Theme.caution).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
@@ -84,6 +86,8 @@ struct SupplyOffersPopup: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     var lineID: String
+    /// Opens the Browse page for this purchase (the screen closes this popup and pushes it).
+    var onBrowse: () -> Void = {}
     @State private var message: String?
 
     private let classNames: [String] = Suppliers.goodsClassNames
@@ -103,6 +107,12 @@ struct SupplyOffersPopup: View {
             if let governed = row.governed { Text(governed).popupText(.risk) }
             if let note = row.note { Text(note).popupText(.risk) }
             if let message { Text(message).popupText(.risk) }
+            if row.governed == nil && !SupplyMarketCatalogue.tradesSupplying(line: row.id).isEmpty {
+                SupplyWaysBlock(companyID: companyID, row: row, currency: cur, onBrowse: onBrowse)
+                Hairline()
+                Text("House suppliers").capsLabel(Theme.ivoryFaint)
+                Text("The backup if a player supplier stops, at market price.").popupText(.caption)
+            }
             ForEach(Array(row.offers.enumerated()), id: \.element.id) { (n: Int, o: SupplyOfferRow) in
                 if n > 0 { Hairline() }
                 offer(o, row: row, cur: cur)
