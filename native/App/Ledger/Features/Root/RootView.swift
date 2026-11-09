@@ -15,8 +15,11 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            // The account screen comes once, on a new install, before anything else.
-            if online.needsAccountScreen && store.engine == nil {
+            // The account screen comes once, on a new install, before anything else. A profile that waits for its 18+ confirmation
+            // comes first of all, so linking is never left half done.
+            if online.awaitingAdultConfirmation && store.engine == nil {
+                ProfileCreationView()
+            } else if online.needsAccountScreen && store.engine == nil {
                 AccountWelcomeView()
             } else if let e = store.engine {
                 if e.state.isGameOver || Self.showsGameOver { GameOverView(engine: e) } else { GameShell() }
@@ -37,6 +40,7 @@ struct RootView: View {
         }
         .modifier(PostM7Paywall())
         // The one popup host: every popup of the app is drawn here, above everything (tab bar included), in queue order.
+        .overlay(alignment: .top) { LinkRewardBanner() }
         .overlay { PopupLayer() }
         .overlay { PopupHostLayer(host: popups) }
         .environment(\.popupHost, popups)

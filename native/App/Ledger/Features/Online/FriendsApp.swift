@@ -9,11 +9,13 @@ struct FriendsApp: View {
     @State private var results: [PlayerProfile] = []
     @State private var searching = false
     @State private var failure: String?
+    @State private var pending: PendingAction?
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
-            if online.isSignedIn { signedIn } else { AccountSettingsGroup() }
+            if online.isSignedIn && !online.awaitingAdultConfirmation { signedIn } else { AccountSettingsGroup() }
         }
+        .confirmAction($pending)
         .appScreen(title: "Friends", subtitle: "Requests, search and your friends") {
             if let p = online.profile, online.isSignedIn {
                 NavigationLink { MyProfileView() } label: { PlayerAvatar(player: p, size: 34) }
@@ -83,7 +85,7 @@ struct FriendsApp: View {
     @ViewBuilder private func relationTag(_ p: PlayerProfile) -> some View {
         switch p.relation {
         case .none:
-            Button("Add") { act { try await online.service.sendFriendRequest(to: p.id) } }
+            Button("Add") { askAdd(p) }
                 .buttonStyle(SecondaryButtonStyle(size: .compact))
         case .friend: Text("Friend").textStyle(.caption, tint: Theme.gain)
         case .requestSent: Text("Requested").textStyle(.caption)
@@ -100,9 +102,17 @@ struct FriendsApp: View {
                     NavigationLink { PlayerProfileView(playerID: r.player.id) } label: { PlayerRow(player: r.player) { EmptyView() } }
                         .buttonStyle(PressableStyle())
                     HStack(spacing: Theme.Space.s) {
-                        Button("Accept") { act { try await online.service.acceptFriendRequest(from: r.player.id) } }
+                        Button("Accept") {
+                            pending = PendingAction.online(title: "Accept \(r.player.displayName)?",
+                                                           effect: "you become friends and each of you can see the other's companies as your privacy settings allow.",
+                                                           button: "Accept", tone: .success, icon: "person.fill.checkmark") { act { try await online.service.acceptFriendRequest(from: r.player.id) } }
+                        }
                             .buttonStyle(PrimaryButtonStyle(size: .compact))
-                        Button("Decline") { act { try await online.service.declineFriendRequest(from: r.player.id) } }
+                        Button("Decline") {
+                            pending = PendingAction.online(title: "Decline \(r.player.displayName)?",
+                                                           effect: "the request is removed and they are not told. They can send another one later.",
+                                                           button: "Decline", tone: .neutral, icon: "person.fill.xmark") { act { try await online.service.declineFriendRequest(from: r.player.id) } }
+                        }
                             .buttonStyle(SecondaryButtonStyle(size: .compact))
                         Spacer()
                     }
@@ -117,7 +127,11 @@ struct FriendsApp: View {
             ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, r: FriendRequest) in
                 if i > 0 { Hairline() }
                 PlayerRow(player: r.player) {
-                    Button("Cancel") { act { try await online.service.cancelFriendRequest(to: r.player.id) } }
+                    Button("Cancel") {
+                        pending = PendingAction.online(title: "Cancel the request?",
+                                                       effect: "your request to \(r.player.displayName) is withdrawn. You can send it again later.",
+                                                       button: "Cancel request", tone: .neutral, icon: "xmark.circle") { act { try await online.service.cancelFriendRequest(to: r.player.id) } }
+                    }
                         .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
                 }
             }
@@ -164,6 +178,12 @@ struct FriendsApp: View {
         guard !Task.isCancelled else { return }
         do { results = try await online.service.searchPlayers(query: q); failure = nil } catch { if !Task.isCancelled { failure = (error as? LocalizedError)?.errorDescription } }
         if !Task.isCancelled { searching = false }
+    }
+
+    private func askAdd(_ p: PlayerProfile) {
+        pending = PendingAction.online(title: "Add \(p.displayName)?",
+                                       effect: "a friend request is sent to \(p.displayName). If they accept, you become friends and can see each other's companies as your privacy settings allow.",
+                                       button: "Send request", tone: .info, icon: "person.fill.badge.plus") { act { try await online.service.sendFriendRequest(to: p.id) } }
     }
 
     private func act(_ call: @escaping () async throws -> Void) {

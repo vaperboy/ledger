@@ -92,32 +92,46 @@ struct PlayerProfileView: View {
         VStack(spacing: Theme.Space.s) {
             switch p.relation {
             case .none:
-                Button("Add friend") { run { try await online.service.sendFriendRequest(to: p.id) } }
+                Button("Add friend") {
+                    pending = PendingAction.online(title: "Add \(p.displayName)?",
+                                                   effect: "a friend request is sent to \(p.displayName). If they accept, you become friends and can see each other's companies as your privacy settings allow.",
+                                                   button: "Send request", tone: .info, icon: "person.fill.badge.plus") { run { try await online.service.sendFriendRequest(to: p.id) } }
+                }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("profile-add-friend")
                 Text("If you add \(p.displayName), they get a request. Once they accept you are friends: friends see the companies you run (as your privacy setting allows) and can be invited into a joint venture. You can remove them any time.")
                     .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             case .requestSent:
                 Text("Friend request sent").textStyle(.body, tint: Theme.inkSoft)
-                Button("Cancel request") { run { try await online.service.cancelFriendRequest(to: p.id) } }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                Button("Cancel request") {
+                    pending = PendingAction.online(title: "Cancel the request?", effect: "your request to \(p.displayName) is withdrawn. You can send it again later.",
+                                                   button: "Cancel request", tone: .neutral, icon: "xmark.circle") { run { try await online.service.cancelFriendRequest(to: p.id) } }
+                }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             case .requestReceived:
-                Button("Accept request") { run { try await online.service.acceptFriendRequest(from: p.id) } }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                Text("If you accept, you and \(p.displayName) are friends: friends see the companies you run (as your privacy setting allows) and can be invited into a joint venture.")
-                    .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                Button("Decline") { run { try await online.service.declineFriendRequest(from: p.id) } }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                Button("Accept request") {
+                    pending = PendingAction.online(title: "Accept \(p.displayName)?", effect: "you become friends and each of you can see the other's companies as your privacy settings allow.",
+                                                   button: "Accept", tone: .success, icon: "person.fill.checkmark") { run { try await online.service.acceptFriendRequest(from: p.id) } }
+                }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                Button("Decline") {
+                    pending = PendingAction.online(title: "Decline \(p.displayName)?", effect: "the request is removed and they are not told. They can send another one later.",
+                                                   button: "Decline", tone: .neutral, icon: "person.fill.xmark") { run { try await online.service.declineFriendRequest(from: p.id) } }
+                }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             case .friend:
                 Button("Remove friend") {
-                    pending = PendingAction(title: "Remove \(p.displayName)?", message: "They no longer see your companies. You can add them again later.",
-                                            button: "Remove friend", alwaysAsk: true, tone: .warning, icon: "person.fill.xmark") { run { try await online.service.removeFriend(p.id) } }
+                    pending = PendingAction.online(title: "Remove \(p.displayName)?", effect: "you are no longer friends and they no longer see your companies. You can add them again later.",
+                                                   button: "Remove friend", tone: .warning, icon: "person.fill.xmark") { run { try await online.service.removeFriend(p.id) } }
                 }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             case .blocked:
-                Button("Unblock") { run { try await online.service.unblockPlayer(p.id) } }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                Button("Unblock") {
+                    pending = PendingAction.online(title: "Unblock \(p.displayName)?", effect: "they can find you in search and send you requests again. You are not made friends again.",
+                                                   button: "Unblock", tone: .info, icon: "person.fill.checkmark") { run { try await online.service.unblockPlayer(p.id) } }
+                }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             case .you:
                 EmptyView()
             }
             if p.relation != .blocked && p.relation != .you {
                 Button("Block") {
-                    pending = PendingAction(title: "Block \(p.displayName)?", message: "They are removed from your friends and requests, and cannot find you in search.",
-                                            button: "Block", destructive: true, alwaysAsk: true) { run { try await online.service.blockPlayer(p.id) } }
+                    pending = PendingAction.online(title: "Block \(p.displayName)?", effect: "they are removed from your friends and requests, and cannot find you in search or send you requests.",
+                                                   button: "Block", destructive: true, tone: .danger, icon: "hand.raised") { run { try await online.service.blockPlayer(p.id) } }
                 }.buttonStyle(TertiaryButtonStyle(tint: Theme.loss))
             }
             if p.relation != .you {
@@ -174,6 +188,7 @@ struct ReportSheet: View {
                 .accessibilityAddTraits(reason == r ? .isSelected : [])
             }
             TextField("Add detail (optional)", text: $note).popupField()
+            Text("If you send this, the report goes to the moderators with your name on it. \(target.name) is not told who reported them.").popupText(.caption)
         }
         .centerSheetTitle("Report player")
         .popupFooter {

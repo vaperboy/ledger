@@ -49,11 +49,9 @@ public struct EntitlementSnapshot: Equatable, Sendable {
     public var plusGraceUntil: Date?
     /// When the 24-hour Pro pass from a rewarded ad ends (nil: none).
     public var passExpires: Date?
-    /// When a redeemed gift code stops opening the full game (nil: none).
-    public var giftExpires: Date?
 
-    public init(owned: Set<LedgerProduct> = [], plusExpires: Date? = nil, plusGraceUntil: Date? = nil, passExpires: Date? = nil, giftExpires: Date? = nil) {
-        self.owned = owned; self.plusExpires = plusExpires; self.plusGraceUntil = plusGraceUntil; self.passExpires = passExpires; self.giftExpires = giftExpires
+    public init(owned: Set<LedgerProduct> = [], plusExpires: Date? = nil, plusGraceUntil: Date? = nil, passExpires: Date? = nil) {
+        self.owned = owned; self.plusExpires = plusExpires; self.plusGraceUntil = plusGraceUntil; self.passExpires = passExpires
     }
 
     public static let free = EntitlementSnapshot()
@@ -63,8 +61,7 @@ public struct EntitlementSnapshot: Equatable, Sendable {
     public func isPlus(now: Date) -> Bool { (plusExpires.map { $0 > now } ?? false) || (plusGraceUntil.map { $0 > now } ?? false) }
     public func hasPass(now: Date) -> Bool { passExpires.map { $0 > now } ?? false }
     /// Everything Pro unlocks: bought Pro or Founder, Plus while active, or the one-day pass.
-    public func hasGift(now: Date) -> Bool { giftExpires.map { $0 > now } ?? false }
-    public func isPro(now: Date) -> Bool { ownsPro() || isPlus(now: now) || hasPass(now: now) || hasGift(now: now) }
+    public func isPro(now: Date) -> Bool { ownsPro() || isPlus(now: now) || hasPass(now: now) }
     /// Ads never show to Pro, Founder or Plus (a pass counts as Pro).
     public func isAdFree(now: Date) -> Bool { isPro(now: now) }
 
@@ -97,7 +94,7 @@ public struct StoredEntitlements: Codable, Equatable, Sendable {
     public init(_ s: EntitlementSnapshot, verifiedAt: Date) {
         owned = s.owned.map { $0.rawValue }.sorted(); plusExpires = s.plusExpires; plusGraceUntil = s.plusGraceUntil; self.verifiedAt = verifiedAt
     }
-    /// The store-owned part of the snapshot (the pass and gift are kept separately).
+    /// The store-owned part of the snapshot (the pass is kept separately).
     public var snapshot: EntitlementSnapshot {
         EntitlementSnapshot(owned: Set(owned.compactMap { LedgerProduct(rawValue: $0) }), plusExpires: plusExpires, plusGraceUntil: plusGraceUntil)
     }
@@ -191,7 +188,7 @@ public struct AdLedger: Equatable, Sendable, Codable {
     public func isQuiet(now: Date) -> Bool { lastDeclinedAt.map { now.timeIntervalSince($0) < AdPolicy.declineQuiet } ?? false }
 }
 
-/// Rules for ads and the rewarded offers. Free players only: `isAdFree` is true for Pro, Founder, Plus, a running pass and a gift.
+/// Rules for ads and the rewarded offers. Free players only: `isAdFree` is true for Pro, Founder, Plus, and a running pass.
 public enum AdPolicy {
     public static let minGameWeeksBetween = 2
     public static let minRealSecondsBetween: TimeInterval = 6 * 60
@@ -261,7 +258,7 @@ public enum AdPolicy {
         return AdRewards.canSecondChance(s, currency: currency)
     }
 
-    /// Placement 3: `Try Pro for a day` in the paywall, at most once per 7 real days, never to anyone who already has Pro, Plus, a gift or a running pass.
+    /// Placement 3: `Try Pro for a day` in the paywall, at most once per 7 real days, never to anyone who already has Pro, Plus or a running pass.
     public static func canOfferPass(entitlements e: EntitlementSnapshot, now: Date, _ l: AdLedger) -> Bool {
         if e.isAdFree(now: now) { return false }
         if let t = l.lastPassAt, now.timeIntervalSince(t) < passCooldown { return false }

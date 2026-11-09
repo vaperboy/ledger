@@ -121,6 +121,17 @@ enum SupabaseWire {
         case "already_friends": return .alreadyFriends
         case "request_pending": return .requestPending
         case "cannot_target_self": return .cannotTargetYourself
+        case "adult_required": return .adultRequired
+        case "not_admin": return .notAdmin
+        case "reason_required": return .rejected("Give a reason of at least three characters.")
+        case "outside_hard_limits": return .rejected("That value is outside the fixed limits of this rule.")
+        case "rules_conflict": return .rejected("That would make two rules contradict each other.")
+        case "unknown_rule": return .rejected("That rule does not exist.")
+        case "own_proposal": return .rejected("You cannot decide a change you proposed yourself.")
+        case "not_in_office": return .rejected("The proposer no longer holds the office.")
+        case "too_soon": return .rejected("Too soon after the last change of that kind.")
+        case "outside_limits", "change_too_large": return .rejected("The change is outside the current tax limits.")
+        case "not_eligible": return .rejected("The winner is no longer eligible for the office.")
         // No dedicated case for open supply contracts yet: the message is shown as is.
         case "open_contracts": return .nameRejected("Close your open supply contracts before deleting the account.")
         default: break

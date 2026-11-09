@@ -105,7 +105,6 @@ actor SupabaseOnlineService: OnlineService {
                                        body: try JSONSerialization.data(withJSONObject: body), authorised: false)
         let session: SupabaseSession = try decoder.decode(SupabaseTokenResponse.self, from: data).session(fallbackProvider: provider)
         store.save(session)
-        _ = try await rpcData("ensure_profile")
         return OnlineAccount(playerID: session.userID, provider: session.provider ?? provider, createdAt: session.createdAt)
     }
 
@@ -116,6 +115,15 @@ actor SupabaseOnlineService: OnlineService {
     }
 
     func linkAccount(with provider: SignInProvider) async throws -> OnlineAccount { try await signIn(with: provider) }
+
+    func accountStatus() async throws -> AccountStatus { try decode(AccountStatus.self, try await rpcData("account_status")) }
+
+    /// The server makes the profile only when the confirmation is a yes (anything else is refused there as `adult_required`).
+    func createProfile(adultConfirmed: Bool) async throws -> PlayerProfile {
+        try await profileRPC("ensure_profile", ["p_adult_confirmed": adultConfirmed])
+    }
+
+    func claimLinkReward() async throws -> LinkRewardResult { try decode(LinkRewardResult.self, try await rpcData("claim_link_reward")) }
 
     func signOut() async {
         _ = try? await raw(path: "/auth/v1/logout", method: "POST")
@@ -217,7 +225,7 @@ actor SupabaseOnlineService: OnlineService {
                                   URLQueryItem(name: "status", value: "eq." + status)], prefer: "return=minimal")
     }
 
-    private func decode<T: Decodable>(_ type: T.Type, _ data: Data) throws -> T {
+    func decode<T: Decodable>(_ type: T.Type, _ data: Data) throws -> T {
         do { return try decoder.decode(type, from: data) } catch { throw OnlineError.offline }
     }
 
@@ -225,7 +233,7 @@ actor SupabaseOnlineService: OnlineService {
         try decode(PlayerProfile.self, try await rpcData(name, params))
     }
 
-    private func rpcData(_ name: String, _ params: [String: Any] = [:]) async throws -> Data {
+    func rpcData(_ name: String, _ params: [String: Any] = [:]) async throws -> Data {
         try await raw(path: "/rest/v1/rpc/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
     }
 

@@ -37,8 +37,8 @@ final class Entitlements {
 
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var expiry: Task<Void, Never>?
-    /// Used gift codes, the gift's end and the newest date the clock showed; mirrored in UserDefaults and the keychain (`GiftVault`).
-    @ObservationIgnored private var wallet = GiftWallet()
+    /// The newest date the clock has shown, so setting the phone back does not stretch the ad pass.
+    @ObservationIgnored private var clockSeen: Date = Date(timeIntervalSince1970: UserDefaults.standard.double(forKey: Keys.clock))
     /// The last snapshot the store confirmed. Used at a cold start and offline; removed only when the store answers without it.
     @ObservationIgnored private var cache: StoredEntitlements?
     /// True once this launch has heard from the store (products loaded, an update, a purchase or a restore).
@@ -48,6 +48,7 @@ final class Entitlements {
         static let pass = "ledger.proPassExpires"
         static let debug = "ledger.debugEntitlements"
         static let cache = "ledger.entitlementCache"
+        static let clock = "ledger.clockSeen"
     }
     /// Apple's longest grace period. It is asked again on every refresh, so access ends when the store stops reporting it.
     private static let graceWindow: TimeInterval = 16 * 24 * 3600
@@ -58,10 +59,7 @@ final class Entitlements {
         #endif
         let t: Double = UserDefaults.standard.double(forKey: Keys.pass)
         if t > 0 { snapshot.passExpires = Date(timeIntervalSince1970: t) }
-        wallet = GiftVault.load()
-        wallet.noteSeen(Date())
-        GiftVault.save(wallet)
-        snapshot.giftExpires = wallet.expires
+        noteClock()
         if let d = UserDefaults.standard.data(forKey: Keys.cache), let c = try? JSONDecoder().decode(StoredEntitlements.self, from: d) {
             cache = c
             let kept: EntitlementSnapshot = c.snapshot
@@ -71,8 +69,13 @@ final class Entitlements {
         }
     }
 
-    /// The clock for every entitlement check: never earlier than the newest date seen, so setting the phone back does not stretch a gift or a pass.
-    private var now: Date { wallet.trustedNow(Date()) }
+    /// The clock for every entitlement check: never earlier than the newest date seen, so setting the phone back does not stretch a pass.
+    private var now: Date { max(Date(), clockSeen) }
+
+    private func noteClock() {
+        clockSeen = now
+        UserDefaults.standard.set(clockSeen.timeIntervalSince1970, forKey: Keys.clock)
+    }
 
     // MARK: Reads (the only thing gates use)
 
@@ -93,13 +96,12 @@ final class Entitlements {
     var isFounder: Bool { effective.isFounder() }
     var ownsPro: Bool { effective.ownsPro() }
     var hasPass: Bool { effective.hasPass(now: now) }
-    var hasGift: Bool { effective.hasGift(now: now) }
     /// The next renewal date; nil when Plus is off or only running on grace (the date is then in the past).
     var plusRenews: Date? {
         guard effective.isPlus(now: now), let end = effective.plusExpires, end > now else { return nil }
         return end
     }
-    /// True when the store holds a purchase or subscription for this player (a pass or a gift does not count).
+    /// True when the store holds a purchase or subscription for this player (a pass does not count).
     var hasStorePurchase: Bool { !snapshot.owned.isEmpty || snapshot.plusExpires != nil || snapshot.plusGraceUntil != nil }
 
     func isUnlocked(_ f: LockedFeature) -> Bool { effective.isUnlocked(f, now: now) }
@@ -194,35 +196,18 @@ final class Entitlements {
         } else {
             UserDefaults.standard.removeObject(forKey: Keys.cache)
         }
-        wallet.noteSeen(Date())
-        GiftVault.save(wallet)
+        noteClock()
         var next: EntitlementSnapshot = out.snapshot
         next.passExpires = snapshot.passExpires
-        next.giftExpires = wallet.expires
         if let pe = next.passExpires, pe <= now { next.passExpires = nil; UserDefaults.standard.removeObject(forKey: Keys.pass) }
         if out.plusEnded { plusEndedNotice = true }
         snapshot = next
         scheduleExpiryRefresh()
     }
 
-    /// Redeems a gift code on this device: it opens the full game for the code's period, added to any time still left.
-    /// Each code works once per device (the used list is kept in UserDefaults and the keychain). Returns the line to show.
-    @discardableResult
-    func redeem(_ text: String) -> String {
-        switch wallet.redeem(text, now: Date()) {
-        case .invalid:
-            return "That code is not valid. Check it and try again."
-        case .used:
-            return "That code has already been used on this device."
-        case .ok(let end):
-            GiftVault.save(wallet)
-            snapshot.giftExpires = end
-            scheduleExpiryRefresh()
-            let f: DateFormatter = DateFormatter()
-            f.dateStyle = .medium
-            return "Unlocked until \(f.string(from: end))."
-        }
-    }
+    /// True when the store answered with the products, which is where App Store offer codes can be redeemed. A build the store does not
+    /// serve (a side-loaded one) has no products and shows no redeem row.
+    var offerCodesAvailable: Bool { !products.isEmpty }
 
     func purchase(_ p: LedgerProduct) async {
         guard !isBusy else { return }
@@ -269,11 +254,11 @@ final class Entitlements {
         scheduleExpiryRefresh()
     }
 
-    /// When the pass, a Plus period or a gift ends, look again so the locks come back without a restart.
+    /// When the pass or a Plus period ends, look again so the locks come back without a restart.
     private func scheduleExpiryRefresh() {
         expiry?.cancel()
         let current: Date = now
-        let next: Date? = [snapshot.passExpires, snapshot.plusExpires, snapshot.plusGraceUntil, snapshot.giftExpires].compactMap { $0 }.filter { $0 > current }.min()
+        let next: Date? = [snapshot.passExpires, snapshot.plusExpires, snapshot.plusGraceUntil].compactMap { $0 }.filter { $0 > current }.min()
         guard let when = next else { return }
         expiry = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(min(max(1, when.timeIntervalSinceNow + 1), 86_400 * 30) * 1_000_000_000))

@@ -163,7 +163,7 @@ final class AdCapsTests: XCTestCase {
         XCTAssertTrue(AdPolicy.canOfferRewardedDouble(week: 8, grantCashThisWeek: 1, entitlements: .free, now: t0.addingTimeInterval(86_400 * 2), l))
         let far = t0.addingTimeInterval(1e6)
         let paid: [EntitlementSnapshot] = [EntitlementSnapshot(owned: [.pro]), EntitlementSnapshot(owned: [.founder]),
-            EntitlementSnapshot(plusExpires: far), EntitlementSnapshot(passExpires: far), EntitlementSnapshot(giftExpires: far)]
+            EntitlementSnapshot(plusExpires: far), EntitlementSnapshot(passExpires: far)]
         for e in paid {
             XCTAssertFalse(AdPolicy.canOfferRewardedDouble(week: 9, grantCashThisWeek: 1, entitlements: e, now: t0, AdLedger()))
             XCTAssertFalse(AdPolicy.canOfferPass(entitlements: e, now: t0, AdLedger()), "no pass offer to anyone who already has the full game")

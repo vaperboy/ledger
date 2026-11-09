@@ -7,6 +7,7 @@ struct MyProfileView: View {
     @State private var name = ""
     @State private var nameError: String?
     @State private var loaded = false
+    @State private var pending: PendingAction?
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
@@ -23,6 +24,7 @@ struct MyProfileView: View {
             }
         }
         .appScreen(title: "My profile", subtitle: "What other players see")
+        .confirmAction($pending)
         .task {
             await online.refreshProfile()
             if !loaded, let p = online.profile { name = p.displayName; loaded = true }
@@ -59,7 +61,10 @@ struct MyProfileView: View {
                     .frame(minHeight: 48)
                     .accessibilityIdentifier("profile-name")
                 if changed {
-                    Button("Save") { saveName(changed: changed, problem: problem) }
+                    Button("Save") {
+                        pending = PendingAction.online(title: "Change your name?", effect: "other players see \(ProfileRules.clean(name)) instead of \(p.displayName) from now on.",
+                                                       button: "Save name", tone: .info, icon: "pencil") { saveName(changed: changed, problem: problem) }
+                    }
                         .buttonStyle(SecondaryButtonStyle(size: .compact)).disabled(problem != nil)
                 }
             }
@@ -132,7 +137,9 @@ struct MyProfileView: View {
                 if i > 0 { Hairline() }
                 Button {
                     Haptics.tap()
-                    Task { _ = await online.update(ProfileUpdate(privacy: level)) }
+                    guard p.privacy != level else { return }
+                    pending = PendingAction.online(title: "Show your profile to \(level.title.lowercased())?", effect: level.note.prefix(1).lowercased() + level.note.dropFirst(),
+                                                   button: "Change", tone: .info, icon: "eye") { Task { _ = await online.update(ProfileUpdate(privacy: level)) } }
                 } label: {
                     HStack {
                         Text(level.title).textStyle(.headline)
@@ -157,7 +164,8 @@ struct MyProfileView: View {
             }
             Hairline()
             Button {
-                Task { await online.shareProgress(from: store.engine) }
+                pending = PendingAction.online(title: "Update your profile?", effect: "your open companies, level and week are sent to your profile, and other players see them as your privacy setting allows.",
+                                               button: "Update", tone: .info, icon: "arrow.triangle.2.circlepath") { Task { await online.shareProgress(from: store.engine) } }
             } label: { OnlineLine(glyph: Glyph.hire, title: "Update from my game", note: store.engine == nil ? "Start or open a game first" : "Shares your open companies, level and week", chevron: true) }
                 .buttonStyle(PressableStyle()).disabled(store.engine == nil)
         }

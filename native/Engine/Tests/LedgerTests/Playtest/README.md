@@ -12,7 +12,7 @@ inert unless `LEDGER_PLAYTEST=1`, so the normal suite is unaffected. No game sou
 | `PlaytestBot.swift` | `PlayBot`: policies (competent, reckless, passive), scenarios, daily/weekly invariant checks |
 | `PlaytestSweepTests.swift` | the sweeps: every trade x country x policy x seed, scenarios, determinism, single-job repro |
 | `PlaytestToursTests.swift` | 16 scripted feature tours (hire/fire/talk, manager, loans, equipment, suppliers, pricing, campaigns, insurance, marketplace, dealer, board, chain, ventures, luxury, goals, reports, investments, holding/close/football, every country starts) |
-| `PlaytestReworkTours.swift` | 17 tours of the rework: owner meetings per position, advisory round, CEO replacement (solo, majority, minority with failed vote and 8-week block), every sale route (handshake, broker, auction, buyout, merger, stake tiers, group, master franchise, IPO refusal), payroll-short routing, gift codes, unlocks following the player, flood count. Run: `LEDGER_PLAYTEST=1 swift test --skip-build --filter PlaytestReworkTours` |
+| `PlaytestReworkTours.swift` | 16 tours of the rework: owner meetings per position, advisory round, CEO replacement (solo, majority, minority with failed vote and 8-week block), every sale route (handshake, broker, auction, buyout, merger, stake tiers, group, master franchise, IPO refusal), payroll-short routing, unlocks following the player, flood count. Run: `LEDGER_PLAYTEST=1 swift test --skip-build --filter PlaytestReworkTours` |
 | `run_shards.sh` | runs one sweep in N processes, finds and skips jobs that crash the process (Swift trap) and writes them up as findings |
 | `run_all.sh`, `aggregate.py` | everything in turn, then one ranked list |
 

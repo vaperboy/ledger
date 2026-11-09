@@ -5,7 +5,7 @@ import Simulation
 
 /// Applies the ad rules of the engine (`AdPolicy`, `AdRewards`) to the provider. Views and the store call only this class.
 /// Placements: interstitial after a week report, rewarded double of a grant, rewarded second chance after the books close, rewarded Pro pass in the paywall.
-/// Free players only: every rule refuses Pro, Founder, Plus, a running pass and a gift. Skip-a-wait is not offered: the engine has no single timer to skip.
+/// Free players only: every rule refuses Pro, Founder, Plus and a running pass. Skip-a-wait is not offered: the engine has no single timer to skip.
 @MainActor @Observable
 final class AdCoordinator {
     @ObservationIgnored private let provider: AdProvider
@@ -144,7 +144,7 @@ final class AdCoordinator {
 
     // MARK: Placement 4: Pro for a day
 
-    /// Is `Try Pro for a day: watch an ad` offered in the paywall? Never to anyone with Pro, Plus, a gift or a running pass.
+    /// Is `Try Pro for a day: watch an ad` offered in the paywall? Never to anyone with Pro, Plus or a running pass.
     var canOfferPass: Bool { available && AdPolicy.canOfferPass(entitlements: entitlements.effective, now: Date(), ledger) }
 
     /// Watch the ad; on success Pro runs for 24 real hours.
