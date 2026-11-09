@@ -13,7 +13,7 @@ enum TeamPage: String, Hashable, Identifiable {
 }
 
 /// One company's Team tab on ONE page, STAFF ONLY. A hero (head count and what the team costs a month, then Hire, the one action), the people
-/// as clean rows with role and mood (a tap pushes the profile), then a short list of team settings (applicants, goals, perks). Managers, the owner and executive posts live in Group > the company > Management. Labour rules are in Stats; payroll in Accounting.
+/// as clean rows with role and mood (a tap pushes the profile), then a short list of team settings (applicants, goals, perks). Managers, the owner and executive posts live in Group > the company > Management. Labour rules are in Stats.
 struct CompanyTeam: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

@@ -20,7 +20,7 @@ enum NavRoute: Hashable {
     case companyPart(Int, CompanySection, String)
     /// The Applicants page: company id (0 = all companies) and role id ("" = all roles).
     case applicants(Int, String)
-    /// A Phone app (Inbox, Bank, Accounting ...); what a link asked it to show waits in `GameStore.appRequest`.
+    /// A Phone app (Inbox, Bank ...); what a link asked it to show waits in `GameStore.appRequest`.
     case app(PhoneApp)
     /// The Group entity page of a company, holding or chain (`GroupEntity.id`), on one of its sections.
     case entity(String, GroupSection)
@@ -96,7 +96,8 @@ extension GameStore {
     /// Returns false for an unknown or empty link.
     @discardableResult func openLadderLink(_ link: String) -> Bool {
         if link == "inbox" { openApp(.inbox); return true }
-        if ["news", "market", "techPro", "reviews", "weather", "accounting"].contains(link), let app = PhoneApp(rawValue: link) { openApp(app); return true }   // daily goals that open a Phone app
+        if ["news", "market", "techPro", "reviews", "weather"].contains(link), let app = PhoneApp(rawValue: link) { openApp(app); return true }   // daily goals that open a Phone app
+        if link == "accounting" { openApp(.bank); return true }
         if link == "achievements" { openApp(.achievements); return true }
         if link == "newCompany" { push(.newCompany); return true }
         guard let id = ladderCompany(for: link) else {

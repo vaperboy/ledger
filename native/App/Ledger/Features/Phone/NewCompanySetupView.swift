@@ -13,7 +13,7 @@ struct NewCompanyDraft: Equatable {
     var name: String
     var pick: NewCompanyPlan.Pick?
     var choices = SetupChoices()
-    /// The accountant a limited company is given; nil takes the standard one.
+    /// The accountant the company is given; nil takes the standard one.
     var accountantID: Int? = nil
 
     /// The size the picker prices the trade at, so the figures here match the table to the penny.
@@ -39,12 +39,10 @@ struct NewCompanyDraft: Equatable {
 /// monthly cost after opening. Nothing is paid here; the bar goes to the review.
 struct NewCompanyDetailedSetupView: View {
     private enum Way: String, Hashable { case rent = "Rent", buy = "Buy", home = "Home" }
-    private enum FormChoice: String, Hashable { case sole = "Sole trader", limited = "Limited company" }
     @EnvironmentObject var store: GameStore
     var tradeID: String
     @State var cityID: String
     @State private var name = ""
-    @State private var limited = false
     @State private var way: Way = .rent
     @State private var placeIndex: Int?
     @State private var goReview = false
@@ -59,7 +57,7 @@ struct NewCompanyDetailedSetupView: View {
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
             let country = e.homeCountry
-            let form: LegalForm = (limited || t.needsLimitedCompany) ? .limited : .soleTrader
+            let form: LegalForm = .limited
             let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
             let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices, accountantID: accountantID)
@@ -71,7 +69,7 @@ struct NewCompanyDetailedSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     fields(t, country, form, costs)
-                    if form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID) }
+                    AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     if let plan { premisesBlock(plan) }
                     if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
                     if let monthly { monthlyCard(monthly) }
@@ -96,7 +94,6 @@ struct NewCompanyDetailedSetupView: View {
     private func applyAlternative(_ alt: PlanAlternative) {
         switch alt.id {
         case "rent": way = .rent
-        case "sole": limited = false
         default: break
         }
     }
@@ -115,8 +112,7 @@ struct NewCompanyDetailedSetupView: View {
     @ViewBuilder private func fields(_ t: Trade, _ country: Country, _ form: LegalForm, _ costs: StartUpCostBreakdown?) -> some View {
         let cities: [Country.City] = country.cities
         let cityName: String = cities.first { $0.id == cityID }?.name ?? "Home city"
-        let formChoice = Binding<FormChoice>(get: { form == .limited ? .limited : .sole }, set: { limited = $0 == .limited })
-        let taxNote: String = taxNote(form, country, costs)
+        let taxNote: String = taxNote(country, costs)
         SharpTable {
             fieldRow("Name", hint: "Leave empty and one is chosen for you") {
                 TextField(t.name, text: $name).textFieldStyle(.plain).multilineTextAlignment(.trailing)
@@ -133,12 +129,6 @@ struct NewCompanyDetailedSetupView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("Legal form").textStyle(.caption)
-                if t.needsLimitedCompany {
-                    Text("Limited company (this trade needs one)").textStyle(.body)
-                } else {
-                    SegmentedPill(items: [FormChoice.sole, FormChoice.limited], title: { $0.rawValue }, selection: formChoice)
-                }
                 Text(taxNote).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
@@ -150,10 +140,7 @@ struct NewCompanyDetailedSetupView: View {
     }
 
     /// The tax note comes from the country's own data (corporate rate), not from fixed text.
-    private func taxNote(_ form: LegalForm, _ country: Country, _ costs: StartUpCostBreakdown?) -> String {
-        if form == .soleTrader {
-            return "Simple and cheap. Profit is taxed as your own income, and you are personally liable for debts."
-        }
+    private func taxNote(_ country: Country, _ costs: StartUpCostBreakdown?) -> String {
         let pct = Int(saturating: (country.corporateTax * 100).rounded())
         let capital: String = (costs?.shareCapital ?? 0) > 0 ? " Share capital of \(store.money(costs?.shareCapital ?? 0)) is locked in the company." : ""
         return "Your personal assets are protected. The company pays \(pct)% corporation tax on profit, and more tax when you take it out." + capital
@@ -306,8 +293,6 @@ struct NewCompanyReviewView: View {
                     ])
                     LedgerSection("The company") {
                         VStack(spacing: 0) {
-                            line("Legal form", draft.form == .limited ? "Limited company" : "Sole trader")
-                            Hairline()
                             line("Premises", premisesText(plan))
                         }
                     }

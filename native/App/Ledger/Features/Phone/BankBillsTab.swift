@@ -4,7 +4,7 @@ import Countries
 import Finance
 import Simulation
 
-/// A list of coming payments, each with Pay now: payroll is run by a manager or accountant, or answered in the Inbox; a loan
+/// A list of coming payments, each with Pay now: payroll is paid automatically on pay day; a loan
 /// instalment is paid now with `payLoanInstalmentNow`; rent, supplier bills, invoices, corporate tax and VAT are settled by the engine's
 /// `payObligationNow`, the same payment the due date makes, so nothing is charged again on the date.
 struct BankBillsList: View {
@@ -47,7 +47,7 @@ struct BankBillsList: View {
     @ViewBuilder private func action(_ u: Obligation, _ e: GameEngine) -> some View {
         switch u.kind {
         case .payroll:
-            Text("Run by a manager or accountant").textStyle(.caption, tint: P.inkFaint)
+            Text("Paid automatically").textStyle(.caption, tint: P.inkFaint)
         case .loan:
             if let loanID = Int(u.id.dropFirst(4)) {
                 Button("Pay now") { BankPay.instalment(store, loanID: loanID) }.buttonStyle(SecondaryButtonStyle(size: .compact))
@@ -59,7 +59,7 @@ struct BankBillsList: View {
 }
 
 /// Bills: what is due in 30 days and whether it is covered, every coming payment, tax and VAT owed, the tax rules and licences, and (for a
-/// company) the pay day and payroll run. The old Group > Money Overview, Taxes and Costs, and the company payroll desk, in one place.
+/// company) the payroll that is coming. The old Group > Money Overview, Taxes and Costs, in one place.
 struct BankBillsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

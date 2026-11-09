@@ -156,9 +156,6 @@ struct PhoneAppScreen: View {
         case .bank:
             // The Bank app draws its own header (the round back goes from an account to the list first).
             BankApp()
-        case .accounting:
-            // Accounting & Compliance draws its own header (the round back goes up one screen inside the app before it leaves).
-            AccountingApp()
         case .inbox:
             InboxView()
         case .news:

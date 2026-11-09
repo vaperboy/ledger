@@ -13,6 +13,8 @@ enum CompanyMoneyPart: String, CaseIterable, Hashable {
     case summary = "Summary", settings = "Settings"
     /// The tab row.
     static let tabs: [CompanyMoneyPart] = [.summary, .settings]
+    /// The page title.
+    var title: String { self == .settings ? "Company settings" : rawValue }
 }
 
 /// One company's Finances tab: a read-only, scannable view of the money, with the company's settings kept here, ownership and selling in
@@ -42,7 +44,7 @@ struct MoneyPageDestination: View {
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
-            SettingsPage(title: part.rawValue, subtitle: co.name) { content(e, co) }
+            SettingsPage(title: part.title, subtitle: co.name) { content(e, co) }
         } else {
             Text("This company no longer exists.").foregroundStyle(Theme.ivoryMuted).frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
@@ -58,8 +60,8 @@ struct MoneyPageDestination: View {
 
 // MARK: Summary
 
-/// Read-only: where the money goes and the margins under it, what is owed, then ownership and legal form. Cash is on the Overview, what is
-/// coming up is in the Bank and Accounting, and the reports are in the Reports app.
+/// Read-only: where the money goes and the margins under it, what is owed, the supplier records, then ownership. Cash is on the Overview, what is
+/// coming up and every transaction are in the Bank, and the reports are in the Reports app.
 struct CompanyMoneySummary: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -74,6 +76,7 @@ struct CompanyMoneySummary: View {
             CompanyPaymentStress(engine: engine, company: company)
             CompanyStatsFigures(engine: engine, company: company, block: .spending)
             owedCard(cur, o)
+            CompanySupplierRecords(companyID: company.id)
             settingsTable(cur)
             CompanyStatsFigures(engine: engine, company: company, block: .legal)
             CompanyLabourCard(engine: engine, company: company)
@@ -113,10 +116,9 @@ struct CompanyMoneySummary: View {
 
     /// One row per area of the company's money; each opens a full page (the decisions there are big: closing, winding up).
     private func settingsTable(_ cur: Currency) -> some View {
-        let form: String = company.form == .limited ? "Limited company" : "Sole trader"
         let closed: Bool = company.status == .closed
         return SharpTable {
-            SettingsTableRow(title: "Legal form and trading", note: "Sole trader or limited, rename, close for a while or wind up", value: closed ? "Closed for now" : form, valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
+            SettingsTableRow(title: "Company settings", note: "Name, close for a while or for good, documents and permits", value: closed ? "Closed for now" : "", valueTint: closed ? Theme.caution : Theme.ivory) { part = .settings }
         }
     }
 }

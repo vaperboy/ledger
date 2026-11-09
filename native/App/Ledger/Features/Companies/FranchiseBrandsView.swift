@@ -340,7 +340,6 @@ struct StartFranchisedView: View {
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
     var brandID: String
     @State private var cityID = ""
-    @State private var limited = true
     @State private var name = ""
     @State private var rentIndex: Int?
     @State private var buying = false
@@ -360,15 +359,14 @@ struct StartFranchisedView: View {
             let cc: String = e.franchiseApplication(brandID)["country"].string
             let country = e.data.countries.resolve(cc.isEmpty ? e.state.homeCountryCode : cc, orHome: e.state.homeCountryCode)
             let cur = Currency(country: country, rates: ExchangeRates(drift: e.state.exchangeRates.values))
-            let bd = e.data.catalog[b.tradeID]
             let appCity: String = e.franchiseApplication(brandID)["city"].string
             let city: String = cityID.isEmpty ? (appCity.isEmpty ? country.cities[0].id : appCity) : cityID
-            let form: LegalForm = (limited || (bd?.needsLimitedCompany ?? false)) ? .limited : .soleTrader
+            let form: LegalForm = .limited
             let pick = rentIndex.map { NewCompanyPlan.Pick(listingIndex: $0, buy: buying) }
             let fp = e.franchiseStartPlan(brandID: brandID, cityID: city, form: form, pick: pick)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    whereAndHow(country, city: city, needsLimited: bd?.needsLimitedCompany == true)
+                    whereAndHow(country, city: city)
                     if let fp { plan(e, b, t, fp, cur: cur, city: city, form: form, pick: pick) }
                 }
                 .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
@@ -383,7 +381,7 @@ struct StartFranchisedView: View {
         }
     }
 
-    private func whereAndHow(_ country: Country, city: String, needsLimited: Bool) -> some View {
+    private func whereAndHow(_ country: Country, city: String) -> some View {
         MoreBlock("Where and how") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack(spacing: Theme.Space.m) {
@@ -391,8 +389,6 @@ struct StartFranchisedView: View {
                     Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
                     Spacer(minLength: 0)
                 }
-                if needsLimited { Text("This trade needs a limited company.").textStyle(.caption, tint: Theme.inkSoft) }
-                else { SegmentedPill(items: [false, true], title: { $0 ? "Limited company" : "Sole trader" }, selection: $limited) }
                 Card(padding: Theme.Space.m, radius: Theme.Radius.table) {
                     TextField("Company name", text: $name).textFieldStyle(.plain).font(.system(size: 15))
                 }

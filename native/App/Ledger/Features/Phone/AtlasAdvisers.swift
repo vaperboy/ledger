@@ -4,8 +4,7 @@ import Countries
 import Businesses
 import Simulation
 
-/// Atlas > the company's accountant: who keeps the books now and the others on offer (name, fee, rating). The accountant also runs payroll, so the
-/// choice shows in Accounting > Payroll and Settings. A switch is confirmed with the monthly fee first.
+/// Atlas > the company's accountant: who keeps the books now and the others on offer (name, fee, rating). A switch is confirmed with the monthly fee first.
 struct AtlasAccountantSection: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P

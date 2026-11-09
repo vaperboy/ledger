@@ -29,9 +29,9 @@ struct GroupEntityOwnership: View {
         }
     }
 
-    /// The companies that have owners to show: limited companies and holdings, one block each. A branch of a chain has no shares of its own.
+    /// The companies that have owners to show, one block each. A branch of a chain has no shares of its own.
     private func ownable(_ cos: [Company]) -> [Company] {
-        cos.filter { (c: Company) -> Bool in (c.form == .limited || c.type == "hold") && !engine.isBranch(companyID: c.id) }
+        cos.filter { (c: Company) -> Bool in !engine.isBranch(companyID: c.id) }
     }
 
     /// One line under a chain's ownership parts: its branches are part of the chain company, not companies with shares.
@@ -65,7 +65,7 @@ struct GroupEntityOwnership: View {
             ForEach(sellable) { (c: Company) in
                 if sellable.count > 1 { Text(c.name.uppercased()).capsLabel() }
                 CompanySaleSection(engine: engine, company: c, onGoRaise: { part = .raise })
-                if c.form == .limited && c.type != "hold" { CompanyOwnershipSection(engine: engine, company: c, mode: .shares) }
+                if c.type != "hold" { CompanyOwnershipSection(engine: engine, company: c, mode: .shares) }
             }
             branchNote(cos)
         }

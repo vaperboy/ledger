@@ -1,7 +1,7 @@
 import XCTest
 
-/// Tours of the financial screens: the Accounting app, the Bank's two-stage loan flow up to its confirmation (nothing is borrowed),
-/// the account list with the wealth overview, the company conversion preview (cancelled, nothing changes) and the Team metrics.
+/// Tours of the financial screens: the Bank's two-stage loan flow up to its confirmation (nothing is borrowed),
+/// the account list with the wealth overview, the company settings and the Team metrics.
 /// Pictures are numbered from 70. Every part is its own short test (CI gives each test 150 s; each of these stays well under 100 s), and every step is
 /// optional: a screen that is not reachable on this device is noted, never failed.
 class FinanceTourCase: TourCase {
@@ -55,78 +55,6 @@ class FinanceTourCase: TourCase {
     }
 }
 
-/// Accounting, part 1: the home with its business selector, Transactions and one transaction.
-final class AccountingHomeTourTests: FinanceTourCase {
-    func testAccountingHomeAndTransactions() {
-        guard openPhoneApp("Accounting") else { return }
-        XCTAssertTrue(app.buttons["acct-company-picker"].waitForExistence(timeout: 5), "the Accounting home shows the business selector")
-        shot("70-accounting-home")
-        // The selector is a menu of the live companies; open it, photograph it, close it.
-        if tapID("acct-company-picker") {
-            shot("71-accounting-selector")
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.45)).tap()
-            sleep(1)
-        }
-        if tapID("acct-row-transactions") {
-            shot("72-accounting-transactions")
-            tapID("acct-tx-income"); shot("72-accounting-transactions-income")
-            tapID("acct-tx-all")
-            tapID("acct-tx-range"); shot("72-accounting-transactions-range")
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.45)).tap()
-            sleep(1)
-            let row = app.buttons["acct-tx-row"].firstMatch
-            if row.waitForExistence(timeout: 3) && row.isHittable { row.tap(); sleep(1); shot("72-accounting-transaction-detail"); goBack() }
-            else { note("no transaction row") }
-            goBack()
-        }
-    }
-}
-
-/// Accounting, part 2: Payroll (all four pages) and Invoices & Payments.
-final class AccountingPayrollTourTests: FinanceTourCase {
-    func testAccountingPayrollAndInvoices() {
-        guard openPhoneApp("Accounting") else { return }
-        if tapID("acct-row-payroll") {
-            shot("73-accounting-payroll-overview")
-            tapLabel("Employees"); shot("73-accounting-payroll-employees")
-            tapLabel("Timesheets"); shot("73-accounting-payroll-timesheets")
-            tapLabel("Run payroll"); shot("73-accounting-payroll-run")
-            goBack()
-        }
-        if tapID("acct-row-invoices") {
-            shot("74-accounting-invoices")
-            tapLabel("Payments"); shot("74-accounting-payments")
-            goBack()
-        }
-    }
-}
-
-/// Accounting, part 3: Suppliers, Documents (Company, Tax, Contracts) and Settings (access).
-final class AccountingRecordsTourTests: FinanceTourCase {
-    func testAccountingSuppliersDocumentsSettings() {
-        guard openPhoneApp("Accounting") else { return }
-        if tapID("acct-row-suppliers") {
-            shot("75-accounting-suppliers")
-            let row = app.buttons["acct-supplier-row"].firstMatch
-            if row.waitForExistence(timeout: 2) && row.isHittable { row.tap(); sleep(1); shot("75-accounting-supplier-profile"); goBack() }
-            goBack()
-        }
-        if tapID("acct-row-documents") {
-            shot("76-accounting-documents-company")
-            tapLabel("Tax"); shot("76-accounting-documents-tax")
-            tapLabel("Contracts"); shot("76-accounting-documents-contracts")
-            tapLabel("Insurance"); shot("76-accounting-documents-insurance")
-            tapLabel("Applications"); shot("76-accounting-documents-applications")
-            goBack()
-        }
-        if tapID("acct-row-settings") {
-            shot("77-accounting-settings")
-            if tapID("acct-access-add") { shot("77-accounting-add-user"); goBack() }
-            goBack()
-        }
-    }
-}
-
 /// The Bank: the account list with the wealth overview, then the loan flow from the first screen to the confirmation. The flow stops before the
 /// confirm button, so nothing is borrowed.
 final class BankLoanTourTests: FinanceTourCase {
@@ -166,7 +94,7 @@ final class BankLoanTourTests: FinanceTourCase {
     }
 }
 
-/// The company conversion preview and the Team metrics, from the first company of the showcase game. The preview is cancelled: nothing changes.
+/// The company settings and the Team metrics, from the first company of the showcase game. Nothing is changed.
 final class ConversionPreviewTourTests: FinanceTourCase {
     func testConversionPreviewAndTeamMetrics() {
         _ = waitForHome()
@@ -177,14 +105,7 @@ final class ConversionPreviewTourTests: FinanceTourCase {
         if team.waitForExistence(timeout: 3) { team.tap(); sleep(1); shot("80-company-team-metrics") }
         let stats = app.buttons["company-tab-stats"]
         if stats.waitForExistence(timeout: 3) { stats.tap(); sleep(1); shot("80-company-stats-cash-first") }
-        guard tapContaining("Legal form and trading") else { return }
-        shot("81-company-legal-form")
-        guard tapID("company-convert-review") else { note("this company is already a limited company"); return }
-        shot("81-conversion-preview")
-        XCTAssertTrue(app.buttons["conversion-confirm"].waitForExistence(timeout: 3) || app.otherElements["conversion-blocked"].exists, "the preview ends in a decision or says why it is blocked")
-        if app.buttons["conversion-payer-company"].exists { app.buttons["conversion-payer-company"].tap(); sleep(1); shot("81-conversion-company-pays") }
-        // Cancel: the sheet closes and the company stays what it was.
-        tapID("popup-close")
-        shot("81-conversion-cancelled")
+        guard tapContaining("Company settings") else { return }
+        shot("81-company-settings")
     }
 }

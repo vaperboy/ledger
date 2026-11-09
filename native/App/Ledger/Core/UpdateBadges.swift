@@ -21,7 +21,7 @@ struct UpdateMarks: Codable, Equatable {
 
 /// The apps whose updates are told by messages, and how a message finds its app.
 enum UpdateFeed {
-    static let messageApps: [PhoneApp] = [.inbox, .bank, .accounting, .market, .news, .weather, .achievements, .airStay, .techPro, .atlas, .marketplace]
+    static let messageApps: [PhoneApp] = [.inbox, .bank, .market, .news, .weather, .achievements, .airStay, .techPro, .atlas, .marketplace]
 
     /// The app a message belongs to, from who sent it. Anything unknown stays in the Inbox.
     static func app(of m: Message) -> PhoneApp {
@@ -33,7 +33,7 @@ enum UpdateFeed {
         if has(["marketplace"]) { return .marketplace }
         if has(["weather"]) { return .weather }
         if has(["bank", "creditor"]) { return .bank }
-        if has(["payroll", "tax", "accountant", "finance manager"]) { return .accounting }
+        if has(["payroll", "tax", "accountant", "finance manager"]) { return .bank }
         if has(["market", "competition", "consumer authority", "tourism", "industry association", "business broker", "customers"]) { return .market }
         if has(["news"]) { return .news }
         if has(["trophy", "award", "ambition"]) { return .achievements }
@@ -83,8 +83,6 @@ enum UpdateFeed {
             return freshMarket(e, marks: marks).count + freshMessages(e, app, marks: marks).count
         case .news:
             return freshNews(e, marks: marks).count + freshMessages(e, app, marks: marks).count
-        case .accounting:
-            return PhoneAlerts.payroll(engine: e).count + freshMessages(e, app, marks: marks).count
         case .weather:
             let seenSig: String? = marks.texts["weather"]
             let unseen: Bool = seenSig != nil && seenSig != weatherSignature(e)
@@ -142,10 +140,6 @@ extension GameStore {
         for k in ["reviews", "tr.stats", "tr.achievements"] {
             let old: Int? = m.ints[k]
             if old == nil || old! > e.state.week { m.ints[k] = e.state.week }
-        }
-        if m.ints["docrev"] == nil {
-            m.ints["docrev"] = 1
-            for k in reviewDocKeys(e) { m.texts["dr." + k] = "1" }
         }
         for co in e.state.companies where co.status == .open && co.type != "hold" {
             let k: String = "rv.\(co.id)"

@@ -91,11 +91,7 @@ struct BankApp: View {
     private var titles: (String, String) {
         guard let e = store.engine else { return ("Bank", "") }
         guard session != nil else { return ("Bank", "Choose an account") }
-        guard let account else {
-            let n: Int = e.bankAccounts().alertCount
-            let who: String = n == 1 ? "a company" : "\(n) companies"
-            return ("Bank", n > 0 ? "Choose an account · payroll waits on \(who)" : "Choose an account")
-        }
+        guard let account else { return ("Bank", "Choose an account") }
         let d = e.bankAccount(account)
         return (d?.name ?? "Account", d?.detail ?? "")
     }

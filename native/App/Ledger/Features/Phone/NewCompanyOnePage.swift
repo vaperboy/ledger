@@ -37,7 +37,7 @@ import Simulation
 }
 
 /// New company, step 2 of 3 on one page: a name, the whole start-up cost as one number (premises, tools and papers from the engine's
-/// default plan, `pick: nil`) and the accountant of a limited company. "Customise" opens the detailed set-up; both end in the review,
+/// default plan, `pick: nil`) and the accountant. "Customise" opens the detailed set-up; both end in the review,
 /// the only place money is paid.
 struct NewCompanySetupView: View {
     @EnvironmentObject var store: GameStore
@@ -48,7 +48,7 @@ struct NewCompanySetupView: View {
     @State private var goReview = false
 
     private func draft(_ t: Trade, _ e: GameEngine) -> NewCompanyDraft {
-        let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
+        let form: LegalForm = .limited
         var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
         d.accountantID = accountantID
         if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, form: form, size: s) }
@@ -63,9 +63,9 @@ struct NewCompanySetupView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
                     costBlock(plan)
                     LedgerField(placeholder: t.name, text: $name, identifier: "new-company-name", hint: "Company name. Leave it empty and one is chosen for you.")
-                    if d.form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID) }
+                    AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     NavigationLink { NewCompanyDetailedSetupView(tradeID: tradeID, cityID: cityID) } label: {
-                        LedgerRow(leading: .glyph(Glyph.settings), title: "Customise", subtitle: "City, legal form, premises and each item", chevron: true)
+                        LedgerRow(leading: .glyph(Glyph.settings), title: "Customise", subtitle: "City, premises and each item", chevron: true)
                     }
                     .buttonStyle(AcctPressStyle()).accessibilityIdentifier("new-company-detail")
                 }

@@ -3,11 +3,41 @@ import GameCore
 import Countries
 import Simulation
 
-// Accounting > Transactions: the company's ledger (income and expenses) with a date range and search, a detail with a note where the access level
-// allows it, and links to the record a movement belongs to (a loan, a supplier, a payroll run). All data from `companyTransactions` and
-// `transactionDetail`; the ledger itself is the Bank's payment engine's record, nothing here moves money.
+// Bank > Statements > Transactions: the company's ledger (income and expenses) with a date range and search, and a detail with a note and the record
+// a movement belongs to. All data comes from `companyTransactions` and `transactionDetail`; the ledger is the Bank's payment record, nothing here
+// moves money.
 
-enum AcctGlyphs {
+enum BankTxKind: String, CaseIterable, Hashable {
+    case all = "All", income = "Income", expenses = "Expenses"
+    var engineKind: TransactionFilterKind {
+        switch self {
+        case .all: return .all
+        case .income: return .income
+        case .expenses: return .expenses
+        }
+    }
+}
+
+enum BankTxRange: String, CaseIterable, Hashable {
+    case month = "This month", quarter = "Last 3 months", year = "Last 12 months", all = "All time"
+
+    /// The first game week of the range (nil = no limit).
+    func fromWeek(_ engine: GameEngine) -> Int? {
+        let week: Int = engine.state.week
+        switch self {
+        case .month:
+            var w: Int = week
+            let current: Int = GameCalendar.monthIndex(week: week)
+            while w > 0 && GameCalendar.monthIndex(week: w - 1) == current { w -= 1 }
+            return w
+        case .quarter: return max(0, week - 13)
+        case .year: return max(0, week - 52)
+        case .all: return nil
+        }
+    }
+}
+
+enum BankTxGlyphs {
     /// The icon of a ledger category.
     static func category(_ id: String) -> String {
         switch id {
@@ -29,55 +59,53 @@ enum AcctGlyphs {
     }
 }
 
-struct AcctTransactions: View {
+/// The transaction list of one company account, under the statement.
+struct BankTransactionsCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
-    @ObservedObject var m: AcctModel
+    var companyID: Int
+    @State private var kind: BankTxKind = .all
+    @State private var range: BankTxRange = .month
+    @State private var search: String = ""
+    @State private var limit: Int = 40
 
     var body: some View {
-        if let e = store.engine, let co = e.state.company(m.companyID) {
+        if let e = store.engine, let co = e.state.company(companyID) {
             let fmt = BankFmt(store: store, company: co)
-            let kind: TransactionFilterKind = m.txKind.engineKind
-            let from: Int? = m.fromWeek(e)
-            let search: String = m.txSearch
-            let user: String? = m.user
+            let engineKind: TransactionFilterKind = kind.engineKind
+            let from: Int? = range.fromWeek(e)
+            let query: String = search
             // The ledger walk runs once per engine change and filter, not on every render of the live Phone tab.
-            let userKey: String = user.map { (u: String) -> String in "u" + u } ?? "-"
-            let key: String = "tx|\(co.id)|\(kind)|\(from ?? -1)|\(search)|" + userKey
+            let key: String = "tx|\(co.id)|\(engineKind)|\(from ?? -1)|\(query)"
             let page: TransactionPage? = (store.memo(key) { (g: GameEngine) -> [TransactionPage] in
-                g.companyTransactions(companyID: co.id, kind: kind, fromWeek: from, search: search, user: user).map { [$0] } ?? []
+                g.companyTransactions(companyID: co.id, kind: engineKind, fromWeek: from, search: query).map { [$0] } ?? []
             } ?? []).first
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    SegmentedPill(items: AcctTxKind.allCases, title: { $0.rawValue }, selection: $m.txKind, identifier: { "acct-tx-" + $0.rawValue.lowercased() })
-                    HStack(spacing: 8) {
-                        AcctSearchField(text: $m.txSearch, prompt: "Search transactions", identifier: "acct-tx-search")
-                        rangeMenu
-                    }
-                    if let page {
-                        totals(page, fmt)
-                        list(page, fmt)
-                    } else {
-                        AcctLocked(section: "Transactions")
-                    }
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Transactions").capsLabel().padding(.horizontal, 2)
+                SegmentedPill(items: BankTxKind.allCases, title: { $0.rawValue }, selection: $kind, identifier: { "bank-tx-" + $0.rawValue.lowercased() })
+                HStack(spacing: 8) {
+                    AcctSearchField(text: $search, prompt: "Search transactions", identifier: "bank-tx-search")
+                    rangeMenu
                 }
-                .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 20)
-                .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                if let page {
+                    totals(page, fmt)
+                    list(page, fmt)
+                }
             }
-            .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
-            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: kind) { _, _ in limit = 40 }
+            .onChange(of: search) { _, _ in limit = 40 }
         }
     }
 
     private var rangeMenu: some View {
         Menu {
-            ForEach(AcctRange.allCases, id: \.self) { (r: AcctRange) in
+            ForEach(BankTxRange.allCases, id: \.self) { (r: BankTxRange) in
                 Button {
-                    m.txRange = r
-                    m.txLimit = 40
+                    range = r
+                    limit = 40
                     Haptics.choose()
                 } label: {
-                    if r == m.txRange { Label(r.rawValue, systemImage: "checkmark") } else { Text(r.rawValue) }
+                    if r == range { Label(r.rawValue, systemImage: "checkmark") } else { Text(r.rawValue) }
                 }
             }
         } label: {
@@ -87,14 +115,14 @@ struct AcctTransactions: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.line, lineWidth: 1))
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel("Date range: " + m.txRange.rawValue)
-        .accessibilityIdentifier("acct-tx-range")
+        .accessibilityLabel("Date range: " + range.rawValue)
+        .accessibilityIdentifier("bank-tx-range")
     }
 
     private func totals(_ page: TransactionPage, _ fmt: BankFmt) -> some View {
         let net: Double = page.income - page.expenses
         return HStack(alignment: .firstTextBaseline) {
-            Text(m.txRange.rawValue).textStyle(.caption, tint: P.inkFaint)
+            Text(range.rawValue).textStyle(.caption, tint: P.inkFaint)
             Spacer(minLength: 8)
             Text("In " + fmt.short(page.income)).textStyle(.caption, tint: P.gain, numeric: true)
             Text("Out " + fmt.short(page.expenses)).textStyle(.caption, tint: P.loss, numeric: true)
@@ -108,10 +136,10 @@ struct AcctTransactions: View {
     }
 
     @ViewBuilder private func list(_ page: TransactionPage, _ fmt: BankFmt) -> some View {
-        let shown: [LedgerTransaction] = Array(page.entries.prefix(m.txLimit))
+        let shown: [LedgerTransaction] = Array(page.entries.prefix(limit))
         if page.entries.isEmpty {
             AcctNotice(glyph: Glyph.list, title: "No transactions here",
-                       message: m.txSearch.isEmpty ? "Nothing was booked in this period. Try a longer date range." : "Nothing matches \u{201C}\(m.txSearch)\u{201D}.")
+                       message: search.isEmpty ? "Nothing was booked in this period. Try a longer date range." : "Nothing matches \u{201C}\(search)\u{201D}.")
         } else {
             AcctPanel {
                 ForEach(Array(shown.enumerated()), id: \.element.id) { n, t in
@@ -119,22 +147,20 @@ struct AcctTransactions: View {
                         if n > 0 { AcctDivider() }
                         row(t, fmt)
                     }
-                    .transition(.opacity)
                 }
                 if page.entries.count > shown.count {
                     AcctDivider()
                     Button {
-                        m.txLimit += 40
+                        limit += 40
                         Haptics.tap()
                     } label: {
                         Text("Show more (\(page.entries.count - shown.count) left)").textStyle(.body, tint: P.accent, weight: .medium)
                             .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(AcctPressStyle())
-                    .accessibilityIdentifier("acct-tx-more")
+                    .accessibilityIdentifier("bank-tx-more")
                 }
             }
-            .animation(Motion.quickAnimation, value: shown.map { $0.id })
         }
     }
 
@@ -142,32 +168,35 @@ struct AcctTransactions: View {
         var sub: String = t.category
         if !t.counterparty.isEmpty { sub += " \u{00B7} " + t.counterparty }
         if t.count > 1 { sub += " \u{00B7} \(t.count) items" }
-        return AcctRow(glyph: AcctGlyphs.category(t.categoryID), title: t.label, subtitle: sub, valueNote: t.dateText,
-                       gain: t.amount, gainFormat: { (v: Double) -> String in fmt.short(v) },
-                       identifier: "acct-tx-row") { m.push(.transaction(t.id)) }
+        return NavigationLink {
+            BankTransactionDetailScreen(companyID: companyID, transactionID: t.id).environment(\.outsidePalette, P)
+        } label: {
+            AcctRow(glyph: BankTxGlyphs.category(t.categoryID), title: t.label, subtitle: sub, valueNote: t.dateText,
+                    gain: t.amount, gainFormat: { (v: Double) -> String in fmt.short(v) }, identifier: "bank-tx-row")
+        }
+        .buttonStyle(AcctPressStyle())
     }
 }
 
-struct AcctTransactionDetail: View {
+/// One transaction: amount, fields, a note the owner can keep, and the record it belongs to. Pushed from the list, and from a supplier record.
+struct BankTransactionDetailScreen: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
-    @ObservedObject var m: AcctModel
+    var companyID: Int
     var transactionID: String
     @State private var note: String = ""
     @State private var noted: Bool = false
 
     var body: some View {
-        if let e = store.engine, let co = e.state.company(m.companyID) {
+        if let e = store.engine, let co = e.state.company(companyID) {
             let fmt = BankFmt(store: store, company: co)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    if !e.canAccess(.transactions, companyID: co.id, user: m.user) {
-                        AcctLocked(section: "Transactions")
-                    } else if let d = e.transactionDetail(companyID: co.id, id: transactionID, user: m.user) {
+                    if let d = e.transactionDetail(companyID: co.id, id: transactionID) {
                         header(d, fmt)
                         fields(d)
-                        noteBlock(e, co, d)
-                        linkBlock(e, d)
+                        noteBlock(d)
+                        linkBlock(d)
                     } else {
                         AcctNotice(glyph: Glyph.info, title: "This transaction is no longer in the ledger",
                                    message: "Older rows are folded together as the ledger grows. Go back to the list.")
@@ -178,6 +207,7 @@ struct AcctTransactionDetail: View {
             }
             .scrollIndicators(.hidden).scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
+            .appScreen(title: "Transaction", subtitle: co.name)
         }
     }
 
@@ -185,7 +215,7 @@ struct AcctTransactionDetail: View {
         let t: LedgerTransaction = d.transaction
         return AcctPanel(padding: 16) {
             HStack(spacing: 12) {
-                IconCircle(glyph: AcctGlyphs.category(t.categoryID), size: 44, tint: P.accent2)
+                IconCircle(glyph: BankTxGlyphs.category(t.categoryID), size: 44, tint: P.accent2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(t.label.tidyText).textStyle(.headline).lineLimit(2)
                     Text(t.category + " \u{00B7} " + t.dateText).textStyle(.caption, tint: P.inkFaint)
@@ -205,63 +235,45 @@ struct AcctTransactionDetail: View {
         }
     }
 
-    @ViewBuilder private func noteBlock(_ e: GameEngine, _ co: Company, _ d: TransactionDetail) -> some View {
-        let canNote: Bool = e.canAccess(.notes, companyID: co.id, user: m.user)
+    private func noteBlock(_ d: TransactionDetail) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             AcctLabel(text: "Note")
-            if canNote {
-                TextField("Add a note for the books", text: $note, axis: .vertical)
-                    .lineLimit(1...4)
-                    .textStyle(.body)
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.line, lineWidth: 1))
-                    .accessibilityIdentifier("acct-tx-note")
-                AcctSecondaryButton(title: "Save note", identifier: "acct-tx-save-note") { save(co.id) }
-            } else if let existing = d.transaction.note, !existing.isEmpty {
-                AcctNotice(glyph: Glyph.list, title: existing, message: "Notes are added by people with full bookkeeping access.")
-            } else {
-                AcctNotice(glyph: Glyph.lock, title: "Notes need full bookkeeping access", message: "This access level can read the ledger but not annotate it.")
-            }
+            TextField("Add a note for the books", text: $note, axis: .vertical)
+                .lineLimit(1...4)
+                .textStyle(.body)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).fill(P.card))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.m, style: .continuous).strokeBorder(P.line, lineWidth: 1))
+                .accessibilityIdentifier("bank-tx-note")
+            AcctSecondaryButton(title: "Save note", identifier: "bank-tx-save-note") { save() }
         }
         .onAppear {
             if !noted { note = d.transaction.note ?? ""; noted = true }
         }
     }
 
-    private func save(_ companyID: Int) {
+    private func save() {
         let text: String = note
         let id: String = transactionID
-        let user: String? = m.user
-        let ok: Bool = store.act({ (e: inout GameEngine) -> Bool in e.setTransactionNote(companyID: companyID, id: id, note: text, user: user) }) ?? false
+        let company: Int = companyID
+        let ok: Bool = store.act({ (e: inout GameEngine) -> Bool in e.setTransactionNote(companyID: company, id: id, note: text) }) ?? false
         if ok {
             Haptics.success()
             store.show(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Note removed." : "Note saved.", tone: "good")
         } else {
             Haptics.warning()
-            store.show("The note could not be saved. You need full bookkeeping access.", tone: "warn")
+            store.show("The note could not be saved.", tone: "warn")
         }
     }
 
-    @ViewBuilder private func linkBlock(_ e: GameEngine, _ d: TransactionDetail) -> some View {
+    @ViewBuilder private func linkBlock(_ d: TransactionDetail) -> some View {
         if let l = d.transaction.link {
+            let subtitle: String = l.kind == "loan" ? "Loan" : (l.kind == "supplier" ? "Supplier record, under the company's Stats" : (l.kind == "payroll" ? "Payroll" : "Linked record"))
             VStack(alignment: .leading, spacing: 8) {
                 AcctLabel(text: "Linked record")
                 AcctPanel {
-                    switch l.kind {
-                    case "loan":
-                        AcctRow(glyph: BankGlyph.transfer, title: l.title, subtitle: "Loan", identifier: "acct-tx-link")
-                    case "supplier":
-                        AcctRow(glyph: Glyph.projects, title: l.title, subtitle: "Supplier record", identifier: "acct-tx-link") { m.push(.supplier(l.id)) }
-                    case "payroll":
-                        if let run = e.payrollRuns(companyID: m.companyID, user: m.user)?.first(where: { String($0.periodIndex) == l.id }) {
-                            AcctRow(glyph: Glyph.people, title: "Payroll run: " + run.periodText, subtitle: "Payslips and breakdown", identifier: "acct-tx-link") { m.push(.payrollRun(run.id)) }
-                        } else {
-                            AcctRow(glyph: Glyph.people, title: l.title, subtitle: "Payroll", identifier: "acct-tx-link") { m.push(.payroll) }
-                        }
-                    default:
-                        AcctRow(glyph: Glyph.list, title: l.title, subtitle: "Linked record", identifier: "acct-tx-link")
-                    }
+                    AcctRow(glyph: l.kind == "loan" ? BankGlyph.transfer : (l.kind == "supplier" ? Glyph.projects : (l.kind == "payroll" ? Glyph.people : Glyph.list)),
+                            title: l.title, subtitle: subtitle, identifier: "bank-tx-link")
                 }
             }
         }

@@ -35,10 +35,6 @@ extension GameStore {
                     if let w = t.reachedWeek, w > seen { out.insert("t" + t.id) }
                 }
             }
-        case .accounting:
-            if base.ints["docrev"] != nil {
-                for k in reviewDocKeys(e) where base.texts["dr." + k] == nil { out.insert(k) }
-            }
         case .news:
             for n in UpdateFeed.freshNews(e, marks: base) { out.insert("n" + UpdateFeed.newsKey(n)) }
         case .marketplace:
@@ -104,16 +100,6 @@ extension GameStore {
         e.rivalRows(co).map { (r: RivalRow) -> String in String(r.id) }.sorted().joined(separator: ",")
     }
 
-    /// Accounting document rows under review, approved or declined ("d<company>.<doc>.<status>"): a changed status is a new key.
-    func reviewDocKeys(_ e: GameEngine) -> [String] {
-        var out: [String] = []
-        for co in e.state.companies where co.status.isLive {
-            let docs: [AccountingDocument] = e.companyDocuments(companyID: co.id, group: .applications, user: nil) ?? []
-            for d in docs where d.status != "Not applied" { out.append("d\(co.id).\(d.id).\(d.status)") }
-        }
-        return out
-    }
-
     /// Loan messages of the Bank (optionally one company; 0 = the player) that are still new, for the Loans tab dot.
     func loanMessageIDs(companyID: Int) -> [String] {
         guard let e = engine else { return [] }
@@ -130,8 +116,6 @@ extension GameStore {
         let k: String = itemKey(app, id)
         if seenMarks.texts[k] != nil || pendingSeen.contains(k) { return }
         pendingSeen.append(k)
-        // A document row's status is remembered for good (the visit keys above are dropped when the launcher shows).
-        if app == .accounting && id.hasPrefix("d") { pendingSeen.append("dr." + id) }
         guard !seenFlushScheduled else { return }
         seenFlushScheduled = true
         Task { @MainActor [weak self] in

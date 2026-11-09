@@ -180,11 +180,6 @@ final class PopupShotsTests: CompanyBatchTourCase {
     // MARK: Company popups
 
     func testCompanyPopups() {
-        site("conversion") {
-            guard openFirstCompany(), tapContaining("Legal form and trading"), tapID("company-convert-review") else { return false }
-            popup("conversion"); closeAny(); return true
-        }
-        goBackToHome()
         site("acquisition") {
             guard openPhoneApp("Market"), tapID("market-tab-Rivals") else { return false }
             let r = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'market-rival-co'")).firstMatch

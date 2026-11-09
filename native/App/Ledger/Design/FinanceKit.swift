@@ -2,12 +2,11 @@ import SwiftUI
 import GameCore
 import Simulation
 
-// Shared pieces of the Accounting app and the ivory panels of the Bank:
+// Shared pieces of the ivory panels of the Bank and the company screens:
 // a forest-green header band over warm ivory pages, compact rows with hairline separators, champagne accents, tabular figures. Everything
-// reads the palette from the environment (`OutsidePalette.accounting` inside Accounting), so none of it is hard-coded to the dark game look.
+// reads the palette from the environment (`OutsidePalette.accounting` in the Bank), so none of it is hard-coded to the dark game look.
 
 extension Glyph {
-    /// The Accounting app icon: a ledger page with ruled lines.
     static let accounting = "M5 4 H19 V20 H5 Z M8 8 H16 M8 12 H16 M8 16 H12"
 }
 
@@ -225,16 +224,6 @@ struct AcctNotice: View {
             EmptyState(glyph: glyph, title: title, message: message, tint: tint, centered: false)
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// What a person without access sees: the section is locked, and why.
-struct AcctLocked: View {
-    var section: String
-    var body: some View {
-        AcctNotice(glyph: Glyph.lock, title: "\(section) is locked",
-                   message: "You do not have access to this part of this company's accounting. The owner gives access per company under Settings.")
-            .accessibilityIdentifier("acct-locked")
     }
 }
 

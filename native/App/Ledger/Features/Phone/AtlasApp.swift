@@ -146,7 +146,7 @@ struct AtlasApp: View {
 
     private func advisersView(_ co: Company) -> some View {
         ShopPage {
-            ShopPageTitle(title: "Your accountant", subtitle: "Keeps the books and runs payroll for \(co.name). The fee is paid monthly from company cash.")
+            ShopPageTitle(title: "Your accountant", subtitle: "Keeps the books for \(co.name). The fee is paid monthly from company cash.")
             AtlasAccountantSection(companyID: co.id)
         }
     }

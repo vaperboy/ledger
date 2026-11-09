@@ -82,7 +82,6 @@ struct CompanyDetailView: View {
             .scrollIndicators(.hidden)
             .appScreen(title: "Setup", subtitle: co.name) { StatusChip(company: co) }
         } else if let e = store.engine, let co = e.state.company(companyID) {
-            let form: String = co.form == .limited ? "Ltd" : "Sole trader"
             let tabs: [CompanyTab] = Self.tabs(co, e)
             let pagerSelection: Binding<CompanyTab> = Binding(get: { tabs.contains(segment) ? segment : CompanyTab.overview }, set: { segment = $0 })
             VStack(spacing: 0) {
@@ -103,8 +102,8 @@ struct CompanyDetailView: View {
                 }
                 .coachTopStrip(.companyPage, height: 150)
             }
-            // One metadata line: trade, city and form, then where it sits in the group and who runs it.
-            .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co), form] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " · ").tidyText) {
+            // One metadata line: trade and city, then where it sits in the group and who runs it.
+            .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co)] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " · ").tidyText) {
                 if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
             }
             .onAppear { applyPart(tabs) }

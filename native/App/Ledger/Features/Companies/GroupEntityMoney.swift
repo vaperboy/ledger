@@ -46,8 +46,6 @@ struct GroupEntityMoney: View {
     private var cashBox: some View {
         // A chain is one company: its stores share one combined cash.
         let cash: Double = entity.chainID.map { (id: Int) -> Double in engine.chainCash(chainID: id).cash } ?? cos.reduce(0) { (a: Double, c: Company) -> Double in a + c.cash }
-        let main: Company? = engine.state.company(entity.companyID)
-        let canTake: Bool = main.map { (c: Company) -> Bool in c.form != .limited && c.type != "hold" } ?? false
         let id: Int = entity.companyID
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text(entity.isHolding ? "Group cash" : (entity.isChain ? "Chain cash" : "Cash")).textStyle(.label, tint: Theme.inkFaint)
@@ -56,11 +54,6 @@ struct GroupEntityMoney: View {
             VStack(spacing: 0) {
                 LedgerRow(leading: .symbol("arrow.down.to.line"), title: "Put money in", subtitle: "From your own account",
                           identifier: "money-put-in", action: { move = MoveTarget(companyID: id, kind: .deposit) })
-                if canTake {
-                    Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m)
-                    LedgerRow(leading: .symbol("arrow.up.to.line"), title: "Take money out", subtitle: "Into your own account",
-                              identifier: "money-take-out", action: { move = MoveTarget(companyID: id, kind: .withdraw) })
-                }
             }
         }
     }
@@ -168,10 +161,8 @@ struct GroupEntityMoney: View {
             }
             GroupDividendsPage(engine: engine, scope: Set(entity.members), holding: entity.isHolding ? entity.companyID : nil, compact: true)
             Text(last).textStyle(.caption, tint: Theme.inkFaint).lineLimit(2)
-            if main?.form == .limited {
-                LedgerRow(leading: .symbol("person.crop.circle"), title: "Pay yourself", subtitle: "Salary, dividend or keep it in the company",
-                          identifier: "money-pay-yourself", action: { payOpen = true })
-            }
+            LedgerRow(leading: .symbol("person.crop.circle"), title: "Pay yourself", subtitle: "Salary, dividend or keep it in the company",
+                      identifier: "money-pay-yourself", action: { payOpen = true })
         }
     }
 
