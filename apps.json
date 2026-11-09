@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.104",
+          "buildVersion": "104",
+          "date": "2026-11-09T16:09:17Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v104/Ledger-unsigned.ipa",
+          "size": 34863318,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week\n- One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started\n- A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold\n- Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies\n- Startups funded by other players (Ventures, Startup market): browse by trade, stage and viral, open a startup for a high entry cost, invest in three escrow-released stages at a price set by a fixed rule, with caps, a resale lock-up, a price band and taxes; every action first says what will happen; the other players are a local stand-in for now\n- Rivals "
+        },
+        {
           "version": "1.0.103",
           "buildVersion": "103",
           "date": "2026-11-09T14:28:06Z",
@@ -187,22 +196,13 @@
           "size": 28973117,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- Chains work like one company: one board, one dividend from the whole chain, branches share cash; a losing branch is closed (lease, staff moved or paid off, stock moved) or sold as a going concern, never bankrupt on its own\n- Popups rebuilt: three sizes (compact, medium, detail) that fit their content exactly, centred glass cards with an event colour, press-and-hold for irreversible actions\n- Speed: screens redraw much faster (money text, Home, Group, Phone badges and Accounting lists no longer redo whole-game work on every redraw); text on filled buttons, chips and photo banners always uses the fill's readable ink\n- Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale\n- Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring without the extra toggle; Group pages, Treasury, sale routes and Boardroom calmer; new-company flow reviews the cost before paying; Bank f"
-        },
-        {
-          "version": "1.0.84",
-          "buildVersion": "84",
-          "date": "2026-11-07T11:30:46Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v84/Ledger-unsigned.ipa",
-          "size": 28973095,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- Chains work like one company: one board, one dividend from the whole chain, branches share cash; a losing branch is closed (lease, staff moved or paid off, stock moved) or sold as a going concern, never bankrupt on its own\n- Popups rebuilt: three sizes (compact, medium, detail) that fit their content exactly, centred glass cards with an event colour, press-and-hold for irreversible actions\n- Speed: screens redraw much faster (money text, Home, Group, Phone badges and Accounting lists no longer redo whole-game work on every redraw); text on filled buttons, chips and photo banners always uses the fill's readable ink\n- Polish: one supplier list across Accounting, Group and Chain; calmer Ventures tab header; new-player trade picker matches the in-game table; popup and toast type on the shared scale\n- Screens redesigned: Home scrolls (net worth, Needs you, companies), answers in two taps with a toast; company Overview, Manage, Sales, item pages, suppliers, equipment and setup decluttered; one worker profile, one applicants list, hiring without the extra toggle; Group pages, Treasury, sale routes and Boardroom calmer; new-company flow reviews the cost before paying; Bank f"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.103",
-      "versionDate": "2026-11-09T14:28:06Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v103/Ledger-unsigned.ipa",
-      "size": 33255883
+      "version": "1.0.104",
+      "versionDate": "2026-11-09T16:09:17Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v104/Ledger-unsigned.ipa",
+      "size": 34863318
     }
   ]
 }
