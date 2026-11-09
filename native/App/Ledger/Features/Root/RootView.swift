@@ -93,7 +93,8 @@ struct PhoneShell: View {
     private func open(_ t: AppTab) {
         if store.isLocked(t) { lockedTab = t; return }
         if t == .custom && store.customTarget == nil { store.customPickerOpen = true; return }
-        store.selectTab(t)
+        // Another tab keeps the place it had (its pushed screens and scroll position); only a second tap on the open tab goes to its root.
+        store.selectTab(t, resetRoot: false)
     }
 
     var body: some View {
@@ -101,6 +102,8 @@ struct PhoneShell: View {
             TabContent(tab: tab)
         }
         .environment(\.tabBarClearance, PillTabBar.height + 16)
+        // The VoiceOver escape gesture (a two-finger Z) returns to the tab that was open before this one.
+        .accessibilityAction(.escape) { store.returnToPreviousTab() }
         .overlay(alignment: .bottom) {
             VStack(spacing: 0) {
             if tipVisible && !store.popupOpen { customTip }

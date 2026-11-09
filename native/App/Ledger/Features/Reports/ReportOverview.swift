@@ -135,7 +135,9 @@ struct ReportChartCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Last \(kind.noun)s".uppercased()).capsLabel()
                 SegmentedPill(items: ReportChartMetric.allCases, title: { $0.rawValue }, selection: $metric)
+                // A new identity per metric rebuilds the bars, so they redraw (the wipe from the left) instead of morphing in place.
                 ReportHistoryChart(reports: reports, selectedID: selectedID, metric: metric, format: format)
+                    .id(metric)
                     .revealOnChange(of: metric)
             }
         }

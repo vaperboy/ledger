@@ -10,7 +10,39 @@ import SwiftUI
 /// Height of a button: regular (44 pt) or compact (32 pt drawn inside a 44 pt hit area).
 enum LedgerButtonSize { case regular, compact }
 
-/// The one body behind the three button styles.
+/// Corner radius and heights of every button (radius inside the 10 to 14 pt range).
+enum LedgerButtonMetrics {
+    static let radius: CGFloat = 12
+    static let regularHeight: CGFloat = 48
+    static let compactHeight: CGFloat = 32
+}
+
+private struct ButtonLoadingKey: EnvironmentKey { static let defaultValue = false }
+private struct ButtonSuccessKey: EnvironmentKey { static let defaultValue: Int = 0 }
+extension EnvironmentValues {
+    /// True while the button's action runs: the label gives way to a spinner and touches are ignored.
+    var ledgerButtonLoading: Bool {
+        get { self[ButtonLoadingKey.self] }
+        set { self[ButtonLoadingKey.self] = newValue }
+    }
+    /// A counter: each change flashes the button bronze once (the action succeeded).
+    var ledgerButtonSuccess: Int {
+        get { self[ButtonSuccessKey.self] }
+        set { self[ButtonSuccessKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Shows the shared button spinner in place of the label of the buttons inside, and blocks their touches.
+    func buttonLoading(_ on: Bool) -> some View {
+        environment(\.ledgerButtonLoading, on).allowsHitTesting(!on)
+    }
+    /// Flashes the buttons inside bronze each time `count` changes.
+    func buttonSuccess(_ count: Int) -> some View { environment(\.ledgerButtonSuccess, count) }
+}
+
+/// The one body behind the three button styles. One press rule for all: scale 0.97 with a spring back, a lighter fill on touch, a hover
+/// lift under a pointer, a flat disabled look, a spinner while loading, a bronze flash on success. A loss tint is a plain red.
 private struct LedgerButtonBody: View {
     enum Tier { case primary, secondary, tertiary }
     let configuration: ButtonStyleConfiguration
@@ -22,34 +54,47 @@ private struct LedgerButtonBody: View {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.ledgerButtonLoading) private var loading
+    @Environment(\.ledgerButtonSuccess) private var successCount
+    @State private var hovering = false
+    @State private var flash = false
 
     private var compact: Bool { size == .compact }
+    private var destructive: Bool { tint != nil && tint == P.loss }
 
     private var textColor: Color {
         guard enabled else { return tier == .primary ? P.inkSoft : P.inkFaint }
         switch tier {
-        case .primary: return P.accentInk
+        case .primary: return destructive ? Color.white : P.accentInk
         case .secondary: return passive ? P.inkSoft : (tint ?? P.ink)
         case .tertiary: return tint ?? P.accent
         }
     }
 
     private var fillColor: Color {
+        if flash { return Theme.goldDeep }
         guard tier == .primary else { return Color.clear }
         return enabled ? (tint ?? P.accent) : P.inset
     }
 
     private var edgeColor: Color {
         guard tier == .secondary else { return Color.clear }
+        if flash { return Theme.goldDeep }
         if !enabled || passive { return P.line }
-        if let t = tint, t == P.loss { return P.loss.opacity(0.6) }
+        if destructive { return P.loss.opacity(0.6) }
         return P.lineStrong
     }
 
+    /// Light laid over the button while it is touched or hovered.
+    private var lift: Double {
+        guard enabled, !loading else { return 0 }
+        if configuration.isPressed { return tier == .primary ? 0.18 : 0.10 }
+        return hovering ? 0.08 : 0
+    }
+
     var body: some View {
-        // Every button is a capsule (the same shape as the popup actions); the primary one is a little taller.
-        let shape: Capsule = Capsule(style: .continuous)
-        let pressed: Bool = configuration.isPressed
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: LedgerButtonMetrics.radius, style: .continuous)
+        let pressed: Bool = configuration.isPressed && enabled && !loading
         let step: TextStep = compact ? .body : .headline
         let weight: Font.Weight = tier == .primary ? .semibold : .medium
         let fillInk: Color? = tier == .primary ? textColor : nil
@@ -58,15 +103,28 @@ private struct LedgerButtonBody: View {
             // On the accent fill every Text of the label takes the fill's ink, even one styled inside the label.
             .transformEnvironment(\.containerInk) { (ink: inout Color?) in if let fillInk { ink = fillInk } }
             .lineLimit(1).minimumScaleFactor(0.85)
+            .opacity(loading ? 0 : 1)
+            .overlay { if loading { ProgressView().tint(textColor) } }
             .padding(.horizontal, tier == .tertiary ? Theme.Space.s : (compact ? Theme.Space.m : Theme.Space.l))
-            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? 32 : (tier == .primary ? 50 : 44))
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: compact ? LedgerButtonMetrics.compactHeight : LedgerButtonMetrics.regularHeight)
             .background(shape.fill(fillColor))
+            .overlay(shape.fill(Color.white.opacity(lift)))
             .overlay(shape.strokeBorder(edgeColor, lineWidth: 1))
             .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
-            .opacity(pressed ? 0.72 : 1)
-            .scaleEffect(pressed && !reduceMotion ? 0.98 : 1)
-            .animation(Motion.tap(reduceMotion), value: pressed)
+            .scaleEffect(pressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.6), value: pressed)
+            .animation(Motion.tap(reduceMotion), value: lift)
+            .animation(Motion.quick(reduceMotion), value: flash)
+            .onHover { (h: Bool) in hovering = h }
+            .onChange(of: successCount) { _, _ in
+                flash = true
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    flash = false
+                }
+            }
+            .accessibilityAddTraits(loading ? .updatesFrequently : [])
     }
 }
 

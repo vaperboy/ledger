@@ -82,6 +82,8 @@ struct PopupCloseButton: View {
 struct CenterSheetFrame<Content: View>: View {
     @Environment(\.outsidePalette) private var P
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.popupPriority) private var priority
     var onClose: () -> Void
     var title: String = ""
     var size: CenterSheetSize = .fit
@@ -109,6 +111,8 @@ struct CenterSheetFrame<Content: View>: View {
 
     private var cat: PopupCategory { category ?? PopupLayout.category(for: size) }
     private var shade: PopupTone { tone ?? PopupTone(variant: variant) }
+    /// How this card arrives: by size and kind (`PopupEntrance`).
+    private var entrance: PopupEntrance { PopupEntrance.of(category: cat, variant: variant, tone: shade, priority: priority) }
 
     var body: some View {
         GeometryReader { (geo: GeometryProxy) in
@@ -122,7 +126,7 @@ struct CenterSheetFrame<Content: View>: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { (_: Notification) in keyboardUp = false }
         .onAppear {
             Haptics.play(variant.appearCue)
-            Motion.animate(Motion.arrive(reduceMotion)) { shown = true }
+            Motion.animate(reduceMotion ? nil : entrance.animation) { shown = true }
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
@@ -134,8 +138,8 @@ struct CenterSheetFrame<Content: View>: View {
             backdrop
             card(screen: screen)
                 .frame(width: width)
-                .offset(y: drag)
-                .scaleEffect(shown || reduceMotion ? 1 : 0.94)
+                .offset(x: shown || reduceMotion ? 0 : entrance.dx, y: drag + (shown || reduceMotion ? 0 : entrance.dy))
+                .scaleEffect(shown || reduceMotion ? 1 : entrance.scale)
                 .opacity(shown ? 1 : 0)
         }
         .frame(width: screen.width, height: screen.height)
@@ -145,8 +149,12 @@ struct CenterSheetFrame<Content: View>: View {
     private var backdrop: some View {
         let factor: Double = PopupSizing.dragDimFactor(offset: drag)
         return ZStack {
-            Rectangle().fill(.ultraThinMaterial).opacity(shown ? factor : 0)
-            Color.black.opacity(shown ? 0.4 * factor : 0)
+            if reduceTransparency {
+                Color.black.opacity(shown ? 0.7 * factor : 0)
+            } else {
+                Rectangle().fill(.ultraThinMaterial).opacity(shown ? factor : 0)
+                Color.black.opacity(shown ? 0.4 * factor : 0)
+            }
         }
         .ignoresSafeArea()
         .contentShape(Rectangle())

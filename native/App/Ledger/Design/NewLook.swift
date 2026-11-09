@@ -739,6 +739,9 @@ struct PillTabBar: View {
     /// The tab that flashes for a moment when a re-tap sends it back to its root.
     @State private var flashing: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    /// Lets the selected pill glide from one tab to the next instead of fading out and in.
+    @Namespace private var pillSpace
     /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
     static let height: CGFloat = 66 + 8
 
@@ -793,7 +796,7 @@ struct PillTabBar: View {
                         longPressed = nil
                     }
                 }, including: item.changeable ? .all : .subviews)
-                .animation(Motion.quickAnimation, value: on)
+                .animation(reduceMotion ? nil : Motion.moveAnimation, value: on)
                 .coachAnchor(.phoneTab, enabled: item.id == AppTab.phone.rawValue)
                 .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
                 .accessibilityLabel(item.title)
@@ -813,15 +816,18 @@ struct PillTabBar: View {
     /// The selected tab's capsule: champagne-tinted glass on iOS 26, the champagne wash elsewhere.
     @ViewBuilder private func selectedPill(_ on: Bool) -> some View {
         if on {
-            #if compiler(>=6.2)
-            if #available(iOS 26.0, *) {
-                Capsule().fill(Color.clear).liquidGlassCapsule(tint: Theme.accent)
-            } else {
-                Capsule().fill(Theme.goldWash)
+            Group {
+                #if compiler(>=6.2)
+                if #available(iOS 26.0, *), !reduceTransparency {
+                    Capsule().fill(Color.clear).liquidGlassCapsule(tint: Theme.accent, interactive: true)
+                } else {
+                    Capsule().fill(Theme.goldWash).overlay(Capsule().strokeBorder(Theme.accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
+                }
+                #else
+                Capsule().fill(Theme.goldWash).overlay(Capsule().strokeBorder(Theme.accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
+                #endif
             }
-            #else
-            Capsule().fill(Theme.goldWash)
-            #endif
+            .matchedGeometryEffect(id: "tab-pill", in: pillSpace)
         } else {
             Color.clear
         }

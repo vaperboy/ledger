@@ -14,7 +14,9 @@ extension Gate {
         case .insurance, .weather: return "Make your first profitable month or take your first loss"
         case .suppliers, .marketplace: return "Finish your first week of sales"
         case .property, .rivals, .airstay: return "Own two companies"
-        case .group, .atlas: return "Own three companies"
+        case .group: return "Own three companies"
+        // The Atlas app opens with the insurance gate (`PhoneApp.gate`), so its goal is that gate's goal.
+        case .atlas: return "Make your first profitable month or take your first loss"
         case .ventures, .venturesFeed: return "Run the group at a profit for two years"
         case .luxury: return "Become rich"
         case .ownerHours: return ""
