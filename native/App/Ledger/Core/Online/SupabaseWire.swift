@@ -1,0 +1,142 @@
+import Foundation
+
+// The pure side of the Supabase client: building requests, decoding the server's JSON and mapping its errors. No network, no state.
+
+/// A signed-in session as GoTrue returned it (kept in the Keychain).
+struct SupabaseSession: Codable, Equatable, Sendable {
+    var accessToken: String
+    var refreshToken: String
+    var expiresAt: Date
+    var userID: String
+    var createdAt: Date
+    var isAnonymous: Bool
+    var provider: SignInProvider?
+
+    /// True when the access token is expired or within `skew` seconds of it.
+    func needsRefresh(now: Date = Date(), skew: TimeInterval = 60) -> Bool { expiresAt.timeIntervalSince(now) <= skew }
+}
+
+/// GoTrue's token endpoint answer (sign in with an ID token, anonymous sign-up, refresh).
+struct SupabaseTokenResponse: Decodable {
+    struct User: Decodable {
+        struct Meta: Decodable { var provider: String? }
+        var id: String
+        var isAnonymous: Bool?
+        var createdAt: Date?
+        var appMetadata: Meta?
+        enum CodingKeys: String, CodingKey { case id, isAnonymous = "is_anonymous", createdAt = "created_at", appMetadata = "app_metadata" }
+    }
+    var accessToken: String
+    var refreshToken: String
+    var expiresIn: Double?
+    var expiresAt: Double?
+    var user: User
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token", refreshToken = "refresh_token", expiresIn = "expires_in", expiresAt = "expires_at", user
+    }
+
+    func session(now: Date = Date(), fallbackProvider: SignInProvider? = nil) -> SupabaseSession {
+        let expiry: Date = expiresAt.map { Date(timeIntervalSince1970: $0) } ?? now.addingTimeInterval(expiresIn ?? 3600)
+        let provider: SignInProvider? = user.appMetadata?.provider.flatMap { SignInProvider(rawValue: $0) } ?? fallbackProvider
+        return SupabaseSession(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiry, userID: user.id,
+                               createdAt: user.createdAt ?? now, isAnonymous: user.isAnonymous ?? false, provider: provider)
+    }
+}
+
+enum SupabaseWire {
+    // MARK: Requests
+
+    /// A request to `base` + `path` with the project key, and the user's access token when there is one.
+    /// The publishable key is not a JWT, so it goes in `apikey` only; `Authorization` carries the user's token.
+    static func request(base: URL, path: String, method: String = "GET", query: [URLQueryItem] = [], body: Data? = nil,
+                        apiKey: String, accessToken: String? = nil, prefer: String? = nil) -> URLRequest {
+        var comps = URLComponents(url: base, resolvingAgainstBaseURL: false) ?? URLComponents()
+        comps.path = (comps.path.hasSuffix("/") ? String(comps.path.dropLast()) : comps.path) + path
+        comps.queryItems = query.isEmpty ? nil : query
+        var req = URLRequest(url: comps.url ?? base)
+        req.httpMethod = method
+        req.timeoutInterval = 20
+        req.setValue(apiKey, forHTTPHeaderField: "apikey")
+        if let accessToken { req.setValue("Bearer " + accessToken, forHTTPHeaderField: "Authorization") }
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body { req.httpBody = body; req.setValue("application/json", forHTTPHeaderField: "Content-Type") }
+        if let prefer { req.setValue(prefer, forHTTPHeaderField: "Prefer") }
+        return req
+    }
+
+    /// PostgREST filter that matches a friendship row between two players in either direction.
+    static func pairFilter(_ a: String, _ b: String) -> URLQueryItem {
+        URLQueryItem(name: "or", value: "(and(requester_id.eq.\(a),addressee_id.eq.\(b)),and(requester_id.eq.\(b),addressee_id.eq.\(a)))")
+    }
+
+    /// The server's name for a privacy level (the app's own names are `everyone` / `onlyMe`).
+    static func privacyWire(_ p: PrivacyLevel) -> String {
+        switch p { case .everyone: return "public"; case .friends: return "friends"; case .onlyMe: return "private" }
+    }
+
+    // MARK: JSON
+
+    private static func parseDate(_ s: String) -> Date? {
+        // Postgres writes microseconds; ISO8601DateFormatter is only dependable with milliseconds, so trim to three digits.
+        let trimmed: String = s.replacingOccurrences(of: #"(\.\d{3})\d+"#, with: "$1", options: .regularExpression)
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = withFraction.date(from: trimmed) { return d }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: trimmed)
+    }
+
+    static func makeDecoder() -> JSONDecoder {
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .custom { decoder in
+            let s: String = try decoder.singleValueContainer().decode(String.self)
+            guard let d = parseDate(s) else {
+                throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Bad date \(s)"))
+            }
+            return d
+        }
+        return dec
+    }
+
+    static func makeEncoder() -> JSONEncoder { JSONEncoder() }
+
+    // MARK: Errors
+
+    /// Maps an HTTP failure from PostgREST or GoTrue to the app's error kinds. The RPC functions raise short codes as the message.
+    static func mapError(status: Int, body: Data) -> OnlineError {
+        let json: [String: Any] = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any] ?? [:]
+        let message: String = ((json["message"] ?? json["msg"] ?? json["error_description"]) as? String) ?? ""
+        let code: String = (json["code"] as? String) ?? (json["error_code"] as? String) ?? ""
+        let hint: String = (json["details"] as? String) ?? ""
+
+        if message.hasPrefix("name_rejected") {
+            let why: String = message.drop(while: { $0 != ":" }).dropFirst().trimmingCharacters(in: .whitespaces)
+            return .nameRejected(why.isEmpty ? "That name is not allowed." : why)
+        }
+        switch message {
+        case "not_signed_in": return .notSignedIn
+        case "not_found": return .notFound
+        case "blocked": return .blocked
+        case "already_friends": return .alreadyFriends
+        case "request_pending": return .requestPending
+        case "cannot_target_self": return .cannotTargetYourself
+        // No dedicated case for open supply contracts yet: the message is shown as is.
+        case "open_contracts": return .nameRejected("Close your open supply contracts before deleting the account.")
+        default: break
+        }
+        if code == "23514", (message + hint).contains("display_name") { return .nameRejected("Use 2 to 20 letters, numbers and . - _ ' only.") }
+        if code == "23505", (message + hint).contains("friendships") { return .requestPending }
+        if code == "PGRST116" { return .notFound }
+        if status == 401 || code == "bad_jwt" || code == "session_not_found" || code == "refresh_token_not_found"
+            || code == "refresh_token_already_used" || message.localizedCaseInsensitiveContains("jwt expired") { return .notSignedIn }
+        if status == 400 || status == 422, code == "invalid_credentials" || code == "bad_id_token" || code == "validation_failed" { return .notSignedIn }
+        if status == 404 { return .notFound }
+        return .offline
+    }
+
+    // MARK: Profiles
+
+    /// Decodes one profile as `view_profile` returns it; hidden fields arrive as null (or are missing) and stay nil.
+    static func decodeProfile(_ data: Data) throws -> PlayerProfile { try makeDecoder().decode(PlayerProfile.self, from: data) }
+}

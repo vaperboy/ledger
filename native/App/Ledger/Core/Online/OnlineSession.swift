@@ -5,10 +5,11 @@ import Simulation
 
 /// Which service the app talks to. A real server replaces the mock by returning its implementation here; nothing else changes.
 enum OnlineBackend {
-    /// The real server's address. Nil while only the stand-in exists; the same in debug and release builds.
-    static let serverURL: URL? = nil
-
-    static func make() -> any OnlineService { MockOnlineService() }
+    /// The offline stand-in unless `OnlineConfig.useServer` is on, so launch makes no network calls by default.
+    static func make() -> any OnlineService {
+        guard OnlineConfig.useServer, let url = OnlineConfig.projectURL else { return MockOnlineService() }
+        return SupabaseOnlineService(baseURL: url, apiKey: OnlineConfig.publishableKey, tokens: UnavailableIdentityTokenProvider())
+    }
 }
 
 /// The player's online state for the views: guest, signing in or signed in, with their own profile. Injected with `.environment(online)`.
