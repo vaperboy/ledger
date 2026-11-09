@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import GameCore
 import Simulation
+import StoreKit
 
 /// Settings app: a plain list like the system Settings. Grouped rows with an icon in front, switches for on and off, popups for
 /// a choice, chevrons for what opens something; no hero and no figures. Every control keeps its engine call and its "Saved" message.
@@ -17,8 +18,6 @@ struct SettingsView: View {
     @State private var showImporter = false
     @State private var showPaste = false
     @State private var showRedeem = false
-    @State private var giftCode = ""
-    @State private var giftNote = ""
     @State private var pasted = ""
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
@@ -46,12 +45,8 @@ struct SettingsView: View {
         .confirmAction($pending)
         .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
-        .centerSheet(isPresented: $showRedeem, title: "Redeem a code", size: .fit) {
-            VStack(alignment: .leading, spacing: PopupSpace.block) {
-                Text("Type the code from your gift. It opens the full game for the time it names.").popupText(.body)
-                PopupTextInput(placeholder: "XXXX-XXXX-XXXX-XXXX", text: $giftCode, actionTitle: "Redeem", identifier: "redeem-code", hint: giftNote.hasPrefix("Unlocked") ? giftNote : nil, message: giftNote.isEmpty || giftNote.hasPrefix("Unlocked") ? nil : giftNote, onSubmit: redeemTapped, onAction: redeemTapped)
-            }
-        }
+        // The App Store's own sheet takes the offer code; a successful redemption arrives as a normal transaction and the plan updates.
+        .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await ent.restore() } }
         .centerSheet(isPresented: $showPaste) {
             VStack(spacing: Theme.Space.m) {
                 TextEditor(text: $pasted).popupText(.code).frame(height: 220)
@@ -160,10 +155,12 @@ struct SettingsView: View {
             }.buttonStyle(PressableStyle())
             .accessibilityIdentifier("settings-wardrobe")
             rule
-            Button { Haptics.tap(); giftCode = ""; giftNote = ""; showRedeem = true } label: { plainRow(Glyph.lock, "Redeem a code", detail: "A gift code opens the full game", chevron: true) }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-redeem")
-            rule
+            if ent.offerCodesAvailable {
+                Button { Haptics.tap(); showRedeem = true } label: { plainRow(Glyph.lock, "Redeem an offer code", detail: "A code from the App Store", chevron: true) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("settings-redeem")
+                rule
+            }
             Button { Task { await ent.restore() } } label: { plainRow(Glyph.download, "Restore purchases", detail: ent.message ?? "", chevron: true) }
                 .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("settings-restore")
@@ -175,16 +172,8 @@ struct SettingsView: View {
         }
     }
 
-    private func redeemTapped() {
-        let trimmed: String = giftCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        giftNote = ent.redeem(trimmed)
-        Haptics.tap()
-    }
-
     private var planName: String {
         if ent.isPlus { return "Plus" }
-        if ent.hasGift && !ent.ownsPro { return "Gift" }
         if ent.isFounder { return "Founder" }
         if ent.ownsPro { return "Pro" }
         return ent.hasPass ? "Pro for a day" : "Free"

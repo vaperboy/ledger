@@ -16,6 +16,9 @@ actor MockOnlineService: OnlineService {
         var blocked: [String] = []
         var reports: [Report] = []
         var extra: [String: Data] = [:]
+        /// Optional so a save from before these existed still decodes.
+        var adultConfirmed: Bool?
+        var linkRewardPaid: Bool?
     }
 
     private let defaults: UserDefaults
@@ -23,6 +26,15 @@ actor MockOnlineService: OnlineService {
     private let latency: UInt64
     private let roster: [PlayerProfile]
     private var state: State
+    /// The administrator side of the stand-in. Only a debug build started with `-mock-admin` has an administrator: there is no code here.
+    private var adminBook = MockAdminBook()
+    static let previewAdmin: Bool = {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-mock-admin")
+        #else
+        return false
+        #endif
+    }()
 
     /// Requests to computer players are answered after this long.
     private static let simulatedReply: TimeInterval = 2
@@ -44,10 +56,71 @@ actor MockOnlineService: OnlineService {
         await pause()
         let existing: String? = state.account?.playerID ?? state.me?.id
         let account = OnlineAccount(playerID: existing ?? "me-" + UUID().uuidString.prefix(8).lowercased(), provider: provider, createdAt: state.account?.createdAt ?? Date())
-        if existing == nil { createMyProfile(account) }
         state.account = account
         save()
         return account
+    }
+
+    func accountStatus() async throws -> AccountStatus {
+        await pause()
+        try requireAccount()
+        let adult: Bool = state.me != nil && state.adultConfirmed == true
+        return AccountStatus(hasProfile: state.me != nil, adultConfirmed: adult, isAdmin: adult && Self.previewAdmin,
+                             linkRewardGold: Self.linkRewardGold, linkRewardClaimed: state.linkRewardPaid == true)
+    }
+
+    func createProfile(adultConfirmed: Bool) async throws -> PlayerProfile {
+        await pause()
+        try requireAccount()
+        guard adultConfirmed else { throw OnlineError.adultRequired }
+        if state.me == nil, let account = state.account { createMyProfile(account) }
+        state.adultConfirmed = true
+        save()
+        return try await myProfile()
+    }
+
+    /// The server pays once per person; the stand-in pays once per saved state.
+    func claimLinkReward() async throws -> LinkRewardResult {
+        await pause()
+        try requireAccount()
+        guard state.me != nil, state.adultConfirmed == true else { throw OnlineError.notSignedIn }
+        if state.linkRewardPaid == true { return LinkRewardResult(granted: false, gold: 0, reason: "already_claimed") }
+        state.linkRewardPaid = true
+        save()
+        return LinkRewardResult(granted: true, gold: Self.linkRewardGold, reason: "granted")
+    }
+
+    static let linkRewardGold = 100
+
+    // MARK: Administrator (debug preview only)
+
+    func redeemAdminCode(_ code: String) async throws -> AdminCodeResult {
+        await pause()
+        try requireAccount()
+        return Self.previewAdmin ? .alreadyAdmin : .invalid
+    }
+
+    func adminSnapshot() async throws -> AdminSnapshot {
+        await pause()
+        try requireAdmin()
+        return AdminSnapshot(rules: adminBook.rules, confirmations: adminBook.confirmations, audit: Array(adminBook.audit.prefix(50)))
+    }
+
+    func adminSetRule(key: String, value: Double, reason: String) async throws {
+        await pause()
+        try requireAdmin()
+        try adminBook.setRule(key: key, value: value, reason: reason)
+    }
+
+    func adminDecide(id: String, approve: Bool, reason: String) async throws {
+        await pause()
+        try requireAdmin()
+        try adminBook.decide(id: id, approve: approve, reason: reason)
+    }
+
+    func adminAudit(before: Int?, limit: Int) async throws -> [AuditEntry] {
+        try requireAdmin()
+        return Array(adminBook.audit.filter { before == nil || $0.id < before! }.prefix(max(1, limit)))
     }
 
     func linkAccount(with provider: SignInProvider) async throws -> OnlineAccount { try await signIn(with: provider) }
@@ -240,6 +313,11 @@ actor MockOnlineService: OnlineService {
     private func pause() async { if latency > 0 { try? await Task.sleep(nanoseconds: latency) } }
 
     private func requireAccount() throws { if state.account == nil { throw OnlineError.notSignedIn } }
+
+    private func requireAdmin() throws {
+        try requireAccount()
+        guard Self.previewAdmin, state.adultConfirmed == true else { throw OnlineError.notAdmin }
+    }
 
     private func target(_ id: String) throws -> PlayerProfile {
         if id == state.me?.id { throw OnlineError.cannotTargetYourself }

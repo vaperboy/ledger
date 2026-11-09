@@ -66,6 +66,25 @@ final class SupabaseWireTests: XCTestCase {
         XCTAssertEqual(map(401, #"{"message":"JWT expired"}"#), .notSignedIn)
         XCTAssertEqual(map(400, #"{"error_code":"bad_id_token","msg":"Bad ID token"}"#), .notSignedIn)
         XCTAssertEqual(map(503, ""), .offline)
+        XCTAssertEqual(map(400, #"{"code":"P0001","message":"adult_required"}"#), .adultRequired)
+        XCTAssertEqual(map(400, #"{"code":"P0001","message":"not_admin"}"#), .notAdmin)
+        XCTAssertEqual(map(400, #"{"code":"P0001","message":"outside_hard_limits"}"#), .rejected("That value is outside the fixed limits of this rule."))
+    }
+
+    func testAccountStatusAndRulesDecode() throws {
+        let status = try SupabaseWire.makeDecoder().decode(AccountStatus.self, from: Data(
+            #"{"hasProfile":true,"adultConfirmed":true,"isAdmin":false,"linkRewardGold":100,"linkRewardClaimed":false}"#.utf8))
+        XCTAssertTrue(status.adultConfirmed); XCTAssertFalse(status.isAdmin); XCTAssertEqual(status.linkRewardGold, 100)
+
+        let overview = try SupabaseWire.makeDecoder().decode(AdminSnapshot.self, from: Data("""
+        {"rules":[{"key":"print.single_limit","group":"printing","label":"Largest single printing","unit":"share","value":0.05,"default":0.05,"min":0.01,"max":0.10}],
+         "confirmations":[{"id":"c1","kind":"election_result","country":"NO","proposer":"Mara","summary":"Result","at":"2026-11-09T10:00:00.123456+00:00"}],
+         "audit":[{"id":7,"at":"2026-11-09T10:00:00+00:00","actor":"Admin","action":"rule_change","target":"print.single_limit","before":"0.05","after":"0.06","reason":"test"}]}
+        """.utf8))
+        XCTAssertEqual(overview.rules[0].maximum, 0.10)
+        XCTAssertTrue(overview.rules[0].isDefault)
+        XCTAssertEqual(overview.confirmations[0].kind, .electionResult)
+        XCTAssertEqual(overview.audit[0].title, "Rule changed")
     }
 
     func testSessionRefreshWindow() {

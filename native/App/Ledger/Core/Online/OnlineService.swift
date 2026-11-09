@@ -143,6 +143,11 @@ enum ReportReason: String, Codable, CaseIterable, Sendable {
 
 enum OnlineError: Error, Equatable, LocalizedError, Sendable {
     case notSignedIn, notFound, blocked, alreadyFriends, requestPending, cannotTargetYourself, nameRejected(String), offline
+    /// A profile is only created after the 18+ confirmation.
+    case adultRequired
+    case notAdmin
+    /// A server rule said no; the text is the reason in plain words.
+    case rejected(String)
     var errorDescription: String? {
         switch self {
         case .notSignedIn: return "Sign in to use this."
@@ -153,17 +158,43 @@ enum OnlineError: Error, Equatable, LocalizedError, Sendable {
         case .cannotTargetYourself: return "That is you."
         case .nameRejected(let why): return why
         case .offline: return "Could not reach the server."
+        case .adultRequired: return "A profile needs the 18+ confirmation."
+        case .notAdmin: return "This account is not an administrator."
+        case .rejected(let why): return why
         }
     }
 }
 
+/// What the server says about the signed-in account. Asked again after every sign-in, never taken from a stored flag.
+struct AccountStatus: Codable, Equatable, Sendable {
+    var hasProfile: Bool
+    /// The 18+ confirmation: a yes or no and nothing else.
+    var adultConfirmed: Bool
+    var isAdmin: Bool
+    /// What linking pays (once per person) and whether this account has been paid.
+    var linkRewardGold: Int
+    var linkRewardClaimed: Bool
+}
+
+/// The one-time gold reward for linking. The server puts it in the gold wallet; `granted` is false when it was paid before.
+struct LinkRewardResult: Codable, Equatable, Sendable {
+    var granted: Bool
+    var gold: Int
+    var reason: String
+}
+
 /// Everything the app asks of the online side. Methods that need an account throw `.notSignedIn` for a guest.
 /// Single-player never needs any of it: a failed or missing service must leave the offline game untouched.
-protocol OnlineService: Sendable {
+protocol OnlineService: AdminService, Sendable {
     // Account and session
     func currentAccount() async -> OnlineAccount?
-    /// Signs in with Apple or Google (the mock simulates it). A guest who signs in keeps nothing else to merge: the profile is new.
+    /// Signs in with Apple or Google (the mock simulates it). It makes no profile: that waits for the 18+ confirmation.
     func signIn(with provider: SignInProvider) async throws -> OnlineAccount
+    func accountStatus() async throws -> AccountStatus
+    /// Creates the profile once the player has confirmed they are 18 or older. Only that yes is sent and stored.
+    func createProfile(adultConfirmed: Bool) async throws -> PlayerProfile
+    /// Asks the server for the one-time link reward.
+    func claimLinkReward() async throws -> LinkRewardResult
     /// Same as `signIn`, named for a guest who adds an account later.
     func linkAccount(with provider: SignInProvider) async throws -> OnlineAccount
     func signOut() async

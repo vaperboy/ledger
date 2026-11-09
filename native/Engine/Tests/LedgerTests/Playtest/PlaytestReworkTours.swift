@@ -9,7 +9,7 @@ import SaveSystem
 @testable import Events
 @testable import Simulation
 
-/// Tours for the reworked systems: role-aware notices, owner meetings, the CEO replacement vote, every sale route, gift codes and unlocks.
+/// Tours for the reworked systems: role-aware notices, owner meetings, the CEO replacement vote, every sale route and unlocks.
 /// Every tour plays real days through `GameEngine` and checks, each day and week: ledger gaps, no company or personal cash below zero out of nothing,
 /// no duplicate messages, desk/owner routing is consistent, and the owner's new open decisions per week stay small. LEDGER_PLAYTEST=1 only.
 final class PlaytestReworkTours: XCTestCase {
@@ -661,51 +661,7 @@ final class PlaytestReworkTours: XCTestCase {
         ex(shared.count == 1, "two short companies in one week share one notice")
     }
 
-    // MARK: 5 Gift codes
-
-    func testGiftCodes() throws {
-        tour = "GiftCodes"
-        let now = Date()
-        for (kind, days) in [(UInt8(1), 365), (UInt8(2), 3650)] {
-            for serial in [0, 1, 255, 256, 4097, 65535] {
-                let code = GiftCodes.make(kind: kind, serial: serial)
-                guard let g = GiftCodes.check(code) else { find(1, "genuine code kind \(kind) serial \(serial) is refused: \(code)"); continue }
-                ex(g.days == days && g.serial == serial, "kind \(kind) serial \(serial) reads back (days \(g.days), serial \(g.serial))")
-                ex(code.count == 19 && code.filter { $0 == "-" }.count == 3, "code format AAAA-AAAA-AAAA-AAAA (\(code))")
-                ex(GiftCodes.check(code.lowercased()) == g, "lower case is forgiven")
-                ex(GiftCodes.check(code.replacingOccurrences(of: "-", with: " ")) == g, "spaces for dashes are forgiven")
-                ex(GiftCodes.check(" " + code + " ") == g, "padding is forgiven")
-            }
-        }
-        var codes = Set<String>()
-        for s in 0..<300 { codes.insert(GiftCodes.make(kind: 1, serial: s)) }
-        ex(codes.count == 300, "300 serials give 300 different codes")
-        let code = GiftCodes.make(kind: 1, serial: 77)
-        var chars = Array(code); let at = chars.firstIndex { $0 != "-" }!
-        chars[at] = chars[at] == "7" ? "8" : "7"
-        ex(GiftCodes.check(String(chars)) == nil, "a changed character is refused")
-        ex(GiftCodes.check(String(code.dropLast())) == nil, "a short code is refused")
-        ex(GiftCodes.check("") == nil && GiftCodes.check("0000-0000-0000-0000") == nil, "empty and zero codes are refused")
-        ex(GiftCodes.check(String(repeating: "Z", count: 40)) == nil, "a long junk string is refused")
-        // a changed kind byte must not pass: flip every single character of a valid code
-        var accepted = 0
-        for i in chars.indices where code[code.index(code.startIndex, offsetBy: i)] != "-" {
-            var c = Array(code)
-            c[i] = c[i] == "A" ? "B" : "A"
-            if GiftCodes.check(String(c)) != nil { accepted += 1 }
-        }
-        ex(accepted == 0, "no single-character change of a genuine code is accepted (\(accepted))", sev: 1)
-        // entitlement: a gift opens Pro until it runs out
-        let g = GiftCodes.check(code)!
-        let until = now.addingTimeInterval(Double(g.days) * 86400)
-        let snap = EntitlementSnapshot(giftExpires: until)
-        ex(snap.isPro(now: now) && snap.isAdFree(now: now) && snap.saveSlots(now: now) == 3, "an active gift gives Pro, no ads and three save slots")
-        ex(!snap.isPro(now: until.addingTimeInterval(1)) && snap.saveSlots(now: until.addingTimeInterval(1)) == 1, "an expired gift gives nothing")
-        ex(!EntitlementSnapshot.free.isPro(now: now), "free is not Pro")
-        ex(LockedFeature.allCases.contains { snap.isUnlocked($0, now: now) }, "a gift unlocks some locked features")
-    }
-
-    // MARK: 6 Unlocks follow the player
+    // MARK: 5 Unlocks follow the player
 
     func testUnlocksFollowThePlayer() throws {
         tour = "Unlocks"
@@ -747,7 +703,7 @@ final class PlaytestReworkTours: XCTestCase {
         saves(e, "after unlocks")
     }
 
-    // MARK: 7 One long game with the whole rework and the weekly flood count
+    // MARK: 6 One long game with the whole rework and the weekly flood count
 
     func testLongPlayFlood() throws {
         tour = "LongPlay"
