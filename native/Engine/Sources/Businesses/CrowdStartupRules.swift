@@ -19,7 +19,7 @@ public enum CrowdStartupRules {
     public static let stageNames: [String] = ["Opening", "First sales", "First profit"]
     public static let milestoneNames: [String] = ["The startup opens", "It makes its first sales", "It makes its first profit"]
     /// Post-money valuation as a multiple of the plan cost, per stage: later stages have more proof, so they cost more.
-    public static let stageMultiples: [Double] = [2.5, 3.5, 5.0]
+    public static let stageMultiples: [Double] = [1.25, 1.4, 1.6]
     /// One investor may put in at most this share of the investors' part of the plan, over all stages.
     public static let perInvestorShare: Double = 0.20
     /// The smallest ticket, as a share of the stage's raise.

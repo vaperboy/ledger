@@ -61,11 +61,11 @@ final class BalanceAuditTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    private func listing(_ id: String, stopped: Bool = false, paused: Bool = false, stopsDay: Int? = nil) -> SupplyListing {
+    private func listing(_ id: String, stopped: Bool = false, paused: Bool = false, stopsDay: Int? = nil, committed: Int = 0) -> SupplyListing {
         SupplyListing(id: id, ownerID: "owner-\(id)", ownerName: "Name \(id)", profileCode: "P-\(id)", companyName: "Co \(id)", companyID: nil, tradeID: "farm", tradeName: "Farm",
                       city: "Leeds", region: "North", lineID: "goods", lineName: "Stock", priceTier: 1, qualityTier: 1, capacityPerWeek: 300, leadDays: 2, minOrder: 10, termsDays: 14,
                       linkKey: "key-\(id)", record: DeliveryRecord(weeksTrading: 20, ordersTotal: 40, ordersOnTime: 39, unitsPromised: 800, unitsDelivered: 790, cleanWeeks: 12, lifetimeUnits: 790),
-                      paused: paused, stopped: stopped, country: "UK", stopsDay: stopsDay)
+                      paused: paused, stopped: stopped, committedUnits: committed, country: "UK", stopsDay: stopsDay)
     }
 
     func testAListingThatHasStoppedCannotBeSignedOrOrdered() throws {
@@ -131,5 +131,85 @@ final class BalanceAuditTests: XCTestCase {
             let afterYearTwo = liquid(e)
             XCTAssertLessThanOrEqual(afterYearTwo - afterYearOne, start * 0.05, "\(code): a shop left on its defaults made \(Int(afterYearTwo - afterYearOne)) in its second year")
         }
+    }
+
+    private func supplyGame() throws -> (GameEngine, Int) {
+        var e = try ChainsTests.engine("UK", seed: 777)
+        let id = ChainsTests.start(&e, "grocery")
+        e.update { s, _, _ in
+            guard let i = s.companyIndex(id) else { return }
+            s.companies[i].status = .open
+            s.companies[i].set("lastW", .object(["cogs": .number(4000), "units": .number(100), "cap": .number(200)]))
+        }
+        return (e, id)
+    }
+
+    private func supplyContract(_ lid: String, buyer: Int, units: Int = 20) -> SupplyContract {
+        SupplyContract(id: "C-\(lid)", buyerCompanyID: buyer, lineID: "goods", listingID: lid, supplierOwnerID: "owner-\(lid)", supplierName: "Name \(lid)", unitsPerWeek: units, startDay: 0)
+    }
+
+    func testTheLastStockCannotGoToTwoBuyers() throws {
+        var (e, id) = try supplyGame()
+        XCTAssertFalse(e.signPlayerSupplier(contract: supplyContract("full", buyer: id, units: 20), listing: listing("full", committed: 290), weeklyMarketSpend: 100_000))
+        XCTAssertFalse(e.signPlayerSupplier(contract: supplyContract("small", buyer: id, units: 5), listing: listing("small"), weeklyMarketSpend: 100_000))
+        XCTAssertTrue(e.signPlayerSupplier(contract: supplyContract("fits", buyer: id, units: 20), listing: listing("fits", committed: 280), weeklyMarketSpend: 100_000))
+    }
+
+    func testASupplierThatReportsNothingForThreeWeeksLosesTheContractAndTheBuyerIsWarned() throws {
+        var (e, id) = try supplyGame()
+        XCTAssertTrue(e.signPlayerSupplier(contract: supplyContract("quiet", buyer: id), listing: listing("quiet"), weeklyMarketSpend: 100_000))
+        e.update { s, _, _ in s.week += 2; PlayerSupply.weekly(&s) }
+        XCTAssertEqual(e.playerSupplyContracts.count, 1)
+        XCTAssertTrue(e.state.inbox.contains { $0.title == "Your supplier has gone quiet" })
+        e.update { s, _, _ in s.week += 1; PlayerSupply.weekly(&s) }
+        XCTAssertTrue(e.playerSupplyContracts.isEmpty)
+        XCTAssertTrue(e.state.inbox.contains { $0.title == "Your supplier stopped supplying" })
+    }
+
+    func testAReportedDeliveryKeepsTheContractAlive() throws {
+        var (e, id) = try supplyGame()
+        XCTAssertTrue(e.signPlayerSupplier(contract: supplyContract("busy", buyer: id), listing: listing("busy"), weeklyMarketSpend: 100_000))
+        for _ in 0..<6 {
+            e.update { s, _, _ in s.week += 1; PlayerSupply.weekly(&s) }
+            e.reportSupplyDelivery(listingID: "busy", promised: 20, delivered: 20)
+        }
+        XCTAssertEqual(e.playerSupplyContracts.count, 1)
+    }
+
+    func testCrowdStartupSharesAreNotPricedFarAboveWhatTheyAreWorth() {
+        let plan = CrowdStartupRules.Plan(cost: 900_000, founderPutIn: 300_000)
+        let sold = CrowdStartupRules.maxInvestorPercent(plan)
+        XCTAssertLessThan(sold, 49)
+        XCTAssertGreaterThanOrEqual(sold / 100 * plan.cost, plan.investorTarget * 0.6, "investors get at least 60% of what they pay in value at launch")
+        XCTAssertLessThanOrEqual(CrowdStartupRules.stageMultiples.last ?? 0, 1.6)
+        XCTAssertGreaterThanOrEqual(CrowdStartupRules.stageMultiples.first ?? 0, 1.0)
+    }
+
+    func testStructuralCareerGoalsPaySmallCashAndLevelUp() {
+        for id in GoalClaims.structuralCareerIDs {
+            XCTAssertNotNil(Career.defs.first { $0.id == id }, id)
+            XCTAssertLessThanOrEqual(GoalClaims.careerCash(id: id, .long), 500)
+        }
+        XCTAssertLessThanOrEqual(GoalClaims.careerCash(.long), 10_000)
+        XCTAssertLessThanOrEqual(GoalClaims.ladderCash.values.reduce(0, +), 6_000)
+    }
+
+    func testASaleToAnOutsideBuyerKeepsAThinMarginAndNeverBeatsCapacity() throws {
+        var e = try GameEngine.showcase(days: 45)
+        let sup = try XCTUnwrap(e.state.companies.first { $0.status == .open }?.id)
+        let s0 = e.state.company(sup)?.cash ?? 0
+        e.update { s, _, _ in _ = SupplyMarketBooks.settleSupply(&s, supplierCompanyID: sup, buyerCompanyID: nil, units: 10, unitPrice: 100, unitCost: 1) }
+        XCTAssertLessThanOrEqual((e.state.company(sup)?.cash ?? 0) - s0, 10 * 100 * (1 - SupplyMarketBooks.standInCostShare) + 1)
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
+    func testAShopLeftOnItsDefaultsIsUntendedUntilTheOwnerChoosesHowToSell() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "C")
+        let id = try XCTUnwrap(e.state.companies.first?.id)
+        XCTAssertLessThan(e.data.balance.firstYear.untendedDemand, 1)
+        XCTAssertTrue(e.data.balance.firstYear.untended(e.state))
+        _ = e.setPriceLevel(companyID: id, level: 1)
+        for _ in 0..<10 { e.nextDay() }
+        XCTAssertFalse(e.data.balance.firstYear.untended(e.state))
     }
 }

@@ -28,9 +28,13 @@ public enum GoalClaims {
         case notReady
     }
 
-    static let ladderCash: [String: Double] = ["M1": 500, "M2": 500, "M3": 1_000, "M4": 500, "M5": 500, "M6": 500, "M7": 2_000, "M8": 2_000, "M9": 3_000, "M10": 1_000]
+    static let ladderCash: [String: Double] = ["M1": 500, "M2": 250, "M3": 500, "M4": 250, "M5": 250, "M6": 250, "M7": 1_000, "M8": 1_000, "M9": 1_000, "M10": 500]
     static let dailyCash: Double = 250
-    static func careerCash(_ h: Career.Horizon) -> Double { h == .short ? 2_000 : h == .medium ? 10_000 : 50_000 }
+    static let structuralCareerIDs: Set<String> = ["k6", "k8", "k11", "k12", "k13", "k15", "k17"]
+    static let structuralCareerCash: Double = 500
+    static let structuralCareerXP = 150
+    static func careerCash(_ h: Career.Horizon) -> Double { h == .short ? 1_000 : h == .medium ? 3_000 : 10_000 }
+    static func careerCash(id: String, _ h: Career.Horizon) -> Double { structuralCareerIDs.contains(id) ? structuralCareerCash : careerCash(h) }
 
     public static func rewardLabel(_ title: String) -> String { "Goal reward: " + title }
 
@@ -42,7 +46,7 @@ public enum GoalClaims {
         }
         for g in Career.goals(s, data: data, currency: cur) where g.unclaimed {
             let h: Career.Horizon = Career.defs.first { $0.id == g.id }?.horizon ?? .short
-            out.append(Claimable(kind: .career, goalID: g.id, title: g.title, reward: g.reward, cash: cur.scaledPrice(careerCash(h))))
+            out.append(Claimable(kind: .career, goalID: g.id, title: g.title, reward: g.reward, cash: cur.scaledPrice(careerCash(id: g.id, h))))
         }
         if let d = dailyClaimable(s, today: today) {
             out.append(Claimable(kind: .daily, goalID: d.id, title: d.title, reward: "A small cash reward", cash: cur.scaledPrice(dailyCash)))
@@ -76,7 +80,8 @@ public enum GoalClaims {
             }
             def.grant(&s)
             let title: String = def.text(def.title, cur)
-            let cash: Double = pay(&s, title: title, amount: cur.scaledPrice(careerCash(def.horizon)))
+            if structuralCareerIDs.contains(id) { PlayerLevel.award(&s, structuralCareerXP) }
+            let cash: Double = pay(&s, title: title, amount: cur.scaledPrice(careerCash(id: id, def.horizon)))
             return .claimed(title: title, reward: def.reward, cash: cash)
         case .daily:
             guard let def = dailyClaimable(s, today: today) else { return .notReady }

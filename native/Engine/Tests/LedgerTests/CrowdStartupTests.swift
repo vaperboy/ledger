@@ -40,7 +40,7 @@ final class CrowdStartupTests: XCTestCase {
 
     func testPriceComesOnlyFromPlanAndStage() {
         let p = plan()
-        XCTAssertEqual(R.pricePerPercent(p, stage: 0), 900_000 * 2.5 / 100, accuracy: 1e-6)
+        XCTAssertEqual(R.pricePerPercent(p, stage: 0), 900_000 * 1.25 / 100, accuracy: 1e-6)
         XCTAssertGreaterThan(R.pricePerPercent(p, stage: 2), R.pricePerPercent(p, stage: 0), "later stages cost more")
         var q = startup()
         let a = checkOK(R.investCheck(q, investorID: "i1", linkKeys: ["i1"], accountWeeks: 10, amount: 40_000, today: 5))

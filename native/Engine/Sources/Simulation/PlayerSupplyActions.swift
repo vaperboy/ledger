@@ -38,7 +38,8 @@ public extension GameEngine {
     /// Sign a contract with a player's listing for one line. An own-company link on that kind of purchase ends first, as for any other switch.
     @discardableResult
     mutating func signPlayerSupplier(contract: SupplyContract, listing l: SupplyListing, weeklyMarketSpend: Double) -> Bool {
-        guard !l.stopped, !l.paused, l.stopsDay == nil, contract.unitsPerWeek > 0,
+        guard !l.stopped, !l.paused, l.stopsDay == nil, contract.unitsPerWeek > 0, contract.unitsPerWeek >= l.minOrder,
+              contract.unitsPerWeek <= SupplyGuards.effectiveCapacity(l) - l.committedUnits + ownUnits(contract, l),
               playerSupplyAllowed(companyID: contract.buyerCompanyID, listing: l), let co = state.company(contract.buyerCompanyID), let bd = data.catalog[co.type],
               let line = SupplyCatalogue.lines(co, bd).first(where: { $0.id == contract.lineID }) else { return false }
         if let k = line.input, k != "goods", k != "repair", IntercompanySupply.kind(k) != nil,
@@ -48,6 +49,10 @@ public extension GameEngine {
         var ok = false
         update { s, d, _ in ok = PlayerSupply.sign(&s, contract: contract, listing: l, weeklyMarketSpend: weeklyMarketSpend, data: d) }
         return ok
+    }
+
+    private func ownUnits(_ c: SupplyContract, _ l: SupplyListing) -> Int {
+        PlayerSupply.contract(state, buyer: c.buyerCompanyID, line: c.lineID).map { $0.base.listingID == l.id ? $0.base.unitsPerWeek : 0 } ?? 0
     }
 
     /// The line goes back to the House supplier.

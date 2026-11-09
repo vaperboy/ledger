@@ -22,6 +22,8 @@ public struct FirstYear: Sendable, Equatable {
     public var noOverdraftWeeks = 12
     /// New-player start: weeks of fixed costs and payroll added to the start-up cost to make the starting cash.
     public var startRunwayWeeks = 8
+    /// Demand multiplier for a shop whose owner has chosen neither how to sell nor any campaign (ladder games only); it also replaces the honeymoon.
+    public var untendedDemand = 1.0
 
     public init() {}
 
@@ -37,6 +39,7 @@ public struct FirstYear: Sendable, Equatable {
         if !j["frozenAfterWeeks"].isNull { frozenAfterWeeks = j["frozenAfterWeeks"].int }
         if !j["noOverdraftWeeks"].isNull { noOverdraftWeeks = j["noOverdraftWeeks"].int }
         if !j["startRunwayWeeks"].isNull { startRunwayWeeks = j["startRunwayWeeks"].int }
+        if !j["untendedDemand"].isNull { untendedDemand = j["untendedDemand"].double }
     }
 
     /// The bundled table (for code that has no `GameData` at hand).
@@ -47,6 +50,8 @@ public struct FirstYear: Sendable, Equatable {
         guard week >= 0, week < 52, !demandMult.isEmpty else { return 1 }
         return demandMult[min(demandMult.count - 1, week / 13)]
     }
+    /// A ladder game whose owner has made no selling choice and run no campaign yet: the shop is left on its defaults.
+    public func untended(_ s: GameState) -> Bool { untendedDemand < 1 && Gates.ladderOn(s) && !Gates.goalDone(s, 2) && !Gates.goalDone(s, 5) }
     /// The no-overdraft protection of a new-player game (ladder games only) is on.
     public func noOverdraftActive(_ s: GameState) -> Bool { Gates.ladderOn(s) && s.week < noOverdraftWeeks }
     public func supplierCutoffActive(week: Int) -> Bool { supplierCutoffEnabled || week >= supplierCutoffWeek }

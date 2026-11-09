@@ -313,7 +313,7 @@ final class MockSupplyMarketService: SupplyMarketService {
             }
             all[i].record = SupplyRecordRules.applying(all[i].record, promised: promised, delivered: delivered, orders: orders, late: late, complaints: complaints)
             // A supplier the player buys from that delivered short: the books carry the cost (customers served late or not at all).
-            if promised > delivered && contracts.contains(where: { $0.listingID == l.id }) { events.append(.shortDelivery(listingID: l.id)) }
+            if promised > 0 && contracts.contains(where: { $0.listingID == l.id }) { events.append(.delivery(listingID: l.id, promised: promised, delivered: delivered, orders: max(1, orders), late: late)) }
         }
         return events
     }
