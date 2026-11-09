@@ -37,6 +37,8 @@ struct MarketApp: View {
         case .companies: MarketCompaniesPage(open: open)
         case .rivals: MarketRivalsPage(open: open)
         case .invest: MarketInvestPage(open: open)
+        case .exchange: MarketExchangePage(open: open)
+        case .standing: MarketStandingPage()
         case .world: MarketWorldPage(open: open)
         }
     }
@@ -72,6 +74,8 @@ enum MarketRoute: Hashable, Identifiable {
     case aroundYou
     case fundManager
     case dataAnalyst
+    case stock(String)
+    case listing(Int)
 
     var id: String {
         switch self {
@@ -87,6 +91,8 @@ enum MarketRoute: Hashable, Identifiable {
         case .aroundYou: return "around"
         case .fundManager: return "fundManager"
         case .dataAnalyst: return "dataAnalyst"
+        case .stock(let id): return "stock.\(id)"
+        case .listing(let id): return "listing.\(id)"
         }
     }
 }
@@ -111,6 +117,8 @@ struct MarketDestination: View {
             case .fundManager:
                 ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.s) { FundManagerPage() }
                     .appScreen(title: "Fund manager", subtitle: "Market \u{00B7} Invest")
+            case .stock(let id): MarketStockPage(instrumentID: id)
+            case .listing(let id): MarketListingPage(holdingID: id)
             case .dataAnalyst:
                 ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.s) { DataAnalystCard() }
                     .appScreen(title: "Data analyst", subtitle: "Market \u{00B7} Companies")
