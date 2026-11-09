@@ -76,7 +76,6 @@ public enum GroupDeals {
         let price = stakePrice(value: GroupStakes.value(of: g, s), fraction: fraction, multiplier: multiplier)
         if !s.random.chance(chance) { s.note("Another bidder won the stake in \(g["name"].string).", tone: "n"); return .outbid }
         if Payments.liquid(s) < price { s.note("You could not raise \(Int(price)) in time.", tone: "bad"); return .couldNotPay(price) }
-        Payments.transferFromSavings(&s, need: price)
         Payments.playerPays(&s, price, label: "Stake in \(g["name"].string)")
         s.rest["st27"] = .array((s.rest["st27"]?.array ?? []) + [.object(["g": .string(groupID), "pct": .number(fraction), "cost": .number(price), "w": .number(Double(s.week))])])
         s.note("You now own \(Int(saturating: (fraction * 100).rounded()))% of \(g["name"].string).", tone: "good")

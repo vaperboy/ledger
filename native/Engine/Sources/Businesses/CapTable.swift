@@ -96,7 +96,7 @@ public enum CapTable {
 
     /// Run once a week so code that still writes percentages cannot leave the table above 100.
     public static func normaliseAll(_ s: inout GameState) {
-        for i in s.companies.indices where s.companies[i].form == .limited || !s.companies[i].value("holders").array.isEmpty { normalise(&s, i) }
+        for i in s.companies.indices { normalise(&s, i) }
     }
 
     /// Write counts and derive every percentage from them.

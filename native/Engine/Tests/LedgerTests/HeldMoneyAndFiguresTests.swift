@@ -6,10 +6,10 @@ import Simulation
 
 /// Audit part 3: the seven-day held-back weekly money when a company leaves the game, and the key figures that several screens show.
 final class HeldMoneyAndFiguresTests: XCTestCase {
-    private func game(form: LegalForm = .limited) throws -> (GameEngine, Int) {
+    private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 21)
         e.update { s, _, _ in Ledger.move(&s, .me, 40_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: form, fundWith: 12_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 12_000_000) else {
             XCTFail("start"); throw XCTSkip("no company")
         }
         _ = e.quickSetup(companyID: id)
@@ -79,26 +79,16 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
         for _ in 0..<(7 * 20) { e.nextDay() }
         let co = try XCTUnwrap(e.state.company(id))
         let health = e.companyHealth(co)
-        let sheet = try XCTUnwrap(e.companyBalanceSheet(companyID: id))
-        // debt: health, balance sheet lines, balance sheet total, one function
+        // debt: the health card and one function
         let debts = CompanyFigures.debts(co, loans: e.state.loans)
         XCTAssertEqual(health.debt, debts, accuracy: 0.5)
-        XCTAssertEqual(sheet.totalDebts, debts, accuracy: 0.5)
-        XCTAssertEqual(sheet.debts.reduce(0) { $0 + $1.amount }, debts, accuracy: 1, "every owed amount has its line")
-        // loan balance
-        let loanLine = sheet.debts.first { $0.id == "loans" }?.amount ?? 0
-        XCTAssertEqual(loanLine, e.state.loans.filter { $0.companyID == id }.reduce(0) { $0 + $1.balance }, accuracy: 0.5)
         // company value: health card and the valuation net worth uses
         XCTAssertEqual(health.value, Valuation.companyValue(co, state: e.state, trades: e.data.catalog), accuracy: 0.5)
         // weekly cost: health card and the engine's one estimate
         XCTAssertEqual(health.weeklyCost, e.context.weeklyCost(co, e.state), accuracy: 0.01)
-        // cash
-        XCTAssertEqual(sheet.assets.first { $0.id == "cash" }?.amount ?? 0, co.cash, accuracy: 0.5)
-        // VAT and tax owed: the balance sheet and the Finance screen
+        // VAT and tax owed: the Finance screen
         let overview = e.financeOverview(companyID: id)
-        let vat = sheet.debts.first { $0.id == "vat" }?.amount ?? 0
-        let tax = sheet.debts.first { $0.id == "tax" }?.amount ?? 0
-        XCTAssertEqual(overview.taxesOwed, vat + tax, accuracy: 0.5)
+        XCTAssertEqual(overview.taxesOwed, max(0, co.vatBalance) + (co.payables["tax"] ?? 0), accuracy: 0.5)
         // profit and revenue over twelve months: one definition (the closed months on record) wherever it is quoted
         let hist = co.monthlyHistory.suffix(12)
         XCTAssertEqual(health.profitTTM, hist.reduce(0) { $0 + $1.profit }, accuracy: 0.5)
@@ -111,7 +101,7 @@ final class HeldMoneyAndFiguresTests: XCTestCase {
         let nw = e.netWorth
         XCTAssertEqual(nw.total, nw.totalAssets - nw.debt - nw.pendingTax, accuracy: 0.01)
         XCTAssertEqual(nw.debt, Banking.totalDebt(e.state, personalOnly: true), accuracy: 0.5, "personal debt is the loans that are not a company's")
-        XCTAssertEqual(nw.personal, e.state.cash + e.state.savings + HeldMoney.playerRemaining(e.state), accuracy: 0.01)
+        XCTAssertEqual(nw.personal, e.state.cash + HeldMoney.playerRemaining(e.state), accuracy: 0.01)
         // the company counts at its value plus the money of the week still on its way in, times your share, once
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(nw.companies, (Valuation.companyValue(co, state: e.state, trades: e.data.catalog) + HeldMoney.remaining(e.state, companyID: co.id)) * co.ownership / 100, accuracy: 1)

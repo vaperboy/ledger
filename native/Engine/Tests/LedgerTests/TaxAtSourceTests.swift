@@ -13,7 +13,6 @@ final class TaxAtSourceTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7)
         e.update { s, _, _ in
             Ledger.set(&s, .me, to: 0)
-            s.savings = 0
             s.loans.removeAll()
             s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
@@ -23,7 +22,7 @@ final class TaxAtSourceTests: XCTestCase {
 
     func testADividendPaysDividendTaxAtOnce() throws {
         var e = try fresh()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
         e.update { s, _, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open
@@ -64,19 +63,6 @@ final class TaxAtSourceTests: XCTestCase {
         XCTAssertEqual(s.statement.first?.amount ?? 0, -tax, accuracy: 1)
     }
 
-    func testInterestIsTaxedMonthly() throws {
-        var e = try fresh()
-        e.update { s, data, ctx in
-            s.savings = 200_000_000
-            MonthEnd.closeMonth(&s, data: data, context: ctx)
-            XCTAssertGreaterThan(s.tax.interest, 0)
-            let tax = Taxes.savingsInterestTax(s.tax.interest, in: ctx.homeCountry(s))
-            XCTAssertGreaterThan(tax, 0)
-            XCTAssertEqual(s.tax.paidInterest, tax, accuracy: 1)
-            XCTAssertTrue(s.statement.contains { $0.label == "Tax on interest" })
-        }
-    }
-
     func testWealthTaxIsPaidMonthlyAsATwelfthOfTheYear() throws {
         let book = try CountryBook.bundled()
         let code = try XCTUnwrap(book.countries.first { $0.wealthRate > 0 }?.code)
@@ -111,10 +97,10 @@ final class TaxAtSourceTests: XCTestCase {
             // Dividends of 3M arrived without a sweep: their tax is still unpaid.
             s.tax.dividends = 3_000_000
             let dividendTax = Taxes.dividendTax(3_000_000, shield: s.tax.dividendShield, in: c)
-            let before = s.cash + s.savings
+            let before = s.cash
             PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
             let expectedChange = dividendTax - (paidOnGains - Taxes.capitalGainsTax(1_500_000, in: c))
-            XCTAssertEqual(before - (s.cash + s.savings), expectedChange, accuracy: 3, "only the difference moves at the year end")
+            XCTAssertEqual(before - (s.cash), expectedChange, accuracy: 3, "only the difference moves at the year end")
             let last = PersonalFinance.lastAssessment(s)
             XCTAssertEqual(last?.total ?? 0, expectedChange, accuracy: 3)
             XCTAssertEqual(last?.paidGains ?? 0, paidOnGains, accuracy: 1)
@@ -125,28 +111,9 @@ final class TaxAtSourceTests: XCTestCase {
         }
     }
 
-    func testSoleTraderIncomeTaxIsPaidMonthlyOnActualProfit() throws {
-        var e = try fresh()
-        e.update { s, _, ctx in
-            let c = ctx.homeCountry(s)
-            s.tax.soleTraderFrozenProfit = 10_000_000
-            PersonalFinance.advanceTaxMonthly(&s, context: ctx)
-            let first = Taxes.personalIncomeTax(10_000_000, kind: .selfEmployed, in: c)
-            XCTAssertGreaterThan(first, 0)
-            XCTAssertEqual(s.tax.withheld, first, accuracy: 1)
-            s.tax.soleTraderFrozenProfit = 15_000_000
-            PersonalFinance.advanceTaxMonthly(&s, context: ctx)
-            XCTAssertEqual(s.tax.withheld, Taxes.personalIncomeTax(15_000_000, kind: .selfEmployed, in: c), accuracy: 1, "the profit so far, not a projection")
-            let paid = s.tax.withheld
-            PersonalFinance.advanceTaxMonthly(&s, context: ctx)
-            XCTAssertEqual(s.tax.withheld, paid, "no change in profit, nothing more to pay")
-            XCTAssertEqual(s.tax.advancePaid, paid, accuracy: 1)
-        }
-    }
-
     func testCorporateTaxIsPaidInTheMonthItArises() throws {
         var e = try fresh()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open

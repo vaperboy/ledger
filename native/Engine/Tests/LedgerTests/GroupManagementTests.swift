@@ -12,7 +12,7 @@ final class GroupManagementTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
         var ids: [Int] = []
         for _ in 0..<2 {
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { return XCTFail("start") }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) else { return XCTFail("start") }
             ids.append(id)
             e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         }

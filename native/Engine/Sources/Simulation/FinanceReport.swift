@@ -100,7 +100,7 @@ public extension GameEngine {
             o.lastYearProfit += Books.profit(b.lastYear)
             o.cashAvailable += max(0, co.cash)
         }
-        if companyID == nil { o.cashAvailable += max(0, s.cash) + s.savings }
+        if companyID == nil { o.cashAvailable += max(0, s.cash) }
         (o.costsThisMonth, o.costTotalThisMonth) = breakdown(cos.map { $0.books.month })
         (o.costsThisYear, o.costTotalThisYear) = breakdown(cos.map { $0.books.year })
 
@@ -108,13 +108,11 @@ public extension GameEngine {
         for co in cos {
             let country = context.country(of: co, s)
             let bd = data.catalog[co.type]
-            if co.form == .limited {
-                let rate = bd.map { MonthEnd.taxRate(co, $0, country) } ?? country.corporateTax
-                let owed = co.payables["tax"] ?? 0
-                o.taxes.append(FinanceLine(id: "ct\(co.id)", label: "Corporate tax · \(co.name)", amount: owed,
-                                           detail: "\(Currency.percent(rate, decimals: 1)) of taxable profit; \(currency(for: co).display(co.taxAccrued)) charged so far this year, paid each month on the profit to date"))
-                o.taxesOwed += owed
-            }
+            let rate = bd.map { MonthEnd.taxRate(co, $0, country) } ?? country.corporateTax
+            let owed = co.payables["tax"] ?? 0
+            o.taxes.append(FinanceLine(id: "ct\(co.id)", label: "Corporate tax · \(co.name)", amount: owed,
+                                       detail: "\(Currency.percent(rate, decimals: 1)) of taxable profit; \(currency(for: co).display(co.taxAccrued)) charged so far this year, paid each month on the profit to date"))
+            o.taxesOwed += owed
             if abs(co.vatBalance) > 1 {
                 o.taxes.append(FinanceLine(id: "vat\(co.id)", label: (co.vatBalance > 0 ? "VAT to pay · " : "VAT to reclaim · ") + co.name, amount: abs(co.vatBalance),
                                            detail: "Collected from customers, not income. Filed every \(max(1, country.vatFilingMonths == 0 ? 2 : country.vatFilingMonths)) months."))
@@ -139,14 +137,12 @@ public extension GameEngine {
         let c = GameCalendar.civilFromDays(today)
         let monthEnd = Payday.billDate(year: c.year, month: c.month - 1)
         for co in cos {
-            guard let bd = data.catalog[co.type] else { continue }
             let cfg = Payday.config(co, today: today)
             let country = context.country(of: co, s)
             if Payday.hasPayroll(co) {
                 let np = Payday.nextPay(co, config: cfg, today: today)
                 let est = (co.payables["wages"] ?? 0) + Payroll.weeklyCost(co, country: country) * Double(max(0, (np - today) / 7))
-                let mode = Payday.mode(of: co, trade: bd, config: cfg, state: s, data: data)
-                add("pay\(co.id)", "Payroll · \(co.name)", mode == .manual && !Delegation.autoPayroll(s, co) ? "Needs your approval" : "Runs by itself", est, np, kind: .payroll, essential: true, company: co.id)
+                add("pay\(co.id)", "Payroll · \(co.name)", "Paid on the 15th", est, np, kind: .payroll, essential: true, company: co.id)
             }
             let bills = (co.payables["rent"] ?? 0) + (co.payables["other"] ?? 0)
             add("bills\(co.id)", "Rent and supplier bills · \(co.name)", "Paid on the last day of the month", bills, monthEnd, kind: .bills, essential: true, company: co.id)

@@ -21,7 +21,7 @@ public extension GameEngine {
     /// Every live limited company that has something to pay or has paid before, largest payable first.
     /// A chain is one row (its head office, under the chain's name): it declares one dividend from all its branches.
     func dividendRows() -> [DividendRow] {
-        state.companies.filter { $0.status.isLive && $0.form == .limited && $0.type != "hold" }.compactMap { co -> DividendRow? in
+        state.companies.filter { $0.status.isLive && $0.type != "hold" }.compactMap { co -> DividendRow? in
             let br = state.chainStores(of: co)
             if br.count >= 2 && br[0].id != co.id { return nil }
             let can = Payments.maximumDividend(co, state: state, context: context)

@@ -13,13 +13,13 @@ final class SetupAffordabilityTests: XCTestCase {
     func testMinimumToOpenIncludesRequiredEquipmentAndVehicles() throws {
         let e = try game(seed: 3)
         var rich = e.state; rich.cash += 1e12
-        let est = try XCTUnwrap(CompanySetup.estimate(tradeID: "cleaning", cityID: e.state.player.cityID, form: .soleTrader, size: 1, state: rich, data: e.data))
+        let est = try XCTUnwrap(CompanySetup.estimate(tradeID: "cleaning", cityID: e.state.player.cityID, size: 1, state: rich, data: e.data))
         XCTAssertGreaterThan(est.requiredEquipment + est.requiredVehicles, 0)
         XCTAssertEqual(est.minimumToOpen, est.documents + est.premisesLeast + est.property + est.wait + est.registration + est.shareCapital + est.abroad + est.requiredEquipmentUpfront + est.requiredVehicles, accuracy: 0.01)
         XCTAssertGreaterThan(est.minimumToOpen, est.documents)
         // equipment that can be financed takes a down payment, and the cheapest place is no dearer than the standard one
         XCTAssertLessThan(est.requiredEquipmentUpfront, est.requiredEquipment)
-        let cafe = try XCTUnwrap(CompanySetup.estimate(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, size: 1, state: rich, data: e.data))
+        let cafe = try XCTUnwrap(CompanySetup.estimate(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, state: rich, data: e.data))
         XCTAssertGreaterThan(cafe.premises, 0)
         XCTAssertLessThanOrEqual(cafe.premisesLeast, cafe.premises)
         XCTAssertLessThan(cafe.minimumToOpen, cafe.documents + cafe.premises + cafe.requiredEquipment)
@@ -52,11 +52,10 @@ final class SetupAffordabilityTests: XCTestCase {
         for row in funded {
             var e = try game(seed: 5)
             let bd = try XCTUnwrap(e.data.catalog[row.tradeID])
-            let form: LegalForm = bd.needsLimitedCompany ? .limited : .soleTrader
-            let choices = e.suggestedChoices(tradeID: row.tradeID, cityID: city, form: form, size: row.size)
-            let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: row.tradeID, cityID: city, form: form, size: row.size, choices: choices))
+            let choices = e.suggestedChoices(tradeID: row.tradeID, cityID: city, size: row.size)
+            let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: row.tradeID, cityID: city, size: row.size, choices: choices))
             XCTAssertTrue(plan.isFunded, row.tradeID)
-            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: row.tradeID, cityID: city, form: form, size: row.size, name: nil, pick: nil, fundWith: plan.intoCompany, choices: choices) else {
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: row.tradeID, cityID: city, size: row.size, name: nil, pick: nil, fundWith: plan.intoCompany, choices: choices) else {
                 XCTFail("start \(row.tradeID)"); continue
             }
             let f = try XCTUnwrap(e.setupFunding(companyID: out.companyID))
@@ -69,7 +68,7 @@ final class SetupAffordabilityTests: XCTestCase {
 
     func testChecklistItemsStateTheirCost() throws {
         var e = try game(seed: 8)
-        guard case .success(let id) = e.startCompany(tradeID: "cleaning", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 0, quickSetup: false) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cleaning", cityID: e.state.player.cityID, fundWith: 0, quickSetup: false) else { throw XCTSkip("start") }
         let items = e.openingChecklist(companyID: id)
         let eq = items.filter { $0.id.hasPrefix("eq:") && !$0.isDone }
         XCTAssertFalse(eq.isEmpty)

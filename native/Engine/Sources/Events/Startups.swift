@@ -151,7 +151,6 @@ public enum Startups {
         s.companies[i].status = .open
         s.companies[i].openedWeek = s.week
         s.companies[i].ownerHours = 0
-        Payments.transferFromSavings(&s, need: seed + fee)
         Payments.injectCash(&s, companyID: id, amount: seed)
         Payments.playerPays(&s, fee, label: "Registration of \(nm)", companyID: id)
         CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: data)

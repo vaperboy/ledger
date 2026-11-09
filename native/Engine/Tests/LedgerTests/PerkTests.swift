@@ -9,7 +9,7 @@ import Simulation
 final class PerkTests: XCTestCase {
     private func openCafe(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 800_000_000, why: "Test funds") }
-        let res = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000)
+        let res = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000)
         guard case .success(let id) = res else { throw XCTSkip("could not start: \(res)") }
         e.update { s, _, _ in
             let i = s.companyIndex(id)!

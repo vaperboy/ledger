@@ -12,7 +12,7 @@ final class EmployerCostTests: XCTestCase {
         for code in ["UK", "US", "DE", "PL", "MX", "JP"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: 9)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 200_000_000) else { XCTFail("start \(code)"); continue }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 200_000_000) else { XCTFail("start \(code)"); continue }
             let variants: [(String, Hiring.Terms)] = [("full", Hiring.Terms()), ("part", Hiring.Terms(hours: 20)), ("season", Hiring.Terms(hours: 30, seasonMonths: Array(1...12)))]
             for (name, terms) in variants {
                 var pid = 0

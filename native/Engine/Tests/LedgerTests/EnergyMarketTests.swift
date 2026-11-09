@@ -106,7 +106,7 @@ final class EnergyMarketTests: XCTestCase {
         for t in ["bank", "insco", "fund", "casino", "club"] { XCTAssertFalse(ids.contains(t), t) }
         XCTAssertTrue(ids.contains("power") && ids.contains("gym"))
         for t in ["bank", "insco", "fund", "casino"] {
-            if case .success = e.startCompany(tradeID: t, cityID: e.state.player.cityID, form: .limited, fundWith: 1_000_000) { XCTFail("\(t) could be started") }
+            if case .success = e.startCompany(tradeID: t, cityID: e.state.player.cityID, fundWith: 1_000_000) { XCTFail("\(t) could be started") }
         }
         XCTAssertEqual(e.foundClub(countryCode: "UK"), .notAvailable)
         // A saved company of a retired trade keeps trading.

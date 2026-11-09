@@ -9,7 +9,7 @@ import Employees
 /// Which board a company sits on (branches share the parent's), who is seated (never a manager by default) and who decides on the CEO.
 final class BoardStructureTests: XCTestCase {
     private func startCafe(_ e: inout GameEngine) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 6_000_000) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 6_000_000) else { throw XCTSkip("start") }
         // Papers take days to clear, so the company is opened directly: only an open company sits on a board.
         e.update { s, d, _ in
             _ = CompanySetup.quickSetup(&s, companyID: id, data: d)

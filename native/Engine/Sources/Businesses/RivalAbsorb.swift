@@ -143,7 +143,7 @@ public enum RivalAbsorb {
         guard let co = s.company(companyID), co.status == .open, rivalOf(s, co, rivalID) != nil else { return .failed("That rival is gone.") }
         guard co.value("docs")["fran"]["st"].string == "ok" else { return .needsFranchisePapers }
         let place = ChainLocations.brand(s, co, data: data)
-        switch CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, form: co.form, name: LocationNames.locationName(s, brand: place, countryCode: co.countryCode, cityID: co.cityID, cityName: ChainLocations.cityName(co, data: data), data: data), countryCode: co.countryCode, data: data, context: fc) {
+        switch CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, name: LocationNames.locationName(s, brand: place, countryCode: co.countryCode, cityID: co.cityID, cityName: ChainLocations.cityName(co, data: data), data: data), countryCode: co.countryCode, data: data, context: fc) {
         case .failure(.notEnoughCash): return .notEnoughCash
         case .failure(let e): return .failed("Could not start the site: \(e)")
         case .success(let id):
@@ -238,7 +238,7 @@ public enum RivalAbsorb {
         case .brand:
             guard let bd = data.catalog[co.type] else { return .failed("Unknown trade.") }
             let first = co.name.split(separator: " ").first.map(String.init) ?? co.name
-            switch CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, form: .limited, size: max(bd.minSize, min(bd.maxSize, 0.5)), name: "\(first) Express", countryCode: co.countryCode, data: data, context: fc) {
+            switch CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, size: max(bd.minSize, min(bd.maxSize, 0.5)), name: "\(first) Express", countryCode: co.countryCode, data: data, context: fc) {
             case .failure(.notEnoughCash): return .notEnoughCash
             case .failure(let e): return .failed("Could not start the second brand: \(e)")
             case .success(let id):

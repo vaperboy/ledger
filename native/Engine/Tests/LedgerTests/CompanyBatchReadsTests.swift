@@ -51,7 +51,7 @@ final class CompanyBatchReadsTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
         var ids: [String: Int] = [:]
         for t in trades {
-            if case .success(let id) = e.startCompany(tradeID: t, cityID: e.state.player.cityID, form: .limited, fundWith: 40_000_000) { ids[t] = id }
+            if case .success(let id) = e.startCompany(tradeID: t, cityID: e.state.player.cityID, fundWith: 40_000_000) { ids[t] = id }
         }
         return (e, ids)
     }
@@ -109,7 +109,7 @@ final class CompanyBatchReadsTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
         var checked = 0
         for trade in e.data.balance.salesWays.keys.sorted() {
-            guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { continue }
+            guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 20_000_000) else { continue }
             for row in e.waysToSell(companyID: id) where row.canSwitch {
                 XCTAssertFalse(row.cost.isEmpty, "\(trade) / \(row.kind) shows its cost")
                 checked += 1

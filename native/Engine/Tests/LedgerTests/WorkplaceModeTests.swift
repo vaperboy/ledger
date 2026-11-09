@@ -10,7 +10,7 @@ final class WorkplaceModeTests: XCTestCase {
     private func start(_ trade: String, seed: Int) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 150_000_000) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 150_000_000) else { throw XCTSkip("start") }
         return (e, id)
     }
 

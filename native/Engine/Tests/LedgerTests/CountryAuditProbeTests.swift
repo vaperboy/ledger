@@ -21,7 +21,7 @@ final class CountryAuditProbeTests: XCTestCase {
     private func cafe(_ code: String, seed: Int = 5) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { throw XCTSkip("no company in \(code)") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { throw XCTSkip("no company in \(code)") }
         return (e, id)
     }
 

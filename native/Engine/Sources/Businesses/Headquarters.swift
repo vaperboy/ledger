@@ -191,7 +191,7 @@ public enum Headquarters {
             if cd["hq:\(role)"].double > Double(s.week) { return nil }
             cd["hq:\(role)"] = .number(Double(s.week + 4)); s.rest["netCD"] = cd
         }
-        if cost > 0 { guard s.cash + s.savings >= cost else { return nil }; Payments.playerPays(&s, cost, label: "Recruiting") }
+        if cost > 0 { guard s.cash >= cost else { return nil }; Payments.playerPays(&s, cost, label: "Recruiting") }
         let f = fame(s, data), cap = Double(Int(saturating: (42 + f * 0.58).rounded()))
         let count = mode == .agency ? 4 : mode == .ad ? 3 : 2
         return (0..<count).map { _ in
@@ -277,7 +277,6 @@ public enum Headquarters {
             return
         }
         Payments.playerPays(&s, a, label: label)
-        if s.companies.contains(where: { $0.form == .soleTrader && $0.status.isLive }) { s.tax.headOfficeDeduction += a }
     }
 
     /// Rent and salaries each month, fines for missing paperwork, the strategy memo and the manager scorecards. Original: `officeMonth`.

@@ -1,10 +1,8 @@
 import Foundation
 
-/// Standing rules the game applies for the owner. They used to be switches in the save; they are fixed now (payroll runs by itself when an
-/// accountant or manager is there, a manager replaces people who leave, staff answer routine complaints, campaigns keep a two-week cash reserve,
+/// Standing rules the game applies for the owner. They are fixed (a manager replaces people who leave, staff answer routine complaints, campaigns keep a two-week cash reserve,
 /// dividends are never automatic) and `Delegation` is where the rules live. This type only keeps the old names readable.
 public struct ManagementPolicy: Equatable, Sendable {
-    public let autoPayroll = true
     public let reserveWeeks = 2.0
     public let autoRehire = true
     public let autoComplaints = true

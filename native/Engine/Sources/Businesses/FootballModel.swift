@@ -378,7 +378,7 @@ public enum FootballModel {
     public enum BuyResult: Equatable { case ok(Int), notEnoughCash, notAvailable }
 
     /// What buying a club at `price` does to your money, shown before it is agreed: the cash the club company starts with, the debt it takes over
-    /// and its monthly payment, and what is left of your cash and savings.
+    /// and its monthly payment, and what is left of your account.
     public struct PurchasePlan: Equatable, Sendable {
         public var price: Double
         public var clubCash: Double
@@ -402,7 +402,6 @@ public enum FootballModel {
         guard let club = findClub(s, id: clubID), club["owner"].string == "ai", let country = data.countries[club["country"].string] else { return .notAvailable }
         if Payments.liquid(s) < price { return .notEnoughCash }
         let debt = clubDebt(club, seed: s.seed)
-        Payments.transferFromSavings(&s, need: price)
         Payments.playerPays(&s, price, label: "Purchase of \(club["name"].string)")
         setClub(&s, country.code, id: clubID) { $0["owner"] = "you"; $0["listed"] = false }
         guard let id = makeClubCompany(&s, club: club, division: 1, cash: jsRound(club["val"].double * 0.03), country: country, data: data) else { return .notAvailable }
@@ -429,7 +428,6 @@ public enum FootballModel {
     public static func found(_ s: inout GameState, country: Country, cityID: String?, data: GameData) -> BuyResult {
         guard let val = foundingValue(country) else { return .notAvailable }
         if Payments.liquid(s) < val * 0.4 { return .notEnoughCash }
-        Payments.transferFromSavings(&s, need: jsRound(val * 0.4))
         var list = ensureClubs(&s, country)
         let city = cityID ?? country.cities[0].id
         let name = cleanName(s.random.pick(country.lastNames)) + " " + s.random.pick(suffixes)

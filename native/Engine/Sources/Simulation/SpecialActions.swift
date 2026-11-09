@@ -98,7 +98,7 @@ public extension GameEngine {
     }
     /// Limited companies that can still be put under a holding.
     var companiesForHolding: [Company] {
-        state.companies.filter { $0.status.isLive && $0.type != "hold" && $0.holdingID == 0 && $0.form == .limited }
+        state.companies.filter { $0.status.isLive && $0.type != "hold" && $0.holdingID == 0 }
     }
 
     // MARK: Holding stakes (buying other companies in whole or in part)

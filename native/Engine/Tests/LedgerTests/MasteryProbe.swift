@@ -120,7 +120,7 @@ final class MasteryProbe: XCTestCase {
                     let yearRev = (cos.first?.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } ?? 0) / idx
                     if ok, yearRev > 2_500_000, let rd = Expansion.readiness(e.state, data: e.data, companyID: id, cityID: cities[min(ids.count - 1, cities.count - 1)]) {
                         // pay out spare company cash so the owner holds the cover
-                        for c in cos { let md = e.maximumDividend(companyID: c.id); if md > 0, c.cash > cur.scaledPrice(30_000) { let amt = min(md, c.cash - cur.scaledPrice(30_000)); if c.form == .limited { _ = e.payDividend(companyID: c.id, amount: amt) } else { _ = e.takeMoneyOut(companyID: c.id, amount: amt) } } }
+                        for c in cos { let md = e.maximumDividend(companyID: c.id); if md > 0, c.cash > cur.scaledPrice(30_000) { let amt = min(md, c.cash - cur.scaledPrice(30_000)); _ = e.payDividend(companyID: c.id, amount: amt) } }
                         if env["LEDGER_DEBUG"] != nil { print("EXPAND d\(d) need=\(Int(rd.cashNeeded / idx / 1000))k liquid=\(Int(Payments.liquid(e.state) / idx / 1000))k co=\(cos.map { Int($0.cash / idx / 1000) }) md=\(cos.map { Int(e.maximumDividend(companyID: $0.id) / idx / 1000) })") }
                         if policy == "expert", Payments.liquid(e.state) < rd.cashNeeded {
                             let short = (rd.cashNeeded - Payments.liquid(e.state)) * 1.05
@@ -128,7 +128,7 @@ final class MasteryProbe: XCTestCase {
                             if e.loanOffer(kind: "biz", amount: short, companyID: nil).maximum >= short { _ = e.takeLoan(kind: "biz", amount: short, termMonths: 60, companyID: nil) }
                         }
                         if Payments.liquid(e.state) >= rd.cashNeeded {
-                            if case .success(let nid) = e.startCompany(tradeID: trade, cityID: cities[min(ids.count - 1, cities.count - 1)], form: .limited, name: "T\(d)", fundWith: rd.startCost + rd.rampReserve) {
+                            if case .success(let nid) = e.startCompany(tradeID: trade, cityID: cities[min(ids.count - 1, cities.count - 1)], name: "T\(d)", fundWith: rd.startCost + rd.rampReserve) {
                                 ids.append(nid); lastStoreDay = d
                                 setAds(nid)
                                 if let m = e.searchManagers(companyID: nid)?.first { _ = e.hireManager(personID: m.id, companyID: nid, monthlyWage: m.askingMonthlyWage * 1.3) }

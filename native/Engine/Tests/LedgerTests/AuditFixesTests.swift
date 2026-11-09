@@ -12,7 +12,7 @@ final class AuditFixesTests: XCTestCase {
     private func cafe(seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
         return (e, id)
     }
 
@@ -86,7 +86,7 @@ final class AuditFixesTests: XCTestCase {
         // and the books use it
         var e = try GameEngine.newGame(countryCode: "MX", playerName: "T", seed: 5)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 200_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 200_000_000) else { return XCTFail("start") }
         hireOne(&e, id, wage: med * 10)
         let co = e.state.company(id)!
         let est = Payroll.weeklyCost(co, country: mx)

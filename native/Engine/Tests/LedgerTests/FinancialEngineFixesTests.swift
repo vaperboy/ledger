@@ -11,7 +11,7 @@ final class FinancialEngineFixesTests: XCTestCase {
     private func cafe(seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else {
             XCTFail("cafe could not be started"); throw XCTSkip("no cafe")
         }
         return (e, id)
@@ -32,25 +32,6 @@ final class FinancialEngineFixesTests: XCTestCase {
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertEqual(co.cash - cash0, 7_000, accuracy: 1)
         XCTAssertEqual(co.books.year["loss"] ?? 0, 3_000, accuracy: 1, "book value 10000 sold for 7000")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    /// Repaying a personal loan when the current account is short draws on savings instead of overdrawing.
-    func testPersonalLoanRepaymentUsesSavings() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 11)
-        var loanID = 0
-        e.update { s, _, _ in
-            var l = Loan(raw: [:])
-            l.id = s.makeID(); l.kind = "cons"; l.balance = 10_000; l.companyID = 0; l.monthlyPayment = 500
-            s.loans.append(l); loanID = l.id
-            Ledger.set(&s, .me, to: 1_000)
-            Ledger.moveSavings(&s, 20_000 - s.savings)
-        }
-        var ok = false
-        e.update { s, _, _ in ok = Banking.repay(loanID: loanID, amount: 10_000, state: &s) }
-        XCTAssertTrue(ok)
-        XCTAssertGreaterThanOrEqual(e.state.cash, 0, "the rest came over from savings")
-        XCTAssertNil(e.state.loans.first { $0.id == loanID }, "the repaid loan is gone (the start-up loan remains)")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
@@ -94,7 +75,7 @@ final class FinancialEngineFixesTests: XCTestCase {
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             let t = Payday.dayNumber(week: s.week, day: s.day)
-            let r = Payday.runPayroll(&s, i, how: .manual, today: t, data: data, context: ctx)
+            let r = Payday.runPayroll(&s, i, today: t, data: data, context: ctx)
             XCTAssertGreaterThan(r.short, 0, "payroll could not be paid in full")
             _ = Payday.payBills(&s, i, today: t, context: ctx)
         }

@@ -24,9 +24,9 @@ final class DeterminismSavesDatesTests: XCTestCase {
     static func start(_ e: inout GameEngine, _ trade: String, name: String? = nil) -> Int {
         var id = 0
         e.update { s, data, ctx in
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, name: name, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, name: name, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.5)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
@@ -82,7 +82,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             play(&e, days: 4 * 7)
             if let n = e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()), let terms = n.terms {
                 e.signFranchiseTerms(brand.id, terms: terms)
-                _ = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, form: .limited, name: "Unit", fundWith: e.homeCurrency.scaledPrice(30_000_000))
+                _ = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit", fundWith: e.homeCurrency.scaledPrice(30_000_000))
             }
         }
         // Luxury
@@ -469,7 +469,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
     func testTenantLeaseEndsExactlyOnTheDateItRunsOut() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         Self.fund(&e, 5_000_000_000)
-        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID, form: .limited, fundWith: e.homeCurrency.scaledPrice(300_000_000)) else { return XCTFail("rental company") }
+        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID, fundWith: e.homeCurrency.scaledPrice(300_000_000)) else { return XCTFail("rental company") }
         let pid = try XCTUnwrap(e.propertyPortfolio(companyID: id)?.rows.first?.id)
         XCTAssertFalse(e.tenantOffers(companyID: id, propertyID: pid).isEmpty)
         XCTAssertTrue(e.leaseSpace(companyID: id, propertyID: pid, offerIndex: 0))
@@ -506,7 +506,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         Self.play(&e, days: 4 * 7)
         let n = try XCTUnwrap(e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()))
         e.signFranchiseTerms(brand.id, terms: try XCTUnwrap(n.terms))
-        let started = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: e.state.player.cityID, form: .limited, name: "Unit", pick: nil, fundWith: e.homeCurrency.scaledPrice(30_000_000))
+        let started = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit", pick: nil, fundWith: e.homeCurrency.scaledPrice(30_000_000))
         guard case .success(let out) = started else { return XCTFail("unit: \(started)") }
         let id = out.companyID
         Self.play(&e, days: 8 * 7)

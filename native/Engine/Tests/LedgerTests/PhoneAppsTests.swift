@@ -15,7 +15,7 @@ final class PhoneAppsTests: XCTestCase {
     }
 
     private func cafe(_ e: inout GameEngine, funds: Double = 60_000_000) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: funds) else { throw XCTSkip("no cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: funds) else { throw XCTSkip("no cafe") }
         return id
     }
 
@@ -65,7 +65,7 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertGreaterThan(exp.shipping, std.shipping)
         XCTAssertNil(e.storeQuote(companyID: id, lines: [line], delivery: .own), "no delivery company of your own yet")
         XCTAssertNil(e.storeShipping().ownCompanyID)
-        guard case .success(let carrier) = e.startCompany(tradeID: "courier", cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("no courier") }
+        guard case .success(let carrier) = e.startCompany(tradeID: "courier", cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("no courier") }
         e.update { s, _, _ in if let i = s.companyIndex(carrier) { s.companies[i].status = .open } }
         let own = try XCTUnwrap(e.storeQuote(companyID: id, lines: [line], delivery: .own))
         XCTAssertGreaterThan(own.shipping, 0, "your own company charges a delivery fee")
@@ -81,7 +81,7 @@ final class PhoneAppsTests: XCTestCase {
         // The first trade of the catalogue whose equipment list has a licence that is bought outright.
         var found: (id: Int, equipmentID: String, offer: EquipmentMarket.Offer)?
         for trade in e.data.catalog.all.prefix(40) where found == nil {
-            guard case .success(let tid) = e.startCompany(tradeID: trade.id, cityID: e.state.player.cityID, form: .limited, fundWith: 3_000_000) else { continue }
+            guard case .success(let tid) = e.startCompany(tradeID: trade.id, cityID: e.state.player.cityID, fundWith: 3_000_000) else { continue }
             if let soft = e.equipmentNeeds(companyID: tid).first(where: { $0.isSoftware && !$0.subscription }),
                let offer = e.equipmentOffers(companyID: tid, equipmentID: soft.equipmentID).first { found = (tid, soft.equipmentID, offer) }
         }

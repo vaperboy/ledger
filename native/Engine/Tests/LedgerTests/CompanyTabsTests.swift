@@ -8,7 +8,7 @@ final class CompanyTabsTests: XCTestCase {
     func testActionsRunAndBooksBalance() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester Smith", seed: 11)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 60_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 60_000_000) else { return XCTFail("start") }
         let law = e.adviserOffers(companyID: id, kind: .law)
         XCTAssertFalse(law.isEmpty)
         XCTAssertEqual(e.chooseAdviser(companyID: id, kind: .law, providerID: law[0]["id"].int), .done)

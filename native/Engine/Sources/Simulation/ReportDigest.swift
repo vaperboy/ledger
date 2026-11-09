@@ -58,7 +58,7 @@ public extension GameEngine {
         if r.group.pnl.netProfit < 0 { risks.append("The group made a loss of " + amount(r.group.pnl.netProfit)) }
         if g.cashEnd < 0 { risks.append("Cash is below zero (" + amount(g.cashEnd) + " overdrawn)") }
         let alerts = payrollAlerts()
-        if !alerts.isEmpty { risks.append(alerts.count == 1 ? "Payroll waits for you at \(alerts[0].companyName)" : "Payroll waits for you at \(alerts.count) companies") }
+        if !alerts.isEmpty { risks.append(alerts.count == 1 ? "Payroll is late at \(alerts[0].companyName)" : "Payroll is late at \(alerts.count) companies") }
         if g.breakdowns > 0 { risks.append("\(g.breakdowns) equipment breakdown\(g.breakdowns == 1 ? "" : "s")") }
         if g.fineCount > 0 { risks.append("\(g.fineCount) fine\(g.fineCount == 1 ? "" : "s") paid") }
         if g.complaints > 0 { risks.append("\(g.complaints) customer complaint\(g.complaints == 1 ? "" : "s")") }

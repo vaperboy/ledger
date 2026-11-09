@@ -27,7 +27,7 @@ public struct TradePickerRow: Identifiable, Equatable, Sendable {
     public var staffMin: Int
     public var staffMax: Int
     public var blocked: String?
-    /// The player's account (current account plus savings) covers the start-up cost.
+    /// The player's account covers the start-up cost.
     public var isFunded: Bool
 }
 
@@ -35,12 +35,11 @@ public struct TradePickerRow: Identifiable, Equatable, Sendable {
 public struct StartUpCostBreakdown: Equatable, Sendable {
     public var tradeID: String
     public var cityID: String
-    public var legalForm: LegalForm
     /// "Registration and licences", "Fit-out and equipment", "Deposit and first month", and (only when the trade has them) "Property purchase" and
     /// "Waiting for a licence". They add up to `total`.
     public var lines: [FinanceLine]
     public var total: Double
-    /// Locked into a limited company on top of `total`, paid from the player's own account; 0 for a sole trader.
+    /// Locked into the limited company on top of `total`, paid from the player's own account.
     public var shareCapital: Double
     public var premisesKind: NewCompanyPlan.PremisesKind
     /// The place the figures use when the player picked one (nil: the standard place, or no fixed place).
@@ -50,7 +49,7 @@ public struct StartUpCostBreakdown: Equatable, Sendable {
 
 /// What the company costs to keep each month once it is open (an estimate; what rent and wages really are depends on the place and the people).
 public struct MonthlyFixedCostEstimate: Equatable, Sendable {
-    /// Rent (or the mortgage payment when buying), running costs, accounting for a sole trader, and wages. Lines with nothing to pay are left out.
+    /// Rent (or the mortgage payment when buying), running costs, accounting and wages. Lines with nothing to pay are left out.
     public var lines: [FinanceLine]
     public var total: Double
     /// People on the payroll in the wages line (the owner is not counted).
@@ -80,9 +79,9 @@ public extension GameEngine {
 
     /// The start-up cost split the way the set-up form shows it. With no `premises` it is the standard place the picker's figure prices, so
     /// the two agree to the penny; with a pick it is that rented or bought place (`newCompanyPlan`).
-    func startUpCostBreakdown(tradeID: String, cityID: String, legalForm: LegalForm, premises: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> StartUpCostBreakdown? {
+    func startUpCostBreakdown(tradeID: String, cityID: String, premises: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> StartUpCostBreakdown? {
         guard let bd = data.catalog[tradeID],
-              let plan = newCompanyPlan(tradeID: tradeID, cityID: cityID, form: legalForm, size: startSize(bd, cityID: cityID, countryCode: countryCode), pick: premises, countryCode: countryCode)
+              let plan = newCompanyPlan(tradeID: tradeID, cityID: cityID, size: startSize(bd, cityID: cityID, countryCode: countryCode), pick: premises, countryCode: countryCode)
         else { return nil }
         let e = plan.estimate
         let option = plan.pick.flatMap { p in plan.options.first { $0.index == p.listingIndex } }
@@ -96,17 +95,17 @@ public extension GameEngine {
         ]
         if e.property > 0 { lines.append(FinanceLine(id: "property", label: "Property purchase", amount: e.property)) }
         if e.wait > 0 { lines.append(FinanceLine(id: "wait", label: "Waiting for a licence", amount: e.wait)) }
-        return StartUpCostBreakdown(tradeID: tradeID, cityID: cityID, legalForm: legalForm, lines: lines, total: lines.reduce(0) { $0 + $1.amount }, shareCapital: e.shareCapital,
+        return StartUpCostBreakdown(tradeID: tradeID, cityID: cityID, lines: lines, total: lines.reduce(0) { $0 + $1.amount }, shareCapital: e.shareCapital,
                                     premisesKind: plan.premisesKind, premisesName: option?.name, buying: buying)
     }
 
     /// What keeping the company costs a month after opening: the place (rent, or the mortgage when buying), the trade's fixed running costs, the
-    /// accountant a sole trader pays, and the standard team's wages (the same one month of wages the start-up cost holds).
-    func monthlyFixedCostEstimate(tradeID: String, cityID: String, legalForm: LegalForm, premises: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> MonthlyFixedCostEstimate? {
+    /// accountant, and the standard team's wages (the same one month of wages the start-up cost holds).
+    func monthlyFixedCostEstimate(tradeID: String, cityID: String, premises: NewCompanyPlan.Pick? = nil, countryCode: String? = nil) -> MonthlyFixedCostEstimate? {
         guard let bd = data.catalog[tradeID] else { return nil }
         let size = startSize(bd, cityID: cityID, countryCode: countryCode)
-        guard let plan = newCompanyPlan(tradeID: tradeID, cityID: cityID, form: legalForm, size: size, pick: premises, countryCode: countryCode),
-              let (tmp, id) = previewCompany(tradeID: tradeID, cityID: cityID, form: legalForm, size: size, countryCode: countryCode), let co = tmp.company(id) else { return nil }
+        guard let plan = newCompanyPlan(tradeID: tradeID, cityID: cityID, size: size, pick: premises, countryCode: countryCode),
+              let (tmp, id) = previewCompany(tradeID: tradeID, cityID: cityID, size: size, countryCode: countryCode), let co = tmp.company(id) else { return nil }
         let w = World(state: tmp, data: data)
         let perMonth = 52.0 / 12
         let option = plan.pick.flatMap { p in plan.options.first { $0.index == p.listingIndex } }

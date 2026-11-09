@@ -62,9 +62,6 @@ public struct PersonalTaxYear: JSONRecord {
     public var gains: Double { get { num("gain") } set { set("gain", newValue) } }
     public var interest: Double { get { num("int") } set { set("int", newValue) } }
     public var dividendShield: Double { get { num("shield") } set { set("shield", newValue) } }
-    public var advancePaid: Double { get { num("adv") } set { set("adv", newValue) } }
-    public var soleTraderFrozenProfit: Double { get { num("enkFrozen") } set { set("enkFrozen", newValue) } }
-    public var headOfficeDeduction: Double { get { num("hqDed") } set { set("hqDed", newValue) } }
     public var pending: Double { get { num("pending") } set { set("pending", newValue) } }
     /// Tax already paid this year on dividends, gains, interest and wealth as they arose; the year-end true-up settles the difference.
     public var paidDividend: Double { get { num("pDiv") } set { set("pDiv", newValue) } }

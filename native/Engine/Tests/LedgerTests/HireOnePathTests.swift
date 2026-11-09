@@ -9,7 +9,7 @@ final class HireOnePathTests: XCTestCase {
     private func shop(_ trade: String, seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 20_000_000) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
         // an office or a kitchen table holds a limited number of people now (hiring rebuild): these tests hire several, so the place is a big one
         e.update { s, _, _ in if let i = s.companyIndex(id) { var p = s.companies[i].value("prem"); if p.isNull { p = .object([:]) }; p["m2"] = .number(900); s.companies[i].set("prem", p) } }
         return (e, id)

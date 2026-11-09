@@ -43,7 +43,7 @@ final class CareerSimHarness: XCTestCase {
         var mainID = 0
         func est(_ t: String) -> Double {
             var rich = e.state; rich.cash += 1e12   // the estimate refuses when the share capital is not in the account
-            return CompanySetup.estimate(tradeID: t, cityID: city, form: .limited, size: 1, state: rich, data: e.data)?.total ?? .infinity
+            return CompanySetup.estimate(tradeID: t, cityID: city, size: 1, state: rich, data: e.data)?.total ?? .infinity
         }
         func liquid() -> Double { Payments.liquid(e.state) }
         var reserve: Double { max(cur.scaledPrice(20_000), 0.02 * e.netWorth.total) }
@@ -61,8 +61,8 @@ final class CareerSimHarness: XCTestCase {
             }
             var id = 0
             e.update { s, data, ctx in
-                if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: city, form: .limited, data: data, context: ctx) { id = i }
-                else if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: city, form: .soleTrader, data: data, context: ctx) { id = i }
+                if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: city, data: data, context: ctx) { id = i }
+                else if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: city, data: data, context: ctx) { id = i }
             }
             if id == 0 { return 0 }
             if shortfall > 0 {
@@ -118,7 +118,6 @@ final class CareerSimHarness: XCTestCase {
             let target = reserve * 2 + pend * 1.25
             let short = target - e.state.cash
             guard short > 0 else { return }
-            if e.state.savings > 0 { _ = e.moveToSavings(-min(e.state.savings, short)) }
             let v = idxValue
             if v > 0 { e.sellInvestment(.fund, symbol: "idx", fraction: min(1, short * 1.003 / v)) }
             if e.state.cash < target {
@@ -136,14 +135,14 @@ final class CareerSimHarness: XCTestCase {
             if day % 28 == 27 { r.samples.append((day, e.netWorth.total))
                 if ProcessInfo.processInfo.environment["LEDGER_DEBUG"] != nil {
                     let nw = e.netWorth
-                    var line = "DBG \(career) d\(day) cash=\(Dk(e.state.cash))k sav=\(Dk(e.state.savings))k idx=\(Dk(idxValue))k funds=\(Dk(nw.funds))k stocks=\(Dk(nw.stocks))k debt=\(Dk(nw.debt))k tax=\(Dk(nw.pendingTax))k nw=\(Dk(nw.total))k |"
+                    var line = "DBG \(career) d\(day) cash=\(Dk(e.state.cash))k idx=\(Dk(idxValue))k funds=\(Dk(nw.funds))k stocks=\(Dk(nw.stocks))k debt=\(Dk(nw.debt))k tax=\(Dk(nw.pendingTax))k nw=\(Dk(nw.total))k |"
                     for c in e.state.companies where c.type != "hold" { line += " \(c.type):\(c.status.rawValue) cash=\(Dk(c.cash))k mo=\(c.monthlyHistory.last.map { "\(Dk($0.revenue))/\(Dk($0.profit))" } ?? "-") props=\(c.properties.count)" }
                     print(line)
                 }
             }
             if day == 363 {
                 r.cashY1 = liquid()
-                r.personalY1 = e.state.cash + e.state.savings
+                r.personalY1 = e.state.cash
                 r.coCashY1 = e.state.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.cash }
             }
             guard day % 7 == 6 else { continue }
@@ -231,9 +230,9 @@ final class CareerSimHarness: XCTestCase {
         var id = 0, invested = 0.0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 1e12, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             invested = (est?.total ?? 1_000_000) * 1.3
             Payments.injectCash(&s, companyID: id, amount: invested)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
@@ -304,9 +303,9 @@ final class CareerSimHarness: XCTestCase {
         for cc in ["CH", "UK", "MX", "JP"] {
             let e = try GameEngine.newGame(countryCode: cc, playerName: "T", seed: 1)
             for t in ["tutor", "carclean", "cons", "handy", "photo", "foodtruck", "barber"] {
-                for form in [LegalForm.soleTrader, .limited] {
-                    if let r = CompanySetup.estimate(tradeID: t, cityID: e.state.player.cityID, form: form, size: 1, state: e.state, data: e.data) {
-                        print("BRK \(cc) \(t) \(form) cash=\(Int(e.state.cash/1000)) total=\(Int(r.total/1000)) docs=\(Int(r.documents/1000)) eq=\(Int(r.equipment/1000)) veh=\(Int(r.vehicles/1000)) prem=\(Int(r.premises/1000)) stock=\(Int(r.stock/1000)) pay=\(Int(r.firstPayroll/1000)) buf=\(Int(r.buffer/1000)) reg=\(Int(r.registration/1000)) cap=\(Int(r.shareCapital/1000))")
+                do {
+                    if let r = CompanySetup.estimate(tradeID: t, cityID: e.state.player.cityID, size: 1, state: e.state, data: e.data) {
+                        print("BRK \(cc) \(t) cash=\(Int(e.state.cash/1000)) total=\(Int(r.total/1000)) docs=\(Int(r.documents/1000)) eq=\(Int(r.equipment/1000)) veh=\(Int(r.vehicles/1000)) prem=\(Int(r.premises/1000)) stock=\(Int(r.stock/1000)) pay=\(Int(r.firstPayroll/1000)) buf=\(Int(r.buffer/1000)) reg=\(Int(r.registration/1000)) cap=\(Int(r.shareCapital/1000))")
                     }
                 }
             }
@@ -315,17 +314,17 @@ final class CareerSimHarness: XCTestCase {
             let e = try GameEngine.newGame(countryCode: cc, playerName: "T", seed: 1)
             var line = "AFF \(cc) cash=\(Int(e.state.cash/1000))k city=\(e.state.player.cityID):"
             for t in e.data.catalog.all.filter({ SpecialFamilies.isStartable($0) }) {
-                for form in [LegalForm.soleTrader, .limited] {
+                do {
                     let sz = max(t.minSize, 0.01)
-                    if let est = CompanySetup.estimate(tradeID: t.id, cityID: e.state.player.cityID, form: form, size: sz, state: e.state, data: e.data), est.total <= e.state.cash * 1.0 {
-                        line += " \(t.id)\(form == .limited ? "L" : "S")@\(sz)=\(Int(est.total/1000))k"
+                    if let est = CompanySetup.estimate(tradeID: t.id, cityID: e.state.player.cityID, size: sz, state: e.state, data: e.data), est.total <= e.state.cash * 1.0 {
+                        line += " \(t.id)@\(sz)=\(Int(est.total/1000))k"
                     }
                 }
             }
             print(line)
             var e2 = e
             var id = 0
-            e2.update { s, data, ctx in if case .success(let i) = CompanySetup.create(&s, tradeID: "cons", cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i } }
+            e2.update { s, data, ctx in if case .success(let i) = CompanySetup.create(&s, tradeID: "cons", cityID: s.player.cityID, data: data, context: ctx) { id = i } }
             for k in ["biz", "personal", "consumer"] {
                 let o = e2.loanOffer(kind: k, amount: 1_000_000, companyID: k == "biz" ? id : nil)
                 print("AFF \(cc) loan \(k): max=\(Int(o.maximum/1000))k margin=\(o.margin) \(o.creditBand)")

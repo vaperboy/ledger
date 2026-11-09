@@ -12,7 +12,7 @@ final class UsedCarDealerTests: XCTestCase {
     private func game(seed: Int = 7, trade: String = "usedcar", cash: Double = 400_000_000, open: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: cash) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cash) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         if open {
             _ = e.openCompany(companyID: id)
@@ -132,7 +132,7 @@ final class UsedCarDealerTests: XCTestCase {
 
     func testOwnMechanicCompanyDoesTheRepairAsASupplier() throws {
         var (e, id) = try game()
-        guard case .success(let rid) = e.startCompany(tradeID: "carrepair", cityID: e.state.player.cityID, form: .limited, fundWith: 100_000_000) else { throw XCTSkip("no mechanic") }
+        guard case .success(let rid) = e.startCompany(tradeID: "carrepair", cityID: e.state.player.cityID, fundWith: 100_000_000) else { throw XCTSkip("no mechanic") }
         _ = e.quickSetup(companyID: rid)
         _ = e.openCompany(companyID: rid)
         e.update { s, _, _ in if let i = s.companyIndex(rid) { s.companies[i].status = .open } }

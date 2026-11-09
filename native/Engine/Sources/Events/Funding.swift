@@ -14,8 +14,7 @@ import Businesses
 /// `rest["fundTried"][companyID]` = the week you last pitched. A company's outside owners are `holders` = [{ name, pct, in, ... }]
 /// (pct = percent of the whole company), and `flags.boardSeat` counts board seats given away; a holding has `listed` = 1 once on the exchange.
 ///
-/// Not faithful: investors you hosted (perks) do not come sooner. Converting a sole trader to a limited company
-/// to be able to sell shares is not an action here (new companies can be founded as limited).
+/// Not faithful: investors you hosted (perks) do not come sooner.
 public enum Funding {
     // MARK: Founder record
 
@@ -107,7 +106,7 @@ public enum Funding {
     }
     public static func canRaise(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return false }
-        return co.status.isLive && co.form == .limited && co.type != "hold" && !s.isBranch(co)   // a chain raises money as one company
+        return co.status.isLive && co.type != "hold" && !s.isBranch(co)   // a chain raises money as one company
     }
     /// The amount the original suggests asking for.
     public static func suggestedAmount(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> Double {
@@ -222,7 +221,6 @@ public enum Funding {
     public static func sellShares(_ s: inout GameState, companyID: Int, pct: Double, mode: String, data: GameData, context fc: FinanceContext) -> ShareResult {
         guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notLimited }
         let co = s.companies[i]
-        guard co.form == .limited else { return .notLimited }
         if s.isBranch(co) { return .blocked }
         let t = CapTable.table(co)
         // primary: pct is the buyer's share of the company AFTER the issue. secondary: pct is the share of YOUR holding you sell.
@@ -272,7 +270,6 @@ public enum Funding {
         let need = listingMinimum(s, fc), fee = fc.homeCurrency(s).scaledPrice(listingFee)
         if holdingValue(s, holdingID: holdingID, data: data) < need { return .tooSmall(needed: need) }
         if Payments.liquid(s) < fee { return .notEnoughMoney(fee) }
-        Payments.transferFromSavings(&s, need: fee)
         Payments.playerPays(&s, fee, label: "Stock exchange listing")
         s.companies[i].set("listed", 1)
         s.note("\(s.companies[i].name) is listed on the stock exchange.", tone: "good", companyID: holdingID)

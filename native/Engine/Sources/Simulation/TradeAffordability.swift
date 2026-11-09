@@ -5,7 +5,7 @@ import Finance
 import Businesses
 
 /// What the player can fund today, trade by trade, for the New company list. Nothing is blocked: this only measures the
-/// start-up cost (`CompanySetup.estimate`) against the money available (current account plus savings) and reports the shortfall.
+/// start-up cost (`CompanySetup.estimate`) against the money available (your account) and reports the shortfall.
 public struct TradeAffordability: Identifiable, Equatable, Sendable {
     public var id: String { tradeID }
     public var tradeID: String
@@ -34,10 +34,9 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
         let rows: [TradeAffordability] = data.catalog.all.filter { !SpecialFamilies.isRetired($0) }.map { t in
             let blocked = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
             guard blocked == nil else { return TradeAffordability(tradeID: t.id, cost: nil, available: available, blocked: blocked) }
-            let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader
             let rec = CompanySetup.recommendedSize(t, city: city)
             func price(_ size: Double) -> CompanySetup.Estimate? {
-                CompanySetup.estimate(tradeID: t.id, cityID: city.id, form: form, size: size, countryCode: country.code, state: probe, data: data)
+                CompanySetup.estimate(tradeID: t.id, cityID: city.id, size: size, countryCode: country.code, state: probe, data: data)
             }
             // Start at the natural size if the money carries it; otherwise at the largest size (steps of 0.05) it does carry, down to the trade's smallest.
             var size = rec

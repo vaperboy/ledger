@@ -9,7 +9,7 @@ import Businesses
 public struct SetupFunding: Equatable, Sendable {
     /// Cost of every open checklist item with the cheapest choice, less the company's own cash.
     public var missing: Double
-    /// What the owner can put in from current account and savings.
+    /// What the owner can put in from the account.
     public var fromAccounts: Double
     /// What a business loan to this company could add (0 when the bank would not lend).
     public var loanMaximum: Double

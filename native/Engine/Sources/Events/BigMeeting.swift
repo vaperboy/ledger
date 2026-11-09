@@ -65,7 +65,6 @@ public enum BigMeeting {
             s.loans.append(l)
             Payments.playerReceives(&s, f.borrow, label: "Acquisition loan")
         }
-        Payments.transferFromSavings(&s, need: o.price)
         Payments.playerPays(&s, o.price, label: "Bought \(o.pct)% of \(o.target)")
         s.rest["stakes"] = .array((s.rest["stakes"]?.array ?? []) + [.object(["id": .number(Double(s.makeID())), "name": .string(o.target), "pct": .number(Double(o.pct)), "val": .number(o.price), "cost": .number(o.price), "yld": .number(o.yield), "w0": .number(Double(s.week))])])
         s.rest["bigOff"] = .null

@@ -74,7 +74,7 @@ public extension Startups {
         public var postMoney: Double
         public var ownershipPercent: Double
         public var boardSeat: Bool
-        /// Money the buyer can pay with (your cash and savings, or the holding's account).
+        /// Money the buyer can pay with (your account, or the holding's account).
         public var available: Double
         public var result: InvestResult
     }
@@ -152,7 +152,7 @@ public extension Startups {
         return outcome
     }
 
-    /// Money a stake's owner can spend: the holding's account for a holding's stake, otherwise your cash and savings.
+    /// Money a stake's owner can spend: the holding's account for a holding's stake, otherwise your account.
     static func available(_ s: GameState, _ f: JSONValue) -> Double {
         f["hid"].int == 0 ? Payments.liquid(s) : (s.company(f["hid"].int)?.cash ?? 0)
     }
@@ -163,7 +163,6 @@ public extension Startups {
             Ledger.moveRaw(&s, .company(hid), -amount)
             s.companies[hi].addTransaction(week: s.week, amount: -amount, label: label)
         } else {
-            Payments.transferFromSavings(&s, need: amount)
             Payments.playerPays(&s, amount, label: label)
         }
     }

@@ -24,8 +24,6 @@ public enum Delegation {
     public static func hasAccountant(_ co: Company) -> Bool { !co.value("acc").isNull }
     public static func hasManager(_ co: Company) -> Bool { co.managerID != nil }
 
-    /// Routine payroll is approved by itself when an accountant or a manager is there to do it; otherwise the owner gets a reminder.
-    public static func autoPayroll(_ s: GameState, _ co: Company) -> Bool { hasAccountant(co) || hasManager(co) }
     /// A hired manager replaces people who leave.
     public static func autoRehire(_ s: GameState, _ co: Company) -> Bool { hasManager(co) }
     /// Staff answer routine complaints when there is staff.

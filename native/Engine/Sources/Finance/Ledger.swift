@@ -56,12 +56,6 @@ public enum Ledger {
         if s.statement.count > statementLimit { s.statement.removeLast(s.statement.count - statementLimit) }
     }
 
-    /// Money into (positive) or out of (negative) the savings account, with the running total the books check compares against.
-    package static func moveSavings(_ s: inout GameState, _ amount: Double) {
-        s.savings += amount
-        s.savingsFlow += amount
-    }
-
     /// Set a balance directly (used when a company is wound up). The difference is booked.
     package static func set(_ s: inout GameState, _ holder: CashHolder, to value: Double) {
         switch holder {
@@ -90,8 +84,6 @@ public enum Ledger {
         }
         let me = s.cash - s.openingCash - (s.cashFlow["me"] ?? 0)
         if abs(me) > 1 { out.append(("me", me)) }
-        let sav = s.savings - s.openingSavings - s.savingsFlow
-        if abs(sav) > 1 { out.append(("savings", sav)) }
         for c in s.companies {
             let g = c.cash - (s.cashFlow["co\(c.id)"] ?? 0)
             if abs(g) > 1 { out.append((c.name, g)) }

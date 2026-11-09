@@ -2,35 +2,21 @@ import Foundation
 import GameCore
 import Countries
 
-/// The player's own money: savings interest, overdraft, tax. Original: `personalMonth`, `advTaxMonth`,
-/// `yearEndPersonal`, `enkIncome` in engine/money/money.js.
+/// The player's own money: the account's overdraft, loans and tax. The only personal income is owner salary (tax withheld on every payroll),
+/// dividends, gains and deposit interest (tax paid as they arise); company profit is taxed in the company. Original: `personalMonth`, `yearEndPersonal`.
 public enum PersonalFinance {
-    /// Profit of sole-trader businesses this year, less head-office costs. Original: `enkIncome`.
-    public static func soleTraderIncome(_ s: GameState) -> Double {
-        var t = s.tax.soleTraderFrozenProfit
-        for c in s.companies where c.form == .soleTrader && c.status != .sold {
-            let y = c.books.year
-            t += (y["rev"] ?? 0) - Books.expenses(y)
-        }
-        return t - s.tax.headOfficeDeduction
-    }
-
     /// Tax still to settle if the year ended now: income tax minus what was withheld or paid in advance, plus the other taxes minus what was
     /// already paid as they arose. Original: `personalTaxEstimate`.
     public static func taxEstimate(_ s: GameState, context: FinanceContext) -> Double {
         let c = context.homeCountry(s)
-        let enk = max(0, soleTraderIncome(s) - s.enkLoss)
         let wage = s.tax.salary
-        let tax1 = Taxes.personalIncomeTax(enk + wage, kind: wage > enk ? .wage : .selfEmployed, in: c)
+        let tax1 = Taxes.personalIncomeTax(wage, kind: .wage, in: c)
         let t = s.tax
         return max(0, max(0, tax1 - t.withheld) + (Taxes.capitalGainsTax(t.gains, in: c) - t.paidGains)
             + (Taxes.dividendTax(t.dividends, shield: t.dividendShield, in: c) - t.paidDividend) + (Taxes.savingsInterestTax(t.interest, in: c) - t.paidInterest))
     }
 
-    /// Yearly interest the savings account pays: the policy rate less a margin, never below 0.5%.
-    public static func savingsRate(_ s: GameState) -> Double { max(0.005, s.economy.policyRate - 0.012) }
-
-    /// Monthly personal processes: overdraft interest, savings interest, loan instalments, credit score drift.
+    /// Monthly personal processes: overdraft interest, loan instalments, credit score drift.
     /// Original: `personalMonth`.
     public static func monthly(_ s: inout GameState, context: FinanceContext) {
         if s.cash < 0 {
@@ -39,30 +25,11 @@ public enum PersonalFinance {
             Ledger.move(&s, .me, -interest, why: "Overdraft interest")
             s.credit = clamp(s.credit - 0.4, 0, 100)
         }
-        if s.savings > 0 {
-            let i = s.savings * savingsRate(s) / 12
-            Ledger.moveSavings(&s, i)
-            s.tax.interest += i
-        }
         Banking.collectMonthlyInstalments(state: &s, context: context)
         if s.cash >= 0 && Banking.totalDebt(s) > 0 { s.credit = clamp(s.credit + 0.35, 0, 100) }
         if s.loans.isEmpty { s.credit = clamp(s.credit + 0.1, 0, 100) }
         let age = Double(s.player.age) + Double(s.week) / 52
         if age > 60 { s.credit = clamp(s.credit - 0.02, 0, 100) }
-    }
-
-    /// Sole traders pay income tax every month on the profit so far this year (net of what pay already withheld); the year-end true-up
-    /// counts it as withheld. Original: `advTaxMonth`, which paid quarterly on 90% of a projection.
-    public static func advanceTaxMonthly(_ s: inout GameState, context: FinanceContext) {
-        let enk = max(0, soleTraderIncome(s) - s.enkLoss)
-        if enk <= 0 { return }
-        let wage = s.tax.salary
-        let target = Taxes.personalIncomeTax(enk + wage, kind: wage > enk ? .wage : .selfEmployed, in: context.homeCountry(s))
-        let pay = jsRound(target - s.tax.withheld)
-        if pay < 1 { return }
-        s.tax.advancePaid += pay
-        s.tax.withheld += pay
-        Payments.playerPays(&s, pay, label: "Advance tax (sole trader)")
     }
 
     // MARK: Tax paid as it arises
@@ -90,11 +57,10 @@ public enum PersonalFinance {
         s.tax.paidWealth += paid
     }
 
-    /// Pay `owed - paid` from cash, topped up from savings. Returns what was paid (rounded), 0 when nothing is due.
+    /// Pay `owed - paid` from the account. Returns what was paid (rounded), 0 when nothing is due.
     private static func withhold(_ s: inout GameState, owed: Double, paid: Double, label: String) -> Double {
         let pay = jsRound(owed - paid)
         guard pay > 0 else { return 0 }
-        Payments.transferFromSavings(&s, need: pay)
         Payments.playerPays(&s, pay, label: label)
         s.stats.taxPaid += pay
         return pay
@@ -105,12 +71,12 @@ public enum PersonalFinance {
     /// Every part of the personal tax bill, for the estimate during the year and for the assessment at its end.
     public struct TaxBreakdown: Equatable, Sendable {
         public var week = 0
-        /// Taxable income: sole-trader profit after carried losses, plus wages.
+        /// Taxable income: owner salary.
         public var taxableIncome = 0.0
         /// Income tax before what was withheld.
         public var incomeTax = 0.0
         public var withheld = 0.0
-        /// Income tax still to pay (negative: advance payments come back).
+        /// Income tax still to pay (negative: tax withheld on salary comes back).
         public var incomeDue = 0.0
         public var dividends = 0.0
         public var shield = 0.0
@@ -152,14 +118,13 @@ public enum PersonalFinance {
     public static func breakdown(_ s: GameState, context: FinanceContext, netWorth: Double, ownedCompanyValue: Double) -> TaxBreakdown {
         let c = context.homeCountry(s)
         let t = s.tax
-        let enk = max(0, soleTraderIncome(s) - s.enkLoss)
         let wage = t.salary
         var b = TaxBreakdown()
         b.week = s.week
-        b.taxableIncome = enk + wage
-        b.incomeTax = Taxes.personalIncomeTax(enk + wage, kind: wage > enk ? .wage : .selfEmployed, in: c)
+        b.taxableIncome = wage
+        b.incomeTax = Taxes.personalIncomeTax(wage, kind: .wage, in: c)
         b.withheld = t.withheld
-        b.incomeDue = max(-t.advancePaid, b.incomeTax - t.withheld)
+        b.incomeDue = b.incomeTax - t.withheld
         b.dividends = t.dividends
         b.shield = t.dividendShield
         b.dividendTax = Taxes.dividendTax(t.dividends, shield: t.dividendShield, in: c)
@@ -191,25 +156,22 @@ public enum PersonalFinance {
     static let overdraftShare = 0.4
 
     /// The year-end true-up of personal tax (income, gains, dividends, interest, wealth). Original: `yearEndPersonal`.
-    /// Dividend, gains, interest and wealth tax were paid as they arose and sole-trader and salary tax withheld, so only the difference between
+    /// Dividend, gains, interest and wealth tax were paid as they arose and salary tax withheld, so only the difference between
     /// the correct annual total and what was paid is settled here: a small bill or a refund, one statement line per part. What the overdraft
     /// cannot comfortably carry stays owed as `tax.pending` and the player is asked how to settle it. `netWorth` and `ownedCompanyValue`
     /// (the player's share in companies) are supplied by the caller.
     public static func yearEnd(_ s: inout GameState, context: FinanceContext, netWorth: Double, ownedCompanyValue: Double) {
-        let rawE = soleTraderIncome(s), lc0 = s.enkLoss
         let b = breakdown(s, context: context, netWorth: netWorth, ownedCompanyValue: ownedCompanyValue)
-        s.enkLoss = max(0, lc0 - rawE)
         let carried = s.tax.pending
         let total = b.total
         let cur = context.homeCurrency(s)
         let room = max(0, s.overdraftLimit + min(0, s.cash))
-        let short = max(0, total - max(0, s.cash) - max(0, s.savings))
+        let short = max(0, total - max(0, s.cash))
         let deferred = max(0, short - room * overdraftShare)
         let lines: [(name: String, amount: Double, early: Double)] = [
             ("income tax", b.incomeDue, 0), ("dividend tax", b.dividendTax - b.paidDividend, b.paidDividend), ("tax on gains", b.gainsTax - b.paidGains, b.paidGains),
             ("tax on interest", b.interestTax - b.paidInterest, b.paidInterest), ("wealth tax", b.wealthTax - b.paidWealth, b.paidWealth)]
         var budget = max(0, lines.reduce(0) { $0 + max(0, $1.amount) } - deferred)
-        if budget > 0 { Payments.transferFromSavings(&s, need: budget) }
         // Each line is rounded on the running total, so the lines add up to the rounded bill.
         var paid = 0.0, booked = 0.0
         for l in lines where l.amount != 0 {
@@ -225,7 +187,7 @@ public enum PersonalFinance {
         s.rest["taxLast"] = b.json
         s.note(assessmentNote(annual: b.annual, paidEarlier: b.paidSoFar, due: total, income: b.taxableIncome, incomeTax: b.incomeTax, withheld: b.withheld, gains: b.gainsTax,
                               dividends: b.dividends, shield: b.shield, dividendTax: b.dividendTax, interest: b.interestTax, wealth: b.wealthTax, currency: cur), tone: "n")
-        s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
+        s.tax = PersonalTaxYear(raw: ["wage": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
         s.stats.yearsPlayed += 1
         if deferred + carried > 0 { askHowToPay(&s, owed: deferred + carried, currency: cur) }
     }
@@ -234,7 +196,7 @@ public enum PersonalFinance {
     static func askHowToPay(_ s: inout GameState, owed: Double, currency cur: Currency) {
         s.tax.pending = owed
         s.addMessage(kind: "ask", from: "Tax office", title: "Tax bill of \(cur.display(owed)) is more than your accounts hold",
-                     body: "Your cash and savings did not cover the year's personal tax, and \(cur.display(owed)) is still owed. Choose how to settle it within \(decisionWeeks) weeks. "
+                     body: "Your account did not cover the year's personal tax, and \(cur.display(owed)) is still owed. Choose how to settle it within \(decisionWeeks) weeks. "
                          + "Otherwise it is taken from your account and the bank's overdraft rules apply.",
                      tone: "bad", status: "open",
                      options: [.option("Sell investments", "Funds, shares and crypto are sold for as much as it takes. The tax on the gains is paid at once."),
@@ -248,7 +210,6 @@ public enum PersonalFinance {
     public static func collectDeferred(_ s: inout GameState, context: FinanceContext) {
         let owed = s.tax.pending
         guard owed > 0 else { return }
-        Payments.transferFromSavings(&s, need: owed)
         Payments.playerPays(&s, owed, label: "Annual tax: balance collected")
         s.stats.taxPaid += owed
         s.tax.pending = 0
@@ -277,13 +238,5 @@ public enum PersonalFinance {
         let settle = due < 0 ? "refund of \(cur.display(-due))" : "balance of \(cur.display(due))"
         return "Personal tax for the year: \(cur.display(annual)), of which \(cur.display(paidEarlier)) was paid as it arose, so a \(settle) is settled now"
             + (parts.isEmpty ? "" : ". " + parts.joined(separator: ", ")) + "."
-    }
-}
-
-extension GameState {
-    /// Losses of sole-trader businesses carried forward. Original: `S.enkLoss`.
-    public var enkLoss: Double {
-        get { rest["enkLoss"]?.double ?? 0 }
-        set { rest["enkLoss"] = .number(newValue) }
     }
 }

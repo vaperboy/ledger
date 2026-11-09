@@ -17,7 +17,7 @@ public enum CreditorPressure {
 
     /// True when a limited company pays a dividend policy, so the lenders see cash going to the owners.
     static func paysOut(_ s: GameState) -> Bool {
-        s.companies.contains { $0.status == .open && $0.form == .limited && $0.type != "hold" && Shareholders.policy($0) != "none" }
+        s.companies.contains { $0.status == .open && $0.type != "hold" && Shareholders.policy($0) != "none" }
     }
 
     static func weekly(_ s: inout GameState, data: GameData) {
@@ -26,7 +26,7 @@ public enum CreditorPressure {
         guard wealth >= startWealth, !paysOut(s) else { return }
         if s.credit > floor { s.credit = max(floor, s.credit - 0.08 * wealth * d.threatScale) }
         guard d != .sandbox, s.week % 4 == 0, s.credit < askBelow, s.week - (s.rest["credAt"]?.int ?? -askEveryWeeks) >= askEveryWeeks else { return }
-        let rich = s.companies.indices.filter { s.companies[$0].status == .open && s.companies[$0].form == .limited && s.companies[$0].type != "hold" && s.companies[$0].cash > 0 }
+        let rich = s.companies.indices.filter { s.companies[$0].status == .open && s.companies[$0].type != "hold" && s.companies[$0].cash > 0 }
             .max { s.companies[$0].cash < s.companies[$1].cash }
         guard let i = rich else { return }
         let co = s.companies[i]

@@ -111,7 +111,7 @@ public enum Luxury {
     /// Limited companies of the player that can buy a car or a jet (open, in the player's home country).
     public static func companiesThatCanBuy(_ s: GameState, itemID: String) -> [Company] {
         guard let it = item(itemID), (book["companyCategories"].array.map { $0.string }).contains(it.category) else { return [] }
-        return s.companies.filter { $0.status == .open && $0.form == .limited && $0.type != "hold" && $0.countryCode == s.homeCountryCode }
+        return s.companies.filter { $0.status == .open && $0.type != "hold" && $0.countryCode == s.homeCountryCode }
     }
 
     /// A car or jet bought by one of your limited companies: it pays, writes it down and pays the upkeep. Original: `LIFE.buyVia`.

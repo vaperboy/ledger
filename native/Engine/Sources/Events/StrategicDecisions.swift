@@ -258,7 +258,7 @@ public enum StrategicDecisions {
                             s.companies[x.i].quality = min(100, s.companies[x.i].quality + 5) },
                         Opt(label: "Ignore it", detail: "No cost. Reviews will get worse.") { s, x in later(&s, 4, "g_quality_bad", x.i, .null) }]))
         L.append(Def(id: "g_loan", cls: "strat", stages: ["grow", "est"], w: 2, def: 2,
-                     cond: { s, co, _ in co.form == .limited && ebit12(co, s) > 0 },
+                     cond: { s, co, _ in ebit12(co, s) > 0 },
                      make: { s, i, data, fc in
                          let co = s.companies[i], k = fc.country(of: co, s)
                          let wk = EventEngine.context(for: co, data: data, country: k).wk
@@ -529,7 +529,7 @@ public enum StrategicDecisions {
                       Opt(label: "Hire less and accept vacancies", detail: "Slower growth.") { s, x in
                           mood(&s, x.i, -6)
                           if s.random.chance(0.3), s.companies[x.i].staff.count > 1, let last = s.companies[x.i].staff.last { removeStaff(&s, x.i, id: last.id) } }])
-        choice("LT_eu", def: 2, cond: { _, co, _ in co.form == .limited }, title: { co, _, _ in "EU money for modernising \(co.name)" },
+        choice("LT_eu", def: 2, cond: { _, _, _ in true }, title: { co, _, _ in "EU money for modernising \(co.name)" },
                body: { _, _, _ in "An EU programme co-finances new equipment and technology. Applying takes work and there is no guarantee." },
                opts: [Opt(label: "Apply", detail: "Paperwork costs now; about half of applicants get support.") { s, x in pay(&s, x, x.kc(8000), "oth", "EU application"); later(&s, 10, "c_LT_eu_res", x.i, .null) },
                       Opt(label: "Invest without support", detail: "Faster, full price.") { s, x in pay(&s, x, x.yr(s) * 0.03, nil, "Modernisation"); cost(&s, x, 0.96, 104) },

@@ -142,7 +142,6 @@ public extension GameEngine {
     /// Apply: the bank checks the documents, then the amount, and pays the loan out less the fee. Nothing moves when it refuses.
     @discardableResult
     mutating func applyForLoan(kind: String, amount: Double, termMonths: Int, companyID: Int?, documents: LoanDocuments, agreed: Bool, payInto: LoanPayout = .current) -> LoanApplicationOutcome {
-        if payInto == .savings && companyID != nil { return .refused("A company loan is paid into the company's account.") }
         guard kind == "cons" || kind == "biz" else { return .refused("The bank does not offer that loan here.") }
         guard agreed else { return .refused("The agreement has to be accepted first.") }
         let squash = { (t: String) in t.lowercased().split(whereSeparator: \.isWhitespace).joined(separator: " ") }
@@ -174,9 +173,8 @@ public extension GameEngine {
         }
         let disbursed = amount - fee
         update { s, _, _ in
-            if payInto == .savings, disbursed > 0 { _ = Brokerage.moveToSavings(&s, disbursed) }
             if let li = s.loans.firstIndex(where: { $0.id == loan.id }) {
-                s.loans[li].set("app", .object(["w": .number(Double(s.week)), "fee": .number(fee), "net": .number(disbursed), "into": .string(payInto == .savings ? "savings" : (companyID == nil ? "current" : "company")),
+                s.loans[li].set("app", .object(["w": .number(Double(s.week)), "fee": .number(fee), "net": .number(disbursed), "into": .string(companyID == nil ? "current" : "company"),
                                                 "term": .number(Double(quote.termMonths)), "rate": .number(quote.yearlyRate), "name": .string(documents.fullName)]))
             }
         }

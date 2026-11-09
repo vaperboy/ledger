@@ -207,7 +207,7 @@ public enum Gates {
             return Unlocks.boardPossible(s, company)
         case .retainedProfit:
             guard let company, let context else { return false }
-            return company.form == .limited && (company.distributed > 0 || Payments.maximumDividend(company, state: s, context: context) > 0)
+            return (company.distributed > 0 || Payments.maximumDividend(company, state: s, context: context) > 0)
         case .anyOf(let rs):
             return rs.contains { (x: UnlockRule) -> Bool in met(x, s, data: data, company: company, context: context) }
         }

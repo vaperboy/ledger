@@ -91,7 +91,6 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
     public var eventIDs: [String]
     public var openingCost: Double
     public var blurb: String
-    public var needsLimitedCompany: Bool
     public var minSize: Double
     public var maxSize: Double
     /// 0 = consumers, 1 = business customers
@@ -163,7 +162,6 @@ public struct Trade: TradeFacts, Equatable, Identifiable {
         eventIDs = j["ev"].array.map { $0.string }
         openingCost = j["open"].double
         blurb = j["blurb"].string
-        needsLimitedCompany = j["needLimited"].bool
         minSize = j["minSize"].double
         maxSize = j["maxSize"].double
         audience = j["aud"].double

@@ -46,7 +46,7 @@ final class FranchiseStepsTests: XCTestCase {
     func testBuyoutDoesNotBlowUpEarlyInGameWeekModuloFiftyTwo() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 3)
         e.update { s, _, _ in Ledger.move(&s, .me, 50_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { throw XCTSkip("no company") }
         func price(week: Int) -> Double {
             var out = 0.0
             e.update { s, _, _ in

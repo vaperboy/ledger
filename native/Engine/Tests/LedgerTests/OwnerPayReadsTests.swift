@@ -12,7 +12,7 @@ final class OwnerPayReadsTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, ctx.homeCurrency(s).scaledPrice(5_000_000), why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: data, context: ctx) { id = i }
         }
         XCTAssertNotEqual(id, 0)
         return (e, id)

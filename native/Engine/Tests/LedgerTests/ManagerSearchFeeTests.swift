@@ -9,7 +9,7 @@ final class ManagerSearchFeeTests: XCTestCase {
     private func game(_ country: String = "UK") throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 50_000_000) else { throw XCTSkip("no cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no cafe") }
         return (e, id)
     }
 

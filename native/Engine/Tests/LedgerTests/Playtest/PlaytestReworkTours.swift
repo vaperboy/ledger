@@ -37,7 +37,7 @@ final class PlaytestReworkTours: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: seed)
         cur = e.homeCurrency
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(60_000_000), why: "Test capital") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(12_000_000), quickSetup: true) else {
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cur.scaledPrice(12_000_000), quickSetup: true) else {
             throw XCTSkip("cannot start \(trade)")
         }
         for _ in 0..<(40 * 7) {
@@ -322,7 +322,7 @@ final class PlaytestReworkTours: XCTestCase {
         return e.saleListing(companyID: id)?.offers.first
     }
 
-    func netBook(_ e: GameEngine, _ id: Int) -> Double { e.state.cash + e.state.savings }
+    func netBook(_ e: GameEngine, _ id: Int) -> Double { e.state.cash }
 
     func soldClean(_ e: GameEngine, _ id: Int, _ what: String) {
         ex(e.state.company(id)?.status == .sold, "\(what): company is marked sold (\(e.state.company(id)?.status.rawValue ?? "nil"))")
@@ -581,7 +581,7 @@ final class PlaytestReworkTours: XCTestCase {
         var other = 0
         if let b = try? fixture("tutor", weeks: 2, seed: 6) { other = b.1; _ = other }
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(5_000_000), why: "Test capital") }
-        let b = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(2_000_000), quickSetup: true)
+        let b = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(2_000_000), quickSetup: true)
         guard case .success(let bid) = b else { return find(3, "second company for a holding did not start") }
         run(&e, weeks: 2)
         switch e.createHolding(name: nil, companies: [id, bid]) {
@@ -648,7 +648,7 @@ final class PlaytestReworkTours: XCTestCase {
         // several short companies in one week: one message for all
         var (m, a) = try fixture(manager: false, accountant: true, weeks: 12, seed: 15)
         m.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
-        guard case .success(let b) = m.startCompany(tradeID: "cafe", cityID: m.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(6_000_000), quickSetup: true) else { return }
+        guard case .success(let b) = m.startCompany(tradeID: "cafe", cityID: m.state.player.cityID, fundWith: cur.scaledPrice(6_000_000), quickSetup: true) else { return }
         run(&m, weeks: 8)
         m.update { s, d, _ in
             for id in [a, b] { CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
@@ -718,7 +718,7 @@ final class PlaytestReworkTours: XCTestCase {
         if !earnedChain { find(3, "chain unlock not earned after 72 weeks of trading (reason: \(later.first { $0.id == "chain" }?.reason ?? ""))") }
         // a second company starts: player-level unlocks are open at once and not announced again
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
-        guard case .success(let b) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(3_000_000), quickSetup: true) else { return find(3, "second company did not start") }
+        guard case .success(let b) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(3_000_000), quickSetup: true) else { return find(3, "second company did not start") }
         let sb = e.unlockState(companyID: b)
         for id in ["chain", "franchise", "abroad", "research"] {
             let mine = later.first { $0.id == id }?.unlocked ?? false
@@ -786,7 +786,7 @@ extension PlaytestReworkTours {
             let o = bot.e.nextDay()
             if mode == "neg", bot.e.state.cash < -1, shown < 6 {
                 shown += 1
-                print("S NEG wk", bot.e.state.week, "day", bot.e.state.day, "cash", Int(before), "->", Int(bot.e.state.cash), "sav", Int(bot.e.state.savings))
+                print("S NEG wk", bot.e.state.week, "day", bot.e.state.day, "cash", Int(before), "->", Int(bot.e.state.cash))
                 for l in bot.e.state.statement.suffix(6) { print("S   line", l.week, l.day, Int(l.amount), l.label) }
                 for m in o.newMessages.prefix(4) { print("S   msg", m.title) }
             }
@@ -801,7 +801,7 @@ extension PlaytestReworkTours {
             }
             if let c = bot.e.state.company(bot.mainID) { prevCash = c.cash }
             if mode == "nw", bot.e.state.week >= Int(PT.env["LEDGER_PT_FROM"] ?? "55")!, bot.e.state.week <= Int(PT.env["LEDGER_PT_FROM"] ?? "55")! + 2 { let c = bot.e.state.company(bot.mainID); print("S DAY", bot.e.state.week, bot.e.state.day, "co", Int(c?.cash ?? 0), "pers", Int(bot.e.state.cash), "msgs", o.newMessages.map { $0.title.prefix(40) }, "stmt", bot.e.state.statement.suffix(2).map { "\(Int($0.amount)) \($0.label)" }) }
-            if mode == "nw", o.completedWeek { let c = bot.e.state.company(bot.mainID); print("S NW wk", bot.e.state.week, "nw", Int(bot.e.netWorth.total), "pers", Int(bot.e.state.cash), "sav", Int(bot.e.state.savings), "co", c?.status.rawValue ?? "-", Int(c?.cash ?? 0), "route", bot.saleRoute, "sold", bot.soldWeek, "loans", Int(bot.e.state.loans.reduce(0) { $0 + $1.balance })); if bot.e.state.week >= 55 && bot.e.state.week <= 57 { for m in o.newMessages { print("S   MSG", m.title, m.status) }; if let c { for t in c.transactions.suffix(12) { print("S   TX", t["w"].int, Int(t["a"].double), t["l"].string) } } } }
+            if mode == "nw", o.completedWeek { let c = bot.e.state.company(bot.mainID); print("S NW wk", bot.e.state.week, "nw", Int(bot.e.netWorth.total), "pers", Int(bot.e.state.cash), "co", c?.status.rawValue ?? "-", Int(c?.cash ?? 0), "route", bot.saleRoute, "sold", bot.soldWeek, "loans", Int(bot.e.state.loans.reduce(0) { $0 + $1.balance })); if bot.e.state.week >= 55 && bot.e.state.week <= 57 { for m in o.newMessages { print("S   MSG", m.title, m.status) }; if let c { for t in c.transactions.suffix(12) { print("S   TX", t["w"].int, Int(t["a"].double), t["l"].string) } } } }
             if o.completedWeek { bot.tend(); bot.midScenario(week: bot.e.state.week); bot.saleWeek() }
         }
     }

@@ -5,14 +5,13 @@ import Finance
 import Businesses
 
 /// Small player actions of the original that belong to none of the bigger systems: renaming, closing and winding up
-/// a company, turning a sole trader into a limited company, and a few switches on a company.
+/// a company, and a few switches on a company.
 /// Original: features/company/rename_and_rebrand.js, features/people/owner_hours_clients_assistants.js (`clgo`, `reopen`),
-/// engine/core/api.js `windUp`, engine/company/company.js `convertToAS`, ui/company/money.js `ccheck`, ui/company/family.js `autostock`,
+/// engine/core/api.js `windUp`, ui/company/money.js `ccheck`, ui/company/family.js `autostock`,
 /// features/sales/realistic_odds.js `inflset`.
 public extension GameEngine {
     enum RenameResult: Equatable, Sendable { case ok, tooShort, nameTaken, notEnoughCash, partOfChain, unknown }
     enum CloseResult: Equatable, Sendable { case ok, unknown, notOpen }
-    enum ConvertResult: Equatable, Sendable { case ok, alreadyLimited, notEnoughCash, unknown, notAllowed(CompanyConversion.Block) }
 
     /// New name and signs for one company. Original: `renameCost`.
     func renameCost(companyID: Int) -> Double {
@@ -157,7 +156,7 @@ public extension GameEngine {
             var personal = 0.0
             for l in ownLoans {
                 let left = l.balance * (1 - frac)
-                if left > 1, l.isGuaranteed || co.form == .soleTrader, let li = s.loans.firstIndex(where: { $0.id == l.id }) {
+                if left > 1, l.isGuaranteed, let li = s.loans.firstIndex(where: { $0.id == l.id }) {
                     personal += left
                     Banking.close(loanID: l.id, repaid: l.balance * frac, state: &s)
                     if let k = s.loans.firstIndex(where: { $0.id == l.id }) { s.loans[k].name += " (taken over by you)"; s.loans[k].companyID = 0 } else { _ = li }
@@ -166,12 +165,9 @@ public extension GameEngine {
                 }
             }
             var rest = cash - loanSum - bills
-            if rest < 0 {
-                if co.form == .soleTrader { Ledger.move(&s, .me, min(0, rest + personal), why: "Shortfall winding up \(co.name)") }
-                rest = 0
-            }
+            if rest < 0 { rest = 0 }
             if rest > 0 {
-                Payments.playerReceives(&s, rest * co.ownership / 100, label: co.form == .soleTrader ? "Closing \(co.name)" : "Liquidation of \(co.name)", companyID: co.id)
+                Payments.playerReceives(&s, rest * co.ownership / 100, label: "Liquidation of \(co.name)", companyID: co.id)
             }
             for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
             if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
@@ -190,29 +186,7 @@ public extension GameEngine {
         return done
     }
 
-    /// Turn a sole trader into a limited company as one transaction (`CompanyConversion`): you pay the share capital personally, `payer` pays the fee,
-    /// the year's profit so far is closed into your personal return, the accountant the form requires is appointed, loans keep your guarantee.
-    /// Nothing changes unless it returns `.ok`. Original: `convertToAS`.
-    @discardableResult mutating func convertToLimited(companyID: Int, payer: CompanyConversion.Payer = .personal, accountantID: Int? = nil) -> ConvertResult {
-        var r = ConvertResult.unknown
-        update { s, data, ctx in
-            guard s.company(companyID) != nil else { return }
-            switch CompanyConversion.convert(&s, companyID: companyID, payer: payer, accountantID: accountantID, data: data, context: ctx) {
-            case .ok: r = .ok
-            case .notEnoughCash: r = .notEnoughCash
-            case .blocked(let b): r = b == .alreadyLimited ? .alreadyLimited : .notAllowed(b)
-            }
-        }
-        return r
-    }
-
-    /// The review sheet of the conversion: requirements, costs, who pays (with balances and shortfalls), consequences, ownership, loans and the
-    /// figures before and after. Read only: cancelling the sheet changes nothing.
-    func conversionPlan(companyID: Int, payer: CompanyConversion.Payer = .personal, accountantID: Int? = nil) -> CompanyConversion.Plan? {
-        CompanyConversion.plan(state, companyID: companyID, payer: payer, accountantID: accountantID, data: data, context: context)
-    }
-
-    /// The personal guarantee on a company loan and whether the bank will talk about releasing it (after a conversion the guarantee stays).
+    /// The personal guarantee on a company loan and whether the bank will talk about releasing it (it stays until the bank agrees).
     func guaranteeTerms(loanID: Int) -> LoanGuarantee.Terms? { LoanGuarantee.terms(state, loanID: loanID) }
 
     /// Bank discussion: offer `extraMargin` (a yearly rate added to the loan's margin) for the release of the personal guarantee.

@@ -23,10 +23,8 @@ public struct CompanyStake: Equatable, Sendable, Identifiable {
 }
 
 public struct NetWorthBreakdown: Equatable, Sendable {
-    /// Money you can spend: current account plus savings.
+    /// Money you can spend: the account's balance.
     public var liquid: Double
-    public var currentAccount: Double
-    public var savings: Double
     public var investments: Double
     public var luxury: Double
     /// Your share of the estimated value of private companies and startups (not cash).
@@ -103,7 +101,7 @@ public extension GameEngine {
             stakes.append(CompanyStake(companyID: co.id, name: co.name, estimatedValue: value, ownershipPercent: co.ownership, attributableEquity: attributable,
                                        heldThrough: held?.name, guaranteedDebt: g))
         }
-        return NetWorthBreakdown(liquid: s.cash + s.savings, currentAccount: s.cash, savings: s.savings, investments: nw.investments, luxury: nw.luxury,
+        return NetWorthBreakdown(liquid: s.cash, investments: nw.investments, luxury: nw.luxury,
                                  estimatedCompanyEquity: nw.companies, stakes: stakes, otherEstimatedHoldings: max(0, nw.companies - directSum), personalDebt: nw.debt,
                                  pendingTax: nw.pendingTax, guaranteedCompanyDebt: guaranteed, total: nw.total,
                                  note: "Companies are an estimate of what your share would fetch, not money you can spend. Loans you guaranteed for a company count against you only if the company fails.")
@@ -145,8 +143,8 @@ public extension GameEngine {
                                     reserves: companyReserves(companyID: companyID) ?? CompanyReserves(payroll: 0, tax: 0, free: co.cash), period: periodName, revenue: revenue,
                                     operatingExpenses: total, profit: profit, margin: revenue > 0 ? profit / revenue : nil, taxBooked: b["tax"] ?? 0, expenses: lines,
                                     loansOwed: loans.reduce(0) { $0 + $1.balance }, guaranteedLoans: loans.filter(\.isGuaranteed).reduce(0) { $0 + $1.balance },
-                                    legalForm: (co.form == .limited ? forms["limited"] : forms["soleTrader"]) ?? (co.form == .limited ? "Limited company" : "Sole trader"),
-                                    legalFormShort: (co.form == .limited ? forms["limitedShort"] : forms["soleTraderShort"]) ?? "",
+                                    legalForm: forms["limited"] ?? "Limited company",
+                                    legalFormShort: forms["limitedShort"] ?? "",
                                     incorporatedSince: legal["since"].isNull ? nil : GameCalendar.dateString(week: legal["since"].int), ownershipPercent: co.ownership,
                                     otherShareholders: holders, shareCount: legal["shares"]["count"].isNull ? nil : legal["shares"]["count"].double, shareCapital: co.shareCapital,
                                     accountant: acc["name"].isNull ? nil : acc["name"].string, equity: CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: state.loans),

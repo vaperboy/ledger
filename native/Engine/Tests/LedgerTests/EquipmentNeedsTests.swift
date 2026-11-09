@@ -18,7 +18,7 @@ final class EquipmentNeedsTests: XCTestCase {
     func testCafeWithStaffNeedsNoWorkstationsOrLaptops() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("could not start") }
         let own = Set(try XCTUnwrap(e.data.catalog["cafe"]).equipment.map { $0.id })
         let needs = e.equipmentNeeds(companyID: id)
         XCTAssertTrue(needs.contains { !$0.ofTrade }, "the store still sells other trades' items")

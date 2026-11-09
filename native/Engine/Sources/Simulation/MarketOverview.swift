@@ -213,7 +213,7 @@ public extension GameEngine {
             }
         }
         guard let b = best else { return nil }
-        let cost = CompanySetup.estimate(tradeID: b.trade.id, cityID: b.city.id, form: .limited, size: 1, countryCode: b.country.code, state: state, data: data)?.total
+        let cost = CompanySetup.estimate(tradeID: b.trade.id, cityID: b.city.id, size: 1, countryCode: b.country.code, state: state, data: data)?.total
         return MarketOpportunity(id: "city:\(b.trade.id):\(b.city.id)", kind: .openCity, title: "\(b.trade.name) in \(b.city.name)",
                                  detail: "High demand and \(b.rivals) rival\(b.rivals == 1 ? "" : "s").", companyID: nil, rivalID: nil, cityID: b.city.id,
                                  countryCode: b.country.code, tradeID: b.trade.id, assetID: nil, amount: cost)

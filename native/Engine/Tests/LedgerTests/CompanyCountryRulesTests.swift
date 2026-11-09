@@ -16,7 +16,7 @@ final class CompanyCountryRulesTests: XCTestCase {
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 900_000_000, why: "Test funds")
             let city = data.countries[other]!.cities[0].id
-            if case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city, form: .limited, size: 1, name: "Abroad Cafe", countryCode: other, accountantID: nil, data: data, context: ctx) { made = id }
+            if case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city, size: 1, name: "Abroad Cafe", countryCode: other, accountantID: nil, data: data, context: ctx) { made = id }
         }
         if made == 0 { throw XCTSkip("no foreign cafe") }
         return (e, made, other)
@@ -37,7 +37,7 @@ final class CompanyCountryRulesTests: XCTestCase {
             var cfg = Payday.config(s.companies[i], today: t)
             cfg.ownerPaidMonth = Payday.monthNumber(t) - 1
             s.companies[i].set("pr29", cfg.json)
-            _ = Payday.runPayroll(&s, i, how: .manual, today: t, data: data, context: ctx)
+            _ = Payday.runPayroll(&s, i, today: t, data: data, context: ctx)
         }
         XCTAssertEqual(code, "DE")
         XCTAssertGreaterThan(abs(expected - home), 1, "the two countries tax differently, so the test can tell them apart")

@@ -11,7 +11,7 @@ final class BillsAndLoansTests: XCTestCase {
     private func cafe(seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else {
             XCTFail("cafe could not be started"); throw XCTSkip("no cafe")
         }
         return (e, id)
@@ -94,7 +94,7 @@ final class BillsAndLoansTests: XCTestCase {
 
     func testLandlordIsPaidWhenTenantPaysNotWeekly() throws {
         var (e, tenant) = try cafe(seed: 31)
-        guard case .success(let landlord) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else {
+        guard case .success(let landlord) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else {
             throw XCTSkip("no second company")
         }
         e.update { s, data, ctx in
@@ -121,7 +121,7 @@ final class BillsAndLoansTests: XCTestCase {
 
     func testLandlordGetsNothingWhileTenantCannotPay() throws {
         var (e, tenant) = try cafe(seed: 32)
-        guard case .success(let landlord) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else {
+        guard case .success(let landlord) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else {
             throw XCTSkip("no second company")
         }
         e.update { s, _, ctx in

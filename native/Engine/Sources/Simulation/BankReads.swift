@@ -30,9 +30,6 @@ public struct BankAccountRow: Identifiable, Equatable, Sendable {
     public var companyID: Int?
     /// The balance of the account (the current account; for investments the value of what is held).
     public var balance: Double
-    /// Personal account: the savings balance and the rate it pays (nil for the others).
-    public var savings: Double?
-    public var savingsRate: Double?
     public var loanCount: Int
     /// A payroll waits on the owner at this account (the red bubble). `alertNote` says which.
     public var hasAlert: Bool
@@ -42,7 +39,7 @@ public struct BankAccountRow: Identifiable, Equatable, Sendable {
 /// The "pick an account" screen.
 public struct BankAccounts: Equatable, Sendable {
     public var rows: [BankAccountRow]
-    /// Every balance added up (current accounts, savings, investments, company accounts).
+    /// Every balance added up (the account, investments, company accounts).
     public var total: Double
     /// What falls due in the next 30 days across everything, and whether the cash on hand covers it.
     public var dueWithin30Days: Double
@@ -118,9 +115,7 @@ public struct BankAccountDetail: Equatable, Sendable {
     /// What is coming: payroll, rent and supplier bills, tax, loan instalments, soonest first.
     public var upcoming: [Obligation]
     public var recent: [BankTransaction]
-    /// Personal account only: the savings account and the fixed deposits.
-    public var savings: Double?
-    public var savingsRate: Double?
+    /// Personal account only: the fixed deposits.
     public var deposits: [DepositInfo]
     /// The loans taken for this account (none for the investments).
     public var loans: [BankLoan]
@@ -134,17 +129,17 @@ public extension GameEngine {
         let s = state
         let alerts = Dictionary(payrollAlerts().map { ($0.companyID, $0) }, uniquingKeysWith: { (a, _) in a })
         var rows: [BankAccountRow] = []
-        rows.append(BankAccountRow(id: .personal, kind: .personal, name: "Personal account", detail: "", companyID: nil, balance: s.cash, savings: s.savings,
-                                   savingsRate: PersonalFinance.savingsRate(s), loanCount: loans(for: .personal).count, hasAlert: false, alertNote: nil))
+        rows.append(BankAccountRow(id: .personal, kind: .personal, name: "Your account", detail: "", companyID: nil, balance: s.cash,
+                                   loanCount: loans(for: .personal).count, hasAlert: false, alertNote: nil))
         rows.append(BankAccountRow(id: .investments, kind: .investments, name: "Investments", detail: "Shares · crypto · funds", companyID: nil,
-                                   balance: investmentsValue, savings: nil, savingsRate: nil, loanCount: 0, hasAlert: false, alertNote: nil))
+                                   balance: investmentsValue, loanCount: 0, hasAlert: false, alertNote: nil))
         for co in s.liveCompanies {
             let a = alerts[co.id]
             rows.append(BankAccountRow(id: .company(co.id), kind: .company, name: co.name, detail: "\(tradeName(co)) · \(cityName(co))", companyID: co.id, balance: co.cash,
-                                       savings: nil, savingsRate: nil, loanCount: loans(for: .company(co.id)).count, hasAlert: a != nil, alertNote: a.map { alertNote($0, co) }))
+                                       loanCount: loans(for: .company(co.id)).count, hasAlert: a != nil, alertNote: a.map { alertNote($0, co) }))
         }
         let fo = financeOverview()
-        return BankAccounts(rows: rows, total: rows.reduce(0) { $0 + $1.balance + ($1.savings ?? 0) }, dueWithin30Days: fo.dueWithin30Days, isCovered: fo.shortfall == 0,
+        return BankAccounts(rows: rows, total: rows.reduce(0) { $0 + $1.balance }, dueWithin30Days: fo.dueWithin30Days, isCovered: fo.shortfall == 0,
                             alertCount: rows.filter(\.hasAlert).count)
     }
 
@@ -156,15 +151,15 @@ public extension GameEngine {
             let upcoming = financeOverview().upcoming.filter { $0.companyID == 0 }
             let thisMonth = GameCalendar.monthIndex(week: s.week)
             let month = s.statement.filter { GameCalendar.monthIndex(week: $0.week) == thisMonth }.reduce(0) { $0 + $1.amount }
-            return BankAccountDetail(id: id, name: "Personal account", detail: s.player.name, balance: s.cash, available: max(0, s.cash + s.overdraftLimit),
+            return BankAccountDetail(id: id, name: "Your account", detail: s.player.name, balance: s.cash, available: max(0, s.cash + s.overdraftLimit),
                                      overdraftLimit: s.overdraftLimit, overdraftUsed: max(0, -s.cash),
                                      overdraftRate: Banking.overdraftRate(state: s, country: home, home: home, personal: true), monthChange: month, alert: nil,
-                                     upcoming: upcoming, recent: bankTransactions(id, limit: 10), savings: s.savings, savingsRate: PersonalFinance.savingsRate(s),
+                                     upcoming: upcoming, recent: bankTransactions(id, limit: 10),
                                      deposits: deposits, loans: loans(for: id), statements: statementEntries())
         case .investments:
             return BankAccountDetail(id: id, name: "Investments", detail: "Shares · crypto · funds", balance: investmentsValue, available: investmentsValue,
                                      overdraftLimit: 0, overdraftUsed: 0, overdraftRate: nil, monthChange: nil, alert: nil, upcoming: [],
-                                     recent: bankTransactions(id, limit: 10), savings: nil, savingsRate: nil, deposits: [], loans: [], statements: [])
+                                     recent: bankTransactions(id, limit: 10), deposits: [], loans: [], statements: [])
         case .company(let cid):
             guard let co = s.company(cid), co.status.isLive else { return nil }
             let room = context.overdraftRoom(co, s)
@@ -174,7 +169,7 @@ public extension GameEngine {
                                      overdraftLimit: room, overdraftUsed: max(0, -co.cash),
                                      overdraftRate: Banking.overdraftRate(state: s, country: context.country(of: co, s), home: home),
                                      monthChange: before.map { co.cash - $0 }, alert: payrollAlerts().first { $0.companyID == cid },
-                                     upcoming: financeOverview(companyID: cid).upcoming, recent: bankTransactions(id, limit: 10), savings: nil, savingsRate: nil,
+                                     upcoming: financeOverview(companyID: cid).upcoming, recent: bankTransactions(id, limit: 10),
                                      deposits: [], loans: loans(for: id), statements: statementEntries())
         }
     }
@@ -187,7 +182,7 @@ public extension GameEngine {
         case .personal:
             return state.statement.enumerated().prefix(limit).map { transaction($0.element, index: $0.offset) }
         case .investments:
-            let prefixes = ["Bought ", "Sold ", "Dividend ", "Fixed deposit", "Deposit matured", "To savings", "From savings"]
+            let prefixes = ["Bought ", "Sold ", "Dividend ", "Fixed deposit", "Deposit matured"]
             return state.statement.enumerated().filter { l in prefixes.contains { l.element.label.hasPrefix($0) } }.prefix(limit).map { transaction($0.element, index: $0.offset) }
         case .company(let cid):
             return companyMovements(companyID: cid).prefix(limit).map {
@@ -232,7 +227,7 @@ public extension GameEngine {
                         category: Self.movementKind(l.label).rawValue)
     }
 
-    /// The loans taken for an account: the player's own on the personal account, a company's on its account.
+    /// The loans taken for an account: the player's own on the account, a company's on its account.
     private func loans(for id: BankAccountID) -> [BankLoan] {
         let owner = id.companyID ?? 0
         guard id == .personal || id.companyID != nil else { return [] }

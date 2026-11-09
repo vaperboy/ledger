@@ -73,7 +73,6 @@ final class CountryNeutralityTests: XCTestCase {
             XCTAssertFalse(c.cities.isEmpty, "\(c.code): cities")
             for t in tickers { XCTAssertFalse(c.pack["flavour"]["stocks"][t].string.isEmpty, "\(c.code): name of \(t)") }
             XCTAssertFalse(c.pack["authorities"]["tax"].string.isEmpty, "\(c.code): tax authority")
-            XCTAssertFalse(c.companyForms["soleTrader"]?.isEmpty ?? true, "\(c.code): sole trader form")
             XCTAssertFalse(c.companyForms["limited"]?.isEmpty ?? true, "\(c.code): limited form")
         }
         // Companies and stocks are named from the country's own words.

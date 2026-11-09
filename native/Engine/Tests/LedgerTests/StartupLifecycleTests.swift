@@ -13,14 +13,13 @@ final class StartupLifecycleTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, funds, why: "Test funds") }
         return e
     }
-    private func days(_ e: inout GameEngine, _ n: Int) { for _ in 0..<n { for c in e.state.companies { _ = e.approvePayroll(companyID: c.id) }; _ = e.nextDay() } }
+    private func days(_ e: inout GameEngine, _ n: Int) { for _ in 0..<n { _ = e.nextDay() } }
 
     func testFoundedStartupIsARealCompanyWithPaidBuilders() throws {
         var e = try game(seed: 3)
         guard case .ok(let sid) = e.foundStartup(name: "Realco", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 4) else { return XCTFail("found") }
         let co = try XCTUnwrap(e.state.company(sid))
         XCTAssertEqual(co.type, "startup")
-        XCTAssertEqual(co.form, .limited)
         XCTAssertEqual(co.status, .open)
         XCTAssertEqual(co.staff.filter { $0.role == "dev" }.count, 2, "two builders hired through the ordinary hiring")
         XCTAssertGreaterThan(co.cash, 0)
@@ -90,7 +89,7 @@ final class StartupLifecycleTests: XCTestCase {
         guard case .ok(let sid) = e.foundStartup(name: "Sellco", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 4) else { return XCTFail("found") }
         days(&e, 7 * 14)
         XCTAssertTrue(CompanySale.canSell(e.state, companyID: sid))
-        let net0 = e.state.cash + e.state.savings
+        let net0 = e.state.cash
         XCTAssertTrue(e.listCompanyForSale(companyID: sid, broker: false, percent: 100))
         var accepted = false
         for _ in 0..<20 where !accepted {
@@ -99,7 +98,7 @@ final class StartupLifecycleTests: XCTestCase {
         }
         if accepted {
             XCTAssertEqual(e.state.company(sid)?.status, .sold)
-            XCTAssertGreaterThan(e.state.cash + e.state.savings, net0 - 1)
+            XCTAssertGreaterThan(e.state.cash, net0 - 1)
             days(&e, 14)
             XCTAssertEqual(e.foundedStartups.first?.exited, true)
         }

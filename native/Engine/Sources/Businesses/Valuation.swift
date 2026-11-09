@@ -4,7 +4,7 @@ import Finance
 
 /// What a company is worth and what the player is worth. Originals: `companyValue`, `netWorth` in engine/money/money.js.
 public struct NetWorth: Equatable, Sendable {
-    /// Current account + savings
+    /// The account's balance
     public var personal: Double
     /// Stocks
     public var stocks: Double
@@ -44,13 +44,10 @@ public enum Valuation {
         }
         let net = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans)
         // A startup is worth what an investor would pay for its product, never less than its net assets (see StartupModel.value).
-        if bd.id == StartupModel.tradeID { return jsRound(co.form == .limited ? max(0, StartupModel.value(co, state: s, net: net)) : StartupModel.value(co, state: s, net: net)) }
+        if bd.id == StartupModel.tradeID { return jsRound(max(0, StartupModel.value(co, state: s, net: net))) }
         let goodwill = goodwill(co, state: s, trades: trades)
-        // Value-neutral across a change of legal form: the old sole-trader goodwill discount of 0.85 is gone.
-        var v = jsRound(net + goodwill)
-        // Owners of a limited company cannot lose more than the company is worth; only a sole trader is personally liable for a negative value.
-        if co.form == .limited { v = max(0, v) }
-        return v
+        // Owners of a limited company cannot lose more than the company is worth: a company is never valued below zero.
+        return max(0, jsRound(net + goodwill))
     }
 
     /// What a buyer pays for the business on top of its things: a multiple of yearly profit, earned over two years of accounts.
@@ -101,7 +98,7 @@ public enum Valuation {
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
         let debt = s.loans.filter { $0.companyID == 0 }.reduce(0) { $0 + $1.balance }
-        return NetWorth(personal: s.cash + s.savings + HeldMoney.playerRemaining(s), stocks: stocks, crypto: crypto, funds: funds, companies: companies,
+        return NetWorth(personal: s.cash + HeldMoney.playerRemaining(s), stocks: stocks, crypto: crypto, funds: funds, companies: companies,
                         luxury: lux, debt: debt, pendingTax: s.tax.pending, exchange: PublicExchange.holdingsValue(s))
     }
 }

@@ -12,7 +12,7 @@ final class ManagerOpeningTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+            if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) { id = i }
             Payments.injectCash(&s, companyID: id, amount: 300_000_000)
             // Opened bare: papers in order, the minimum kit only, no team.
             let rep = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(team: .minimum, payrollMonthsReserve: 2, teamInPlace: true))

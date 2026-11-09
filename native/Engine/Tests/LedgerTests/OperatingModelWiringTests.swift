@@ -12,7 +12,7 @@ final class OperatingModelWiringTests: XCTestCase {
         var paid = 0.0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
-            guard case .success(let id) = CompanySetup.create(&s, tradeID: "airline", cityID: s.player.cityID, form: .limited, data: data, context: ctx),
+            guard case .success(let id) = CompanySetup.create(&s, tradeID: "airline", cityID: s.player.cityID, data: data, context: ctx),
                   let i = s.companyIndex(id), let bd = data.catalog["airline"] else { return XCTFail("no company") }
             Payments.injectCash(&s, companyID: id, amount: 5_000_000_000)
             s.companies[i].set("eq", .object([:]))

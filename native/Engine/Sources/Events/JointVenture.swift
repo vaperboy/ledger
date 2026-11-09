@@ -201,7 +201,7 @@ public enum JointVenture {
     /// Check an invitation against the guard rails; nil when it is fine.
     static func inviteProblem(_ s: GameState, _ co: Company, _ st: State, linkKey: String, pct: Double, price: Double, myLinkKeys: Set<String>, data: GameData) -> String? {
         if !co.status.isLive || co.status == .setup { return "\(co.name) is not open yet." }
-        if co.form != .limited || co.type == "hold" || s.isBranch(co) { return "Only an ordinary limited company can have partners." }
+        if co.type == "hold" || s.isBranch(co) { return "Only an ordinary limited company can have partners." }
         if let why = JVRules.linkProblem(candidate: linkKey, mine: myLinkKeys, partners: Set(st.members.map { $0.linkKey })) { return why }
         if st.invites.contains(where: { $0.linkKey == linkKey && $0.status == "sent" }) { return "That player has been invited already." }
         let t = CapTable.table(co)

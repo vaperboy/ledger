@@ -109,17 +109,8 @@ public enum Payments {
         Ledger.move(&s, .me, jsRound(amount), why: label, companyID: companyID)
     }
 
-    /// When the current account is short, the rest comes over from savings: one transfer on the statement.
-    /// Original: `fromSavings`.
-    public static func transferFromSavings(_ s: inout GameState, need: Double) {
-        let r = min(max(0, s.savings), need - max(0, s.cash))
-        if r > 0 {
-            Ledger.moveSavings(&s, -r)
-            Ledger.move(&s, .me, r, why: "From savings")
-        }
-    }
-
-    public static func liquid(_ s: GameState) -> Double { s.cash + s.savings }
+    /// What the player can spend now: the one account's balance.
+    public static func liquid(_ s: GameState) -> Double { s.cash }
 
     // MARK: Owner and company
 
@@ -127,30 +118,13 @@ public enum Payments {
     @discardableResult
     public static func injectCash(_ s: inout GameState, companyID: Int, amount: Double) -> Bool {
         guard let i = s.companyIndex(companyID), liquid(s) >= amount else { return false }
-        transferFromSavings(&s, need: amount)
         Ledger.move(&s, .me, -amount, why: "Invested in \(s.companies[i].name)", companyID: companyID)
         AccountingLedger.note(category: "owner", label: "Owner investment")
         Ledger.moveRaw(&s, .company(companyID), amount)
         s.companies[i].ownerNetFlow += amount
-        if s.companies[i].form == .limited { s.companies[i].injectedCapital += amount }
+        s.companies[i].injectedCapital += amount
         s.companies[i].addTransaction(week: s.week, amount: amount, label: "Owner investment")
         return true
-    }
-
-    public enum WithdrawResult: Equatable, Sendable { case ok, notEnoughCash, dividendOnly }
-
-    /// A sole trader takes money out of the business. A limited company may only pay dividends. Original: `withdrawCash`.
-    public static func withdrawCash(_ s: inout GameState, companyID: Int, amount: Double) -> WithdrawResult {
-        guard let i = s.companyIndex(companyID) else { return .notEnoughCash }
-        guard s.companies[i].form == .soleTrader else { return .dividendOnly }
-        if s.companies[i].cash < amount { return .notEnoughCash }
-        AccountingLedger.note(category: "owner", label: "Owner drawing")
-        Ledger.moveRaw(&s, .company(companyID), -amount)
-        s.companies[i].ownerNetFlow -= amount
-        playerReceives(&s, amount, label: "Drawing from \(s.companies[i].name)")
-        s.companies[i].distributed += amount
-        s.companies[i].addTransaction(week: s.week, amount: -amount, label: "Owner drawing")
-        return .ok
     }
 
     /// Most that can go out as a dividend now: retained profits (equity above share capital), leaving two weeks of
@@ -163,7 +137,7 @@ public enum Payments {
     }
 
     /// `needsBoard`: the company has partners, so a board meeting must vote for the dividend first.
-    public enum DividendResult: Equatable, Sendable { case ok, notLimitedCompany, noRetainedProfit, notEnoughCash, needsBoard }
+    public enum DividendResult: Equatable, Sendable { case ok, noRetainedProfit, notEnoughCash, needsBoard }
 
     /// A limited company pays a dividend. Original: `payDividend`.
     public static func payDividend(_ s: inout GameState, companyID: Int, amount: Double, context: FinanceContext) -> DividendResult {
@@ -172,7 +146,6 @@ public enum Payments {
         // A store of a chain is a branch: the dividend is the chain's, declared once from all branches (whichever store it is asked of).
         let br = s.chainStores(of: co)
         if br.count >= 2 { return payChainDividend(&s, br, amount: amount, context: context) }
-        guard co.form == .limited else { return .notLimitedCompany }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans) - co.shareCapital
         if amount > equity { return .noRetainedProfit }
         if co.cash - amount < context.weeklyCost(co, s) * 2 { return .notEnoughCash }
@@ -196,7 +169,6 @@ public enum Payments {
     /// head office, the oldest store) receive it once.
     static func payChainDividend(_ s: inout GameState, _ br: [Company], amount: Double, context: FinanceContext) -> DividendResult {
         let head = br[0]
-        guard head.form == .limited else { return .notLimitedCompany }
         if amount > chainEquity(br, s) { return .noRetainedProfit }
         let spares = br.map { max(0, spare($0, s, context)) }
         let total = spares.reduce(0, +)
@@ -237,7 +209,7 @@ public enum Payments {
             s.companies[hi].addTransaction(week: s.week, amount: part, label: "Dividend from \(name)")
         }
         let shield = context.homeCountry(s).dividendShield
-        let injected = s.companies.filter { $0.status.isLive && $0.form == .limited }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }
+        let injected = s.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.injectedCapital * $1.ownership / 100 }
         s.tax.dividendShield = max(s.tax.dividendShield, injected * shield)
         PersonalFinance.withholdNow(&s, context: context)   // dividend tax is withheld on payout
     }

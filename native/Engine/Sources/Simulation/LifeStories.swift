@@ -17,7 +17,7 @@ public enum LifeStory: String, CaseIterable, Sendable {
     public var tagline: String {
         switch self {
         case .loan: return "The bank lends you a start-up loan. The classic start."
-        case .heir: return "The family café is yours: open, a small team and money in its account. A little savings, no loan."
+        case .heir: return "The family café is yours: open, a small team and money in its account. A little money in yours, no loan."
         case .fresh: return "Your chosen business, set up and open on the first day. No loan."
         }
     }
@@ -60,19 +60,18 @@ enum LifeStories {
     static func applyFresh(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, name: String, chooseFirstItem: Bool = false) -> Bool {
         guard let bd = data.catalog[tradeID], SpecialFamilies.isStartable(bd), let country = data.countries[s.homeCountryCode],
               let city = country.city(s.player.cityID) ?? country.cities.first else { return false }
-        let form: LegalForm = bd.needsLimitedCompany ? .limited : .soleTrader
         let size = CompanySetup.recommendedSize(bd, city: city)
         let big = 1e9
         var probe = s
         Ledger.move(&probe, .me, big, why: "Start probe")
-        guard let pid = build(&probe, data: data, context: context, tradeID: tradeID, cityID: city.id, form: form, size: size, name: name),
+        guard let pid = build(&probe, data: data, context: context, tradeID: tradeID, cityID: city.id, size: size, name: name),
               let pi = probe.companyIndex(pid) else { return false }
         let spent: Double = big - probe.cash - probe.companies[pi].cash
         let weekly: Double = context.weeklyCost(probe.companies[pi], probe)
         let weeks: Double = Double(data.balance.firstYear.startRunwayWeeks)
         let cash: Double = ((spent + weekly * weeks) / 1000).rounded(.up) * 1000
         Ledger.move(&s, .me, cash, why: "Starting money")
-        guard let id = build(&s, data: data, context: context, tradeID: tradeID, cityID: city.id, form: form, size: size, name: name),
+        guard let id = build(&s, data: data, context: context, tradeID: tradeID, cityID: city.id, size: size, name: name),
               let i = s.companyIndex(id) else { return false }
         s.rest["start"] = .object(["story": .string(LifeStory.fresh.rawValue), "cash": .number(cash)])
         // With `chooseFirstItem` the first company sells only what the player picks (`GameEngine.chooseFirstItem`); nothing sells until then.
@@ -82,8 +81,8 @@ enum LifeStories {
 
     /// Creates the company, puts all the player's money into it, buys what the trade cannot open without (premises, required equipment, papers,
     /// the minimum team), puts the owner to work in it and opens it. Returns its id.
-    private static func build(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, cityID: String, form: LegalForm, size: Double, name: String) -> Int? {
-        guard case .success(let id) = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name.isEmpty ? nil : name, data: data, context: context) else { return nil }
+    private static func build(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, cityID: String, size: Double, name: String) -> Int? {
+        guard case .success(let id) = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, size: size, name: name.isEmpty ? nil : name, data: data, context: context) else { return nil }
         _ = Payments.injectCash(&s, companyID: id, amount: s.cash)
         // The minimum team and the equipment the trade needs to open and serve customers (a café's furniture is not on the opening checklist
         // but capacity is zero without it); optional extras are bought later.
@@ -105,7 +104,7 @@ enum LifeStories {
         return id
     }
 
-    /// The heir: a running café, money in its account, savings in yours, no loan. Money arrives and leaves only through the ledger.
+    /// The heir: a running café, money in its account, some money in yours, no loan. Money arrives and leaves only through the ledger.
     static func applyHeir(_ s: inout GameState, data: GameData, context: FinanceContext) -> Bool {
         guard let bd = data.catalog["cafe"], let country = data.countries[s.homeCountryCode],
               let city = country.city(s.player.cityID) ?? country.cities.first else { return false }
@@ -114,11 +113,11 @@ enum LifeStories {
         let size = CompanySetup.recommendedSize(bd, city: city)
         // The estimate needs the owner to hold the share capital; price it on a copy that does.
         var probe = s; probe.cash += Double(Int32.max)
-        guard let est = CompanySetup.estimate(tradeID: "cafe", cityID: city.id, form: .limited, size: size, state: probe, data: data) else { return false }
+        guard let est = CompanySetup.estimate(tradeID: "cafe", cityID: city.id, size: size, state: probe, data: data) else { return false }
         let put = currency.tidy(est.total * 1.3)
-        Ledger.move(&s, .me, put + savings + est.personalOutlay, why: "Inheritance: the family café and savings")
+        Ledger.move(&s, .me, put + savings + est.personalOutlay, why: "Inheritance: the family café and cash")
         let last = country.lastNames.isEmpty ? "Family" : s.random.pick(country.lastNames)
-        guard case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city.id, form: .limited, size: size, name: "\(last) Café", data: data, context: context),
+        guard case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city.id, size: size, name: "\(last) Café", data: data, context: context),
               Payments.injectCash(&s, companyID: id, amount: put) else { return false }
         // The family has run it for years, so the café has all its usual kit, not only what it takes to open.
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))

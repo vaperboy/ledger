@@ -7,10 +7,10 @@ import Simulation
 
 /// The Accounting read models and records, net worth breakdown and Company overview figures.
 final class AccountingReadsTests: XCTestCase {
-    private func firm(trade: String = "cafe", days: Int = 90, form: LegalForm = .limited, seed: Int = 31) throws -> (GameEngine, Int) {
+    private func firm(trade: String = "cafe", days: Int = 90, seed: Int = 31) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: form, fundWith: 200_000_000) else { XCTFail("start"); throw XCTSkip("none") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 200_000_000) else { XCTFail("start"); throw XCTSkip("none") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
         _ = e.takeLoan(kind: "biz", amount: 3_000_000, termMonths: 36, companyID: id)
@@ -43,54 +43,14 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertNotNil(e.transactionDetail(companyID: id, id: first.id))
     }
 
-    func testNotesAndAccessAreNamedUsersOnly() throws {
+    func testTransactionNotesAreKeptAndCleared() throws {
         var (e, id) = try firm(days: 40)
-        let staff = try XCTUnwrap(e.state.company(id)?.staff.first)
-        let user = "p\(staff.id)"
         let t = try XCTUnwrap(e.companyTransactions(companyID: id)?.entries.first)
-        // Nobody but the owner has access by default (the accountant and managers included).
-        XCTAssertEqual(e.accountingLevel(companyID: id), .owner)
-        XCTAssertNil(e.companyTransactions(companyID: id, user: user))
-        XCTAssertNil(e.payrollRuns(companyID: id, user: "acc"))
-        XCTAssertFalse(e.setTransactionNote(companyID: id, id: t.id, note: "x", user: user))
-        // The owner adds a named user at View.
-        XCTAssertEqual(e.setAccountingAccess(companyID: id, userID: user, level: .view), .changed)
-        XCTAssertNotNil(e.companyTransactions(companyID: id, user: user))
-        XCTAssertNil(e.payrollRuns(companyID: id, user: user), "payroll needs the payroll level")
-        XCTAssertNil(e.accountingRoster(companyID: id, user: user), "only the owner sees who has access")
-        XCTAssertEqual(e.setAccountingAccess(companyID: id, userID: user, level: .full, by: user), .refused("Only the owner manages access."))
-        XCTAssertEqual(e.setAccountingAccess(companyID: id, userID: user, level: .full), .changed)
-        XCTAssertTrue(e.setTransactionNote(companyID: id, id: t.id, note: "Checked with the supplier", user: user))
+        XCTAssertFalse(e.setTransactionNote(companyID: id, id: "no-such-row", note: "x"))
+        XCTAssertTrue(e.setTransactionNote(companyID: id, id: t.id, note: "Checked with the supplier"))
         XCTAssertEqual(e.companyTransactions(companyID: id)?.entries.first { $0.id == t.id }?.note, "Checked with the supplier")
-        // Access to one company never grants another.
-        guard case .success(let other) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 10_000_000) else { return XCTFail("second") }
-        XCTAssertNil(e.companyTransactions(companyID: other, user: user))
-        XCTAssertEqual(e.accountingLevel(companyID: other, user: user), .none)
-        // Remove.
-        XCTAssertEqual(e.removeAccountingAccess(companyID: id, userID: user), .changed)
-        XCTAssertNil(e.companyTransactions(companyID: id, user: user))
-        XCTAssertEqual(e.setAccountingAccess(companyID: id, userID: "p999999", level: .view), .refused("That person is not part of this company."))
-    }
-
-    func testPayrollRunsPayslipsTimesheetsAndNoDuplicatePeriod() throws {
-        let (e, id) = try firm(days: 100)
-        let co = try XCTUnwrap(e.state.company(id))
-        let runs = try XCTUnwrap(e.payrollRuns(companyID: id))
-        XCTAssertFalse(runs.isEmpty)
-        XCTAssertEqual(Set(runs.map(\.periodIndex)).count, runs.count, "one run per period")
-        let run = try XCTUnwrap(runs.first)
-        XCTAssertEqual(run.lines.count, co.staff.count + (co.managerID == nil ? 0 : 1))
-        XCTAssertGreaterThan(run.paid, 0)
-        XCTAssertGreaterThan(run.employerCostsTotal, 0)
-        XCTAssertEqual(e.payslips(companyID: id, runID: run.id)?.count, run.lines.count)
-        let review = try XCTUnwrap(e.payrollRunReview(companyID: id))
-        XCTAssertEqual(review.totalEmployerCost, review.grossTotal + review.employerContributions + review.insurance + review.paidLeaveCover, accuracy: 1)
-        XCTAssertEqual(review.account, co.name + " account")
-        let sheets = try XCTUnwrap(e.timesheets(companyID: id))
-        XCTAssertEqual(sheets.count, co.staff.count)
-        XCTAssertTrue(sheets.contains { ($0.actualHoursRecorded ?? 0) > 0 }, "hours actually worked come from the weekly simulation")
-        XCTAssertTrue(sheets.allSatisfy { $0.contractedHoursPerWeek > 0 })
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        XCTAssertTrue(e.setTransactionNote(companyID: id, id: t.id, note: ""))
+        XCTAssertNil(e.companyTransactions(companyID: id)?.entries.first { $0.id == t.id }?.note)
     }
 
     func testDocumentsInvoicesSuppliersAreRealRecords() throws {
@@ -101,7 +61,6 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertEqual(docs.filter { $0.kind == "employment" }.count, co.staff.count + (co.managerID == nil ? 0 : 1), "one employment contract per person")
         XCTAssertEqual(docs.filter { $0.kind == "financing" }.count, 1, "the loan is a financing document")
         XCTAssertTrue(docs.contains { $0.group == .tax } || co.taxAccrued == 0)
-        XCTAssertNotNil(e.invoices(companyID: id))
         XCTAssertNotNil(e.supplierRecords(companyID: id))
         let lr = try XCTUnwrap(e.loanRecords(companyID: id).first)
         XCTAssertEqual(docs.first { $0.kind == "financing" }?.amount ?? 0, lr.balance, accuracy: 1)
@@ -130,32 +89,11 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertNil(e.companyDocuments(companyID: id, group: .applications, user: "p999"))
     }
 
-    func testCustomerInvoicesAreRecordsWithStatusAndTax() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 8)
-        e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        var found = false
-        for trade in ["cons", "print", "logistics", "construction", "carclean", "handy", "photo"] {
-            guard let bd = e.data.catalog[trade], bd.businessShare > 0 else { continue }
-            guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 200_000_000) else { continue }
-            _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
-            for _ in 0..<120 { _ = e.nextDay() }
-            let list = e.invoices(companyID: id, kind: .customer) ?? []
-            if list.isEmpty { continue }
-            found = true
-            XCTAssertTrue(list.allSatisfy { $0.number.hasPrefix("INV-") && $0.lines.count >= 1 })
-            XCTAssertEqual(Set(list.map(\.number)).count, list.count, "numbers are unique")
-            XCTAssertTrue(list.contains { $0.status == .paid || $0.status == .sent || $0.status == .overdue })
-            XCTAssertTrue(list.allSatisfy { abs($0.net + $0.tax - $0.gross) < 0.01 })
-            break
-        }
-        if !found { throw XCTSkip("no trade with business customers produced invoices in the window") }
-    }
-
     func testNetWorthAndOverviewReadModels() throws {
         var (e, id) = try firm(days: 60)
         let nw = e.netWorthBreakdown()
         XCTAssertEqual(nw.total, e.netWorth.total, accuracy: 0.5)
-        XCTAssertEqual(nw.liquid, e.state.cash + e.state.savings, accuracy: 0.5)
+        XCTAssertEqual(nw.liquid, e.state.cash, accuracy: 0.5)
         XCTAssertEqual(nw.stakes.filter { $0.companyID == id }.count, 1, "attributable equity once")
         XCTAssertGreaterThan(nw.guaranteedCompanyDebt + 1, 0)
         // A company inside a holding is not counted twice.

@@ -22,7 +22,7 @@ public enum Expansion {
         public var cashNeeded: Double
         /// Share of the customers you win in that city that the new outlet takes from your existing one (0 in another city)
         public var cannibalisation: Double
-        /// Your cash that is free (personal account and savings) and the existing outlet's weekly profit
+        /// Your cash that is free (the account) and the existing outlet's weekly profit
         public var cashFree: Double
         public var weeklyProfitNow: Double
         public var enoughCash: Bool
@@ -37,7 +37,7 @@ public enum Expansion {
 
     public static func readiness(_ s: GameState, data: GameData, companyID: Int, cityID: String, size: Double = 1) -> Readiness? {
         guard let co = s.company(companyID), let bd = data.catalog[co.type],
-              let est = CompanySetup.estimate(tradeID: co.type, cityID: cityID, form: co.form, size: size, countryCode: co.countryCode, state: s, data: data) else { return nil }
+              let est = CompanySetup.estimate(tradeID: co.type, cityID: cityID, size: size, countryCode: co.countryCode, state: s, data: data) else { return nil }
         let w = World(state: s, data: data)
         let fc = FinanceContext(countries: data.countries, trades: data.catalog)
         let weeks = rampWeeks(bd)

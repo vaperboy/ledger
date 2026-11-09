@@ -112,7 +112,7 @@ public struct PortfolioOwnerSummary: Identifiable, Equatable, Sendable {
     public var id: String { owner.id }
     public var owner: PortfolioOwner
     public var name: String
-    /// Money the owner can invest now: your current account plus savings, or the holding's cash.
+    /// Money the owner can invest now: your account, or the holding's cash.
     public var cash: Double
     public var totals: PortfolioTotals
 }

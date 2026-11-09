@@ -10,7 +10,7 @@ final class MarketplaceTests: XCTestCase {
     private func game(seed: Int = 7, trade: String = "usedcar", cash: Double = 400_000_000, open: Bool = true) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: cash) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cash) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         if open { _ = e.openCompany(companyID: id) }
         return (e, id)
@@ -237,9 +237,9 @@ final class MarketplaceTests: XCTestCase {
             var id = 0, est = 0.0
             e.update { s, data, ctx in
                 Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
-                guard case .success(let i) = CompanySetup.create(&s, tradeID: "usedcar", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+                guard case .success(let i) = CompanySetup.create(&s, tradeID: "usedcar", cityID: s.player.cityID, data: data, context: ctx) else { return }
                 id = i
-                est = CompanySetup.estimate(tradeID: "usedcar", cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)?.total ?? 0
+                est = CompanySetup.estimate(tradeID: "usedcar", cityID: s.player.cityID, size: 1, state: s, data: data)?.total ?? 0
                 Payments.injectCash(&s, companyID: id, amount: est * 1.3 + Double(env["LEDGER_STOCKCASH"] ?? "6000000")!)
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
                 if env["LEDGER_NOMANAGER"] == nil, let bd = data.catalog["usedcar"] {

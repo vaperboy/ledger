@@ -14,38 +14,11 @@ final class NewLookEngineReadsTests: XCTestCase {
     }
 
     private func cafe(_ e: inout GameEngine) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 50_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no company") }
         return id
     }
 
     // MARK: Payroll alerts and the Bank app
-
-    func testPayrollAlertClearsWhenAnAccountantIsAppointedOrTheOwnerApproves() throws {
-        var e = try game()
-        let id = try cafe(&e)
-        var days = 0
-        while e.payrollAlerts().isEmpty, days < 200 * 7 { e.nextDay(); days += 1 }
-        let a = try XCTUnwrap(e.payrollAlerts().first { $0.companyID == id }, "an alert once payroll waits for the owner")
-        XCTAssertGreaterThanOrEqual(a.amount, 0)
-        XCTAssertFalse(a.dateText.isEmpty)
-        XCTAssertFalse(a.reason.isEmpty)
-        // The Bank app carries it: the bubble count, the company's row and its account.
-        let bank = e.bankAccounts()
-        XCTAssertEqual(bank.alertCount, e.payrollAlerts().count)
-        XCTAssertEqual(bank.rows.first { $0.companyID == id }?.hasAlert, true)
-        XCTAssertNotNil(bank.rows.first { $0.companyID == id }?.alertNote)
-        XCTAssertEqual(e.bankAccount(.company(id))?.alert, a)
-        // Someone else approves: the alert goes.
-        e.update { s, d, _ in CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
-        XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
-        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].raw.removeValue(forKey: "acc") } }
-        XCTAssertNotNil(e.payrollAlerts().first { $0.companyID == id })
-        // The owner answers through the existing payroll action. The alert exists only from pay day, when the unapproved payroll is late, so the answer runs it now.
-        XCTAssertTrue(a.isLate)
-        if case .paidLate = e.resolvePayrollAlert(companyID: id) {} else { XCTFail("late payroll is run now") }
-        XCTAssertNil(e.payrollAlerts().first { $0.companyID == id })
-        XCTAssertEqual(e.bankAccounts().rows.first { $0.companyID == id }?.hasAlert, false)
-    }
 
     func testRoutinePayrollTheCompanyCanPayIsNotAnAlert() throws {
         var e = try game()
@@ -75,11 +48,10 @@ final class NewLookEngineReadsTests: XCTestCase {
         let me = try XCTUnwrap(e.bankAccount(.personal))
         XCTAssertTrue(me.loans.map(\.kind).contains("cons"))
         XCTAssertFalse(me.loans.contains { $0.kind == "biz" }, "a company's loan is not on the personal account")
-        XCTAssertEqual(me.savingsRate, PersonalFinance.savingsRate(e.state))
         XCTAssertFalse(me.recent.isEmpty)
         XCTAssertEqual(me.statements.map(\.kind), ReportKind.allCases)
         XCTAssertEqual(e.bankAccount(.investments)?.loans.count, 0)
-        XCTAssertEqual(bank.total, bank.rows.reduce(0) { $0 + $1.balance + ($1.savings ?? 0) }, accuracy: 0.01)
+        XCTAssertEqual(bank.total, bank.rows.reduce(0) { $0 + $1.balance }, accuracy: 0.01)
     }
 
     // MARK: Trade picker
@@ -100,23 +72,22 @@ final class NewLookEngineReadsTests: XCTestCase {
         XCTAssertEqual(e.tradePickerRows(cityID: big.id).first { $0.tradeID == "cafe" }?.demand, .high)
         XCTAssertEqual(e.tradePickerRows(cityID: small.id).first { $0.tradeID == "cafe" }?.demand, .low)
         // The breakdown adds up to the picker's figure with the standard place, and to the plan's total with a picked one.
-        let form: LegalForm = e.data.catalog["cafe"]!.needsLimitedCompany ? .limited : .soleTrader
-        let b = try XCTUnwrap(e.startUpCostBreakdown(tradeID: "cafe", cityID: city, legalForm: form))
+        let b = try XCTUnwrap(e.startUpCostBreakdown(tradeID: "cafe", cityID: city))
         XCTAssertEqual(b.lines.prefix(3).map(\.label), ["Registration and licences", "Fit-out and equipment", "Deposit and first month"])
         XCTAssertEqual(b.total, row.startUpCost!, accuracy: 0.5)
         XCTAssertEqual(b.lines.reduce(0) { $0 + $1.amount }, b.total, accuracy: 0.01)
-        let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "cafe", cityID: city, form: form, size: 1))
+        let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "cafe", cityID: city, size: 1))
         let pick = NewCompanyPlan.Pick(listingIndex: plan.options[0].index, buy: true)
         let size = CompanySetup.recommendedSize(e.data.catalog["cafe"]!, city: uk.city(city)!)
-        let bought = try XCTUnwrap(e.startUpCostBreakdown(tradeID: "cafe", cityID: city, legalForm: form, premises: pick))
-        XCTAssertEqual(bought.total, e.newCompanyPlan(tradeID: "cafe", cityID: city, form: form, size: size, pick: pick)!.total, accuracy: 0.5)
+        let bought = try XCTUnwrap(e.startUpCostBreakdown(tradeID: "cafe", cityID: city, premises: pick))
+        XCTAssertEqual(bought.total, e.newCompanyPlan(tradeID: "cafe", cityID: city, size: size, pick: pick)!.total, accuracy: 0.5)
         XCTAssertTrue(bought.buying)
         // Monthly costs: rent plus running costs plus the wages the start-up cost holds one month of.
-        let m = try XCTUnwrap(e.monthlyFixedCostEstimate(tradeID: "cafe", cityID: city, legalForm: form))
+        let m = try XCTUnwrap(e.monthlyFixedCostEstimate(tradeID: "cafe", cityID: city))
         XCTAssertEqual(m.lines.first?.label, "Rent")
-        XCTAssertEqual(m.lines.first { $0.id == "wages" }?.amount, e.newCompanyPlan(tradeID: "cafe", cityID: city, form: form, size: size)!.estimate.firstPayroll)
+        XCTAssertEqual(m.lines.first { $0.id == "wages" }?.amount, e.newCompanyPlan(tradeID: "cafe", cityID: city, size: size)!.estimate.firstPayroll)
         XCTAssertEqual(m.total, m.lines.reduce(0) { $0 + $1.amount }, accuracy: 0.01)
-        XCTAssertEqual(e.monthlyFixedCostEstimate(tradeID: "cafe", cityID: city, legalForm: form, premises: pick)?.lines.first?.label, "Mortgage payment")
+        XCTAssertEqual(e.monthlyFixedCostEstimate(tradeID: "cafe", cityID: city, premises: pick)?.lines.first?.label, "Mortgage payment")
     }
 
     // MARK: Hiring

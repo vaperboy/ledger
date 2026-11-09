@@ -380,7 +380,7 @@ public enum Chains {
     /// What a new store costs: the start-up estimate plus 15%. Original: `nsEst`.
     public static func newStoreCost(_ s: GameState, chainID: Int, cityID: String, size: Double, data: GameData) -> Double? {
         guard let ch = chain(s, id: chainID), let first = stores(s, ch).first,
-              let est = CompanySetup.estimate(tradeID: ch["type"].string, cityID: cityID, form: first.form, size: size, countryCode: first.countryCode, state: s, data: data) else { return nil }
+              let est = CompanySetup.estimate(tradeID: ch["type"].string, cityID: cityID, size: size, countryCode: first.countryCode, state: s, data: data) else { return nil }
         return (est.total * 1.15 / 1000).rounded() * 1000
     }
 
@@ -390,7 +390,7 @@ public enum Chains {
     public static func openStore(_ s: inout GameState, chainID: Int, cityID: String, size: Double, data: GameData, context fc: FinanceContext, fundedBy parts: [Int: Double]? = nil) -> Result<Int, CompanySetup.StartError> {
         guard let ch = chain(s, id: chainID), let first = stores(s, ch).first, let cost = newStoreCost(s, chainID: chainID, cityID: cityID, size: size, data: data) else { return .failure(.notAllowedHere) }
         if parts == nil && Payments.liquid(s) < cost { return .failure(.notEnoughCash) }
-        let r = CompanySetup.create(&s, tradeID: ch["type"].string, cityID: cityID, form: first.form, size: size, name: "New store \(s.nextID + 1)", countryCode: first.countryCode, data: data, context: fc)
+        let r = CompanySetup.create(&s, tradeID: ch["type"].string, cityID: cityID, size: size, name: "New store \(s.nextID + 1)", countryCode: first.countryCode, data: data, context: fc)
         guard case .success(let id) = r, let i = s.companyIndex(id) else { return r }
         if let parts = parts {
             for (sid, x) in parts.sorted(by: { $0.key < $1.key }) {

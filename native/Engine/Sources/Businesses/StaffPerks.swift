@@ -301,7 +301,7 @@ public enum StaffPerks {
     /// Who you can invite: investors if you sell, franchise prospects if you franchise, and up to eight rival owners (biggest first).
     public static func guests(_ s: GameState) -> [GuestOption] {
         var out: [GuestOption] = []
-        let selling = !(s.rest["sales"]?.array ?? []).isEmpty || s.companies.contains { $0.form == .limited && $0.status == .open }
+        let selling = !(s.rest["sales"]?.array ?? []).isEmpty || s.companies.contains { $0.status == .open }
         if selling {
             out.append(GuestOption(guest: .investors, title: "Investors", detail: "Buyers for what you sell come sooner and pay a little more", hostedLately: hosted(s, "inv") > 0))
         }

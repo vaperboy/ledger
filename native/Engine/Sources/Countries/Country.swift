@@ -132,7 +132,6 @@ public struct Country: Equatable, Sendable, Identifiable {
     public var usesSalesTax: Bool
     public var shareCapitalMinimum: Double
     public var registrationFee: Double
-    public var conversionFee: Double
     public var companyForms: [String: String]
     /// Added to the policy rate to get the overdraft rate (`economy.overdraftMargin`).
     public var overdraftMargin: Double
@@ -260,7 +259,6 @@ extension Country {
         usesSalesTax = p["vat"]["salesTax"].bool
         shareCapitalMinimum = B(p["companies"]["capital"].double)
         registrationFee = jsRound(B(p["companies"]["registrationFee"].double))
-        conversionFee = B(p["companies"]["conversionFee"].double)
         companyForms = p["companies"]["forms"].object.mapValues { $0.string }
         overdraftMargin = eco["overdraftMargin"].isNull ? 0.10 : eco["overdraftMargin"].double
         vehicleRules = VehicleRules(pack: p)
