@@ -18,7 +18,7 @@ struct OnlinePlayersAdapter: SupplyMarketPlayers {
             let company: OnlineCompany? = p.companies?.first
             return SupplyMarketPlayer(ownerID: p.id, ownerName: p.displayName, profileCode: p.code,
                                       companyName: company?.name ?? "\(p.displayName) Supplies", tradeID: company?.trade ?? "",
-                                      city: company?.city ?? "", region: p.countryCode, linkKey: p.id, isFriend: p.relation == .friend)
+                                      city: company?.city ?? "", region: p.countryCode, linkKey: p.id, isFriend: p.relation == .friend, country: p.countryCode)
         }
     }
 }

@@ -23,6 +23,7 @@ struct CompanySuppliersScreen: View {
     @State private var browse: SupplyPick?
     @State private var showSell = false
     @State private var showAssociation = false
+    @State private var ordering: SupplyPick?
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
 
     struct SupplyPick: Identifiable, Equatable, Hashable { var id: String }
@@ -37,6 +38,7 @@ struct CompanySuppliersScreen: View {
             .scrollIndicators(.hidden)
             .appScreen(title: "Suppliers", subtitle: co.name, tab: .company)
             .centerSheet(item: $picked, category: .medium, tone: .info) { (p: SupplyPick) in SupplyOffersPopup(companyID: companyID, lineID: p.id, onBrowse: { picked = nil; browse = p }).environmentObject(store) }
+            .centerSheet(item: $ordering, category: .medium, tone: .info) { (_: SupplyPick) in StockOrderPopup(companyID: companyID, onDone: { ordering = nil }).environmentObject(store) }
             .navigationDestination(item: $browse) { (p: SupplyPick) in SupplyBrowseScreen(companyID: companyID, lineID: p.id).environmentObject(store) }
             .navigationDestination(isPresented: $showSell) { SupplyOtherPlayersScreen(companyID: companyID).environmentObject(store) }
             .navigationDestination(isPresented: $showAssociation) { TradeAssociationScreen(companyID: companyID).environmentObject(store) }
@@ -59,6 +61,13 @@ struct CompanySuppliersScreen: View {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 summary(groups, cur)
                 ForEach(groups) { (g: SupplyGroup) in group(g, cur) }
+                InTransitSection(rows: e.shipmentsOnTheWay(companyID: co.id), currency: cur)
+                if e.stockOrderBasis(companyID: co.id) != nil {
+                    LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Order stock from a player",
+                              subtitle: "Compare price, freight and customs, then order", identifier: "suppliers-order") { ordering = SupplyPick(id: "stock") }
+                        .padding(.horizontal, Theme.Space.m)
+                        .glassSurface()
+                }
                 LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Supply other players",
                           subtitle: "Offer what this company makes to other players' companies", identifier: "suppliers-sell") { showSell = true }
                     .padding(.horizontal, Theme.Space.m)

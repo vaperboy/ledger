@@ -79,7 +79,8 @@ final class PlayerDealsTests: XCTestCase {
         for _ in 0..<10 { e.nextDay() }
         e.update { s, _, _ in PlayerDeals.weekly(&s) }
         XCTAssertNil(e.franchiseOpenUntil(companyID: id))
-        XCTAssertEqual(e.state.company(id)?.value("fr")["app"].array.count, 0)
+        let apps = e.state.company(id)?.value("fr")["app"].array ?? []
+        XCTAssertFalse(apps.contains { $0["pl"].bool }, "players who had not signed left")
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title == "Your franchise offer to players ended" })
     }
 
@@ -112,6 +113,10 @@ final class PlayerDealsTests: XCTestCase {
         XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title.hasPrefix("Offer for") })
         let offers = e.state.rest["sales"]?.array.first { $0["co"].int == id }?["offers"].array ?? []
         XCTAssertTrue(offers.contains { $0["k"].string == "player" })
+        e.stopSaleToPlayers(companyID: id)
+        XCTAssertNil(e.playerSaleUntil(companyID: id))
+        let left = e.state.rest["sales"]?.array.first { $0["co"].int == id }?["offers"].array ?? []
+        XCTAssertFalse(left.contains { $0["k"].string == "player" })
     }
 
     func testNoOfferWhenTheCompanyIsNotShownToPlayers() throws {

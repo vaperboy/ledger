@@ -174,6 +174,7 @@ struct FranchisorCard: View {
                 SettingsTableRow(title: FranchiseTab.pipeline.title, note: "Applicants waiting for a talk", value: "\(apps.count) \(apps.count == 1 ? "applicant" : "applicants")") { ftab = .pipeline }
                 SettingsTableRow(title: FranchiseTab.countries.title, note: "Master franchise by country", value: "Open") { ftab = .countries }
             }
+            FranchiseToPlayersCard(companyID: company.id)
         }
         .navigationDestination(item: $ftab) { (t: FranchiseTab) in
             SettingsPage(title: t.title, subtitle: company.name) {
@@ -326,7 +327,8 @@ struct FranchisorCard: View {
 
     private func applicantCard(_ a: Franchising.Applicant, _ cur: Currency) -> some View {
         let cityName: String = engine.data.countries.city(a.cityID, preferring: company.countryCode)?.city.name ?? ""
-        let line: String = "\(cityName) · \(FranchiseApplicantWords.sentence(a))"
+        let who: String = a.isPlayer ? "Player \(a.profileCode) · " : ""
+        let line: String = who + "\(cityName) · \(FranchiseApplicantWords.sentence(a))"
         let cover = coverage(a)
         let coverTint: Color = (cover?.fraction ?? 1) >= 1 ? Theme.gain : Theme.caution
         return NavigationLink { FranchiseTalkView(companyID: company.id, applicantID: a.id) } label: {

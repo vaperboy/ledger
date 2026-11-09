@@ -12,6 +12,8 @@ enum SupplyMarketWords {
     static func lead(_ days: Int) -> String { days <= 0 ? "Continuous" : days == 1 ? "Next day" : "\(days) days lead" }
     static func terms(_ days: Int) -> String { days == 0 ? "Paid on delivery" : "Paid after \(days) days" }
     static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
+    /// City, and the country code when the supplier is abroad of what the listing says.
+    static func place(_ l: SupplyListing) -> String { l.country.isEmpty ? l.city : "\(l.city), \(l.country)" }
 
     static func tint(_ w: DeliveryWord) -> Color {
         switch w {
@@ -77,7 +79,23 @@ struct SupplyListingCard: View {
     var listing: SupplyListing
     var known: Bool
     var availability: SupplyAvailability
+    /// Price, freight and customs of the offer for the buyer's company, when the list shows them.
+    var landed: SupplyLanded.Row?
+    var currency: Currency?
+    /// Whether the money figures rest on what the company really spends on this line.
+    var landedPriced = false
     var action: () -> Void
+
+    init(listing: SupplyListing, known: Bool, availability: SupplyAvailability, landed: SupplyLanded.Row? = nil, currency: Currency? = nil, landedPriced: Bool = false,
+         action: @escaping () -> Void) {
+        self.listing = listing
+        self.known = known
+        self.availability = availability
+        self.landed = landed
+        self.currency = currency
+        self.landedPriced = landedPriced
+        self.action = action
+    }
 
     var body: some View {
         Button {
@@ -92,11 +110,12 @@ struct SupplyListingCard: View {
                     Spacer(minLength: Theme.Space.s)
                     Chip(text: listing.word.rawValue, tint: SupplyMarketWords.tint(listing.word))
                 }
-                Text("\(listing.companyName) · \(listing.tradeName) · \(listing.city)").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
+                Text("\(listing.companyName) · \(listing.tradeName) · \(SupplyMarketWords.place(listing))").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
                 Text("\(listing.lineName) · \(SupplyMarketWords.price(listing.priceTier)) · \(SupplyMarketWords.quality(listing.qualityTier))")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
                 Text("\(SupplyGuards.effectiveCapacity(listing)) units/week · \(SupplyMarketWords.lead(listing.leadDays)) · minimum \(listing.minOrder) · \(SupplyMarketWords.terms(listing.termsDays))")
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.leading)
+                if let landed, let currency { LandedCostLines(row: landed, currency: currency, priced: landedPriced) }
                 if let limit = SupplyGuards.limitText(listing) { Text(limit).textStyle(.caption, tint: Theme.caution) }
                 if let why = availability.message, availability != .available {
                     Text(why).textStyle(.caption, tint: Theme.loss)
@@ -130,8 +149,12 @@ struct SupplySignBlock: View {
     var body: some View {
         let today: Int = store.engine.map { SupplyMarketStore.today($0) } ?? 0
         let availability: SupplyAvailability = SupplyGuards.availability(listing, buyerLinkKeys: market.service.buyerLinkKeys, units: max(listing.minOrder, Int(units)), today: today)
+        let wanted: Bool = store.engine?.playerSupplyAllowed(companyID: companyID, listing: listing) ?? false
+        let landed: SupplyLanded.Row? = store.engine.flatMap { SupplyLandedBasis.rows($0, companyID: companyID, listings: [listing], weekly: weeklyMarketSpend, units: max(1, Int(units))).first }
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            if room < listing.minOrder {
+            if !wanted {
+                Text("Your business has no use for this from \(listing.ownerName).").popupText(.risk)
+            } else if room < listing.minOrder {
                 Text("Fully booked this week.").popupText(.risk)
             } else if isBlocked(availability) {
                 Text(availability.message ?? "").popupText(.risk)
@@ -142,8 +165,10 @@ struct SupplySignBlock: View {
                     Text("\(Int(units))").popupText(.rowValue)
                     StepperPill(value: $units, range: Double(listing.minOrder)...Double(max(listing.minOrder, room)), step: 5)
                 }
+                if let landed { LandedCostLines(row: landed, currency: currency, priced: weeklyMarketSpend > 0, popup: true) }
                 if weeklyMarketSpend > 0 {
-                    let saving: Double = weeklyMarketSpend * (1 - listing.priceFactor)
+                    // Against what the market supplier charges for the same week, with freight and customs on this offer.
+                    let saving: Double = weeklyMarketSpend - weeklyMarketSpend * listing.priceFactor * (landed?.landedFactor ?? 1)
                     HStack(spacing: Theme.Space.s) {
                         Text("Against the market supplier").popupText(.caption)
                         Spacer(minLength: 0)
@@ -164,9 +189,7 @@ struct SupplySignBlock: View {
     }
 
     private func sign() {
-        guard let e = store.engine else { return }
-        let r: SupplySignResult = market.service.sign(buyerCompanyID: companyID, lineID: lineID, listingID: listing.id, unitsPerWeek: Int(units),
-                                                      weeklyMarketSpend: weeklyMarketSpend, today: SupplyMarketStore.today(e))
+        let r: SupplySignResult = market.sign(store, companyID: companyID, lineID: lineID, listing: listing, units: Int(units), weeklyMarketSpend: weeklyMarketSpend)
         switch r {
         case .signed:
             Haptics.success()
@@ -194,7 +217,7 @@ struct SupplyListingPopup: View {
            let row = e.supplyLines(companyID: companyID).flatMap({ $0.rows }).first(where: { $0.id == lineID }) {
             let known: Bool = market.service.knownSuppliers().contains(l.ownerID)
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("\(l.companyName) · \(l.tradeName) · \(l.city)").popupText(.subtitle)
+                Text("\(l.companyName) · \(l.tradeName) · \(SupplyMarketWords.place(l))").popupText(.subtitle)
                 Text("\(l.lineName) · \(SupplyMarketWords.price(l.priceTier)) · \(SupplyMarketWords.quality(l.qualityTier))").popupText(.body)
                 Text("\(SupplyGuards.effectiveCapacity(l)) units/week · \(SupplyMarketWords.lead(l.leadDays)) · minimum \(l.minOrder) · \(SupplyMarketWords.terms(l.termsDays))").popupText(.caption)
                 if let limit = SupplyGuards.limitText(l) { Text(limit).popupText(.risk) }
@@ -241,7 +264,7 @@ struct SupplierProfileScreen: View {
                 ForEach(p.listings) { (l: SupplyListing) in
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text(l.lineName).capsLabel(Theme.ivoryFaint)
-                        Text("\(l.companyName) · \(l.tradeName) · \(l.city)").textStyle(.caption, tint: Theme.inkSoft)
+                        Text("\(l.companyName) · \(l.tradeName) · \(SupplyMarketWords.place(l))").textStyle(.caption, tint: Theme.inkSoft)
                         Text("\(SupplyMarketWords.price(l.priceTier)) · \(SupplyMarketWords.quality(l.qualityTier)) · \(SupplyGuards.effectiveCapacity(l)) units/week · minimum \(l.minOrder)")
                             .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                         if let limit = SupplyGuards.limitText(l) { Text(limit).textStyle(.caption, tint: Theme.caution) }
@@ -281,6 +304,8 @@ struct SupplyBrowseScreen: View {
     @State private var regionFilter = ""
     @State private var recordFilter = 0
     @State private var knownOnly = false
+    @State private var friendsOnly = false
+    @State private var bestRecordFirst = false
     @State private var opened: ListingPick?
     @State private var profile: ProfilePick?
 
@@ -290,11 +315,18 @@ struct SupplyBrowseScreen: View {
     private static let recordFilters: [String] = ["Any record", "Not struggling", "Reliable only"]
 
     var body: some View {
-        if let e = store.engine, e.state.company(companyID) != nil {
+        if let e = store.engine, let co = e.state.company(companyID) {
             let today: Int = SupplyMarketStore.today(e)
             let known: Set<String> = market.service.knownSuppliers()
-            let all: [SupplyListing] = market.service.listings(lineID: lineID)
-            let shown: [SupplyListing] = all.filter { matches($0, known) }.sorted(by: SupplyRecordRules.wellKnownOrder)
+            // Only what the trade really uses, and no chain or franchise rule against it.
+            let all: [SupplyListing] = market.service.listings(lineID: lineID).filter { e.playerSupplyAllowed(companyID: companyID, listing: $0) }
+            let weekly: Double? = e.supplyLines(companyID: companyID).flatMap { $0.rows }.first(where: { $0.id == lineID })?.weekly
+            let rows: [SupplyLanded.Row] = SupplyLandedBasis.rows(e, companyID: companyID, listings: all, weekly: weekly)
+            let landed: [String: SupplyLanded.Row] = SupplyLandedBasis.lookup(rows)
+            let order: [String: Int] = Dictionary(rows.enumerated().map { ($0.element.id, $0.offset) }, uniquingKeysWith: { a, _ in a })
+            let matching: [SupplyListing] = all.filter { matches($0, known) }
+            let shown: [SupplyListing] = bestRecordFirst ? matching.sorted(by: SupplyRecordRules.wellKnownOrder) : matching.sorted { (order[$0.id] ?? 0) < (order[$1.id] ?? 0) }
+            let cur: Currency = e.currency(for: co)
             ScrollScreen(spacing: Theme.Space.m) {
                 AcctSearchField(text: $query, prompt: "Name, friend, profile code, company", identifier: "supply-search")
                 filters(all, known)
@@ -305,7 +337,8 @@ struct SupplyBrowseScreen: View {
                         ForEach(Array(shown.enumerated()), id: \.element.id) { (n: Int, l: SupplyListing) in
                             if n > 0 { Hairline() }
                             SupplyListingCard(listing: l, known: known.contains(l.ownerID),
-                                              availability: SupplyGuards.availability(l, buyerLinkKeys: market.service.buyerLinkKeys, units: l.minOrder, today: today)) { opened = ListingPick(id: l.id) }
+                                              availability: SupplyGuards.availability(l, buyerLinkKeys: market.service.buyerLinkKeys, units: l.minOrder, today: today),
+                                              landed: landed[l.id], currency: cur, landedPriced: (weekly ?? 0) > 0) { opened = ListingPick(id: l.id) }
                         }
                     }
                     .padding(.horizontal, Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading).glassSurface()
@@ -322,6 +355,7 @@ struct SupplyBrowseScreen: View {
 
     private func matches(_ l: SupplyListing, _ known: Set<String>) -> Bool {
         if knownOnly && !known.contains(l.ownerID) { return false }
+        if friendsOnly && !l.isFriend { return false }
         if priceFilter >= 0 && l.priceTier != priceFilter { return false }
         if qualityFilter >= 0 && l.qualityTier != qualityFilter { return false }
         if !regionFilter.isEmpty && l.region != regionFilter { return false }
@@ -354,6 +388,14 @@ struct SupplyBrowseScreen: View {
                 menu("Record", Self.recordFilters[recordFilter]) {
                     ForEach(0..<3, id: \.self) { (i: Int) in Button(Self.recordFilters[i]) { recordFilter = i } }
                 }
+                menu("Order", bestRecordFirst ? "Best record" : "Lowest landed cost") {
+                    Button("Lowest landed cost") { bestRecordFirst = false }
+                    Button("Best record") { bestRecordFirst = true }
+                }
+                Button { friendsOnly.toggle(); Haptics.tap() } label: {
+                    Chip(text: "Friends", tint: friendsOnly ? Theme.gold : Theme.inkSoft).padding(.horizontal, Theme.Space.s).frame(minHeight: 36)
+                }
+                .buttonStyle(.plain)
                 Button { knownOnly.toggle(); Haptics.tap() } label: {
                     Chip(text: "Known only", tint: knownOnly ? Theme.gold : Theme.inkSoft).padding(.horizontal, Theme.Space.s).frame(minHeight: 36)
                 }

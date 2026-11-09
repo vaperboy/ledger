@@ -289,6 +289,15 @@ public enum PlayerDeals {
         return true
     }
 
+    /// Stop showing the listing to players; the offers they made are withdrawn, the other offers stay.
+    public static func hideFromPlayers(_ s: inout GameState, companyID: Int) {
+        var list = s.rest["sales"]?.array ?? []
+        guard let k = list.firstIndex(where: { $0["co"].int == companyID }), !list[k]["pl"].isNull else { return }
+        list[k]["pl"] = .null
+        list[k]["offers"] = .array(list[k]["offers"].array.filter { $0["k"].string != "player" })
+        s.rest["sales"] = .array(list)
+    }
+
     /// Weekly: franchise offers and sale listings to players that have run out are closed, and the players who did not sign leave.
     public static func weekly(_ s: inout GameState) {
         let now = today(s)

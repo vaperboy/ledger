@@ -56,6 +56,8 @@ public extension GameEngine {
         return ok
     }
 
+    mutating func stopSaleToPlayers(companyID: Int) { update { s, _, _ in PlayerDeals.hideFromPlayers(&s, companyID: companyID) } }
+
     /// The company as a listing other players see, at the price the player asks.
     func companyListing(companyID: Int, ownerID: String, ownerName: String, profileCode: String, linkKey: String, askPrice: Double) -> PlayerDeals.CompanyListing? {
         PlayerDeals.listing(state, companyID: companyID, ownerID: ownerID, ownerName: ownerName, profileCode: profileCode, linkKey: linkKey, askPrice: askPrice, data: data)

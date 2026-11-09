@@ -10,7 +10,6 @@ final class MockSupplyMarketService: SupplyMarketService {
 
     private var all: [SupplyListing] = []
     private var contracts: [SupplyContract] = []
-    private var weeklySpend: [String: Double] = [:]
     private var orderLog: [String: [SupplyOrder]] = [:]
     private var unitValues: [String: Double] = [:]
     private var buyersOf: [String: Int] = [:]
@@ -22,6 +21,7 @@ final class MockSupplyMarketService: SupplyMarketService {
     private var counter = 0
 
     let buyerLinkKeys: Set<String> = ["me"]
+    let ownerID = "me"
     private static let knownKey = "supplyMarket.known"
 
     init() {
@@ -35,8 +35,12 @@ final class MockSupplyMarketService: SupplyMarketService {
     private static let first = ["Ana", "Ben", "Chidi", "Dara", "Elif", "Farid", "Greta", "Hugo", "Ines", "Jonas", "Kira", "Leo", "Mira", "Nils", "Olga", "Pavel", "Quinn", "Rosa", "Sven", "Tala", "Uma", "Vik", "Wren", "Xavi", "Yara", "Zane"]
     private static let last = ["Holt", "Marsh", "Okafor", "Lindqvist", "Varga", "Bright", "Castell", "Dunmore", "Esposito", "Fairweather", "Gallagher", "Hartmann", "Ivanova", "Jansen", "Kowalski", "Lacroix", "Moreno", "Nakamura", "Ortega", "Petrov", "Quigley", "Rask", "Sato", "Thorne"]
     private static let nouns = ["Supply", "Trading", "Works", "Provisions", "& Sons", "Partners", "Group", "Direct"]
-    private static let places: [(city: String, region: String)] = [("Leeds", "North"), ("Bristol", "South West"), ("Glasgow", "Scotland"), ("Cardiff", "Wales"), ("Norwich", "East"),
-                                                                    ("Birmingham", "Midlands"), ("London", "South East"), ("Aberdeen", "Scotland"), ("Exeter", "South West"), ("Newcastle", "North")]
+    /// Most suppliers are in the UK; some are abroad, so freight and customs show in the comparison.
+    private static let places: [(city: String, region: String, country: String)] = [
+        ("Leeds", "North", "UK"), ("Bristol", "South West", "UK"), ("Hamburg", "Hamburg", "DE"), ("Cardiff", "Wales", "UK"), ("Norwich", "East", "UK"),
+        ("Birmingham", "Midlands", "UK"), ("Oslo", "Oslo", "NO"), ("Aberdeen", "Scotland", "UK"), ("Exeter", "South West", "UK"), ("Newcastle", "North", "UK"),
+        ("Chicago", "Midwest", "US"), ("London", "South East", "UK"), ("Zurich", "Zurich", "CH"), ("Glasgow", "Scotland", "UK"), ("Sydney", "New South Wales", "AU"), ("Munich", "Bavaria", "DE"),
+    ]
     private static let tradeTitles: [String: String] = ["bakery": "Bakery", "brewery": "Brewery", "farm": "Farm", "vineyard": "Vineyard", "salmon": "Salmon farm", "factory": "Factory",
                                                          "furniture": "Furniture maker", "grocery": "Grocer", "hardware": "Hardware store", "cleaning": "Cleaning firm", "carclean": "Car wash",
                                                          "webdev": "Web studio", "gamestudio": "Game studio", "startup": "Software startup", "carrepair": "Garage", "handy": "Handyman",
@@ -58,7 +62,7 @@ final class MockSupplyMarketService: SupplyMarketService {
                                   tradeName: Self.tradeTitles[trade] ?? trade.capitalized, city: p.city, region: p.region, lineID: line.id, lineName: line.name,
                                   priceTier: Int(roll("pt\(i)") * 3), qualityTier: Int(roll("qt\(i)") * 3), capacityPerWeek: cap, leadDays: 1 + Int(roll("ld\(i)") * 5),
                                   minOrder: [5, 10, 20, 25][Int(roll("mo\(i)") * 4)], termsDays: SupplyMarketCatalogue.termOptions[Int(roll("tm\(i)") * 3)],
-                                  linkKey: p.linkKey, record: record(i, cap: cap), isFriend: p.isFriend)
+                                  linkKey: p.linkKey, record: record(i, cap: cap), isFriend: p.isFriend, country: p.country)
             // Cheap goods are a little less good, dear goods a little better.
             l.qualityTier = min(2, max(0, l.qualityTier + (l.priceTier == 0 ? -1 : l.priceTier == 2 ? 1 : 0)))
             l.committedUnits = Int(Double(cap) * (0.2 + 0.6 * roll("busy\(i)")))
@@ -76,7 +80,7 @@ final class MockSupplyMarketService: SupplyMarketService {
             let linked = i == 7
             return SupplyMarketPlayer(ownerID: "owner\(i)", ownerName: linked ? "Mira Vance (your other account)" : "\(f) \(l)", profileCode: String(format: "P%05d", 40_100 + i * 37),
                                       companyName: "\(l) \(Self.nouns[i % Self.nouns.count])", tradeID: "", city: place.city, region: place.region,
-                                      linkKey: linked ? "me" : "key\(i)", isFriend: i % 9 == 2)
+                                      linkKey: linked ? "me" : "key\(i)", isFriend: i % 9 == 2, country: place.country)
         }
     }
 
@@ -119,28 +123,64 @@ final class MockSupplyMarketService: SupplyMarketService {
         contracts.first { $0.buyerCompanyID == buyerCompanyID && $0.lineID == lineID }
     }
 
-    func sign(buyerCompanyID: Int, lineID: String, listingID: String, unitsPerWeek: Int, weeklyMarketSpend: Double, today: Int) -> SupplySignResult {
+    func sign(buyerCompanyID: Int, lineID: String, listingID: String, unitsPerWeek: Int, today: Int) -> SupplySignResult {
         guard let l = listing(listingID) else { return .refused("That offer is gone.") }
         let a = SupplyGuards.availability(l, buyerLinkKeys: buyerLinkKeys, units: unitsPerWeek, today: today)
         if let m = a.message { return .refused(m) }
         let room = SupplyGuards.effectiveCapacity(l) - l.committedUnits
         guard unitsPerWeek <= room else { return .refused("They can take \(max(0, room)) more units a week for now.") }
-        contracts.removeAll { $0.buyerCompanyID == buyerCompanyID && $0.lineID == lineID }
+        if let old = contract(buyerCompanyID: buyerCompanyID, lineID: lineID) { release(old) }
         counter += 1
         let c = SupplyContract(id: "C\(counter)", buyerCompanyID: buyerCompanyID, lineID: lineID, listingID: listingID, supplierOwnerID: l.ownerID,
                                supplierName: l.ownerName, unitsPerWeek: unitsPerWeek, startDay: today)
         contracts.append(c)
-        weeklySpend[c.id] = weeklyMarketSpend
         if let i = all.firstIndex(where: { $0.id == listingID }) { all[i].committedUnits += unitsPerWeek }
         onChange?()
         return .signed(c)
     }
 
-    func endContract(buyerCompanyID: Int, lineID: String) {
-        guard let c = contract(buyerCompanyID: buyerCompanyID, lineID: lineID) else { return }
+    /// A contract that goes: its units are free on the listing again.
+    private func release(_ c: SupplyContract) {
         contracts.removeAll { $0.id == c.id }
         if let i = all.firstIndex(where: { $0.id == c.listingID }) { all[i].committedUnits = max(0, all[i].committedUnits - c.unitsPerWeek) }
+    }
+
+    func reserve(listingID: String, units: Int, today: Int) -> String? {
+        guard let i = all.firstIndex(where: { $0.id == listingID }) else { return "That offer is gone." }
+        let l = all[i]
+        if let m = SupplyGuards.availability(l, buyerLinkKeys: buyerLinkKeys, units: units, today: today).message { return m }
+        let room = SupplyGuards.effectiveCapacity(l) - l.committedUnits
+        guard units <= room else { return "They can take \(max(0, room)) more units this week." }
+        all[i].committedUnits += units
         onChange?()
+        return nil
+    }
+
+    func endContract(buyerCompanyID: Int, lineID: String) {
+        guard let c = contract(buyerCompanyID: buyerCompanyID, lineID: lineID) else { return }
+        release(c)
+        onChange?()
+    }
+
+    func restore(contracts saved: [SupplyContract], listings: [SupplyListing], orders: [String: [SupplyOrder]], unitValues values: [String: Double]) {
+        all.removeAll { $0.companyID != nil }
+        all += listings
+        orderLog = orders
+        for (k, v) in values { unitValues[k] = v }
+        contracts = []
+        for c in saved {
+            contracts.append(c)
+            if let i = all.firstIndex(where: { $0.id == c.listingID }) { all[i].committedUnits += c.unitsPerWeek }
+        }
+        // New ids continue after the saved ones.
+        let used: [Int] = (saved.map { $0.id } + listings.map { $0.id }).compactMap { Int($0.dropFirst()) }
+        counter = max(counter, used.max() ?? 0)
+        onChange?()
+    }
+
+    func ownSnapshot() -> (listings: [SupplyListing], orders: [String: [SupplyOrder]]) {
+        let mine = all.filter { $0.companyID != nil && !$0.stopped }
+        return (mine, orderLog.filter { k, _ in mine.contains { $0.id == k } })
     }
 
     func randomPick(lineID: String, units: Int, today: Int, seed: String, excluding: Set<String>) -> SupplyListing? {
@@ -176,7 +216,7 @@ final class MockSupplyMarketService: SupplyMarketService {
         let l = SupplyListing(id: "M\(counter)", ownerID: "me", ownerName: "You", profileCode: "YOU", companyName: d.companyName, companyID: d.companyID, tradeID: d.tradeID,
                               tradeName: Self.tradeTitles[d.tradeID] ?? d.tradeID.capitalized, city: "Your city", region: "Your region", lineID: d.lineID, lineName: line.name,
                               priceTier: d.priceTier, qualityTier: d.qualityTier, capacityPerWeek: d.capacityPerWeek, leadDays: d.leadDays, minOrder: d.minOrder,
-                              termsDays: d.termsDays, linkKey: "me", expiresDay: today + d.durationDays)
+                              termsDays: d.termsDays, linkKey: "me", expiresDay: today + d.durationDays, country: d.country)
         all.append(l)
         unitValues[l.id] = d.unitValue
         onChange?()
@@ -272,15 +312,23 @@ final class MockSupplyMarketService: SupplyMarketService {
                 all[i].committedUnits = min(cap, Int(Double(cap) * (0.2 + 0.6 * roll("c" + key))) + contractUnits)
             }
             all[i].record = SupplyRecordRules.applying(all[i].record, promised: promised, delivered: delivered, orders: orders, late: late, complaints: complaints)
-            // The player's companies buying from this supplier: a saving against the market price, or the cost of a miss.
-            for c in contracts where c.listingID == l.id {
-                let spend: Double = weeklySpend[c.id] ?? 0
-                var diff: Double = spend * (1 - l.priceFactor)
-                if promised > delivered { diff -= spend * 0.2 }
-                if abs(diff) >= 1 { events.append(.purchaseDifference(buyerCompanyID: c.buyerCompanyID, amount: diff)) }
-            }
+            // A supplier the player buys from that delivered short: the books carry the cost (customers served late or not at all).
+            if promised > delivered && contracts.contains(where: { $0.listingID == l.id }) { events.append(.shortDelivery(listingID: l.id)) }
         }
         return events
+    }
+
+    func companyStopped(companyID: Int, reason: SupplyEnd) -> [SupplyFallback] {
+        var out: [SupplyFallback] = []
+        for i in all.indices where all[i].companyID == companyID && !all[i].stopped {
+            all[i].stopped = true
+            buyersOf[all[i].id] = 0
+            let r = SupplyContracts.end(contracts, listingID: all[i].id, reason: reason)
+            contracts = r.kept
+            out += r.fallbacks
+        }
+        onChange?()
+        return out
     }
 
     func supplierStopped(ownerID: String, reason: SupplyEnd) -> [SupplyFallback] {
