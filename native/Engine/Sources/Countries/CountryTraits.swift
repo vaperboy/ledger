@@ -31,6 +31,18 @@ public enum CountryTraits {
     public static func labour(_ code: String) -> JSONValue { file["labour"][code] }
 
     public static var globalBrandOrigins: [String] { file["globalBrandOrigins"].array.map { $0.string } }
+    /// Hours from UTC (standard time); 0 when the country has none.
+    public static func utcOffset(_ code: String) -> Int { entry(code)["utcOffset"].int }
+    /// The capital's latitude and longitude, nil when the country has none.
+    public static func capital(_ code: String) -> (lat: Double, lon: Double)? {
+        let e = entry(code)
+        return e["lat"].isNull || e["lon"].isNull ? nil : (e["lat"].double, e["lon"].double)
+    }
+    /// The customs union the country belongs to; a country outside any is a zone of its own.
+    public static func customsZone(_ code: String) -> String { text(code, "customsZone") ?? code }
+    /// The land region goods can be driven across, nil for a country on its own.
+    public static func region(_ code: String) -> String? { text(code, "region") }
+
     public static func isSouthernHemisphere(_ code: String) -> Bool { flag(code, "southernHemisphere") }
     public static func hasDataProtectionLaw(_ code: String) -> Bool { flag(code, "gdpr") }
 

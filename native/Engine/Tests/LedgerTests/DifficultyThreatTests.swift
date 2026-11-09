@@ -14,11 +14,11 @@ final class DifficultyThreatTests: XCTestCase {
                                chooseFirstItem: true, difficulty: d, entitlements: EntitlementSnapshot(owned: [.pro]))
     }
 
-    func testSandboxNeedsPro() {
+    func testSandboxIsFreeForEveryone() {
         func start(_ e: EntitlementSnapshot) throws -> GameEngine {
             try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test Co", difficulty: .sandbox, entitlements: e)
         }
-        XCTAssertThrowsError(try start(.free)) { XCTAssertEqual($0 as? GameEngine.NewGameError, .sandboxNeedsPro) }
+        XCTAssertEqual(try start(.free).difficulty, .sandbox)
         XCTAssertEqual(try start(EntitlementSnapshot(owned: [.pro])).difficulty, .sandbox)
         XCTAssertNoThrow(try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, difficulty: .hard))
     }

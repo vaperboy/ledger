@@ -227,9 +227,9 @@ final class DeterminismSavesDatesTests: XCTestCase {
     static func lastDayOfMonth(_ y: Int, _ m0: Int) -> Int {
         GameCalendar.daysFromCivil(year: m0 == 11 ? y + 1 : y, month: m0 == 11 ? 1 : m0 + 2, day: 1) - 1
     }
-    /// The 25th, or the Friday before when it is a weekend. Written out here, independent of the engine.
+    /// The 15th, or the Friday before when it is a weekend. Written out here, independent of the engine.
     static func expectedPayDay(year: Int, month0: Int) -> Int {
-        let d = GameCalendar.daysFromCivil(year: year, month: month0 + 1, day: 25)
+        let d = GameCalendar.daysFromCivil(year: year, month: month0 + 1, day: 15)
         let weekday = ((d % 7) + 7 + 3) % 7   // 0 Monday ... 6 Sunday
         return weekday == 5 ? d - 1 : weekday == 6 ? d - 2 : d
     }
@@ -368,7 +368,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         print("DATES \(country) weeks=\(W) filing=\(r.filing):", counts.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
         XCTAssertTrue(r.events.filter { $0.kind == "latePayroll" || $0.kind == "missedInstalment" }.isEmpty, tag("nothing is late or missed in a well-funded game: \(r.events.filter { $0.kind == "latePayroll" || $0.kind == "missedInstalment" }.prefix(3))"))
 
-        // Pay day: once a month per company, on the 25th (the Friday before on a weekend), and a "Payday" message that day.
+        // Pay day: once a month per company, on the 15th (the Friday before on a weekend), and a "Payday" message that day.
         let expectedPay = calendar.map { Self.expectedPayDay(year: $0.year, month0: $0.month0) }.filter { $0 > start && $0 <= end }
         let payIndexes = calendar.filter { Self.expectedPayDay(year: $0.year, month0: $0.month0) > start && Self.expectedPayDay(year: $0.year, month0: $0.month0) <= end }.map { $0.index }
         for id in r.companies {

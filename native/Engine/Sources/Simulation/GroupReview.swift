@@ -8,7 +8,7 @@ import Businesses
 /// grade (Missed, Met, Beat) when that quarter closes. Not the boards of the companies (`ManagerModel` boards, `BoardDecision`): this is the
 /// owner holding the group to account.
 ///
-/// It opens with the second company or a first full year (`Gates.reviewOpen`) and the first review comes at the first quarter end after that.
+/// It opens after a first full year (`Gates.reviewOpen`) and the first review comes at the first quarter end after that.
 /// The figures are sums of the month reports (`Reports`), so they are the books' own. Kept in `rest["qrv"]`:
 ///   `since` the week the review opened, `hist` graded quarters, `last` the figures of the latest quarter, `act` the targets now running,
 ///   `offer` the review waiting to be answered.

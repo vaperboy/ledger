@@ -79,7 +79,7 @@ final class GroupReviewTests: XCTestCase {
         var e = try twoCompanyGame()
         var chosen: [String] = []
         var creditAtSet: Double = 0
-        let offers = play(&e, toWeek: 40) { e in
+        let offers = play(&e, toWeek: 91) { e in
             guard let o = e.reviewOffer else { return }
             // The review of a quarter that has just closed: pick the first two targets on offer.
             let kinds = Array(o.options.prefix(2).map { $0.kind })
@@ -89,14 +89,14 @@ final class GroupReviewTests: XCTestCase {
             creditAtSet = e.state.credit
             XCTAssertNil(e.reviewOffer)
         }
-        XCTAssertGreaterThanOrEqual(offers.count, 2, "two quarters in 40 weeks")
+        XCTAssertGreaterThanOrEqual(offers.count, 2, "two quarters after the first year")
         for w in offers { XCTAssertTrue(GameCalendar.isMonthEnd(week: w) && GameCalendar.month(week: w) % 3 == 2, "week \(w) is not a quarter end") }
-        XCTAssertEqual(chosen.first, "Oct to Dec 2026")
-        XCTAssertGreaterThan(offers[0], 8, "the first review is not in the first weeks")
+        XCTAssertEqual(chosen.first, "Oct to Dec 2027")
+        XCTAssertGreaterThan(offers[0], 52, "the first review comes after the first full year")
         let h = e.reviewHistory
         XCTAssertFalse(h.isEmpty)
         let first = h[0]
-        XCTAssertEqual(first.label, "Jan to Mar 2027")
+        XCTAssertEqual(first.label, "Jan to Mar 2028")
         XCTAssertEqual(first.targets.count, 2)
         XCTAssertNotNil(first.grade)
         XCTAssertTrue(first.targets.allSatisfy { $0.grade != nil && $0.result != nil })
@@ -117,7 +117,7 @@ final class GroupReviewTests: XCTestCase {
     func testNotNowKeepsTheReviewForAWeekAndSkippingGradesNothing() throws {
         var e = try twoCompanyGame()
         var deferred = false, skipped = false
-        play(&e, toWeek: 40) { e in
+        play(&e, toWeek: 80) { e in
             guard let o = e.reviewOffer else { return }
             if !deferred {
                 deferred = true
@@ -220,12 +220,12 @@ final class GroupReviewTests: XCTestCase {
 
     func testFirstYearEndWritesAReportFromTheBooks() throws {
         var e = try twoCompanyGame()
-        play(&e, toWeek: 14)
+        play(&e, toWeek: 66)
         let yr = try XCTUnwrap(e.latestReport(.year))
         let r = try XCTUnwrap(e.annualReports.first)
         XCTAssertEqual(e.annualReports.count, 1)
-        XCTAssertEqual(r.year, 2026)
-        XCTAssertTrue(r.partYear)
+        XCTAssertEqual(r.year, 2027)
+        XCTAssertFalse(r.partYear)
         XCTAssertEqual(r.sales, yr.group.pnl.revenue, accuracy: 0.001)
         XCTAssertEqual(r.profit, yr.group.pnl.netProfit, accuracy: 0.001)
         XCTAssertEqual(r.taxPaid, yr.group.taxPaid + yr.group.personalTax, accuracy: 0.001)
@@ -235,7 +235,7 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertEqual(value(r, "sales"), r.sales)
         assertLetterHonest(r)
         XCTAssertEqual(r.closing, "Tester")
-        XCTAssertTrue(e.state.inbox.contains { $0.title == "Your annual report for 2026 is ready" })
+        XCTAssertTrue(e.state.inbox.contains { $0.title == "Your annual report for 2027 is ready" })
         // The quarter that closed in December is already in the review history's world: a review waits, nothing graded yet.
         XCTAssertNil(r.yearGrade)
         XCTAssertTrue(r.letter.contains { $0.contains("no quarterly targets") })
@@ -243,24 +243,24 @@ final class GroupReviewTests: XCTestCase {
 
     func testSecondYearReportComparesAndCountsTheGrades() throws {
         var e = try twoCompanyGame()
-        play(&e, toWeek: 66) { e in
+        play(&e, toWeek: 118) { e in
             if let o = e.reviewOffer { e.setReviewTargets([o.options[0].kind]) }
         }
         let list = e.annualReports
-        XCTAssertEqual(list.count, 2, "2026 and 2027 are archived, newest first")
-        XCTAssertEqual(list.map { $0.year }, [2027, 2026])
+        XCTAssertEqual(list.count, 2, "2027 and 2028 are archived, newest first")
+        XCTAssertEqual(list.map { $0.year }, [2028, 2027])
         let r = list[0]
         XCTAssertFalse(r.partYear)
         XCTAssertNotNil(r.profitBefore)
         XCTAssertEqual(r.quarters.count, 4)
         XCTAssertNotNil(r.yearGrade)
-        XCTAssertEqual(r.yearGrade, e.reviewYearGrade(2027))
+        XCTAssertEqual(r.yearGrade, e.reviewYearGrade(2028))
         XCTAssertEqual(r.profitBefore!, list[1].profit, accuracy: 0.001, "last year's profit is last year's report")
         assertLetterHonest(r)
         assertLetterHonest(list[1])
         XCTAssertTrue(r.letter.contains { $0.contains("I set targets for four quarters") })
         // The December grade is in the year it closes.
-        XCTAssertEqual(r.quarters.last?.label, "Oct to Dec 2027")
+        XCTAssertEqual(r.quarters.last?.label, "Oct to Dec 2028")
     }
 
     // MARK: The letter on its own
