@@ -165,6 +165,10 @@ public enum Gates {
     /// Companies that have been trading (a holding does not trade); closed ones still count, their history is the player's.
     static func trading(_ s: GameState) -> [Company] { s.companies.filter { $0.type != "hold" } }
 
+    /// The quarterly group review and the annual report open with the second company or a first full year played (never in the first weeks).
+    public static let reviewRule: UnlockRule = .anyOf([.companies(2), .week(52)])
+    public static func reviewOpen(_ s: GameState) -> Bool { met(reviewRule, s, data: nil, company: nil, context: nil) }
+
     /// The one test of a rule. `company` is needed for company-level rules, `data` for wealth and `context` for dividends.
     static func met(_ r: UnlockRule, _ s: GameState, data: GameData?, company: Company?, context: FinanceContext?) -> Bool {
         switch r {

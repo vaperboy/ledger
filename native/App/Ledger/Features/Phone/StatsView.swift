@@ -35,6 +35,7 @@ struct StatsView: View {
                         goalsLink
                         Hairline()
                         reportsLink
+                        AnnualReportsLink()
                     }
                 }
                 if store.gateOpen(.bank) { TrophiesPreview() }
