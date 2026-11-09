@@ -113,14 +113,42 @@ extension EnvironmentValues {
     }
 }
 
-/// The shared glass surface: blurred material, a dark (or light, in light outside apps) tint, the tone's ambient light from the top,
+/// The shared glass surface: Liquid Glass on iOS 26, otherwise blurred material, a dark (or light, in light outside apps) tint, the tone's ambient light from the top,
 /// a hairline edge that is brighter at the top, and one soft shadow.
 struct PopupGlass: ViewModifier {
     var tone: PopupTone
     var light: Bool
     var radius: CGFloat = PopupLayout.radius
 
-    func body(content: Content) -> some View {
+    @ViewBuilder func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            real(content)
+        } else {
+            drawn(content)
+        }
+        #else
+        drawn(content)
+        #endif
+    }
+
+    #if compiler(>=6.2)
+    /// iOS 26: one real glass layer for the card, tinted dark (or light) for contrast, with the tone's ambient light behind it.
+    @available(iOS 26.0, *)
+    private func real(_ content: Content) -> some View {
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let tint: Color = light ? Color.white : Color(red: 0.075, green: 0.08, blue: 0.09)
+        return content
+            .modifier(LiquidGlass(shape: shape, tint: tint))
+            .background {
+                shape.fill(RadialGradient(colors: [tone.color.opacity(light ? tone.glow * 0.6 : tone.glow), Color.clear],
+                                          center: .top, startRadius: 0, endRadius: 340))
+            }
+            .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
+    }
+    #endif
+
+    private func drawn(_ content: Content) -> some View {
         let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
         let tint: Color = light ? Color.white.opacity(0.62) : Color(red: 0.075, green: 0.08, blue: 0.09).opacity(0.66)
         let edgeTop: Color = Color.white.opacity(light ? 0.7 : 0.18)

@@ -93,7 +93,7 @@ struct HomeTopLine: View {
             Button { Haptics.tap(); onNewCompany() } label: {
                 LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.medium, tint: Theme.ink)
                     .frame(width: 40, height: 40)
-                    .overlay(Circle().strokeBorder(Theme.lineStrong, lineWidth: 1))
+                    .liquidGlassCircle()
                     .frame(width: 44, height: 44)
                     .contentShape(Circle())
             }
@@ -106,7 +106,7 @@ struct HomeTopLine: View {
 // MARK: Net worth
 
 /// The hero: the label (with the way to Insights at the right), the big serif figure, what it did this week and in 30 days, and a thin
-/// line of the last year. The whole block opens Insights. No box around it.
+/// line of the last year, on a glass card. The whole card opens Insights.
 struct NetWorthCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -183,6 +183,8 @@ struct NetWorthCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Space.l)
+            .glassSurface(raised: true)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())

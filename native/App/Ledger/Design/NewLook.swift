@@ -732,6 +732,10 @@ struct PillTabBar: View {
     static let height: CGFloat = 66 + 8
 
     var body: some View {
+        GlassGroup { bar }
+    }
+
+    private var bar: some View {
         HStack(spacing: 0) {
             ForEach(items) { item in
                 let on = item.id == selection
@@ -749,7 +753,7 @@ struct PillTabBar: View {
                     .animation(Motion.quickAnimation, value: item.title)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(on ? Theme.goldWash : Color.clear))
+                    .background(selectedPill(on))
                     .overlay(Capsule().fill(Theme.accent.opacity(flashing == item.id ? 0.28 : 0)))
                     .overlay(alignment: .topTrailing) {
                         if !item.chip.isEmpty {
@@ -788,6 +792,23 @@ struct PillTabBar: View {
         .glassCapsule()
         .elevation(.raised)
         .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
+    }
+
+    /// The selected tab's capsule: champagne-tinted glass on iOS 26, the champagne wash elsewhere.
+    @ViewBuilder private func selectedPill(_ on: Bool) -> some View {
+        if on {
+            #if compiler(>=6.2)
+            if #available(iOS 26.0, *) {
+                Capsule().fill(Color.clear).liquidGlassCapsule(tint: Theme.accent)
+            } else {
+                Capsule().fill(Theme.goldWash)
+            }
+            #else
+            Capsule().fill(Theme.goldWash)
+            #endif
+        } else {
+            Color.clear
+        }
     }
 
     /// A brief wash on the re-tapped tab so the jump back to its root is visible (a plain, instant change under Reduce Motion).

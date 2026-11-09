@@ -176,7 +176,7 @@ struct FullScreenCelebration<Badge: View>: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.82).ignoresSafeArea().contentShape(Rectangle())
+            ZStack { Rectangle().fill(.regularMaterial); Color.black.opacity(0.55) }.ignoresSafeArea().contentShape(Rectangle())
             ConfettiBurst(count: 110, goldOnly: true, originFraction: 0.42).ignoresSafeArea()
             VStack(spacing: Theme.Space.l) {
                 Text(kicker).font(.footnote.weight(.semibold)).textCase(.uppercase).tracking(1.2).foregroundStyle(Theme.gold)

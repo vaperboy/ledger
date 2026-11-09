@@ -130,7 +130,7 @@ struct CoachMarks: View {
             }
         }
         .padding(Theme.Space.l)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surfaceRaised))
+        .glassSurface(radius: Theme.Radius.card, raised: true)
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1))
         .padding(.horizontal, Theme.Space.page)
         .frame(maxWidth: 520)
