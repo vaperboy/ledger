@@ -10,6 +10,7 @@ struct ReportsScreen: View {
     var body: some View {
         if let e = store.engine {
             ReportsContent(engine: e, companyID: companyID)
+                .safeAreaInset(edge: .bottom, spacing: 0) { if companyID == nil { AnnualReportsLink() } }
                 .appScreen(title: "Reports", subtitle: companyID == nil ? "Week, month and year for the whole group" : "Week, month and year for this company")
         }
     }

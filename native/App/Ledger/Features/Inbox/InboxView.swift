@@ -5,16 +5,13 @@ import Events
 import Countries
 import Finance
 
-/// Decisions and news. Decisions come first, by how soon they expire; each shows what every choice does before you commit and
-/// opens the company (and the section) it concerns. Search, a company filter and grouping keep hundreds of messages usable.
+/// One list of what reached you: open decisions first, then everything else, newest first. Things a manager, accountant or desk took
+/// care of stay out, unless a manager's choice was a costly or risky one. Each decision shows what every choice does before you commit
+/// and opens the company it concerns. Search and a company filter keep hundreds of messages usable.
 struct InboxView: View {
     private var P: OutsidePalette { .game }
-    /// Needs you: open decisions; All: everything.
-    /// Handled: what a hired rank, accountant or desk took care of for you (the Inbox shows who).
-    enum Tab: String, CaseIterable, Hashable { case decisions = "Needs you", handled = "Handled", all = "All" }
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var tab: Tab = .decisions
     @State private var query = ""
     /// nil = every company; 0 = messages about the group or you personally
     @State private var companyFilter: Int? = nil
@@ -40,18 +37,29 @@ struct InboxView: View {
 
     private var waitingCount: Int { store.openDecisionCount }
 
-    private func matches(_ m: Message, _ t: Tab) -> Bool {
-        switch t {
-        case .all: return true
-        case .decisions: return m.status == "open" && m.isOwnerAddressed
-        case .handled: return !m.handledBy.isEmpty
-        }
+    /// Shown in the list: what is addressed to the player and was not taken care of by someone else. A decision a manager took stays
+    /// when it cost money, risked a loss or was bad news: the owner may want to question it.
+    private func shown(_ m: Message) -> Bool {
+        if !m.isOwnerAddressed { return false }
+        let delegated: Bool = !m.handledBy.isEmpty || !m.value("mgrName").isNull
+        if !delegated { return true }
+        return questionable(m)
     }
 
-    private func filtered(_ e: GameEngine, _ t: Tab) -> [Message] {
+    /// A manager's pick that spent money, took a fine or a loss, gambled, or answered bad news.
+    private func questionable(_ m: Message) -> Bool {
+        guard !m.options.isEmpty else { return false }
+        if m.tone == "bad" { return true }
+        let pick: Int = m.int("pick", -1)
+        guard m.options.indices.contains(pick) else { return false }
+        let fx: JSONValue = m.options[pick]["fx"]
+        return fx["cash"].double < 0 || fx["fine"].double != 0 || fx["loss"].double != 0 || !fx["gamble"].isNull
+    }
+
+    private func filtered(_ e: GameEngine) -> [Message] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         return e.state.inbox.filter { m in
-            guard matches(m, t) else { return false }
+            guard shown(m) else { return false }
             if let c = companyFilter, m.companyID != c { return false }
             if q.isEmpty { return true }
             let co = m.companyID != 0 ? (e.state.company(m.companyID)?.name ?? "") : ""
@@ -61,12 +69,12 @@ struct InboxView: View {
 
     // MARK: Blocks
 
-    /// One chronological list, newest first, no sub-folders.
+    /// One list: questions first, then the rest; newest first inside each.
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
-        // While the first-steps guide runs, information comes before questions: the questions stay one tap away under Needs you.
+        // While the first-steps guide runs, information comes before questions.
         let guide: Bool = store.tutorialActive
         let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in
-            if guide, isQuestion(a) != isQuestion(b) { return !isQuestion(a) }
+            if isQuestion(a) != isQuestion(b) { return guide ? !isQuestion(a) : isQuestion(a) }
             return a.week != b.week ? a.week > b.week : a.id > b.id
         }
         return sorted.isEmpty ? [] : [Block(id: "all", title: "", messages: sorted)]
@@ -151,23 +159,21 @@ struct InboxView: View {
         }
     }
 
-    /// While the first-steps guide runs the Inbox opens on everything (information first), not on the questions; with nothing to read the
-    /// guide's reading step is over.
+    /// With nothing to read the first-steps guide's reading step is over.
     private func openOnInformation() {
-        guard store.tutorialActive, detailID == nil, tab == .decisions else { return }
-        tab = .all
+        guard store.tutorialActive, detailID == nil else { return }
         if store.tutorialStep == .readInbox, (store.engine?.tutorialInboxGuide ?? []).isEmpty { store.tutorialAdvance(from: .readInbox) }
     }
 
     private func takeRequest() {
         guard let id = store.takeMessageRequest() else { return }
-        tab = .all; query = ""; companyFilter = nil
+        query = ""; companyFilter = nil
         if let i = store.engine?.state.inbox.firstIndex(where: { $0.id == id }) { limit = max(limit, i + waitingCount + 20) }
         detailID = id
         scrollTarget = id
     }
 
-    /// Scrolls the All page to a requested message (only that page scrolls; the request is cleared once it has).
+    /// Scrolls to a requested message (the request is cleared once it has).
     private func scrollToTarget(_ proxy: ScrollViewProxy) {
         guard let id = scrollTarget else { return }
         scrollTarget = nil
@@ -188,9 +194,7 @@ struct InboxView: View {
     var body: some View {
         Group {
             if let e = store.engine {
-                SegmentPager(items: Tab.allCases, selection: $tab) { (k: Tab) in
-                    page(e, k)
-                }
+                page(e)
             }
         }
         .onAppear {
@@ -198,13 +202,6 @@ struct InboxView: View {
             openOnInformation()
         }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
-                .pulseOnce(when: waitingCount)
-                .padding(.vertical, Theme.Space.xs).background(P.ground)
-        }
-        // Search lives on the All page only, so another page is never filtered by a query that is not on screen.
-        .onChange(of: tab) { _, now in limit = Self.page; if now != .all { query = "" } }
         .onChange(of: query) { _, _ in limit = Self.page }
         // A company link tapped anywhere closes the detail first, so Back from the company lands on the Inbox list.
         .onChange(of: store.depth(store.tab)) { _, _ in detailID = nil }
@@ -215,36 +212,34 @@ struct InboxView: View {
         .environment(\.outsidePalette, P)
     }
 
-    private func page(_ e: GameEngine, _ k: Tab) -> some View {
-        let list: [Message] = filtered(e, k)
+    private func page(_ e: GameEngine) -> some View {
+        let list: [Message] = filtered(e)
         let cut = limited(blocks(e, list))
         return ScrollViewReader { (proxy: ScrollViewProxy) in
-            mailList(e, list: list, cut: cut, k)
-                .onAppear { if k == .all { scrollToTarget(proxy) } }
-                .onChange(of: scrollTarget) { _, _ in if k == .all { scrollToTarget(proxy) } }
+            mailList(e, list: list, cut: cut)
+                .onAppear { scrollToTarget(proxy) }
+                .onChange(of: scrollTarget) { _, _ in scrollToTarget(proxy) }
         }
     }
 
-    private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int), _ k: Tab) -> some View {
+    private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int)) -> some View {
         let week: Int = e.state.week
-        let alerts: [PayrollAlert] = payrollAlerts(e, k)
+        let alerts: [PayrollAlert] = payrollAlerts(e)
         let guide: [Int] = store.tutorialActive ? e.tutorialInboxGuide : []
         return List {
-            if !list.isEmpty || !alerts.isEmpty || k == .all {
-                hero(e, k, list, extra: alerts.count).mailRowStyle().listRowSeparator(.hidden)
-            }
-            if k == .all { searchField.padding(.bottom, Theme.Space.s).mailRowStyle().listRowSeparator(.hidden) }
-            if k == .all, !guide.isEmpty {
-                Text("New here? Open the messages marked Read next. Questions that need you are under Needs you.")
+            hero(e, list, extra: alerts.count).mailRowStyle().listRowSeparator(.hidden)
+            searchField.padding(.bottom, Theme.Space.s).mailRowStyle().listRowSeparator(.hidden)
+            if !guide.isEmpty {
+                Text("New here? Open the messages marked Read next.")
                     .textStyle(.caption, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
                     .mailRowStyle().listRowSeparator(.hidden)
             }
             if companyFilter != nil { filterLine(e).mailRowStyle() }
-            if list.isEmpty && alerts.isEmpty { empty(e, k).mailRowStyle() }
+            if list.isEmpty && alerts.isEmpty { empty(e).mailRowStyle() }
             ForEach(alerts) { (a: PayrollAlert) in payrollRow(a).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
                 ForEach(b.messages) { (m: Message) in
-                    mailRow(m, week: week, inline: k == .decisions, guide: k == .all ? guide : []).transition(.opacity)
+                    mailRow(m, week: week, inline: true, guide: guide).transition(.opacity)
                 }
             }
             if cut.hidden > 0 {
@@ -283,9 +278,9 @@ struct InboxView: View {
 
     // MARK: Payroll
 
-    /// Payroll that waits for the owner (no manager or accountant approves it): a needs-you item answered here, on the Needs you tab.
-    private func payrollAlerts(_ e: GameEngine, _ k: Tab) -> [PayrollAlert] {
-        guard k == .decisions, query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+    /// Payroll that waits for the owner (no manager or accountant approves it): answered here, above the list.
+    private func payrollAlerts(_ e: GameEngine) -> [PayrollAlert] {
+        guard query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         return e.payrollAlerts().filter { companyFilter == nil || $0.companyID == companyFilter }
     }
 
@@ -356,27 +351,25 @@ struct InboxView: View {
         }
     }
 
-    /// The page's hero: how many messages it holds, in words, and one line that matters (the first expiry, who answered, what is unread).
-    private func hero(_ e: GameEngine, _ k: Tab, _ list: [Message], extra: Int = 0) -> some View {
-        let n: Int = list.count + extra
-        let title: String
+    /// The top of the list: how many things wait for you, in words, and one line that matters (the first expiry, or what is unread).
+    private func hero(_ e: GameEngine, _ list: [Message], extra: Int = 0) -> some View {
+        let waiting: [Message] = list.filter { isQuestion($0) }
+        let n: Int = waiting.count + extra
         var note: String = ""
-        switch k {
-        case .decisions:
+        let title: String
+        if n > 0 {
             title = n == 1 ? "decision needs you" : "decisions need you"
-            let soonest: Int? = list.compactMap { (m: Message) -> Int? in m.expiresWeek.map { $0 - e.state.week } }.min()
+            let soonest: Int? = waiting.compactMap { (m: Message) -> Int? in m.expiresWeek.map { $0 - e.state.week } }.min()
             if let left = soonest { note = left <= 0 ? "The first one expires this week." : "The first one expires in \(left) week\(left == 1 ? "" : "s")." }
-        case .handled:
-            title = "handled by your team"
-        case .all:
-            title = n == 1 ? "message" : "messages"
+        } else {
+            title = "Nothing needs you"
             let unread: Int = store.unreadCount
             note = unread > 0 ? "\(unread) unread" : "All read"
         }
         return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text("\(n)").font(.hero(heroSize)).foregroundStyle(P.ink).lineLimit(1)
-            Text(title).textStyle(.body, tint: P.inkSoft)
-            if !note.isEmpty { Text(note).textStyle(.caption, tint: k == .decisions ? P.caution : P.inkFaint) }
+            if n > 0 { Text("\(n)").font(.hero(heroSize)).foregroundStyle(P.ink).lineLimit(1) }
+            Text(title).textStyle(n > 0 ? .body : .headline, tint: P.inkSoft)
+            if !note.isEmpty { Text(note).textStyle(.caption, tint: n > 0 ? P.caution : P.inkFaint) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.l)
@@ -439,13 +432,10 @@ struct InboxView: View {
         }
     }
 
-    private func empty(_ e: GameEngine, _ k: Tab) -> some View {
+    private func empty(_ e: GameEngine) -> some View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
-        let text = searching ? "No message matches \u{201C}\(query)\u{201D}."
-            : e.state.inbox.isEmpty ? "Nothing here yet."
-            : k == .decisions ? "Nothing needs you right now."
-            : k == .handled ? "Nothing handled for you yet." : "Nothing here yet."
-        return EmptyState(glyph: k == .decisions && !searching ? Glyph.check : Glyph.inbox, title: text)
+        let text = searching ? "No message matches \u{201C}\(query)\u{201D}." : "Nothing here yet."
+        return EmptyState(glyph: Glyph.inbox, title: text)
             .padding(.top, Theme.Space.xxl)
     }
 }

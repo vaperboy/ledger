@@ -3,110 +3,100 @@ import GameCore
 import Events
 import Simulation
 
-/// The trophy wall: firsts and milestones, in groups, with the date you reached each one. Original: V.trophies28.
+/// The showroom: only what has been won. Trophies stand in a two-column display, group by group with the newest group first, and the
+/// yearly business awards sit below. Nothing locked or missing is shown.
 struct AchievementsView: View {
     @EnvironmentObject var store: GameStore
 
+    private let columns: [GridItem] = [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible(), spacing: Theme.Space.m)]
+
     var body: some View {
         if let e = store.engine {
-            let entries = Trophies.entries(e.state)
-            let got = entries.filter { $0.reachedWeek != nil }
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    HeroFigure(label: "Trophies", value: "\(got.count) of \(entries.count)")
-                    FigureCard(items: [
-                        .init(label: "Awards won", value: "\(Awards.wonCount(e.state))"),
-                        .init(label: "Latest", value: got.max { ($0.reachedWeek ?? 0) < ($1.reachedWeek ?? 0) }?.name ?? "None yet")
-                    ], columns: 2)
-                    streakCard(e.milestoneProgress)
-                    ForEach(Trophies.groups, id: \.id) { g in
-                        let list = entries.filter { $0.group == g.id }
-                        if !list.isEmpty {
-                            CardSection(title: g.name, trailing: { Text("\(list.filter { $0.reachedWeek != nil }.count) of \(list.count)").textStyle(.caption, tint: Theme.inkFaint) }) {
-                                shelf(list)
-                                CardLine()
-                                VStack(spacing: 0) {
-                                    ForEach(Array(list.enumerated()), id: \.element.id) { i, t in
-                                        if i > 0 { CardLine() }
-                                        row(t)
-                                    }
-                                }
-                            }
-                        }
-                    }
+            let entries: [Trophies.Entry] = Trophies.entries(e.state)
+            let got: [Trophies.Entry] = entries.filter { $0.reachedWeek != nil }
+            let awards: [(year: Int, result: Awards.Result)] = Awards.years(e.state).flatMap { (y: Awards.Year) -> [(year: Int, result: Awards.Result)] in
+                y.results.filter { $0.won }.map { (year: y.year, result: $0) }
+            }
+            if got.isEmpty && awards.isEmpty {
+                ScrollView {
+                    EmptyState(glyph: Glyph.achievements, title: "Nothing in the showroom yet",
+                               message: "Firsts and milestones show up here: the first customer, the first employee, the first million.", centered: true)
+                        .padding(.top, Theme.Space.xxl)
                 }
-                .padding(.horizontal, 18).padding(.top, 4).padding(.bottom, 20)
-                .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                .ledgerBackground()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                        hero(trophies: got.count, awards: awards.count)
+                        ForEach(Trophies.groups, id: \.id) { g in
+                            let list: [Trophies.Entry] = got.filter { $0.group == g.id }
+                                .sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
+                            if !list.isEmpty { section(g.name, list) }
+                        }
+                        if !awards.isEmpty { awardsSection(awards) }
+                    }
+                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 24)
+                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                }
+                .scrollIndicators(.hidden)
+                .ledgerBackground()
             }
-            .scrollIndicators(.hidden)
-            .ledgerBackground()
         }
     }
 
-    /// Runs of weeks in which net worth rose, and the biggest single week.
-    private func streakCard(_ m: MilestoneProgress) -> some View {
-        let items: [FigureCard.Item] = [
-            .init(label: "Weeks in a row now", value: "\(m.profitStreak)"),
-            .init(label: "Best run", value: "\(m.bestStreak)"),
-            .init(label: "Best week", value: m.bestWeek > 0 ? store.short(m.bestWeek) : "None yet")
-        ]
-        return FigureCard(items: items, columns: 3)
-    }
-
-    /// A shelf of medallions for one group: won trophies in champagne first, then the empty slots.
-    private func shelf(_ list: [Trophies.Entry]) -> some View {
-        let wonCount: Int = list.filter { $0.reachedWeek != nil }.count
-        let columns: [GridItem] = Array(repeating: GridItem(.adaptive(minimum: 40, maximum: 44), spacing: 8), count: 1)
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(0..<list.count, id: \.self) { i in Medallion(won: i < wonCount, size: 38) }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(wonCount) of \(list.count) won")
-    }
-
-    private func row(_ t: Trophies.Entry) -> some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
-            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: t.id, group: t.group), size: 40, shape: .square,
-                          glyph: t.reachedWeek != nil ? Glyph.achievements : Glyph.ring, tint: t.reachedWeek != nil ? Theme.gold : Theme.ivoryDim)
-                .opacity(t.reachedWeek != nil ? 1 : 0.35)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(t.name).textStyle(.body, tint: t.reachedWeek != nil ? Theme.ink : Theme.inkSoft)
-                if t.reachedWeek != nil, !t.text.isEmpty { Text(t.text.tidyMoney).font(.caption).foregroundStyle(Theme.ivoryFaint).fixedSize(horizontal: false, vertical: true) }
+    private func hero(trophies: Int, awards: Int) -> some View {
+        HStack(spacing: Theme.Space.l) {
+            GoldRingMark(glyph: Glyph.achievements, size: 64)
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text("\(trophies) \(trophies == 1 ? "trophy" : "trophies")").textStyle(.title)
+                if awards > 0 { Text("\(awards) business \(awards == 1 ? "award" : "awards")").textStyle(.caption, tint: Theme.accent) }
             }
-            Spacer(minLength: 8)
-            Text(t.reachedWeek.map { t.before ? "Before the wall" : GameCalendar.dateString(week: $0) } ?? "Not yet")
-                .font(.caption.monospacedDigit()).foregroundStyle(Theme.ivoryFaint)
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func section(_ title: String, _ list: [Trophies.Entry]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(title).capsLabel()
+            LazyVGrid(columns: columns, spacing: Theme.Space.m) {
+                ForEach(list) { (t: Trophies.Entry) in plinth(t) }
+            }
+        }
+    }
+
+    /// One trophy on its stand: the art, the name, a line on what it was for, and when it was won.
+    private func plinth(_ t: Trophies.Entry) -> some View {
+        VStack(spacing: Theme.Space.s) {
+            ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: t.id, group: t.group), size: 72, shape: .round, glyph: Glyph.achievements, tint: Theme.gold)
+            Text(t.name).textStyle(.headline).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            if !t.text.isEmpty {
+                Text(t.text.tidyMoney).textStyle(.caption).multilineTextAlignment(.center).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+            }
+            Text(t.before ? "Before the showroom" : GameCalendar.dateString(week: t.reachedWeek ?? 0)).textStyle(.caption, tint: Theme.inkFaint)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(Theme.Space.m)
+        .glassSurface()
         .accessibilityElement(children: .combine)
         .newMarker(.achievements, "t" + t.id, style: .dot, alignment: .topLeading)
     }
-}
 
-/// A short trophy section for the Stats screen: how many, the latest few, and a way into the whole wall.
-struct TrophiesPreview: View {
-    @EnvironmentObject var store: GameStore
-    var body: some View {
-        if let e = store.engine {
-            let entries = Trophies.entries(e.state)
-            let got = entries.filter { $0.reachedWeek != nil }.sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
-            CardSection(title: "Trophies", trailing: {
-                NavigationLink {
-                    AchievementsView().appScreen(title: "Achievements", subtitle: PhoneApp.achievements.subtitle)
-                } label: {
-                    LinkLabel(text: "All \(entries.count)")
-                }.buttonStyle(PressableStyle())
-            }) {
-                if got.isEmpty {
-                    EmptyState(glyph: Glyph.goals, title: "No trophies yet", message: "Firsts and milestones show up here: the first customer, the first employee, the first million.", centered: false)
-                } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(got.prefix(3).enumerated()), id: \.element.id) { i, t in
-                            if i > 0 { CardLine() }
-                            ValueRow(label: t.name, value: t.reachedWeek.map { GameCalendar.dateString(week: $0) } ?? "").padding(.vertical, 8)
-                                .newMarker(.stats, "t" + t.id, style: .dot, alignment: .topLeading)
-                        }
+    private func awardsSection(_ awards: [(year: Int, result: Awards.Result)]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Business awards").capsLabel()
+            LazyVGrid(columns: columns, spacing: Theme.Space.m) {
+                ForEach(Array(awards.enumerated()), id: \.offset) { (_: Int, a: (year: Int, result: Awards.Result)) in
+                    VStack(spacing: Theme.Space.s) {
+                        ThumbnailView(kind: .trophy, key: ArtLibrary.awardKey(a.result.kind), size: 72, shape: .round, glyph: Glyph.achievements, tint: Theme.gold)
+                        Text(Awards.name(a.result.kind)).textStyle(.headline).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        Text(a.result.company).textStyle(.caption).multilineTextAlignment(.center).lineLimit(2)
+                        Text(String(a.year)).textStyle(.caption, tint: Theme.inkFaint)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(Theme.Space.m)
+                    .glassSurface()
+                    .accessibilityElement(children: .combine)
                 }
             }
         }

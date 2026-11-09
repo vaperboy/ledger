@@ -210,7 +210,7 @@ enum CoachTours {
             ]
         case .readInbox:
             return [
-                CoachMark(stop: .inboxGuided, text: "Open the message marked Read next. Anything that needs an answer waits under Needs you.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .inboxGuided, text: "Open the message marked Read next. Anything that needs an answer waits at the top of the Inbox.", passThrough: true, button: "", blocking: false),
                 CoachMark(stop: .phoneInbox, text: "Open the Inbox again to read what came in.", passThrough: true, button: "", blocking: false),
                 CoachMark(stop: .phoneTab, text: "Open the Phone tab, then the Inbox.", passThrough: true, button: "", blocking: false),
             ]

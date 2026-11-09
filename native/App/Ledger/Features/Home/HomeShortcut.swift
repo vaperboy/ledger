@@ -33,7 +33,7 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         case .market: return Glyph.market
         case .inbox: return PhoneApp.inbox.glyph
         case .accounting: return PhoneApp.accounting.glyph
-        case .goals: return PhoneApp.goals.glyph
+        case .goals: return Glyph.goals
         case .news: return PhoneApp.news.glyph
         case .stats: return PhoneApp.stats.glyph
         case .ventures: return PhoneApp.ventures.glyph
@@ -57,7 +57,7 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         case .market: store.openMarket()
         case .inbox: store.openApp(.inbox)
         case .accounting: store.openApp(.accounting)
-        case .goals: store.openApp(.goals)
+        case .goals: store.openGoals()
         case .news: store.openApp(.news)
         case .stats: store.openApp(.stats)
         case .ventures: store.openApp(.ventures)
