@@ -217,7 +217,8 @@ struct LedgerBackdrop: View {
         ZStack {
             if palette == .game {
                 LinearGradient(colors: [Theme.page, Theme.pageLift], startPoint: .top, endPoint: .bottom)
-                photo
+                // Reduce Transparency: no photo behind the text, only the flat page colours.
+                if !reduceTransparency { photo }
                 if !reduceTransparency {
                     // Faded out over the top inset so the status-bar guard strip (flat page colour) shows no edge.
                     RadialGradient(colors: [Theme.accent.opacity(0.07), Theme.accent.opacity(0)], center: .topTrailing, startRadius: 0, endRadius: 440)
@@ -241,10 +242,13 @@ struct LedgerBackdrop: View {
                     .scaleEffect(1.12)
                     .blur(radius: 18)
             }
-            .overlay { Color.black.opacity(0.10) }
+            // An even dark veil keeps card text readable over bright parts of the photo; the top and bottom scrims carry the status bar,
+            // the navigation bar and the tab bar.
+            .overlay { Color.black.opacity(0.26) }
             .overlay {
-                LinearGradient(stops: [.init(color: Theme.page.opacity(0.6), location: 0), .init(color: Theme.page.opacity(0), location: 0.25),
-                                       .init(color: Theme.page.opacity(0), location: 0.6), .init(color: Theme.page.opacity(0.7), location: 1)],
+                LinearGradient(stops: [.init(color: Theme.page.opacity(0.8), location: 0), .init(color: Theme.page.opacity(0.35), location: 0.14),
+                                       .init(color: Theme.page.opacity(0), location: 0.3),
+                                       .init(color: Theme.page.opacity(0), location: 0.55), .init(color: Theme.page.opacity(0.78), location: 1)],
                                startPoint: .top, endPoint: .bottom)
             }
             .clipped()

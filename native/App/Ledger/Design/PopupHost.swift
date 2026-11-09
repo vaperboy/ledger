@@ -134,13 +134,18 @@ struct PopupHostLayer: View {
                     .allowsHitTesting(on)
                     .accessibilityHidden(!on)
                     .zIndex(on ? 1 : 0)
-                    .transition(e.priority.isDialog ? Motion.confirmTransition(reduceMotion) : Motion.panelTransition(reduceMotion))
+                    // The card draws its own entrance by size and kind (`PopupEntrance`); the host only fades it in and out.
+                    .transition(.opacity)
             }
         }
-        .animation(Motion.arrive(reduceMotion), value: signature)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: signature)
     }
 
     @ViewBuilder private func entryView(_ e: PopupEntry) -> some View {
+        entryBody(e).environment(\.popupPriority, e.priority)
+    }
+
+    @ViewBuilder private func entryBody(_ e: PopupEntry) -> some View {
         switch e.draw {
         case .card(let title, let size, let category, let tone, let palette):
             // The card takes the palette of the screen that raised it, like its content does, so a light outside app gets a light card.

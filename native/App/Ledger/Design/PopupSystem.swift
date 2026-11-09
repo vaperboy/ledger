@@ -120,7 +120,34 @@ struct PopupGlass: ViewModifier {
     var light: Bool
     var radius: CGFloat = PopupLayout.radius
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     @ViewBuilder func body(content: Content) -> some View {
+        if reduceTransparency {
+            solid(content)
+        } else {
+            glass(content)
+        }
+    }
+
+    /// Reduce Transparency: an opaque card with the tone's glow and a clear edge, no blur and no glass.
+    private func solid(_ content: Content) -> some View {
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let base: Color = light ? Color(white: 0.97) : Color(red: 0.11, green: 0.115, blue: 0.125)
+        return content
+            .background {
+                ZStack {
+                    shape.fill(base)
+                    shape.fill(RadialGradient(colors: [tone.color.opacity(light ? tone.glow * 0.5 : tone.glow * 0.8), Color.clear],
+                                              center: .top, startRadius: 0, endRadius: 340))
+                }
+            }
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(Color.primary.opacity(0.25), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
+    }
+
+    @ViewBuilder private func glass(_ content: Content) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             real(content)
@@ -143,6 +170,14 @@ struct PopupGlass: ViewModifier {
             .background {
                 shape.fill(RadialGradient(colors: [tone.color.opacity(light ? tone.glow * 0.6 : tone.glow), Color.clear],
                                           center: .top, startRadius: 0, endRadius: 340))
+            }
+            // The glass is clear enough to show the glow behind it, but not to carry it: the same glow is laid over the glass too, added
+            // as light so it reads through the surface without greying the text.
+            .overlay {
+                shape.fill(RadialGradient(colors: [tone.color.opacity(light ? 0.0 : tone.glow * 0.5), Color.clear],
+                                          center: .top, startRadius: 0, endRadius: 300))
+                    .blendMode(.plusLighter)
+                    .allowsHitTesting(false)
             }
             .shadow(color: Color.black.opacity(0.35), radius: 30, x: 0, y: 12)
     }
@@ -206,25 +241,30 @@ struct PopupPrimaryCapsuleStyle: ButtonStyle {
     var tone: PopupTone
     var light = false
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
+        let shape: RoundedRectangle = RoundedRectangle(cornerRadius: LedgerButtonMetrics.radius, style: .continuous)
+        let pressed: Bool = configuration.isPressed && isEnabled
         let fill: Color = tone == .neutral ? (light ? Color.black.opacity(0.88) : Color.white) : tone.color
         let ink: Color = tone == .neutral ? (light ? Color.white : Color.black) : Color.black.opacity(0.88)
         return configuration.label
             .font(.system(size: 17, weight: .semibold))
             .foregroundStyle(ink)
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .background(Capsule().fill(fill))
-            .opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.4)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .contentShape(Capsule())
-            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: configuration.isPressed)
+            .frame(maxWidth: .infinity, minHeight: LedgerButtonMetrics.regularHeight)
+            .background(shape.fill(fill))
+            .overlay(shape.fill(Color.white.opacity(pressed ? 0.18 : 0)))
+            .opacity(isEnabled ? 1 : 0.4)
+            .scaleEffect(pressed && !reduceMotion ? 0.97 : 1)
+            .contentShape(shape)
+            .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.6), value: pressed)
     }
 }
 
 /// The quiet second action under a primary capsule: a text button with a full 44pt target.
 struct PopupTextActionStyle: ButtonStyle {
     var tint: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -233,6 +273,8 @@ struct PopupTextActionStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
             .opacity(configuration.isPressed ? 0.6 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -251,22 +293,23 @@ struct HoldToConfirmButton: View {
 
     var body: some View {
         ZStack {
-            Capsule().fill(tint.opacity(0.14))
+            RoundedRectangle(cornerRadius: LedgerButtonMetrics.radius, style: .continuous).fill(tint.opacity(0.14))
             GeometryReader { (g: GeometryProxy) in
-                Capsule().fill(tint.opacity(0.5)).frame(width: max(0, g.size.width * progress))
+                Rectangle().fill(tint.opacity(0.5)).frame(width: max(0, g.size.width * progress))
             }
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: LedgerButtonMetrics.radius, style: .continuous))
             Text(done ? "Done" : "Hold to \(title)")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Color.white)
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .padding(.horizontal, 16)
         }
-        .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
-        .overlay(Capsule().strokeBorder(tint.opacity(holding ? 0.9 : 0.55), lineWidth: 1))
+        .frame(maxWidth: .infinity, minHeight: LedgerButtonMetrics.regularHeight, maxHeight: LedgerButtonMetrics.regularHeight)
+        .overlay(RoundedRectangle(cornerRadius: LedgerButtonMetrics.radius, style: .continuous).strokeBorder(tint.opacity(holding ? 0.9 : 0.55), lineWidth: 1))
         .shadow(color: tint.opacity(holding ? 0.55 : 0.25), radius: holding ? 18 : 10, x: 0, y: 0)
-        .scaleEffect(holding && !reduceMotion ? 0.985 : 1)
-        .contentShape(Capsule())
+        .scaleEffect(holding && !reduceMotion ? 0.97 : 1)
+        .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.6), value: holding)
+        .contentShape(Rectangle())
         .onLongPressGesture(minimumDuration: duration, maximumDistance: 40, perform: complete, onPressingChanged: pressing)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)

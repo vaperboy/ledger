@@ -243,13 +243,18 @@ final class GameStore: ObservableObject {
     func clearChip() { transferChip = nil }
     /// The short popup after an ordinary day (real sales and today's messages); nil when there is nothing to say or it has been read.
     @Published private(set) var dailySheet: DailyDigest?
-    /// True while the start-of-game ambition prompt is waiting to be answered (before the first day).
-    @Published private(set) var ambitionPrompt = false
 
     // MARK: Navigation state (the one owner; the methods are under "Navigation" below)
 
     /// The selected tab. Only the tab bar changes it (`selectTab`); no link does.
     @Published var tab: AppTab = AppTab.launch
+    /// The tab that was open before the current one (nil until the first change); `returnToPreviousTab` goes back to it.
+    @Published private(set) var previousTab: AppTab?
+    /// Goes back to the tab that was open before this one, keeping the place it had.
+    func returnToPreviousTab() {
+        guard let p = previousTab, p != tab else { return }
+        selectTab(p, resetRoot: false)
+    }
     private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
     /// Every tab's navigation stack (the Custom tab's root is its chosen destination). The tab roots bind to these; nothing else holds a stack.
@@ -416,7 +421,7 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, !tutorialHoldsDay, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
+        guard !isAdvancing, !tutorialHoldsDay, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)
@@ -505,14 +510,12 @@ final class GameStore: ObservableObject {
             e.markAmbitionPromptShown()
             return true
         }
-        ambitionPrompt = false
         if let path, let name = engine?.ambitionPaths.first(where: { $0.id == path })?.name { show("Your ambition: \(name). Change it freely until week 4.", tone: "good") }
     }
 
     /// Picks up what was earned or closed while the app was away (a saved game with an unread report or an unshown celebration).
     func refreshPending() {
         guard var e = engine, !isAdvancing else { return }
-        ambitionPrompt = e.ambitionPromptPending
         if reportSheet == nil { reportSheet = e.pendingReportDigest() }
         let taken: [Celebration] = e.takeCelebrations()
         if !taken.isEmpty {
@@ -802,6 +805,7 @@ final class GameStore: ObservableObject {
             popToRoot(t)
         } else {
             if resetRoot { popToRoot(t) }
+            previousTab = tab
             tab = t
         }
         appRequest = nil
@@ -914,7 +918,7 @@ final class GameStore: ObservableObject {
     private func resetNavigation() {
         tab = .company
         stacks = [:]; rootTokens = [:]; appRequest = nil
-        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); outcomes = []; notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil; ambitionPrompt = false
+        reportSheet = nil; dailySheet = nil; decisionPopup = nil; workerPopup = nil; seedUpdateMarks(); outcomes = []; notices = []; redAlerts = []; celebrationQueue = []; unlockQueue = []; dayChip = nil
     }
 
     func go(_ action: Suggestion.Action) {

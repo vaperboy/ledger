@@ -10,9 +10,22 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
     var shape: S
     var tint: Color? = nil
     var interactive = false
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @ViewBuilder
     func body(content: Content) -> some View {
+        if reduceTransparency {
+            // Reduce Transparency: an opaque surface with a clear edge instead of glass or blur.
+            content
+                .background(shape.fill(Theme.walnutRaised))
+                .overlay(shape.strokeBorder(Color.white.opacity(0.3), lineWidth: 1))
+        } else {
+            glassBody(content)
+        }
+    }
+
+    @ViewBuilder
+    private func glassBody(_ content: Content) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             content.glassEffect(glass, in: shape)
