@@ -6,7 +6,7 @@ final class PageSwipeGate {
     var touching = false
 }
 
-/// The five tabs stacked: tapping a tab bar item slides the old page a short way out (toward the side the new tab lies on) while it fades,
+/// The tabs stacked: tapping a tab bar item slides the old page a short way out (toward the side the new tab lies on) while it fades,
 /// and the new page slides in from that side over the same short distance (a spring of about 0.3 s, no scale). There is NO page swipe: tabs change only by tapping the tab bar; horizontal swipes belong to the
 /// segment rows inside a page (`SegmentPager`). All pages stay alive (each keeps its own stack and scroll place). Only the settled page
 /// takes touches. Under Reduce Motion the pages fade.

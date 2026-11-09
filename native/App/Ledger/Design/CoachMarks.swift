@@ -5,7 +5,6 @@ import Simulation
 enum FirstRunFlags {
     /// Set when the new-player tutorial ends (its step itself lives in the save).
     static let tour = "firstRun.tour"
-    static let customTabTip = "firstRun.customTabTip"
     static func appHelp(_ appID: String) -> String { "firstRun.appHelp." + appID }
     /// The seen flag of one tour of `CoachTours` (the first-session tour keeps its original key).
     static func tourFlag(_ id: String) -> String { "firstRun.tour." + id }
@@ -16,12 +15,12 @@ enum FirstRunFlags {
 
 /// A place on screen a coach mark can point at.
 enum CoachStop: Hashable {
-    case nextDay, happened, needsYou, phoneTab
+    case nextDay, happened, needsYou
     case firstPick, firstItemRow, itemPrice, itemSupplier, goalCard
-    case tabBar, customTab, customPick
+    case tabBar
     case groupAdd, groupStructure, groupPeople, groupCard
     case venturesHeader, venturesFound, venturesBacking
-    case phoneGrid, phoneInbox, phoneBank
+    case phoneInbox
     case companyTabs, companyPage
     case appHeader
 }
@@ -225,20 +224,6 @@ enum CoachTours {
             CoachMark(stop: .groupStructure, text: "Structure shows what you own and who runs it. Tap it to look.", passThrough: true),
             CoachMark(stop: .groupCard, text: "Each card is a company or a stake. Open one to manage it."),
         ]),
-        CoachTour(id: "ventures", trigger: .tab(.projects), marks: [
-            CoachMark(stop: .venturesHeader, text: "This is what your startups, stakes and funds are worth together."),
-            CoachMark(stop: .venturesFound, text: "Found a startup here: pick an idea and put some money in."),
-            CoachMark(stop: .venturesBacking, text: "Back other founders here: put money into a pitch for a share of it."),
-        ]),
-        CoachTour(id: "phone", trigger: .tab(.phone), marks: [
-            CoachMark(stop: .phoneGrid, text: "Every app lives here. Tap one to open it."),
-            CoachMark(stop: .phoneInbox, text: "The Inbox holds every question waiting for you."),
-            CoachMark(stop: .phoneBank, text: "The Bank holds your money, bills and loans.", button: "Done"),
-        ]),
-        CoachTour(id: "custom", trigger: .tab(.custom), marks: [
-            CoachMark(stop: .customTab, text: "This tab is yours. Press and hold it to choose what it opens: the Edit chip shows until you do.", fallback: .tabBar),
-            CoachMark(stop: .customPick, text: "Pick any app, or one of your companies.", button: "Done"),
-        ]),
         CoachTour(id: "company", trigger: .route(.company), marks: [
             CoachMark(stop: .companyTabs, text: "Overview is the summary, Team the people, Manage how it runs, Sales what it sells and Stats the money."),
             CoachMark(stop: .companyPage, text: "Start on Overview: it shows the cash and what needs you.", button: "Done"),
@@ -265,9 +250,8 @@ enum CoachTours {
 }
 
 extension GameStore {
-    /// True when `app` is the screen on top of the tab being shown: pushed on it, or the Custom tab's own root.
     func showsApp(_ app: PhoneApp) -> Bool {
         if path(for: tab).last == .app(app) { return true }
-        return tab == .custom && customPath.isEmpty && customTarget == .app(app)
+        return app.ownTab == tab && path(for: tab).isEmpty
     }
 }

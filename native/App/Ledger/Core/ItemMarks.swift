@@ -29,12 +29,6 @@ extension GameStore {
                     for l in e.reviewSummary(co, limit: 30).lines where e.state.week - l.weeksAgo > seen { out.insert(ReviewsApp.lineKey(e, co, l)) }
                 }
             }
-        case .stats, .achievements:
-            if let seen = base.ints["tr." + app.rawValue] {
-                for t in Trophies.entries(e.state) where !t.before {
-                    if let w = t.reachedWeek, w > seen { out.insert("t" + t.id) }
-                }
-            }
         case .news:
             for n in UpdateFeed.freshNews(e, marks: base) { out.insert("n" + UpdateFeed.newsKey(n)) }
         case .marketplace:

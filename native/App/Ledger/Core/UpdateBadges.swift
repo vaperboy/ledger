@@ -21,7 +21,7 @@ struct UpdateMarks: Codable, Equatable {
 
 /// The apps whose updates are told by messages, and how a message finds its app.
 enum UpdateFeed {
-    static let messageApps: [PhoneApp] = [.inbox, .bank, .market, .news, .weather, .achievements, .airStay, .techPro, .atlas, .marketplace]
+    static let messageApps: [PhoneApp] = [.inbox, .bank, .market, .news, .weather, .airStay, .techPro, .atlas, .marketplace]
 
     /// The app a message belongs to, from who sent it. Anything unknown stays in the Inbox.
     static func app(of m: Message) -> PhoneApp {
@@ -36,7 +36,6 @@ enum UpdateFeed {
         if has(["payroll", "tax", "accountant", "finance manager"]) { return .bank }
         if has(["market", "competition", "consumer authority", "tourism", "industry association", "business broker", "customers"]) { return .market }
         if has(["news"]) { return .news }
-        if has(["trophy", "award", "ambition"]) { return .achievements }
         return .inbox
     }
 
@@ -89,7 +88,7 @@ enum UpdateFeed {
             return (unseen ? e.bigWeatherWarnings().count : 0) + freshMessages(e, app, marks: marks).count
         case .marketplace:
             return freshListings(e, marks: marks) + freshMessages(e, app, marks: marks).count
-        case .bank, .achievements, .airStay, .techPro, .atlas:
+        case .bank, .airStay, .techPro, .atlas:
             return freshMessages(e, app, marks: marks).count
         default:
             return 0
@@ -105,7 +104,7 @@ extension GameStore {
     }
 
     /// Every launcher app with a badge above zero.
-    /// Kept until the engine or `seenMarks` changes (the tab bar, Home and the launcher read it on every render).
+    /// Kept until the engine or `seenMarks` changes (the Market tab, Home and the Apps list read it on every render).
     var phoneBadges: [PhoneApp: Int] {
         memo("badges") { (_: GameEngine) -> [PhoneApp: Int] in
             var out: [PhoneApp: Int] = [:]
@@ -116,9 +115,6 @@ extension GameStore {
             return out
         } ?? [:]
     }
-
-    /// The number on the Phone tab: every badge added up.
-    var waitingCount: Int { phoneBadges.values.reduce(0, +) }
 
     private func fill(_ m: inout UpdateMarks, _ e: GameEngine) {
         let maxID: Int = UpdateFeed.maxMessageID(e)
@@ -137,7 +133,7 @@ extension GameStore {
         let known: Bool = e.news.contains { (n: NewsItem) -> Bool in UpdateFeed.newsKey(n) == oldNews }
         if !known { m.texts["news"] = UpdateFeed.newsSignature(e) }
         if m.texts["weather"] == nil { m.texts["weather"] = UpdateFeed.weatherSignature(e) }
-        for k in ["reviews", "tr.stats", "tr.achievements"] {
+        for k in ["reviews"] {
             let old: Int? = m.ints[k]
             if old == nil || old! > e.state.week { m.ints[k] = e.state.week }
         }
@@ -165,7 +161,6 @@ extension GameStore {
             s.ints["market"] = UpdateFeed.maxMarketID(e)
             for co in e.state.companies where co.status == .open && co.type != "hold" { s.texts["rv.\(co.id)"] = rivalIDList(e, co) }
         case .reviews: s.ints["reviews"] = e.state.week
-        case .stats, .achievements: s.ints["tr." + app.rawValue] = e.state.week
         case .news: s.texts["news"] = UpdateFeed.newsSignature(e)
         case .weather: s.texts["weather"] = UpdateFeed.weatherSignature(e)
         case .marketplace: s.ints["marketplace"] = MarketplaceBridge.newestPostedDay(e)

@@ -418,7 +418,7 @@ struct ReturnLine: View {
             } label: {
                 HStack(spacing: Theme.Space.xs) {
                     LedgerGlyph(glyph: Glyph.back, size: 12, tint: Theme.accent)
-                    Text("Back to \(store.title(for: r.from))").textStyle(.body, tint: Theme.accent, weight: .medium)
+                    Text("Back to \(r.from.title)").textStyle(.body, tint: Theme.accent, weight: .medium)
                     Spacer()
                 }
                 .foregroundStyle(Theme.accent)
@@ -432,11 +432,11 @@ struct ReturnLine: View {
 
 extension View {
     /// The new-look screen header (round back, serif title, grey subtitle) for a pushed screen. See `AppScreen`.
-    func appScreen(title: String, subtitle: String = "", tab: AppTab = .phone, showsBack: Bool = true) -> some View {
+    func appScreen(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true) -> some View {
         modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, trailing: { EmptyView() }))
     }
     /// The same with a trailing control (a menu) in the header.
-    func appScreen<T: View>(title: String, subtitle: String = "", tab: AppTab = .phone, showsBack: Bool = true, @ViewBuilder trailing: @escaping () -> T) -> some View {
+    func appScreen<T: View>(title: String, subtitle: String = "", tab: AppTab = .company, showsBack: Bool = true, @ViewBuilder trailing: @escaping () -> T) -> some View {
         modifier(AppScreen(title: title, subtitle: subtitle, tab: tab, showsBack: showsBack, trailing: trailing))
     }
 }
@@ -710,39 +710,22 @@ struct SmallOutlineButton: View {
 
 // MARK: Floating pill tab bar
 
-/// One destination of the floating tab bar.
 struct PillTabItem: Identifiable, Equatable {
     var id: String
     var title: String
     var glyph: String
+    var accent: Color = Theme.accent
     var badge: Int = 0
-    /// True for the tab the player can re-point with a long press (the Custom tab).
-    var changeable: Bool = false
-    /// A small label drawn on the tab (the Custom tab's "Edit" while it points nowhere); empty for none.
-    var chip: String = ""
-    /// True while the tab is not unlocked: drawn grayed with a lock, and a tap calls `onLocked` instead of changing tab.
-    var locked: Bool = false
 }
 
-/// The floating tab bar: a 66 pt bordered capsule over the page, the selected tab washed in a champagne pill, red bubbles for counts.
-/// Overlay it at the bottom of the shell and set `tabBarClearance` so every `ledgerBackground()` screen keeps its content clear of it. Each item is a button with the identifier `tab-<title>`.
 struct PillTabBar: View {
     var items: [PillTabItem]
     @Binding var selection: String
-    /// Called with the item's id when the tab that is already selected is tapped again (the tab goes back to its root).
     var onReselect: (String) -> Void = { _ in }
-    /// Called with the item's id when a `changeable` item is long-pressed.
-    var onLongPress: (String) -> Void = { _ in }
-    /// Called with the item's id when a locked item is tapped.
-    var onLocked: (String) -> Void = { _ in }
-    @State private var longPressed: String?
-    /// The tab that flashes for a moment when a re-tap sends it back to its root.
     @State private var flashing: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    /// Lets the selected pill glide from one tab to the next instead of fading out and in.
     @Namespace private var pillSpace
-    /// Bar height plus its bottom padding; screens keep this much (plus a margin) clear at the bottom.
     static let height: CGFloat = 66 + 8
 
     var body: some View {
@@ -755,53 +738,23 @@ struct PillTabBar: View {
                 let on = item.id == selection
                 let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
                 Button {
-                    if longPressed == item.id { longPressed = nil; return }
-                    if item.locked { Haptics.tap(); onLocked(item.id); return }
                     if on { onReselect(item.id); flash(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
-                        LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? Theme.accent : Theme.inkSoft)
-                            .overlay(alignment: .topTrailing) {
-                                if item.locked { LockBadge(size: 10).padding(2).background(Circle().fill(Theme.surfaceRaised)).offset(x: 8, y: -6) }
-                            }
-                        Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? Theme.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
+                        LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? item.accent : Theme.inkSoft)
+                        Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? item.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    .id(item.glyph + item.title)
-                    .transition(.opacity)
-                    .animation(Motion.quickAnimation, value: item.title)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(selectedPill(on))
-                    .overlay(Capsule().fill(Theme.accent.opacity(flashing == item.id ? 0.28 : 0)))
-                    .overlay(alignment: .topTrailing) {
-                        if !item.chip.isEmpty {
-                            Text(item.chip).font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.accentInk)
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Capsule().fill(Theme.accent))
-                                .offset(x: -4, y: -2)
-                                .accessibilityHidden(true)
-                        }
-                    }
+                    .background(selectedPill(on, accent: item.accent))
+                    .overlay(Capsule().fill(item.accent.opacity(flashing == item.id ? 0.28 : 0)))
                     .overlay(alignment: .topTrailing) { RedBubble(count: item.badge, size: .small).padding(.trailing, 14).offset(y: -4) }
-                    .opacity(item.locked ? 0.4 : 1)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
-                    longPressed = item.id
-                    Haptics.tap()
-                    onLongPress(item.id)
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 400_000_000)
-                        longPressed = nil
-                    }
-                }, including: item.changeable ? .all : .subviews)
                 .animation(reduceMotion ? nil : Motion.moveAnimation, value: on)
-                .coachAnchor(.phoneTab, enabled: item.id == AppTab.phone.rawValue)
-                .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
                 .accessibilityLabel(item.title)
-                .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
-                .accessibilityValue(item.locked ? "Locked" : (item.badge > 0 ? "\(item.badge) waiting" : ""))
+                .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
                 .accessibilityIdentifier("tab-\(item.title)")
                 .accessibilityAddTraits(traits)
             }
@@ -813,18 +766,17 @@ struct PillTabBar: View {
         .padding(.horizontal, Theme.Space.l).padding(.bottom, Theme.Space.s)
     }
 
-    /// The selected tab's capsule: champagne-tinted glass on iOS 26, the champagne wash elsewhere.
-    @ViewBuilder private func selectedPill(_ on: Bool) -> some View {
+    @ViewBuilder private func selectedPill(_ on: Bool, accent: Color) -> some View {
         if on {
             Group {
                 #if compiler(>=6.2)
                 if #available(iOS 26.0, *), !reduceTransparency {
-                    Capsule().fill(Color.clear).liquidGlassCapsule(tint: Theme.accent, interactive: true)
+                    Capsule().fill(Color.clear).liquidGlassCapsule(tint: accent, interactive: true)
                 } else {
-                    Capsule().fill(Theme.goldWash).overlay(Capsule().strokeBorder(Theme.accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
+                    Capsule().fill(accent.opacity(0.14)).overlay(Capsule().strokeBorder(accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
                 }
                 #else
-                Capsule().fill(Theme.goldWash).overlay(Capsule().strokeBorder(Theme.accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
+                Capsule().fill(accent.opacity(0.14)).overlay(Capsule().strokeBorder(accent.opacity(reduceTransparency ? 0.7 : 0.35), lineWidth: 1))
                 #endif
             }
             .matchedGeometryEffect(id: "tab-pill", in: pillSpace)

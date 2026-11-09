@@ -48,11 +48,6 @@ struct SettingsView: View {
             toggleRow(Glyph.phone, "Sounds", detail: "Short cues, silent when the ringer is muted", isOn: $sounds)
             rule
             toggleRow(Glyph.phone, "Reminders", isOn: $reminders)
-            rule
-            Button { store.customPickerOpen = true } label: {
-                plainRow(store.customGlyph, "Custom tab", detail: "Long-press it in the tab bar to change it too", value: store.customTarget == nil ? "Not picked" : store.customTitle, chevron: true)
-            }.buttonStyle(PressableStyle())
-            .accessibilityIdentifier("settings-custom-tab")
         }
     }
 

@@ -78,8 +78,8 @@ struct HomeSummary<Companies: View>: View {
     }
 }
 
-/// The page's top line: the date over the owner's name; at the right the rank button (opens Goals) and a round New company button.
 struct HomeTopLine: View {
+    @EnvironmentObject var store: GameStore
     var name: String
     var dateText: String
     var engine: GameEngine
@@ -87,20 +87,17 @@ struct HomeTopLine: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
+            HomeProfileButton(engine: engine)
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(dateText).textStyle(.label, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.8)
-                Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                Text(dateText).textStyle(.label, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.7)
+                Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.6)
             }
-            Spacer(minLength: Theme.Space.s)
-            Button { Haptics.tap(); onNewCompany() } label: {
-                LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.medium, tint: Theme.ink)
-                    .frame(width: 40, height: 40)
-                    .liquidGlassCircle()
-                    .frame(width: 44, height: 44)
-                    .contentShape(Circle())
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityLabel("New company")
+            Spacer(minLength: Theme.Space.xxs)
+            HomeGoldChip()
+            HomeRoundButton(glyph: Glyph.inbox, label: "Inbox", badge: store.appBadge(.inbox), identifier: "home-inbox") { store.openApp(.inbox) }
+                .coachAnchor(.phoneInbox)
+            HomeRoundButton(glyph: PhoneApp.apps.glyph, label: "Apps", badge: store.appsBadge, identifier: "home-apps") { store.openApp(.apps) }
+            HomeRoundButton(glyph: Glyph.hire, label: "New company", identifier: "home-new-company", action: onNewCompany)
         }
     }
 }
@@ -108,7 +105,7 @@ struct HomeTopLine: View {
 // MARK: Net worth
 
 /// The hero: the label (with the way to Insights at the right), the big serif figure, what it did this week and in 30 days, and a thin
-/// line of the last year, on a glass card. The whole card opens Insights.
+/// line of the last year, with no box around it. The whole block opens Insights.
 struct NetWorthCard: View {
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
@@ -185,8 +182,7 @@ struct NetWorthCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.Space.l)
-            .glassSurface(raised: true)
+            .padding(.vertical, Theme.Space.xs)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
