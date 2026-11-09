@@ -3,7 +3,7 @@ import XCTest
 /// Tours of startups, investment, product expansion and business creation. Short tests, pictures numbered from 110. Every step is
 /// optional: a screen that is not reachable on this device is noted, never failed. Nothing is paid or started.
 final class CompanyFlowTourTests: CompanyBatchTourCase {
-    /// New company: the start-up statement with mandatory costs, optional extras (stock, equipment, team), remaining cash and the reserve.
+    /// Start a company: the two ways in, the full list, and the confirm screen with the cost of opening. Nothing is paid.
     func testNewCompanyPlanStatement() {
         _ = waitForHome()
         let pill = app.buttons["tab-Home"]
@@ -11,16 +11,15 @@ final class CompanyFlowTourTests: CompanyBatchTourCase {
         let plus = app.buttons["New company"].firstMatch
         guard plus.waitForExistence(timeout: 5) else { note("no New company button"); return }
         plus.tap(); sleep(1)
-        shot("110-new-company-trades")
+        shot("110-start-a-company")
+        guard tapContaining("Browse every business") else { return }
+        sleep(2)
+        shot("111-start-browse")
         guard tapContaining("Café") || tapContaining("Cafe") || tapContaining("Consultant") else { return }
-        shot("111-new-company-trade")
+        sleep(3)
+        shot("111-start-confirm")
         app.swipeUp(); sleep(1)
-        shot("111-new-company-statement")
-        app.swipeUp(); sleep(1)
-        shot("111-new-company-optional-and-cash")
-        if tapLabel("None") { shot("112-new-company-no-stock") }
-        app.swipeUp(); sleep(1)
-        shot("112-new-company-alternatives-or-risks")
+        shot("112-start-confirm-lower")
     }
 
     /// Product expansion: the project list, the form (cost, timeline, requirements, expected effect, cash after) and closing it changes nothing.
