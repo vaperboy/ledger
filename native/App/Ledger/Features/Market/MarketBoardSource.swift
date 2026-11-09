@@ -2,22 +2,22 @@ import Foundation
 import Businesses
 import Simulation
 
-/// Where the leaderboards get the other players. The online service has no leaderboard calls yet, so this is the one door to add them
-/// to: a real implementation publishes your submission and returns everybody else's.
+/// Where the leaderboards get the other players: a real implementation publishes your submission and returns everybody else's.
 protocol LeaderboardService: Sendable {
     func publish(_ mine: LeaderboardSubmission) async
     /// Every other player's latest submission (never your own).
     func submissions() async -> [LeaderboardSubmission]
 }
 
-/// No server yet: nobody else is out there, so the boards are filled by `BoardRivals`.
+/// No server (or a guest): nobody else is out there, so the boards are filled by `BoardRivals`.
 struct OfflineLeaderboardService: LeaderboardService {
     func publish(_ mine: LeaderboardSubmission) async {}
     func submissions() async -> [LeaderboardSubmission] { [] }
 }
 
 enum LeaderboardBackend {
-    static func make() -> any LeaderboardService { OfflineLeaderboardService() }
+    /// The server's boards when the app talks to a server (`OnlineConfig.useServer`), otherwise the offline stand-in.
+    static func make() -> any LeaderboardService { online() }
 }
 
 /// Computer players that make a thin board look like a real one. They carry ordinary names and figures from the same table as everybody

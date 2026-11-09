@@ -142,19 +142,16 @@ actor SupabaseOnlineService: OnlineService {
     func myProfile() async throws -> PlayerProfile { try await profileRPC("view_profile", [:]) }
 
     func updateMyProfile(_ update: ProfileUpdate) async throws -> PlayerProfile {
-        let session: SupabaseSession = try await liveSession()
-        var fields: [String: Any] = [:]
+        var fields: [String: Any] = [:]   // update_my_profile reads a missing key as "leave as is"
         if let name = update.displayName {
             if let why = ProfileRules.problem(with: name) { throw OnlineError.nameRejected(why) }
-            fields["display_name"] = ProfileRules.clean(name)
+            fields["p_display_name"] = ProfileRules.clean(name)
         }
-        if let colour = update.avatarColour { fields["avatar_colour"] = max(0, min(PlayerProfile.avatarColourCount - 1, colour)) }
-        if let country = update.countryCode { fields["country_code"] = country.uppercased() }
-        if let privacy = update.privacy { fields["privacy"] = SupabaseWire.privacyWire(privacy) }
-        if !fields.isEmpty {
-            _ = try await raw(path: "/rest/v1/profiles", method: "PATCH", query: [URLQueryItem(name: "id", value: "eq." + session.userID)],
-                              body: try JSONSerialization.data(withJSONObject: fields), prefer: "return=minimal")
-        }
+        if let colour = update.avatarColour { fields["p_avatar_colour"] = max(0, min(PlayerProfile.avatarColourCount - 1, colour)) }
+        if let country = update.countryCode { fields["p_country_code"] = country.uppercased() }
+        if let privacy = update.privacy { fields["p_privacy"] = SupabaseWire.privacyWire(privacy) }
+        if let icon = update.avatarIcon { fields["p_avatar_icon"] = icon }
+        if !fields.isEmpty { _ = try await rpcData("update_my_profile", fields) }
         if update.level != nil || update.badges != nil || update.gameWeek != nil || update.companies != nil {
             struct Args: Encodable {   // nil members are omitted, which the function reads as "leave as is"
                 var p_level: Int?; var p_badges: [String]?; var p_game_week: Int?; var p_companies: [OnlineCompany]?

@@ -10,6 +10,9 @@ enum OnlineBackend {
         guard OnlineConfig.useServer, let url = OnlineConfig.projectURL else { return MockOnlineService() }
         return SupabaseOnlineService(baseURL: url, apiKey: OnlineConfig.publishableKey, tokens: UnavailableIdentityTokenProvider())
     }
+
+    /// The one instance the session, the boards and the offices share, so only one place ever refreshes the sign-in token.
+    static let shared: any OnlineService = make()
 }
 
 /// The player's online state for the views: guest, signing in or signed in, with their own profile. Injected with `.environment(online)`.
@@ -47,7 +50,7 @@ final class OnlineSession {
     private static let adminKey = "ledger.online.adminAccounts"
     private static func choiceKey(_ id: String) -> String { "ledger.online.progressChoice." + id }
 
-    init(service: any OnlineService = OnlineBackend.make()) {
+    init(service: any OnlineService = OnlineBackend.shared) {
         self.service = service
         needsAccountScreen = !UserDefaults.standard.bool(forKey: Self.seenKey)
     }
@@ -86,6 +89,7 @@ final class OnlineSession {
         guard isSignedIn, let s = try? await service.accountStatus() else { return }
         status = s
         setAdmin(s.isAdmin)
+        await WorldRulesSync.refresh()
     }
 
     private static func rememberedAdmins() -> Set<String> { Set(UserDefaults.standard.stringArray(forKey: adminKey) ?? []) }
