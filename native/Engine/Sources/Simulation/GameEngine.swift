@@ -470,6 +470,7 @@ public struct GameEngine {
             MiscWeekly.run(&state, data: data, context: context)   // staff record, ambitions, giving, weather, cyber, perks ... (MiscWeekly.swift)
             // In the week that holds a month end the targets are set by the month's own close (`runMonthEnd`), after the books are in.
             if !GameCalendar.isMonthEnd(week: state.week) { ManagerTargets.weekly(&state, data: data) }
+            GovernmentBridge.weekly(&state, data: data, context: context)   // elections, printing's price effect, price support, illegal-route audits (Simulation/GovernmentBridge.swift)
         default:
             runFailureChecks()
         }
