@@ -255,7 +255,7 @@ struct AvatarPickerView: View {
         }
         .appScreen(title: "Profile icon", subtitle: "What other players see")
         .confirmAction($pending)
-        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(onPacks: { shortOfGold = false; showPacks = true }) }
+        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(onPacks: { shortOfGold = false; showPacks = true }, onPick: { (_: GoldPack) in shortOfGold = false; showPacks = true }) }
         .navigationDestination(isPresented: $showPacks) { GoldPacksView() }
         .task {
             await session.load()
