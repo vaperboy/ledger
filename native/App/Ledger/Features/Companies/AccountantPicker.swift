@@ -47,7 +47,7 @@ struct AccountantStep: View {
             let offices: [AccountantOffice] = service.offices(countryCode: countryCode, offers: offers)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Accountant").capsLabel()
-                Text("A limited company keeps its books with one. The fee is paid each month and you can change it later in Atlas.")
+                Text("Your company keeps its books with one. The fee is paid each month and you can change it later in Atlas.")
                     .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 AccountantChoiceList(offers: offers, currency: currency, chosenID: chosen) { (o: AccountantOffer) -> Void in
                     officeID = nil

@@ -361,13 +361,12 @@ struct StartFranchisedView: View {
             let cur = Currency(country: country, rates: ExchangeRates(drift: e.state.exchangeRates.values))
             let appCity: String = e.franchiseApplication(brandID)["city"].string
             let city: String = cityID.isEmpty ? (appCity.isEmpty ? country.cities[0].id : appCity) : cityID
-            let form: LegalForm = .limited
             let pick = rentIndex.map { NewCompanyPlan.Pick(listingIndex: $0, buy: buying) }
-            let fp = e.franchiseStartPlan(brandID: brandID, cityID: city, form: form, pick: pick)
+            let fp = e.franchiseStartPlan(brandID: brandID, cityID: city, pick: pick)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     whereAndHow(country, city: city)
-                    if let fp { plan(e, b, t, fp, cur: cur, city: city, form: form, pick: pick) }
+                    if let fp { plan(e, b, t, fp, cur: cur, city: city, pick: pick) }
                 }
                 .padding(.horizontal, Theme.Space.l).padding(.top, Theme.Space.s).padding(.bottom, Theme.Space.page)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -405,13 +404,13 @@ struct StartFranchisedView: View {
     }
 
     @ViewBuilder private func plan(_ e: GameEngine, _ b: FranchiseBrands.Brand, _ t: FranchiseBrands.Terms, _ fp: (plan: NewCompanyPlan, fee: Double),
-                                   cur: Currency, city: String, form: LegalForm, pick: NewCompanyPlan.Pick?) -> some View {
+                                   cur: Currency, city: String, pick: NewCompanyPlan.Pick?) -> some View {
         let f: StartFigures = figures(e, fp)
         PremisesPicker(plan: fp.plan, cur: cur, rentIndex: $rentIndex, buying: $buying)
         HeroFigure(label: "Total to find", value: cur.tidyShort(f.total), note: "Estimate plus entry fee, before the brand's cover.")
         costCard(t, fp, f, cur)
         risks(b, t, f, cur)
-        QuietButton(title: "Review and start", fullWidth: true) { confirm(b, t, fp, f, cur, city: city, form: form, pick: pick) }
+        QuietButton(title: "Review and start", fullWidth: true) { confirm(b, t, fp, f, cur, city: city, pick: pick) }
     }
 
     private func costCard(_ t: FranchiseBrands.Terms, _ fp: (plan: NewCompanyPlan, fee: Double), _ f: StartFigures, _ cur: Currency) -> some View {
@@ -443,11 +442,11 @@ struct StartFranchisedView: View {
     }
 
     private func confirm(_ b: FranchiseBrands.Brand, _ t: FranchiseBrands.Terms, _ fp: (plan: NewCompanyPlan, fee: Double), _ f: StartFigures, _ cur: Currency,
-                         city: String, form: LegalForm, pick: NewCompanyPlan.Pick?) {
+                         city: String, pick: NewCompanyPlan.Pick?) {
         pending = PendingAction(title: "Start under \(b.name)?",
                                 message: "\(cur.tidyShort(f.total)) to start, including the \(cur.tidyShort(fp.fee)) entry fee. \(cur.tidyShort(f.fund)) goes into the company from your cash now. You keep about \(cur.tidyShort(f.left)). Royalty \(Currency.percent(t.royalty, decimals: 1)) of sales for \(b.termYears) years.",
                                 button: "Start it", amount: f.total, currency: cur) {
-            let r = store.act { $0.startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: city, form: form, name: name, pick: pick, fundWith: f.fund) }
+            let r = store.act { $0.startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: city, name: name, pick: pick, fundWith: f.fund) }
             switch r {
             case .success(let out)?:
                 let late = out.premises == .notEnoughCash

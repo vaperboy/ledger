@@ -11,7 +11,7 @@ import Simulation
     let size: Double? = d.size(e)
     let fund: Double = plan.intoCompany
     let nm: String? = d.name.isEmpty ? nil : d.name
-    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, form: d.form, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices, accountantID: d.accountantID) }
+    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices, accountantID: d.accountantID) }
     switch r {
     case .success(let out)?:
         Haptics.success()
@@ -48,10 +48,9 @@ struct NewCompanySetupView: View {
     @State private var goReview = false
 
     private func draft(_ t: Trade, _ e: GameEngine) -> NewCompanyDraft {
-        let form: LegalForm = .limited
-        var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
+        var d = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: nil, choices: SetupChoices())
         d.accountantID = accountantID
-        if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, form: form, size: s) }
+        if let s = d.size(e) { d.choices = e.suggestedChoices(tradeID: tradeID, cityID: cityID, size: s) }
         return d
     }
 
@@ -95,7 +94,7 @@ struct NewCompanySetupView: View {
     /// Goes to the review: nothing is paid on this step.
     private func startBar(_ plan: NewCompanyPlan?) -> some View {
         let reason: String? = plan == nil ? "This company can no longer be priced."
-            : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash in your current account." : nil)
+            : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash." : nil)
         return NewCompanyStepBar(title: "Review · \(store.money(plan?.payToday ?? 0))", blockedReason: reason, identifier: "new-company-start") { goReview = true }
     }
 }
@@ -118,6 +117,6 @@ struct NewCompanyStepBar: View {
 }
 
 extension NewCompanyPlan {
-    /// What leaves the personal account today: the money put into the company, share capital, registration and any abroad costs.
+    /// What leaves the cash today: the money put into the company, share capital, registration and any abroad costs.
     var payToday: Double { intoCompany + estimate.shareCapital + estimate.registration + estimate.abroad }
 }

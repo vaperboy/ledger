@@ -134,7 +134,7 @@ struct CompanyStatsFigures: View {
     }
 
     private func legalCard(_ s: CompanyOverviewStats, _ cur: Currency) -> some View {
-        // The legal form, your share and (when you own it all) its worth are the Legal form and Ownership rows above: only the rest here.
+        // Your share and (when you own it all) its worth are in the Ownership rows above: only the rest here.
         let ownsAll: Bool = company.ownership >= 99.5 && SaleListings.canSell(engine.state, companyID: company.id)
         var rows: [RecordLine] = []
         if !s.otherShareholders.isEmpty { rows.append(RecordLine(label: "Other shareholders", value: s.otherShareholders.joined(separator: ", "))) }

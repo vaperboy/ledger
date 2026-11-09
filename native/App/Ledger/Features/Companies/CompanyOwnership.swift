@@ -41,7 +41,7 @@ struct CompanyOwnershipSection: View {
             case .raise:
                 raise(cur)
             case .shares:
-                if isOrdinary { sell(cur) } else { Text("Only a limited company has shares to issue or sell.").textStyle(.caption, tint: Theme.inkSoft) }
+                if isOrdinary { sell(cur) } else { Text("A holding has no shares to issue or sell.").textStyle(.caption, tint: Theme.inkSoft) }
             }
         }
         .confirmAction($pending)
@@ -202,7 +202,7 @@ struct CompanyOwnershipSection: View {
             switch r {
             case .none: Haptics.warning(); store.show("No investor bit.", tone: "warn")
             case .tooSoon(let w): Haptics.warning(); store.show("Try again in \(w.weeksText).", tone: "warn")
-            case .notLimited: Haptics.warning(); store.show("Only a limited company can pitch to investors.", tone: "warn")
+            case .notLimited: Haptics.warning(); store.show("This company cannot pitch to investors.", tone: "warn")
             case .offers(let n): Haptics.success(); store.show("\(n) \(n == 1 ? "offer" : "offers") came in: see below. Nothing is taken until you accept.", tone: "good")
             }
         }
@@ -321,7 +321,7 @@ struct CompanyOwnershipSection: View {
         pending = PendingAction(title: "Sell \(pct)% of your shares?", message: DealText.describe(engine.shareSaleTerms(companyID: id, percent: Double(pct), mode: "secondary"), cur, companyName: company.name) + "\nThe buyer gets votes and a share of every dividend. This cannot be undone.", button: "Sell", destructive: true) {
             switch store.act({ $0.sellPrivateShares(companyID: id, percent: Double(pct), mode: "secondary") }) {
             case .ok(let v)?: Haptics.success(); store.show("Sold for \(cur.tidyShort(v)).", tone: "good")
-            case .notLimited?: Haptics.warning(); store.show("Only a limited company can sell shares.", tone: "warn")
+            case .notLimited?: Haptics.warning(); store.show("This company cannot sell shares.", tone: "warn")
             case .tooMuch?: Haptics.warning(); store.show("That would cost you control.", tone: "warn")
             case nil: break
             default: Haptics.warning(); store.show("The owners blocked the sale.", tone: "warn")

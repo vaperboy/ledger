@@ -48,7 +48,7 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func owners(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
         if list.isEmpty {
-            EmptyState(glyph: Glyph.person, title: "You own this outright", message: "Turn it into a limited company to bring in owners.", centered: false)
+            EmptyState(glyph: Glyph.person, title: "You own this outright", message: "Sell shares to bring in owners.", centered: false)
         }
         ForEach(list) { (c: Company) in
             if list.count > 1 { Text(c.name.uppercased()).capsLabel() }
@@ -76,7 +76,7 @@ struct GroupEntityOwnership: View {
     @ViewBuilder private func raise(_ cos: [Company]) -> some View {
         let list: [Company] = ownable(cos)
         if list.isEmpty {
-            EmptyState(glyph: Glyph.lock, title: "Nothing to raise here", message: "Only a limited company or a holding can raise money.", centered: false)
+            EmptyState(glyph: Glyph.lock, title: "Nothing to raise here", message: "A chain's stores raise money as one company.", centered: false)
         }
         ForEach(list) { (c: Company) in
             if list.count > 1 { Text(c.name.uppercased()).capsLabel() }

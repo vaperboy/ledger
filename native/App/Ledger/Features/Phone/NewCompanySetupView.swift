@@ -9,7 +9,6 @@ import Simulation
 struct NewCompanyDraft: Equatable {
     var tradeID: String
     var cityID: String
-    var form: LegalForm
     var name: String
     var pick: NewCompanyPlan.Pick?
     var choices = SetupChoices()
@@ -25,17 +24,17 @@ struct NewCompanyDraft: Equatable {
     }
     func plan(_ e: GameEngine) -> NewCompanyPlan? {
         guard let s = size(e) else { return nil }
-        return e.newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: s, pick: pick, choices: choices)
+        return e.newCompanyPlan(tradeID: tradeID, cityID: cityID, size: s, pick: pick, choices: choices)
     }
     func costs(_ e: GameEngine) -> StartUpCostBreakdown? {
-        e.startUpCostBreakdown(tradeID: tradeID, cityID: cityID, legalForm: form, premises: pick)
+        e.startUpCostBreakdown(tradeID: tradeID, cityID: cityID, premises: pick)
     }
     func monthly(_ e: GameEngine) -> MonthlyFixedCostEstimate? {
-        e.monthlyFixedCostEstimate(tradeID: tradeID, cityID: cityID, legalForm: form, premises: pick)
+        e.monthlyFixedCostEstimate(tradeID: tradeID, cityID: cityID, premises: pick)
     }
 }
 
-/// New company, step 2 of 3 in detail (behind "Customise"): name, city, legal form, premises and each item, then the estimated
+/// New company, step 2 of 3 in detail (behind "Customise"): name, city, premises and each item, then the estimated
 /// monthly cost after opening. Nothing is paid here; the bar goes to the review.
 struct NewCompanyDetailedSetupView: View {
     private enum Way: String, Hashable { case rent = "Rent", buy = "Buy", home = "Home" }
@@ -57,10 +56,9 @@ struct NewCompanyDetailedSetupView: View {
     var body: some View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
             let country = e.homeCountry
-            let form: LegalForm = .limited
-            let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: "", pick: nil, choices: choices).plan(e)
+            let basePlan: NewCompanyPlan? = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: "", pick: nil, choices: choices).plan(e)
             let pick: NewCompanyPlan.Pick? = currentPick(basePlan)
-            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, form: form, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices, accountantID: accountantID)
+            let draft = NewCompanyDraft(tradeID: tradeID, cityID: cityID, name: name.trimmingCharacters(in: .whitespaces), pick: pick, choices: choices, accountantID: accountantID)
             let plan: NewCompanyPlan? = draft.plan(e)
             let costs: StartUpCostBreakdown? = draft.costs(e)
             let monthly: MonthlyFixedCostEstimate? = draft.monthly(e)
@@ -68,7 +66,7 @@ struct NewCompanyDetailedSetupView: View {
             let shown: String = draft.name.isEmpty ? t.name : draft.name
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    fields(t, country, form, costs)
+                    fields(t, country, costs)
                     AccountantStep(countryCode: e.state.homeCountryCode, currency: e.homeCurrency, accountantID: $accountantID)
                     if let plan { premisesBlock(plan) }
                     if let plan { PlanStatement(plan: plan, cur: e.homeCurrency, choices: $choices, onAlternative: { alt in applyAlternative(alt) }) }
@@ -109,7 +107,7 @@ struct NewCompanyDetailedSetupView: View {
 
     // MARK: Fields
 
-    @ViewBuilder private func fields(_ t: Trade, _ country: Country, _ form: LegalForm, _ costs: StartUpCostBreakdown?) -> some View {
+    @ViewBuilder private func fields(_ t: Trade, _ country: Country, _ costs: StartUpCostBreakdown?) -> some View {
         let cities: [Country.City] = country.cities
         let cityName: String = cities.first { $0.id == cityID }?.name ?? "Home city"
         let taxNote: String = taxNote(country, costs)
@@ -143,7 +141,7 @@ struct NewCompanyDetailedSetupView: View {
     private func taxNote(_ country: Country, _ costs: StartUpCostBreakdown?) -> String {
         let pct = Int(saturating: (country.corporateTax * 100).rounded())
         let capital: String = (costs?.shareCapital ?? 0) > 0 ? " Share capital of \(store.money(costs?.shareCapital ?? 0)) is locked in the company." : ""
-        return "Your personal assets are protected. The company pays \(pct)% corporation tax on profit, and more tax when you take it out." + capital
+        return "The company pays \(pct)% corporation tax on profit." + capital
     }
 
     private func fieldRow<C: View>(_ label: String, hint: String, @ViewBuilder value: () -> C) -> some View {
@@ -222,10 +220,10 @@ struct NewCompanyDetailedSetupView: View {
             HStack {
                 Text("Paid from").textStyle(.caption)
                 Spacer()
-                Text("Personal account · \(store.money(personal))").textStyle(.caption, tint: Theme.ink, numeric: true)
+                Text("Your cash · \(store.money(personal))").textStyle(.caption, tint: Theme.ink, numeric: true)
             }
             if plan.registrationShortfall > 0 {
-                Text("Your current account needs \(store.money(plan.registrationShortfall)) more for registration and share capital. Move money from savings in Bank.")
+                Text("Your cash needs \(store.money(plan.registrationShortfall)) more for registration and share capital.")
                     .textStyle(.caption, tint: Theme.warn).fixedSize(horizontal: false, vertical: true)
             } else if plan.shortfall > 0 {
                 Text("You are \(store.money(plan.shortfall)) short of the whole cost, so opening would wait for money.")
@@ -265,7 +263,7 @@ struct NewCompanyDetailedSetupView: View {
     /// Goes to the review: nothing is paid on this step.
     private func registerBar(_ plan: NewCompanyPlan?) -> some View {
         let reason: String? = plan == nil ? "This company can no longer be priced."
-            : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash in your current account. Move money from savings in Bank." : nil)
+            : ((plan?.registrationShortfall ?? 0) > 0 ? "Needs \(store.money(plan?.registrationShortfall ?? 0)) more cash." : nil)
         return NewCompanyStepBar(title: "Review · \(store.money(plan?.payToday ?? 0))", blockedReason: reason, identifier: "new-company-review") { goReview = true }
     }
 }
@@ -285,7 +283,7 @@ struct NewCompanyReviewView: View {
             let company: String = draft.name.isEmpty ? t.name : draft.name
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    Figure(label: "Paid today from your personal account", value: store.money(plan.payToday), note: "\(t.name) in \(cityName)", size: .display)
+                    Figure(label: "Paid today from your cash", value: store.money(plan.payToday), note: "\(t.name) in \(cityName)", size: .display)
                     FigureRow(items: [
                         KeyFigures.Item(label: "Left after", value: store.money(plan.accountsAfter)),
                         KeyFigures.Item(label: "Your reserve", value: store.money(plan.personalReserve)),
@@ -335,7 +333,7 @@ struct NewCompanyReviewView: View {
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                let reason: String? = plan.registrationShortfall > 0 ? "Needs \(store.money(plan.registrationShortfall)) more cash in your current account." : (working ? "Registering…" : nil)
+                let reason: String? = plan.registrationShortfall > 0 ? "Needs \(store.money(plan.registrationShortfall)) more cash." : (working ? "Registering…" : nil)
                 NewCompanyStepBar(title: "Pay \(store.money(plan.payToday)) and start", blockedReason: reason, identifier: "new-company-pay") { register(e) }
             }
             .appScreen(title: "Register \(company)", subtitle: "Step 3 of 3 · check and pay", tab: .company)
