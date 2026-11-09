@@ -15,12 +15,14 @@ public enum ExchangeListOutcome: Equatable, Sendable {
 extension GameEngine {
     /// The closing auction of the day that just ended. Holdings that were listed before the exchange kept its own books get their share first.
     mutating func runExchangeDay() {
-        for co in state.companies where Funding.isListed(co) && co.status.isLive && !PublicExchange.isRegistered(state, holdingID: co.id) {
-            let v = Funding.holdingValue(state, holdingID: co.id, data: data)
-            PublicExchange.register(&state, holdingID: co.id, value: v)
+        update { st, d, ctx in
+            for co in st.companies where Funding.isListed(co) && co.status.isLive && !PublicExchange.isRegistered(st, holdingID: co.id) {
+                let v = Funding.holdingValue(st, holdingID: co.id, data: d)
+                PublicExchange.register(&st, holdingID: co.id, value: v)
+            }
+            let look = st
+            PublicExchange.runDay(&st, context: ctx) { id in Funding.holdingValue(look, holdingID: id, data: d) }
         }
-        let look = state, d = data
-        PublicExchange.runDay(&state, context: context) { id in Funding.holdingValue(look, holdingID: id, data: d) }
     }
 }
 
