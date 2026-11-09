@@ -114,7 +114,7 @@ public enum Payments {
     public static func transferFromSavings(_ s: inout GameState, need: Double) {
         let r = min(max(0, s.savings), need - max(0, s.cash))
         if r > 0 {
-            s.savings -= r
+            Ledger.moveSavings(&s, -r)
             Ledger.move(&s, .me, r, why: "From savings")
         }
     }

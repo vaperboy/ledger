@@ -353,7 +353,7 @@ public enum SupplyMarketBooks {
 
     /// A sale to another player: revenue for the supplier company and the cost of what it delivered. Returns the revenue.
     @discardableResult
-    public static func bookSaleToPlayer(_ s: inout GameState, supplierCompanyID: Int, units: Int, unitPrice: Double, unitCost: Double) -> Double {
+    package static func bookSaleToPlayer(_ s: inout GameState, supplierCompanyID: Int, units: Int, unitPrice: Double, unitCost: Double) -> Double {
         guard units > 0, let co = s.company(supplierCompanyID), co.status == .open else { return 0 }
         let revenue = Double(units) * unitPrice
         Payments.companyReceives(&s, companyID: supplierCompanyID, amount: revenue, category: "rev", label: "Sold to other players")
@@ -361,9 +361,33 @@ public enum SupplyMarketBooks {
         return revenue
     }
 
+    /// One supply trade, booked whole or not at all. The supplier side (a company of the player's that sells) and the buyer side (a company that
+    /// buys) are both optional, because the other side may be outside the game; with both, the buyer really pays what the supplier receives, so
+    /// no revenue appears from nowhere. Without a supplier, `buyerSaving` is the buyer's saving (or extra cost, if negative) against the market
+    /// price. Returns the supplier's revenue (0 for a buyer-only trade), or nil, with nothing booked, when the trade is not allowed.
+    @discardableResult
+    public static func settleSupply(_ s: inout GameState, supplierCompanyID: Int?, buyerCompanyID: Int?, units: Int, unitPrice: Double, unitCost: Double, buyerSaving: Double = 0) -> Double? {
+        guard supplierCompanyID != nil || buyerCompanyID != nil, supplierCompanyID != buyerCompanyID else { return nil }
+        if let sid = supplierCompanyID {
+            guard units > 0, unitPrice >= 0, unitCost >= 0, s.company(sid)?.status == .open else { return nil }
+        }
+        if let bid = buyerCompanyID {
+            guard let b = s.company(bid), b.status == .open else { return nil }
+            if supplierCompanyID != nil, b.cash < Double(units) * unitPrice { return nil }
+        }
+        var revenue = 0.0
+        if let sid = supplierCompanyID {
+            revenue = bookSaleToPlayer(&s, supplierCompanyID: sid, units: units, unitPrice: unitPrice, unitCost: unitCost)
+            if let bid = buyerCompanyID { Payments.companyPays(&s, companyID: bid, amount: revenue, category: "cogs") }
+        } else if let bid = buyerCompanyID {
+            bookPurchaseDifference(&s, buyerCompanyID: bid, saving: buyerSaving)
+        }
+        return revenue
+    }
+
     /// A purchase of the player's company from another player, against what the market supplier would have charged: a saving comes back as a
     /// lower cost of sales, extra cost is paid and booked as cost of sales (the same shape as an own-company supply).
-    public static func bookPurchaseDifference(_ s: inout GameState, buyerCompanyID: Int, saving: Double) {
+    package static func bookPurchaseDifference(_ s: inout GameState, buyerCompanyID: Int, saving: Double) {
         guard s.company(buyerCompanyID) != nil else { return }
         if saving > 0 {
             Payments.companyReceives(&s, companyID: buyerCompanyID, amount: saving, category: nil, label: nil)

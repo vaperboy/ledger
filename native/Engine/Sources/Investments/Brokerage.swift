@@ -83,10 +83,10 @@ public enum Brokerage {
         if amt > 0 {
             if s.cash < amt { return false }
             Ledger.move(&s, .me, -amt, why: "To savings")
-            s.savings += amt
+            Ledger.moveSavings(&s, amt)
         } else {
             if s.savings < -amt { return false }
-            s.savings += amt
+            Ledger.moveSavings(&s, amt)
             Ledger.move(&s, .me, -amt, why: "From savings")
         }
         return true
@@ -136,7 +136,7 @@ public enum Brokerage {
         if s.savings > 0 {
             let v = s.savings
             Ledger.move(&s, .me, v, why: "Savings emptied to cover debts")
-            s.savings = 0
+            Ledger.moveSavings(&s, -v)
         }
         if s.cash >= need { return }
         var inv = s.rest["inv"] ?? .object([:])
