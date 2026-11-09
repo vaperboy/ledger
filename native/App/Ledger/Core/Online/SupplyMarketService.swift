@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Businesses
+import Simulation
 
 /// The supply market between players, as the app sees it: listings of real players, contracts, orders and the delivery record. The screens
 /// talk only to this protocol; `MockSupplyMarketService` stands in for the server until the online service is wired.

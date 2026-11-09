@@ -1,4 +1,5 @@
 import SwiftUI
+import Simulation
 
 /// The one-time "seen" flags of first-run help (tutorial, tab tip, phone app sheets), kept per install in UserDefaults.
 enum FirstRunFlags {
