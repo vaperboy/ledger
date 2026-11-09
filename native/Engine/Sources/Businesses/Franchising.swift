@@ -197,7 +197,11 @@ public enum Franchising {
         public var personality: String
         public var age: Int
         public var patience: Int
+        /// Set when the applicant is another player (their profile code).
+        public var profileCode: String
+        public var isPlayer: Bool
         init(_ j: JSONValue) {
+            profileCode = j["pc"].string; isPlayer = j["pl"].bool
             id = j["id"].int; name = j["name"].string; cityID = j["city"].string; capital = j["capital"].double; skill = j["skill"].double
             experience = j["exp"].int; personality = j["pers"].isNull ? "careful" : j["pers"].string; age = j["age"].int
             patience = j["pat"].isNull ? Int(Franchising.patience[j["pers"].string] ?? 3) : j["pat"].int
@@ -695,6 +699,7 @@ public enum Franchising {
     /// Everything franchising does once a week. Original: `fbWeek`, `frWeek`, `franchiseeWeek` and the answers to unanswered questions.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         FranchiseBrands.weekly(&s, data: data)
+        PlayerDeals.weekly(&s)
         for i in s.companies.indices {
             let co = s.companies[i]
             if co.status == .bust && co.value("fr")["on"].bool {

@@ -207,6 +207,7 @@ public enum FranchiseBrands {
     }
 
     public static func brand(_ id: String, _ w: World) -> Brand? {
+        if id.hasPrefix("P:") { return playerBrand(w.state, id: id) }
         let p = id.split(separator: ":").map(String.init)
         guard p.count == 3 else { return nil }
         let list = p[1] == "GL" ? globalBrands(p[0], w) : localBrands(p[0], country: p[1], w)
@@ -223,7 +224,41 @@ public enum FranchiseBrands {
                 if status(b, w.state, w).ok || live { out.append(b) }
             }
         }
+        for b in playerBrands(w.state) {
+            let live = ["pending", "invited", "agreed"].contains(application(w.state, b.id)["st"].string)
+            if status(b, w.state, w).ok || live { out.append(b) }
+        }
         return out
+    }
+
+    // MARK: Brands run by other players
+
+    /// A franchise another player offers for a limited time, kept by id ("P:<offer>") with the day it ends, so the usual application, talk and unit path works on it.
+    public static func importPlayerBrand(_ s: inout GameState, listing l: PlayerDeals.FranchiseListing) {
+        let b = PlayerDeals.brand(from: l)
+        s.rest["pfb", default: .object([:])][b.id] = .object([
+            "trade": .string(b.tradeID), "name": .string(b.name), "origin": .string(b.origin), "units": .number(Double(b.units)), "str": .number(b.strength), "roy": .number(b.royalty),
+            "mkt": .number(b.marketingFund), "supp": .number(Double(b.support)), "term": .number(Double(b.termYears)), "std": .number(b.standard), "flex": .number(b.flex),
+            "fee": .number(b.baseFee), "contact": .string(b.contact), "until": .number(Double(l.expiresDay)),
+        ])
+    }
+
+    static func playerBrand(_ s: GameState, id: String) -> Brand? {
+        guard let j = s.rest["pfb"]?[id], !j.isNull else { return nil }
+        return Brand(id: id, tradeID: j["trade"].string, name: j["name"].string, origin: j["origin"].string, tier: 1, tierName: "Run by a player", units: j["units"].int, strength: j["str"].double,
+                     openness: "open", royalty: j["roy"].double, marketingFund: j["mkt"].double, support: j["supp"].int, termYears: j["term"].int, failPercent: 12, standard: j["std"].double,
+                     flex: j["flex"].double, baseFee: j["fee"].double, contact: j["contact"].string, fitMultiplier: 1)
+    }
+
+    /// The player-run brands the game knows of (the offers that were imported), ended ones included until nothing refers to them.
+    public static func playerBrands(_ s: GameState) -> [Brand] {
+        (s.rest["pfb"]?.object.keys.sorted() ?? []).compactMap { playerBrand(s, id: $0) }
+    }
+
+    /// The last day a player-run brand takes applications; nil for any other brand.
+    static func playerBrandEnds(_ s: GameState, id: String) -> Int? {
+        guard id.hasPrefix("P:"), let u = s.rest["pfb"]?[id]["until"], !u.isNull else { return nil }
+        return u.int
     }
 
     // MARK: Facts
@@ -262,6 +297,7 @@ public enum FranchiseBrands {
     public static func status(_ b: Brand, _ s: GameState, _ w: World) -> Status {
         if let until = lockedUntil(s, b) { return Status(ok: false, why: until - s.week > 5000 ? "They will not do business with you again." : "They will not talk to you again for \(until - s.week) weeks.") }
         if b.openness == "closed" { return Status(ok: false, why: "This brand does not take new franchisees.") }
+        if let end = playerBrandEnds(s, id: b.id), end < s.week * 7 + s.day { return Status(ok: false, why: "This offer has ended.") }
         return Status(ok: true, why: "")
     }
 
@@ -443,6 +479,13 @@ public enum FranchiseBrands {
 
     /// Weekly: applications are answered or expire. Original: `fbWeek`.
     static func weekly(_ s: inout GameState, data: GameData) {
+        // Ended offers of other players go once no application or unit refers to them.
+        if let pfb = s.rest["pfb"]?.object, !pfb.isEmpty {
+            let keep = pfb.filter { (id, j) in
+                j["until"].int >= s.week * 7 + s.day || !application(s, id).isNull || s.companies.contains { $0.status.isLive && $0.value("franchise")["brandId"].string == id }
+            }
+            if keep.count != pfb.count { s.rest["pfb"] = .object(keep) }
+        }
         guard let apps = s.rest["fbApps"]?.object, !apps.isEmpty else { return }
         let w = World(state: s, data: data)
         for id in apps.keys.sorted() {

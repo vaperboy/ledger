@@ -292,7 +292,8 @@ public enum CompanySale {
         "rival": "Strategic buyer. Pays well but may close it and keep only the customers.",
         "fund": "Wants to grow it and sell again. Keeps staff and the brand.",
         "mbo": "Management buyout. A third is paid as a seller loan over two years. Safe, loyal, slower to pay.",
-        "private": "A private buyer who wants to run it themselves."]
+        "private": "A private buyer who wants to run it themselves.",
+        "player": "Another player who wants to run it."]
 
     /// Offers arrive; old ones lapse; earn-outs fall due. Original: `salesWeek`, `deferredWeek`.
     public static func weekly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {

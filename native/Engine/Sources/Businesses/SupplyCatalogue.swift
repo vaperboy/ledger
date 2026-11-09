@@ -145,6 +145,8 @@ public enum SupplyCatalogue {
             out.append(Offer(id: v.id, name: v.name, owner: v.owner, tier: t, priceFactor: tierPrice[t] * (1 - made.discount), reliability: rel,
                              termsDays: [0, line.termsDays, line.termsDays * 2][t], leadDays: line.leadDays + (t == 0 ? 1 : 0), relationshipWord: made.relationshipWord))
         }
+        // A player supplier under contract prices, rates and pays like the named ones.
+        if let c = PlayerSupply.contract(s, buyer: co.id, line: line.id) { out.append(PlayerSupply.offer(c, line: line)) }
         return out
     }
 
@@ -207,6 +209,11 @@ public enum SupplyCatalogue {
     public static func availability(_ s: GameState, _ co: Company, _ bd: Trade, week: Int, data: GameData) -> Double {
         var f = 1.0
         for line in lines(co, bd) where line.critical {
+            // A player supplier misses exactly when the market reports a short delivery.
+            if PlayerSupply.contract(s, buyer: co.id, line: line.id) != nil {
+                if PlayerSupply.missed(s, buyer: co.id, line: line.id, week: week) { f *= line.share >= 0.5 ? 0.75 : 0.88 }
+                continue
+            }
             guard let rel = reliability(s, co, bd, line: line, data: data) else { continue }
             var r = HashedRandom("\(s.seed):short:\(co.id):\(line.id):\(week)")
             if r.next() < (1 - rel) * (0.6 + Double(line.leadDays) / 10) { f *= line.share >= 0.5 ? 0.75 : 0.88 }
@@ -216,7 +223,11 @@ public enum SupplyCatalogue {
 
     /// Whether a delivery was missed in the last four weeks on this line.
     public static func missedRecently(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> Bool {
-        guard line.critical, let rel = reliability(s, co, bd, line: line, data: data) else { return false }
+        guard line.critical else { return false }
+        if PlayerSupply.contract(s, buyer: co.id, line: line.id) != nil {
+            return (0..<4).contains { n in PlayerSupply.missed(s, buyer: co.id, line: line.id, week: s.week - n) }
+        }
+        guard let rel = reliability(s, co, bd, line: line, data: data) else { return false }
         return (0..<4).contains { n in
             var r = HashedRandom("\(s.seed):short:\(co.id):\(line.id):\(s.week - 1 - n)")
             return r.next() < (1 - rel) * (0.6 + Double(line.leadDays) / 10)
@@ -225,6 +236,7 @@ public enum SupplyCatalogue {
 
     /// The reliability of the supplier the owner chose for a critical line; nil when none was chosen (the market never misses).
     static func reliability(_ s: GameState, _ co: Company, _ bd: Trade, line: Line, data: GameData) -> Double? {
+        if let c = PlayerSupply.contract(s, buyer: co.id, line: line.id) { return c.reliability }
         if line.input == "goods" {
             let src = co.value("src")["v"]
             guard !src.isNull, src.string != "auto", let v = Suppliers.vendor(s, id: src.string, data: data) else { return nil }
@@ -251,7 +263,7 @@ public enum SupplyCatalogue {
             share += line.share
             spend[line.id] = part
             guard let o, !o.isMarket else { continue }
-            bought.append((o.id, part))
+            if !o.id.hasPrefix("P:") { bought.append((o.id, part)) }
             if o.termsDays == 0 { immediate += part } else { invoiced += part }
         }
         // What the catalogue does not name goes on as before; the named lines' own factor and load are in `spend`.
@@ -275,7 +287,7 @@ public enum SupplyCatalogue {
             (l.id, l.share * (folded(s, co, l) ? current(s, co, bd, line: l, data: data).priceFactor : 1))
         })
         let wsum = weights.values.reduce(0, +)
-        if wsum > 0 { for l in cl { spend[l.id] = cogsWeek * (weights[l.id] ?? 0) / wsum; if let o = folded(s, co, l) ? current(s, co, bd, line: l, data: data) : nil, !o.isMarket { bought.append((o.id, spend[l.id] ?? 0)) } } }
+        if wsum > 0 { for l in cl { spend[l.id] = cogsWeek * (weights[l.id] ?? 0) / wsum; if let o = folded(s, co, l) ? current(s, co, bd, line: l, data: data) : nil, !o.isMarket, !o.id.hasPrefix("P:") { bought.append((o.id, spend[l.id] ?? 0)) } } }
         let rec = s.companies[i].value("scw")
         var next: [String: JSONValue] = [:]
         for (k, v) in spend { next[k] = .array([.number(v), .number(rec[k].array.first?.double ?? v)]) }
