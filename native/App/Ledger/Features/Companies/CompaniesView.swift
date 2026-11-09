@@ -167,11 +167,6 @@ struct CompaniesView: View {
     @ViewBuilder private func companyRows(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], compact: Bool) -> some View {
         if sizeClass == .regular {
             CompanyTable(engine: e, rows: rows) { store.push(.company($0), on: .company) }
-        } else if rows.count == 1, let r = rows.first {
-            // A lone company gets the richer card: it has the room, and the page would otherwise leave it empty.
-            Button { Haptics.tap(); store.push(.company(r.co.id), on: .company) } label: { CompanyCard(engine: e, company: r.co, health: r.h, compact: compact) }
-                .buttonStyle(PressableStyle())
-                .accessibilityHint("Opens the company")
         } else {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.co.id) { (i: Int, r: (co: Company, h: CompanyHealth)) in
@@ -338,7 +333,10 @@ struct CompanyRow: View {
                     Text(co.name).textStyle(.headline).lineLimit(1)
                     CosmeticBadgeView(badge: badge, tint: accent, size: 14)
                 }
-                Text(status(co, h)).textStyle(.caption, tint: statusTint(co, h)).lineLimit(1)
+                HStack(spacing: Theme.Space.xs) {
+                    Circle().fill(statusTint(co, h)).frame(width: 6, height: 6).accessibilityHidden(true)
+                    Text(status(co, h)).textStyle(.caption, tint: statusTint(co, h)).lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 1) {
@@ -367,63 +365,6 @@ struct CompanyRow: View {
 
     private func statusTint(_ co: Company, _ h: CompanyHealth) -> Color {
         co.status == .open ? (co.cash < 0 ? Theme.loss : HealthChip.tint(h.label)) : Theme.inkFaint
-    }
-}
-
-/// A single company on Home as a card: the trade picture, name and health pill, the profit of the last twelve months with its ▲/▼ arrow, the
-/// cash, and the Open action. `compact` drops the figures' second line spacing for short screens.
-struct CompanyCard: View {
-    @EnvironmentObject var store: GameStore
-    var engine: GameEngine
-    var company: Company
-    var health: CompanyHealth
-    var compact: Bool = false
-    @Environment(Entitlements.self) private var ent
-    @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
-    @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
-
-    var body: some View {
-        let co = company, h = health
-        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
-        let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
-        let profit: Double = h.profitTTM
-        let arrow: String = profit > 0.5 ? "▲ " : profit < -0.5 ? "▼ " : ""
-        VStack(alignment: .leading, spacing: compact ? Theme.Space.s : Theme.Space.m) {
-            HStack(spacing: Theme.Space.m) {
-                ThumbnailView(kind: .trade, key: co.type, size: 40)
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    HStack(spacing: Theme.Space.xs) {
-                        Text(co.name).textStyle(.headline).lineLimit(1)
-                        CosmeticBadgeView(badge: badge, tint: accent, size: 14)
-                    }
-                    Text("\(engine.tradeName(co)) · \(engine.cityName(co))").textStyle(.caption).lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if co.status == .open { HealthChip(label: h.label) } else { StatusChip(company: co) }
-            }
-            Hairline()
-            HStack(alignment: .bottom, spacing: Theme.Space.m) {
-                figure("Profit a year", arrow + store.short(abs(profit), in: co), Theme.change(profit))
-                figure("Cash", store.short(co.cash, in: co), co.cash < 0 ? Theme.loss : Theme.ink)
-                Spacer(minLength: Theme.Space.s)
-                HStack(spacing: Theme.Space.xs) {
-                    Text("Open").textStyle(.body, tint: Theme.accent, weight: .semibold)
-                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.accent)
-                }
-            }
-        }
-        .padding(.vertical, compact ? Theme.Space.m : Theme.Space.l).padding(.horizontal, Theme.Space.l)
-        .glassSurface()
-        .contentShape(Rectangle())
-        .zoomSource(.company(co.id))
-        .accessibilityElement(children: .combine)
-    }
-
-    private func figure(_ title: String, _ value: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            Text(title).textStyle(.caption, tint: Theme.inkFaint).lineLimit(1)
-            Text(value).textStyle(.headline, tint: tint, numeric: true).lineLimit(1)
-        }
     }
 }
 

@@ -27,7 +27,7 @@ struct HomeSummary<Companies: View>: View {
         let e = engine
         VStack(alignment: .leading, spacing: compact ? Theme.Space.m : Theme.Space.l) {
             VStack(alignment: .leading, spacing: compact ? Theme.Space.s : Theme.Space.m) {
-                HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag)  Week \(e.state.week + 1) · \(e.date)", engine: e, onNewCompany: onNewCompany)
+                HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag) \(e.date)", engine: e, onNewCompany: onNewCompany)
                 if e.cashIsTight { cashTightLine }
                 if ent.plusEndedNotice {
                     Text("Plus has ended. Your saves are safe.").textStyle(.caption)

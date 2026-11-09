@@ -3,7 +3,7 @@ import GameCore
 import Businesses
 
 public enum LevelFeature: String, CaseIterable, Sendable {
-    case market, season, auctions, exchange, jointVentures, government, politics
+    case season, auctions, exchange, jointVentures, government, politics
 }
 
 public enum LevelGates {
@@ -15,7 +15,6 @@ public enum LevelGates {
     }
 
     static let table: [Row] = [
-        Row(feature: .market, level: 2, title: "Market", gives: "see your rivals, invest and follow the world"),
         Row(feature: .season, level: 2, title: "Season Pass", gives: "eight-week rewards for playing"),
         Row(feature: .auctions, level: 2, title: "Auctions", gives: "sell your artifacts or bid on other players' pieces"),
         Row(feature: .exchange, level: 3, title: "Stock exchange", gives: "list a company and sell shares in it"),

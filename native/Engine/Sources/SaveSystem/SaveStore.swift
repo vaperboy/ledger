@@ -116,6 +116,19 @@ public final class SaveStore {
         return true
     }
 
+    @discardableResult
+    public func keepUnreadable(slot: String = "current", now: Date = Date()) -> Bool {
+        let dir = directory.appendingPathComponent("Unreadable", isDirectory: true)
+        let stamp = ISO8601DateFormatter().string(from: now).replacingOccurrences(of: ":", with: "-")
+        guard (try? fm.createDirectory(at: dir, withIntermediateDirectories: true)) != nil else { return false }
+        var kept = false
+        for (u, tag) in [(url(slot: slot), "main"), (previousURL(slot: slot), "previous")] where fm.fileExists(atPath: u.path) {
+            let dest = dir.appendingPathComponent("\(slot)-\(tag)-\(stamp).ledgersave")
+            if (try? fm.copyItem(at: u, to: dest)) != nil { kept = true }
+        }
+        return kept
+    }
+
     public func hasSave(slot: String = "current") -> Bool { fm.fileExists(atPath: url(slot: slot).path) }
 
     // MARK: Importing from the HTML game

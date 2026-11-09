@@ -117,7 +117,7 @@ struct PhoneAppContent: View {
         case .activity:
             ActivityView().appScreen(title: app.title, subtitle: app.subtitle)
         case .market:
-            LevelGuard(feature: .market) { MarketApp() }
+            MarketApp()
         case .reviews:
             ReviewsApp()
         case .settings:

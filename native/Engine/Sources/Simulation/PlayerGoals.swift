@@ -80,7 +80,7 @@ public enum PlayerGoals {
         case "start", "hire", "weeks": return false
         case "grow": return !live(s).isEmpty
         case "news": return !live(s).isEmpty && Gates.isOpen(.bank, s, data: data)
-        case "stock": return !live(s).isEmpty && LevelGates.isOpen(.market, s)
+        case "stock": return !live(s).isEmpty
         case "quote": return !live(s).isEmpty && Gates.isOpen(.techpro, s, data: data)
         case "cmp": return openComplaints(s) > 0
         case "ans": return openDecisionCount(s) > 0

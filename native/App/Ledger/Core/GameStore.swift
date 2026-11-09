@@ -301,7 +301,10 @@ final class GameStore: ObservableObject {
     func loadCurrent() {
         guard let saves else { return }
         do { try start(with: saves.load()); loadProblem = nil; resetNavigation() }
-        catch { loadProblem = Self.describe(error) }
+        catch {
+            let kept: Bool = saves.keepUnreadable()
+            loadProblem = Self.describe(error) + (kept ? " A copy of your save was kept on this device." : "")
+        }
     }
 
     /// The summary written with the current save (player, country, week, companies, when it was saved), or nil when there is none or it is unreadable.
