@@ -238,7 +238,7 @@ struct AssociationMembersPopup: View {
     var includesYou: Bool
     var onOpen: (String) -> Void
 
-    struct PlayerPick: Identifiable, Equatable { var id: String }
+    struct PlayerPick: Identifiable, Hashable { var id: String }
 
     var body: some View {
         let rows: [AssociationMemberRow] = AssociationStore.shared.service.members(of: club)
