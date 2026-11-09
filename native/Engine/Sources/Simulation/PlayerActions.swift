@@ -35,7 +35,7 @@ public extension GameEngine {
     @discardableResult
     mutating func setPriceLevel(companyID: Int, level: Double) -> SettingResult {
         applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
-            if let i = s.companyIndex(companyID) { s.companies[i].priceLevel = clamp(level, -3, 3) }
+            if let i = s.companyIndex(companyID) { s.companies[i].priceLevel = clamp(level, -3, 3); s.companies[i].set("chose", 1) }
         }
     }
 

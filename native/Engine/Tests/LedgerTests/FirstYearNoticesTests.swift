@@ -13,6 +13,7 @@ final class FirstYearNoticesTests: XCTestCase {
         let id = ChainsTests.start(&e, "cafe")
         e.update { s, _, _ in
             s.week = 150
+            s.rest["ldr"] = .object(["done": .object(["M2": .object(["w": 0])])])
             if let i = s.companyIndex(id) { s.companies[i].status = .open; s.companies[i].openedWeek = 150 }
         }
         func firstYearPart() throws -> Double? {

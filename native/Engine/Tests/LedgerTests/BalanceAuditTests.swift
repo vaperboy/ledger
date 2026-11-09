@@ -9,7 +9,12 @@ import Finance
 final class BalanceAuditTests: XCTestCase {
     private func exchangeGame() throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5, story: .fresh, tradeID: "kiosk")
-        e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000, why: "Test funds") }
+        e.update { s, _, _ in
+            Ledger.move(&s, .me, 5_000_000, why: "Test funds")
+            var b = ExchangeBook(s)
+            PublicExchange.ensureServerStocks(s, &b)
+            b.write(to: &s)
+        }
         return e
     }
 

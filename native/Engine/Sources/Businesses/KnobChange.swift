@@ -169,6 +169,7 @@ public enum KnobChange {
         var knobs = t.companies[i].value("knob")
         knobs[knobID] = .number(Double(value))
         t.companies[i].set("knob", knobs)
+        t.companies[i].set("chose", 1)
         if q.transitionWeeks > 0 {
             // The record counts down before the week is run, so one extra tick gives the full number of reduced weeks.
             PriceMoves.addModifier(&t, i, key: "cap", multiplier: capacityDuringChangeover, weeks: Double(q.transitionWeeks + 1))

@@ -104,6 +104,7 @@ public enum PriceMoves {
         let bounds = b.priceBounds(tradeID: s.companies[i].type)
         let nb = clamp(old * (1 + d), bounds.low, bounds.high)
         s.companies[i].priceLevel = clamp(b.priceLevel(multiplier: nb), -3, 3)
+        s.companies[i].set("chose", 1)
         var f = s.companies[i].value("flags"); f["priceAt"] = .number(Double(s.week)); s.companies[i].set("flags", f)
         return nb / old - 1
     }
