@@ -241,10 +241,10 @@ struct LedgerBackdrop: View {
                     .scaleEffect(1.12)
                     .blur(radius: 18)
             }
-            .overlay { Color.black.opacity(0.28) }
+            .overlay { Color.black.opacity(0.10) }
             .overlay {
-                LinearGradient(stops: [.init(color: Theme.page.opacity(0.85), location: 0), .init(color: Theme.page.opacity(0), location: 0.25),
-                                       .init(color: Theme.page.opacity(0), location: 0.6), .init(color: Theme.page.opacity(0.8), location: 1)],
+                LinearGradient(stops: [.init(color: Theme.page.opacity(0.6), location: 0), .init(color: Theme.page.opacity(0), location: 0.25),
+                                       .init(color: Theme.page.opacity(0), location: 0.6), .init(color: Theme.page.opacity(0.7), location: 1)],
                                startPoint: .top, endPoint: .bottom)
             }
             .clipped()
