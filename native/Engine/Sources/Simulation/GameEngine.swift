@@ -263,6 +263,7 @@ public struct GameEngine {
         StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
         ManagerOpening.runDay(&state, data: data)   // a manager builds a new place up day by day
         DailyTrade.runDay(&state, day: day, data: data)
+        runExchangeDay()   // the closing auction of the day that just ended (Simulation/ExchangeActions.swift)
         ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)
     }
