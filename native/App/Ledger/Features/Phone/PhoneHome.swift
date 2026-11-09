@@ -35,7 +35,7 @@ struct PhoneHome: View {
                 LazyVGrid(columns: columns, spacing: 18) {
                     ForEach(PhoneApp.launcher) { app in
                         if gateState(app) != .hidden {
-                            AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText) {
+                            AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
                                 Haptics.tap()
                                 if app == .luxury { ent.run(.luxuryGivingFootball, "Luxury") { path.append(.app(app)) } } else { path.append(.app(app)) }
                             }
@@ -104,6 +104,8 @@ struct AppIcon: View {
     var badge: Int
     /// The lock text of a gate that is near (`Unlocks ...`): the tile is dimmed and does not open.
     var lock: String? = nil
+    /// A small still dot instead of a number: something is waiting but nothing is urgent (the Desk's question of the day).
+    var quietDot = false
     var action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -115,13 +117,16 @@ struct AppIcon: View {
             }
             .animation(Motion.quick(reduceMotion), value: lock)
             .frame(maxWidth: .infinity)
-            .overlay(alignment: .topTrailing) { RedBubble(count: badge).offset(x: -2, y: -5) }
+            .overlay(alignment: .topTrailing) {
+                if quietDot { Circle().fill(Theme.accent).frame(width: 10, height: 10).offset(x: -10, y: -3).accessibilityHidden(true) }
+                else { RedBubble(count: badge).offset(x: -2, y: -5) }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .disabled(lock != nil)
         .accessibilityLabel(app.title)
-        .accessibilityValue(badge > 0 ? "\(badge) waiting" : "")
+        .accessibilityValue(quietDot ? "Today's question is waiting" : badge > 0 ? "\(badge) waiting" : "")
         .accessibilityIdentifier("phone-app-\(app.title)")
     }
 }
@@ -190,6 +195,10 @@ struct PhoneAppScreen: View {
             FriendsApp()
         case .season:
             SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .desk:
+            DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
+        case .rivals:
+            RivalsApp().appScreen(title: app.title, subtitle: app.subtitle)
         }
     }
 }

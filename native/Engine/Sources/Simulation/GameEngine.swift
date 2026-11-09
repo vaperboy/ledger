@@ -176,6 +176,8 @@ public struct GameEngine {
             if m.actionID == VolumeContracts.action { VolumeContracts.answer(&s, message: m, option: idx); return true }
             if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
             if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }   // rival group bids ("g27bid")
+            if m.actionID == WeeklyFocus.action { WeeklyFocus.answer(&s, message: m, option: idx, data: d); return true }
+            if RivalStories.handlesAnswer(m.actionID) { RivalStories.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
@@ -255,6 +257,7 @@ public struct GameEngine {
     }
 
     mutating func tradeAndPay(day: Int) {
+        Engagement.runDay(&state, data: data)   // Desk answers come due in the morning (Businesses/Desk.swift)
         JobAds.runDay(&state, data: data)   // applicants to job ads arrive over the weeks
         Agency.runDay(&state, data: data)
         StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
@@ -453,6 +456,7 @@ public struct GameEngine {
             Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
             EventEngine.expire(&state, data: data, context: context)
             Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
+            Engagement.weekly(&state, data: data)   // weekly plan and rival stories, once their pages are open (Businesses/Engagement.swift)
         case 4:
             StrategicDecisions.weekly(&state, data: data, context: context)
             Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies

@@ -1,5 +1,6 @@
 import Foundation
 import GameCore
+import Businesses
 
 /// The number of consecutive calendar days with at least one game day played. Stored as `rest["playStreak"]`
 /// = { d: calendar day number of the last day played, n: count }. No reward, no penalty; the app shows it from 3 up.
@@ -32,7 +33,7 @@ public enum SessionHooks {
         public var after: Double
     }
 
-    static let banned: [String] = ["luxury", "award", "rival", "offer", "buy", "bid", "acqui", "sale"]
+    static let banned: [String] = ["luxury", "award", "rival", "offer", "buy", "bid", "acqui", "sale", "weekly plan"]
 
     /// The open Inbox decision with the soonest expiry (no talk of luxury, awards, rivals or offers to buy); nil when none.
     static func expiring(_ s: GameState) -> (message: Message, weeksLeft: Int)? {
@@ -59,7 +60,9 @@ public enum SessionHooks {
         if let g = PlayerGoals.currentLadderGoal(s) {
             out.append(Reminder(id: "ledger.goal", title: g.title, body: lead + g.body, after: 48 * 3600))
         }
-        if out.isEmpty, let name = s.companies.first?.name {
+        if out.isEmpty, DeskStories.isOpen(s) {
+            out.append(Reminder(id: "ledger.idle", title: "The Desk", body: lead + "A small question is waiting on your desk.", after: 22 * 3600))
+        } else if out.isEmpty, let name = s.companies.first?.name {
             out.append(Reminder(id: "ledger.idle", title: name, body: lead + "\(name) is waiting for its next day.", after: 7 * 86400))
         }
         return out
