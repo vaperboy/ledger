@@ -50,7 +50,7 @@ struct BankWealthCard: View {
                     Spacer(minLength: 8)
                     Text("net worth").textStyle(.caption, tint: P.inkFaint)
                 }
-                FlatRow(label: "Money you can spend", value: store.short(b.liquid), sub: "current account and savings", rule: false)
+                FlatRow(label: "Money you can spend", value: store.short(b.liquid), sub: "your account", rule: false)
                 if others > 0.5 { FlatRow(label: "Investments and valuables", value: store.short(others)) }
                 FlatRow(label: "Companies (estimated value)", value: store.short(b.estimatedCompanyEquity), sub: "your share, not cash")
                 if owed > 0.5 { FlatRow(label: "Debts and tax owed", value: "\u{2212}" + store.short(owed), tint: P.loss) }
