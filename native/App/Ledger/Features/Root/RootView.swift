@@ -58,7 +58,7 @@ struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
 
     private var items: [PillTabItem] {
-        AppTab.allCases.map { (tab: AppTab) -> PillTabItem in
+        AppTab.allCases.filter { (tab: AppTab) -> Bool in store.tabShown(tab) }.map { (tab: AppTab) -> PillTabItem in
             PillTabItem(id: tab.rawValue, title: tab.title, glyph: tab.glyph, accent: tab.accent, badge: tab == .market ? store.appBadge(.market) : 0)
         }
     }
@@ -101,7 +101,7 @@ struct SidebarShell: View {
                     }
                 }
                 Section {
-                    ForEach(AppTab.allCases) { tab in
+                    ForEach(AppTab.allCases.filter { (tab: AppTab) -> Bool in store.tabShown(tab) }) { tab in
                         SidebarLabel(title: tab.title, symbol: tab.symbol)
                             .badge(tab == .market ? store.appBadge(.market) : 0)
                             .tag(tab)

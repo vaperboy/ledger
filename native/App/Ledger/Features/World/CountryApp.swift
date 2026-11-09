@@ -35,12 +35,16 @@ struct CountryApp: View {
         let home: () -> Void = { page = .overview }
         switch page {
         case .overview: CountryOverview(e: e, r: r) { (p: CountrySection) in page = p }
-        case .donate: DonateScreen(e: e, r: r, back: home)
-        case .election: ElectionScreen(e: e, r: r, back: home)
+        case .donate: politics(home) { DonateScreen(e: e, r: r, back: home) }
+        case .election: politics(home) { ElectionScreen(e: e, r: r, back: home) }
         case .president: PresidentScreen(e: e, r: r, back: home)
         case .record: RecordScreen(e: e, r: r, back: home)
-        case .shadow: ShadowScreen(e: e, back: home)
+        case .shadow: politics(home) { ShadowScreen(e: e, back: home) }
         }
+    }
+
+    @ViewBuilder private func politics<C: View>(_ home: @escaping () -> Void, @ViewBuilder _ content: () -> C) -> some View {
+        if store.levelOpen(.politics) { content() } else { LevelLockScreen(feature: .politics, back: home) }
     }
 }
 

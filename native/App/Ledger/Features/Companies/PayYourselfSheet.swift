@@ -27,6 +27,7 @@ struct PayYourselfSheet: View {
                     .popupText(.caption).fixedSize(horizontal: false, vertical: true)
                 AmountField(title: "Amount to take out", currency: cur, amount: $amount)
                 if let r = e.ownerPayOptions(companyID: companyID, amount: amount) {
+                    Text("If you do this").popupText(.rowLabel)
                     ForEach(r.options) { (o: OwnerPayOption) in card(o, r, cur, co) }
                     Text("Company profit tax here is \(Currency.percent(r.corporateRate, decimals: 1)). Dividends carry \(PayRules.dividendTaxText(e)); a salary is taxed as income instead.")
                         .popupText(.caption).fixedSize(horizontal: false, vertical: true)

@@ -131,7 +131,7 @@ struct NewsView: View {
         } else {
             VStack(spacing: 8) {
                 Text("No news yet").textStyle(.title)
-                Text("Headlines about the economy, your rivals and your companies appear as the weeks go by.")
+                Text("Headlines about the economy, your rivals and your companies appear as the weeks go by. Tap Next day on Home to move time on.")
                     .textStyle(.body, tint: P.inkSoft).multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 40)

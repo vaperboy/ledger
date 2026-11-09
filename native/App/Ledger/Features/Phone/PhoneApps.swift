@@ -160,13 +160,19 @@ extension PhoneApp {
         case .atlas: return .insurance
         case .luxury: return .luxury
         case .ventures: return .venturesFeed
-        case .activity, .news, .market, .season, .country: return .bank
+        case .activity, .news, .market, .season: return .bank
+        case .country: return nil
         }
     }
 
     func visibility(_ e: GameEngine) -> GateVisibility {
         if self == .desk { return e.deskOpen ? .open : .hidden }
         if self == .rivals { return e.rivalsOpen ? .open : .hidden }
+        if self == .country {
+            if LevelGates.isOpen(.government, e.state) { return .open }
+            let away: Int = LevelGates.level(.government) - PlayerLevel.info(e.state).level
+            return away <= 1 ? .locked("Unlocks at level \(LevelGates.level(.government))") : .hidden
+        }
         guard let gate else { return .open }
         return Gates.visibility(gate, e.state, data: e.data)
     }

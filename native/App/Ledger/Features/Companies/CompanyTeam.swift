@@ -35,8 +35,8 @@ struct CompanyTeam: View {
         return VStack(alignment: .leading, spacing: Theme.Space.l) {
             if n == 0 {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text("No staff yet").textStyle(.display)
-                    Text("Hire the people the business needs to open and serve customers.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                    Text("Your team").textStyle(.display)
+                    Text("No staff yet. Hire the people the business needs to open and serve customers.").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {

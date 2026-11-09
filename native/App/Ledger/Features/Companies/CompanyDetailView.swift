@@ -112,7 +112,9 @@ struct CompanyDetailView: View {
                             openTab: { (t: CompanyTab) in Motion.animate(Motion.quickAnimation) { segment = t } },
                             openOps: { (p: OpsPart) in opsPart = p },
                             openMoney: { (m: CompanyMoneyPart) in moneyPart = m; page = .stats })
-            if JointVenturePartnersCard.applies(co, e) { JointVenturePartnersCard(engine: e, company: co) }
+            if JointVenturePartnersCard.applies(co, e) {
+                if store.levelOpen(.jointVentures) { JointVenturePartnersCard(engine: e, company: co) } else { LevelLockCard(feature: .jointVentures) }
+            }
         case .prices:
             CompanyPrices(engine: e, company: co)
         case .supply:

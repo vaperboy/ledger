@@ -10,15 +10,18 @@ struct HomeLevelBar: View {
 
     var body: some View {
         let info: PlayerLevel.Info = engine.playerLevel
-        HStack(spacing: Theme.Space.s) {
-            Text("Level \(info.level)").textStyle(.caption, tint: Theme.ink, numeric: true, weight: .semibold)
-            ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3)
-            Text("\(info.xpIntoLevel) / \(info.xpForNext) XP").textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            HStack(spacing: Theme.Space.s) {
+                Text("Level \(info.level)").textStyle(.caption, tint: Theme.ink, numeric: true, weight: .semibold)
+                ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3)
+                Text("\(info.xpIntoLevel) / \(info.xpForNext) XP").textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(minHeight: 24)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Level \(info.level), \(Int(saturating: (info.progress * 100).rounded())) percent to level \(info.level + 1)")
+            .accessibilityIdentifier("home-level")
+            HomeNextUnlock(engine: engine)
         }
-        .frame(minHeight: 24)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Level \(info.level), \(Int(saturating: (info.progress * 100).rounded())) percent to level \(info.level + 1)")
-        .accessibilityIdentifier("home-level")
     }
 }
 
@@ -35,7 +38,7 @@ struct HomeMissionStrip: View {
         if hiddenWeek != engine.state.week {
             HStack(alignment: .top, spacing: Theme.Space.s) {
                 missionCard
-                seasonCard
+                if store.levelOpen(.season) { seasonCard }
                 Button { Haptics.tap(); hiddenWeek = engine.state.week } label: {
                     Image(systemName: "xmark").font(.caption2.weight(.semibold)).foregroundStyle(Theme.inkFaint)
                         .frame(width: 28, height: 28).contentShape(Rectangle())

@@ -37,7 +37,12 @@ struct MarketApp: View {
         case .companies: MarketCompaniesPage(open: open)
         case .rivals: MarketRivalsPage(open: open)
         case .invest: MarketInvestPage(open: open)
-        case .exchange: MarketExchangePage(open: open)
+        case .exchange:
+            if store.levelOpen(.exchange) {
+                MarketExchangePage(open: open)
+            } else {
+                ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) { LevelLockCard(feature: .exchange) }
+            }
         case .standing: MarketStandingPage()
         case .world: MarketWorldPage(open: open)
         }

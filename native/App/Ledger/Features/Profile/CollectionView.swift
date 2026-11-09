@@ -2,6 +2,7 @@ import SwiftUI
 import Simulation
 
 struct CollectionView: View {
+    @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @AppStorage(AgeConfirmation.key) private var adult = false
     private let session = StoreSession.shared
@@ -16,23 +17,21 @@ struct CollectionView: View {
                 }
                 .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("collection-artifacts")
-                Hairline()
-                NavigationLink { TrophyShowcase() } label: {
-                    OnlineLine(glyph: Glyph.achievements, title: "Trophies", note: "Everything you have won", chevron: true)
-                }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("collection-trophies")
                 if auctionsOpen {
                     Hairline()
-                    NavigationLink { AuctionsApp() } label: {
-                        OnlineLine(glyph: Glyph.market, title: "Auctions", note: "Bid on artifacts or sell your own", chevron: true)
+                    if store.levelOpen(.auctions) {
+                        NavigationLink { AuctionsApp() } label: {
+                            OnlineLine(glyph: Glyph.market, title: "Auctions", note: "Bid on artifacts or sell your own", chevron: true)
+                        }
+                        .buttonStyle(PressableStyle())
+                        .accessibilityIdentifier("collection-auctions")
+                    } else {
+                        LevelLockRow(feature: .auctions)
                     }
-                    .buttonStyle(PressableStyle())
-                    .accessibilityIdentifier("collection-auctions")
                 }
             }
         }
-        .appScreen(title: "Collection", subtitle: "Artifacts, trophies and auctions")
+        .appScreen(title: "Collection", subtitle: "Artifacts and auctions")
         .task { await session.load() }
     }
 }

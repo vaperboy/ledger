@@ -29,11 +29,7 @@ struct ProfileView: View {
                 }
             }
         }
-        .appScreen(title: "Profile", subtitle: "") {
-            Button("Settings") { Haptics.tap(); store.openApp(.settings) }
-                .buttonStyle(SecondaryButtonStyle(size: .compact))
-                .accessibilityIdentifier("profile-settings")
-        }
+        .appScreen(title: "Profile", subtitle: "")
         .task(id: online.isSignedIn) { await loadFriends() }
         .onChange(of: pickedPhoto) { _, item in
             guard let item else { return }
@@ -170,7 +166,7 @@ struct ProfileView: View {
 
     private var collectionRow: some View {
         NavigationLink { CollectionView() } label: {
-            LedgerRow(leading: .glyph(Glyph.luxury), title: "Collection", subtitle: "Artifacts, trophies and auctions", chevron: true)
+            LedgerRow(leading: .glyph(Glyph.luxury), title: "Collection", subtitle: "Artifacts and auctions", chevron: true)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("profile-collection")
@@ -186,7 +182,7 @@ struct ProfileView: View {
                     .accessibilityIdentifier("profile-add-friend")
             }
             if friends.isEmpty {
-                Text(online.isSignedIn ? "No friends yet." : "Link an account to add friends.").textStyle(.caption)
+                Text(online.isSignedIn ? "No friends yet. Add one." : "Link an account in Settings to add friends.").textStyle(.caption)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
