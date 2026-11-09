@@ -1,4 +1,5 @@
 # What's new
+- A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
 - Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies
 - Startups funded by other players (Ventures, Startup market): browse by trade, stage and viral, open a startup for a high entry cost, invest in three escrow-released stages at a price set by a fixed rule, with caps, a resale lock-up, a price band and taxes; every action first says what will happen; the other players are a local stand-in for now
 - Rivals with named competitors and a story of their moves, a weekly plan decision, and the Desk: one small question a day with a notebook that fills over time
