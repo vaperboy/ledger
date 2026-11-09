@@ -143,7 +143,7 @@ final class IllegalRoutesTests: XCTestCase {
 
     private func openCompany(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 120_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 120_000_000) else {
             XCTFail("start"); throw XCTSkip("no company")
         }
         _ = e.quickSetup(companyID: id)
@@ -177,7 +177,7 @@ final class IllegalRoutesTests: XCTestCase {
 
     func testDonationMovesMoneyFromPlayerToTreasury() throws {
         var e = try engine()
-        e.update { s, _, _ in
+        try e.updateThrowing { s, _, _ in
             let cc = s.homeCountryCode
             GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
             Ledger.move(&s, .me, 10_000_000, why: "Test funds")
@@ -199,7 +199,7 @@ final class IllegalRoutesTests: XCTestCase {
             GovernmentBridge.weekly(&s, data: d, context: c)
         }
         XCTAssertNotNil(e.state.governmentWorld?.countries[e.state.homeCountryCode]?.election, "nominations opened")
-        e.update { s, _, c in
+        try e.updateThrowing { s, _, c in
             let cc = s.homeCountryCode
             let fee = GovernmentBridge.candidacyFee(s, country: cc, context: c)
             XCTAssertGreaterThan(fee, 100_000, "very high")
@@ -218,7 +218,7 @@ final class IllegalRoutesTests: XCTestCase {
 
     func testPrintingRaisesPricesOnlyAfterTheLag() throws {
         var e = try engine()
-        e.update { s, d, c in
+        try e.updateThrowing { s, d, c in
             let cc = s.homeCountryCode
             GovernmentBridge.ensure(&s, country: cc, admins: ["me"], startingSupply: 1_000_000)
             s.week = 10
@@ -239,7 +239,7 @@ final class IllegalRoutesTests: XCTestCase {
     func testPriceSupportIsPaidFromTheTreasuryToTheCompany() throws {
         var e = try engine()
         let id = try openCompany(&e)
-        e.update { s, d, c in
+        try e.updateThrowing { s, d, c in
             let i = s.companyIndex(id)!
             let cc = s.companies[i].countryCode
             GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
@@ -335,7 +335,7 @@ final class IllegalRoutesTests: XCTestCase {
     func testQuashingReturnsTheFineFromTheTreasuryAndLiftsTheBans() throws {
         var e = try engine()
         let id = try openCompany(&e)
-        e.update { s, d, c in
+        try e.updateThrowing { s, d, c in
             let i = s.companyIndex(id)!
             let cc = s.companies[i].countryCode
             GovernmentBridge.ensure(&s, country: cc, admins: ["me"], startingSupply: 5_000_000)
@@ -361,7 +361,7 @@ final class IllegalRoutesTests: XCTestCase {
     func testABanOnTradingBlocksNewRoutes() throws {
         var e = try engine()
         let id = try openCompany(&e)
-        e.update { s, d, c in
+        try e.updateThrowing { s, d, c in
             let i = s.companyIndex(id)!
             let cc = s.companies[i].countryCode
             GovernmentBridge.ensure(&s, country: cc, admins: ["boss"], startingSupply: 5_000_000)
@@ -375,5 +375,16 @@ final class IllegalRoutesTests: XCTestCase {
             let warn2 = GovernmentBridge.routeWarning(&s, route: .cashInHand, companyID: id)
             XCTAssertNoThrow(try GovernmentBridge.beginRoute(&s, route: .cashInHand, companyID: id, token: warn2.token, confirmed: true))
         }
+    }
+}
+
+extension GameEngine {
+    /// `update` for a body that may throw: the error is rethrown once the state is written back.
+    mutating func updateThrowing(_ body: (inout GameState, GameData, FinanceContext) throws -> Void) throws {
+        var failure: Error?
+        update { s, d, c in
+            do { try body(&s, d, c) } catch { failure = error }
+        }
+        if let failure { throw failure }
     }
 }

@@ -17,7 +17,7 @@ final class LaunchReadsTests: XCTestCase {
         _ = e.ownerDecisions.map { e.severityLevel(of: $0) }
         for co in e.state.companies where co.status.isLive {
             _ = e.marketplaceListings(forCompany: co.id)
-            _ = e.companyDocuments(companyID: co.id, group: .applications, user: nil)
+            _ = e.companyDocuments(companyID: co.id, group: .applications)
             _ = e.companyHealth(co)
             _ = e.tradeName(co); _ = e.cityName(co)
             _ = e.decisionChain(companyID: co.id)

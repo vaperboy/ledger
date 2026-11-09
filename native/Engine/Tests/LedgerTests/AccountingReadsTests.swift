@@ -86,7 +86,7 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertEqual(apps.first { $0.kind == "franchise" }?.status, "Under review")
         XCTAssertFalse(try XCTUnwrap(e.companyDocuments(companyID: id, group: .company)).contains { $0.id == "doc-chain" || $0.id == "doc-fran" })
         // Access follows the same rule as every Accounting record.
-        XCTAssertNil(e.companyDocuments(companyID: id, group: .applications, user: "p999"))
+        XCTAssertNil(e.companyDocuments(companyID: id, group: .applications))
     }
 
     func testNetWorthAndOverviewReadModels() throws {
