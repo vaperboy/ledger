@@ -394,7 +394,7 @@ struct ListingCard: View {
             Text(title).textStyle(.body)
             Spacer()
             TextField("0", value: value, format: .number).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                .textStyle(.headline, numeric: true).frame(width: 110, minHeight: 44)
+                .textStyle(.headline, numeric: true).frame(width: 110).frame(minHeight: 44)
                 .accessibilityIdentifier(id)
         }
     }
