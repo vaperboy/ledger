@@ -1,4 +1,5 @@
 # What's new
+- A blurred photo backdrop with Apple Liquid Glass on the Home boxes, main navigation and popups (on iOS 26 and later; earlier versions get a drawn glass look)
 - Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
 - Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists
 - Every newly opened tab, company page and key phone app now gets its own short guided tour, shown once
