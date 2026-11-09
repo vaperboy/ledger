@@ -22,6 +22,7 @@ struct CompanySuppliersScreen: View {
     @State private var showTerms = false
     @State private var browse: SupplyPick?
     @State private var showSell = false
+    @State private var showAssociation = false
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
 
     struct SupplyPick: Identifiable, Equatable, Hashable { var id: String }
@@ -38,6 +39,7 @@ struct CompanySuppliersScreen: View {
             .centerSheet(item: $picked, category: .medium, tone: .info) { (p: SupplyPick) in SupplyOffersPopup(companyID: companyID, lineID: p.id, onBrowse: { picked = nil; browse = p }).environmentObject(store) }
             .navigationDestination(item: $browse) { (p: SupplyPick) in SupplyBrowseScreen(companyID: companyID, lineID: p.id).environmentObject(store) }
             .navigationDestination(isPresented: $showSell) { SupplyOtherPlayersScreen(companyID: companyID).environmentObject(store) }
+            .navigationDestination(isPresented: $showAssociation) { TradeAssociationScreen(companyID: companyID).environmentObject(store) }
             .task { market.sync(store) }
             .onChange(of: store.engine?.state.week) { _, _ in market.sync(store) }
             .navigationDestination(isPresented: $showTerms) {
@@ -59,6 +61,11 @@ struct CompanySuppliersScreen: View {
                 ForEach(groups) { (g: SupplyGroup) in group(g, cur) }
                 LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Supply other players",
                           subtitle: "Offer what this company makes to other players' companies", identifier: "suppliers-sell") { showSell = true }
+                    .padding(.horizontal, Theme.Space.m)
+                    .glassSurface()
+                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: Theme.inkSoft, title: "Trade association",
+                          subtitle: TradeAssociations.membership(e.state, companyID: co.id).map { "Member of \($0.club.name)" } ?? "Join a club for group buying and shared standards",
+                          identifier: "suppliers-association") { showAssociation = true }
                     .padding(.horizontal, Theme.Space.m)
                     .glassSurface()
                 if CompanySourcing.isAvailable(engine: e, company: co) {

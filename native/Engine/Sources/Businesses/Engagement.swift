@@ -10,6 +10,7 @@ public enum Engagement {
     public static func weekly(_ s: inout GameState, data: GameData) {
         WeeklyFocus.weekly(&s, data: data)
         RivalStories.weekly(&s, data: data)
+        TradeAssociations.weekly(&s, data: data)   // group-buying saving, monthly fee and standards check of association members
     }
 
     /// Every game morning: Desk choices that come due play out and are told in the Inbox.
