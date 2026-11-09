@@ -29,6 +29,8 @@ public extension GameEngine {
     func playerSupplyAllowed(companyID: Int, listing l: SupplyListing) -> Bool {
         guard let co = state.company(companyID), co.status == .open, let bd = data.catalog[co.type],
               let line = SupplyCatalogue.lines(co, bd).first(where: { $0.id == l.lineID }) else { return false }
+        // Never your own company: the market is not a way to move money between your own companies (own supply has its own link).
+        if PlayerSupply.isOwnListing(state, l) { return false }
         if let input = line.input, supplierInputs(companyID: companyID).first(where: { $0.id == input })?.governedBy != nil { return false }
         return SupplyNeeds.uses(buyerTrade: co.type, buyerFamily: bd.family, line: l.lineID, supplierTrade: l.tradeID)
     }
@@ -53,8 +55,45 @@ public extension GameEngine {
     }
 
     /// A short delivery the market reported on this listing; the buyers' customers are affected and they are told.
+    /// It only says the delivery was short, so the buyer's record counts it as a week when a quarter of the units did not arrive; use
+    /// `reportSupplyDelivery` when the real numbers are known.
     mutating func reportShortDelivery(listingID: String) {
-        update { s, _, _ in _ = PlayerSupply.recordMiss(&s, listingID: listingID) }
+        update { s, _, _ in
+            if PlayerSupply.recordDelivery(&s, listingID: listingID, promised: 100, delivered: 75, orders: 1, late: 0).isEmpty { return }
+        }
+    }
+
+    /// Why a listing cannot be used by this company, in words; nil when it can. Own companies are refused first.
+    func playerSupplyBlock(companyID: Int, listing l: SupplyListing) -> String? {
+        if PlayerSupply.isOwnListing(state, l) { return "Not available: it is one of your own companies" }
+        return playerSupplyAllowed(companyID: companyID, listing: l) ? nil : "Not available: this company cannot use it"
+    }
+
+    /// A week of a supplier's deliveries as the market reports them: units asked for and delivered, late orders. The buyer's record with that
+    /// supplier moves, and a short delivery cuts the buyer's cover and tells the buyer.
+    mutating func reportSupplyDelivery(listingID: String, promised: Int, delivered: Int, orders: Int = 1, late: Int = 0) {
+        update { s, _, _ in _ = PlayerSupply.recordDelivery(&s, listingID: listingID, promised: promised, delivered: delivered, orders: orders, late: late) }
+    }
+
+    /// What this supplier has really delivered to this line, since the contract was signed (units, punctuality, complaints, and the word for it).
+    func playerSupplyDeliveryRecord(companyID: Int, lineID: String) -> DeliveryRecord? { PlayerSupply.deliveryRecord(state, buyer: companyID, line: lineID) }
+
+    /// The market ended a contract (the supplier went bankrupt, closed, stopped or left): the line goes back to the House supplier and the buyer is told.
+    mutating func applySupplierFallback(_ f: SupplyFallback) {
+        update { s, _, _ in PlayerSupply.applyFallback(&s, f) }
+    }
+
+    /// A supplier is gone: every contract on its listing (or of its owner) ends and the buyers are warned.
+    @discardableResult
+    mutating func endSupplierContracts(listingID: String? = nil, ownerID: String? = nil, reason: SupplyEnd) -> [SupplyFallback] {
+        var out: [SupplyFallback] = []
+        update { s, _, _ in out = PlayerSupply.supplierEnded(&s, listingID: listingID, ownerID: ownerID, reason: reason) }
+        return out
+    }
+
+    /// A supplier announced it will stop on `endsDay`: its buyers are told the day.
+    mutating func announceSupplierStop(listingID: String, endsDay: Int) {
+        update { s, _, _ in PlayerSupply.noticeOfStop(&s, listingID: listingID, endsDay: endsDay) }
     }
 
     /// The contracts saved with the game, and the player's own listings and their recent orders.

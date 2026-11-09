@@ -89,6 +89,11 @@ public struct LeaderboardSubmission: Equatable, Sendable {
     public var week: Int
     public var netWorth: Double
     public var tradingResult: Double
+
+    public init(playerID: String, name: String, week: Int, netWorth: Double, tradingResult: Double) {
+        self.playerID = playerID; self.name = name; self.week = week; self.netWorth = netWorth; self.tradingResult = tradingResult
+    }
+
     public func value(_ kind: LeaderboardKind) -> Double { kind == .netWorth ? netWorth : tradingResult }
 }
 
@@ -98,6 +103,10 @@ public struct LeaderboardEntry: Equatable, Identifiable, Sendable {
     public var name: String
     public var value: Double
     public var isYou: Bool
+
+    public init(id: String, rank: Int, name: String, value: Double, isYou: Bool) {
+        self.id = id; self.rank = rank; self.name = name; self.value = value; self.isYou = isYou
+    }
 }
 
 public struct LeaderboardView: Equatable, Sendable {
@@ -107,6 +116,10 @@ public struct LeaderboardView: Equatable, Sendable {
     public var around: [LeaderboardEntry]
     public var you: LeaderboardEntry?
     public var count: Int
+
+    public init(kind: LeaderboardKind, top: [LeaderboardEntry], around: [LeaderboardEntry], you: LeaderboardEntry?, count: Int) {
+        self.kind = kind; self.top = top; self.around = around; self.you = you; self.count = count
+    }
 }
 
 public enum Leaderboards {

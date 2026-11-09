@@ -26,13 +26,13 @@ public enum EnergyMarket {
     public static let alertMove = 0.15
 
     /// The index the market is heading for at this demand and supply.
-    public static func target(demand: Double, supply: Double) -> Double {
+    public static func target(demand: Double, supply: Double, band: ClosedRange<Double> = EnergyMarket.band) -> Double {
         guard demand > 0, supply > 0 else { return 1 }
         return clamp(pow(demand / supply, sensitivity), band.lowerBound, band.upperBound)
     }
 
     /// One week's step toward the target (`noise` is a standard normal draw).
-    public static func step(index: Double, target: Double, noise z: Double) -> Double {
+    public static func step(index: Double, target: Double, noise z: Double, band: ClosedRange<Double> = EnergyMarket.band) -> Double {
         clamp(index + (target - index) * followRate + z * noise, band.lowerBound, band.upperBound)
     }
 
@@ -74,7 +74,7 @@ public enum EnergyMarket {
         var m = s.rest["emkt"] ?? .object([:])
         m["d"] = .number(t.demand); m["s"] = .number(t.supply); m["pu"] = .number(t.playerUse); m["pp"] = .number(t.playerPlants)
         s.rest["emkt"] = m
-        return target(demand: t.demand, supply: t.supply)
+        return target(demand: t.demand, supply: t.supply, band: s.worldRules.powerBand)
     }
 
     /// Records the week's price so the market can say how it moved over 12 weeks.

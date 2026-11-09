@@ -211,6 +211,27 @@ public enum Rivals {
         return added
     }
 
+    /// The market a rival (by the id its card carries) belongs to; nil when no such rival is on any market.
+    public static func marketKey(ofRival id: Int, in s: GameState) -> String? {
+        guard id != 0 else { return nil }
+        for (key, m) in (s.rest["mk"] ?? .null).object where m["riv"].array.contains(where: { $0["id"].int == id }) { return key }
+        return nil
+    }
+
+    /// A dirty trick lands on a rival: its health (`fort`) falls by the points times 0.04 and it remembers who it blames. False when there is no such rival.
+    package static func hurt(_ s: inout GameState, rivalID: Int, points: Double) -> Bool {
+        guard let key = marketKey(ofRival: rivalID, in: s) else { return false }
+        let week = s.week
+        mutate(&s, key: key, id: rivalID) { r in
+            r["fort"] = .number(max(-1, (r["fort"].isNull ? 1 : r["fort"].double) - points * 0.04))
+            r["rel"] = .number(max(0, r["rel"].double - points))
+            var mem = r["mem31"].array
+            mem.insert(.object(["w": .number(Double(week)), "t": "Someone ran a dirty trick against us", "d": .number(-points)]), at: 0)
+            r["mem31"] = .array(Array(mem.prefix(12)))
+        }
+        return true
+    }
+
     /// Change one rival record in place.
     static func mutate(_ s: inout GameState, key: String, id: Int, _ body: (inout JSONValue) -> Void) {
         guard var mk = s.rest["mk"], !mk[key].isNull else { return }

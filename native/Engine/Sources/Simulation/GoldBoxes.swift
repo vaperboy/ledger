@@ -35,6 +35,8 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
 /// What a row of the odds table hands out. Gold is a small prize: never more than the box costs.
 public enum BoxPrizeClass: Equatable, Sendable {
     case cosmetic, artifact, gold(Int)
+    /// A small prize of in-game money, in reference-economy units (scaled to the player's currency when claimed). Free boxes only.
+    case money(Int)
 }
 
 /// One line of a box's published odds. `weight` is in basis points (out of 10,000).
@@ -51,6 +53,8 @@ public struct BoxResult: Equatable, Sendable {
         case cosmetic(String)
         case artifact(ArtifactItem)
         case gold(Int, doubled: Bool)
+        /// Reference-economy money; `BoxMoney.claim` pays it into the player's account through the ledger.
+        case money(Int)
     }
     public var rarity: BoxRarity
     public var content: Content
@@ -90,8 +94,8 @@ public enum BoxOdds {
     public static func rows(_ kind: BoxKind) -> [BoxRow] {
         switch kind {
         case .free:
-            return [r(.common, .cosmetic, 1500), r(.common, .artifact, 3500), r(.common, .gold(5), 3000),
-                    r(.rare, .cosmetic, 400), r(.rare, .artifact, 800), r(.rare, .gold(10), 500),
+            return [r(.common, .cosmetic, 1500), r(.common, .artifact, 3450), r(.common, .gold(5), 3000), r(.common, .money(1_000), 50),
+                    r(.rare, .cosmetic, 370), r(.rare, .artifact, 800), r(.rare, .gold(10), 500), r(.rare, .money(5_000), 30),
                     r(.epic, .cosmetic, 100), r(.epic, .artifact, 150),
                     r(.legendary, .artifact, 50)]
         case .cabinet:
@@ -132,12 +136,26 @@ public enum BoxOdds {
         return kind == .free ? top * 2 : top
     }
 
+    /// Chance in percent that a box holds a money prize (only the free box has any), and the most such a prize is worth in reference-economy money.
+    public static func moneyPercent(_ kind: BoxKind) -> Double {
+        Double(rows(kind).filter { if case .money = $0.prize { return true } else { return false } }.reduce(0) { $0 + $1.weight }) / 100
+    }
+    public static func largestMoney(_ kind: BoxKind) -> Int {
+        rows(kind).reduce(0) { m, row in
+            if case .money(let v) = row.prize { return max(m, v) }
+            return m
+        }
+    }
+    /// The most a money prize can be worth: a few days of a small shop's takings, never a way to buy a company.
+    public static let moneyCap = 5_000
+
     /// The check behind the promise: weights add up, a paid box returns less gold than it costs on average (and no single gold prize reaches its price),
     /// a free box's gold stays small.
     public static func isFair(_ kind: BoxKind) -> Bool {
         guard rows(kind).reduce(0, { $0 + $1.weight }) == totalWeight else { return false }
-        if kind.isPaid { return expectedGold(kind) < Double(kind.price) && largestGold(kind) < kind.price }
-        return largestGold(kind) <= 50
+        guard largestMoney(kind) <= moneyCap else { return false }
+        if kind.isPaid { return moneyPercent(kind) == 0 && expectedGold(kind) < Double(kind.price) && largestGold(kind) < kind.price }
+        return largestGold(kind) <= 50 && moneyPercent(kind) <= 2
     }
 
     /// The disclosure lines for a box: the prize and its chance, e.g. "Rare artifact" and "10.00%".
@@ -148,6 +166,7 @@ public enum BoxOdds {
             case .cosmetic: what = "cosmetic"
             case .artifact: what = "artifact"
             case .gold(let g): what = "\(g) gold"
+            case .money(let m): what = "cash prize (\(m) in the reference economy, scaled to your country's money)"
             }
             return ("\(row.rarity.title) \(what)", row.percent)
         }
@@ -164,6 +183,7 @@ public enum BoxOdds {
         if guaranteed {
             table = table.filter { (row: BoxRow) -> Bool in
                 if case .gold = row.prize { return false }
+                if case .money = row.prize { return false }
                 return row.rarity >= .rare
             }
         }
@@ -183,6 +203,8 @@ public enum BoxOdds {
         case .gold(let g):
             let doubled: Bool = kind == .free && doubleRoll * Double(totalWeight) < Double(doubleGoldChance)
             content = .gold(doubled ? g * 2 : g, doubled: doubled)
+        case .money(let m):
+            content = .money(m)
         case .cosmetic:
             let pool: [GoldCosmetic] = GoldCosmetics.boxPool(row.rarity, owned: ownedCosmetics)
             if pool.isEmpty { content = .artifact(artifact(row.rarity, itemRoll, serialRoll)) }

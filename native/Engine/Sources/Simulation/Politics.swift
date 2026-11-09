@@ -82,20 +82,21 @@ public enum Politics {
 
     /// Why a promise cannot be kept within one term (nil when it is realistic). A rate may move one point at a time and not more often
     /// than every seven weeks, so a twelve-week term allows two steps.
-    public static func realismProblem(_ p: CampaignPromise, policy: GovPolicy, treasury: Double) -> String? {
-        let reach = GovPolicy.step * Double((Government.termWeeks - 1) / GovPolicy.changeGapWeeks + 1)
+    public static func realismProblem(_ p: CampaignPromise, policy: GovPolicy, treasury: Double, rules: WorldRules = WorldRules.defaults) -> String? {
+        let reach = rules.taxStep * Double((Government.termWeeks - 1) / rules.taxGapWeeks + 1)
+        func pct(_ x: Double) -> Int { Int((x * 100).rounded()) }
         switch p.kind {
         case .transferTax:
-            if !GovPolicy.transferRange.contains(p.value) { return "The transfer tax stays between 0% and 5%." }
+            if !rules.transferTaxRange.contains(p.value) { return "The transfer tax stays between 0% and \(pct(rules.transferTaxRange.upperBound))%." }
             if abs(p.value - policy.transferTax) < 1e-9 { return "That is the rate already." }
             if abs(p.value - policy.transferTax) > reach + 1e-9 { return "Rates move at most two points in one term." }
         case .gainsTax:
-            if !GovPolicy.gainsRange.contains(p.value) { return "The gains tax stays between 5% and 40%." }
+            if !rules.gainsTaxRange.contains(p.value) { return "The gains tax stays between \(pct(rules.gainsTaxRange.lowerBound))% and \(pct(rules.gainsTaxRange.upperBound))%." }
             if abs(p.value - policy.gainsTax) < 1e-9 { return "That is the rate already." }
             if abs(p.value - policy.gainsTax) > reach + 1e-9 { return "Rates move at most two points in one term." }
         case .priceSupport:
             if (p.tradeID ?? "").isEmpty { return "Name the trade." }
-            if !GovPriceSupport.percentRange.contains(p.value) { return "Support is 1% to 10% of sales." }
+            if !rules.supportPercentRange.contains(p.value) { return "Support is 1% to \(pct(rules.supportPercentRange.upperBound))% of sales." }
             if treasury <= 0 { return "The treasury is empty." }
         }
         return nil
@@ -118,7 +119,7 @@ extension Government {
     func validatePromises(_ promises: [CampaignPromise]) throws {
         guard promises.count <= Politics.maxPromises else { throw GovError.overLimit("At most three promises.") }
         guard Set(promises.map { $0.kind }).count == promises.count else { throw GovError.unrealistic("One promise of each kind.") }
-        for p in promises { if let why = Politics.realismProblem(p, policy: policy, treasury: treasury.balance) { throw GovError.unrealistic(why) } }
+        for p in promises { if let why = Politics.realismProblem(p, policy: policy, treasury: treasury.balance, rules: rules) { throw GovError.unrealistic(why) } }
     }
 
     /// Enters the candidate. The fee has been taken from them and is credited to the treasury here; it is never given back.

@@ -163,16 +163,18 @@ public struct SupplyListing: Identifiable, Equatable, Sendable {
     public var expiresDay: Int?
     /// Units already promised this week.
     public var committedUnits: Int
+    /// The day a stop announced to buyers takes effect (a supplier with open contracts cannot just vanish); nil = no stop announced.
+    public var stopsDay: Int?
 
     public init(id: String, ownerID: String, ownerName: String, profileCode: String, companyName: String, companyID: Int? = nil, tradeID: String, tradeName: String,
                 city: String, region: String, lineID: String, lineName: String, priceTier: Int, qualityTier: Int, capacityPerWeek: Int, leadDays: Int, minOrder: Int,
                 termsDays: Int, linkKey: String, record: DeliveryRecord = DeliveryRecord(), isFriend: Bool = false, isHouse: Bool = false, paused: Bool = false,
-                stopped: Bool = false, expiresDay: Int? = nil, committedUnits: Int = 0, country: String = "") {
+                stopped: Bool = false, expiresDay: Int? = nil, committedUnits: Int = 0, country: String = "", stopsDay: Int? = nil) {
         self.id = id; self.ownerID = ownerID; self.ownerName = ownerName; self.profileCode = profileCode; self.companyName = companyName; self.companyID = companyID
         self.tradeID = tradeID; self.tradeName = tradeName; self.city = city; self.region = region; self.lineID = lineID; self.lineName = lineName
         self.priceTier = priceTier; self.qualityTier = qualityTier; self.capacityPerWeek = capacityPerWeek; self.leadDays = leadDays; self.minOrder = minOrder
         self.termsDays = termsDays; self.linkKey = linkKey; self.record = record; self.isFriend = isFriend; self.isHouse = isHouse; self.paused = paused
-        self.stopped = stopped; self.expiresDay = expiresDay; self.committedUnits = committedUnits; self.country = country
+        self.stopped = stopped; self.expiresDay = expiresDay; self.committedUnits = committedUnits; self.country = country; self.stopsDay = stopsDay
     }
 
     public var word: DeliveryWord { SupplyRecordRules.word(record) }
@@ -226,9 +228,24 @@ public enum SupplyGuards {
         if l.stopped { return .notOffered("Not available: stopped supplying") }
         if l.paused { return .notOffered("Not available: paused") }
         if let e = l.expiresDay, today > e { return .notOffered("Not available: offer ended") }
+        if l.stopsDay != nil { return .notOffered("Not available: stopping soon") }
         if effectiveCapacity(l) - l.committedUnits < max(1, l.minOrder) { return .full }
         if units < l.minOrder { return .belowMinimum(l.minOrder) }
         return .available
+    }
+
+    /// A supplier with open contracts cannot just vanish: stopping a listing is announced to the buyers and takes effect after this many weeks.
+    public static let stopNoticeWeeks = 2
+
+    public enum StopPlan: Equatable, Sendable {
+        /// Nobody is buying, or the company is gone (bankrupt, sold, closed): it stops at once.
+        case now
+        /// Buyers are told now; the contracts end on the day given.
+        case afterNotice(endsDay: Int)
+    }
+
+    public static func stopPlan(openContracts: Int, companyGone: Bool, today: Int) -> StopPlan {
+        companyGone || openContracts == 0 ? .now : .afterNotice(endsDay: today + stopNoticeWeeks * 7)
     }
 
     /// An owner with open supply contracts has to serve them out or hand them over before deleting the account.

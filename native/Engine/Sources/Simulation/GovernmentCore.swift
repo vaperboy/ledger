@@ -107,12 +107,13 @@ public struct GovMoneySupply: Codable, Equatable, Sendable {
     public func total(before week: Int) -> Double { base + mints.filter { $0.week < week }.reduce(0) { $0 + $1.amount } }
 
     /// Checks the printing limits for a new amount in this week; throws the reason when it is over.
-    func check(_ amount: Double, week: Int) throws {
+    func check(_ amount: Double, week: Int, rules: WorldRules = WorldRules.defaults) throws {
         guard amount > 0, amount.isFinite else { throw GovError.badAmount("An amount above zero is needed.") }
         let t = total
-        if amount > t * Self.singleMintLimit { throw GovError.overLimit("One printing may not exceed 5% of the money supply.") }
-        let recent = mints.filter { week - $0.week < Self.windowWeeks }.reduce(0) { $0 + $1.amount }
-        if recent + amount > t * Self.windowLimit { throw GovError.overLimit("No more than 15% of the supply may be printed in 12 weeks.") }
+        let single = Int((rules.printSingleLimit * 100).rounded()), window = Int((rules.printWindowLimit * 100).rounded())
+        if amount > t * rules.printSingleLimit { throw GovError.overLimit("One printing may not exceed \(single)% of the money supply.") }
+        let recent = mints.filter { week - $0.week < rules.printWindowWeeks }.reduce(0) { $0 + $1.amount }
+        if recent + amount > t * rules.printWindowLimit { throw GovError.overLimit("No more than \(window)% of the supply may be printed in \(rules.printWindowWeeks) weeks.") }
     }
 
     mutating func append(_ m: GovMint) { mints.append(m) }

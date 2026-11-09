@@ -145,7 +145,7 @@ final class CrowdStartupTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(quote.plan.founderPutIn, quote.plan.cost / 3 - 1)
         let cash0 = e.state.cash
         var out: CrowdStartups.FoundOutcome?
-        e.update { s, d, c in out = CrowdStartups.found(&s, name: "Crowdco", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1, planFactor: 3, pitch: "", accountWeeks: 10, today: 0, data: d, context: c) }
+        e.update { s, d, c in out = CrowdStartups.found(&s, name: "Crowdco", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1, planFactor: 3, pitch: "", accountWeeks: 10, level: 5, today: 0, data: d, context: c) }
         guard case .ok(var st) = try XCTUnwrap(out) else { return XCTFail("found") }
         XCTAssertLessThanOrEqual(cash0 - e.state.cash, quote.total + 1)
         XCTAssertGreaterThanOrEqual(cash0 - e.state.cash, quote.entryCost)
@@ -164,7 +164,7 @@ final class CrowdStartupTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         var refused = false
         e.update { s, d, c in
-            if case .refused = CrowdStartups.found(&s, name: "X", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1, planFactor: 3, pitch: "", accountWeeks: 1, today: 0, data: d, context: c) { refused = true }
+            if case .refused = CrowdStartups.found(&s, name: "X", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1, planFactor: 3, pitch: "", accountWeeks: 1, level: 5, today: 0, data: d, context: c) { refused = true }
         }
         XCTAssertTrue(refused, "a new account cannot found")
     }

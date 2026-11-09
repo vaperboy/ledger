@@ -74,6 +74,9 @@ public struct Government: Codable, Equatable, Sendable {
 
     public var country: String
     public var admins: Set<String>
+    /// The administrator's world rules this government runs on; the bridge sets it from the game's snapshot before every change. Nil: the defaults.
+    public var activeRules: WorldRules?
+    var rules: WorldRules { activeRules ?? WorldRules.defaults }
     public internal(set) var treasury = GovTreasury()
     public internal(set) var supply: GovMoneySupply
     public internal(set) var donations: [GovDonation] = []
@@ -132,7 +135,7 @@ public struct Government: Codable, Equatable, Sendable {
         let why = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         guard why.count >= 3 else { throw GovError.badAmount("Give a reason.") }
         let a = govRound(amount)
-        try supply.check(a, week: week)
+        try supply.check(a, week: week, rules: rules)
         let m = GovMint(id: takeID(), week: week, amount: a, reason: String(why.prefix(200)), admin: admin)
         supply.append(m)
         try treasury.post(a, kind: "mint", ref: String(m.id), week: week)
@@ -174,7 +177,7 @@ public struct Government: Codable, Equatable, Sendable {
     @discardableResult public mutating func proposePolicy(by account: String, transferTax: Double, gainsTax: Double, week: Int) throws -> Int {
         guard isPresident(account, week: week) else { throw GovError.notPresident }
         guard !pending.contains(where: { $0.kind == .policy && $0.status == .open }) else { throw GovError.alreadyPending }
-        try Self.checkRates(from: policy, transferTax: transferTax, gainsTax: gainsTax, week: week)
+        try Self.checkRates(from: policy, transferTax: transferTax, gainsTax: gainsTax, week: week, rules: rules)
         let p = GovPending(id: takeID(), kind: .policy, week: week, proposer: account,
                            summary: "Transfer tax \(pct(transferTax)), gains tax \(pct(gainsTax))", transferTax: transferTax, gainsTax: gainsTax)
         pending.insert(p, at: 0)
@@ -182,12 +185,12 @@ public struct Government: Codable, Equatable, Sendable {
         return p.id
     }
 
-    static func checkRates(from cur: GovPolicy, transferTax t: Double, gainsTax g: Double, week: Int) throws {
-        guard GovPolicy.transferRange.contains(t), GovPolicy.gainsRange.contains(g) else { throw GovError.overLimit("A rate is outside its limits.") }
-        guard abs(t - cur.transferTax) <= GovPolicy.step + 1e-9, abs(g - cur.gainsTax) <= GovPolicy.step + 1e-9 else {
+    static func checkRates(from cur: GovPolicy, transferTax t: Double, gainsTax g: Double, week: Int, rules: WorldRules = WorldRules.defaults) throws {
+        guard rules.transferTaxRange.contains(t), rules.gainsTaxRange.contains(g) else { throw GovError.overLimit("A rate is outside its limits.") }
+        guard abs(t - cur.transferTax) <= rules.taxStep + 1e-9, abs(g - cur.gainsTax) <= rules.taxStep + 1e-9 else {
             throw GovError.overLimit("A rate may move by one point at a time.")
         }
-        if let last = cur.lastChangeWeek, week - last < GovPolicy.changeGapWeeks { throw GovError.tooSoon(weeksLeft: GovPolicy.changeGapWeeks - (week - last)) }
+        if let last = cur.lastChangeWeek, week - last < rules.taxGapWeeks { throw GovError.tooSoon(weeksLeft: rules.taxGapWeeks - (week - last)) }
     }
 
     func pct(_ x: Double) -> String { String(format: "%.1f%%", x * 100) }
@@ -197,9 +200,9 @@ public struct Government: Codable, Equatable, Sendable {
     /// Support for one trade: the state adds `percent` of a company's week of sales, up to a weekly budget. Admin confirms before it runs.
     @discardableResult public mutating func proposePriceSupport(by account: String, tradeID: String, percent: Double, weeklyBudget: Double, weeks: Int, week: Int) throws -> Int {
         guard isPresident(account, week: week) else { throw GovError.notPresident }
-        try Self.checkSupport(percent: percent, budget: weeklyBudget, weeks: weeks, treasury: treasury.balance)
+        try Self.checkSupport(percent: percent, budget: weeklyBudget, weeks: weeks, treasury: treasury.balance, rules: rules)
         guard !tradeID.isEmpty else { throw GovError.badAmount("Name the trade.") }
-        guard supports.filter({ $0.status == .proposed || $0.status == .active }).count < GovPriceSupport.maxOpen,
+        guard supports.filter({ $0.status == .proposed || $0.status == .active }).count < rules.supportMaxOpen,
               !supports.contains(where: { $0.tradeID == tradeID && ($0.status == .proposed || $0.status == .active) }) else { throw GovError.alreadyPending }
         let s = GovPriceSupport(id: takeID(), tradeID: tradeID, percent: percent, weeklyBudget: govRound(weeklyBudget), weeks: weeks, startWeek: week, status: .proposed, proposer: account)
         supports.append(s)
@@ -210,10 +213,12 @@ public struct Government: Codable, Equatable, Sendable {
         return p.id
     }
 
-    static func checkSupport(percent: Double, budget: Double, weeks: Int, treasury: Double) throws {
-        guard GovPriceSupport.percentRange.contains(percent) else { throw GovError.overLimit("Support is 1% to 10% of sales.") }
-        guard (1...GovPriceSupport.maxWeeks).contains(weeks) else { throw GovError.overLimit("Support runs 1 to 8 weeks.") }
-        guard budget > 0, budget <= treasury * GovPriceSupport.budgetShareOfTreasury else { throw GovError.unrealistic("The weekly budget may not exceed 5% of what the treasury holds.") }
+    static func checkSupport(percent: Double, budget: Double, weeks: Int, treasury: Double, rules: WorldRules = WorldRules.defaults) throws {
+        guard rules.supportPercentRange.contains(percent) else { throw GovError.overLimit("Support is 1% to \(Int((rules.supportPercentRange.upperBound * 100).rounded()))% of sales.") }
+        guard (1...rules.supportWeeksMax).contains(weeks) else { throw GovError.overLimit("Support runs 1 to \(rules.supportWeeksMax) weeks.") }
+        guard budget > 0, budget <= treasury * rules.supportBudgetShare else {
+            throw GovError.unrealistic("The weekly budget may not exceed \(Int((rules.supportBudgetShare * 100).rounded()))% of what the treasury holds.")
+        }
     }
 
     /// What the state adds to one company's week. Zero when nothing applies. The caller credits the company the returned amount.
@@ -222,7 +227,7 @@ public struct Government: Codable, Equatable, Sendable {
         guard let i = supports.firstIndex(where: { $0.status == .active && $0.tradeID == tradeID && week >= $0.startWeek && week < $0.endWeek }) else { return 0 }
         if supports[i].budgetWeek != week { supports[i].budgetWeek = week; supports[i].spentWeek = 0; supports[i].drawn = [:] }
         let s = supports[i]
-        let accountRoom = s.weeklyBudget * GovPriceSupport.accountShare - (s.drawn[account] ?? 0)
+        let accountRoom = s.weeklyBudget * rules.supportAccountShare - (s.drawn[account] ?? 0)
         let amt = min(weekRevenue * s.percent, s.weeklyBudget - s.spentWeek, accountRoom, treasury.balance).rounded(.down)
         guard amt >= 1 else { return 0 }
         guard (try? payOut(amt, kind: "price_support", ref: String(s.id), week: week)) != nil else { return 0 }
@@ -241,7 +246,7 @@ public struct Government: Codable, Equatable, Sendable {
         switch p.kind {
         case .policy:
             guard let office, office.holder == p.proposer, week < office.termEnd else { throw GovError.notPresident }
-            try Self.checkRates(from: policy, transferTax: p.transferTax ?? policy.transferTax, gainsTax: p.gainsTax ?? policy.gainsTax, week: week)
+            try Self.checkRates(from: policy, transferTax: p.transferTax ?? policy.transferTax, gainsTax: p.gainsTax ?? policy.gainsTax, week: week, rules: rules)
             policy.transferTax = p.transferTax ?? policy.transferTax
             policy.gainsTax = p.gainsTax ?? policy.gainsTax
             policy.lastChangeWeek = week
@@ -250,7 +255,7 @@ public struct Government: Codable, Equatable, Sendable {
         case .priceSupport:
             guard let k = supports.firstIndex(where: { $0.id == p.supportID }), supports[k].status == .proposed else { throw GovError.notFound }
             guard let office, office.holder == p.proposer, week < office.termEnd else { throw GovError.notPresident }
-            try Self.checkSupport(percent: supports[k].percent, budget: supports[k].weeklyBudget, weeks: supports[k].weeks, treasury: treasury.balance)
+            try Self.checkSupport(percent: supports[k].percent, budget: supports[k].weeklyBudget, weeks: supports[k].weeks, treasury: treasury.balance, rules: rules)
             supports[k].status = .active
             supports[k].startWeek = week
             markKept(support: supports[k], week: week)

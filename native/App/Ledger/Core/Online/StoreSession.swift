@@ -17,6 +17,8 @@ final class StoreSession {
     /// What happened to the player's auctions since they last looked, one line each.
     private(set) var notes: [String] = []
 
+    /// Set by the game store: pays a box's cash prize (reference-economy amount, the opening's id) into the running game.
+    @ObservationIgnored var moneyPrizeHandler: ((Int, String) -> Void)?
     @ObservationIgnored private let store: any StoreService
     @ObservationIgnored private let market: any AuctionService
 
@@ -84,6 +86,7 @@ final class StoreSession {
             let out = try await store.openBox(kind, owned: SeasonModel.shared.pass.owned, paidBoxesAllowed: paidBoxesAllowed)
             state = out.state
             if case .cosmetic(let id) = out.result.content { SeasonModel.shared.grantOwned(id) }
+            if case .money(let amount) = out.result.content { moneyPrizeHandler?(amount, UUID().uuidString) }
             grantCollections(out.completed)
             return out
         } catch { problem = message(error); return nil }

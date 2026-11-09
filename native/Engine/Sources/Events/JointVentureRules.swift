@@ -104,7 +104,8 @@ public enum JVRules {
         guard pct > 0, pct < 100 else { return 0 }
         return max(0, value) * pct / (100 - pct)
     }
-    public static func priceProblem(price: Double, fair: Double) -> String? {
+    public static func priceProblem(price: Double, fair: Double, rules: WorldRules = WorldRules.defaults) -> String? {
+        let priceBand: ClosedRange<Double> = rules.ventureBand
         guard fair > 0 else { return "The company is worth nothing yet, so shares in it cannot be priced." }
         if price < fair * priceBand.lowerBound { return "That price is too low. A partner pays at least \(Int(priceBand.lowerBound * 100))% of what the shares are worth." }
         if price > fair * priceBand.upperBound { return "That price is too high. A partner pays at most \(Int(priceBand.upperBound * 100))% of what the shares are worth." }

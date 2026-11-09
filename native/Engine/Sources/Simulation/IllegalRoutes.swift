@@ -75,6 +75,16 @@ public enum RouteRules {
     /// What an audit of level 1 to 5 costs, as multiples of what was taken in the look-back: the gains handed back plus a fine.
     public static func fineMultiple(level: Int) -> Double { level <= 1 ? 1 : 3 }
     public static let backMultiple = 1.0
+
+    /// The bans a conviction after a forced closure carries, in weeks; `grave` is the public-watchlist level.
+    public static func tradeBanWeeks(grave: Bool) -> Int { grave ? 26 : 12 }
+    public static func officeBanWeeks(grave: Bool) -> Int { grave ? 52 : 26 }
+    public static func voteBanWeeks(grave: Bool) -> Int { grave ? 26 : 0 }
+    /// Credit points lost when a company is closed by the authorities.
+    public static let closureCreditLoss = 15.0
+    /// Audit level at which a company is closed and its owner convicted, and the level at which the name goes on the public watchlist.
+    public static let closureLevel = 4
+    public static let watchlistLevel = 5
     /// The owner's own fine at the levels with a conviction.
     public static func convictionFineMultiple(level: Int) -> Double { level >= 5 ? 1 : (level == 4 ? 0.5 : 0) }
 }
@@ -142,8 +152,20 @@ public enum DirtyTrick: String, Codable, CaseIterable, Sendable {
     /// Reference price, scaled to the country by the caller.
     public var costReference: Double { switch self { case .smear: return 20_000; case .fakeReviews: return 30_000; case .sabotage: return 60_000 } }
     var heat: Double { 8 }
-    var detectChance: Double { 0.25 }
+    var detectChance: Double { Self.traceChance }
     var convictionKind: PlayerConviction.Kind { self == .sabotage ? .sabotage : .harassment }
+
+    /// Chance that a trick is traced back to the one who ordered it.
+    public static let traceChance = 0.25
+    /// When traced: the company pays this many times what the trick cost as a fine, and the owner is barred from trading for this many weeks.
+    public static let fineMultiple = 5.0
+    public static let banWeeks = 4
+
+    /// What being traced costs, in plain words (the app's "If you do this" lines read this).
+    public static var penaltyText: String {
+        "\(Int((traceChance * 100).rounded()))% of tricks are traced back. Then the company pays a fine of \(Int(fineMultiple)) times what the trick cost, "
+            + "you are barred from trading for \(banWeeks) weeks and a conviction goes on your record."
+    }
 
     public static let perAccountPerWeek = 1
     public static let perAccountPerWindow = 4

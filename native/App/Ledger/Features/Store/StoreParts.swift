@@ -125,6 +125,9 @@ struct BoxOddsTable: View {
         if kind.isPaid {
             return "Gold prizes are small: the most a gold prize holds is \(StoreText.gold(BoxOdds.largestGold(kind))), and on average a box returns \(avgText) gold for a price of \(StoreText.gold(kind.price)). Most of the value is in the cosmetics and artifacts."
         }
-        return "A free box holds a cosmetic, an artifact or a little gold, on average \(avgText) gold. About 1 in \(BoxOdds.totalWeight / BoxOdds.doubleGoldChance) gold prizes is doubled."
+        let money: String = BoxOdds.moneyPercent(kind) > 0
+            ? " Once in a while (\(String(format: "%.2f", BoxOdds.moneyPercent(kind)))% of boxes) it holds a small cash prize for your game account, never more than \(BoxOdds.largestMoney(kind)) in the reference economy; gold itself never turns into game money."
+            : ""
+        return "A free box holds a cosmetic, an artifact or a little gold, on average \(avgText) gold. About 1 in \(BoxOdds.totalWeight / BoxOdds.doubleGoldChance) gold prizes is doubled." + money
     }
 }

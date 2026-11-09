@@ -207,7 +207,7 @@ public enum JointVenture {
         let t = CapTable.table(co)
         let ownerAfter = Double(t.you) / Double(max(1, t.total + CapTable.sharesForPercent(pct, total: t.total))) * 100
         if let why = JVRules.stakeProblem(pct: pct, existingPartners: partners(st).count + st.invites.filter { $0.status == "sent" }.count, ownerAfterPct: ownerAfter) { return why }
-        return JVRules.priceProblem(price: price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: pct))
+        return JVRules.priceProblem(price: price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: pct), rules: s.worldRules)
     }
 
     @discardableResult
@@ -250,7 +250,7 @@ public enum JointVenture {
             return nil
         }
         // The company may have moved since the price was set: the price must still sit in the band.
-        if let why = JVRules.priceProblem(price: inv.price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: inv.pct)) {
+        if let why = JVRules.priceProblem(price: inv.price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: inv.pct), rules: s.worldRules) {
             st.invites[k].status = "declined"; save(&s, i, st)
             s.addMessage(from: "\(co.name) partners", title: "\(inv.name) could not join", body: "The value of \(co.name) has moved since the price was set. \(why)", companyID: co.id)
             return why

@@ -108,6 +108,9 @@ public enum PlayerSupply {
         var miss = rec["miss"].object
         miss.removeValue(forKey: c.base.id)
         rec["miss"] = .object(miss)
+        var dr = rec["dr"].object
+        dr.removeValue(forKey: c.base.id)
+        rec["dr"] = .object(dr)
         s.rest["psup"] = rec
         if let i = s.companyIndex(buyer), SupplyCatalogue.chosenID(s.companies[i], line: line).hasPrefix("P:") { setChoice(&s, companyIndex: i, line: line, offer: "market") }
     }
@@ -149,9 +152,107 @@ public enum PlayerSupply {
                               reliability: c.reliability, termsDays: c.termsDays, leadDays: line.leadDays + c.leadDays, relationshipWord: "Player supplier")
     }
 
-    /// Housekeeping each week: contracts of companies that are gone end (and free their line).
+    // MARK: Delivery records (what the buyer has really been delivered)
+
+    static func recordJSON(_ r: DeliveryRecord) -> JSONValue {
+        var o: [String: JSONValue] = ["wt": .number(Double(r.weeksTrading)), "ot": .number(Double(r.ordersTotal)), "oo": .number(Double(r.ordersOnTime)), "up": .number(Double(r.unitsPromised)),
+                                      "ud": .number(Double(r.unitsDelivered)), "cp": .number(Double(r.complaints)), "dp": .number(Double(r.disputes)), "pc": .number(Double(r.priceChanges)),
+                                      "cw": .number(Double(r.cleanWeeks)), "lu": .number(Double(r.lifetimeUnits))]
+        if let d = r.deliveredTrend { o["dt"] = .number(d) }
+        if let d = r.onTimeTrend { o["ott"] = .number(d) }
+        return .object(o)
+    }
+
+    static func recordFrom(_ r: JSONValue) -> DeliveryRecord {
+        DeliveryRecord(weeksTrading: r["wt"].int, ordersTotal: r["ot"].int, ordersOnTime: r["oo"].int, unitsPromised: r["up"].int, unitsDelivered: r["ud"].int,
+                       complaints: r["cp"].int, disputes: r["dp"].int, priceChanges: r["pc"].int, cleanWeeks: r["cw"].int,
+                       deliveredTrend: r["dt"].isNull ? nil : r["dt"].double, onTimeTrend: r["ott"].isNull ? nil : r["ott"].double, lifetimeUnits: r["lu"].int)
+    }
+
+    /// What this supplier has really delivered to this line of this company, week by week since the contract was signed. Nil without a contract.
+    public static func deliveryRecord(_ s: GameState, buyer: Int, line: String) -> DeliveryRecord? {
+        guard let c = contract(s, buyer: buyer, line: line) else { return nil }
+        let j = record(s)["dr"][c.base.id]
+        return j.isNull ? DeliveryRecord() : recordFrom(j)
+    }
+
+    /// One week of a supplier's deliveries to the buyers on its listing: units asked for, units that arrived, late orders. The record of each
+    /// contract moves, its reliability follows the record, and a short delivery cuts the buyer's cover and warns the buyer. Returns the contracts touched.
+    @discardableResult
+    public static func recordDelivery(_ s: inout GameState, listingID: String, promised: Int, delivered: Int, orders: Int = 1, late: Int = 0, complaints: Int = 0) -> [Contract] {
+        let hit = contracts(s).filter { $0.base.listingID == listingID && s.company($0.base.buyerCompanyID)?.status.isLive == true }
+        guard !hit.isEmpty, promised > 0 else { return [] }
+        let got = max(0, min(delivered, promised))
+        let n = max(1, orders)
+        let lateOrders = max(0, min(late, n))
+        let short = got < promised
+        var rec = record(s)
+        var dr = rec["dr"].object
+        var list = rec["c"].array
+        for c in hit {
+            let before: DeliveryRecord = dr[c.base.id].map { recordFrom($0) } ?? DeliveryRecord()
+            let next = SupplyRecordRules.applying(before, promised: promised, delivered: got, orders: n, late: lateOrders, complaints: max(complaints, short ? 1 : 0))
+            dr[c.base.id] = recordJSON(next)
+            if let k = list.firstIndex(where: { $0["id"].string == c.base.id }) { list[k]["rel"] = .number(reliability(of: next)) }
+        }
+        rec["dr"] = .object(dr)
+        rec["c"] = .array(list)
+        s.rest["psup"] = rec
+        if short { recordMiss(&s, listingID: listingID) }
+        return hit
+    }
+
+    // MARK: When a supplier stops
+
+    /// The supplier is gone (bankrupt, closed, sold, account deleted) or its announced stop has come: every contract on the listing (or of the
+    /// owner) ends at once, the line goes back to the House supplier, and each buyer is told in the Inbox. Returns what was ended.
+    @discardableResult
+    public static func supplierEnded(_ s: inout GameState, listingID: String? = nil, ownerID: String? = nil, reason: SupplyEnd) -> [SupplyFallback] {
+        let gone = contracts(s).filter { (listingID != nil && $0.base.listingID == listingID) || (ownerID != nil && $0.base.supplierOwnerID == ownerID) }
+        var out: [SupplyFallback] = []
+        for c in gone {
+            end(&s, buyer: c.base.buyerCompanyID, line: c.base.lineID)
+            let f = SupplyFallback(contract: c.base, reason: reason)
+            SupplyMarketBooks.tellBuyer(&s, fallback: f)
+            out.append(f)
+        }
+        return out
+    }
+
+    /// The market ended this contract already; the buyer's books follow and the buyer is told once.
+    public static func applyFallback(_ s: inout GameState, _ f: SupplyFallback) {
+        end(&s, buyer: f.contract.buyerCompanyID, line: f.contract.lineID)
+        SupplyMarketBooks.tellBuyer(&s, fallback: f)
+    }
+
+    /// A supplier announced a stop: its buyers are told the day it takes effect. Until then it still has to deliver.
+    public static func noticeOfStop(_ s: inout GameState, listingID: String, endsDay: Int) {
+        for c in contracts(s) where c.base.listingID == listingID && s.company(c.base.buyerCompanyID)?.status.isLive == true {
+            s.addMessage(kind: "info", from: c.base.supplierName, title: "Your supplier will stop supplying",
+                         body: "\(c.base.supplierName) has announced it will stop supplying on \(GameCalendar.dateString(week: endsDay / 7, dayOffset: endsDay % 7)). Until then it still delivers. After that this line comes from a market supplier at market price.",
+                         companyID: c.base.buyerCompanyID, tone: "bad")
+        }
+    }
+
+    /// Housekeeping each week: contracts of companies that are gone end (and free their line), and the player's own listings of a company that is
+    /// no longer open stop at once (a bankrupt or sold supplier cannot deliver), so the market ends the contracts on them and warns the buyers.
     public static func weekly(_ s: inout GameState) {
         for c in contracts(s) where s.company(c.base.buyerCompanyID)?.status.isLive != true { end(&s, buyer: c.base.buyerCompanyID, line: c.base.lineID) }
+        var rec = record(s)
+        var ls = rec["l"].array
+        var changed = false
+        for k in ls.indices where !ls[k]["st"].bool && s.company(ls[k]["co"].int)?.status != .open {
+            ls[k]["st"] = .bool(true)
+            changed = true
+        }
+        if changed { rec["l"] = .array(ls); s.rest["psup"] = rec }
+    }
+
+    /// Whether a listing of the player's own company may supply this buyer. Your own companies cannot supply each other through the market:
+    /// that would move money between your own accounts. (Own-company supply has its own link, `IntercompanySupply`.)
+    public static func isOwnListing(_ s: GameState, _ l: SupplyListing) -> Bool {
+        guard let id = l.companyID else { return false }
+        return s.company(id) != nil
     }
 
     // MARK: The player's own side, kept in the save
@@ -169,6 +270,7 @@ public enum PlayerSupply {
                                       "cap": .number(Double(l.capacityPerWeek)), "ld": .number(Double(l.leadDays)), "mo": .number(Double(l.minOrder)), "tm": .number(Double(l.termsDays)),
                                       "lk": .string(l.linkKey), "rec": .object(rec), "pa": .bool(l.paused), "st": .bool(l.stopped), "cm": .number(Double(l.committedUnits))]
         if let e = l.expiresDay { o["ex"] = .number(Double(e)) }
+        if let d = l.stopsDay { o["sd"] = .number(Double(d)) }
         return .object(o)
     }
 
@@ -181,7 +283,8 @@ public enum PlayerSupply {
                              companyID: j["co"].int == 0 ? nil : j["co"].int, tradeID: j["td"].string, tradeName: j["tn"].string, city: j["ci"].string, region: j["rg"].string,
                              lineID: j["ln"].string, lineName: j["lnm"].string, priceTier: j["pt"].int, qualityTier: j["qt"].int, capacityPerWeek: j["cap"].int,
                              leadDays: j["ld"].int, minOrder: j["mo"].int, termsDays: j["tm"].int, linkKey: j["lk"].string, record: record, paused: j["pa"].bool,
-                             stopped: j["st"].bool, expiresDay: j["ex"].isNull ? nil : j["ex"].int, committedUnits: j["cm"].int, country: j["cc"].string)
+                             stopped: j["st"].bool, expiresDay: j["ex"].isNull ? nil : j["ex"].int, committedUnits: j["cm"].int, country: j["cc"].string,
+                             stopsDay: j["sd"].isNull ? nil : j["sd"].int)
     }
 
     /// The player's own listings that are still on the books of a company that is live.

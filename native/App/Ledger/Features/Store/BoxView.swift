@@ -189,6 +189,7 @@ struct BoxResultCard: View {
             case .cosmetic: Image(systemName: "paintpalette.fill").font(.system(size: 46)).foregroundStyle(Theme.ink)
             case .artifact: LedgerGlyph(glyph: Glyph.luxury, size: 52, tint: Theme.ink)
             case .gold: StoreCoin(size: 60)
+            case .money: Image(systemName: "banknote.fill").font(.system(size: 46)).foregroundStyle(Theme.ink)
             }
         }
         .frame(width: 132, height: 132)
@@ -214,6 +215,9 @@ struct BoxResultCard: View {
         case .gold(let g, let doubled):
             GoldAmount(amount: g, style: .display)
             if doubled { Text("Doubled: this was a rare double.").textStyle(.caption, tint: Theme.gain) }
+        case .money:
+            Text("A cash prize").textStyle(.title).multilineTextAlignment(.center)
+            Text("It was paid into your personal account in the game. It is a small sum and never buys gold.").textStyle(.caption).multilineTextAlignment(.center)
         }
     }
 

@@ -33,8 +33,9 @@ public enum CrowdStartups {
     /// Found a startup that other players can fund: the entry cost leaves for good, the founder's money goes into the new company, and the
     /// plan is listed for investors. Refused for new accounts, a plan with too little of the founder's own money, or too little cash.
     public static func found(_ s: inout GameState, name: String?, sector: String, product: String, model: String, who: String, seedMultiple: Double, planFactor: Double,
-                             pitch: String, accountWeeks: Int, today: Int, data: GameData, context fc: FinanceContext) -> FoundOutcome {
-        if accountWeeks < CrowdStartupRules.minAccountWeeks { return .refused(CrowdStartupRules.Refusal.newAccount(weeksLeft: CrowdStartupRules.minAccountWeeks - accountWeeks).message) }
+                             pitch: String, accountWeeks: Int, level: Int, today: Int, data: GameData, context fc: FinanceContext) -> FoundOutcome {
+        let gate = CrowdStartupRules.foundGate(accountWeeks: accountWeeks, level: level)
+        if !gate.allowed { return .refused(gate.reasons.joined(separator: " ")) }
         guard let q = foundQuote(s, sector: sector, who: who, seedMultiple: seedMultiple, planFactor: planFactor, context: fc), q.plan.valid else { return .refused("That plan is not allowed: you put in at least a third of it yourself.") }
         if Payments.liquid(s) < q.total { return .refused("You need \(Int(q.total.rounded())) in cash: the entry cost, your own money and the registration.") }
         switch Startups.found(&s, name: name, sector: sector, product: product, model: model, who: who, seedMultiple: seedMultiple, data: data, context: fc) {
@@ -106,7 +107,7 @@ public enum CrowdStartups {
     /// The player buys shares from another holder at a price inside the band; the transfer tax is paid on top and leaves the economy.
     public static func buy(_ s: inout GameState, startup st: CrowdStartupRules.Startup, from seller: CrowdStartupRules.Holding, percent: Double, price: Double, accountWeeks: Int,
                            linkKeys: Set<String>, gainsRate: Double, today: Int) -> Result<(CrowdStartupRules.SaleQuote, CrowdStartupRules.Holding), SaleFailure> {
-        switch CrowdStartupRules.saleCheck(st, holding: seller, percent: percent, price: price, buyerID: me, buyerLinkKeys: linkKeys, buyerAccountWeeks: accountWeeks, gainsRate: gainsRate, today: today) {
+        switch CrowdStartupRules.saleCheck(st, holding: seller, percent: percent, price: price, buyerID: me, buyerLinkKeys: linkKeys, buyerAccountWeeks: accountWeeks, gainsRate: gainsRate, today: today, rules: s.worldRules) {
         case .refused(let r): return .failure(SaleFailure(message: r.message))
         case .ok(let q):
             if Payments.liquid(s) < q.buyerPays { return .failure(SaleFailure(message: "You do not have that much in cash.")) }
@@ -119,7 +120,7 @@ public enum CrowdStartups {
     /// The player sells shares to a buyer: the price comes in, the gains tax is withheld on a gain.
     public static func sell(_ s: inout GameState, startup st: CrowdStartupRules.Startup, holding: inout CrowdStartupRules.Holding, percent: Double, price: Double, buyerID: String,
                             buyerLinkKeys: Set<String>, buyerAccountWeeks: Int, gainsRate: Double, today: Int) -> Result<CrowdStartupRules.SaleQuote, SaleFailure> {
-        switch CrowdStartupRules.saleCheck(st, holding: holding, percent: percent, price: price, buyerID: buyerID, buyerLinkKeys: buyerLinkKeys, buyerAccountWeeks: buyerAccountWeeks, gainsRate: gainsRate, today: today) {
+        switch CrowdStartupRules.saleCheck(st, holding: holding, percent: percent, price: price, buyerID: buyerID, buyerLinkKeys: buyerLinkKeys, buyerAccountWeeks: buyerAccountWeeks, gainsRate: gainsRate, today: today, rules: s.worldRules) {
         case .refused(let r): return .failure(SaleFailure(message: r.message))
         case .ok(let q):
             let basis = holding.paid * percent / max(holding.percent, 1e-9)

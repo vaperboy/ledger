@@ -117,7 +117,7 @@ actor GoldVault {
         switch out.result.content {
         case .gold(let g, _): wallet.credit(g)
         case .artifact(let item): completed = cabinet.add(item)
-        case .cosmetic: break
+        case .cosmetic, .money: break
         }
         save()
         return BoxOpening(result: out.result, state: state(), completed: completed, fromStock: fromStock)
