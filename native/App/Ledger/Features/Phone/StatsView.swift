@@ -3,6 +3,7 @@ import Charts
 import GameCore
 import Finance
 import Events
+import Businesses
 import Simulation
 
 /// The Stats app, one page in three parts: how things are going (net worth, its trend and the few levers that need attention), a few fun
