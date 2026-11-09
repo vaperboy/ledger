@@ -39,15 +39,22 @@ final class SeasonModel: ObservableObject {
     func claim(_ track: SeasonPass.Track, tier: Int, isPlus: Bool) -> SeasonPass.ClaimResult {
         var p: SeasonPass = pass
         let r: SeasonPass.ClaimResult = p.claim(track, tier: tier, isPlus: isPlus)
-        if case .claimed = r { pass = p; persist() }
+        if case .claimed(let reward) = r { pass = p; persist(); StoreSession.shared.receiveSeason(reward) }
         return r
     }
 
     func claimAll(isPlus: Bool) -> [SeasonReward] {
         var p: SeasonPass = pass
         let got: [SeasonReward] = p.claimAll(isPlus: isPlus)
-        if !got.isEmpty { pass = p; persist() }
+        if !got.isEmpty { pass = p; persist(); got.forEach { StoreSession.shared.receiveSeason($0) } }
         return got
+    }
+
+    /// Adds a cosmetic or comfort item that came from the store, a box or a finished collection.
+    func grantOwned(_ id: String) {
+        var p: SeasonPass = pass
+        p.grantOwned(id)
+        if p != pass { pass = p; persist() }
     }
 
     func equip(_ id: String) {

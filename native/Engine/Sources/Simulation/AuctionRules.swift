@@ -47,6 +47,21 @@ public enum AuctionError: Error, Equatable, Sendable {
     case notYours, hasBids, badPrice(String)
 }
 
+extension AuctionError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .notLive: return "This auction has ended."
+        case .sellerCannotBid: return "You cannot bid on your own auction."
+        case .alreadyLeading: return "You already lead this auction."
+        case .tooLow(let m): return "The lowest bid is \(m) gold."
+        case .notEnoughGold(let m): return "You are \(m) gold short."
+        case .notYours: return "That piece is not in your cabinet."
+        case .hasBids: return "It has bids, so it cannot be taken back."
+        case .badPrice(let why): return why
+        }
+    }
+}
+
 public enum AuctionRules {
     public static let feePercent = 10
     /// A bid this close to the end pushes the end out to this many seconds after the bid.

@@ -13,6 +13,8 @@ struct PhoneHome: View {
     typealias Page = NavRoute
 
     @EnvironmentObject var store: GameStore
+    /// The Store tile appears only after the player confirmed they are 18 or older.
+    @AppStorage(AgeConfirmation.key) private var adultConfirmed = false
     @Environment(\.tabBarClearance) private var clearance
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
     private var path: PhonePath { PhonePath(store: store) }
@@ -33,7 +35,7 @@ struct PhoneHome: View {
             VStack(spacing: 16) {
                 clock
                 LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(PhoneApp.launcher) { app in
+                    ForEach(PhoneApp.launcher.filter { $0 != .store || adultConfirmed }) { app in
                         if gateState(app) != .hidden {
                             AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
                                 Haptics.tap()
@@ -199,6 +201,8 @@ struct PhoneAppScreen: View {
             DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
         case .rivals:
             RivalsApp().appScreen(title: app.title, subtitle: app.subtitle)
+        case .store:
+            StoreApp()
         }
     }
 }

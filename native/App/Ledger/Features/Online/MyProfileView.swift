@@ -16,6 +16,7 @@ struct MyProfileView: View {
                 lookGroup(p)
                 privacyGroup(p)
                 companiesGroup(p)
+                cabinetGroup
                 recordGroup(p)
             } else {
                 AccountSettingsGroup()
@@ -31,7 +32,7 @@ struct MyProfileView: View {
     private func header(_ p: PlayerProfile) -> some View {
         VStack(spacing: Theme.Space.s) {
             ProfileAvatar(initials: p.initials, colour: p.avatarColour, size: 84)
-            Text(p.displayName).textStyle(.title)
+            NamePlateText(name: p.displayName)
             Text(p.subline).textStyle(.caption)
             if !p.badges.isEmpty {
                 Text(p.badges.joined(separator: "  ·  ")).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center)
@@ -152,6 +153,10 @@ struct MyProfileView: View {
         case .friends: return "Only friends see your companies."
         case .onlyMe: return "Nobody sees your companies."
         }
+    }
+
+    private var cabinetGroup: some View {
+        OnlineGroup(title: "Cabinet", footer: "Artifacts you collected. Only you see this for now.") { CabinetSummary() }
     }
 
     private func recordGroup(_ p: PlayerProfile) -> some View {

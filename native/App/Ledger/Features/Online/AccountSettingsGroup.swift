@@ -10,8 +10,11 @@ struct AccountSettingsGroup: View {
     @State private var working = false
 
     var body: some View {
-        Group {
-            if online.isSignedIn { signedIn } else { guest }
+        VStack(spacing: Theme.Space.l) {
+            Group {
+                if online.isSignedIn { signedIn } else { guest }
+            }
+            AgeConfirmationGroup()
         }
         .confirmAction($pending)
     }

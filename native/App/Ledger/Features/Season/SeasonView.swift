@@ -178,14 +178,14 @@ struct SeasonView: View {
                     .overlay(alignment: .bottom) { Hairline() }
                 }
             }
-            Text("A day gives at most \(SeasonPass.dailyXPCap) XP, so the pass fills at the pace of real play. Rewards are fixed: no draws, no odds.").textStyle(.caption)
+            Text("A day gives at most \(SeasonPass.dailyXPCap) XP, so the pass fills at the pace of real play. Rewards are fixed. A Season box shows its odds before you open it, in the Store.").textStyle(.caption)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     // MARK: Collection
 
-    private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) } }
+    private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) && $0.kind != .box && $0.kind != .gold } }
 
     @ViewBuilder private var collectionSection: some View {
         if !collection.isEmpty {

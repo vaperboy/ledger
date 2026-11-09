@@ -16,6 +16,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case friends
     /// Calm daily and slow-moving pages that open a few weeks in: the Desk (one question a day) and Rivals (named competitors).
     case desk, rivals
+    /// Gold, boxes, cosmetics and the way to the Cabinet and auctions. Shown only to players who confirmed they are 18 or older.
+    case store
     var id: String { rawValue }
 
     /// The apps with a tile on the Phone home. Goals and Reports are pages of Stats, and Ventures is in the Projects tab: their cases stay as routes only.
@@ -45,6 +47,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .friends: return "Friends"
         case .desk: return "Desk"
         case .rivals: return "Rivals"
+        case .store: return "Store"
         }
     }
 
@@ -73,6 +76,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .friends: return Glyph.team
         case .desk: return Glyph.deskNotebook
         case .rivals: return Glyph.rivalsFlag
+        case .store: return Glyph.luxury
         }
     }
 
@@ -101,6 +105,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .friends: return "Players, requests and profiles"
         case .desk: return "One small question a day, and your notebook"
         case .rivals: return "Named competitors and what they are up to"
+        case .store: return "Gold, boxes, cosmetics and auctions"
         }
     }
 }
@@ -131,6 +136,7 @@ extension PhoneApp {
         case .friends: return Color(hex: 0x8FB0C9)
         case .desk: return Color(hex: 0xB9A27A)
         case .rivals: return Color(hex: 0xB78F8A)
+        case .store: return Color(hex: 0xE0BC5E)
         }
     }
 }
@@ -176,7 +182,7 @@ extension PhoneApp {
     /// own gate; the rest (Stats, News, Achievements, Market and the like) wait for the bank gate, the end of the first-session ladder.
     var gate: Gate? {
         switch self {
-        case .inbox, .reports, .settings, .friends, .desk, .rivals: return nil   // the Desk and Rivals have their own unlock (`visibility`)
+        case .inbox, .reports, .settings, .friends, .desk, .rivals, .store: return nil   // the Desk and Rivals have their own unlock (`visibility`)
         case .bank: return .bank
         case .accounting: return .accounting
         case .weather: return .weather
