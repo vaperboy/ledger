@@ -13,6 +13,7 @@ struct JointVenturePartnersCard: View {
     var company: Company
     @State private var inviteOpen = false
     @State private var meetingsOpen = false
+    @State private var pending: PendingAction?
 
     /// Shown on an open limited company that is not a holding or a chain branch.
     static func applies(_ co: Company, _ e: GameEngine) -> Bool { e.jvCanStart(companyID: co.id) }
@@ -41,7 +42,7 @@ struct JointVenturePartnersCard: View {
                                 trailing: "Waiting")
                     }
                     meetingsRow(st, waiting: waiting)
-                    Text("Decisions go by shares among the votes cast. Money goes out to owners only when a meeting votes for it. A new partner cannot sell for \(JVRules.lockUpWeeks) weeks.")
+                    Text("Decisions go by shares among the votes cast. Money goes out to owners only when a meeting votes for it, and the company is sold only by a vote. A new partner cannot sell or leave for \(JVRules.lockUpWeeks) weeks; after that you can buy them out at what their share is worth.")
                         .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
                 if stakes.count - 1 + (st?.invites.filter { $0.status == "sent" }.count ?? 0) < JVRules.maxPartners {
@@ -56,12 +57,31 @@ struct JointVenturePartnersCard: View {
         }
         .navigationDestination(isPresented: $meetingsOpen) { JointVentureMeetingsView(companyID: company.id) }
         .task { JointVentureCoordinator.shared.attach(online.service); await JointVentureCoordinator.shared.sync(store) }
+        .confirmAction($pending)
     }
 
     private func stakeRow(_ s: JointVenture.Stake) -> some View {
-        let lock: String = s.locked ? "Cannot sell until \(GameCalendar.dateString(week: s.lockUntil))" : (s.isYou ? "Votes with \(String(format: "%.1f", s.pct))%" : "Free to sell")
-        return ListRow(symbol: s.isYou ? "person.fill" : "person", tint: s.isYou ? Theme.accent : Theme.inkSoft,
-                       title: s.isYou ? "\(s.name) (you)" : s.name, subtitle: "\(s.roleTitle) · \(lock)", trailing: String(format: "%.1f%%", s.pct))
+        let lock: String = s.locked ? "Cannot sell or leave until \(GameCalendar.dateString(week: s.lockUntil))" : (s.isYou ? "Votes with \(String(format: "%.1f", s.pct))%" : "Free to sell or leave")
+        return VStack(alignment: .leading, spacing: 4) {
+            ListRow(symbol: s.isYou ? "person.fill" : "person", tint: s.isYou ? Theme.accent : Theme.inkSoft,
+                    title: s.isYou ? "\(s.name) (you)" : s.name, subtitle: "\(s.roleTitle) · \(lock)", trailing: String(format: "%.1f%%", s.pct))
+            if !s.isYou && !s.locked {
+                Button { askBuyOut(s) } label: { Text("Buy out \(s.name)") }
+                    .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
+            }
+        }
+    }
+
+    /// Says what a buy-out does before it happens; nothing moves until the player confirms.
+    private func askBuyOut(_ s: JointVenture.Stake) {
+        guard let terms: JointVenture.ExitTerms = engine.jvExitTerms(companyID: company.id, memberID: s.id) else { return }
+        if let why = terms.problem { Haptics.warning(); store.tell("Not now", why, tone: "warn"); return }
+        let id: Int = company.id
+        let member: String = s.id
+        pending = PendingAction(title: "Buy out \(s.name)?", message: terms.lines.joined(separator: " "), button: "Buy their shares", alwaysAsk: true, tone: .warning, icon: "person.fill.xmark") {
+            let problem: String? = store.act { (g: inout GameEngine) -> String? in g.jvBuyOut(companyID: id, memberID: member) } ?? nil
+            if let problem { Haptics.warning(); store.tell("Not done", problem, tone: "warn") } else { Haptics.success() }
+        }
     }
 
     private func meetingsRow(_ st: JointVenture.State, waiting: Int) -> some View {

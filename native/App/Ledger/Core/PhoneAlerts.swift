@@ -43,13 +43,13 @@ enum PhoneAlerts {
     }
 }
 
-/// The only three local notifications (planned by the engine's `SessionHooks`). Scheduled when the app goes to the
-/// background, cancelled when it comes back, never repeating. The Settings toggle `Reminders` (default on) controls all three.
+/// The local notifications (planned by the engine's `SessionHooks`): the three habit reminders and, when a board meeting waits for your vote, one for it.
+/// Scheduled when the app goes to the background, cancelled when it comes back, never repeating. The Settings toggle `Reminders` (default on) controls all of them.
 @MainActor
 enum Reminders {
     private static let enabledKey: String = "remindersEnabled"
     private static let askedKey: String = "remindersAsked"
-    private static let ids: [String] = ["ledger.expiry", "ledger.goal", "ledger.idle"]
+    private static let ids: [String] = ["ledger.expiry", "ledger.goal", "ledger.idle", "ledger.jv.urgent", "ledger.jv.planned"]
 
     static var enabled: Bool {
         get { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }

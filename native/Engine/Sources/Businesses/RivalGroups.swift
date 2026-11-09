@@ -430,6 +430,7 @@ public enum RivalGroups {
                 return c.status == .open && c.type != "hold" && g["cs"].array.contains(where: { $0.string == c.countryCode }) && (types.contains(c.type) || acq)
                     && Valuation.companyValue(c, state: s, trades: data.catalog) > 0 && CompanyFigures.yearlyProfitEstimate(c, currentWeek: week) > 0
                     && week - (c.openedWeek ?? c.foundedWeek) > 78 && !(c.num("bid27") > Double(week))
+                    && SaleListings.boardBlock(s, companyID: c.id) == nil   // a company with partners is sold by its board, not by a bid to the owner
             }
             guard let ti = T.max(by: { Valuation.companyValue(s.companies[$0], state: s, trades: data.catalog) < Valuation.companyValue(s.companies[$1], state: s, trades: data.catalog) }) else { return false }
             let co = s.companies[ti]

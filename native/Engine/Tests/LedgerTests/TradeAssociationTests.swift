@@ -130,6 +130,20 @@ final class TradeAssociationTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
+    func testASoldCompanyLeavesItsClubAndTheMemberCountNeverDropsBelowOne() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 4243)
+        let id = try openBakery(&e)
+        let co = try XCTUnwrap(e.state.company(id))
+        let trade = e.tradeName(co)
+        let c = AssociationCatalogue.tradeClub(tradeName: trade, region: co.countryCode)
+        e.update { s, _, _ in _ = TradeAssociations.join(&s, companyID: id, club: c, members: 20, tradeName: trade) }
+        e.update { s, _, _ in TradeAssociations.setMembers(&s, companyID: id, members: 0) }
+        XCTAssertEqual(TradeAssociations.membership(e.state, companyID: id)?.members, 1, "the company counts as a member itself")
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .sold } }
+        e.update { s, d, _ in TradeAssociations.weekly(&s, data: d) }
+        XCTAssertNil(TradeAssociations.membership(e.state, companyID: id), "no ghost member is left in the club")
+    }
+
     // MARK: News
 
     private func ev(_ kind: PlayerEventKind, audience: PlayerEventAudience = .everyone, count: Int? = nil, other: String? = nil, club: String? = nil,

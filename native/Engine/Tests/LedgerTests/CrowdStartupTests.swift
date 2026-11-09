@@ -155,8 +155,10 @@ final class CrowdStartupTests: XCTestCase {
         let cid = try XCTUnwrap(st.companyID)
         let before = try XCTUnwrap(e.state.company(cid)).cash
         var released = 0.0
+        let value0 = Startups.founded(e.state, id: cid)?.valuation ?? 0
         e.update { s, _, _ in released = CrowdStartups.reachMilestone(&s, startup: &st, today: 40) }
         XCTAssertEqual(released, 100_000)
+        XCTAssertEqual((Startups.founded(e.state, id: cid)?.valuation ?? 0) - value0, 100_000, accuracy: 1, "the valuation follows the released money at once")
         XCTAssertEqual(try XCTUnwrap(e.state.company(cid)).cash - before, 100_000, accuracy: 1)
         XCTAssertLessThan(try XCTUnwrap(e.state.company(cid)).ownership, 100)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
@@ -165,6 +167,23 @@ final class CrowdStartupTests: XCTestCase {
             if case .refused = CrowdStartups.found(&s, name: "X", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1, planFactor: 3, pitch: "", accountWeeks: 1, today: 0, data: d, context: c) { refused = true }
         }
         XCTAssertTrue(refused, "a new account cannot found")
+    }
+
+    func testTheEntryCostGrowsWithThePlanSoABigRaiseIsNotCheap() throws {
+        var e = try game()
+        var small: CrowdStartups.FoundQuote?, big: CrowdStartups.FoundQuote?
+        var rich: CrowdStartups.FoundQuote?
+        e.update { s, _, c in
+            small = CrowdStartups.foundQuote(s, sector: "saas", who: "c2", seedMultiple: 1, planFactor: 1.5, context: c)
+            big = CrowdStartups.foundQuote(s, sector: "saas", who: "c2", seedMultiple: 1, planFactor: 3, context: c)
+            rich = CrowdStartups.foundQuote(s, sector: "fintech", who: "c2", seedMultiple: 4, planFactor: 3, context: c)
+        }
+        let a = try XCTUnwrap(small), b = try XCTUnwrap(big), c = try XCTUnwrap(rich)
+        XCTAssertGreaterThanOrEqual(b.entryCost, b.plan.cost * R.entryCostPlanShare - 1)
+        XCTAssertGreaterThan(b.entryCost, a.entryCost)
+        XCTAssertGreaterThanOrEqual(c.entryCost, c.plan.cost * R.entryCostPlanShare - 1, "the biggest plans pay the most")
+        // What the investors can send is at most twice the founder's own money; the fee always costs more than a quarter of the raise it unlocks.
+        XCTAssertGreaterThan(c.entryCost, c.plan.investorTarget * 0.25)
     }
 
     func testPlayerInvestingMovesMoneyThroughTheLedger() throws {

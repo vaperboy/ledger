@@ -101,7 +101,7 @@ extension StrategicDecisions {
 
         // Someone wants to buy your company: a group makes a bid (answered as the original's g27bid).
         L.append(Def(id: "s_acqoffer", cls: "opp", stages: ["start", "grow", "est"], w: 2,
-                     cond: { s, co, data in ebit12(co, s) > 0 && value(co, s, data) > scaled(s, co, data, 500_000) && s.week - (co.openedWeek ?? co.foundedWeek) > 40 && !(co.num("bid27") > Double(s.week)) },
+                     cond: { s, co, data in ebit12(co, s) > 0 && value(co, s, data) > scaled(s, co, data, 500_000) && s.week - (co.openedWeek ?? co.foundedWeek) > 40 && !(co.num("bid27") > Double(s.week)) && SaleListings.boardBlock(s, companyID: co.id) == nil },
                      make: { s, i, data, fc in
                          s.companies[i].set("bid27", s.week + 40)
                          let co = s.companies[i]

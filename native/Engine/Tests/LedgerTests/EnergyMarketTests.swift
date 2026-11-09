@@ -116,4 +116,20 @@ final class EnergyMarketTests: XCTestCase {
         XCTAssertEqual(e.state.company(casino)?.type, "casino")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
+
+    func testABigMoveOfThePriceGoesInTheNewsOnceAQuarter() throws {
+        var e = try ChainsTests.engine("NO", seed: 6)
+        e.update { st, _, _ in
+            st.economy.power = 1.3
+            st.rest["emkt"] = .object(["h": .array(Array(repeating: JSONValue.number(1), count: 12))])
+            EnergyMarket.record(&st)
+        }
+        let first = e.state.rest["news"]?.array.first?["t"].string ?? ""
+        XCTAssertTrue(first.contains("dearer") && first.contains("30%"), first)
+        let count = e.state.rest["news"]?.array.count ?? 0
+        e.update { st, _, _ in st.week += 1; EnergyMarket.record(&st) }
+        XCTAssertEqual(e.state.rest["news"]?.array.count ?? 0, count, "one item a quarter, not one every week")
+        e.update { st, _, _ in st.week += 12; st.economy.power = 0.8; EnergyMarket.record(&st) }
+        XCTAssertTrue((e.state.rest["news"]?.array.first?["t"].string ?? "").contains("cheaper"))
+    }
 }

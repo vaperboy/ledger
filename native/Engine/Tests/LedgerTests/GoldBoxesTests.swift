@@ -172,4 +172,26 @@ final class GoldBoxesTests: XCTestCase {
         p.grantOwned("nonsense")
         XCTAssertFalse(p.owned.contains("nonsense"))
     }
+
+    func testTheWalletSaysWhenGoldRunsShortAndWhichPackClosesTheGap() throws {
+        var w = GoldWallet(balance: 150)
+        XCTAssertNil(w.shortfall(for: BoxKind.cabinet.price, purpose: .box), "120 gold is there")
+        XCTAssertTrue(w.hold(100))
+        let short = try XCTUnwrap(w.shortfall(for: BoxKind.cabinet.price, purpose: .box))
+        XCTAssertEqual(short.available, 50)
+        XCTAssertEqual(short.missing, 70)
+        XCTAssertTrue(short.coveredByHeld, "the lead on a bid is what ties the gold up")
+        XCTAssertTrue(short.text.contains("70 gold short"))
+        XCTAssertTrue(short.text.contains("held for bids"))
+        // The smallest pack that covers 70 gold, with and without the first-purchase bonus.
+        XCTAssertEqual(short.suggestedPack(firstPurchase: false)?.id, GoldStore.packs[0].id)
+        let big = try XCTUnwrap(GoldWallet(balance: 0).shortfall(for: 1_300, purpose: .cosmetic))
+        let pack = try XCTUnwrap(big.suggestedPack(firstPurchase: false))
+        XCTAssertGreaterThanOrEqual(pack.gold, 1_300)
+        XCTAssertNotNil(big.suggestedPack(firstPurchase: true))
+        XCTAssertLessThanOrEqual(try XCTUnwrap(big.suggestedPack(firstPurchase: true)).priceCents, pack.priceCents, "the bonus can only make a smaller pack enough")
+        XCTAssertNil(GoldWallet(balance: 0).shortfall(for: 1_000_000, purpose: .box)?.suggestedPack(firstPurchase: true), "no pack covers a huge gap")
+        // A bid that replaces your own leading bid gets that gold back first.
+        XCTAssertNil(w.shortfall(for: 140, purpose: .bid, ownLead: 100))
+    }
 }

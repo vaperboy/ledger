@@ -152,6 +152,33 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertEqual(q.xp, 0)
     }
 
+    func testTheLastDaysWarnAboutRewardsThatWouldBeLost() {
+        var p = SeasonPass(today: day0)
+        XCTAssertNil(p.endingNote(today: day0 + 10, isPlus: false), "no warning early in the season")
+        p.xp = 4 * SeasonPass.xpPerTier
+        let late = day0 + SeasonPass.seasonDays - 3
+        let waiting = p.endingNote(today: late, isPlus: false)
+        XCTAssertTrue(waiting?.contains("waiting") == true && waiting?.contains("lost") == true, waiting ?? "")
+        _ = p.claimAll(isPlus: false)
+        let close = p.endingNote(today: late, isPlus: false)
+        XCTAssertTrue(close?.contains("tier 4") == true && close?.contains("XP away") == true, close ?? "")
+        XCTAssertEqual(p.xpToNextTier, SeasonPass.xpPerTier)
+        p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
+        _ = p.claimAll(isPlus: true)
+        XCTAssertNil(p.endingNote(today: late, isPlus: true), "a finished pass has nothing to warn about")
+    }
+
+    func testRolloverRemembersWhatWasLeftUnclaimed() {
+        var p = SeasonPass(today: day0)
+        p.xp = 5 * SeasonPass.xpPerTier
+        XCTAssertEqual(p.unclaimedFree, 4, "tiers 1, 3, 4 and 5 hold free rewards")
+        XCTAssertNil(p.missedNote)
+        XCTAssertTrue(p.rollover(today: day0 + SeasonPass.seasonDays))
+        XCTAssertEqual(p.missedFree, 4)
+        XCTAssertTrue(p.missedNote?.contains("4 free rewards") == true)
+        XCTAssertEqual(p.unclaimedFree, 0)
+    }
+
     func testCodableRoundTrip() throws {
         var p = SeasonPass(today: day0)
         p.xp = 700; p.observe(snap(), today: day0); p.claimed = ["f1"]; p.owned = ["badge.s1.first"]

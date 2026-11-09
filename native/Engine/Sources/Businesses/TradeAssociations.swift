@@ -231,8 +231,9 @@ public enum TradeAssociations {
 
     /// The club's member count as the server last reported it.
     public static func setMembers(_ s: inout GameState, companyID: Int, members: Int) {
-        guard var m = membership(s, companyID: companyID), m.members != members else { return }
-        m.members = members
+        let count = max(1, members)   // the company is a member itself
+        guard var m = membership(s, companyID: companyID), m.members != count else { return }
+        m.members = count
         store(&s, companyID: companyID, m)
     }
 
@@ -242,7 +243,12 @@ public enum TradeAssociations {
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard let table = s.rest["assoc"]?["m"].object, !table.isEmpty else { return }
         for key in table.keys.sorted() {
-            guard let id = Int(key), let co = s.company(id), var m = membership(s, companyID: id) else { continue }
+            guard let id = Int(key), var m = membership(s, companyID: id) else { continue }
+            // A company that is sold or bust leaves the club, so the club's member count (which every other member's discount follows) never keeps a ghost.
+            guard let co = s.company(id), co.status.isLive else {
+                store(&s, companyID: id, nil)
+                continue
+            }
             guard co.status == .open else { continue }
             if let bd = data.catalog[co.type] {
                 let spend = SupplyCatalogue.lines(co, bd).reduce(0.0) { $0 + (SupplyCatalogue.weeklySpend(co, line: $1.id)?.now ?? 0) }

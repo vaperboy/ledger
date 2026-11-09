@@ -70,6 +70,8 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public var xpToday: Int
     public var cashStreak: Int
     public var baseline: Snapshot?
+    /// Free rewards of the season that just ended that were reached and never claimed (they are lost at rollover); nil until a season has ended.
+    public var missedFree: Int?
 
     public init(today: Int) {
         firstDay = today; season = 0; xp = 0; claimed = []; owned = []; equipped = [:]
@@ -89,8 +91,34 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public mutating func rollover(today: Int) -> Bool {
         let idx: Int = Self.seasonIndex(firstDay: firstDay, today: today)
         guard idx > season else { return false }
+        missedFree = unclaimedFree
         season = idx; xp = 0; claimed = []; xpDay = today; xpToday = 0; cashStreak = 0
         return true
+    }
+
+    /// Free rewards reached this season and not yet claimed.
+    public var unclaimedFree: Int {
+        (1...Self.tierCount).filter { SeasonRewards.reward(.free, tier: $0) != nil && $0 <= tier && !isClaimed(.free, tier: $0) }.count
+    }
+
+    /// A line for the last days of a season: what is still waiting, and that it is lost when the season ends. Nil when there is nothing to say.
+    public func endingNote(today: Int, isPlus: Bool) -> String? {
+        let left: Int = daysLeft(today: today)
+        guard left <= 7 else { return nil }
+        let open: Int = claimableCount(isPlus: isPlus)
+        let when: String = left <= 1 ? "tomorrow" : "in \(left) days"
+        if open > 0 { return "\(open) \(open == 1 ? "reward is" : "rewards are") waiting. The season ends \(when), and what you have not claimed is lost." }
+        if isComplete { return nil }
+        return "The season ends \(when). You are at tier \(tier) of \(Self.tierCount); the next tier is \(xpToNextTier) XP away."
+    }
+
+    /// XP still needed for the next tier (0 when the pass is complete).
+    public var xpToNextTier: Int { isComplete ? 0 : Self.xpPerTier - xpIntoTier }
+
+    /// What the player has missed from the season that just ended, in words; nil when nothing was lost.
+    public var missedNote: String? {
+        guard let n = missedFree, n > 0 else { return nil }
+        return "Last season ended with \(n) free \(n == 1 ? "reward" : "rewards") unclaimed. Claim before the season ends to keep them."
     }
 
     // MARK: Tiers

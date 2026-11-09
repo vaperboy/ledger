@@ -9,6 +9,9 @@ public enum CrowdStartupRules {
     /// Entry cost of a crowd-funded startup in reference-economy money (scaled to the player's currency). Far above a normal company's opening fee,
     /// so a startup cannot be opened for free money.
     public static let entryCostReference: Double = 150_000
+    /// The entry cost is never less than this share of the whole plan, so a big plan cannot be raised for a small fee: what other players put in
+    /// is worth more to the founder than the fee, unless the fee grows with the plan.
+    public static let entryCostPlanShare: Double = 0.4
     /// The founder puts in at least this share of the plan from their own account.
     public static let founderMinShare: Double = 1.0 / 3.0
     /// How the investors' part of the plan is split over the three stages, and what each stage is called (the milestone that releases it).

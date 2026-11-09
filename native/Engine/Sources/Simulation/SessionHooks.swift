@@ -1,6 +1,7 @@
 import Foundation
 import GameCore
 import Businesses
+import Events
 
 /// The number of consecutive calendar days with at least one game day played. Stored as `rest["playStreak"]`
 /// = { d: calendar day number of the last day played, n: count }. No reward, no penalty; the app shows it from 3 up.
@@ -64,6 +65,13 @@ public enum SessionHooks {
             out.append(Reminder(id: "ledger.idle", title: "The Desk", body: lead + "A small question is waiting on your desk.", after: 22 * 3600))
         } else if out.isEmpty, let name = s.companies.first?.name {
             out.append(Reminder(id: "ledger.idle", title: name, body: lead + "\(name) is waiting for its next day.", after: 7 * 86400))
+        }
+        // A board meeting that waits for your vote: an emergency one soon, a planned one the next day. An unvoted item counts as an abstention.
+        if let v = JointVenture.pendingVote(s) {
+            let left: String = v.weeksLeft <= 0 ? "Voting closes this week." : v.weeksLeft == 1 ? "1 week left to vote." : "\(v.weeksLeft) weeks left to vote."
+            out.append(Reminder(id: v.urgent ? "ledger.jv.urgent" : "ledger.jv.planned", title: v.companyName,
+                                body: v.urgent ? "Emergency meeting: \(v.reason). \(left)" : "Board meeting waits for your vote. \(left) A vote not cast counts as an abstention.",
+                                after: v.urgent ? 3 * 3600 : 20 * 3600))
         }
         return out
     }

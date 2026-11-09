@@ -74,7 +74,7 @@ public enum ManagerOpening {
                 }
                 continue
             }
-            guard CompanySetup.buyEquipment(&s, companyID: co.id, equipmentID: e.id, quantity: q, data: data) else { continue }
+            guard CompanySetup.buyEquipment(&s, companyID: co.id, equipmentID: e.id, quantity: q, data: data, forceFinancing: true) else { continue }
             ManagerVoice.record(&s, companyIndex: ci, "Bought \(Int(q)) x \(e.name) for the customers expected.")
             return true
         }

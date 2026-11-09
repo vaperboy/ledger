@@ -455,7 +455,10 @@ final class GameStore: ObservableObject {
         celebrationQueue.append(contentsOf: celebrations)
         if out.completedWeek { queueUnlocks() }
         reportSheet = digest
-        Task { @MainActor in await JointVentureCoordinator.shared.sync(self) }
+        Task { @MainActor in
+            await JointVentureCoordinator.shared.sync(self)
+            AssociationStore.shared.syncMembers(self)
+        }
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
         daily.profit = e.groupBooksProfit - profitBefore
         profitMark = (week: e.state.week, day: e.state.day, value: e.groupBooksProfit)
