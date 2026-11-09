@@ -4,7 +4,7 @@ import Countries
 import Simulation
 
 /// What the whole team costs the company, from the one employer-cost rule payroll books: the monthly total once (gross wages are its
-/// note), the year and the hours, then the manager's share and perks when there are any. Shown in Team and in Accounting > Payroll.
+/// note), the year and the hours, then the manager's share and perks when there are any. Shown in Team.
 struct CompanyPeopleCost: View {
     var engine: GameEngine
     var company: Company

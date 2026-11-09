@@ -106,7 +106,7 @@ final class FeatureToursTests: FeatureTourCase {
     }
 
     func testT02_PhoneAppsA() {
-        for t in ["Bank", "Accounting", "Inbox", "News", "Weather", "Stats", "Luxury"] { tourApp(t) }
+        for t in ["Bank", "Inbox", "News", "Weather", "Stats", "Luxury"] { tourApp(t) }
     }
 
     func testT03_PhoneAppsB() {
@@ -293,12 +293,6 @@ final class FeatureToursTests: FeatureTourCase {
             guard openCompany("Caf"), tapID("company-tab-team"), tapID("team-hire-workers", wait: 4) else { return .skip("hiring screen not reachable") }
             swipeBackFromEdge()
             return isSelected("company-tab-team") ? .pass() : .fail("an edge swipe did not return to Team (\(signature().text))")
-        }
-        step("swipe back: Accounting > Payroll returns to Accounting home") {
-            guard openPhoneApp("Accounting"), tapID("acct-row-payroll", wait: 4) else { return .skip("no Accounting payroll row") }
-            swipeBackFromEdge()
-            if gridUp() { return .fail("the swipe left the whole app instead of going back one level") }
-            return has("acct-row-payroll", wait: 3) ? .pass() : .fail("not back on Accounting home: \(signature().text)")
         }
     }
 

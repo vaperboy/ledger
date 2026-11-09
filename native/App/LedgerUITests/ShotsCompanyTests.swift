@@ -151,7 +151,7 @@ final class ShotsCompanyTests: FeatureTourCase {
             visit(tag, "sales", ["Cars", "Stock", "Order", "Buy"])
         }
         if onSection("stats") { shotScrolled("\(tag)-stats", pages: 5) }
-        visit(tag, "stats", ["Settings", "Legal form"])
+        visit(tag, "stats", ["Settings", "Company settings"])
         if onSection("stats") && tapID("stats-part-customers", wait: 2) { shotScrolled("\(tag)-customers") }
         _ = tapBack()
     }

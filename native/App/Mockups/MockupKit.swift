@@ -8,7 +8,7 @@ enum MK {
     static let cash = "184,200 kr"
     static let margin: CGFloat = 20
     static let apps: [(String, String, Color)] = [
-        ("Bank", "building.columns", Color(hex: 0x86B4A0)), ("Accounting", "book.closed", Color(hex: 0xA8B88A)),
+        ("Bank", "building.columns", Color(hex: 0x86B4A0)),
         ("Inbox", "envelope", Color(hex: 0xCF9A6A)), ("News", "newspaper", Color(hex: 0x7F9BC4)),
         ("Weather", "sun.max", Color(hex: 0x93A9BD)), ("Stats", "chart.bar", Color(hex: 0x9A94C4)),
         ("World", "globe", Color(hex: 0x78B0A8)), ("Luxury", "diamond", Color(hex: 0xC48CB8)),

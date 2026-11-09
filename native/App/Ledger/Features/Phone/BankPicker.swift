@@ -42,9 +42,9 @@ struct BankPickerScreen: View {
     private func row(_ r: BankAccountRow, _ e: GameEngine) -> some View {
         let co: Company? = r.companyID.flatMap { e.state.company($0) }
         let glyph: String = r.kind == .personal ? Glyph.person : BankGlyph.company
-        let sub: String = r.hasAlert ? (r.alertNote ?? r.detail) : r.kind == .personal ? "Personal accounts" : r.detail
+        let sub: String = r.kind == .personal ? "Personal accounts" : r.detail
         return Button { Haptics.tap(); onPick(r.id) } label: {
-            CardRow(glyph: glyph, title: r.name, subtitle: sub, badge: r.hasAlert ? 1 : 0,
+            CardRow(glyph: glyph, title: r.name, subtitle: sub,
                     thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
         .buttonStyle(PressableStyle())

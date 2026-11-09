@@ -14,8 +14,6 @@ enum BankMoveKind: String, Identifiable {
 /// Every payment the Bank app can make, as engine calls with their result reported. Used by the alert banner, the Bills tab and Pay bill.
 @MainActor
 enum BankPay {
-    // Payroll is run in Accounting (Accounting > Payroll > Run payroll); the Bank only links there and holds the money.
-
     /// Pay a coming rent, supplier, invoice, tax or VAT bill now (`payObligationNow`): the engine settles it exactly as its date would and
     /// says what happened; the toast is the engine's real result.
     static func early(_ store: GameStore, _ o: Obligation) {
@@ -53,7 +51,7 @@ enum BankPay {
 
 /// Transfer, Deposit and Withdraw. Personal account: Deposit and Withdraw move money to and from savings, Transfer moves it between you and
 /// a company. Company account: Deposit puts money in from you, Withdraw takes it out to you, Transfer does either. These are the engine's
-/// `moveToSavings`, `putMoneyInto` and `takeMoneyOut`.
+/// `moveToSavings` and `putMoneyInto`.
 struct BankMoveSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -128,7 +126,7 @@ struct BankMoveSheet: View {
     }
 
     @ViewBuilder private func emptyState(_ e: GameEngine) -> some View {
-        if let cid = account.companyID, let co = e.state.company(cid), co.form == .limited, kind != .deposit {
+        if account.companyID != nil, kind != .deposit {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 Text("A limited company cannot hand its cash to you directly.").popupText(.button)
                 Text("It pays money out as a dividend (from retained profit, taxed on your return) or as your salary. The salary is set on this account's Account tab; dividends are paid by the company.")
@@ -168,11 +166,6 @@ struct BankMoveSheet: View {
                         let inCompany: Double = a
                         return self.store.act({ $0.putMoneyInto(companyID: cid, amount: inCompany) }) == true ? "\(cur.tidyDisplay(a)) moved into \(name)." : nil
                     }
-                    if co.form != .limited {
-                        add("From \(name)", "A sole trader's money is yours; taking it out is not taxed again.", co.cash, cur) { a in
-                            self.takeOut(cid, a, cur, name)
-                        }
-                    }
                 }
             }
         case .company(let cid):
@@ -184,22 +177,10 @@ struct BankMoveSheet: View {
                     self.store.act({ $0.putMoneyInto(companyID: cid, amount: a) }) == true ? "\(cur.tidyDisplay(a)) moved into \(name)." : nil
                 }
             }
-            if (kind == .withdraw || kind == .transfer) && co.form != .limited {
-                add("From \(name) to your account", "A sole trader's money is yours; taking it out is not taxed again.", co.cash, cur) { a in
-                    self.takeOut(cid, a, cur, name)
-                }
-            }
         }
         return legs
     }
 
-    private func takeOut(_ cid: Int, _ a: Double, _ cur: Currency, _ name: String) -> String? {
-        switch store.act({ $0.takeMoneyOut(companyID: cid, amount: a) }) {
-        case .ok?: return "\(cur.tidyDisplay(a)) moved from \(name) to your account."
-        case .dividendOnly?: store.show("A limited company can only pay dividends.", tone: "warn"); return ""
-        default: return nil
-        }
-    }
 
     // MARK: Doing it
 

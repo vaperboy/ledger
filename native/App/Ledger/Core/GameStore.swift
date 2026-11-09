@@ -43,10 +43,6 @@ enum AppRequest: Equatable {
     case message(Int)
     case bank(BankRequest)
     case report(ReportRef)
-    /// Accounting on one company (its Payroll page when `payroll` is true).
-    case accounting(companyID: Int, payroll: Bool)
-    /// Accounting on one company's Statements page (balance sheet and cash flow).
-    case accountingReports(companyID: Int)
     /// The Market app on one company (0 = the Overview).
     case market(companyID: Int)
     /// The Market app on one of its five parts.
@@ -809,16 +805,6 @@ final class GameStore: ObservableObject {
     /// The loan amount a link asked the Bank's loan application to start with; the Loans tab takes it when it appears.
     @Published var pendingLoanApply: Double?
 
-    /// Opens the Accounting app on one company, on its Payroll page when `payroll` is true: the link Team and the Bank use instead of a payroll run of their own.
-    func openAccounting(companyID: Int, payroll: Bool = false) {
-        openApp(.accounting, request: .accounting(companyID: companyID, payroll: payroll))
-    }
-
-    /// Opens the Accounting app on one company's Statements page (balance sheet and cash flow).
-    func openAccountingReports(companyID: Int) {
-        openApp(.accounting, request: .accountingReports(companyID: companyID))
-    }
-
     /// Opens the Market app (the Phone), on one company's market when `companyID` is given, else on its Overview.
     func openMarket(companyID: Int? = nil) {
         openApp(.market, request: .market(companyID: companyID ?? 0))
@@ -861,16 +847,6 @@ final class GameStore: ObservableObject {
         guard case .bank(let r)? = appRequest else { return nil }
         appRequest = nil
         return r
-    }
-    func takeAccountingRequest() -> (companyID: Int, payroll: Bool)? {
-        guard case .accounting(let id, let payroll)? = appRequest else { return nil }
-        appRequest = nil
-        return (id, payroll)
-    }
-    func takeAccountingReportsRequest() -> Int? {
-        guard case .accountingReports(let id)? = appRequest else { return nil }
-        appRequest = nil
-        return id
     }
     func takeMarketRequest() -> Int? {
         guard case .market(let id)? = appRequest else { return nil }

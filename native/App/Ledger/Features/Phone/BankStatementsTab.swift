@@ -6,7 +6,7 @@ import Finance
 import Simulation
 
 /// The Statements tab: the account's week, month or year statement (opening and closing balance, money in and out, the movements), where
-/// the business money went (the old Costs page). A statement exists once a period has closed.
+/// the business money went (the old Costs page), and for a company every transaction with its detail. A statement exists once a period has closed.
 struct BankStatementsTab: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -34,6 +34,7 @@ struct BankStatementsTab: View {
                     }
                 }
                 costs(e, fmt)
+                if let cid = account.companyID { BankTransactionsCard(companyID: cid) }
             }
         }
     }

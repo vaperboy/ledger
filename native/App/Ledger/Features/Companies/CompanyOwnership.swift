@@ -28,7 +28,7 @@ struct CompanyOwnershipSection: View {
 
     private var palette: [Color] { [Theme.slateBlue, Theme.gain, Theme.roseGold, Theme.goldLight, Theme.loss, Theme.ivoryMuted] }
 
-    private var isOrdinary: Bool { company.form == .limited && company.type != "hold" }
+    private var isOrdinary: Bool { company.type != "hold" }
     private var isHolding: Bool { company.type == "hold" }
 
     var body: some View {

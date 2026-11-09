@@ -74,13 +74,11 @@ struct BankAccountScreen: View {
         for mid in store.loanMessageIDs(companyID: bankCompanyID) { store.markItemSeen(.bank, mid) }
     }
 
-    /// The system section bar: Bills carries the payroll alert as a red count, Loans a dot for unread bank letters.
+    /// The system section bar: Loans carries a dot for unread bank letters.
     private func tabRow(_ d: BankAccountDetail, _ selection: Binding<BankTab>) -> some View {
-        let alert: Bool = d.alert != nil
         let loanIDs: [String] = tabs.contains(.loans) ? store.loanMessageIDs(companyID: bankCompanyID) : []
         let loansDot: Bool = loanIDs.contains { (mid: String) -> Bool in store.isNew(.bank, mid) }
         return SectionTabs(items: tabs, primary: Array(tabs.prefix(4)), title: { (t: BankTab) -> String in t.rawValue }, selection: selection,
-                           badge: { (t: BankTab) -> Int in t == .bills && alert ? 1 : 0 },
                            dots: { (t: BankTab) -> Bool in t == .loans && loansDot })
             .padding(.horizontal, -Theme.Space.page)
     }
@@ -124,7 +122,7 @@ struct BankAccountScreen: View {
             ActionTile(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
             ActionTile(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
             ActionTile(glyph: BankGlyph.withdraw, title: "Withdraw") { move = .withdraw }
-            ActionTile(glyph: BankGlyph.bill, title: "Pay bill", badge: !d.upcoming.isEmpty && d.alert != nil ? 1 : 0) { tab = .bills }
+            ActionTile(glyph: BankGlyph.bill, title: "Pay bill") { tab = .bills }
         }
     }
 
@@ -148,7 +146,7 @@ struct BankAccountScreen: View {
             if id == .personal { TaxEstimateCard(engine: e) }
             comingUp(d, fmt)
             recent(d, fmt)
-            if let cid = id.companyID, let co = e.state.company(cid), co.form == .limited {
+            if let cid = id.companyID, let co = e.state.company(cid) {
                 BankOwnerSalary(company: co)
             }
             if id == .personal {

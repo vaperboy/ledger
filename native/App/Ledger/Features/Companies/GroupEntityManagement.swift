@@ -61,7 +61,7 @@ struct GroupEntityManagement: View {
     // MARK: Header
 
     /// Across the group: how many managers, how many companies you still run yourself, the group office; for this company: who takes
-    /// the complaints, payroll and re-hiring and who decides first. Under it, what your stakes in other groups are worth.
+    /// the complaints and re-hiring and who decides first. Under it, what your stakes in other groups are worth.
     private func header(_ co: Company) -> some View {
         let gm: GroupManagement = engine.groupManagement()
         let line: DelegationLine? = engine.delegationLines().first { (d: DelegationLine) -> Bool in d.id == co.id }
@@ -85,7 +85,7 @@ struct GroupEntityManagement: View {
         }
     }
 
-    /// "Complaints go to Sam. Payroll is approved by the accountant. Hiring is approved by you."
+    /// "Complaints go to Sam. Hiring is approved by you."
     private func delegationSentence(_ line: DelegationLine, _ co: Company) -> String {
         let runner: String? = engine.groupManagement().lines.first(where: { (l: GroupManagement.Line) -> Bool in l.id == co.id })?.runner?.name
         func who(_ role: String) -> String {
@@ -96,7 +96,7 @@ struct GroupEntityManagement: View {
             default: return "the " + role.lowercased()
             }
         }
-        return "Complaints go to \(who(line.complaints)). Payroll is approved by \(who(line.payroll)). Hiring is approved by \(who(line.rehire))."
+        return "Complaints go to \(who(line.complaints)). Hiring is approved by \(who(line.rehire))."
     }
 
     // MARK: Chain of command

@@ -5,7 +5,7 @@ import Simulation
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
-    case bank, accounting, inbox, news, weather, stats, goals, luxury, ventures, reports, market, reviews, achievements, settings
+    case bank, inbox, news, weather, stats, goals, luxury, ventures, reports, market, reviews, achievements, settings
     /// The three shopping and insurance apps (each in its own colours): places to rent, equipment and software, insurance.
     case airStay, techPro, atlas
     /// The second-hand market: every used item for sale, from private sellers, one price talk at a time.
@@ -26,7 +26,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     var title: String {
         switch self {
         case .bank: return "Bank"
-        case .accounting: return "Accounting"
         case .inbox: return "Inbox"
         case .news: return "News"
         case .weather: return "Weather"
@@ -55,7 +54,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     var glyph: String {
         switch self {
         case .bank: return Glyph.bank
-        case .accounting: return Glyph.accounting
         case .inbox: return Glyph.inbox
         case .news: return Glyph.news
         case .weather: return Glyph.cloud
@@ -84,7 +82,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     var subtitle: String {
         switch self {
         case .bank: return "Accounts, savings and loans"
-        case .accounting: return "Books, payroll, invoices and records"
         case .inbox: return "Decisions, offers and warnings"
         case .news: return "Headlines and the business paper"
         case .weather: return "Conditions, forecast and warnings"
@@ -115,7 +112,6 @@ extension PhoneApp {
     var tint: Color {
         switch self {
         case .bank: return Color(hex: 0x86B4A0)
-        case .accounting: return Color(hex: 0xA8B88A)
         case .inbox: return Color(hex: 0xCF9A6A)
         case .news: return Color(hex: 0x7F9BC4)
         case .weather: return Color(hex: 0x93A9BD)
@@ -184,7 +180,6 @@ extension PhoneApp {
         switch self {
         case .inbox, .reports, .settings, .friends, .desk, .rivals, .store: return nil   // the Desk and Rivals have their own unlock (`visibility`)
         case .bank: return .bank
-        case .accounting: return .accounting
         case .weather: return .weather
         case .marketplace: return .marketplace
         case .reviews: return .reviews

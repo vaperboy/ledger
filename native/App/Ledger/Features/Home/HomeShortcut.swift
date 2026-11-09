@@ -5,7 +5,7 @@ import Simulation
 /// Shortcuts to Phone apps and flows (up to four). The engine stores the identifiers per game
 /// (`GameEngine.homeShortcutIDs`); what each one opens lives here.
 enum HomeShortcut: String, CaseIterable, Identifiable {
-    case bank, hire, reports, market, inbox, accounting, goals, news, stats, ventures
+    case bank, hire, reports, market, inbox, goals, news, stats, ventures
     var id: String { rawValue }
 
     static let defaults: [HomeShortcut] = [.bank, .hire, .reports, .market]
@@ -17,7 +17,6 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         case .reports: return "Reports"
         case .market: return "Market"
         case .inbox: return "Inbox"
-        case .accounting: return "Accounting"
         case .goals: return "Goals"
         case .news: return "News"
         case .stats: return "Stats"
@@ -32,7 +31,6 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         case .reports: return Glyph.reports
         case .market: return Glyph.market
         case .inbox: return PhoneApp.inbox.glyph
-        case .accounting: return PhoneApp.accounting.glyph
         case .goals: return PhoneApp.goals.glyph
         case .news: return PhoneApp.news.glyph
         case .stats: return PhoneApp.stats.glyph
@@ -44,7 +42,6 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
     var badgeApp: PhoneApp? {
         switch self {
         case .inbox: return .inbox
-        case .accounting: return .accounting
         default: return nil
         }
     }
@@ -56,7 +53,6 @@ enum HomeShortcut: String, CaseIterable, Identifiable {
         case .reports: store.openApp(.reports)
         case .market: store.openMarket()
         case .inbox: store.openApp(.inbox)
-        case .accounting: store.openApp(.accounting)
         case .goals: store.openApp(.goals)
         case .news: store.openApp(.news)
         case .stats: store.openApp(.stats)

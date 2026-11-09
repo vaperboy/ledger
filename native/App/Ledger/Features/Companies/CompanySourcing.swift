@@ -445,7 +445,7 @@ struct CompanySourcing: View {
     }
 }
 
-/// The one supplier row of the app (company inputs, an item's suppliers, Accounting records, the group directory): the provider, a detail
+/// The one supplier row of the app (company inputs, an item's suppliers, supplier records, the group directory): the provider, a detail
 /// line, a badge or "In use" for the current one, an optional figure on the right, and a chevron when tapping opens or chooses it.
 struct SupplierRow: View {
     var name: String

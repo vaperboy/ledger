@@ -37,7 +37,7 @@ jobs:
           - shard: e
             tests: testT05_SwipeBack testT22_ShopsAndInsurance testT23_Bank
           - shard: f
-            tests: testT24_OtherPopups testT25_AccountingPayroll testT26_NewCompany
+            tests: testT24_OtherPopups testT26_NewCompany
     steps:
       - uses: actions/checkout@v4
       - name: Use the newest installed Xcode

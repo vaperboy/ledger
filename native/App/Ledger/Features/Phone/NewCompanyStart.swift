@@ -5,7 +5,7 @@ import Businesses
 import Finance
 import Simulation
 
-/// Start one trade: how (on your own or under a franchise brand), where, which legal form and size, which premises, then the whole
+/// Start one trade: how (on your own or under a franchise brand), where, what size, which premises, then the whole
 /// cost, what is left and the risks, before anything is confirmed. All numbers come from `GameEngine.newCompanyPlan`.
 struct TradeDetailView: View {
     private enum Way: String, CaseIterable, Hashable { case independent = "On your own", brand = "Under a brand" }
@@ -13,7 +13,6 @@ struct TradeDetailView: View {
     var tradeID: String
     @State private var way: Way = .independent
     @State private var cityID = ""
-    @State private var limited = false
     @State private var size = 1.0
     @State private var sizeSet = false
     @State private var name = ""
@@ -33,7 +32,7 @@ struct TradeDetailView: View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
             let country = e.homeCountry
             let cur = e.homeCurrency
-            let form: LegalForm = (limited || t.needsLimitedCompany) ? .limited : .soleTrader
+            let form: LegalForm = .limited
             let city = cityID.isEmpty ? e.state.player.cityID : cityID
             let cityName = country.cities.first { $0.id == city }?.name ?? "town"
             let ban = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "This kind of business is coming in a later update.")
@@ -53,7 +52,7 @@ struct TradeDetailView: View {
                         if let plan {
                             premises(t, plan, cur)
                             PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
-                            if form == .limited { AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID) }
+                            AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID)
                             risks(plan)
                             PrimaryAction(title: "Review and start · \(cur.tidyShort(plan.neededNow))",
                                           blockedReason: plan.registrationShortfall > 0 ? "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital. Move money from savings in Bank." : nil) {
@@ -111,18 +110,11 @@ struct TradeDetailView: View {
     // MARK: Where and how
 
     @ViewBuilder private func whereAndHow(_ t: Trade, _ country: Country, _ city: String, _ form: LegalForm) -> some View {
-        let formText: String = limited
-            ? "Your personal assets are protected; profits are taxed in the company and again when paid out. Needs share capital and a registration fee."
-            : "Simple and cheap. You are personally liable for debts; profit is taxed as your income."
         CardSection("Where and how") {
             Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
             CardLine()
-            if t.needsLimitedCompany {
-                Text("This trade needs a limited company.").textStyle(.caption)
-            } else {
-                SegmentedPill(items: [false, true], title: { $0 ? "Limited company" : "Sole trader" }, selection: $limited)
-                Text(formText).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
-            }
+            Text("Your personal assets are protected; profits are taxed in the company and again when paid out. Needs share capital and a registration fee.")
+                .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             if t.maxSize > t.minSize {
                 CardLine()
                 Stepper(value: $size, in: t.minSize...t.maxSize, step: 0.5) { Text("Size \(size, specifier: "%.1f")").textStyle(.body) }
@@ -183,12 +175,11 @@ struct TradeDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// An alternative that is not only a choice: rent instead of buy, a smaller size, a sole trader.
+    /// An alternative that is not only a choice: rent instead of buy, a smaller size.
     private func applyAlternative(_ alt: PlanAlternative, _ t: Trade) {
         switch alt.id {
         case "rent": buying = false
         case "smaller": size = max(t.minSize, size - 0.5)
-        case "sole": limited = false
         default: break
         }
     }
@@ -220,7 +211,7 @@ struct TradeDetailView: View {
         }()
         let msg = "Needed now: \(cur.tidyShort(plan.neededNow)) (recommended investment \(cur.tidyShort(plan.recommendedInvestment)); nothing is bought or hired for you, you equip and staff it yourself). Of that \(cur.tidyShort(plan.mandatoryTotal)) that must be paid, \(cur.tidyShort(plan.optionalTotal)) of optional extras you chose and \(cur.tidyShort(plan.workingCapital)) of working capital. \(cur.tidyShort(plan.intoCompany)) goes into the company from your cash now" + (plan.estimate.shareCapital > 0 ? ", plus \(cur.tidyShort(plan.estimate.shareCapital)) share capital" : "") + ". You keep \(cur.tidyShort(plan.accountsAfter)) (your reserve is \(cur.tidyShort(plan.personalReserve))). \(place) " +
             (plan.shortfall > 0 ? "The company is \(cur.tidyShort(plan.shortfall)) short of that scope, so set-up skips what the cash cannot carry and opening waits for money. " : "") +
-            (form == .limited ? "A limited company protects your personal assets." : "As a sole trader you are personally liable for its debts.") + " Risk: it earns nothing until it is set up and open."
+            "A limited company protects your personal assets. Risk: it earns nothing until it is set up and open."
         let pick = plan.pick
         let fund = plan.intoCompany
         let nm = name.trimmingCharacters(in: .whitespaces)

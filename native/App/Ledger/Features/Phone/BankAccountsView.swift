@@ -77,7 +77,7 @@ struct BankAccountsScreen: View {
         return NavigationLink {
             BankAllBillsScreen()
         } label: {
-            CardRow(glyph: BankGlyph.bill, title: "Bills", subtitle: sub, badge: all.alertCount)
+            CardRow(glyph: BankGlyph.bill, title: "Bills", subtitle: sub)
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-all-bills")
@@ -103,15 +103,14 @@ struct BankAccountsScreen: View {
         let value: String = fmt.short(r.balance)
         let tint: Color = r.balance < 0 ? P.loss : P.ink
         return Button { Haptics.tap(); onPick(r.id) } label: {
-            CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, badge: r.hasAlert ? 1 : 0, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
+            CardRow(glyph: glyph, title: r.name, subtitle: note, value: value, valueTint: tint, thumb: co.map { ThumbSpec(kind: .trade, key: $0.type, glyph: glyph) })
         }
-        .newGroupMarker(.bank, r.hasAlert ? [] : store.messageItemIDs(.bank, companyID: r.companyID ?? 0), alignment: .topLeading)
+        .newGroupMarker(.bank, store.messageItemIDs(.bank, companyID: r.companyID ?? 0), alignment: .topLeading)
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("bank-account-\(r.id.id)")
     }
 
     private func rowNote(_ r: BankAccountRow, _ fmt: BankFmt) -> String {
-        if r.hasAlert, let n = r.alertNote { return n }
         var parts: [String] = []
         switch r.kind {
         case .personal:

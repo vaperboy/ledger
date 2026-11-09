@@ -6,9 +6,8 @@ import Businesses
 import Events
 import Simulation
 
-/// The company itself: its legal form, its name, closing it for a while, and winding it up. Each action shows what it costs and
-/// what follows before it is confirmed, and reports the engine's answer. Original: money.js 'legal' and 'close', rename_and_rebrand.js,
-/// owner_hours_clients_assistants.js (`clgo`, `reopen`), engine `convertToAS` and `windUp`.
+/// Company settings: the name, closing the company for a while, closing it for good, and its documents and permits. Each action shows
+/// what it costs and what follows before it is confirmed, and reports the engine's answer.
 struct CompanySettings: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -18,42 +17,17 @@ struct CompanySettings: View {
     @State private var giveUpRent = false
     @State private var pauseSubscriptions = false
     @State private var pending: PendingAction?
-    @State private var converting = false
 
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             if company.status == .closed { closing(cur) }
-            legalForm(cur)
             rename(cur)
             if company.status != .closed { closing(cur) }
             windUp(cur)
             documents(cur)
         }
         .confirmAction($pending)
-        .centerSheet(isPresented: $converting, title: "Limited company", category: .detail, tone: .investment) { ConversionSheet(companyID: company.id).environmentObject(store) }
-    }
-
-    // MARK: Legal form
-
-    @ViewBuilder private func legalForm(_ cur: Currency) -> some View {
-        CardSection(title: "Legal form", trailing: { Text(company.form == .limited ? "Limited company" : "Sole trader").textStyle(.caption) }) {
-            if let cost = engine.convertToLimitedCost(companyID: company.id) {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    LegalFormAdvisor(companyID: company.id)
-                    FlatRow(label: "Conversion fee", value: cur.tidyShort(cost.registrationFee), sub: "paid from your account or the company's, you choose", rule: false)
-                    FlatRow(label: "Share capital", value: cur.tidyShort(cost.shareCapital), sub: "paid by you personally; it becomes the company's capital")
-                    Button("Review the conversion\u{2026}") { converting = true }.buttonStyle(QuietButtonStyle())
-                        .accessibilityIdentifier("company-convert-review")
-                }
-            } else {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Limited: debts stay with the company unless you guaranteed them.")
-                        .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                    LegalFormAdvisor(companyID: company.id)
-                }
-            }
-        }
     }
 
     // MARK: Name
@@ -163,7 +137,7 @@ struct CompanySettings: View {
             let debts = CompanyFigures.debts(company, loans: engine.state.loans)
             CardSection("Close down for good") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    Text("Assets sell at about 55% of book value; everyone is let go." + (company.form == .soleTrader ? " You cover any shortfall." : " Guaranteed loans become yours."))
+                    Text("Assets sell at about 55% of book value; everyone is let go." + " Guaranteed loans become yours.")
                         .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                     FlatRow(label: "Debts and bills paid first", value: cur.tidyShort(debts), tint: debts > 0 ? Theme.loss : Theme.ivory, rule: false)
                     FlatRow(label: "Left for you (your share)", value: cur.tidyShort(back), tint: back > 0 ? Theme.gain : Theme.ivoryMuted)

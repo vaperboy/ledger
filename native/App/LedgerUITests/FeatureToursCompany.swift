@@ -298,13 +298,9 @@ extension FeatureToursTests {
         }
     }
 
-    // MARK: T14 Conversion preview and other company popups
+    // MARK: T14 Company popups
 
     func testT14_CompanyPopups() {
-        roundTrip("company: legal form conversion preview closes and keeps the page", closeWith: ["popup-close", "conversion-keep"], prepare: {
-            guard openCompany("Caf"), tapID("company-tab-stats") else { return false }
-            return tapLabel("Legal form and trading") && has("back-button", wait: 3)
-        }) { tapID("company-convert-review") }
         roundTrip("home: 'About' info popup closes and keeps Home", prepare: { goTab("Home") }) { tapLabel("About ") }
         roundTrip("company overview: an 'About' info popup closes and keeps the page", prepare: { openCompany("Caf") }) { tapLabel("About ") }
         roundTrip("company stats: an 'About' info popup closes and keeps the page", prepare: { openCompany("Gym") && tapID("company-tab-stats") }) { tapLabel("About ") }
