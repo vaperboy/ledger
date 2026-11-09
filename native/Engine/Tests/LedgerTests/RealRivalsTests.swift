@@ -106,7 +106,7 @@ final class RealRivalsTests: XCTestCase {
                 let p = PlayerRhythm.profile(id: id)
                 let at = PlayerRhythm.replyTime(id: id, countryCode: cc, sentAt: sent)
                 XCTAssertGreaterThanOrEqual(at.timeIntervalSince(sent), Double(p.minDelay), "never at once: \(id)")
-                let local = Int(at.timeIntervalSince1970) + (PlayerRhythm.utcOffsets[cc] ?? 0) * 3600
+                let local = Int(at.timeIntervalSince1970) + PlayerRhythm.utcOffset(cc) * 3600
                 let hour = (local % 86400) / 3600
                 XCTAssertTrue(hour >= p.startHour && hour < p.endHour, "\(id) \(cc) answers at \(hour):xx")
                 XCTAssertEqual(at, PlayerRhythm.replyTime(id: id, countryCode: cc, sentAt: sent), "deterministic")

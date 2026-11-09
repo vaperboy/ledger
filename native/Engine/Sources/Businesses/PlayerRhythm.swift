@@ -1,4 +1,5 @@
 import Foundation
+import Countries
 
 /// When a player is awake and how quickly they answer. Computer players use the same rhythm as everyone else: they reply after minutes or
 /// hours, only inside their own waking hours, never at once. Pure and deterministic from the player's id, so tests and every device agree.
@@ -10,9 +11,8 @@ public enum PlayerRhythm {
         public var minDelay: Int, maxDelay: Int
     }
 
-    /// Hours from UTC for the countries the game ships with (standard time, one value per country).
-    static let utcOffsets: [String: Int] = ["NO": 1, "SE": 1, "DK": 1, "DE": 1, "FR": 1, "NL": 1, "ES": 1, "IT": 1, "PL": 1, "FI": 2, "UK": 0, "IE": 0,
-                                            "US": -6, "CA": -5, "BR": -3, "IN": 5, "JP": 9, "AU": 10, "ZA": 2]
+    /// Hours from UTC for a country (standard time, from the country data).
+    static func utcOffset(_ countryCode: String) -> Int { CountryTraits.utcOffset(countryCode) }
 
     static func hash(_ text: String) -> UInt64 {
         var h: UInt64 = 0xcbf29ce484222325
@@ -35,7 +35,7 @@ public enum PlayerRhythm {
         let p = profile(id: id)
         let h = hash("reply:" + id + ":" + String(Int(sentAt.timeIntervalSince1970 / 60)))
         let span = max(1, p.maxDelay - p.minDelay)
-        let offset = (utcOffsets[countryCode] ?? 0) * 3600
+        let offset = utcOffset(countryCode) * 3600
         var local = Int(sentAt.timeIntervalSince1970) + p.minDelay + Int(h % UInt64(span)) + offset
         let day = Int((Double(local) / 86400).rounded(.down)) * 86400
         let second = local - day
