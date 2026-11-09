@@ -121,7 +121,11 @@ public struct GameState: Codable, Equatable, Sendable {
         o["cash"] = .number(cash)
         o["cash0"] = .number(openingCash)
         o["flow"] = .object(cashFlow.mapValues { .number($0) })
-        o["sav"] = .object(["bal": .number(savings), "flow": .number(savingsFlow), "open": .number(openingSavings)])
+        // The books-check fields are written only when they carry something, so a save that never touched savings stays as it was.
+        var sav: [String: JSONValue] = ["bal": .number(savings)]
+        if savingsFlow != 0 { sav["flow"] = .number(savingsFlow) }
+        if openingSavings != savings - savingsFlow { sav["open"] = .number(openingSavings) }
+        o["sav"] = .object(sav)
         o["loans"] = .array(loans.map { .object($0.raw) })
         o["credit"] = .number(credit)
         o["overdraftLimit"] = .number(overdraftLimit)

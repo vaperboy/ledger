@@ -124,6 +124,10 @@ public enum Gates {
                   text: "Unlocks when the company is \(Unlocks.weeksResearch) weeks old"),
         RuleEntry(feature: .unlock("dividends"), title: "Dividends", rule: .retainedProfit, text: "Unlocks when the company has retained profit to pay out"),
         RuleEntry(feature: .unlock("marketplace"), title: "Marketplace", rule: .always, text: "Unlocks when the company exists", roadmap: false),
+        // Player-level pages: `Unlocks.check` adds that the ladder's first steps must be done, so the roadmap leaves them out.
+        RuleEntry(feature: .unlock("desk"), title: "Desk", rule: .weeksTraded(Unlocks.weeksDesk), text: "Unlocks when the company has traded \(Unlocks.weeksDesk) weeks and the first steps are done", roadmap: false),
+        RuleEntry(feature: .unlock("focus"), title: "Weekly plan", rule: .weeksTraded(Unlocks.weeksFocus), text: "Unlocks when the company has traded \(Unlocks.weeksFocus) weeks and the first steps are done", roadmap: false),
+        RuleEntry(feature: .unlock("rivals"), title: "Rivals", rule: .weeksTraded(Unlocks.weeksRivals), text: "Unlocks when the company has traded \(Unlocks.weeksRivals) weeks and the first steps are done", roadmap: false),
     ]
 
     static func entry(_ f: Feature) -> RuleEntry {

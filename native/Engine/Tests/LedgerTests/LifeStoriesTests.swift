@@ -73,7 +73,7 @@ final class LifeStoriesTests: XCTestCase {
     func testAffordabilityListBlocksNothing() throws {
         let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1)
         let rows = e.tradeAffordability()
-        XCTAssertEqual(rows.count, e.data.catalog.all.count, "every trade is listed")
+        XCTAssertEqual(rows.count, e.data.catalog.all.filter { !SpecialFamilies.isRetired($0) }.count, "every trade is listed except the retired ones")
         let funded = rows.filter { $0.isFunded }
         XCTAssertFalse(funded.isEmpty); XCTAssertLessThan(funded.count, rows.count)
         // funded first, cheapest first

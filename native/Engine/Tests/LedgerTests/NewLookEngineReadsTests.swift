@@ -88,7 +88,7 @@ final class NewLookEngineReadsTests: XCTestCase {
         let e = try game()
         let city = e.state.player.cityID
         let rows = e.tradePickerRows()
-        XCTAssertEqual(rows.count, e.data.catalog.all.count)
+        XCTAssertEqual(rows.count, e.data.catalog.all.filter { !SpecialFamilies.isRetired($0) }.count, "retired trades are not offered")
         let row = try XCTUnwrap(rows.first { $0.tradeID == "cafe" })
         XCTAssertEqual(row.startUpCost, e.tradeAffordability().first { $0.tradeID == "cafe" }?.cost)
         XCTAssertEqual(row.sector, e.data.catalog["cafe"]?.category)

@@ -159,7 +159,7 @@ final class CompanyConversionTests: XCTestCase {
         var (e, id) = try trader("UK", days: 20, loan: false)
         e.update { s, _, _ in
             let c = s.cash - 100
-            Ledger.move(&s, .me, -c, why: "To savings"); s.savings += c
+            Ledger.move(&s, .me, -c, why: "To savings"); Ledger.moveSavings(&s, c)
         }
         let plan = try XCTUnwrap(e.conversionPlan(companyID: id))
         XCTAssertTrue(plan.payerOptions[0].affordable, "savings are drawn on, as for other personal payments")

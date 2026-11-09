@@ -76,7 +76,7 @@ public enum GoldStore {
 public enum StoreAccess {
     public static let minimumAge = 18
 
-    /// Countries (ISO codes, "UK" or "GB") where paid boxes are not offered. Empty by default: add a code here to hide paid boxes there
+    /// Countries (the game's country codes) where paid boxes are not offered. Empty by default: add a code here to hide paid boxes there
     /// (the store itself, gold and the auctions stay available; free boxes still open).
     public static let paidBoxRestrictedCountries: Set<String> = []
 
@@ -88,9 +88,8 @@ public enum StoreAccess {
 
     public static func access(adultConfirmed: Bool?, countryCode: String?, restricted: Set<String> = paidBoxRestrictedCountries) -> Access {
         guard adultConfirmed == true else { return .hidden }
-        var code: String = (countryCode ?? "").uppercased()
-        if code == "GB" { code = "UK" }
-        let blocked: Set<String> = Set(restricted.map { $0.uppercased() == "GB" ? "UK" : $0.uppercased() })
+        let code: String = (countryCode ?? "").uppercased()
+        let blocked: Set<String> = Set(restricted.map { $0.uppercased() })
         return .open(paidBoxes: !blocked.contains(code))
     }
 }
