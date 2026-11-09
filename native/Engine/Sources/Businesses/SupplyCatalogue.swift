@@ -246,7 +246,8 @@ public enum SupplyCatalogue {
         for line in all where !line.isCogs {
             let folded = folded(s, co, line)
             let o = folded ? current(s, co, bd, line: line, data: data) : nil
-            let part = base * line.share * (o?.priceFactor ?? 1) * activity(line, util: util)
+            // Electricity is bought at the global market price, whoever the supplier is.
+            let part = base * line.share * (o?.priceFactor ?? 1) * activity(line, util: util) * (line.id == "power" ? EnergyMarket.costFactor(s) : 1)
             share += line.share
             spend[line.id] = part
             guard let o, !o.isMarket else { continue }

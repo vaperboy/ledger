@@ -122,11 +122,23 @@ final class RivalAbsorbTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
+    /// A bank the player already owned (new banks can no longer be started).
+    static func ownedBank(_ e: inout GameEngine) -> Int {
+        var id = 0
+        e.update { s, data, ctx in
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: "bank", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            id = i
+            Payments.injectCash(&s, companyID: i, amount: min(330_000_000, Payments.liquid(s)))
+        }
+        return id
+    }
+
     func testPlayerMainBankIsOwnOnlyWithAnOpenOwnBank() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 92)
         XCTAssertFalse(e.playerMainBankIsOwn)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let bankID) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000) else { return XCTFail("a bank") }
+        let bankID = Self.ownedBank(&e)
+        XCTAssertNotEqual(bankID, 0)
         e.update { s, _, _ in s.companies[s.companyIndex(bankID)!].status = .open }
         XCTAssertTrue(e.playerMainBankIsOwn)
         e.update { s, _, _ in s.companies[s.companyIndex(bankID)!].status = .closed }
@@ -143,7 +155,8 @@ final class RivalAbsorbTests: XCTestCase {
             _ = Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + 3_000_000)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
-        guard case .success(let bankID) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, form: .limited, fundWith: 330_000_000) else { return XCTFail("a bank") }
+        let bankID = Self.ownedBank(&e)
+        XCTAssertNotEqual(bankID, 0)
         for _ in 0..<(8 * 7) { e.nextDay() }
         e.update { s, _, _ in
             let i = s.companyIndex(bankID)!

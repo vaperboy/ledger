@@ -18,7 +18,7 @@ enum GroupAddDestination: String, Identifiable, Hashable {
     }
 }
 
-/// The centred popup of Group > Overview: the four ways to grow the group, each with a few words. A tap closes the popup and
+/// The centred popup of Group > Overview: the ways to grow the group, each with a few words. A tap closes the popup and
 /// opens the flow (the Group tab pushes it).
 struct GroupAddMenu: View {
     @EnvironmentObject var store: GameStore
@@ -30,7 +30,6 @@ struct GroupAddMenu: View {
             row(.newCompany, title: "New company", line: "Any trade, any city", id: "group-add-company")
             row(.holding, title: "Holding company", line: "Owns your companies, collects their dividends", id: "group-add-holding")
             row(.franchise, title: "Join a franchise", line: "A known brand, for a fee", id: "group-add-franchise")
-            row(.club, title: "Buy or found a football club", line: "Buy one or found one", id: "group-add-club")
         }
         .centerSheetTitle("Add to group")
     }

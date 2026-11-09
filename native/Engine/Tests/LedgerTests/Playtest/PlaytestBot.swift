@@ -511,7 +511,7 @@ final class PlayBot {
         case .football:
             e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(80_000_000), why: "Test capital") }
             let code = e.leagueCountries().first?.code ?? job.country
-            switch e.foundClub(countryCode: code) {
+            switch e.foundClub(countryCode: code, allowRetired: true) {
             case .ok: structural()
             case let why: find(2, "club-found", "foundClub failed: \(why)", "FootballModel.foundClub", "country \(code)")
             }

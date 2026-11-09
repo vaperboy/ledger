@@ -17,6 +17,7 @@ struct MarketOverviewPage: View {
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(e)
                 invested(e)
+                EnergyMarketRow()
                 movers(e)
                 signals("Opportunities", store.memo("mk.opps") { MarketData.opportunities($0) } ?? [])
                 signals("Threats", store.memo("mk.threats") { MarketData.threats($0) } ?? [])
