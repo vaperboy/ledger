@@ -219,7 +219,7 @@ struct GroupSupplierDirectory: View {
             if let note = u.row.governed ?? u.row.note { Text(note).popupText(.risk) }
             QuietButton(title: "Compare suppliers", fullWidth: true) {
                 picked = nil
-                store.openCompany(u.companyID, section: .operations, part: OpsPart.suppliers.rawValue)
+                store.openCompany(u.companyID, section: .operations, part: CompanyTab.supply.rawValue)
             }
         }
     }

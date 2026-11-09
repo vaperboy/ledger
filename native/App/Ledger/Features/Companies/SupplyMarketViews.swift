@@ -5,14 +5,12 @@ import Finance
 import Businesses
 import Simulation
 
-/// The plain words and small parts the supply market screens share.
 enum SupplyMarketWords {
     static func price(_ tier: Int) -> String { ["Under market price", "Market price", "Above market price"][min(2, max(0, tier))] }
     static func quality(_ tier: Int) -> String { SupplyMarketCatalogue.qualityTiers[min(2, max(0, tier))] + " quality" }
     static func lead(_ days: Int) -> String { days <= 0 ? "Continuous" : days == 1 ? "Next day" : "\(days) days lead" }
     static func terms(_ days: Int) -> String { days == 0 ? "Paid on delivery" : "Paid after \(days) days" }
     static func percent(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
-    /// City, and the country code when the supplier is abroad of what the listing says.
     static func place(_ l: SupplyListing) -> String { l.country.isEmpty ? l.city : "\(l.city), \(l.country)" }
 
     static func tint(_ w: DeliveryWord) -> Color {
@@ -25,7 +23,6 @@ enum SupplyMarketWords {
     }
 }
 
-/// A change in points of share: a green up arrow when it improved, a red down arrow when it slipped, nothing when flat or unknown.
 struct TrendArrow: View {
     var delta: Double?
 
@@ -41,7 +38,6 @@ struct TrendArrow: View {
     }
 }
 
-/// What a buyer sees of a supplier: the word, then the plain history behind it.
 struct DeliveryRecordView: View {
     var record: DeliveryRecord
 
@@ -74,15 +70,12 @@ struct DeliveryRecordView: View {
     }
 }
 
-/// One supplier listing in a list: who, the record in a word, what is offered, the limit while new, and why it cannot be used when it cannot.
 struct SupplyListingCard: View {
     var listing: SupplyListing
     var known: Bool
     var availability: SupplyAvailability
-    /// Price, freight and customs of the offer for the buyer's company, when the list shows them.
     var landed: SupplyLanded.Row?
     var currency: Currency?
-    /// Whether the money figures rest on what the company really spends on this line.
     var landedPriced = false
     var action: () -> Void
 
@@ -130,7 +123,6 @@ struct SupplyListingCard: View {
     }
 }
 
-/// The units a week and the button that signs a contract with a listing; reads what changes against the market supplier in money, with arrows.
 struct SupplySignBlock: View {
     @EnvironmentObject var store: GameStore
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
@@ -167,7 +159,6 @@ struct SupplySignBlock: View {
                 }
                 if let landed { LandedCostLines(row: landed, currency: currency, priced: weeklyMarketSpend > 0, popup: true) }
                 if weeklyMarketSpend > 0 {
-                    // Against what the market supplier charges for the same week, with freight and customs on this offer.
                     let saving: Double = weeklyMarketSpend - weeklyMarketSpend * listing.priceFactor * (landed?.landedFactor ?? 1)
                     HStack(spacing: Theme.Space.s) {
                         Text("Against the market supplier").popupText(.caption)
@@ -198,218 +189,6 @@ struct SupplySignBlock: View {
         case .refused(let why):
             Haptics.warning()
             message = why
-        }
-    }
-}
-
-/// One listing in a popup: the owner, the full delivery record, the offer, and the way to sign. The supplier page opens from here.
-struct SupplyListingPopup: View {
-    @EnvironmentObject var store: GameStore
-    @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
-    var companyID: Int
-    var lineID: String
-    var listingID: String
-    var onProfile: (String) -> Void
-    var onClose: () -> Void
-
-    var body: some View {
-        if let e = store.engine, let co = e.state.company(companyID), let l = market.service.listing(listingID),
-           let row = e.supplyLines(companyID: companyID).flatMap({ $0.rows }).first(where: { $0.id == lineID }) {
-            let known: Bool = market.service.knownSuppliers().contains(l.ownerID)
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                Text("\(l.companyName) · \(l.tradeName) · \(SupplyMarketWords.place(l))").popupText(.subtitle)
-                Text("\(l.lineName) · \(SupplyMarketWords.price(l.priceTier)) · \(SupplyMarketWords.quality(l.qualityTier))").popupText(.body)
-                Text("\(SupplyGuards.effectiveCapacity(l)) units/week · \(SupplyMarketWords.lead(l.leadDays)) · minimum \(l.minOrder) · \(SupplyMarketWords.terms(l.termsDays))").popupText(.caption)
-                if let limit = SupplyGuards.limitText(l) { Text(limit).popupText(.risk) }
-                Hairline()
-                Text("Delivery record").capsLabel(Theme.ivoryFaint)
-                DeliveryRecordView(record: l.record)
-                Hairline()
-                SupplySignBlock(companyID: companyID, lineID: lineID, lineTitle: row.title, listing: l, weeklyMarketSpend: row.weekly ?? 0, currency: e.currency(for: co), onSigned: onClose)
-                HStack(spacing: Theme.Space.s) {
-                    QuietButton(title: known ? "Remove from known suppliers" : "Save as known supplier", fullWidth: true) { market.service.setKnown(ownerID: l.ownerID, !known) }
-                    QuietButton(title: "Supplier profile", fullWidth: true) { onProfile(l.ownerID) }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .centerSheetTitle(l.ownerName)
-        } else {
-            Text("That offer is gone.").popupText(.caption)
-        }
-    }
-}
-
-/// A supplier's page: who they are, their listings with records, and the way into the owner's profile (`SupplierOwnerProfileHook`).
-struct SupplierProfileScreen: View {
-    @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
-    var ownerID: String
-    @State private var showOwner = false
-
-    var body: some View {
-        let p: SupplierProfile? = market.service.profile(ownerID: ownerID)
-        ScrollScreen(spacing: Theme.Space.xl) {
-            if let p {
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    Text(p.ownerName).textStyle(.title)
-                    Text("Profile code \(p.profileCode)" + (p.isFriend ? " · Friend" : "")).textStyle(.caption, tint: Theme.inkSoft)
-                    QuietButton(title: market.service.knownSuppliers().contains(p.ownerID) ? "Remove from known suppliers" : "Save as known supplier") {
-                        market.service.setKnown(ownerID: p.ownerID, !market.service.knownSuppliers().contains(p.ownerID))
-                    }
-                    ownerLink(p)
-                }
-                .padding(Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading).glassSurface()
-                if p.listings.isEmpty {
-                    EmptyState(glyph: Glyph.suppliers, title: "Not supplying now", message: "This player has no open offers.")
-                }
-                ForEach(p.listings) { (l: SupplyListing) in
-                    VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Text(l.lineName).capsLabel(Theme.ivoryFaint)
-                        Text("\(l.companyName) · \(l.tradeName) · \(SupplyMarketWords.place(l))").textStyle(.caption, tint: Theme.inkSoft)
-                        Text("\(SupplyMarketWords.price(l.priceTier)) · \(SupplyMarketWords.quality(l.qualityTier)) · \(SupplyGuards.effectiveCapacity(l)) units/week · minimum \(l.minOrder)")
-                            .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                        if let limit = SupplyGuards.limitText(l) { Text(limit).textStyle(.caption, tint: Theme.caution) }
-                        DeliveryRecordView(record: l.record)
-                    }
-                    .padding(Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading).glassSurface()
-                }
-            } else {
-                EmptyState(glyph: Glyph.suppliers, title: "This supplier is gone")
-            }
-        }
-        .appScreen(title: "Supplier", subtitle: p?.ownerName ?? "", tab: .company)
-        .navigationDestination(isPresented: $showOwner) {
-            if let p, let dest = SupplierOwnerProfileHook.destination { dest(p.profileCode) }
-        }
-    }
-
-    @ViewBuilder private func ownerLink(_ p: SupplierProfile) -> some View {
-        if SupplierOwnerProfileHook.destination != nil {
-            LedgerRow(leading: .glyph(Glyph.person), leadingTint: Theme.inkSoft, title: "Open \(p.ownerName)'s profile", identifier: "supplier-owner-profile") { showOwner = true }
-        } else {
-            Text("The player's profile page opens here once online profiles are connected.").textStyle(.caption, tint: Theme.inkFaint)
-        }
-    }
-}
-
-/// Every offer for one purchase with search and filters.
-struct SupplyBrowseScreen: View {
-    @EnvironmentObject var store: GameStore
-    @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
-    var companyID: Int
-    var lineID: String
-
-    @State private var query = ""
-    @State private var priceFilter = -1
-    @State private var qualityFilter = -1
-    @State private var regionFilter = ""
-    @State private var recordFilter = 0
-    @State private var knownOnly = false
-    @State private var friendsOnly = false
-    @State private var bestRecordFirst = false
-    @State private var opened: ListingPick?
-    @State private var profile: ProfilePick?
-
-    struct ListingPick: Identifiable, Equatable { var id: String }
-    struct ProfilePick: Identifiable, Hashable { var id: String }
-
-    private static let recordFilters: [String] = ["Any record", "Not struggling", "Reliable only"]
-
-    var body: some View {
-        if let e = store.engine, let co = e.state.company(companyID) {
-            let today: Int = SupplyMarketStore.today(e)
-            let known: Set<String> = market.service.knownSuppliers()
-            // Only what the trade really uses, and no chain or franchise rule against it.
-            let all: [SupplyListing] = market.service.listings(lineID: lineID).filter { e.playerSupplyAllowed(companyID: companyID, listing: $0) }
-            let weekly: Double? = e.supplyLines(companyID: companyID).flatMap { $0.rows }.first(where: { $0.id == lineID })?.weekly
-            let rows: [SupplyLanded.Row] = SupplyLandedBasis.rows(e, companyID: companyID, listings: all, weekly: weekly)
-            let landed: [String: SupplyLanded.Row] = SupplyLandedBasis.lookup(rows)
-            let order: [String: Int] = Dictionary(rows.enumerated().map { ($0.element.id, $0.offset) }, uniquingKeysWith: { a, _ in a })
-            let matching: [SupplyListing] = all.filter { matches($0, known) }
-            let shown: [SupplyListing] = bestRecordFirst ? matching.sorted(by: SupplyRecordRules.wellKnownOrder) : matching.sorted { (order[$0.id] ?? 0) < (order[$1.id] ?? 0) }
-            let cur: Currency = e.currency(for: co)
-            ScrollScreen(spacing: Theme.Space.m) {
-                AcctSearchField(text: $query, prompt: "Name, friend, profile code, company", identifier: "supply-search")
-                filters(all, known)
-                if shown.isEmpty {
-                    EmptyState(glyph: Glyph.suppliers, title: "No supplier matches", message: "Try fewer filters or a different search.")
-                } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(shown.enumerated()), id: \.element.id) { (n: Int, l: SupplyListing) in
-                            if n > 0 { Hairline() }
-                            SupplyListingCard(listing: l, known: known.contains(l.ownerID),
-                                              availability: SupplyGuards.availability(l, buyerLinkKeys: market.service.buyerLinkKeys, units: l.minOrder, today: today),
-                                              landed: landed[l.id], currency: cur, landedPriced: (weekly ?? 0) > 0) { opened = ListingPick(id: l.id) }
-                        }
-                    }
-                    .padding(.horizontal, Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading).glassSurface()
-                }
-            }
-            .appScreen(title: "Browse suppliers", subtitle: SupplyMarketCatalogue.line(lineID)?.name ?? "", tab: .company)
-            .centerSheet(item: $opened, category: .medium, tone: .info) { (p: ListingPick) in
-                SupplyListingPopup(companyID: companyID, lineID: lineID, listingID: p.id, onProfile: { (owner: String) in opened = nil; profile = ProfilePick(id: owner) }, onClose: { opened = nil })
-                    .environmentObject(store)
-            }
-            .navigationDestination(item: $profile) { (p: ProfilePick) in SupplierProfileScreen(ownerID: p.id).environmentObject(store) }
-        }
-    }
-
-    private func matches(_ l: SupplyListing, _ known: Set<String>) -> Bool {
-        if knownOnly && !known.contains(l.ownerID) { return false }
-        if friendsOnly && !l.isFriend { return false }
-        if priceFilter >= 0 && l.priceTier != priceFilter { return false }
-        if qualityFilter >= 0 && l.qualityTier != qualityFilter { return false }
-        if !regionFilter.isEmpty && l.region != regionFilter { return false }
-        if recordFilter == 1 && l.word == .struggling { return false }
-        if recordFilter == 2 && l.word != .reliable { return false }
-        let q: String = query.trimmingCharacters(in: .whitespaces).lowercased()
-        if q.isEmpty { return true }
-        if l.ownerName.lowercased().contains(q) || l.companyName.lowercased().contains(q) || l.profileCode.lowercased().contains(q) { return true }
-        if q == "friend" || q == "friends" { return l.isFriend }
-        if q.hasPrefix("known") { return known.contains(l.ownerID) }
-        return false
-    }
-
-    private func filters(_ all: [SupplyListing], _ known: Set<String>) -> some View {
-        let regions: [String] = Array(Set(all.map { $0.region })).sorted()
-        return ScrollView(.horizontal) {
-            HStack(spacing: Theme.Space.s) {
-                menu("Price", priceFilter < 0 ? "Any" : SupplyMarketCatalogue.priceTiers[priceFilter]) {
-                    Button("Any") { priceFilter = -1 }
-                    ForEach(0..<3, id: \.self) { (i: Int) in Button(SupplyMarketCatalogue.priceTiers[i]) { priceFilter = i } }
-                }
-                menu("Quality", qualityFilter < 0 ? "Any" : SupplyMarketCatalogue.qualityTiers[qualityFilter]) {
-                    Button("Any") { qualityFilter = -1 }
-                    ForEach(0..<3, id: \.self) { (i: Int) in Button(SupplyMarketCatalogue.qualityTiers[i]) { qualityFilter = i } }
-                }
-                menu("Region", regionFilter.isEmpty ? "Any" : regionFilter) {
-                    Button("Any") { regionFilter = "" }
-                    ForEach(regions, id: \.self) { (r: String) in Button(r) { regionFilter = r } }
-                }
-                menu("Record", Self.recordFilters[recordFilter]) {
-                    ForEach(0..<3, id: \.self) { (i: Int) in Button(Self.recordFilters[i]) { recordFilter = i } }
-                }
-                menu("Order", bestRecordFirst ? "Best record" : "Lowest landed cost") {
-                    Button("Lowest landed cost") { bestRecordFirst = false }
-                    Button("Best record") { bestRecordFirst = true }
-                }
-                Button { friendsOnly.toggle(); Haptics.tap() } label: {
-                    Chip(text: "Friends", tint: friendsOnly ? Theme.gold : Theme.inkSoft).padding(.horizontal, Theme.Space.s).frame(minHeight: 36)
-                }
-                .buttonStyle(.plain)
-                Button { knownOnly.toggle(); Haptics.tap() } label: {
-                    Chip(text: "Known only", tint: knownOnly ? Theme.gold : Theme.inkSoft).padding(.horizontal, Theme.Space.s).frame(minHeight: 36)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .scrollIndicators(.hidden)
-    }
-
-    private func menu<M: View>(_ title: String, _ value: String, @ViewBuilder _ items: () -> M) -> some View {
-        Menu {
-            items()
-        } label: {
-            Chip(text: "\(title): \(value)", tint: Theme.inkSoft).padding(.horizontal, Theme.Space.s).frame(minHeight: 36)
         }
     }
 }

@@ -67,13 +67,12 @@ final class MainScreensTests: TourCase {
             var n = 25
             // The five sections of the fixed bar switch in place. Pages inside a section are pushed: Back once returns to the section.
             let subpages: [String: [String]] = [
-                "team": ["Hire"],
+                "people": ["Hire"],
                 // Premises, Where you work and Insurance now open the AirStay and Atlas Insurance apps on the Phone (see NavigationBackTests).
-                "manage": ["Suppliers", "Equipment"],
+                "supply": ["Change"],
                 // Sales rows open centred popups (price, Marketing), not pushed pages: nothing to go back from here.
-                "stats": ["Ownership"],
             ]
-            for section in ["overview", "team", "manage", "sales", "stats"] {
+            for section in ["overview", "prices", "supply", "people"] {
                 let b = app.buttons["company-tab-" + section]
                 guard b.waitForExistence(timeout: 2), b.isHittable else { note("no company hub row \(section)"); continue }
                 b.tap(); sleep(1); shot("\(n)-company-\(section)"); n += 1

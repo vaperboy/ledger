@@ -9,7 +9,7 @@ final class HiringTourTests: CompanyBatchTourCase {
     @discardableResult
     func openFirstCandidateTerms() -> Bool {
         guard openFirstCompany() else { return false }
-        guard tapID("company-tab-team") else { return false }
+        guard tapID("company-tab-people") else { return false }
         guard tapID("team-hire-workers") else { return false }
         shot("100-hiring-workers")
         // Applicants answer an ad over days: with none on the list there is nothing to talk to, and the tour notes that.
@@ -41,7 +41,7 @@ final class HiringTourTests: CompanyBatchTourCase {
     @discardableResult
     func openFirstStaffProfile() -> Bool {
         guard openFirstCompany() else { return false }
-        guard tapID("company-tab-team") else { return false }
+        guard tapID("company-tab-people") else { return false }
         app.swipeUp(); sleep(1)
         let person = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'team-worker-'")).firstMatch
         guard person.waitForExistence(timeout: 5), person.isHittable else { note("no staff member on the Team section"); return false }

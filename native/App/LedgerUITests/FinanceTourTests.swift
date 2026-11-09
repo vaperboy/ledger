@@ -101,9 +101,9 @@ final class ConversionPreviewTourTests: FinanceTourCase {
         let first = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Café' OR label CONTAINS[c] 'Cafe'")).firstMatch
         guard first.waitForExistence(timeout: 5) else { note("no company on Home"); return }
         first.tap(); sleep(1)
-        let team = app.buttons["company-tab-team"]
+        let team = app.buttons["company-tab-people"]
         if team.waitForExistence(timeout: 3) { team.tap(); sleep(1); shot("80-company-team-metrics") }
-        let stats = app.buttons["company-tab-stats"]
+        let stats = app.buttons["company-tab-overview"]
         if stats.waitForExistence(timeout: 3) { stats.tap(); sleep(1); shot("80-company-stats-cash-first") }
         guard tapContaining("Company settings") else { return }
         shot("81-company-settings")

@@ -6,10 +6,6 @@ import Finance
 import Businesses
 import Simulation
 
-// MARK: Hero
-
-/// The opening of a company screen: a faint caps label, one large serif figure, one context line (a change in gain or loss colour, then
-/// a plain note) and a sparkline of the real history behind the figure when there is any.
 struct CompanyHero: View {
     var label: String
     var value: String
@@ -19,10 +15,8 @@ struct CompanyHero: View {
     var context: String = ""
     var trend: [Double] = []
     var live: Double? = nil
-    /// With `live`: how the figure reads (the amount without a sign when `gain` gives the arrow), and the signed result for the arrow.
     var liveFormat: ((Double) -> String)? = nil
     var gain: Double? = nil
-    /// The figure against the period before, shown in words under it ("up 12% on last month").
     var compareBefore: Double? = nil
     var compareAgainst: String = ""
     @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 42
@@ -78,10 +72,8 @@ struct CompanyHero: View {
     }
 }
 
-/// A titled group of rows sitting on the page: a faint caps label, then the rows (callers put an inset `RowRule` between them). No box.
 struct PageGroup<Content: View, Trailing: View>: View {
     var title: String
-    /// Space between the children (0 for rows that carry their own rules).
     var spacing: CGFloat = 0
     @ViewBuilder var trailing: () -> Trailing
     @ViewBuilder var content: () -> Content
@@ -108,13 +100,11 @@ extension PageGroup where Trailing == EmptyView {
     }
 }
 
-/// The hairline between two rows of a group, inset past the leading glyph.
 struct RowRule: View {
     var inset: CGFloat = 32
     var body: some View { Hairline().padding(.leading, inset) }
 }
 
-/// One matter for the owner: what is wrong, why, and where it is handled.
 struct CompanyIssue: Identifiable {
     var id: String
     var glyph: String
@@ -125,7 +115,6 @@ struct CompanyIssue: Identifiable {
     var run: () -> Void
 }
 
-/// The one thing to fix first, as a raised card with its own action; the rest of the list opens under it.
 struct FixFirstCard: View {
     var issues: [CompanyIssue]
     var heading: String = "Fix this first"
@@ -180,10 +169,6 @@ struct FixFirstCard: View {
     }
 }
 
-// MARK: Who runs it
-
-/// Who runs a company day to day, from the engine's facts only: the decision chain (a manager or executive), else the owner when the
-/// owner works there with hours left for it. Overview, its Team row and the screen header all read this, so they never disagree.
 enum CompanyRunner {
     struct Reading { var short: String; var line: String; var nobody: Bool; var title: String; var why: String }
 
@@ -206,18 +191,14 @@ enum CompanyRunner {
     }
 }
 
-// MARK: Overview
-
-/// One company at a glance, the same cockpit for every trade: profit a week with its trend, cash, revenue and margin; the one thing to
-/// fix first; the other sections as rows with their live state; then revenue and profit by month.
 struct CompanyOverview: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    @Binding var section: CompanySection
-    @Binding var moneyPart: CompanyMoneyPart
-    /// Opens a page of Manage (Equipment, Suppliers ...) on top of the company screen.
+    var openPage: (OverviewPage) -> Void = { _ in }
+    var openTab: (CompanyTab) -> Void = { _ in }
     var openOps: (OpsPart) -> Void = { _ in }
+    var openMoney: (CompanyMoneyPart) -> Void = { _ in }
     @State private var months = 12
     @Environment(\.outsidePalette) private var P
 
@@ -245,14 +226,19 @@ struct CompanyOverview: View {
 
     private func go(_ target: CompanySection) {
         guard CompanyDetailView.availableSections(company, engine).contains(target) else { return }
-        Motion.animate(Motion.quickAnimation) { section = target }
         Haptics.choose()
+        switch target {
+        case .staff, .holding: openTab(.people)
+        case .operations: openPage(.run)
+        case .finances: openPage(.stats)
+        case .salesMarket: openPage(.sales)
+        case .setup: store.openCompany(company.id, section: .setup)
+        default: break
+        }
     }
-    private func goMoney(_ part: CompanyMoneyPart) { moneyPart = part; go(.finances) }
 
-    // MARK: Hero and figures
+    private func goMoney(_ part: CompanyMoneyPart) { Haptics.choose(); openMoney(part) }
 
-    /// Profit a week (last closed month) with the change against the month before; before the first month closes, the cash.
     @ViewBuilder private func hero(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
         if co.status == .open, let pw = ops?.profitPerWeek {
             let delta: Double? = ops?.profitChangePerWeek
@@ -269,7 +255,6 @@ struct CompanyOverview: View {
         }
     }
 
-    /// Cash with how long it lasts, revenue and margin over twelve months (profit a week is the hero, so no profit figure here).
     @ViewBuilder private func strip(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
         let heroIsCash: Bool = !(co.status == .open && ops?.profitPerWeek != nil)
         let margin: String = h.marginTTM.map { String(format: "%.0f%%", $0 * 100) } ?? "\u{2013}"
@@ -283,7 +268,6 @@ struct CompanyOverview: View {
         FigureRow(items: heroIsCash ? [revCell, marginCell, healthCell] : [cashCell, revCell, marginCell], combineCells: true)
     }
 
-    /// Where the company sits, plainly: the chain or holding it belongs to, who runs it and who owns it. Text only; the way to each is in Group.
     @ViewBuilder private func structureStrip(_ co: Company) -> some View {
         let line: String = structureLine(co)
         if !line.isEmpty {
@@ -293,7 +277,6 @@ struct CompanyOverview: View {
         }
     }
 
-    /// "Part of Khan Shop · run by Maria Lopez · owned by you 100%"; empty for a company that is gone.
     private func structureLine(_ co: Company) -> String {
         guard co.status.isLive else { return "" }
         var parts: [String] = []
@@ -328,7 +311,6 @@ struct CompanyOverview: View {
         return h.label == "New" ? "Profit shows after the first full month" : "\(String(format: "%.0f", h.weeksOfCash)) weeks of costs in hand"
     }
 
-    /// Nothing needs the owner: one calm line instead of a card.
     private func allClear(_ h: CompanyHealth) -> some View {
         HStack(spacing: Theme.Space.s) {
             LedgerGlyph(glyph: Glyph.check, size: Theme.Icon.medium, tint: P.gain)
@@ -338,20 +320,14 @@ struct CompanyOverview: View {
         .accessibilityIdentifier("company-all-clear")
     }
 
-    // MARK: What needs the owner
-
-    /// Staff matters (paperwork, worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
     private func staffMatters(_ co: Company) -> [TeamOverview.Issue] {
-        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
+        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.tired, .managerLeaving, .managerWeak].contains($0.kind) }
     }
 
-    /// Everything that needs the owner, most urgent first: money trouble, nobody in charge, decisions waiting, setup, closure, people.
     private func issues(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> [CompanyIssue] {
         var out: [CompanyIssue] = []
-        // Open, with customers asking, but it could serve no one last week: nothing comes in until that is fixed.
         let lastWeek: OperationsFigures.Week? = ops?.weeks.last
         if co.status == .open, co.type != "hold", let w = lastWeek, w.capacity <= 0, w.demand > 0 {
-            // The engine keeps what limited that week: a required machine in repair goes to Equipment, a missing role to Team.
             let label: String = h.bottleneck ?? ""
             let machine: Bool = label.localizedCaseInsensitiveContains("repair") || label.localizedCaseInsensitiveContains("broken")
             let limit: String = label.isEmpty ? "Staff or equipment is missing: nothing comes in"
@@ -381,55 +357,42 @@ struct CompanyOverview: View {
         if co.status == .closed { out.append(CompanyIssue(id: "closed", glyph: Glyph.settings, tint: P.warn, title: "Closed", sub: "Reopen it or close down for good", action: "Open settings") { goMoney(.settings) }) }
         if !matters.isEmpty {
             let one: Bool = matters.count == 1
-            out.append(CompanyIssue(id: "matters", glyph: Glyph.person, tint: P.warn, title: one ? matters[0].title : "\(matters.count) staff matters need you", sub: one ? matters[0].detail : "Paperwork, tired staff or your manager", action: "Open Team") { go(.staff) })
+            out.append(CompanyIssue(id: "matters", glyph: Glyph.person, tint: P.warn, title: one ? matters[0].title : "\(matters.count) staff matters need you", sub: one ? matters[0].detail : "Tired staff or your manager", action: "Open Team") { go(.staff) })
         }
         if people > 0 { out.append(CompanyIssue(id: "people", glyph: Glyph.team, tint: P.warn, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Open Team") { go(.staff) }) }
         return out
     }
 
-    // MARK: The sections as rows
-
     @ViewBuilder private func sectionRows(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
-        let tabs: [CompanyTab] = CompanyDetailView.tabs(co, engine)
-        let rows: [CompanyTab] = tabs.filter { $0 != .overview }
-        if !rows.isEmpty {
-            PageGroup("The business") {
-                ForEach(Array(rows.enumerated()), id: \.element) { (n: Int, t: CompanyTab) in
-                    if n > 0 { RowRule() }
-                    sectionRow(t, co, h, ops)
-                }
+        let a: [CompanySection] = CompanyDetailView.availableSections(co, engine)
+        let sells: Bool = a.contains(.operations)
+        PageGroup("The business") {
+            if sells {
+                let items: Int = engine.salesItems(companyID: co.id).count
+                let week: Double = co.lastWeekRevenue
+                LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Sales", subtitle: items == 0 ? "Nothing on sale yet" : "\(items.countText("item")) on sale",
+                          value: week > 0 ? store.short(week, in: co) : "", valueNote: week > 0 ? "last week" : "", identifier: "overview-open-sales") { openPage(.sales) }
+                RowRule()
+                let use: String = ops?.capacityUse.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? ""
+                let turnedAway: Bool = h.demandCoverage > 1.05
+                let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? ""
+                LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Run the place", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
+                          identifier: "overview-open-manage") { openPage(.run) }
+                RowRule()
+            }
+            let rated: String = h.rating > 0 ? StandingWords.ratingText(h.rating) : ""
+            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Money and stats", subtitle: "Reputation " + StandingWords.reputation(co.reputation).lowercased(),
+                      value: rated, valueNote: rated.isEmpty ? "" : "rating", identifier: "overview-open-stats") { openPage(.stats) }
+            if sells {
+                RowRule()
+                LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: "Customers", identifier: "overview-open-customers") { openPage(.customers) }
+            }
+            if CompanyDetailView.hasProjects(co, engine) {
+                RowRule()
+                LedgerRow(leading: .glyph(Glyph.reports), leadingTint: P.inkSoft, title: "Projects", identifier: "overview-open-projects") { openPage(.projects) }
             }
         }
     }
-
-    @ViewBuilder private func sectionRow(_ t: CompanyTab, _ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> some View {
-        switch t {
-        case .team:
-            let n: Int = co.staff.count
-            let boss: String = CompanyRunner.of(co, engine).line
-            LedgerRow(leading: .glyph(Glyph.team), leadingTint: P.inkSoft, title: "Team", subtitle: boss, value: n == 0 ? "" : "\(n)", valueNote: n == 0 ? "" : (n == 1 ? "person" : "people"),
-                      identifier: "overview-open-team") { go(.staff) }
-        case .manage:
-            let use: String = ops?.capacityUse.map { "\(Int(saturating: ($0 * 100).rounded()))%" } ?? ""
-            let turnedAway: Bool = h.demandCoverage > 1.05
-            let note: String = h.bottleneck.map { b in turnedAway ? "Turning customers away: \(b.lowercased()) is full" : "Room to grow: demand is the limit" } ?? ""
-            LedgerRow(leading: .glyph(Glyph.capacity), leadingTint: turnedAway ? P.warn : P.inkSoft, title: "Manage", subtitle: note, value: use, valueNote: use.isEmpty ? "" : "capacity used",
-                      identifier: "overview-open-manage") { go(.operations) }
-        case .sales:
-            let items: Int = engine.salesItems(companyID: co.id).count
-            let week: Double = co.lastWeekRevenue
-            LedgerRow(leading: .glyph(Glyph.opsBox), leadingTint: P.inkSoft, title: "Sales", subtitle: items == 0 ? "Nothing on sale yet" : "\(items.countText("item")) on sale",
-                      value: week > 0 ? store.short(week, in: co) : "", valueNote: week > 0 ? "last week" : "", identifier: "overview-open-sales") { go(.salesMarket) }
-        case .stats:
-            let rated: String = h.rating > 0 ? StandingWords.ratingText(h.rating) : ""
-            LedgerRow(leading: .glyph(Glyph.stats), leadingTint: P.inkSoft, title: "Stats", subtitle: "Reputation " + StandingWords.reputation(co.reputation).lowercased(),
-                      value: rated, valueNote: rated.isEmpty ? "" : "rating", identifier: "overview-open-stats") { go(.finances) }
-        case .overview:
-            EmptyView()
-        }
-    }
-
-    // MARK: The trend behind the figures
 
     private func performance(_ co: Company, _ h: CompanyHealth) -> some View {
         let rev = Array(h.revenueSeries.suffix(months)), prof = Array(h.profitSeries.suffix(months))

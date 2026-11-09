@@ -49,7 +49,7 @@ final class NavigationBackTests: TourCase {
     /// A pushed company shows its Overview under the fixed section bar (Overview | Team | Manage | Sales | Stats). When the link did not open one on this device the test is skipped
     /// with a note (the picture is kept), instead of waiting out long timeouts and failing.
     private func assertCompanyOpen(_ from: String) throws {
-        if app.buttons["company-tab-overview"].waitForExistence(timeout: 3) || app.buttons["company-tab-manage"].waitForExistence(timeout: 1) { return }
+        if app.buttons["company-tab-overview"].waitForExistence(timeout: 3) || app.buttons["company-tab-overview"].waitForExistence(timeout: 1) { return }
         shot("90-nav-\(from.lowercased())-link-no-company")
         throw XCTSkip("the link from \(from) did not open a company on this device")
     }
@@ -103,7 +103,7 @@ final class NavigationBackTests: TourCase {
     /// Choosing the tab that is already open returns it to its root: here a company open on its Manage section on Home.
     func testReselectingHomeReturnsToItsRoot() throws {
         guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
-        app.buttons["company-tab-manage"].tap()
+        app.buttons["company-tab-overview"].tap()
         XCTAssertTrue(app.buttons["back-button"].waitForExistence(timeout: 3), "the company should be pushed on Home")
         let pill = app.buttons["tab-Home"]
         guard pill.exists else { throw XCTSkip("no floating tab bar on this device (the iPad sidebar does not report a re-selected row)") }
@@ -157,12 +157,12 @@ final class NavigationBackTests: TourCase {
     /// Opening a company lands on its Overview; the five sections switch in place, so ONE Back leaves the company.
     func testCompanyOpensOnOverviewAndOneBackLeavesIt() throws {
         guard openFirstCompany() else { throw XCTSkip("no company in the showcase game") }
-        for id in ["team", "manage", "sales", "stats", "overview"] {
+        for id in ["people", "supply", "prices", "overview"] {
             let b = app.buttons["company-tab-\(id)"]
             XCTAssertTrue(b.waitForExistence(timeout: 3), "the section bar should have \(id)")
             b.tap()
         }
-        app.buttons["company-tab-sales"].tap()
+        app.buttons["company-tab-prices"].tap()
         XCTAssertTrue(tapRoundBack())
         XCTAssertTrue(waitForHome(5), "one Back from any section returns to Home")
     }
