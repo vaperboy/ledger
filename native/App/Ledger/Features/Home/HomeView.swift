@@ -320,7 +320,6 @@ struct TopPriorities: View {
     var compact: Bool = false
 
     @State private var daily: PlayerGoals.DailyGoal?
-    @State private var showGoals = false
 
     /// With nothing to answer, the player's next goal fills the slot: the ladder goal, else today's goal while it is open.
     private struct Goal {
@@ -348,7 +347,7 @@ struct TopPriorities: View {
         let tick: Int = engine.state.week * 7 + engine.state.day
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HomeGroupLabel(title: next != nil || offerAmbition ? "Your next goal" : "Needs you",
-                           onTap: next != nil || offerAmbition ? { showGoals = true } : nil) { inboxLink(waiting) }
+                           onTap: next != nil || offerAmbition ? { store.openGoals() } : nil) { inboxLink(waiting) }
             if let first {
                 lead(first)
                     .id(first.id)
@@ -369,8 +368,8 @@ struct TopPriorities: View {
             }
         }
         .animation(Motion.quick(reduceMotion), value: first?.id)
-        .centerSheet(isPresented: $showGoals, title: "Your goals", category: .detail, tone: .info) {
-            GoalsPopup(engine: engine, daily: daily, close: { showGoals = false }).environmentObject(store)
+        .centerSheet(isPresented: $store.showGoals, title: "Your goals", category: .detail, tone: .info) {
+            GoalsPopup(engine: engine, daily: daily, close: { store.showGoals = false }).environmentObject(store)
         }
         .onAppear { daily = store.dailyGoal() }
         .onChange(of: tick) { _, _ in daily = store.dailyGoal() }
@@ -402,7 +401,7 @@ struct TopPriorities: View {
         return Button {
             guard opens else { return }
             Haptics.tap()
-            if g.link == "goals" { store.openApp(.goals) } else { _ = store.openLadderLink(g.link) }
+            if g.link == "goals" { store.openGoals() } else { _ = store.openLadderLink(g.link) }
         } label: { card }
         .buttonStyle(PressableStyle())
         .disabled(!opens)

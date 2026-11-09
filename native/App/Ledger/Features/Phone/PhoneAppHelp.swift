@@ -14,7 +14,7 @@ extension PhoneApp {
         case .airStay: return "AirStay lists offices, shops and storage to rent. Pick the place a company works from and see the rent before you commit."
         case .luxury: return "Luxury is where wealth is spent: cars, watches, art, yachts, jets and homes. Nothing here helps a company, but it shows how far you have come."
         case .marketplace: return "The Marketplace sells used items from private sellers. Make an offer and haggle: the price is rarely the last word."
-        case .stats: return "Stats keeps your record: your figures, goals, reports and where your money went. Come here to see how you are doing over time."
+        case .stats: return "Stats shows how things are going: your net worth, how you are playing, and a few facts worth knowing."
         default: return nil
         }
     }

@@ -226,7 +226,7 @@ extension PhoneApp {
         case .bank: return ownBankIsMain ? nil : .forest
         case .accounting: return .forest
         case .inbox: return .inbox
-        case .stats, .goals, .reports, .market, .reviews, .achievements, .settings, .season, .friends, .desk, .rivals, .store: return nil
+        case .stats, .activity, .reports, .market, .reviews, .achievements, .settings, .season, .friends, .desk, .rivals, .store: return nil
         case .airStay: return .airStay
         case .techPro: return .techPro
         case .atlas: return .atlas

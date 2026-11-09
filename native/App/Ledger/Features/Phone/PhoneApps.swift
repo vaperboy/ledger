@@ -5,7 +5,7 @@ import Simulation
 /// The apps on the Phone home screen. Inbox is an app here, not a tab; everything that used to sit in the More sheet is an app too.
 /// Add a screen to the Phone by adding a case, its icon (`Glyph`) and its destination in `PhoneAppScreen`.
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
-    case bank, accounting, inbox, news, weather, stats, goals, luxury, ventures, reports, market, reviews, achievements, settings
+    case bank, accounting, inbox, news, weather, stats, luxury, ventures, reports, activity, market, reviews, achievements, settings
     /// The three shopping and insurance apps (each in its own colours): places to rent, equipment and software, insurance.
     case airStay, techPro, atlas
     /// The second-hand market: every used item for sale, from private sellers, one price talk at a time.
@@ -20,8 +20,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case store
     var id: String { rawValue }
 
-    /// The apps with a tile on the Phone home. Goals and Reports are pages of Stats, and Ventures is in the Projects tab: their cases stay as routes only.
-    static var launcher: [PhoneApp] { allCases.filter { $0 != .goals && $0 != .reports && $0 != .ventures } }
+    /// The apps with a tile on the Phone home. Ventures is in the Projects tab: its case stays as a route only.
+    static var launcher: [PhoneApp] { allCases.filter { $0 != .ventures } }
 
     var title: String {
         switch self {
@@ -31,10 +31,10 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return "News"
         case .weather: return "Weather"
         case .stats: return "Stats"
-        case .goals: return "Goals"
         case .luxury: return "Luxury"
         case .ventures: return "Ventures"
         case .reports: return "Reports"
+        case .activity: return "Activity"
         case .market: return "Market"
         case .reviews: return "Reviews"
         case .achievements: return "Achievements"
@@ -60,10 +60,10 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return Glyph.news
         case .weather: return Glyph.cloud
         case .stats: return Glyph.stats
-        case .goals: return Glyph.goals
         case .luxury: return Glyph.luxury
         case .ventures: return Glyph.ventures
         case .reports: return Glyph.reports
+        case .activity: return Glyph.list
         case .market: return Glyph.market
         case .reviews: return Glyph.reviewStar
         case .achievements: return Glyph.achievements
@@ -88,14 +88,14 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .inbox: return "Decisions, offers and warnings"
         case .news: return "Headlines and the business paper"
         case .weather: return "Conditions, forecast and warnings"
-        case .stats: return "Your record, goals, reports and where money went"
-        case .goals: return "What to aim for next"
+        case .stats: return "How things are going"
         case .luxury: return "Cars, watches, art, yachts, jets and homes"
         case .ventures: return "Startups, funds and stakes"
         case .reports: return "Weekly, monthly and yearly"
+        case .activity: return "Why your money moved, in every account"
         case .market: return "Your markets, rivals, investments and the world"
         case .reviews: return "What customers say about you and your rivals"
-        case .achievements: return "Trophies and awards"
+        case .achievements: return "Your trophies and awards"
         case .settings: return "How much you decide, saving, haptics"
         case .airStay: return "Offices, shops and storage to rent"
         case .techPro: return "Software, hardware, tools and vehicles"
@@ -120,10 +120,10 @@ extension PhoneApp {
         case .news: return Color(hex: 0x7F9BC4)
         case .weather: return Color(hex: 0x93A9BD)
         case .stats: return Color(hex: 0x9A94C4)
-        case .goals: return Color(hex: 0xC8706A)
         case .luxury: return Color(hex: 0xC48CB8)
         case .ventures: return Color(hex: 0xE0BC5E)
         case .reports: return Color(hex: 0x7F9CC0)
+        case .activity: return Color(hex: 0x8FA9B8)
         case .market: return Color(hex: 0x86B890)
         case .reviews: return Color(hex: 0xD2B97C)
         case .achievements: return Color(hex: 0xE0A458)
@@ -137,34 +137,6 @@ extension PhoneApp {
         case .desk: return Color(hex: 0xB9A27A)
         case .rivals: return Color(hex: 0xB78F8A)
         case .store: return Color(hex: 0xE0BC5E)
-        }
-    }
-}
-
-/// A page of an app that has several (Stats with Activity, Goals and Reports; Goals and Achievements). The existing screens are reused unchanged; the app is
-/// a table with one row per page, each opening that page.
-enum PhonePage: String, Hashable, Identifiable {
-    case stats = "Stats", activity = "Activity"
-    case goals = "Goals", reports = "Reports", achievements = "Achievements"
-    var id: String { rawValue }
-
-    var glyph: String {
-        switch self {
-        case .stats: return Glyph.stats
-        case .activity: return Glyph.list
-        case .goals: return Glyph.goals
-        case .reports: return Glyph.reports
-        case .achievements: return Glyph.achievements
-        }
-    }
-
-    var note: String {
-        switch self {
-        case .stats: return "Your figures and how they moved"
-        case .activity: return "Why your money moved, in every account"
-        case .goals: return "What you are working towards"
-        case .reports: return "Weekly, monthly and yearly"
-        case .achievements: return "Trophies and awards"
         }
     }
 }
@@ -193,7 +165,7 @@ extension PhoneApp {
         case .atlas: return .insurance
         case .luxury: return .luxury
         case .ventures: return .venturesFeed
-        case .stats, .goals, .news, .market, .achievements, .season: return .bank
+        case .stats, .activity, .news, .market, .achievements, .season: return .bank
         }
     }
 

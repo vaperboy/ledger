@@ -174,6 +174,9 @@ final class GameStore: ObservableObject {
     @Published private(set) var celebrationQueue: [Celebration] = []
     /// Rises by one when a closed week report is continued while a decision expires within 2 weeks. Home watches it (scroll to Needs you, pulse the pill once).
     @Published var homeCliffhanger: Int = 0
+    /// True while the goals popup is open on Home (the rank tile, the goal card and the Goals shortcut raise it).
+    @Published var showGoals = false
+    func openGoals() { showGoals = true }
     /// Consecutive calendar days played; Home shows it from 3 up, else 0 is returned.
     var playStreakShown: Int {
         guard let e = engine else { return 0 }

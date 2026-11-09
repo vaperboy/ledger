@@ -4,7 +4,7 @@ import Events
 import Simulation
 
 /// The progress strip on Home, two tiles side by side. Career: the worn badge in a ring that fills towards the next rank, the share
-/// done and the next rank's name (opens Goals). Today: the daily goal with its streak badge (no reward), a tick when it is done,
+/// done and the next rank's name (opens the goals popup). Today: the daily goal with its streak badge (no reward), a tick when it is done,
 /// else a tap opens where it is done.
 struct HomeProgressStrip: View {
     @EnvironmentObject var store: GameStore
@@ -45,7 +45,7 @@ struct HomeProgressStrip: View {
     private func careerTile(_ st: Career.RankStatus) -> some View {
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
-        return Button { Haptics.tap(); store.openApp(.goals) } label: {
+        return Button { Haptics.tap(); store.openGoals() } label: {
             tile {
                 HStack(spacing: Theme.Space.s) {
                     ZStack {
@@ -104,7 +104,7 @@ struct HomeProgressStrip: View {
     private func missionTapped() {
         Haptics.tap()
         if let link = daily?.link, !link.isEmpty, store.openLadderLink(link) { return }
-        store.openApp(.goals)
+        store.openGoals()
     }
 
     private func fill(to target: Double) {
@@ -133,7 +133,7 @@ struct HomeMilestoneLine: View {
             let f: Double = HomeProgress.clamp(g.progress)
             Button {
                 Haptics.tap()
-                if g.link.isEmpty || !store.openLadderLink(g.link) { store.openApp(.goals) }
+                if g.link.isEmpty || !store.openLadderLink(g.link) { store.openGoals() }
             } label: {
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     HStack(spacing: Theme.Space.s) {

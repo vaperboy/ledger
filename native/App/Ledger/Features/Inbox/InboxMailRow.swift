@@ -52,7 +52,7 @@ struct InboxMailRow: View {
     var week: Int
     var pinned: Bool
     var openDetail: () -> Void
-    /// Set on the Needs you list: a decision with one to three options is answered from the row (the same confirmation rules apply).
+    /// A decision with one to three options is answered from the row (the same confirmation rules apply).
     var answer: ((Int) -> Void)? = nil
     /// Set while the first-steps guide is running: a gentle marker on the messages worth opening next.
     var guided: Bool = false

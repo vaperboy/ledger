@@ -286,7 +286,7 @@ struct AnnualReportsScreen: View {
     }
 }
 
-/// The row in Stats' More section: opens once the review and report are unlocked (the second company or a first year), never before.
+/// The row under Reports: opens once the review and report are unlocked (the second company or a first year), never before.
 struct AnnualReportsLink: View {
     @EnvironmentObject var store: GameStore
 

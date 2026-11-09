@@ -167,8 +167,6 @@ struct PhoneAppScreen: View {
             WeatherApp()
         case .stats:
             StatsView().appScreen(title: app.title, subtitle: app.subtitle)
-        case .goals:
-            GoalsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .achievements:
             AchievementsView().appScreen(title: app.title, subtitle: app.subtitle)
         case .luxury:
@@ -177,6 +175,8 @@ struct PhoneAppScreen: View {
             VenturesFeedApp()
         case .reports:
             ReportsScreen()
+        case .activity:
+            ActivityView().appScreen(title: app.title, subtitle: app.subtitle)
         case .market:
             // The Market app draws its own header, with its five parts under it.
             MarketApp()

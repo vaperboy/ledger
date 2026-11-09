@@ -21,7 +21,7 @@ struct UpdateMarks: Codable, Equatable {
 
 /// The apps whose updates are told by messages, and how a message finds its app.
 enum UpdateFeed {
-    static let messageApps: [PhoneApp] = [.inbox, .bank, .accounting, .market, .news, .weather, .stats, .airStay, .techPro, .atlas, .marketplace]
+    static let messageApps: [PhoneApp] = [.inbox, .bank, .accounting, .market, .news, .weather, .achievements, .airStay, .techPro, .atlas, .marketplace]
 
     /// The app a message belongs to, from who sent it. Anything unknown stays in the Inbox.
     static func app(of m: Message) -> PhoneApp {
@@ -36,7 +36,7 @@ enum UpdateFeed {
         if has(["payroll", "tax", "accountant", "finance manager"]) { return .accounting }
         if has(["market", "competition", "consumer authority", "tourism", "industry association", "business broker", "customers"]) { return .market }
         if has(["news"]) { return .news }
-        if has(["trophy", "award", "ambition"]) { return .stats }
+        if has(["trophy", "award", "ambition"]) { return .achievements }
         return .inbox
     }
 
@@ -91,7 +91,7 @@ enum UpdateFeed {
             return (unseen ? e.bigWeatherWarnings().count : 0) + freshMessages(e, app, marks: marks).count
         case .marketplace:
             return freshListings(e, marks: marks) + freshMessages(e, app, marks: marks).count
-        case .bank, .stats, .airStay, .techPro, .atlas:
+        case .bank, .achievements, .airStay, .techPro, .atlas:
             return freshMessages(e, app, marks: marks).count
         default:
             return 0
