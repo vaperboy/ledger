@@ -1,5 +1,6 @@
--- Development seed: invented simulated players only, no real user data. profiles.id references auth.users, so each gets a
--- placeholder auth row that cannot sign in (no email, no password, banned).
+-- Development seed: invented stand-in players only, no real user data. They never confirm 18+, so the election cycle ignores them and shared
+-- features stay closed to them. profiles.id references auth.users, so each gets a placeholder auth row that cannot sign in (no email,
+-- no password, banned).
 do $$
 declare r record; uid uuid;
 begin
@@ -13,8 +14,8 @@ begin
     uid := gen_random_uuid();
     insert into auth.users (id, aud, role, banned_until, created_at, updated_at)
       values (uid, 'authenticated', 'authenticated', 'infinity', now(), now());
-    insert into public.profiles (id, display_name, country_code, level, privacy, badges, game_week, trades_completed, is_simulated)
-      values (uid, r.n, r.c, r.lvl, r.pr::public.privacy_level, r.bd, r.lvl * 12, r.lvl * 3, true);
+    insert into public.profiles (id, display_name, country_code, level, privacy, badges, game_week, trades_completed)
+      values (uid, r.n, r.c, r.lvl, r.pr::public.privacy_level, r.bd, r.lvl * 12, r.lvl * 3);
     insert into public.companies_public (owner_id, company_key, name, trade, city, country, health)
       values (uid, 'seed-1', r.n || ' & Co', 'Bakery', 'Springfield', r.c, 'steady');
   end loop;

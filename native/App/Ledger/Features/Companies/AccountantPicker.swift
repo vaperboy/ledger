@@ -36,15 +36,15 @@ struct AccountantStep: View {
     var countryCode: String
     var currency: Currency
     @Binding var accountantID: Int?
-    var service: AccountantOfficeService = MockAccountantOfficeService()
+    var service: AccountantOfficeService = AccountantOfficeBackend.make()
     /// The player office chosen, if any; the engine accountant it is billed as is what `accountantID` holds.
     @State private var officeID: String?
+    @State private var offices: [AccountantOffice] = []
 
     var body: some View {
         if let e = store.engine {
             let offers: [AccountantOffer] = e.accountantOffers(countryCode: countryCode)
             let chosen: Int? = officeID == nil ? (accountantID ?? offers.first { (o: AccountantOffer) -> Bool in o.isDefault }?.id) : nil
-            let offices: [AccountantOffice] = service.offices(countryCode: countryCode, offers: offers)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Accountant").capsLabel()
                 Text("Your company keeps its books with one. The fee is paid each month and you can change it later in Atlas.")
@@ -58,7 +58,7 @@ struct AccountantStep: View {
                     VStack(spacing: Theme.Space.s) {
                         ForEach(offices) { (office: AccountantOffice) in
                             if let o = offers.first(where: { (x: AccountantOffer) -> Bool in x.id == office.offerID }) {
-                                ShopChoiceRow(title: office.officeName, subtitle: "Run by \(office.ownerName), \(office.city) \u{00B7} \u{2605} " + String(format: "%.1f", o.rating),
+                                ShopChoiceRow(title: office.officeName, subtitle: "Run by \(office.ownerName), \(office.city) \u{00B7} \u{2605} " + String(format: "%.1f", office.rating ?? o.rating),
                                               trailing: currency.tidyShort(o.monthlyFee) + "/mo", selected: officeID == office.id,
                                               identifier: "accountant-" + office.id) {
                                     officeID = office.id
@@ -69,7 +69,10 @@ struct AccountantStep: View {
                     }
                 }
             }
-            .task(id: countryCode) { store.act { $0.prepareAccountants(countryCode: countryCode) } }
+            .task(id: countryCode) {
+                store.act { $0.prepareAccountants(countryCode: countryCode) }
+                if let ready = store.engine { offices = await service.offices(countryCode: countryCode, offers: ready.accountantOffers(countryCode: countryCode)) }
+            }
         }
     }
 }
