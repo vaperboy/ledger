@@ -95,11 +95,15 @@ struct PlayerProfileView: View {
             case .none:
                 Button("Add friend") { run { try await online.service.sendFriendRequest(to: p.id) } }
                     .buttonStyle(PrimaryButtonStyle(fullWidth: true)).accessibilityIdentifier("profile-add-friend")
+                Text("If you add \(p.displayName), they get a request. Once they accept you are friends: friends see the companies you run (as your privacy setting allows) and can be invited into a joint venture. You can remove them any time.")
+                    .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             case .requestSent:
                 Text("Friend request sent").textStyle(.body, tint: Theme.inkSoft)
                 Button("Cancel request") { run { try await online.service.cancelFriendRequest(to: p.id) } }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             case .requestReceived:
                 Button("Accept request") { run { try await online.service.acceptFriendRequest(from: p.id) } }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                Text("If you accept, you and \(p.displayName) are friends: friends see the companies you run (as your privacy setting allows) and can be invited into a joint venture.")
+                    .textStyle(.caption, tint: Theme.inkFaint).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 Button("Decline") { run { try await online.service.declineFriendRequest(from: p.id) } }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
             case .friend:
                 Button("Remove friend") {

@@ -1,4 +1,5 @@
 # What's new
+- Joint ventures are safer and clearer: a company with partners is sold only by a board vote (and not under 80% of its value), partners cannot leave in the lock-up and can be bought out after it, board meetings remind you to vote, and a capital call no longer creates money; startups cost more to open the bigger the plan, a season warns before unclaimed rewards are lost, and a big move in the electricity price goes in the news
 - One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
 - A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
 - Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies

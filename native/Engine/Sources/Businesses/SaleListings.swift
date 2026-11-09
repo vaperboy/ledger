@@ -13,9 +13,24 @@ public enum SaleListings {
     public static let branchNote = "A branch has no shares of its own: sell it as a going concern or close it from the chain."
     public static func isListed(_ s: GameState, companyID: Int) -> Bool { (s.rest["sales"]?.array ?? []).contains { $0["co"].int == companyID } }
 
-    /// Why a route cannot be used for this company (nil when it can).
-    public static func routeProblem(_ s: GameState, companyID: Int, route: String, pct: Int) -> String? {
+    /// A company with partners (a joint venture) is sold only when a board meeting votes for it. Nil when nothing stands in the way:
+    /// no partners, or the board's own sale is running (`jvgo` marks it while it does).
+    public static func boardBlock(_ s: GameState, companyID: Int) -> String? {
+        guard let co = s.company(companyID) else { return nil }
+        let members = co.value("jv")["members"].array
+        guard members.contains(where: { $0["id"].string != "me" }) else { return nil }
+        if (s.rest["jvgo"]?.int ?? 0) == companyID { return nil }
+        return "\(co.name) has partners. It is sold only when a board meeting votes for it."
+    }
+    /// True for a listing the board voted for (its offers may be accepted).
+    public static func isBoardListing(_ s: GameState, companyID: Int) -> Bool {
+        (s.rest["sales"]?.array ?? []).contains { $0["co"].int == companyID && $0["jv"].int == 1 }
+    }
+
+    /// Why a route cannot be used for this company (nil when it can). `board` is true for the board's own sale of a joint venture.
+    public static func routeProblem(_ s: GameState, companyID: Int, route: String, pct: Int, board: Bool = false) -> String? {
         if let co = s.company(companyID), s.isBranch(co) { return branchNote }
+        if pct >= 100, !board, let why = boardBlock(s, companyID: companyID) { return why }
         guard let co = s.company(companyID), canSell(s, companyID: companyID) else { return "This company cannot be sold now." }
         if isListed(s, companyID: companyID) { return "It is already on the market." }
         if pct < 100 {
@@ -28,7 +43,7 @@ public enum SaleListings {
 
     @discardableResult
     public static func start(_ s: inout GameState, companyID: Int, route: String, pct: Int = 100, extra: [String: JSONValue] = [:]) -> Bool {
-        guard routeProblem(s, companyID: companyID, route: route, pct: pct) == nil else { return false }
+        guard routeProblem(s, companyID: companyID, route: route, pct: pct, board: extra["jv"] != nil) == nil else { return false }
         var rec: [String: JSONValue] = ["co": .number(Double(companyID)), "m": .string(route), "w0": .number(Double(s.week)), "pct": .number(Double(pct)), "offers": .array([])]
         for (k, v) in extra { rec[k] = v }
         s.rest["sales"] = .array((s.rest["sales"]?.array ?? []) + [.object(rec)])

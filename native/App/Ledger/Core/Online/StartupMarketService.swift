@@ -139,7 +139,9 @@ final class StartupMarketStore: ObservableObject {
                            released > 0 ? "\(cur.tidyShort(released)) of investors' money is released from escrow to \(st.name). Their shares are now on its cap table, so your share is smaller." : "No investor money was waiting for this stage.", tone: "good")
             }
             st.assets = p.assets
-            st.weeklyProfit = Array((st.weeklyProfit + [p.weeklyProfit]).suffix(CrowdStartupRules.recentProfitWeeks))
+            // One entry per game week: this runs every day, so within a week the latest figure replaces the last entry instead of piling up.
+            if today % 7 == 0 || st.weeklyProfit.isEmpty { st.weeklyProfit.append(p.weeklyProfit) } else { st.weeklyProfit[st.weeklyProfit.count - 1] = p.weeklyProfit }
+            st.weeklyProfit = Array(st.weeklyProfit.suffix(CrowdStartupRules.recentProfitWeeks))
             if changed || st != service.startup(st.id) { service.update(st) }
         }
     }

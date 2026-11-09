@@ -22,6 +22,8 @@ public enum EnergyMarket {
     public static let sensitivity = 1.6
     /// The most the player's plants can add to supply, as a share of the world's baseline.
     public static let playerSupplyCap = 0.25
+    /// The move over twelve weeks (as a share of the price) that is worth a news item.
+    public static let alertMove = 0.15
 
     /// The index the market is heading for at this demand and supply.
     public static func target(demand: Double, supply: Double) -> Double {
@@ -82,6 +84,17 @@ public enum EnergyMarket {
         h.append(.number(s.economy.power))
         if h.count > 13 { h.removeFirst(h.count - 13) }
         m["h"] = .array(h)
+        // A big move over twelve weeks goes in the news (at most once a quarter), so a rising or falling power bill is never a surprise.
+        if h.count > 12, let then = h.first?.double, then > 0 {
+            let change = s.economy.power / then - 1
+            let lastAlert = m["al"].isNull ? -1_000 : m["al"].int
+            if abs(change) >= alertMove, s.week - lastAlert >= 12 {
+                m["al"] = .number(Double(s.week))
+                let pct = Int((abs(change) * 100).rounded())
+                s.news(change > 0 ? "Electricity is \(pct)% dearer than three months ago. Companies that use a lot of power pay more." : "Electricity is \(pct)% cheaper than three months ago. Companies that use a lot of power pay less.",
+                       tone: change > 0 ? "bad" : "good")
+            }
+        }
         var x = m["x"].object
         for (k, v) in goods(s.economy) {
             var a = (x[k] ?? .array([])).array

@@ -26,7 +26,8 @@ public enum CrowdStartups {
         let cur = fc.homeCurrency(s)
         let c = fc.homeCountry(s)
         let plan = CrowdStartupRules.Plan(cost: p.seed * planFactor, founderPutIn: p.seed)
-        return FoundQuote(entryCost: cur.scaledPrice(CrowdStartupRules.entryCostReference), founderPutIn: p.seed, registration: c.registrationFee, plan: plan)
+        let entry = max(cur.scaledPrice(CrowdStartupRules.entryCostReference), plan.cost * CrowdStartupRules.entryCostPlanShare)
+        return FoundQuote(entryCost: jsRound(entry), founderPutIn: p.seed, registration: c.registrationFee, plan: plan)
     }
 
     /// Found a startup that other players can fund: the entry cost leaves for good, the founder's money goes into the new company, and the
@@ -87,7 +88,8 @@ public enum CrowdStartups {
         let total = CapTable.table(s.companies[i]).total
         CapTable.issue(&s, i, newShares: CapTable.sharesForPercent(min(pct, 49), total: total), to: "Crowd investors (\(CrowdStartupRules.stageNames[stage].lowercased()))", paid: released)
         let own = s.companies[i].ownership
-        Startups.edit(&s, cid) { $0["pct"] = .number(own) }
+        // The released money is cash in the company, so its value rises by that much now rather than at the next weekly refresh.
+        Startups.edit(&s, cid) { $0["pct"] = .number(own); $0["val"] = .number($0["val"].double + released) }
         s.note("\(CrowdStartupRules.milestoneNames[stage]): \(Int(released.rounded())) of investors' money is released to \(st.name).", tone: "good", companyID: cid)
         return released
     }

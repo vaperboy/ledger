@@ -197,7 +197,7 @@ public enum CompanySetup {
     }
 
     @discardableResult
-    public static func buyEquipment(_ s: inout GameState, companyID: Int, equipmentID: String, quantity q: Double, data: GameData, preferFinancing: Bool = false) -> Bool {
+    public static func buyEquipment(_ s: inout GameState, companyID: Int, equipmentID: String, quantity q: Double, data: GameData, preferFinancing: Bool = false, forceFinancing: Bool = false) -> Bool {
         guard let i = s.companyIndex(companyID), let bd = data.catalog[s.companies[i].type], let e = bd.equipment.first(where: { $0.id == equipmentID }) else { return false }
         let w = World(state: s, data: data)
         let co = s.companies[i]
@@ -207,7 +207,8 @@ public enum CompanySetup {
                 // Like a real firm (and the original's autoSetup): buy outright when the cash is there, otherwise finance with
                 // 20% down and a five-year loan secured on the vehicle, otherwise lease. Original: `buyVehCore`.
                 let cash = s.companies[i].cash
-                let mode = cash >= price && !(preferFinancing && cash < price * 3) ? "own" : cash >= price * 0.2 ? "fin" : "lease"
+                // `forceFinancing` (a manager buying within a budget that counts the 20% down payment) never buys a vehicle outright.
+                let mode = cash >= price && !forceFinancing && !(preferFinancing && cash < price * 3) ? "own" : cash >= price * 0.2 ? "fin" : "lease"
                 _ = addVehicle(&s, companyIndex: i, e, model: model, modelName: v.name, price: price, mode: mode, brand: nil, data: data)
             }
             return true

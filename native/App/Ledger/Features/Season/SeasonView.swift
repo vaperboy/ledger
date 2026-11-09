@@ -41,6 +41,11 @@ struct SeasonView: View {
             ProgressView(value: pass.tierProgress).tint(accent)
             Text(left == 1 ? "Ends tomorrow" : "\(left) days left in this season").textStyle(.caption)
             Text(todayXP == 0 ? "You have earned the most XP a day gives. More tomorrow." : "Up to \(todayXP) more XP can be earned today.").textStyle(.caption)
+            if let ending = pass.endingNote(today: model.today, isPlus: ent.isPlus) {
+                Text(ending).textStyle(.caption, tint: Theme.warn).fixedSize(horizontal: false, vertical: true)
+            } else if let missed = pass.missedNote, left > SeasonPass.seasonDays - 7 {
+                Text(missed).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            }
             Button { claimAll() } label: {
                 Text(open == 0 ? "Nothing to claim yet" : open == 1 ? "Claim 1 reward" : "Claim \(open) rewards")
                     .textStyle(.headline, tint: open == 0 ? Theme.inkSoft : Theme.accentInk)
@@ -136,8 +141,17 @@ struct SeasonView: View {
     /// The standard small success popup, naming what was claimed.
     private func announce(_ rewards: [SeasonReward]) {
         Haptics.success()
-        let text: String = rewards.count <= 3 ? rewards.map(\.title).joined(separator: ", ") : "\(rewards.count) rewards, including \(rewards[0].title)"
+        let text: String = rewards.count <= 3 ? rewards.map(effect).joined(separator: "\n") : "\(rewards.count) rewards, including \(effect(rewards[0]))"
         store.tell(rewards.count == 1 ? "Reward claimed" : "Rewards claimed", text, tone: "good")
+    }
+
+    /// What claiming one reward did, in words: gold goes to the wallet, a box waits in the Store, the rest joins the collection below.
+    private func effect(_ r: SeasonReward) -> String {
+        switch r.kind {
+        case .gold: return "\(r.title) added to your gold wallet in the Store."
+        case .box: return "\(r.title) waiting in the Store, free to open."
+        default: return "\(r.title) added to your collection below."
+        }
     }
 
     /// Premium needs Ledger Plus itself (Pro alone is not enough), so the paywall is asked for directly.

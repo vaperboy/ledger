@@ -76,6 +76,27 @@ final class ManagerOpeningTests: XCTestCase {
 }
 
 extension ManagerOpeningTests {
+    /// The manager's budget counts a vehicle at its 20% down payment, so it is bought on finance and never outright for the full price.
+    func testAManagerBuysACarOnFinanceNotOutright() throws {
+        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 4)
+        var id = 0
+        e.update { s, data, ctx in
+            Ledger.move(&s, .me, 500_000_000, why: "Test funds")
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "staffing", cityID: s.player.cityID, data: data, context: ctx) { id = i }
+            Payments.injectCash(&s, companyID: id, amount: 300_000_000)
+        }
+        guard id != 0 else { throw XCTSkip("could not start the company") }
+        var outright = e
+        let cash0 = try XCTUnwrap(e.state.company(id)).cash
+        e.update { s, data, _ in _ = CompanySetup.buyEquipment(&s, companyID: id, equipmentID: "rcar", quantity: 1, data: data, forceFinancing: true) }
+        outright.update { s, data, _ in _ = CompanySetup.buyEquipment(&s, companyID: id, equipmentID: "rcar", quantity: 1, data: data) }
+        let financed = cash0 - (try XCTUnwrap(e.state.company(id)).cash)
+        let full = cash0 - (try XCTUnwrap(outright.state.company(id)).cash)
+        XCTAssertGreaterThan(full, 0)
+        XCTAssertLessThan(financed, full * 0.5, "only the down payment leaves the company")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
     func testAnItemAboveTheBudgetIsLeftToTheOwner() throws {
         var (e, id) = try openedWithManager("gym")
         let bd = try XCTUnwrap(e.data.catalog["gym"])

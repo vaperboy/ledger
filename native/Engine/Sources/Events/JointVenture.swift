@@ -436,7 +436,101 @@ public enum JointVenture {
         st.meetings[k].closedWeek = s.week
         let m = st.meetings[k]
         let body = lines.isEmpty ? "Nothing was on the agenda." : lines.joined(separator: "\n")
-        s.addMessage(from: "\(co.name) board", title: "\(co.name) meeting result: \(m.planned ? "quarterly" : m.reason)", body: body, companyID: co.id, tone: m.items.contains { $0.applied } ? "good" : "n")
+        let resultTitle = "\(co.name) meeting result: \(m.planned ? "quarterly" : m.reason)"
+        s.addMessage(from: "\(co.name) board", title: resultTitle, body: body, companyID: co.id, tone: m.items.contains { $0.applied } ? "good" : "n")
+        st.notes.append(Note(id: s.makeID(), meetingID: m.id, companyID: co.id, fireWeek: s.week, title: resultTitle, body: body))
+    }
+
+    // MARK: Leaving and selling shares
+
+    /// What buying a partner's shares back does, worked out before anything moves.
+    public struct ExitTerms: Equatable, Sendable {
+        public var name: String
+        public var shares: Int
+        public var pct: Double
+        public var price: Double
+        public var locked: Bool
+        public var lockUntil: Int
+        /// Why it cannot be done now; nil when it can.
+        public var problem: String?
+        /// "If you do this, this will happen", in plain lines.
+        public var lines: [String]
+    }
+
+    /// A partner leaves or sells only after the lock-up. The price is their share of what the company is worth now, with no premium either way.
+    public static func exitTerms(_ s: GameState, companyID: Int, memberID: String, data: GameData, context fc: FinanceContext) -> ExitTerms? {
+        guard let co = s.company(companyID), let st = state(co), let m = st.members.first(where: { $0.id == memberID && $0.id != Member.me }) else { return nil }
+        let t = CapTable.table(co)
+        let shares = t.holders.first { $0.name == m.name }?.shares ?? 0
+        let pct = Double(shares) / Double(max(1, t.total)) * 100
+        let price = jsRound(companyValue(s, co, data: data) * Double(shares) / Double(max(1, t.total)))
+        let cur = fc.currency(co.countryCode, s)
+        let locked = JVRules.isLocked(lockUntil: m.lockUntil, week: s.week)
+        var problem: String?
+        if locked { problem = "\(m.name) cannot sell or leave until \(GameCalendar.dateString(week: m.lockUntil))." }
+        else if shares <= 0 { problem = "\(m.name) holds no shares." }
+        else if Payments.liquid(s) < price { problem = "You need \(cur.display(price)) in cash to buy their shares." }
+        let after = Double(t.you + shares) / Double(max(1, t.total)) * 100
+        let lines = [
+            "You pay \(cur.display(price)) from your own money: \(String(format: "%.1f", pct))% of what \(co.name) is worth now. Nobody gets a premium.",
+            "\(m.name) leaves the board and their shares become yours.",
+            "Your share of \(co.name) goes from \(String(format: "%.1f", t.youPct))% to \(String(format: "%.1f", after))%.",
+        ]
+        return ExitTerms(name: m.name, shares: shares, pct: pct, price: price, locked: locked, lockUntil: m.lockUntil, problem: problem, lines: lines)
+    }
+
+    /// You buy a partner's shares back (they have asked to leave, or you offer and they agree). Returns why it did not go through.
+    @discardableResult
+    public static func buyOut(_ s: inout GameState, companyID: Int, memberID: String, data: GameData, context fc: FinanceContext) -> String? {
+        guard let i = s.companyIndex(companyID), var st = state(s.companies[i]), let k = st.members.firstIndex(where: { $0.id == memberID && $0.id != Member.me }),
+              let t = exitTerms(s, companyID: companyID, memberID: memberID, data: data, context: fc) else { return "That partner is no longer here." }
+        if let why = t.problem { return why }
+        let m = st.members[k]
+        let co = s.companies[i]
+        Payments.playerPays(&s, t.price, label: "Bought \(m.name)'s shares in \(co.name)", companyID: companyID)
+        CapTable.buyFromHolder(&s, i, holder: m.name)
+        st.members.remove(at: k)
+        save(&s, i, st)
+        let cur = fc.currency(co.countryCode, s)
+        s.note("\(m.name) left \(co.name). You bought their \(String(format: "%.1f", t.pct))% for \(cur.display(t.price)).", tone: "n", companyID: companyID)
+        return nil
+    }
+
+    /// A partner asks to sell or leave. Inside the lock-up it is refused and nothing is sent; after it, you are told what buying them out costs.
+    @discardableResult
+    public static func partnerWantsOut(_ s: inout GameState, companyID: Int, memberID: String, data: GameData, context fc: FinanceContext) -> String? {
+        guard let t = exitTerms(s, companyID: companyID, memberID: memberID, data: data, context: fc), let co = s.company(companyID) else { return "That partner is no longer here." }
+        if t.locked { return t.problem }
+        let cur = fc.currency(co.countryCode, s)
+        s.addMessage(from: "\(co.name) partners", title: "\(t.name) wants to sell", body: "\(t.name) wants to leave \(co.name) and sell \(String(format: "%.1f", t.pct))% at what it is worth now: \(cur.display(t.price)). Buy them out from the Partners section of the company, or keep them as a partner.", companyID: co.id, tone: "n")
+        return nil
+    }
+
+    /// After a sale of the whole company: what each owner's shares got, in one message. (Partners' own money is theirs; this is the record.)
+    static func announceSale(_ s: inout GameState, company co: Company, price: Double, buyer: String, context fc: FinanceContext) {
+        guard let st = state(co), !partners(st).isEmpty else { return }
+        let cur = fc.currency(co.countryCode, s)
+        let pay = JVRules.dissolvePayout(value: price, shares: shareMap(co, st))
+        let lines = st.members.map { m in "\(m.id == Member.me ? "You" : m.name) \(cur.display(pay[m.id] ?? 0))" }
+        s.addMessage(from: "\(co.name) board", title: "\(co.name) was sold to \(buyer)", body: "Paid out by shares from \(cur.display(price)): " + lines.joined(separator: ", ") + ".", companyID: co.id, tone: "good")
+    }
+
+    // MARK: Reminders
+
+    /// The board meeting waiting for your vote that the app should remind you of: an emergency meeting before a planned one, the soonest first.
+    public struct PendingVote: Equatable, Sendable {
+        public var companyName: String
+        public var urgent: Bool
+        public var reason: String
+        public var weeksLeft: Int
+    }
+    public static func pendingVote(_ s: GameState) -> PendingVote? {
+        var found: [(Meeting, Company)] = []
+        for co in venture(s) {
+            for m in state(co)?.meetings ?? [] where !m.closed && m.opened <= s.week && s.week <= m.deadline && m.items.contains(where: { $0.votes[Member.me] == nil }) { found.append((m, co)) }
+        }
+        guard let hit = found.min(by: { ($0.0.urgent ? 0 : 1, $0.0.deadline) < ($1.0.urgent ? 0 : 1, $1.0.deadline) }) else { return nil }
+        return PendingVote(companyName: hit.1.name, urgent: hit.0.urgent, reason: hit.0.reason, weeksLeft: max(0, hit.0.deadline - s.week))
     }
 
     // MARK: Carrying out a passed item
@@ -468,33 +562,28 @@ public enum JointVenture {
             default: return (false, "The manager found would not take the job at the going rate. Put it again.")
             }
         case .sell:
-            if let why = SaleListings.routeProblem(s, companyID: co.id, route: "broker", pct: 100) { return (false, why) }
-            return SaleListings.start(&s, companyID: co.id, route: "broker") ? (true, "\(co.name) is listed with a broker. When it sells, every owner is paid by their shares.") : (false, "\(co.name) cannot be listed now.")
+            if let why = SaleListings.routeProblem(s, companyID: co.id, route: "broker", pct: 100, board: true) { return (false, why) }
+            let started = SaleListings.start(&s, companyID: co.id, route: "broker", extra: ["jv": .number(1)])
+            return started ? (true, "\(co.name) is listed with a broker. Offers come to its Sell page for you to answer for all owners; none under \(Int(JVRules.lowestSaleShare * 100))% of its value is accepted. When it sells, every owner is paid by their shares.") : (false, "\(co.name) cannot be listed now.")
         case .partner:
             if let why = inviteProblem(s, co, st, linkKey: it.linkKey, pct: it.pct, price: it.price, myLinkKeys: [], data: data) { return (false, why) }
             makeInvite(&s, i, &st, playerID: it.playerID, name: it.name, linkKey: it.linkKey, role: it.role, mock: it.mock, pct: it.pct, price: it.price)
             return (true, "\(it.name) was invited. They join when they accept.")
         case .capital:
+            // Only your own share is real money here: a sample partner has no account to take cash from, and money booked for them would come from nowhere.
             let t = CapTable.table(co)
             let mine = jsRound(it.amount * t.youPct / 100)
             guard Payments.liquid(s) >= mine else { return (false, "You do not have your \(cur.display(mine)) for it.") }
             if mine > 0 { _ = Payments.injectCash(&s, companyID: co.id, amount: mine) }
-            var paid = mine
-            var list = s.companies[i].value("holders").array
-            for h in t.holders where h.shares > 0 {
-                let part = jsRound(it.amount * h.pct / 100)
-                guard part > 0 else { continue }
-                Payments.companyReceives(&s, companyID: co.id, amount: part, category: nil, label: "Capital call: \(h.name)")
-                if let k = list.firstIndex(where: { $0["name"].string == h.name }) { list[k]["in"] = .number(list[k]["in"].double + part) }
-                paid += part
-            }
-            s.companies[i].set("holders", .array(list))
-            return (true, "\(cur.display(paid)) came in from the owners by their shares.")
+            return (true, "You put in \(cur.display(mine)), your share of the call. Partners were not asked for cash.")
         case .dissolve:
             let value = companyValue(s, s.companies[i], data: data)
             let shares = shareMap(s.companies[i], st)
             let pay = JVRules.dissolvePayout(value: value, shares: shares)
-            guard CompanySale.complete(&s, companyIndex: i, buyer: "Dissolution", price: value, data: data, context: fc) != nil else { return (false, "The company cannot be dissolved now.") }
+            s.rest["jvgo"] = .number(Double(co.id))   // the board's own decision: the sale guard lets this one through
+            let done = CompanySale.complete(&s, companyIndex: i, buyer: "Dissolution", price: value, data: data, context: fc)
+            s.rest["jvgo"] = nil
+            guard done != nil else { return (false, "The company cannot be dissolved now.") }
             let others = st.members.filter { $0.id != Member.me }.map { "\($0.name) \(cur.display(pay[$0.id] ?? 0))" }.joined(separator: ", ")
             return (true, "Paid out by shares from a value of \(cur.display(value)): you \(cur.display(pay[Member.me] ?? 0))" + (others.isEmpty ? "." : "; \(others)."))
         }

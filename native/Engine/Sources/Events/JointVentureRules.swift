@@ -23,6 +23,8 @@ public enum JVRules {
     /// A partner always keeps at least this share of the votes after a new issue is made to somebody else (no one is diluted to nothing).
     public static let smallestStakePercent = 2.0
     public static let largestInvitePercent = 49.0
+    /// The board's sale does not close below this share of the estimated value, so one owner cannot sell the others' shares cheaply.
+    public static let lowestSaleShare = 0.8
 
     // MARK: Votes
 
@@ -164,9 +166,9 @@ public enum JVRules {
         case .dividend: return "\(money(amount)) is paid out to all owners by their shares. The company keeps two weeks of costs in the bank."
         case .price: return steps < 0 ? "Prices go down one step: more customers, less money on each sale." : "Prices go up one step: less volume, more money on each sale."
         case .hire: return "A manager is hired at the going rate and runs the company day to day. Their pay comes out of the company."
-        case .sell: return "The company is listed with a broker. Offers come in; when it sells, every owner is paid by their shares."
+        case .sell: return "The company is listed with a broker (4% fee). Offers come in over the next weeks; you answer them for all owners, and none below \(Int(lowestSaleShare * 100))% of its value is accepted. When it sells, every owner is paid by their shares."
         case .partner: return "\(name) is invited to join for \(Int(pct.rounded()))% of the company, paying \(money(price)). New shares are made, so every owner's share becomes a little smaller."
-        case .capital: return "Each owner puts in their share of \(money(amount)), by their shares. Nobody's share changes."
+        case .capital: return "You put in your share of \(money(amount)). Sample partners cannot be asked for cash, so the company gets only what you put in. Nobody's share changes."
         case .dissolve: return "The company is closed. Its real value is paid out to the owners by their shares. Nobody gets a premium."
         }
     }

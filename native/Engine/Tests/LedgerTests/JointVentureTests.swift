@@ -268,7 +268,7 @@ final class JointVentureTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    func testCapitalCallTakesYourShareAndEveryPartnersShare() throws {
+    func testCapitalCallTakesOnlyYourShareBecausePartnerMoneyWouldComeFromNowhere() throws {
         var (e, id) = try makeCompany(seed: 80)
         try join(&e, id, friendA, pct: 25)
         let made = e.jvMakeItem(companyID: id, kind: .capital, amount: 1_000_000)
@@ -278,7 +278,7 @@ final class JointVentureTests: XCTestCase {
         tick(&e, weeks: 2)
         let m = try XCTUnwrap(e.jointVenture(companyID: id)?.meetings.first { $0.id == mid })
         XCTAssertTrue(m.items[0].applied, m.items[0].result)
-        XCTAssertEqual(e.state.company(id)!.cash - cash, 1_000_000, accuracy: 2, "the whole call arrives")
+        XCTAssertEqual(e.state.company(id)!.cash - cash, 750_000, accuracy: 2, "only what you put in arrives")
         XCTAssertEqual(mine - e.state.cash, 750_000, accuracy: 2, "you pay your 75 percent")
         XCTAssertEqual(e.state.company(id)!.ownership, 75, accuracy: 0.01, "nobody's share changed")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
@@ -307,5 +307,97 @@ final class JointVentureTests: XCTestCase {
         XCTAssertTrue(m.items[0].applied, m.items[0].result)
         XCTAssertEqual(e.state.cash - cash, value * 0.8, accuracy: max(5, value * 0.001), "real value times your share, no premium")
         XCTAssertEqual(e.state.company(id)!.status, .sold)
+    }
+
+    // MARK: Selling, leaving, reminders
+
+    /// Gives the board's listing one offer, as the weekly market would.
+    private func putOffer(_ e: inout GameEngine, _ id: Int, price: Double) {
+        e.update { s, _, _ in
+            var list = s.rest["sales"]?.array ?? []
+            guard let k = list.firstIndex(where: { $0["co"].int == id }) else { return }
+            list[k]["offers"] = .array([.object(["id": 901, "k": "private", "name": "Acme Buyers", "price": .number(price), "note": "", "exp": .number(Double(s.week + 6)), "ctr": 0])])
+            s.rest["sales"] = .array(list)
+        }
+    }
+
+    func testOwnerCannotSellACompanyWithPartnersThroughTheOldFlow() throws {
+        var (e, id) = try makeCompany(seed: 90)
+        XCTAssertNil(SaleListings.routeProblem(e.state, companyID: id, route: "broker", pct: 100), "alone, the owner sells as before")
+        try join(&e, id, friendA, pct: 20)
+        XCTAssertNotNil(SaleListings.routeProblem(e.state, companyID: id, route: "broker", pct: 100))
+        XCTAssertFalse(e.startSale(companyID: id, route: "broker"))
+        XCTAssertFalse(e.startAuction(companyID: id, reserve: 1_000))
+        XCTAssertTrue(e.groupBuyers(companyID: id).isEmpty)
+        XCTAssertNil(e.sellToGroup(companyID: id, groupID: "any"))
+        guard case .refused = e.mergeWithRival(companyID: id, rivalID: 1, percent: 30) else { return XCTFail("a merger is the board's decision too") }
+        XCTAssertEqual(e.state.company(id)!.status, .open)
+    }
+
+    func testPassedSellItemListsTheCompanyAndOnlyAFairOfferClosesIt() throws {
+        var (e, id) = try makeCompany(seed: 91)
+        try join(&e, id, friendA, pct: 20)
+        let item = try XCTUnwrap(e.jvMakeItem(companyID: id, kind: .sell).item)
+        guard case .called(let mid) = e.jvCallUrgent(companyID: id, reason: "Time to sell", items: [item]) else { return XCTFail() }
+        tick(&e, weeks: 2)
+        let m = try XCTUnwrap(e.jointVenture(companyID: id)?.meetings.first { $0.id == mid })
+        XCTAssertTrue(m.items[0].applied, m.items[0].result)
+        XCTAssertTrue(SaleListings.isBoardListing(e.state, companyID: id))
+        let value = CompanySale.estimatedValue(e.state, companyID: id, data: e.data)
+        putOffer(&e, id, price: value * 0.5)
+        var low: Double?
+        e.update { s, d, c in low = CompanySale.accept(&s, companyID: id, offerID: 901, data: d, context: c) }
+        XCTAssertNil(low, "a lowball offer is not taken for the other owners")
+        XCTAssertEqual(e.state.company(id)!.status, .open)
+        putOffer(&e, id, price: value * 0.95)
+        let cash = e.state.cash
+        var got: Double?
+        e.update { s, d, c in got = CompanySale.accept(&s, companyID: id, offerID: 901, data: d, context: c) }
+        XCTAssertNotNil(got)
+        XCTAssertEqual(e.state.company(id)!.status, .sold)
+        XCTAssertGreaterThan(e.state.cash, cash)
+        XCTAssertTrue(e.state.inbox.contains { $0.title.contains("was sold to Acme Buyers") }, "every owner's payout is recorded")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
+    func testPartnerCannotLeaveInTheLockUpAndIsBoughtOutAfterIt() throws {
+        var (e, id) = try makeCompany(seed: 92)
+        try join(&e, id, friendA, pct: 20)
+        let member = "p:" + friendA.id
+        let early = try XCTUnwrap(e.jvExitTerms(companyID: id, memberID: member))
+        XCTAssertTrue(early.locked)
+        XCTAssertTrue(early.problem?.contains("cannot sell or leave until") == true, early.problem ?? "")
+        XCTAssertNotNil(e.jvBuyOut(companyID: id, memberID: member))
+        let inbox = e.state.inbox.count
+        XCTAssertNotNil(e.jvPartnerWantsOut(companyID: id, memberID: member))
+        XCTAssertEqual(e.state.inbox.count, inbox, "inside the lock-up nothing is sent")
+        XCTAssertEqual(e.state.company(id)!.ownership, 80, accuracy: 0.01)
+        tick(&e, weeks: JVRules.lockUpWeeks + 1)
+        XCTAssertNil(e.jvPartnerWantsOut(companyID: id, memberID: member))
+        XCTAssertTrue(e.state.inbox.contains { $0.title.contains("wants to sell") })
+        let terms = try XCTUnwrap(e.jvExitTerms(companyID: id, memberID: member))
+        XCTAssertNil(terms.problem, terms.problem ?? "")
+        let cash = e.state.cash
+        XCTAssertNil(e.jvBuyOut(companyID: id, memberID: member))
+        XCTAssertEqual(cash - e.state.cash, terms.price, accuracy: 2)
+        XCTAssertEqual(e.state.company(id)!.ownership, 100, accuracy: 0.01)
+        XCTAssertEqual(e.jvStakes(companyID: id).count, 1)
+        XCTAssertNil(JointVenture.payoutBlock(e.state, companyID: id), "alone again, the owner decides")
+        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+    }
+
+    func testBoardMeetingsRemindThePlayerAndRecordTheirResult() throws {
+        var (e, id) = try makeCompany(seed: 93)
+        try join(&e, id, friendA, pct: 30, role: "cfo")
+        XCTAssertNil(JointVenture.pendingVote(e.state))
+        let item = try XCTUnwrap(e.jvMakeItem(companyID: id, kind: .price, steps: -1).item)
+        guard case .called(let mid) = e.jvCallUrgent(companyID: id, by: "p:" + friendA.id, reason: "Sales are falling", items: [item]) else { return XCTFail() }
+        let pending = try XCTUnwrap(JointVenture.pendingVote(e.state))
+        XCTAssertTrue(pending.urgent)
+        XCTAssertTrue(SessionHooks.reminders(e.state).contains { $0.id == "ledger.jv.urgent" && $0.body.contains("Sales are falling") })
+        XCTAssertTrue(e.jvVote(companyID: id, meetingID: mid, itemID: item.id, choice: .yes))
+        XCTAssertNil(JointVenture.pendingVote(e.state), "nothing waits once you have voted")
+        tick(&e, weeks: 2)
+        XCTAssertTrue(try XCTUnwrap(e.jointVenture(companyID: id)).notes.contains { $0.title.contains("meeting result") }, "the result is announced too")
     }
 }

@@ -39,4 +39,45 @@ public struct GoldWallet: Codable, Equatable, Sendable {
         held -= n
         balance -= n
     }
+
+    /// The trigger for the "gold runs short" popup: what a purchase or bid of `price` is short of, or nil when the wallet can pay it.
+    /// A bid that replaces the player's own leading bid passes `ownLead` (that hold is given back when the new bid is placed).
+    public func shortfall(for price: Int, purpose: GoldShortfall.Purpose, ownLead: Int = 0) -> GoldShortfall? {
+        let spendable: Int = available + max(0, ownLead)
+        guard price > spendable else { return nil }
+        return GoldShortfall(purpose: purpose, price: price, available: spendable, held: held)
+    }
+}
+
+/// How short the wallet is, and the smallest pack that closes the gap. Pure data: the popup that shows it (and the store that sells the pack) are screens.
+public struct GoldShortfall: Equatable, Sendable {
+    public enum Purpose: String, Sendable { case box, bundle, cosmetic, bid }
+    public var purpose: Purpose
+    public var price: Int
+    /// What could be spent when the check was made.
+    public var available: Int
+    /// Gold held for leading bids (not spendable).
+    public var held: Int
+
+    public var missing: Int { max(0, price - available) }
+    /// True when the missing gold is exactly what a leading bid ties up: losing or withdrawing that bid would be enough.
+    public var coveredByHeld: Bool { held >= missing }
+
+    /// The smallest pack that covers `missing`, counting the one-time bonus when this would be the first pack bought; nil when no pack is big enough.
+    public func suggestedPack(firstPurchase: Bool) -> GoldPack? {
+        GoldStore.packs.filter { GoldStore.totalGold($0, firstPurchase: firstPurchase) >= missing }.min { $0.priceCents < $1.priceCents }
+    }
+
+    /// The shortage in plain words.
+    public var text: String {
+        let what: String
+        switch purpose {
+        case .box: what = "this box"
+        case .bundle: what = "this bundle"
+        case .cosmetic: what = "this item"
+        case .bid: what = "this bid"
+        }
+        let base: String = "You are \(missing) gold short for \(what)."
+        return coveredByHeld && held > 0 ? base + " \(held) gold is held for bids you lead; it comes back when you are outbid." : base
+    }
 }

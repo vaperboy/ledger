@@ -52,6 +52,23 @@ public extension GameEngine {
         update { s, d, c in r = JointVenture.callUrgent(&s, companyID: companyID, by: member, reason: reason, items: items, data: d, context: c) }
         return r
     }
+    /// What buying a partner's shares back costs and does, and why not yet (the lock-up, or not enough cash).
+    func jvExitTerms(companyID: Int, memberID: String) -> JointVenture.ExitTerms? { JointVenture.exitTerms(state, companyID: companyID, memberID: memberID, data: data, context: context) }
+    /// Buy a partner's shares back after their lock-up; returns why it did not go through.
+    @discardableResult
+    mutating func jvBuyOut(companyID: Int, memberID: String) -> String? {
+        var r: String? = "Could not buy them out."
+        update { s, d, c in r = JointVenture.buyOut(&s, companyID: companyID, memberID: memberID, data: d, context: c) }
+        return r
+    }
+    /// A partner asks to sell or leave; refused inside the lock-up, otherwise you are told what buying them out costs.
+    @discardableResult
+    mutating func jvPartnerWantsOut(companyID: Int, memberID: String) -> String? {
+        var r: String? = "Could not send that."
+        update { s, d, c in r = JointVenture.partnerWantsOut(&s, companyID: companyID, memberID: memberID, data: d, context: c) }
+        return r
+    }
+
     @discardableResult
     mutating func jvQueue(companyID: Int, item: JointVenture.Item) -> Bool {
         var ok = false
