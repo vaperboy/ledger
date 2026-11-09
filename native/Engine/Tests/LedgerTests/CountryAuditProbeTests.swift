@@ -99,7 +99,7 @@ final class CountryAuditProbeTests: XCTestCase {
             let quote = try XCTUnwrap(Dismissal.quote(e.state, companyID: id, staffID: pid, reason: .redundancy, data: e.data), c.code)
             let m = try XCTUnwrap(e.state.company(id)?.staff.first { $0.id == pid })
             let rules = LabourRules(country: c)
-            let t = rules.termination(tenureWeeks: 5 * 52, reason: .redundancy, age: e.state.people[pid].map { Double($0.age) })
+            let t = rules.termination(tenureWeeks: 5 * 52, reason: .redundancy)
             let onCost = 1 + c.employerOnCost(monthlyWage: m.monthlyWage)
             XCTAssertEqual(quote.notice, m.monthlyWage * 12 / 52 * t.noticeWeeks * onCost, accuracy: 1, "\(c.code) notice carries the full employer on-cost")
             XCTAssertEqual(quote.severance, m.monthlyWage * 12 / 52 * t.severanceWeeks, accuracy: 1, "\(c.code) severance")

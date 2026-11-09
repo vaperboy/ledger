@@ -33,9 +33,9 @@ final class DismissalCharacterizationTests: XCTestCase {
     private func cash(_ e: GameEngine, _ id: Int) -> Double { e.state.company(id)?.cash ?? 0 }
     private func labels(_ e: GameEngine, _ id: Int) -> [String] { (e.state.company(id)?.transactions ?? []).map { $0["l"].string } }
 
-    private func owed(_ e: GameEngine, _ id: Int, wage: Double, tenureWeeks: Double, _ reason: LabourRules.TerminationReason, age: Double? = nil) -> Double {
+    private func owed(_ e: GameEngine, _ id: Int, wage: Double, tenureWeeks: Double, _ reason: LabourRules.TerminationReason) -> Double {
         let w = World(state: e.state, data: e.data)
-        let p = w.terminationPayments(e.state.company(id)!, monthlyWage: wage, tenureWeeks: tenureWeeks, reason: reason, age: age)
+        let p = w.terminationPayments(e.state.company(id)!, monthlyWage: wage, tenureWeeks: tenureWeeks, reason: reason)
         return p.notice + p.severance + p.fine
     }
 
@@ -70,8 +70,7 @@ final class DismissalCharacterizationTests: XCTestCase {
         addStaff(&e, id, years: 6, wage: 300_000)
         addStaff(&e, id, years: 1, wage: 200_000)
         let all = try XCTUnwrap(e.state.company(id)).staff
-        let expected = all.reduce(0.0) { $0 + owed(e, id, wage: $1.monthlyWage, tenureWeeks: Double(e.state.week - $1.hiredWeek), .redundancy,
-                                                      age: e.state.people[$1.id].map { Double($0.age) }) }
+        let expected = all.reduce(0.0) { $0 + owed(e, id, wage: $1.monthlyWage, tenureWeeks: Double(e.state.week - $1.hiredWeek), .redundancy) }
         XCTAssertGreaterThan(expected, 0)
         let preview = e.layoffPreview(companyID: id, count: all.count)
         let before = cash(e, id)

@@ -1,10 +1,13 @@
 import XCTest
+import GameCore
+import Finance
+import Businesses
 @testable import Simulation
 
 /// Box cash prizes, startup gate, supplier ending, auction wash-trading, government penalties, world rules, and previews.
 final class RulesAndPrizesTests: XCTestCase {
-    private func game() -> GameEngine {
-        GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test")
+    private func game() throws -> GameEngine {
+        try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test")
     }
 
     // MARK: Gold boxes
@@ -17,8 +20,8 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertTrue(BoxOdds.isFair(.grand))
     }
 
-    func testBoxMoneyPaysOnceAndBalances() {
-        var e = game()
+    func testBoxMoneyPaysOnceAndBalances() throws {
+        var e = try game()
         let before = e.state.cash
         let paid = e.claimBoxMoney(1_000, claimID: "open-1")
         XCTAssertNotNil(paid)
@@ -63,8 +66,8 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertGreaterThan(RouteRules.tradeBanWeeks(grave: true), RouteRules.tradeBanWeeks(grave: false))
     }
 
-    func testGovernmentIsCreatedAtGameStartWithAdmins() {
-        let e = GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test", admins: ["boss"])
+    func testGovernmentIsCreatedAtGameStartWithAdmins() throws {
+        let e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7, story: .fresh, tradeID: "cafe", companyName: "Test", admins: ["boss"])
         XCTAssertNotNil(e.state.rest["gov"])
     }
 
@@ -77,8 +80,8 @@ final class RulesAndPrizesTests: XCTestCase {
         XCTAssertNil(WorldRules.limits["nonsense"])
     }
 
-    func testEngineReadsAnAdminSnapshot() {
-        var e = game()
+    func testEngineReadsAnAdminSnapshot() throws {
+        var e = try game()
         XCTAssertEqual(e.state.worldRules, WorldRules.defaults)
         e.applyWorldRules(snapshot: ["band.exchange_low": 0.9])
         XCTAssertNotEqual(e.state.worldRules, WorldRules.defaults)
@@ -87,8 +90,8 @@ final class RulesAndPrizesTests: XCTestCase {
 
     // MARK: Previews change nothing
 
-    func testPreviewsLeaveTheGameAlone() {
-        let e = game()
+    func testPreviewsLeaveTheGameAlone() throws {
+        let e = try game()
         let saved = try? JSONEncoder().encode(e.state)
         _ = e.previewOrder(instrument: "none", side: .buy, shares: 1, limit: 1)
         _ = e.previewListing(holdingID: 999)

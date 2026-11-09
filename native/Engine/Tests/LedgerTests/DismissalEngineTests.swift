@@ -63,8 +63,7 @@ final class DismissalEngineTests: XCTestCase {
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.2), .ok)
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].set("mgrW0", s.week - 300) }
         let co = try XCTUnwrap(e.state.company(id))
-        let q = Dismissal.quote(World(state: e.state, data: e.data), co, monthlyWage: co.managerMonthlyWage, tenureWeeks: 300, reason: .redundancy,
-                                age: e.state.people[cands[0].id].map { Double($0.age) })
+        let q = Dismissal.quote(World(state: e.state, data: e.data), co, monthlyWage: co.managerMonthlyWage, tenureWeeks: 300, reason: .redundancy)
         XCTAssertGreaterThan(q.severance, 0)
         let before = cash(e, id)
         XCTAssertEqual(e.dismissManager(companyID: id), q.total, accuracy: 1)

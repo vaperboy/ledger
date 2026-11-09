@@ -181,10 +181,8 @@ final class LabourRulesTests: XCTestCase {
         XCTAssertEqual(term("UK", years: 30).noticeWeeks, 12)             // max 12 weeks
         let uk = LabourRules(code: "UK")
         XCTAssertEqual(term("UK", years: 1).severanceWeeks, 0)            // not eligible under 2 years
-        XCTAssertEqual(uk.termination(tenureWeeks: 10 * 52, age: 30).severanceWeeks, 10, accuracy: 1e-9)    // 1 week a year at 22-40
-        XCTAssertEqual(uk.termination(tenureWeeks: 10 * 52, age: 20).severanceWeeks, 5, accuracy: 1e-9)     // half a week under 22
-        XCTAssertEqual(uk.termination(tenureWeeks: 10 * 52, age: 50).severanceWeeks, 15, accuracy: 1e-9)    // 1.5 weeks from 41
-        XCTAssertEqual(uk.termination(tenureWeeks: 30 * 52, age: 50).severanceWeeks, 30, accuracy: 1e-9)    // service counted up to 20 years
+        XCTAssertEqual(uk.termination(tenureWeeks: 10 * 52).severanceWeeks, 10, accuracy: 1e-9)
+        XCTAssertEqual(uk.termination(tenureWeeks: 30 * 52).severanceWeeks, 20, accuracy: 1e-9)
         XCTAssertEqual(uk.termination(tenureWeeks: 10 * 52, withCause: true).weeks, 0)
     }
 
