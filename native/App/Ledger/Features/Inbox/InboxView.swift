@@ -18,7 +18,6 @@ struct InboxView: View {
     @State private var limit = InboxView.page
     @State private var pending: PendingAction?
     @State private var detailID: Int?
-    @State private var burst: MoneyBurst?
     @State private var scrollTarget: Int?
     @AppStorage("inboxPinned") private var pinnedText = ""
     @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 40
@@ -278,51 +277,21 @@ struct InboxView: View {
 
     // MARK: Payroll
 
-    /// Payroll that waits for the owner (no manager or accountant approves it): answered here, above the list.
+    /// Wages the company could not cover, shown above the list.
     private func payrollAlerts(_ e: GameEngine) -> [PayrollAlert] {
         guard query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
         return e.payrollAlerts().filter { companyFilter == nil || $0.companyID == companyFilter }
     }
 
+    /// A notice only: payroll runs by itself on the 15th, so there is nothing to approve here.
     private func payrollRow(_ a: PayrollAlert) -> some View {
         let fmt = BankFmt(store: store, company: store.engine?.state.company(a.companyID))
-        let text: String = a.isLate ? "Payroll \(fmt.short(a.amount)) is late. \(a.reason)" : "Payroll \(fmt.short(a.amount)) on \(a.dateText) needs you. \(a.reason)"
+        let text: String = "Payroll \(fmt.short(a.amount)) is late. \(a.reason) It is paid on the 15th once the company has the cash."
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text(a.companyName).textStyle(.caption, tint: P.inkFaint)
             Text(text.tidyText).textStyle(.body, tint: P.ink).fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Spacer(minLength: 0)
-                Button(a.isLate ? "Pay now" : "Approve payroll") { runPayroll(a, fmt) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
-                    .accessibilityIdentifier("inbox-payroll-\(a.companyID)")
-            }
         }
         .padding(.vertical, Theme.Space.s)
-        .moneyTravel($burst, source: a.companyID)
-    }
-
-    private func runPayroll(_ a: PayrollAlert, _ fmt: BankFmt) {
-        let outcome: PayrollAlertOutcome? = store.act { (e: inout GameEngine) -> PayrollAlertOutcome in e.resolvePayrollAlert(companyID: a.companyID) }
-        switch outcome {
-        case .approved?:
-            Haptics.success()
-            store.show("Payroll approved: about \(fmt.short(a.amount)) goes out on \(a.dateText).", tone: "good")
-            burst = MoneyBurst(label: "Payroll", amount: a.amount, outgoing: true, text: fmt.short(a.amount), source: a.companyID)
-        case .paidLate(let paid, let short)?:
-            if short > 0.5 {
-                Haptics.warning()
-                store.show("Paid \(fmt.short(paid)). Still short \(fmt.short(short)): put money into the company and run it again.", tone: "warn")
-            } else {
-                Haptics.success()
-                store.show("Late payroll paid: \(fmt.short(paid)).", tone: "good")
-                burst = MoneyBurst(label: "Payroll", amount: paid, outgoing: true, text: fmt.short(paid), source: a.companyID)
-            }
-        case .notNeeded(let why)?:
-            Haptics.warning()
-            store.show(why, tone: "warn")
-        case nil:
-            break
-        }
     }
 
     // MARK: Pinning (a view preference kept on the device, not game state)
