@@ -28,6 +28,7 @@ struct StatsView: View {
                     costCard(e)
                     documentsCard(e)
                 }
+                WeeklyPlanCard()
                 LedgerSection("More") {
                     VStack(spacing: 0) {
                         activityLink
@@ -35,6 +36,7 @@ struct StatsView: View {
                         goalsLink
                         Hairline()
                         reportsLink
+                        AnnualReportsLink()
                     }
                 }
                 if store.gateOpen(.bank) { TrophiesPreview() }

@@ -41,7 +41,7 @@ public enum PersonalFinance {
         }
         if s.savings > 0 {
             let i = s.savings * savingsRate(s) / 12
-            s.savings += i
+            Ledger.moveSavings(&s, i)
             s.tax.interest += i
         }
         Banking.collectMonthlyInstalments(state: &s, context: context)

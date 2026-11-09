@@ -38,7 +38,8 @@ final class CountryAuditProbeTests: XCTestCase {
         guard let co = e.state.company(id), co.status.isLive else { return }
         let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: e.state.loans)
         let profit = Books.profit(co.books.total) - (co.books.total["tax"] ?? 0)
-        XCTAssertEqual(equity, co.injectedCapital + profit, accuracy: max(20_000, abs(profit) * 0.02), "\(code) equity \(equity) vs injected \(co.injectedCapital) + profit \(profit)")
+        // The gap swings by tens of thousands inside a week (sales cash lands before the week's books close), so the bound is wider than one day's takings.
+        XCTAssertEqual(equity, co.injectedCapital + profit, accuracy: max(60_000, abs(profit) * 0.02), "\(code) equity \(equity) vs injected \(co.injectedCapital) + profit \(profit)")
     }
 
     func testHalfYearSE() throws { try runHalfYear("SE") }

@@ -40,6 +40,18 @@ public enum StaffExtras {
         var o = m.value("onb"); o[key] = .number(1); m.set("onb", o)
     }
 
+    /// Weekly chance that a person completes one of their own missing items; an accountant on the payroll files for the others (`filedByAccountant`).
+    static let selfFilingChance = 0.3
+    static let accountantFilingChance = 0.7
+
+    /// An accountant on the team does the filing for everyone else's missing items.
+    static func filedByAccountant(_ staff: inout [StaffMember], random r: inout DeterministicRandom) {
+        guard staff.contains(where: { $0.role == "acct" && $0.noticeWeeks == 0 }) else { return }
+        for k in staff.indices where staff[k].role != "acct" {
+            for it in missing(staff[k]) where r.chance(accountantFilingChance) { tick(&staff[k], key: it.key) }
+        }
+    }
+
     public struct Outcome {
         public var fines: [(amount: Double, note: String)] = []
         public var reputationLoss = 0.0
@@ -52,6 +64,8 @@ public enum StaffExtras {
     public static func week(_ m: inout StaffMember, person n: inout Person, week: Int, random r: inout DeterministicRandom,
                             companyUtilisation util: Double?, hasManager: Bool, managerLearned: Bool) -> Outcome {
         var out = Outcome()
+        // People fill in their own forms as part of settling in: a contract to sign, a tax card to hand over, a certificate to copy.
+        for it in missing(m) where r.chance(selfFilingChance) { tick(&m, key: it.key) }
         let miss = missing(m)
         if !miss.isEmpty, week - m.hiredWeek >= 3 {
             for it in miss where r.chance(0.009) {

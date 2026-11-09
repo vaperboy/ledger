@@ -410,7 +410,7 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
+        guard !isAdvancing, !tutorialHoldsDay, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, !ambitionPrompt, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)
@@ -446,6 +446,7 @@ final class GameStore: ObservableObject {
         if !tightBefore && e.cashIsTight && !out.gameOver { Haptics.cashWarning(); SoundCues.play(.warning) }
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
+        SeasonModel.shared.observe(e.state)
         if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
         SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
@@ -455,6 +456,7 @@ final class GameStore: ObservableObject {
         celebrationQueue.append(contentsOf: celebrations)
         if out.completedWeek { queueUnlocks() }
         reportSheet = digest
+        Task { @MainActor in await JointVentureCoordinator.shared.sync(self) }
         var daily: DailyDigest = e.dailyDigest(fresh: out.newMessages)
         daily.profit = e.groupBooksProfit - profitBefore
         profitMark = (week: e.state.week, day: e.state.day, value: e.groupBooksProfit)
@@ -559,6 +561,7 @@ final class GameStore: ObservableObject {
         let r = body(&e)
         engine = e
         save()
+        SeasonModel.shared.observe(e.state)
         return r
     }
 

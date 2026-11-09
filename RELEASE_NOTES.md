@@ -1,4 +1,18 @@
 # What's new
+- One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
+- A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
+- Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies
+- Startups funded by other players (Ventures, Startup market): browse by trade, stage and viral, open a startup for a high entry cost, invest in three escrow-released stages at a price set by a fixed rule, with caps, a resale lock-up, a price band and taxes; every action first says what will happen; the other players are a local stand-in for now
+- Rivals with named competitors and a story of their moves, a weekly plan decision, and the Desk: one small question a day with a notebook that fills over time
+- Popups are rounded at the bottom as well, the top of the screen shows the photo instead of black, and Group and Ventures are locked with a lock and an unlock popup until you earn them; Pick tab only offers tabs you have unlocked
+- A guided first game: the tutorial tells you what to press, you pick your first product and price before anything else, the Inbox points to what to read, and Your next goal opens a list of the goals being tracked
+- No more auto-hire or buy-everything: a new company opens with the essentials, and a chain store can appoint a manager
+- Suppliers show what each business really buys, grouped by what is supplied, with a choice of suppliers that changes cost, quality and reliability, and a Supply other players screen
+- The free Pro pass can no longer be repeated by starting a new game, Plus keeps working during Apple's grace period, purchases are remembered offline, and the paywall lists only what exists
+- Free players can double a week's reward or take a second chance after a bankruptcy, and ads are capped per day
+- A Season Pass in the Phone tab (30 tiers, free and Plus tracks, cosmetic and comfort rewards only)
+- A quarterly review of your group with targets and grades, and an annual report with a shareholder letter you can share
+- A first-open account screen (Apple, Google or play as a guest), an Account section in Settings (link, sign out, export and delete your data), profiles with privacy levels, and a Friends app on the Phone with requests, search by name or code and friends' companies; the online side is a local stand-in for now and the game works fully offline
 - A blurred photo backdrop with Apple Liquid Glass on the Home boxes, main navigation and popups (on iOS 26 and later; earlier versions get a drawn glass look)
 - Fix for the crash on opening a game that has a report waiting: the report popup no longer overflows the screen stack
 - Fix for a crash on opening an older game when the Custom tab pointed at a company that no longer exists

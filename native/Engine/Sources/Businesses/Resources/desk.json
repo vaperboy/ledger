@@ -1,0 +1,1953 @@
+{
+ "chapters": [
+  {
+   "id": "suppliers",
+   "name": "The supplier's call",
+   "blurb": "Prices, deliveries and who you trust to bring things on time.",
+   "reward": "Cover: Sage",
+   "cover": "sage",
+   "fact": "A supplier you pay on time and talk to honestly will often protect you in a shortage. Price is one line on the invoice; reliability is the rest.",
+   "need": 3
+  },
+  {
+   "id": "customers",
+   "name": "Over the counter",
+   "blurb": "What customers say, ask for and quietly decide.",
+   "reward": "Cover: Clay",
+   "cover": "clay",
+   "fact": "Most unhappy customers never complain; they just stop coming. A fast, fair answer to the few who do is cheap advertising.",
+   "need": 3
+  },
+  {
+   "id": "people",
+   "name": "The team",
+   "blurb": "Small moments with the people who do the work.",
+   "reward": "Cover: Slate",
+   "cover": "slate",
+   "fact": "People rarely leave over one thing. They leave over a run of small ones nobody answered.",
+   "need": 3
+  },
+  {
+   "id": "money",
+   "name": "Small money",
+   "blurb": "Offers, tips and little bets with real stakes.",
+   "reward": "Cover: Ink",
+   "cover": "ink",
+   "fact": "Anything that promises a sure return for no effort is priced that way because someone else is carrying the risk. Find out who.",
+   "need": 3
+  },
+  {
+   "id": "headlines",
+   "name": "In the papers",
+   "blurb": "Something you read that might matter next week.",
+   "reward": "Cover: Sand",
+   "cover": "sand",
+   "fact": "News moves a business in two steps: first what happened, then what everyone does about it. The second step is where you have a choice.",
+   "need": 3
+  },
+  {
+   "id": "neighbours",
+   "name": "Down the street",
+   "blurb": "Other businesses, other owners, and the local scene.",
+   "reward": "Cover: Moss",
+   "cover": "moss",
+   "fact": "Competitors are also your best research. Watch what they stop doing as closely as what they start.",
+   "need": 3
+  }
+ ],
+ "items": [
+  {
+   "id": "sup-rep",
+   "ch": "suppliers",
+   "fam": [
+    "any"
+   ],
+   "kind": "A phone call",
+   "t": "A new rep rings",
+   "s": "A rep from a supplier you have never used rings {co} with an introductory price. The samples look fine, and the contract is for a year.",
+   "o": [
+    {
+     "l": "Try a small order first",
+     "h": "Low risk, a small saving",
+     "d": 2,
+     "r": "The trial order came on time and the price held. You saved a little on the first month and kept your usual supplier as well.",
+     "fx": {
+      "cost": [
+       0.98,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Stay with your usual supplier",
+     "h": "No change",
+     "d": 1,
+     "r": "Your usual supplier heard you had been approached and quietly held its price. Nothing changed, which is sometimes the whole point.",
+     "fx": {
+      "cost": [
+       0.99,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Sign for the year",
+     "h": "Bigger saving, but locked in",
+     "d": 3,
+     "r": "The introductory month was good. Then the deliveries slipped and the price crept up.",
+     "fx": {
+      "cost": [
+       0.95,
+       4
+      ]
+     },
+     "p": 0.5,
+     "fxb": {
+      "cost": [
+       1.03,
+       4
+      ]
+     },
+     "rb": "The first deliveries were late and the price crept up after the introductory month. A year is a long time to be tied to that."
+    }
+   ]
+  },
+  {
+   "id": "sup-short",
+   "ch": "suppliers",
+   "fam": [
+    "any"
+   ],
+   "kind": "A delivery",
+   "t": "Short delivery",
+   "s": "A delivery arrives about a quarter short, and the driver shrugs. The paperwork says it is all there.",
+   "o": [
+    {
+     "l": "Send it back and complain",
+     "h": "Firm, a little awkward",
+     "d": 2,
+     "r": "The supplier apologised, sent the rest the next day and took something off the invoice. They check your orders more carefully now.",
+     "fx": {
+      "cost": [
+       0.98,
+       3
+      ],
+      "rep": 0
+     }
+    },
+    {
+     "l": "Ask for a credit, keep the goods",
+     "h": "Practical",
+     "d": 1,
+     "r": "A credit note came through without fuss. You kept trading and nobody lost face.",
+     "fx": {
+      "cost": [
+       0.99,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Say nothing this once",
+     "h": "Easy, but they notice you do not check",
+     "d": 2,
+     "r": "Nothing was said, and the next delivery was short again. You will check from now on.",
+     "fx": {
+      "cost": [
+       1.02,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sup-invoice",
+   "ch": "suppliers",
+   "fam": [
+    "any"
+   ],
+   "kind": "An invoice",
+   "t": "The invoice is a bit high",
+   "s": "This month's supplier invoice is a few percent above the quote. The rep says it is a fuel surcharge.",
+   "o": [
+    {
+     "l": "Query it politely",
+     "h": "Takes ten minutes",
+     "d": 1,
+     "r": "The surcharge turned out to be a mistake on their side. The corrected invoice arrived two days later.",
+     "fx": {
+      "cost": [
+       0.99,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Pay it and move on",
+     "h": "No effort",
+     "d": 1,
+     "r": "You paid. Next month's invoice carried the same surcharge, as these things tend to.",
+     "fx": {
+      "cost": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Ask for a better price on the next order",
+     "h": "A conversation about the whole account",
+     "d": 2,
+     "r": "They would not drop the surcharge, but they gave you a better price on your next order to keep you happy.",
+     "fx": {
+      "cost": [
+       0.98,
+       4
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sup-bulk",
+   "ch": "suppliers",
+   "fam": [
+    "venue"
+   ],
+   "kind": "A bulk offer",
+   "t": "A discount for ordering in bulk",
+   "s": "Your supplier of consumables (cleaning, napkins, towels, small things that always run out) offers a good discount if {co} orders a quarter's worth at once and pays up front.",
+   "o": [
+    {
+     "l": "Order a quarter's worth",
+     "h": "Better price, cash tied up",
+     "d": 2,
+     "r": "The discount was real and the storeroom is full. It is a little tighter in the bank for a few weeks.",
+     "fx": {
+      "cost": [
+       0.97,
+       4
+      ],
+      "pay": 0.03
+     }
+    },
+    {
+     "l": "Order a month's worth",
+     "h": "A smaller saving, less risk",
+     "d": 2,
+     "r": "A smaller discount, a smaller bill, and a storeroom you can still walk around in.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Keep ordering as you go",
+     "h": "No change",
+     "d": 1,
+     "r": "Nothing changed. You ran out of napkins once, and somebody went to the shop.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "sup-clear",
+   "ch": "suppliers",
+   "fam": [
+    "retail"
+   ],
+   "kind": "A wholesaler",
+   "t": "Last season's lines",
+   "s": "A wholesaler offers {co} a pallet of last season's lines at close to cost. They sell, but not at full price.",
+   "o": [
+    {
+     "l": "Take the pallet",
+     "h": "Cheap stock, slow to move",
+     "d": 3,
+     "r": "Most of it sold at a modest price during a quiet week. A few pieces are still on the shelf.",
+     "fx": {
+      "dem": [
+       1.02,
+       3
+      ],
+      "pay": 0.03
+     },
+     "p": 0.65,
+     "fxb": {
+      "pay": 0.04
+     },
+     "rb": "Half of it is still in the stockroom, and the cash is tied up in it. A lesson in how much storage space costs."
+    },
+    {
+     "l": "Take a few cases",
+     "h": "Small, safe",
+     "d": 2,
+     "r": "A few cases went quickly and gave the front of the shop something fresh.",
+     "fx": {
+      "dem": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Pass",
+     "h": "Keep the range tidy",
+     "d": 1,
+     "r": "You kept the range clean. A regular said they liked the shop looking the same as always.",
+     "fx": {
+      "rep": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "sup-raw",
+   "ch": "suppliers",
+   "fam": [
+    "prod",
+    "energy"
+   ],
+   "kind": "A market rumour",
+   "t": "Raw materials may get dearer",
+   "s": "A trade contact says the main raw material may get dearer in a month or two. Nothing is certain.",
+   "o": [
+    {
+     "l": "Buy ahead, modestly",
+     "h": "Costs money now, may pay off",
+     "d": 3,
+     "r": "The price did go up a little. Your stock was bought before it, so the next few weeks run a touch cheaper.",
+     "fx": {
+      "cost": [
+       0.97,
+       4
+      ],
+      "pay": 0.03
+     },
+     "p": 0.55,
+     "fxb": {
+      "pay": 0.03
+     },
+     "rb": "The rumour came to nothing and the price stayed flat. You carry some extra stock you did not need yet."
+    },
+    {
+     "l": "Wait and see",
+     "h": "No spend",
+     "d": 2,
+     "r": "You waited. The price moved a little, as prices do.",
+     "fx": {
+      "cost": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Ask your supplier to fix a price",
+     "h": "A fair compromise",
+     "d": 3,
+     "r": "Your supplier agreed to hold the price for six weeks in return for a steady order.",
+     "fx": {
+      "cost": [
+       0.98,
+       4
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sup-vendor",
+   "ch": "suppliers",
+   "fam": [
+    "fin"
+   ],
+   "kind": "A vendor visit",
+   "t": "An early system upgrade",
+   "s": "The vendor of your core system offers {co} an early upgrade at a reduced rate. It promises faster month-ends and fewer manual fixes.",
+   "o": [
+    {
+     "l": "Upgrade now",
+     "h": "Costs something, calmer systems",
+     "d": 3,
+     "r": "The upgrade went in over a quiet weekend. Month-end is a little less painful and the team noticed.",
+     "fx": {
+      "pay": 0.03,
+      "mood": 2
+     },
+     "p": 0.75,
+     "fxb": {
+      "pay": 0.05
+     },
+     "rb": "The upgrade overran by a day and cost extra in support. It works now, and everyone is a little tired."
+    },
+    {
+     "l": "Wait for the next release",
+     "h": "No cost",
+     "d": 2,
+     "r": "You waited. The next release was already scheduled, and a few more fixes came with it.",
+     "fx": {}
+    },
+    {
+     "l": "Ask for a pilot first",
+     "h": "Slower, safer",
+     "d": 3,
+     "r": "The vendor ran a pilot on one process. It worked, and they gave you a small discount for being patient.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cus-complaint",
+   "ch": "customers",
+   "fam": [
+    "any"
+   ],
+   "kind": "A complaint",
+   "t": "A customer is cross",
+   "s": "A customer of {co} has written a long, angry email about something that really did go wrong.",
+   "o": [
+    {
+     "l": "Apologise and put it right",
+     "h": "Cost: a little goodwill gesture",
+     "d": 2,
+     "r": "They wrote back a short thank-you and said they would give you another go. You could see the little goodwill gesture it took.",
+     "fx": {
+      "rep": 1,
+      "pay": 0.02
+     }
+    },
+    {
+     "l": "Reply with an explanation",
+     "h": "Honest, but stiff",
+     "d": 1,
+     "r": "They did not reply. The matter is closed, though no one is happier.",
+     "fx": {}
+    },
+    {
+     "l": "Leave it",
+     "h": "No effort",
+     "d": 1,
+     "r": "They did not come back, and told a friend why.",
+     "fx": {
+      "rep": -1,
+      "dem": [
+       0.99,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cus-review",
+   "ch": "customers",
+   "fam": [
+    "any"
+   ],
+   "kind": "A review",
+   "t": "A glowing review, a small catch",
+   "s": "A customer left a glowing public review of {co}. One line at the end mentions a long wait.",
+   "o": [
+    {
+     "l": "Thank them and fix the wait",
+     "h": "A little effort on a real problem",
+     "d": 3,
+     "r": "The thanks was noticed by other readers, and the wait is shorter now.",
+     "fx": {
+      "rep": 1,
+      "dem": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Just thank them",
+     "h": "Warm and quick",
+     "d": 1,
+     "r": "A tidy reply. A little goodwill, nothing more.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Ignore it",
+     "h": "Nothing to do",
+     "d": 1,
+     "r": "Nothing was said. The review stays up, wait and all.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "cus-regular",
+   "ch": "customers",
+   "fam": [
+    "any"
+   ],
+   "kind": "A regular",
+   "t": "A regular asks for a favour",
+   "s": "One of your best customers asks if {co} could do something slightly outside the usual, just for them.",
+   "o": [
+    {
+     "l": "Say yes, gladly",
+     "h": "A little extra work",
+     "d": 2,
+     "r": "They were delighted and mentioned it to three friends. It took an afternoon of someone's time.",
+     "fx": {
+      "rep": 1,
+      "aware": 2
+     }
+    },
+    {
+     "l": "Say yes, for a price",
+     "h": "Fair on both sides",
+     "d": 1,
+     "r": "They paid without complaint and kept coming. A clean arrangement.",
+     "fx": {
+      "gain": 0.02
+     }
+    },
+    {
+     "l": "Politely decline",
+     "h": "Keeps things simple",
+     "d": 1,
+     "r": "They understood, a little less warmly than before.",
+     "fx": {
+      "rep": 0,
+      "dem": [
+       0.99,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cus-gym",
+   "ch": "customers",
+   "fam": [
+    "gym"
+   ],
+   "kind": "A member",
+   "t": "The January crowd has not left",
+   "s": "Many of the members who joined in the new year are still coming, but the equipment queue is longer than it was. One member asks if {co} will ever add more machines.",
+   "o": [
+    {
+     "l": "Add a few off-peak classes",
+     "h": "Spreads the load",
+     "d": 3,
+     "r": "Evening classes filled up fast, and the machine queue shortened a little.",
+     "fx": {
+      "dem": [
+       1.02,
+       4
+      ],
+      "mood": 1
+     }
+    },
+    {
+     "l": "Order a couple of machines",
+     "h": "Costs money, helps for years",
+     "d": 4,
+     "r": "Two machines arrived and members noticed within a week. The queue still forms at six in the evening, but it moves.",
+     "fx": {
+      "pay": 0.05,
+      "rep": 1
+     }
+    },
+    {
+     "l": "Ask members for patience",
+     "h": "Free",
+     "d": 1,
+     "r": "Most were patient. A couple said so on the way out, and one quietly left.",
+     "fx": {
+      "dem": [
+       0.99,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cus-bank",
+   "ch": "customers",
+   "fam": [
+    "bank",
+    "insco"
+   ],
+   "kind": "A client",
+   "t": "A long-standing customer is annoyed at a fee",
+   "s": "A customer of twenty years is cross about a fee at {co}. They are not wrong, but the fee is policy.",
+   "o": [
+    {
+     "l": "Refund it this once",
+     "h": "Small cost, large goodwill",
+     "d": 1,
+     "r": "They sent a short, grateful note, and mentioned your name to their daughter, who is starting a business.",
+     "fx": {
+      "rep": 1,
+      "gain": 0
+     }
+    },
+    {
+     "l": "Explain the policy kindly",
+     "h": "Firm, honest",
+     "d": 1,
+     "r": "They accepted the explanation without warmth. The account stays open.",
+     "fx": {}
+    },
+    {
+     "l": "Waive the fee and review the policy",
+     "h": "Takes a bit of thought",
+     "d": 3,
+     "r": "The review found two fees nobody could defend. They were dropped, and a few customers noticed.",
+     "fx": {
+      "rep": 1,
+      "aware": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "cus-hair",
+   "ch": "customers",
+   "fam": [
+    "svc"
+   ],
+   "kind": "A client",
+   "t": "A client wants to be squeezed in",
+   "s": "A client of {co} asks to be fitted in outside normal hours. It would make a long day.",
+   "o": [
+    {
+     "l": "Fit them in",
+     "h": "A long day",
+     "d": 1,
+     "r": "They were grateful and tipped well. Everyone was tired by evening.",
+     "fx": {
+      "gain": 0.01,
+      "mood": -1
+     }
+    },
+    {
+     "l": "Offer the next free slot",
+     "h": "Sensible",
+     "d": 1,
+     "r": "They took the next slot with good grace.",
+     "fx": {}
+    },
+    {
+     "l": "Say you are fully booked",
+     "h": "Honest",
+     "d": 1,
+     "r": "They found someone else this week and came back next month.",
+     "fx": {
+      "dem": [
+       0.99,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cus-shop",
+   "ch": "customers",
+   "fam": [
+    "retail"
+   ],
+   "kind": "A shopper",
+   "t": "A return with no receipt",
+   "s": "A shopper brings back something to {co} without a receipt. It is plausible, and it is also the sort of thing people try on.",
+   "o": [
+    {
+     "l": "Exchange it",
+     "h": "Goodwill",
+     "d": 1,
+     "r": "They left pleased and bought something else. The returns book has one more line.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Offer store credit",
+     "h": "A middle path",
+     "d": 1,
+     "r": "They took the credit and spent it within the month.",
+     "fx": {
+      "gain": 0.01
+     }
+    },
+    {
+     "l": "Refuse politely",
+     "h": "By the book",
+     "d": 1,
+     "r": "They left unhappy and said so in the reviews. The policy stays clean.",
+     "fx": {
+      "rep": -1
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-late",
+   "ch": "people",
+   "fam": [
+    "any"
+   ],
+   "kind": "A quiet word",
+   "t": "Someone has been late three times",
+   "s": "One of the team at {co} has been late three times this month. They are good at the job.",
+   "o": [
+    {
+     "l": "Have a quiet, friendly word",
+     "h": "Kind but clear",
+     "d": 2,
+     "r": "It turned out to be a bus timetable. Their start time moved fifteen minutes and the problem went away.",
+     "fx": {
+      "mood": 2
+     }
+    },
+    {
+     "l": "Put it in writing",
+     "h": "Formal",
+     "d": 2,
+     "r": "They were on time after that, and noticeably quieter.",
+     "fx": {
+      "mood": -2
+     }
+    },
+    {
+     "l": "Let it go",
+     "h": "No effort",
+     "d": 2,
+     "r": "Two others noticed it was let go, and one of them started drifting in late as well.",
+     "fx": {
+      "mood": -1,
+      "dem": [
+       0.99,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-idea",
+   "ch": "people",
+   "fam": [
+    "any"
+   ],
+   "kind": "A suggestion",
+   "t": "A good idea from the floor",
+   "s": "One of the team at {co} suggests a small change to how things are done. It looks sensible, and it is not their job to suggest it.",
+   "o": [
+    {
+     "l": "Try it this week",
+     "h": "Quick and visible",
+     "d": 2,
+     "r": "It worked well enough to keep. The person who suggested it stood a little taller.",
+     "fx": {
+      "mood": 2,
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Thank them and think about it",
+     "h": "Slower",
+     "d": 2,
+     "r": "They never heard back, and have not suggested anything since.",
+     "fx": {
+      "mood": -1
+     }
+    },
+    {
+     "l": "Ask them to run it",
+     "h": "Gives ownership",
+     "d": 3,
+     "r": "They ran it well, and are now the person people go to with questions.",
+     "fx": {
+      "mood": 3,
+      "dem": [
+       1.01,
+       3
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-leave",
+   "ch": "people",
+   "fam": [
+    "any"
+   ],
+   "kind": "A handshake",
+   "t": "Someone hands in a note",
+   "s": "A good member of {co} hands in a month's notice. They have been offered a bit more elsewhere.",
+   "o": [
+    {
+     "l": "Match it, if you can",
+     "h": "A modest raise",
+     "d": 1,
+     "r": "They stayed, and told you honestly it was close. Wages are a little higher.",
+     "fx": {
+      "pay": 0.02,
+      "mood": 1
+     }
+    },
+    {
+     "l": "Wish them well",
+     "h": "No hard feelings",
+     "d": 1,
+     "r": "They left on good terms. They said they would send a friend your way.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Ask what would make them stay",
+     "h": "Listen first",
+     "d": 2,
+     "r": "It was not the money at all: it was the Saturdays. A rota change kept them.",
+     "fx": {
+      "mood": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-gym",
+   "ch": "people",
+   "fam": [
+    "gym"
+   ],
+   "kind": "A trainer",
+   "t": "A trainer wants to run a class",
+   "s": "One of the trainers at {co} wants to start a small Saturday class of their own. It could bring new faces.",
+   "o": [
+    {
+     "l": "Back it for a month",
+     "h": "Low risk",
+     "d": 3,
+     "r": "The class filled to half and grew. New faces mean new members.",
+     "fx": {
+      "dem": [
+       1.02,
+       4
+      ],
+      "mood": 2
+     }
+    },
+    {
+     "l": "Say not yet",
+     "h": "Keeps things simple",
+     "d": 1,
+     "r": "They took it well and asked again in a month.",
+     "fx": {}
+    },
+    {
+     "l": "Back it and advertise it",
+     "h": "Spend a little",
+     "d": 3,
+     "r": "A leaflet and a poster did the work, and the class filled twice over.",
+     "fx": {
+      "pay": 0.02,
+      "dem": [
+       1.03,
+       4
+      ],
+      "mood": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-bank",
+   "ch": "people",
+   "fam": [
+    "bank",
+    "insco",
+    "fund"
+   ],
+   "kind": "A banker",
+   "t": "A promising analyst",
+   "s": "A young analyst at {co} has been quietly excellent. A rival firm has been seen taking them to lunch.",
+   "o": [
+    {
+     "l": "Offer a bigger role",
+     "h": "Keeps them, costs a bit",
+     "d": 2,
+     "r": "They took the bigger role and the lunch invitations stopped.",
+     "fx": {
+      "pay": 0.02,
+      "mood": 2
+     }
+    },
+    {
+     "l": "Send them on a course",
+     "h": "A different reward",
+     "d": 3,
+     "r": "They came back with new ideas and a certificate. Several colleagues asked about courses too.",
+     "fx": {
+      "pay": 0.02,
+      "mood": 2,
+      "rep": 1
+     }
+    },
+    {
+     "l": "Do nothing",
+     "h": "Risk it",
+     "d": 2,
+     "r": "They stayed through the quarter and left after it. The desk has a gap.",
+     "fx": {
+      "mood": -2
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-shift",
+   "ch": "people",
+   "fam": [
+    "venue",
+    "retail"
+   ],
+   "kind": "A rota",
+   "t": "Two people want the same Saturday",
+   "s": "Two of the team at {co} both want the same Saturday off, and only one can have it.",
+   "o": [
+    {
+     "l": "Split it fairly, a half each",
+     "h": "Fiddly, fair",
+     "d": 1,
+     "r": "Both took the half-day with good grace and a nod to each other.",
+     "fx": {
+      "mood": 2
+     }
+    },
+    {
+     "l": "Toss a coin",
+     "h": "Quick",
+     "d": 1,
+     "r": "The loser laughed it off. Someone still brings it up now and then.",
+     "fx": {
+      "mood": 0
+     }
+    },
+    {
+     "l": "Decide yourself",
+     "h": "Quick, a little bitter",
+     "d": 1,
+     "r": "One of them stayed home and the other went quiet. It passed, slowly.",
+     "fx": {
+      "mood": -1
+     }
+    }
+   ]
+  },
+  {
+   "id": "ppl-site",
+   "ch": "people",
+   "fam": [
+    "project",
+    "prod",
+    "logi"
+   ],
+   "kind": "A foreman",
+   "t": "A foreman asks for better kit",
+   "s": "The person who runs the floor at {co} asks for a better set of tools, saying the old ones slow everybody down.",
+   "o": [
+    {
+     "l": "Buy the tools",
+     "h": "A small spend",
+     "d": 2,
+     "r": "Work moved a touch faster the following week, and the crew noticed you listened.",
+     "fx": {
+      "pay": 0.03,
+      "cost": [
+       0.98,
+       4
+      ],
+      "mood": 2
+     }
+    },
+    {
+     "l": "Ask for a shortlist and a price",
+     "h": "A pause",
+     "d": 3,
+     "r": "The shortlist was sensible and the order went in a few days later.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ],
+      "mood": 1
+     }
+    },
+    {
+     "l": "Say the old ones will do",
+     "h": "No spend",
+     "d": 1,
+     "r": "The old ones did do. The foreman did not ask again.",
+     "fx": {
+      "mood": -2
+     }
+    }
+   ]
+  },
+  {
+   "id": "mon-tip",
+   "ch": "money",
+   "fam": [
+    "any"
+   ],
+   "kind": "A tip",
+   "t": "A tip from a friend",
+   "s": "A friend of a friend says a small company they know is about to announce something big. You could put a modest sum of {co}'s spare cash into it. The word is not worth much.",
+   "o": [
+    {
+     "l": "Pass on it",
+     "h": "Safe and dull",
+     "d": 3,
+     "r": "The company announced something ordinary, and the share price barely moved. You missed nothing.",
+     "fx": {}
+    },
+    {
+     "l": "Put in a small amount",
+     "h": "A modest bet",
+     "d": 4,
+     "r": "It went a little well. It could just as easily have gone the other way, and you knew it.",
+     "fx": {
+      "gain": 0.02
+     },
+     "p": 0.45,
+     "fxb": {
+      "pay": 0.03
+     },
+     "rb": "It went the other way. A small loss, and a small lesson about tips from friends of friends."
+    },
+    {
+     "l": "Ask for the source",
+     "h": "Honest curiosity",
+     "d": 2,
+     "r": "Nobody could say where it came from. You felt better for asking.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "mon-fee",
+   "ch": "money",
+   "fam": [
+    "any"
+   ],
+   "kind": "An offer",
+   "t": "An offer of a better rate",
+   "s": "Your bank writes to {co} with a new business account that promises lower fees, if you move everything over.",
+   "o": [
+    {
+     "l": "Move the account",
+     "h": "A little admin",
+     "d": 3,
+     "r": "The move took two weeks of small headaches. The new fees are lower by a hair.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ],
+      "pay": 0.01
+     }
+    },
+    {
+     "l": "Ask your own bank to match",
+     "h": "A short call",
+     "d": 2,
+     "r": "They matched it, a little grudgingly, rather than lose you.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Stay as you are",
+     "h": "No effort",
+     "d": 1,
+     "r": "You stayed. The new account was no better than it sounded.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "mon-spare",
+   "ch": "money",
+   "fam": [
+    "any"
+   ],
+   "kind": "A thought",
+   "t": "Some cash sits idle",
+   "s": "A little cash at {co} has been sitting idle for weeks, and you wonder what to do with it.",
+   "o": [
+    {
+     "l": "Pay a bill early",
+     "h": "A small, certain gain",
+     "d": 1,
+     "r": "An early payment earned a small discount from a supplier who liked the surprise.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Keep it as a cushion",
+     "h": "Peace of mind",
+     "d": 1,
+     "r": "You kept it. A cushion is quiet, but it is nice to have.",
+     "fx": {
+      "mood": 1
+     }
+    },
+    {
+     "l": "Spend it on a little marketing",
+     "h": "A small push",
+     "d": 2,
+     "r": "A small campaign brought a few new faces through the door.",
+     "fx": {
+      "pay": 0.03,
+      "dem": [
+       1.02,
+       3
+      ],
+      "aware": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "mon-bank",
+   "ch": "money",
+   "fam": [
+    "bank",
+    "fund",
+    "insco"
+   ],
+   "kind": "A desk memo",
+   "t": "A cautious voice at the desk",
+   "s": "A senior colleague at {co} says the loan book has grown quickly and wonders if the team should slow down and recheck a few of the riskier loans.",
+   "o": [
+    {
+     "l": "Recheck the riskier loans",
+     "h": "Slower, safer",
+     "d": 3,
+     "r": "Two loans were fixed before they could go wrong. It cost a week of attention.",
+     "fx": {
+      "pay": 0.01,
+      "rep": 1,
+      "mood": 1
+     }
+    },
+    {
+     "l": "Carry on",
+     "h": "Growth first",
+     "d": 2,
+     "r": "Growth continued. A few borrowers were late, and the colleague said nothing.",
+     "fx": {
+      "dem": [
+       1.01,
+       4
+      ]
+     },
+     "p": 0.6,
+     "fxb": {
+      "pay": 0.03
+     },
+     "rb": "A couple of borrowers fell behind, and the colleague nodded gravely. It cost a little, and everyone noticed."
+    },
+    {
+     "l": "Slow down a little",
+     "h": "Middle way",
+     "d": 2,
+     "r": "The book grew a little more slowly. The colleague seemed relieved.",
+     "fx": {
+      "mood": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "mon-venue",
+   "ch": "money",
+   "fam": [
+    "venue"
+   ],
+   "kind": "A rep",
+   "t": "A card machine rep",
+   "s": "A rep offers {co} a new card terminal with lower fees. The old one works fine, and the new one has a nicer screen.",
+   "o": [
+    {
+     "l": "Switch terminals",
+     "h": "Small saving, small hassle",
+     "d": 2,
+     "r": "The switch was painless. Fees are a touch lower and customers like the new screen.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ],
+      "mood": 0
+     }
+    },
+    {
+     "l": "Ask your current provider to match",
+     "h": "Short call",
+     "d": 1,
+     "r": "They matched it with a shrug.",
+     "fx": {
+      "cost": [
+       0.99,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Keep the old terminal",
+     "h": "No effort",
+     "d": 1,
+     "r": "Nothing changed, and the old terminal went on working.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "mon-retail",
+   "ch": "money",
+   "fam": [
+    "retail",
+    "svc"
+   ],
+   "kind": "A letter",
+   "t": "A marketplace invites you to list",
+   "s": "An online marketplace invites {co} to list its goods or services. It takes a cut of every sale.",
+   "o": [
+    {
+     "l": "Try it for a month",
+     "h": "A cautious step",
+     "d": 3,
+     "r": "A few sales came through, at a cut that stung a little. New customers, though.",
+     "fx": {
+      "dem": [
+       1.02,
+       4
+      ],
+      "aware": 2,
+      "pay": 0.01
+     }
+    },
+    {
+     "l": "Decline",
+     "h": "Keep margins",
+     "d": 1,
+     "r": "You declined and kept your margins. A competitor listed there.",
+     "fx": {}
+    },
+    {
+     "l": "List only your slow lines",
+     "h": "A smart compromise",
+     "d": 3,
+     "r": "Slow lines moved at a small discount, and the cut was easy to bear.",
+     "fx": {
+      "dem": [
+       1.01,
+       4
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mon-prod",
+   "ch": "money",
+   "fam": [
+    "prod",
+    "logi",
+    "project",
+    "energy",
+    "rent"
+   ],
+   "kind": "A quote",
+   "t": "An energy saving quote",
+   "s": "A contractor quotes {co} for work that should trim the energy bill. The payback is a year or two.",
+   "o": [
+    {
+     "l": "Do the work",
+     "h": "Spend now, save later",
+     "d": 4,
+     "r": "The work was done in a day. The bill will take a few months to show the difference.",
+     "fx": {
+      "pay": 0.04,
+      "cost": [
+       0.97,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Ask for a second quote",
+     "h": "A little patience",
+     "d": 3,
+     "r": "A second contractor was cheaper for the same work. You did it with them.",
+     "fx": {
+      "pay": 0.03,
+      "cost": [
+       0.98,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Not this year",
+     "h": "No spend",
+     "d": 1,
+     "r": "You put it off. The bill came in much as before.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "hdl-weather",
+   "ch": "headlines",
+   "fam": [
+    "any"
+   ],
+   "kind": "A forecast",
+   "t": "A wet week ahead",
+   "s": "The forecast promises a wet, cold week. {co} will feel it a little, one way or the other.",
+   "o": [
+    {
+     "l": "Plan for a quiet week",
+     "h": "Trim the rota",
+     "d": 2,
+     "r": "It was quiet, as forecast. A trimmed rota kept costs in line.",
+     "fx": {
+      "cost": [
+       0.98,
+       3
+      ],
+      "dem": [
+       0.99,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Push a rainy-day offer",
+     "h": "A small promotion",
+     "d": 2,
+     "r": "The offer brought a few people in from the rain.",
+     "fx": {
+      "pay": 0.02,
+      "dem": [
+       1.02,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Carry on as usual",
+     "h": "No change",
+     "d": 1,
+     "r": "The week was a little quiet, the way wet weeks are.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "hdl-rates",
+   "ch": "headlines",
+   "fam": [
+    "any"
+   ],
+   "kind": "A headline",
+   "t": "The central bank holds its breath",
+   "s": "The papers say the central bank may change rates next month. Opinions differ, as they do.",
+   "o": [
+    {
+     "l": "Review your loans quietly",
+     "h": "A calm bit of homework",
+     "d": 3,
+     "r": "You read through the loan terms. One was worth a conversation with the bank.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Do nothing",
+     "h": "No effort",
+     "d": 1,
+     "r": "Rates did what they did. You stayed calm.",
+     "fx": {}
+    },
+    {
+     "l": "Talk to your accountant",
+     "h": "A short call",
+     "d": 2,
+     "r": "The accountant's advice was simple: nothing to do yet, but keep an eye on it.",
+     "fx": {
+      "mood": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "hdl-local",
+   "ch": "headlines",
+   "fam": [
+    "any"
+   ],
+   "kind": "A local paper",
+   "t": "A story about a competitor",
+   "s": "The local paper runs a friendly story about a competitor of {co}. It is flattering, and slightly irritating.",
+   "o": [
+    {
+     "l": "Send them a note of congratulations",
+     "h": "Gracious",
+     "d": 1,
+     "r": "They replied warmly. Owners talk, and this one remembers.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Pitch your own story",
+     "h": "A little effort",
+     "d": 3,
+     "r": "The paper ran a short piece on {co}. A few new faces appeared.",
+     "fx": {
+      "aware": 3,
+      "dem": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Ignore it",
+     "h": "Calm",
+     "d": 1,
+     "r": "You ignored it. The story went away within the week.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "hdl-venue",
+   "ch": "headlines",
+   "fam": [
+    "venue"
+   ],
+   "kind": "A listing",
+   "t": "A big event in town",
+   "s": "The papers announce a large event in town next month. {co} will be busy, if it prepares for it.",
+   "o": [
+    {
+     "l": "Prepare properly",
+     "h": "Stock up and add hands",
+     "d": 3,
+     "r": "The weekend of the event was the busiest you can remember. Preparation paid for itself.",
+     "fx": {
+      "pay": 0.03,
+      "dem": [
+       1.04,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Add a few extra hands only",
+     "h": "Modest",
+     "d": 3,
+     "r": "A little extra help kept the queue short. Takings were good.",
+     "fx": {
+      "pay": 0.02,
+      "dem": [
+       1.02,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Carry on as usual",
+     "h": "No cost",
+     "d": 1,
+     "r": "You carried on. The crowd came, and some walked past because the wait was long.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "hdl-fin",
+   "ch": "headlines",
+   "fam": [
+    "bank",
+    "insco",
+    "fund"
+   ],
+   "kind": "A report",
+   "t": "A regulator's letter does the rounds",
+   "s": "A regulator has written to firms like {co} about how they treat customers who fall behind. It is not about you, yet.",
+   "o": [
+    {
+     "l": "Review your own process",
+     "h": "A thoughtful hour",
+     "d": 3,
+     "r": "You found two letters in need of kinder wording. Customers noticed the new tone.",
+     "fx": {
+      "rep": 1,
+      "mood": 1
+     }
+    },
+    {
+     "l": "Ask your compliance person",
+     "h": "A short note",
+     "d": 2,
+     "r": "They said you were fine, with two suggestions.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Wait for the rule",
+     "h": "No effort",
+     "d": 1,
+     "r": "You waited. The rule arrived with a deadline and a little more homework.",
+     "fx": {
+      "pay": 0.01
+     }
+    }
+   ]
+  },
+  {
+   "id": "hdl-retail",
+   "ch": "headlines",
+   "fam": [
+    "retail",
+    "svc"
+   ],
+   "kind": "A trend",
+   "t": "Everyone is talking about one product",
+   "s": "A product is all over the news, and customers ask {co} if you have it. It may last a month, or a year.",
+   "o": [
+    {
+     "l": "Stock a little of it",
+     "h": "Cautious",
+     "d": 3,
+     "r": "It sold briskly for a few weeks, then slowed. You sold what you had.",
+     "fx": {
+      "dem": [
+       1.03,
+       3
+      ],
+      "pay": 0.02
+     }
+    },
+    {
+     "l": "Stock plenty",
+     "h": "A bigger bet",
+     "d": 3,
+     "r": "It sold well, then collapsed. You kept some of it in the stockroom for a while.",
+     "fx": {
+      "dem": [
+       1.04,
+       3
+      ]
+     },
+     "p": 0.5,
+     "fxb": {
+      "pay": 0.04
+     },
+     "rb": "The craze ended sooner than expected, leaving a pile in the stockroom and a bill to match."
+    },
+    {
+     "l": "Ignore it",
+     "h": "Steady",
+     "d": 1,
+     "r": "You ignored it. Customers asked a few more times, then stopped.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "hdl-prod",
+   "ch": "headlines",
+   "fam": [
+    "prod",
+    "logi",
+    "project",
+    "energy",
+    "rent"
+   ],
+   "kind": "A notice",
+   "t": "A new rule is announced",
+   "s": "The government announces a new rule that touches {co}. Details to follow, in the way details do.",
+   "o": [
+    {
+     "l": "Read the whole notice",
+     "h": "Dull, useful",
+     "d": 2,
+     "r": "You found one clause that mattered and acted on it early. The deadline came and went without fuss.",
+     "fx": {
+      "mood": 1,
+      "rep": 1
+     }
+    },
+    {
+     "l": "Ask a trade body",
+     "h": "A short call",
+     "d": 2,
+     "r": "The trade body had a summary, and a friendly adviser.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Wait for the details",
+     "h": "No effort",
+     "d": 1,
+     "r": "The details arrived with a short deadline.",
+     "fx": {
+      "pay": 0.01
+     }
+    }
+   ]
+  },
+  {
+   "id": "nbr-coffee",
+   "ch": "neighbours",
+   "fam": [
+    "any"
+   ],
+   "kind": "A coffee",
+   "t": "A neighbour asks to compare notes",
+   "s": "The owner of a business next door to {co} asks if you would like to compare notes over a coffee. They are not a competitor.",
+   "o": [
+    {
+     "l": "Go, and listen",
+     "h": "A pleasant hour",
+     "d": 2,
+     "r": "You learned about a supplier you had not heard of, and shared one of yours.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ],
+      "rep": 1
+     }
+    },
+    {
+     "l": "Go, and share too",
+     "h": "Generous",
+     "d": 2,
+     "r": "A good conversation. You both left with a small idea or two.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ],
+      "aware": 2
+     }
+    },
+    {
+     "l": "Say you are busy",
+     "h": "Politely",
+     "d": 1,
+     "r": "They did not ask again for a while.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "nbr-flyer",
+   "ch": "neighbours",
+   "fam": [
+    "any"
+   ],
+   "kind": "A flyer",
+   "t": "A joint promotion",
+   "s": "A nearby business suggests a joint flyer with {co}: each leaflet carries both names. It costs a little each.",
+   "o": [
+    {
+     "l": "Do it",
+     "h": "Cheap, friendly",
+     "d": 3,
+     "r": "Both businesses saw a few new faces. The flyer was a bit crowded.",
+     "fx": {
+      "pay": 0.01,
+      "aware": 3,
+      "dem": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Suggest a smaller idea",
+     "h": "Cautious",
+     "d": 2,
+     "r": "A small card at each till did nearly as well.",
+     "fx": {
+      "aware": 2
+     }
+    },
+    {
+     "l": "Decline",
+     "h": "Keep things your own",
+     "d": 1,
+     "r": "They went ahead with someone else.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "nbr-lease",
+   "ch": "neighbours",
+   "fam": [
+    "any"
+   ],
+   "kind": "A rumour",
+   "t": "The shop next door may close",
+   "s": "The shop next door to {co} may be closing. Footfall may change, one way or the other.",
+   "o": [
+    {
+     "l": "Ask the landlord about the space",
+     "h": "Look ahead",
+     "d": 3,
+     "r": "The landlord said it might be re-let to a café. Footfall may rise a little.",
+     "fx": {
+      "aware": 2,
+      "dem": [
+       1.01,
+       3
+      ]
+     }
+    },
+    {
+     "l": "Keep an eye on it",
+     "h": "Calm",
+     "d": 1,
+     "r": "The shop stayed open another month.",
+     "fx": {}
+    },
+    {
+     "l": "Tell the team to expect a change",
+     "h": "Open and honest",
+     "d": 2,
+     "r": "The team appreciated the warning.",
+     "fx": {
+      "mood": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "nbr-gym",
+   "ch": "neighbours",
+   "fam": [
+    "gym",
+    "fun",
+    "skires"
+   ],
+   "kind": "A new sign",
+   "t": "A boutique studio opens round the corner",
+   "s": "A small boutique studio is opening round the corner from {co}. It is small, and expensive, and fashionable.",
+   "o": [
+    {
+     "l": "Offer a taster week to members' friends",
+     "h": "Friendly",
+     "d": 3,
+     "r": "The taster week brought in a few friends and some goodwill. A few joined.",
+     "fx": {
+      "pay": 0.01,
+      "dem": [
+       1.02,
+       4
+      ],
+      "aware": 2
+     }
+    },
+    {
+     "l": "Stay the course",
+     "h": "No change",
+     "d": 1,
+     "r": "The studio opened. A few members tried it, and most stayed.",
+     "fx": {}
+    },
+    {
+     "l": "Cut your price slightly",
+     "h": "Defensive",
+     "d": 2,
+     "r": "A small cut kept the waverers, and cost a little margin.",
+     "fx": {
+      "dem": [
+       1.02,
+       4
+      ],
+      "cost": [
+       1.01,
+       4
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "nbr-bank",
+   "ch": "neighbours",
+   "fam": [
+    "bank",
+    "insco",
+    "fund"
+   ],
+   "kind": "A conference",
+   "t": "A rival's owner invites you to speak",
+   "s": "The head of a rival firm invites {co} to share a panel at a local conference. It is flattering, and it is also advertising for them.",
+   "o": [
+    {
+     "l": "Accept",
+     "h": "Visible, a little risky",
+     "d": 3,
+     "r": "You spoke well and said little you regretted. Several people introduced themselves afterwards.",
+     "fx": {
+      "aware": 3,
+      "rep": 1
+     }
+    },
+    {
+     "l": "Send a deputy",
+     "h": "A modest compromise",
+     "d": 3,
+     "r": "Your deputy spoke well and earned a small round of applause.",
+     "fx": {
+      "mood": 2,
+      "aware": 1
+     }
+    },
+    {
+     "l": "Decline",
+     "h": "Keep your distance",
+     "d": 1,
+     "r": "You declined. The panel went ahead without you.",
+     "fx": {}
+    }
+   ]
+  },
+  {
+   "id": "nbr-venue",
+   "ch": "neighbours",
+   "fam": [
+    "venue",
+    "retail"
+   ],
+   "kind": "A neighbour",
+   "t": "A noisy night next door",
+   "s": "A neighbour of {co} has complained about noise or deliveries, politely, once.",
+   "o": [
+    {
+     "l": "Call round and sort it out",
+     "h": "Neighbourly",
+     "d": 2,
+     "r": "A cup of tea and a small change of delivery times settled it for good.",
+     "fx": {
+      "rep": 1
+     }
+    },
+    {
+     "l": "Send a note",
+     "h": "Polite",
+     "d": 1,
+     "r": "They accepted the note, with a slightly clipped tone.",
+     "fx": {}
+    },
+    {
+     "l": "Ignore it",
+     "h": "Hope",
+     "d": 1,
+     "r": "They complained again, to someone higher up.",
+     "fx": {
+      "rep": -1,
+      "pay": 0.01
+     }
+    }
+   ]
+  },
+  {
+   "id": "nbr-prod",
+   "ch": "neighbours",
+   "fam": [
+    "prod",
+    "logi",
+    "project",
+    "svc",
+    "energy",
+    "rent"
+   ],
+   "kind": "A trade fair",
+   "t": "A local trade fair",
+   "s": "A local trade fair is coming up, and a stall for {co} costs a modest fee.",
+   "o": [
+    {
+     "l": "Take a stall",
+     "h": "Spend a little",
+     "d": 4,
+     "r": "You made a handful of useful contacts, and a few new orders followed.",
+     "fx": {
+      "pay": 0.03,
+      "dem": [
+       1.03,
+       4
+      ],
+      "aware": 3
+     }
+    },
+    {
+     "l": "Visit as a guest",
+     "h": "Cheap",
+     "d": 2,
+     "r": "You picked up a few ideas and some brochures. One was worth a call.",
+     "fx": {
+      "cost": [
+       0.99,
+       4
+      ]
+     }
+    },
+    {
+     "l": "Skip it",
+     "h": "No effort",
+     "d": 1,
+     "r": "You skipped it. A competitor won a good order there.",
+     "fx": {}
+    }
+   ]
+  }
+ ]
+}

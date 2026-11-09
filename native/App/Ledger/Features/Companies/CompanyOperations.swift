@@ -81,10 +81,10 @@ struct CompanyOperations: View {
                 equipmentRow
             }
             if sourcing {
-                let inputs: Int = engine.supplierInputs(companyID: company.id).count
+                let bought: Int = engine.supplyLines(companyID: company.id).reduce(0) { $0 + $1.rows.count }
                 RowRule()
                 LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers",
-                          value: "\(inputs)", valueNote: inputs == 1 ? "input" : "inputs", identifier: "manage-suppliers") { part = .suppliers }
+                          value: "\(bought)", valueNote: bought == 1 ? "thing bought" : "things bought", identifier: "manage-suppliers") { part = .suppliers }
             }
             CompanyMorePages(engine: engine, company: company, pages: [.energy, .salmon, .club], ruled: true)
         }

@@ -491,7 +491,7 @@ final class PlaytestToursTests: XCTestCase {
         // football
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(80_000_000), why: "Test capital") }
         if let code = e.leagueCountries().first?.code {
-            let fr = e.foundClub(countryCode: code)
+            let fr = e.foundClub(countryCode: code, allowRetired: true)
             if case .ok(let cid) = fr { weeks(&e, 20); ex(e.state.company(cid)?.status.isLive == true, "founded club keeps living for 20 weeks"); ex(e.clubSummary(companyID: cid) != nil, "club summary exists") }
             else { ex(false, "foundClub with ample cash: \(fr)", sev: 2) }
         } else { ex(false, "football leagues exist", sev: 3) }

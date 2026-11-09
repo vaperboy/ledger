@@ -40,6 +40,7 @@ struct PopupLayer: View {
                 if let c = store.celebrationQueue.first { CelebrationPopup(item: c).environmentObject(store) }
             }
             .modifier(unlockRegistration)
+            .groupReviewPopup(store)
     }
 
     /// The announcement of a newly opened feature: an announcement like a reward (not a panel the player opened), shown only when

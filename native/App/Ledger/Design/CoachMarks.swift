@@ -1,7 +1,9 @@
 import SwiftUI
+import Simulation
 
-/// The one-time "seen" flags of first-run help (tour, tab tip, phone app sheets), kept per install in UserDefaults.
+/// The one-time "seen" flags of first-run help (tutorial, tab tip, phone app sheets), kept per install in UserDefaults.
 enum FirstRunFlags {
+    /// Set when the new-player tutorial ends (its step itself lives in the save).
     static let tour = "firstRun.tour"
     static let customTabTip = "firstRun.customTabTip"
     static func appHelp(_ appID: String) -> String { "firstRun.appHelp." + appID }
@@ -15,6 +17,7 @@ enum FirstRunFlags {
 /// A place on screen a coach mark can point at.
 enum CoachStop: Hashable {
     case nextDay, happened, needsYou, phoneTab
+    case firstPick, firstItemRow, itemPrice, inboxGuided
     case tabBar, customTab, customPick
     case groupAdd, groupStructure, groupPeople, groupCard
     case venturesHeader, venturesFound, venturesBacking
@@ -54,6 +57,10 @@ struct CoachMark: Equatable {
     var button: String = "Next"
     /// Where to point when `stop` is not on screen (a screen that has no hook for it yet).
     var fallback: CoachStop? = nil
+    /// False hides Skip: the step cannot be left until it is done.
+    var skippable: Bool = true
+    /// False lets every tap through the dimmed screen: the card only points, it does not hold the player in place.
+    var blocking: Bool = true
 
     func anchor(in anchors: [CoachStop: Anchor<CGRect>]) -> Anchor<CGRect>? {
         if let a = anchors[stop] { return a }
@@ -83,7 +90,7 @@ struct CoachMarks: View {
                 // A block taller than the screen is cut to what is on screen.
                 let hole: CGRect = geo[anchor].intersection(CGRect(origin: .zero, size: geo.size)).insetBy(dx: -6, dy: -6)
                 ZStack {
-                    dim(size: geo.size, hole: hole, passThrough: mark.passThrough)
+                    dim(size: geo.size, hole: hole, passThrough: mark.passThrough, blocking: mark.blocking)
                     ring(hole)
                     callout(mark, hole: hole, size: geo.size)
                 }
@@ -94,14 +101,15 @@ struct CoachMarks: View {
         .animation(Motion.quick(reduceMotion), value: step)
     }
 
-    private func dim(size: CGSize, hole: CGRect, passThrough: Bool) -> some View {
+    private func dim(size: CGSize, hole: CGRect, passThrough: Bool, blocking: Bool) -> some View {
         var path = Path(CGRect(origin: .zero, size: size))
         path.addRoundedRect(in: hole, cornerSize: CGSize(width: Theme.Radius.card, height: Theme.Radius.card))
         // The hole lets taps through only when the step is done by using the highlighted view.
         let hit: Path = passThrough ? path : Path(CGRect(origin: .zero, size: size))
-        return path.fill(Color.black.opacity(0.62), style: FillStyle(eoFill: true))
+        return path.fill(Color.black.opacity(blocking ? 0.62 : 0.3), style: FillStyle(eoFill: true))
             .contentShape(hit, eoFill: true)
             .onTapGesture { }
+            .allowsHitTesting(blocking)
             .accessibilityHidden(true)
     }
 
@@ -121,8 +129,10 @@ struct CoachMarks: View {
             HStack(spacing: Theme.Space.s) {
                 Text("\(position ?? (step + 1)) of \(total ?? marks.count)").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
                 Spacer(minLength: Theme.Space.s)
-                Button { Haptics.tap(); onSkip() } label: { Text("Skip") }
-                    .buttonStyle(PlainTextButtonStyle()).accessibilityIdentifier("coach-skip")
+                if mark.skippable {
+                    Button { Haptics.tap(); onSkip() } label: { Text("Skip") }
+                        .buttonStyle(PlainTextButtonStyle()).accessibilityIdentifier("coach-skip")
+                }
                 if !mark.button.isEmpty {
                     Button { Haptics.tap(); onNext() } label: { Text(mark.button) }
                         .buttonStyle(PrimaryButtonStyle(size: .compact)).accessibilityIdentifier("coach-next")
@@ -141,10 +151,9 @@ struct CoachMarks: View {
     }
 }
 
-/// Where a tour starts. `firstDay`: the first week of a new game on Home. `tab`: the tab is showing at its root. `unlock`: the feature is
-/// open (the player has earned it) and its tab is showing. `route`: that page is the one on top of the tab being shown.
+/// Where a tour starts. `tab`: the tab is showing at its root. `unlock`: the feature is open (the player has earned it) and its tab is
+/// showing. `route`: that page is the one on top of the tab being shown.
 enum CoachTrigger: Equatable {
-    case firstDay
     case tab(AppTab)
     case unlock(String, AppTab)
     case route(CoachRoute)
@@ -171,13 +180,44 @@ struct CoachTour {
 
 /// Every tour of the game, in priority order: adding a tour is adding one entry here (and a `.coachAnchor` on each view it points at).
 enum CoachTours {
+    /// The new player's guided path, one entry per `TutorialStep`: the marks are the places that step can point at, most specific first, and
+    /// the first one on screen is shown (so the card also leads the player back to the right screen). Each step is done by using the
+    /// highlighted control, so no mark has a Next button; the first two cannot be skipped.
+    static func tutorial(_ step: TutorialStep) -> [CoachMark] {
+        switch step {
+        case .pickProduct:
+            return [
+                CoachMark(stop: .firstPick, text: "Tap the product you want to start with, then press Start with this product.", passThrough: true, button: "", skippable: false),
+                CoachMark(stop: .companyTabs, text: "Tap Sales. This is where you choose what your company sells.", passThrough: true, button: "", skippable: false),
+                CoachMark(stop: .tabBar, text: "Open the Home tab, then your company.", passThrough: true, button: "", skippable: false),
+            ]
+        case .setPrice:
+            return [
+                CoachMark(stop: .itemPrice, text: "Set your price: drag the slider, pick a quick price, or press Keep this price.", passThrough: true, button: "", skippable: false),
+                CoachMark(stop: .firstItemRow, text: "Tap your product to open it. There you set its price.", passThrough: true, button: "", skippable: false),
+                CoachMark(stop: .companyTabs, text: "Tap Sales to find your product.", passThrough: true, button: "", skippable: false),
+                CoachMark(stop: .tabBar, text: "Open the Home tab, then your company.", passThrough: true, button: "", skippable: false),
+            ]
+        case .nextDay:
+            return [
+                CoachMark(stop: .nextDay, text: "Press Next day. One day passes: customers buy and the books move.", passThrough: true, button: ""),
+                CoachMark(stop: .tabBar, text: "Go back to the Home tab: Next day is there.", passThrough: true, button: ""),
+            ]
+        case .openInbox:
+            return [
+                CoachMark(stop: .phoneInbox, text: "Open the Inbox. Questions and news from your business arrive here.", passThrough: true, button: ""),
+                CoachMark(stop: .phoneTab, text: "Open the Phone tab. The Inbox is an app on it.", passThrough: true, button: ""),
+            ]
+        case .readInbox:
+            return [
+                CoachMark(stop: .inboxGuided, text: "Open the message marked Read next. Anything that needs an answer waits under Needs you.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .phoneInbox, text: "Open the Inbox again to read what came in.", passThrough: true, button: "", blocking: false),
+                CoachMark(stop: .phoneTab, text: "Open the Phone tab, then the Inbox.", passThrough: true, button: "", blocking: false),
+            ]
+        }
+    }
+
     static let all: [CoachTour] = [
-        CoachTour(id: "home", trigger: .firstDay, marks: [
-            CoachMark(stop: .nextDay, text: "This button runs your day. Press it.", passThrough: true, button: ""),
-            CoachMark(stop: .happened, text: "This is what happened"),
-            CoachMark(stop: .needsYou, text: "This card is what needs you: answers live here"),
-            CoachMark(stop: .phoneTab, text: "The phone holds your bank, news and more: two apps are open for you now", passThrough: true, button: "Done"),
-        ], flag: FirstRunFlags.tour),
         CoachTour(id: "group", trigger: .tab(.group), marks: [
             CoachMark(stop: .groupAdd, text: "Add a new company, holding, franchise or club to your group here."),
             CoachMark(stop: .groupPeople, text: "People lists everyone who works for you. Tap it to look.", passThrough: true),

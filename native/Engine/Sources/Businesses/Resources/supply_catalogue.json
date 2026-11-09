@@ -1,0 +1,1686 @@
+{
+ "about": "What each trade buys from suppliers (SupplyCatalogue.swift). lines: the kinds of purchase. families: the default list of a trade family as [line, share, name]; a cogs line's share is of the cost of sales (goods takes what the others leave), an overhead line's share is of the weekly fixed overhead. trades: drop lines, change a share or name, or add lines. c: cogs or oth; i: the input id of an existing supplier switch (goods, repair, or an own-company supply kind); lead: days from order to delivery; terms: days a supplier typically gives to pay; crit: a short delivery cuts sales; var: spend follows how busy the place is; tiers 0: nothing to choose between outside suppliers.",
+ "groups": [
+  "Stock and ingredients",
+  "Packaging and delivery",
+  "Materials and subcontractors",
+  "Consumables and cleaning",
+  "Linen and laundry",
+  "Utilities",
+  "Parts and maintenance",
+  "Software and services",
+  "Vehicles and fuel"
+ ],
+ "lines": {
+  "goods": {
+   "name": "Stock and ingredients",
+   "group": "Stock and ingredients",
+   "category": "cogs",
+   "input": "goods",
+   "lead": 3,
+   "terms": 30,
+   "critical": true
+  },
+  "mat": {
+   "name": "Materials and consumables",
+   "group": "Stock and ingredients",
+   "category": "cogs",
+   "lead": 2,
+   "terms": 14,
+   "critical": true
+  },
+  "pack": {
+   "name": "Packaging",
+   "group": "Packaging and delivery",
+   "category": "cogs",
+   "lead": 4,
+   "terms": 30
+  },
+  "supplies": {
+   "name": "Office and consumable supplies",
+   "group": "Consumables and cleaning",
+   "category": "oth",
+   "lead": 2,
+   "terms": 14,
+   "variable": true
+  },
+  "clean": {
+   "name": "Cleaning and hygiene",
+   "group": "Consumables and cleaning",
+   "category": "oth",
+   "input": "clean",
+   "lead": 3,
+   "terms": 14,
+   "variable": true
+  },
+  "laundry": {
+   "name": "Linen and laundry",
+   "group": "Linen and laundry",
+   "category": "oth",
+   "lead": 2,
+   "terms": 30,
+   "variable": true
+  },
+  "power": {
+   "name": "Electricity and water",
+   "group": "Utilities",
+   "category": "oth",
+   "input": "power",
+   "lead": 0,
+   "terms": 30,
+   "variable": true
+  },
+  "repair": {
+   "name": "Maintenance and parts",
+   "group": "Parts and maintenance",
+   "category": "oth",
+   "input": "repair",
+   "lead": 2,
+   "terms": 14
+  },
+  "parts": {
+   "name": "Spare parts",
+   "group": "Parts and maintenance",
+   "category": "oth",
+   "lead": 3,
+   "terms": 14
+  },
+  "software": {
+   "name": "Software and services",
+   "group": "Software and services",
+   "category": "oth",
+   "input": "web",
+   "lead": 0,
+   "terms": 30
+  },
+  "build": {
+   "name": "Building materials",
+   "group": "Materials and subcontractors",
+   "category": "oth",
+   "input": "build",
+   "lead": 3,
+   "terms": 30,
+   "tiers": false
+  },
+  "carserv": {
+   "name": "Vehicle servicing",
+   "group": "Vehicles and fuel",
+   "category": "oth",
+   "input": "carserv",
+   "lead": 1,
+   "terms": 14
+  },
+  "fuel": {
+   "name": "Fuel",
+   "group": "Vehicles and fuel",
+   "category": "oth",
+   "lead": 1,
+   "terms": 14,
+   "variable": true
+  }
+ },
+ "families": {
+  "venue": [
+   [
+    "goods",
+    0,
+    "Food, drink and consumables"
+   ],
+   [
+    "pack",
+    0.05,
+    "Takeaway packaging"
+   ],
+   [
+    "clean",
+    0.08,
+    "Cleaning and hygiene supplies"
+   ],
+   [
+    "laundry",
+    0.06,
+    "Cloths, linen and uniform wash"
+   ],
+   [
+    "power",
+    0.22,
+    "Electricity, gas and water"
+   ],
+   [
+    "repair",
+    0.1,
+    "Maintenance and parts"
+   ],
+   [
+    "software",
+    0.06,
+    "Booking and payment software"
+   ]
+  ],
+  "retail": [
+   [
+    "goods",
+    0,
+    "Stock for resale"
+   ],
+   [
+    "pack",
+    0.04,
+    "Bags, boxes and labels"
+   ],
+   [
+    "clean",
+    0.04,
+    "Cleaning supplies"
+   ],
+   [
+    "power",
+    0.12,
+    "Electricity"
+   ],
+   [
+    "repair",
+    0.04,
+    "Shop fittings upkeep"
+   ],
+   [
+    "software",
+    0.08,
+    "Till and stock software"
+   ]
+  ],
+  "prod": [
+   [
+    "goods",
+    0,
+    "Raw materials"
+   ],
+   [
+    "pack",
+    0.06,
+    "Packaging"
+   ],
+   [
+    "clean",
+    0.06,
+    "Cleaning and hygiene supplies"
+   ],
+   [
+    "power",
+    0.2,
+    "Electricity, gas and water"
+   ],
+   [
+    "repair",
+    0.12,
+    "Machine parts and servicing"
+   ],
+   [
+    "software",
+    0.04,
+    "Planning software"
+   ]
+  ],
+  "logi": [
+   [
+    "goods",
+    0,
+    "Fuel, tyres and parts"
+   ],
+   [
+    "repair",
+    0.1,
+    "Vehicle servicing"
+   ],
+   [
+    "clean",
+    0.03,
+    "Vehicle cleaning supplies"
+   ],
+   [
+    "power",
+    0.05,
+    "Depot electricity"
+   ],
+   [
+    "software",
+    0.08,
+    "Dispatch and tracking software"
+   ]
+  ],
+  "svc": [
+   [
+    "mat",
+    1,
+    "Materials and consumables"
+   ],
+   [
+    "software",
+    0.1,
+    "Software licences"
+   ],
+   [
+    "supplies",
+    0.04,
+    "Office supplies"
+   ],
+   [
+    "power",
+    0.08,
+    "Electricity"
+   ]
+  ],
+  "project": [
+   [
+    "build",
+    0,
+    "Building materials"
+   ],
+   [
+    "carserv",
+    0.08,
+    "Van servicing"
+   ],
+   [
+    "supplies",
+    0.05,
+    "Site consumables and safety gear"
+   ],
+   [
+    "software",
+    0.08,
+    "Estimating and project software"
+   ],
+   [
+    "repair",
+    0.08,
+    "Tool and plant upkeep"
+   ],
+   [
+    "power",
+    0.05,
+    "Site and office electricity"
+   ]
+  ],
+  "rent": [
+   [
+    "clean",
+    0.2,
+    "Cleaning and caretaking"
+   ],
+   [
+    "repair",
+    0.35,
+    "Maintenance and repairs"
+   ],
+   [
+    "power",
+    0.15,
+    "Common-area electricity"
+   ],
+   [
+    "software",
+    0.06,
+    "Property management software"
+   ]
+  ],
+  "fin": [
+   [
+    "software",
+    0.3,
+    "Core systems and security software"
+   ],
+   [
+    "supplies",
+    0.06,
+    "Office and printing supplies"
+   ],
+   [
+    "power",
+    0.05,
+    "Electricity"
+   ],
+   [
+    "clean",
+    0.05,
+    "Cleaning supplies"
+   ]
+  ],
+  "energy": [
+   [
+    "repair",
+    0.3,
+    "Plant and grid parts"
+   ],
+   [
+    "supplies",
+    0.06,
+    "Safety gear and consumables"
+   ],
+   [
+    "software",
+    0.08,
+    "Control systems"
+   ]
+  ],
+  "hold": [],
+  "club": [
+   [
+    "laundry",
+    0.1,
+    "Kit and training wear wash"
+   ],
+   [
+    "repair",
+    0.2,
+    "Pitch and stadium upkeep"
+   ],
+   [
+    "power",
+    0.12,
+    "Stadium electricity"
+   ],
+   [
+    "clean",
+    0.08,
+    "Stadium cleaning supplies"
+   ],
+   [
+    "supplies",
+    0.08,
+    "Training equipment"
+   ],
+   [
+    "software",
+    0.06,
+    "Ticketing and analytics"
+   ]
+  ]
+ },
+ "trades": {
+  "foodtruck": {
+   "drop": [
+    "laundry"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Ingredients and drinks"
+    ],
+    "pack": [
+     0.08,
+     "Cups, boxes and napkins"
+    ],
+    "clean": [
+     0.04,
+     null
+    ],
+    "power": [
+     0.12,
+     "Gas and generator fuel"
+    ],
+    "software": [
+     0.04,
+     "Card reader and ordering app"
+    ]
+   },
+   "add": []
+  },
+  "cafe": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Coffee, milk and food"
+    ],
+    "pack": [
+     0.06,
+     "Cups, lids and takeaway packaging"
+    ],
+    "laundry": [
+     0.04,
+     "Aprons and cloths"
+    ]
+   },
+   "add": []
+  },
+  "restaurant": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Ingredients and drinks"
+    ],
+    "pack": [
+     0.02,
+     "Takeaway boxes"
+    ],
+    "laundry": [
+     0.08,
+     "Table linen and uniforms"
+    ]
+   },
+   "add": []
+  },
+  "nightclub": {
+   "drop": [
+    "pack",
+    "laundry"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Bar stock: drinks and mixers"
+    ],
+    "power": [
+     0.25,
+     "Electricity for sound and light"
+    ],
+    "software": [
+     0.05,
+     "Ticketing and door software"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.05,
+     "Glassware and disposables"
+    ]
+   ]
+  },
+  "gym": {
+   "drop": [
+    "pack"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Drinks, snacks and protein stock"
+    ],
+    "clean": [
+     0.1,
+     "Cleaning and hygiene supplies"
+    ],
+    "laundry": [
+     0.1,
+     "Towels and laundry"
+    ],
+    "power": [
+     0.22,
+     "Electricity and water"
+    ],
+    "repair": [
+     0.1,
+     "Machine servicing and parts"
+    ],
+    "software": [
+     0.08,
+     "Booking and access software"
+    ]
+   },
+   "add": []
+  },
+  "hotel": {
+   "drop": [
+    "pack"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Breakfast, minibar and toiletries"
+    ],
+    "laundry": [
+     0.18,
+     "Linen and laundry"
+    ],
+    "clean": [
+     0.12,
+     "Housekeeping supplies"
+    ],
+    "power": [
+     0.2,
+     null
+    ],
+    "software": [
+     0.08,
+     "Booking and channel software"
+    ]
+   },
+   "add": []
+  },
+  "casino": {
+   "drop": [
+    "pack"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Bar and kitchen stock"
+    ],
+    "laundry": [
+     0.04,
+     null
+    ],
+    "software": [
+     0.1,
+     "Gaming and surveillance software"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.08,
+     "Cards, chips and gaming tables"
+    ]
+   ]
+  },
+  "fun": {
+   "drop": [
+    "pack"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Snacks, drinks and prizes"
+    ],
+    "repair": [
+     0.16,
+     "Ride and equipment upkeep"
+    ]
+   },
+   "add": []
+  },
+  "skires": {
+   "drop": [
+    "pack",
+    "laundry"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Food and drink"
+    ],
+    "power": [
+     0.3,
+     "Lift power and snow making"
+    ],
+    "repair": [
+     0.2,
+     "Lift and piste machine parts"
+    ]
+   },
+   "add": []
+  },
+  "indoorski": {
+   "drop": [
+    "pack",
+    "laundry"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Food and drink"
+    ],
+    "power": [
+     0.3,
+     "Cooling and lift power"
+    ],
+    "repair": [
+     0.18,
+     "Lift and cooling parts"
+    ]
+   },
+   "add": []
+  },
+  "pcbang": {
+   "drop": [
+    "pack",
+    "laundry"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Drinks and snacks"
+    ],
+    "software": [
+     0.2,
+     "Game and cafe licences"
+    ],
+    "power": [
+     0.25,
+     "Electricity"
+    ]
+   },
+   "add": []
+  },
+  "kiosk": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Snacks, drinks and papers"
+    ],
+    "pack": [
+     0.03,
+     null
+    ],
+    "power": [
+     0.1,
+     null
+    ]
+   },
+   "add": []
+  },
+  "boutique": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Clothes and accessories"
+    ],
+    "pack": [
+     0.05,
+     "Bags and tissue paper"
+    ]
+   },
+   "add": []
+  },
+  "webshop": {
+   "drop": [
+    "clean"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Products to resell"
+    ],
+    "pack": [
+     0.08,
+     "Shipping boxes and mailers"
+    ],
+    "software": [
+     0.2,
+     "Shop platform and payment fees"
+    ],
+    "power": [
+     0.06,
+     null
+    ]
+   },
+   "add": []
+  },
+  "grocery": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Groceries and fresh produce"
+    ],
+    "pack": [
+     0.03,
+     null
+    ],
+    "power": [
+     0.22,
+     "Electricity for fridges"
+    ],
+    "repair": [
+     0.08,
+     "Fridge and shelf upkeep"
+    ]
+   },
+   "add": []
+  },
+  "hardware": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Tools, fixings and materials"
+    ]
+   },
+   "add": []
+  },
+  "cardealer": {
+   "drop": [
+    "pack"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Cars from brands and wholesalers"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.05,
+     "Valeting supplies"
+    ]
+   ]
+  },
+  "usedcar": {
+   "drop": [
+    "pack"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Cars bought on the market"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.05,
+     "Valeting supplies"
+    ]
+   ]
+  },
+  "bakery": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Flour, butter, sugar and yeast"
+    ],
+    "pack": [
+     0.05,
+     "Bags and boxes"
+    ],
+    "power": [
+     0.25,
+     "Oven energy"
+    ]
+   },
+   "add": []
+  },
+  "brewery": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Malt, hops and yeast"
+    ],
+    "pack": [
+     0.12,
+     "Bottles, cans and kegs"
+    ],
+    "clean": [
+     0.08,
+     "Cleaning chemicals"
+    ],
+    "power": [
+     0.18,
+     null
+    ]
+   },
+   "add": []
+  },
+  "furniture": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Timber, fabric and fittings"
+    ],
+    "pack": [
+     0.04,
+     null
+    ],
+    "power": [
+     0.12,
+     null
+    ]
+   },
+   "add": []
+  },
+  "salmon": {
+   "drop": [
+    "goods",
+    "pack",
+    "software"
+   ],
+   "set": {
+    "repair": [
+     0.2,
+     "Nets, pens and boat upkeep"
+    ],
+    "power": [
+     0.15,
+     null
+    ],
+    "clean": [
+     0.05,
+     "Hygiene and treatment supplies"
+    ]
+   },
+   "add": [
+    [
+     "fuel",
+     0.1,
+     "Boat fuel"
+    ]
+   ]
+  },
+  "factory": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Components and raw materials"
+    ],
+    "power": [
+     0.28,
+     null
+    ],
+    "repair": [
+     0.14,
+     "Spare parts and servicing"
+    ]
+   },
+   "add": []
+  },
+  "farm": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Seed, feed and fertiliser"
+    ],
+    "pack": [
+     0.03,
+     "Crates and sacks"
+    ],
+    "power": [
+     0.1,
+     "Electricity and fuel"
+    ],
+    "repair": [
+     0.15,
+     "Tractor and machine parts"
+    ]
+   },
+   "add": []
+  },
+  "vineyard": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Vine care, barrels and supplies"
+    ],
+    "pack": [
+     0.1,
+     "Bottles, corks and labels"
+    ],
+    "power": [
+     0.08,
+     null
+    ],
+    "repair": [
+     0.1,
+     null
+    ]
+   },
+   "add": []
+  },
+  "taxi": {
+   "drop": [
+    "clean",
+    "power"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Fuel and tyres"
+    ],
+    "software": [
+     0.08,
+     "Dispatch app"
+    ]
+   },
+   "add": [
+    [
+     "carserv",
+     0.1,
+     "Car servicing"
+    ]
+   ]
+  },
+  "courier": {
+   "drop": [
+    "power"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Fuel and tyres"
+    ]
+   },
+   "add": [
+    [
+     "pack",
+     0.05,
+     "Parcel packaging"
+    ]
+   ]
+  },
+  "trucking": {
+   "drop": [
+    "clean",
+    "power"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Diesel, tyres and tolls"
+    ],
+    "software": [
+     0.08,
+     "Fleet tracking software"
+    ]
+   },
+   "add": []
+  },
+  "shipping": {
+   "drop": [
+    "clean"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Bunker fuel and port fees"
+    ],
+    "repair": [
+     0.15,
+     "Hull and engine upkeep"
+    ]
+   },
+   "add": []
+  },
+  "airline": {
+   "drop": [
+    "clean"
+   ],
+   "set": {
+    "goods": [
+     null,
+     "Jet fuel, catering and airport fees"
+    ],
+    "repair": [
+     0.2,
+     "Aircraft parts and maintenance"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.04,
+     "Cabin linen and catering wash"
+    ]
+   ]
+  },
+  "wh3pl": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Pallets, wrap and handling supplies"
+    ],
+    "power": [
+     0.2,
+     null
+    ],
+    "software": [
+     0.12,
+     "Warehouse software"
+    ],
+    "repair": [
+     0.1,
+     "Racking and forklift upkeep"
+    ]
+   },
+   "add": []
+  },
+  "carrental": {
+   "drop": [],
+   "set": {
+    "goods": [
+     null,
+     "Fuel, tyres and cleaning"
+    ],
+    "repair": [
+     0.14,
+     "Servicing and repairs"
+    ],
+    "software": [
+     0.06,
+     "Booking system"
+    ]
+   },
+   "add": []
+  },
+  "startup": {
+   "drop": [
+    "mat"
+   ],
+   "set": {
+    "software": [
+     0.3,
+     "Cloud hosting and developer tools"
+    ],
+    "supplies": [
+     0.05,
+     null
+    ]
+   },
+   "add": []
+  },
+  "cons": {
+   "drop": [
+    "mat"
+   ],
+   "set": {
+    "software": [
+     0.15,
+     "Software licences and research data"
+    ]
+   },
+   "add": []
+  },
+  "tutor": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Course books and materials"
+    ],
+    "software": [
+     0.12,
+     "Teaching software"
+    ]
+   },
+   "add": []
+  },
+  "carclean": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Shampoo, wax and cloths"
+    ],
+    "power": [
+     0.15,
+     "Water and electricity"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.04,
+     "Cloth wash"
+    ]
+   ]
+  },
+  "photo": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Prints, albums and props"
+    ],
+    "software": [
+     0.15,
+     "Editing software licences"
+    ]
+   },
+   "add": [
+    [
+     "repair",
+     0.08,
+     "Camera and lighting servicing"
+    ]
+   ]
+  },
+  "handy": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Materials and parts"
+    ]
+   },
+   "add": [
+    [
+     "build",
+     0,
+     "Building materials"
+    ],
+    [
+     "carserv",
+     0.06,
+     "Van servicing"
+    ]
+   ]
+  },
+  "cleaning": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Cleaning chemicals and consumables"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.05,
+     "Cloth and uniform wash"
+    ],
+    [
+     "carserv",
+     0.05,
+     "Van servicing"
+    ]
+   ]
+  },
+  "webdev": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Domains, hosting and stock assets"
+    ],
+    "software": [
+     0.25,
+     "Hosting and developer licences"
+    ]
+   },
+   "add": []
+  },
+  "mktg": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Ad media and printing"
+    ],
+    "software": [
+     0.2,
+     "Design and analytics subscriptions"
+    ]
+   },
+   "add": []
+  },
+  "law": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Court fees and filings"
+    ],
+    "software": [
+     0.2,
+     "Case management and legal research"
+    ]
+   },
+   "add": []
+  },
+  "acctfirm": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Filing fees"
+    ],
+    "software": [
+     0.25,
+     "Accounting and tax software"
+    ]
+   },
+   "add": []
+  },
+  "staffing": {
+   "drop": [
+    "mat"
+   ],
+   "set": {
+    "software": [
+     0.15,
+     "Applicant tracking software"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.05,
+     "Office supplies"
+    ]
+   ]
+  },
+  "barber": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Shampoo, dye and hair products"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.08,
+     "Towels and gowns wash"
+    ],
+    [
+     "clean",
+     0.05,
+     "Hygiene supplies"
+    ]
+   ]
+  },
+  "drivsk": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Fuel for lessons"
+    ],
+    "software": [
+     0.06,
+     "Booking app"
+    ]
+   },
+   "add": [
+    [
+     "carserv",
+     0.12,
+     "Car servicing"
+    ]
+   ]
+  },
+  "physio": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Tape, gels and disposables"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.08,
+     "Towels and linen"
+    ],
+    [
+     "clean",
+     0.06,
+     "Hygiene supplies"
+    ]
+   ]
+  },
+  "estate": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Listing portals and photography"
+    ],
+    "software": [
+     0.15,
+     "CRM and listing software"
+    ]
+   },
+   "add": []
+  },
+  "pets": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Pet food, treats and supplies"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.05,
+     "Blankets and towels wash"
+    ],
+    [
+     "clean",
+     0.06,
+     "Cleaning supplies"
+    ]
+   ]
+  },
+  "carrepair": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Parts, oil and fluids"
+    ],
+    "software": [
+     0.06,
+     "Diagnostics software"
+    ]
+   },
+   "add": [
+    [
+     "power",
+     0.1,
+     "Workshop electricity"
+    ]
+   ]
+  },
+  "dental": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Dental materials and consumables"
+    ],
+    "software": [
+     0.12,
+     "Practice management and imaging"
+    ]
+   },
+   "add": [
+    [
+     "laundry",
+     0.08,
+     "Gowns and sterilisation"
+    ],
+    [
+     "clean",
+     0.06,
+     "Hygiene and disposables"
+    ]
+   ]
+  },
+  "gamestudio": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Engine licences and asset stores"
+    ],
+    "software": [
+     0.3,
+     "Developer tools and hosting"
+    ]
+   },
+   "add": []
+  },
+  "security": {
+   "drop": [],
+   "set": {
+    "mat": [
+     null,
+     "Uniforms and radios"
+    ],
+    "software": [
+     0.1,
+     "Alarm monitoring software"
+    ]
+   },
+   "add": [
+    [
+     "carserv",
+     0.06,
+     "Patrol vehicle servicing"
+    ]
+   ]
+  },
+  "travel": {
+   "drop": [
+    "mat"
+   ],
+   "set": {
+    "software": [
+     0.2,
+     "Booking and quote platforms"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.06,
+     "Office supplies"
+    ]
+   ]
+  },
+  "insbroker": {
+   "drop": [
+    "mat"
+   ],
+   "set": {
+    "software": [
+     0.2,
+     "Booking and quote platforms"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.06,
+     "Office supplies"
+    ]
+   ]
+  },
+  "finbroker": {
+   "drop": [
+    "mat"
+   ],
+   "set": {
+    "software": [
+     0.2,
+     "Booking and quote platforms"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.06,
+     "Office supplies"
+    ]
+   ]
+  },
+  "construction": {
+   "drop": [],
+   "set": {
+    "build": [
+     null,
+     "Building materials"
+    ]
+   },
+   "add": []
+  },
+  "electrician": {
+   "drop": [],
+   "set": {
+    "build": [
+     null,
+     "Cable, fittings and consumer units"
+    ]
+   },
+   "add": []
+  },
+  "plumber": {
+   "drop": [],
+   "set": {
+    "build": [
+     null,
+     "Pipes, fittings and boilers"
+    ]
+   },
+   "add": []
+  },
+  "realdev": {
+   "drop": [],
+   "set": {
+    "build": [
+     null,
+     "Building materials and fit-out"
+    ]
+   },
+   "add": []
+  },
+  "event": {
+   "drop": [
+    "build",
+    "carserv",
+    "repair"
+   ],
+   "set": {
+    "software": [
+     0.1,
+     "Ticketing and planning software"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.15,
+     "Equipment hire and consumables"
+    ],
+    [
+     "carserv",
+     0.06,
+     "Van servicing"
+    ]
+   ]
+  },
+  "engcons": {
+   "drop": [
+    "build",
+    "carserv",
+    "repair"
+   ],
+   "set": {
+    "software": [
+     0.25,
+     "CAD and simulation licences"
+    ],
+    "supplies": [
+     0.05,
+     "Office supplies"
+    ]
+   },
+   "add": []
+  },
+  "parking": {
+   "drop": [
+    "clean"
+   ],
+   "set": {
+    "power": [
+     0.15,
+     "Lighting and barrier electricity"
+    ],
+    "software": [
+     0.2,
+     "Ticketing and payment systems"
+    ],
+    "repair": [
+     0.25,
+     null
+    ]
+   },
+   "add": [
+    [
+     "clean",
+     0.1,
+     "Cleaning and sweeping"
+    ]
+   ]
+  },
+  "bank": {
+   "drop": [],
+   "set": {
+    "software": [
+     0.3,
+     "Core banking and security software"
+    ],
+    "supplies": [
+     0.06,
+     "Cash handling and printing"
+    ]
+   },
+   "add": []
+  },
+  "insco": {
+   "drop": [
+    "clean"
+   ],
+   "set": {
+    "software": [
+     0.3,
+     "Policy and claims systems"
+    ]
+   },
+   "add": []
+  },
+  "fund": {
+   "drop": [
+    "clean",
+    "power"
+   ],
+   "set": {
+    "software": [
+     0.35,
+     "Market data and trading systems"
+    ],
+    "supplies": [
+     0.04,
+     null
+    ]
+   },
+   "add": []
+  },
+  "power": {
+   "drop": [
+    "supplies"
+   ],
+   "set": {
+    "repair": [
+     0.3,
+     "Plant and grid parts"
+    ],
+    "software": [
+     0.08,
+     "Control systems"
+    ]
+   },
+   "add": [
+    [
+     "supplies",
+     0.05,
+     "Safety gear and consumables"
+    ]
+   ]
+  },
+  "oilgas": {
+   "drop": [],
+   "set": {
+    "repair": [
+     0.3,
+     "Drilling parts and servicing"
+    ],
+    "supplies": [
+     0.1,
+     "Drilling fluids and consumables"
+    ],
+    "software": [
+     0.06,
+     null
+    ]
+   },
+   "add": []
+  }
+ }
+}

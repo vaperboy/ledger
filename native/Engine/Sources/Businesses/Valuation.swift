@@ -64,8 +64,13 @@ public enum Valuation {
             ? prof * mult * (0.6 + co.reputation / 200) * (co.managerID != nil ? 0.85 : 1) * trust : 0
     }
 
+    /// Weeks a new company counts at no more than the money its owner put in when net worth is read for trophies and milestones.
+    public static let youngCompanyWeeks = 8
+
     /// Net worth with every part named. Original: `netWorthCore` + the 'netWorth' steps.
-    public static func netWorth(_ s: GameState, trades: any TradeCatalogProviding) -> NetWorth {
+    /// `forGoals` reads it for trophies and milestones: a company younger than `youngCompanyWeeks` counts at no more than what its owner
+    /// put in, so a set-up artefact or a first-weeks uplift never counts as an achievement.
+    public static func netWorth(_ s: GameState, trades: any TradeCatalogProviding, forGoals: Bool = false) -> NetWorth {
         var stocks = 0.0, crypto = 0.0, funds = 0.0
         let stockPrices = s.rest["stocks"]?.object ?? [:]
         let cryptoPrices = s.rest["crypto"]?.object ?? [:]
@@ -88,7 +93,9 @@ public enum Valuation {
         // A company held through a holding is counted inside the holding's value (its `fm.assets`), so only the holding is added here.
         for co in s.companies where co.status.isLive && co.holdingID == 0 {
             // Money of the week that is still on its way into the company is the company's: net worth does not dip while it is held.
-            companies += (companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)) * co.ownership / 100
+            var v = companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)
+            if forGoals, s.week - co.foundedWeek < youngCompanyWeeks, co.ownerNetFlow > 0 { v = min(v, co.ownerNetFlow) }
+            companies += v * co.ownership / 100
         }
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
         let debt = s.loans.filter { $0.companyID == 0 }.reduce(0) { $0 + $1.balance }

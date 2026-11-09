@@ -265,10 +265,25 @@ struct NetWorthCard: View {
 /// A group label in small caps (faint ink) with an optional action on the right; no rule, no box.
 struct HomeGroupLabel<Trailing: View>: View {
     var title: String
+    /// Set: the label is a button (with a small chevron) that runs this.
+    var onTap: (() -> Void)? = nil
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
-            Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
+            if let onTap {
+                Button { Haptics.tap(); onTap() } label: {
+                    HStack(spacing: Theme.Space.xxs) {
+                        Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
+                        LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                    }
+                    .frame(minHeight: 28).contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityHint("Lists every goal you are working on")
+                .accessibilityIdentifier("home-goals-label")
+            } else {
+                Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1)
+            }
             Spacer(minLength: Theme.Space.s)
             trailing()
         }
@@ -305,6 +320,7 @@ struct TopPriorities: View {
     var compact: Bool = false
 
     @State private var daily: PlayerGoals.DailyGoal?
+    @State private var showGoals = false
 
     /// With nothing to answer, the player's next goal fills the slot: the ladder goal, else today's goal while it is open.
     private struct Goal {
@@ -331,7 +347,8 @@ struct TopPriorities: View {
         let next: Goal? = first == nil && waiting == 0 && !offerAmbition ? goal : nil
         let tick: Int = engine.state.week * 7 + engine.state.day
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HomeGroupLabel(title: next != nil || offerAmbition ? "Your next goal" : "Needs you") { inboxLink(waiting) }
+            HomeGroupLabel(title: next != nil || offerAmbition ? "Your next goal" : "Needs you",
+                           onTap: next != nil || offerAmbition ? { showGoals = true } : nil) { inboxLink(waiting) }
             if let first {
                 lead(first)
                     .id(first.id)
@@ -352,6 +369,9 @@ struct TopPriorities: View {
             }
         }
         .animation(Motion.quick(reduceMotion), value: first?.id)
+        .centerSheet(isPresented: $showGoals, title: "Your goals", category: .detail, tone: .info) {
+            GoalsPopup(engine: engine, daily: daily, close: { showGoals = false }).environmentObject(store)
+        }
         .onAppear { daily = store.dailyGoal() }
         .onChange(of: tick) { _, _ in daily = store.dailyGoal() }
     }

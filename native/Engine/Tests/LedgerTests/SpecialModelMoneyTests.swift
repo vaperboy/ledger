@@ -61,7 +61,7 @@ final class SpecialModelMoneyTests: XCTestCase {
 
     func testFootballClubYear() throws {
         var e = try SpecialTradesTests.engine("NO", seed: 11)
-        guard case .ok(let id) = e.foundClub(countryCode: "NO") else { return XCTFail("club not founded") }
+        guard case .ok(let id) = e.foundClub(countryCode: "NO", allowRetired: true) else { return XCTFail("club not founded") }
         XCTAssertNotNil(e.state.company(id))
         try check(&e, "club")
     }

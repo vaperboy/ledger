@@ -14,6 +14,7 @@ public enum Ventures {
         PrivateEquity.weekly(&s, context: fc)
         BigMeeting.weekly(&s, data: data, context: fc)
         Shareholders.weekly(&s, data: data, context: fc)
+        JointVenture.weekly(&s, data: data, context: fc)
     }
 
     /// Inbox actions that belong here: pro-rata rounds and bridge money for startups you hold, demands of your co-owners.

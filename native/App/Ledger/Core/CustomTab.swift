@@ -20,6 +20,9 @@ enum CustomTabTarget: Codable, Hashable {
         return t
     }
 
+    /// Forgets the stored choice (the tab reads "Pick tab" again).
+    static func clearStored() { UserDefaults.standard.removeObject(forKey: defaultsKey) }
+
     func save() {
         guard let data = try? JSONEncoder().encode(self) else { return }
         UserDefaults.standard.set(data, forKey: CustomTabTarget.defaultsKey)
@@ -51,6 +54,8 @@ extension GameStore {
     /// The player picked a destination: it is stored and the Custom tab starts on it. The selected tab stays (only the tab bar changes
     /// it): on the Custom tab its root shows the new destination.
     func chooseCustom(_ target: CustomTabTarget) {
+        // A locked app is never granted through the picker.
+        if case .app(let app) = target, isLocked(app) { return }
         customTarget = target
         target.save()
         customPickerOpen = false

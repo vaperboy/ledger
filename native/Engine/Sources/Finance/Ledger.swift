@@ -23,11 +23,11 @@ public enum Ledger {
     public static let statementLimit = 600
 
     /// Test hook: called for every balance change (used by the balance tests to tally cash by cause). Nil in the app.
-    nonisolated(unsafe) public static var observer: ((CashHolder, Double) -> Void)?
-    nonisolated(unsafe) public static var cause: String?
+    nonisolated(unsafe) package static var observer: ((CashHolder, Double) -> Void)?
+    nonisolated(unsafe) package static var cause: String?
 
     /// The balance moves; no statement line (used by the weekly staging, which writes its own lines).
-    public static func moveRaw(_ s: inout GameState, _ holder: CashHolder, _ amount: Double) {
+    package static func moveRaw(_ s: inout GameState, _ holder: CashHolder, _ amount: Double) {
         if let o = observer { o(holder, amount); cause = nil }
         switch holder {
         case .me: s.cash += amount; AccountingLedger.pending = nil
@@ -38,7 +38,7 @@ public enum Ledger {
     }
 
     /// Move money. `why` is the line on the player's statement; `companyID` is the company it concerns.
-    public static func move(_ s: inout GameState, _ holder: CashHolder, _ amount: Double, why: String? = nil, companyID: Int = 0) {
+    package static func move(_ s: inout GameState, _ holder: CashHolder, _ amount: Double, why: String? = nil, companyID: Int = 0) {
         moveRaw(&s, holder, amount)
         guard holder == .me, amount != 0 else { return }
         ReportCounters.recordPersonal(&s, label: why, amount: amount)
@@ -50,14 +50,20 @@ public enum Ledger {
         }
     }
 
-    public static func addStatementLine(_ s: inout GameState, amount: Double, label: String, companyID: Int) {
+    package static func addStatementLine(_ s: inout GameState, amount: Double, label: String, companyID: Int) {
         let line = StatementLine(week: s.week, day: s.day, amount: jsRound(amount), label: label, companyID: companyID, balanceAfter: jsRound(s.cash))
         s.statement.insert(line, at: 0)
         if s.statement.count > statementLimit { s.statement.removeLast(s.statement.count - statementLimit) }
     }
 
+    /// Money into (positive) or out of (negative) the savings account, with the running total the books check compares against.
+    package static func moveSavings(_ s: inout GameState, _ amount: Double) {
+        s.savings += amount
+        s.savingsFlow += amount
+    }
+
     /// Set a balance directly (used when a company is wound up). The difference is booked.
-    public static func set(_ s: inout GameState, _ holder: CashHolder, to value: Double) {
+    package static func set(_ s: inout GameState, _ holder: CashHolder, to value: Double) {
         switch holder {
         case .me:
             let d = value - s.cash
@@ -84,6 +90,8 @@ public enum Ledger {
         }
         let me = s.cash - s.openingCash - (s.cashFlow["me"] ?? 0)
         if abs(me) > 1 { out.append(("me", me)) }
+        let sav = s.savings - s.openingSavings - s.savingsFlow
+        if abs(sav) > 1 { out.append(("savings", sav)) }
         for c in s.companies {
             let g = c.cash - (s.cashFlow["co\(c.id)"] ?? 0)
             if abs(g) > 1 { out.append((c.name, g)) }

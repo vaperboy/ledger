@@ -5,6 +5,7 @@ import Employees
 import Finance
 import Businesses
 import Investments
+import Events
 
 /// Everything the player can do. Each action is one function here, so a button in the app is always one call, and
 /// every action can be tested without any screen. Original: the `ACT.*` handlers in the HTML game (the ones ported so far).
@@ -23,7 +24,7 @@ public extension GameEngine {
             result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
             if case .success(let id) = result {
                 if amount > 0 { Payments.injectCash(&s, companyID: id, amount: min(amount, Payments.liquid(s))) }
-                if quickSetup { _ = CompanySetup.quickSetup(&s, companyID: id, data: data) }
+                if quickSetup && Tutorial.isComplete(s) { _ = CompanySetup.quickSetup(&s, companyID: id, data: data) }
                 s.note("You started \(s.company(id)?.name ?? "a company").", tone: "good", companyID: id)
             }
         }
@@ -274,6 +275,7 @@ public extension GameEngine {
 
     mutating func payDividend(companyID: Int, amount: Double) -> Payments.DividendResult {
         var r = Payments.DividendResult.notEnoughCash
+        if JointVenture.payoutBlock(state, companyID: companyID) != nil { return .needsBoard }
         update { s, _, ctx in r = Payments.payDividend(&s, companyID: companyID, amount: amount, context: ctx) }
         return r
     }
@@ -282,6 +284,7 @@ public extension GameEngine {
     mutating func setOwnerSalary(companyID: Int, monthly: Double) -> SettingResult {
         applySetting(refuse: { s in
             guard let co = s.company(companyID) else { return "That company no longer exists." }
+            if let why = JointVenture.payoutBlock(s, companyID: companyID), monthly > co.ownerMonthlySalary { return why }
             return co.form == .limited ? nil : "Only a limited company can pay its owner a salary."
         }, probe: { $0.companySnapshot(companyID) }) { s, data, ctx in
             guard let i = s.companyIndex(companyID), s.companies[i].form == .limited else { return }
@@ -359,11 +362,13 @@ public extension GameEngine {
     /// what it left out comes back with its cost.
     mutating func quickSetupWithinBudget(companyID: Int) -> CompanySetup.SetupReport {
         var rep = CompanySetup.SetupReport()
+        guard tutorialComplete else { return rep }
         update { s, d, _ in rep = CompanySetup.quickSetupReport(&s, companyID: companyID, data: d, options: .careful) }
         return rep
     }
     mutating func quickSetup(companyID: Int) -> [String] {
         var bought: [String] = []
+        guard tutorialComplete else { return bought }
         update { s, data, _ in bought = CompanySetup.quickSetup(&s, companyID: companyID, data: data) }
         return bought
     }

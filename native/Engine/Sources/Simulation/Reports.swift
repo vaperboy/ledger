@@ -388,7 +388,11 @@ public extension GameEngine {
     /// Close the week that just ended (and the month and year if they end with it).
     mutating func closeReportPeriods() {
         let data = self.data
-        update { s, _, c in Reports.closePeriods(&s, data: data, context: c) }
+        update { s, _, c in
+            Reports.closePeriods(&s, data: data, context: c)
+            GroupReview.close(&s, context: c)   // the quarterly group review, then the annual report (Simulation/GroupReview.swift, AnnualReport.swift)
+            AnnualReports.close(&s, context: c)
+        }
     }
 
     /// The report Home should offer now: the newest one the player has not dismissed, yearly before monthly before weekly.

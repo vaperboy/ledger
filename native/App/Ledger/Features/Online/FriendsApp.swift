@@ -1,0 +1,176 @@
+import SwiftUI
+
+/// The Friends app: your code, search by name or profile code, requests in both directions and the friend list.
+/// A guest sees how to link an account instead.
+struct FriendsApp: View {
+    @Environment(OnlineSession.self) private var online
+    @State private var overview: FriendsOverview?
+    @State private var query = ""
+    @State private var results: [PlayerProfile] = []
+    @State private var searching = false
+    @State private var failure: String?
+
+    var body: some View {
+        PhonePageScroll(spacing: Theme.Space.l) {
+            if online.isSignedIn { signedIn } else { AccountSettingsGroup() }
+        }
+        .appScreen(title: "Friends", subtitle: "Requests, search and your friends") {
+            if let p = online.profile, online.isSignedIn {
+                NavigationLink { MyProfileView() } label: { ProfileAvatar(initials: p.initials, colour: p.avatarColour, size: 34) }
+                    .accessibilityLabel("My profile")
+            }
+        }
+        .task(id: online.isSignedIn) { await reload() }
+        .task(id: query) { await search() }
+    }
+
+    // MARK: Signed in
+
+    @ViewBuilder private var signedIn: some View {
+        searchGroup
+        if let o = overview {
+            if !o.incoming.isEmpty { incomingGroup(o.incoming) }
+            if !o.outgoing.isEmpty { outgoingGroup(o.outgoing) }
+            friendsGroup(o.friends)
+        } else if failure == nil {
+            ProgressView().frame(maxWidth: .infinity)
+        }
+        if let failure { Text(failure).textStyle(.caption, tint: Theme.loss).frame(maxWidth: .infinity) }
+    }
+
+    private var searchGroup: some View {
+        OnlineGroup(title: "Find a player", footer: "Type a name, or paste a profile code like K7M-4PQ.") {
+            HStack(spacing: Theme.Space.s) {
+                LedgerGlyph(glyph: Glyph.person, size: Theme.Icon.small, tint: Theme.inkFaint)
+                TextField("Name or profile code", text: $query)
+                    .textFieldStyle(.plain).textStyle(.headline, weight: .regular)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .accessibilityIdentifier("friends-search")
+                if searching { ProgressView() }
+            }
+            .frame(minHeight: 48)
+            if !query.trimmingCharacters(in: .whitespaces).isEmpty && !searching {
+                Hairline()
+                if results.isEmpty {
+                    Text("Nobody found.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 48, alignment: .leading)
+                } else {
+                    ForEach(Array(results.enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
+                        if i > 0 { Hairline() }
+                        resultRow(p)
+                    }
+                }
+            }
+            if let mine = online.profile {
+                Hairline()
+                HStack {
+                    Text("Your code").textStyle(.caption)
+                    Text(mine.code).textStyle(.headline, numeric: true)
+                    Spacer()
+                    ShareLink(item: mine.code) { Text("Share").textStyle(.body, tint: Theme.accent) }
+                }
+                .frame(minHeight: 48)
+            }
+        }
+    }
+
+    private func resultRow(_ p: PlayerProfile) -> some View {
+        NavigationLink { PlayerProfileView(playerID: p.id) } label: {
+            PlayerRow(player: p) { relationTag(p) }
+        }
+        .buttonStyle(PressableStyle())
+    }
+
+    @ViewBuilder private func relationTag(_ p: PlayerProfile) -> some View {
+        switch p.relation {
+        case .none:
+            Button("Add") { act { try await online.service.sendFriendRequest(to: p.id) } }
+                .buttonStyle(SecondaryButtonStyle(size: .compact))
+        case .friend: Text("Friend").textStyle(.caption, tint: Theme.gain)
+        case .requestSent: Text("Requested").textStyle(.caption)
+        case .requestReceived: Text("Wants to be friends").textStyle(.caption, tint: Theme.accent)
+        case .blocked, .you: EmptyView()
+        }
+    }
+
+    private func incomingGroup(_ list: [FriendRequest]) -> some View {
+        OnlineGroup(title: "Requests") {
+            ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, r: FriendRequest) in
+                if i > 0 { Hairline() }
+                VStack(spacing: 0) {
+                    NavigationLink { PlayerProfileView(playerID: r.player.id) } label: { PlayerRow(player: r.player) { EmptyView() } }
+                        .buttonStyle(PressableStyle())
+                    HStack(spacing: Theme.Space.s) {
+                        Button("Accept") { act { try await online.service.acceptFriendRequest(from: r.player.id) } }
+                            .buttonStyle(PrimaryButtonStyle(size: .compact))
+                        Button("Decline") { act { try await online.service.declineFriendRequest(from: r.player.id) } }
+                            .buttonStyle(SecondaryButtonStyle(size: .compact))
+                        Spacer()
+                    }
+                    .padding(.bottom, Theme.Space.s)
+                }
+            }
+        }
+    }
+
+    private func outgoingGroup(_ list: [FriendRequest]) -> some View {
+        OnlineGroup(title: "Sent", footer: "Waiting for an answer.") {
+            ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, r: FriendRequest) in
+                if i > 0 { Hairline() }
+                PlayerRow(player: r.player) {
+                    Button("Cancel") { act { try await online.service.cancelFriendRequest(to: r.player.id) } }
+                        .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
+                }
+            }
+        }
+    }
+
+    private func friendsGroup(_ list: [PlayerProfile]) -> some View {
+        OnlineGroup(title: "Friends", footer: list.isEmpty ? "" : "Tap a friend to see their companies.") {
+            if list.isEmpty {
+                Text("No friends yet. Search above to add one.").textStyle(.body, tint: Theme.inkSoft).frame(minHeight: 56, alignment: .leading)
+            } else {
+                ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
+                    if i > 0 { Hairline() }
+                    NavigationLink { PlayerProfileView(playerID: p.id) } label: {
+                        PlayerRow(player: p) {
+                            Text(companyLine(p)).textStyle(.caption)
+                            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                        }
+                    }
+                    .buttonStyle(PressableStyle())
+                }
+            }
+        }
+    }
+
+    private func companyLine(_ p: PlayerProfile) -> String {
+        guard let n = p.companyCount else { return "" }
+        return n == 1 ? "1 company" : "\(n) companies"
+    }
+
+    // MARK: Calls
+
+    private func reload() async {
+        guard online.isSignedIn else { overview = nil; return }
+        do { overview = try await online.service.friends(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load friends." }
+    }
+
+    /// Runs after a short pause so each keystroke does not search; the task is cancelled when the text changes again.
+    private func search() async {
+        let q: String = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard online.isSignedIn, !q.isEmpty else { results = []; searching = false; return }
+        searching = true
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        guard !Task.isCancelled else { return }
+        do { results = try await online.service.searchPlayers(query: q); failure = nil } catch { if !Task.isCancelled { failure = (error as? LocalizedError)?.errorDescription } }
+        if !Task.isCancelled { searching = false }
+    }
+
+    private func act(_ call: @escaping () async throws -> Void) {
+        Task {
+            do { try await call(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "That did not work. Try again." }
+            await reload()
+            await search()
+        }
+    }
+}

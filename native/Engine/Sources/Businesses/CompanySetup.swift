@@ -175,6 +175,11 @@ public enum CompanySetup {
         return Currency.nicePrice(raw / fx) * fx
     }
 
+    /// Whether a piece is needed to open and trade: required, setting the capacity, or what people need to do their work (a sales car).
+    static func opensTheTrade(_ e: EquipmentSpec, _ bd: Trade, tables: TradeTables) -> Bool {
+        e.opensTheTrade || PersonalEquipment.rule(bd, e, tables: tables) != nil
+    }
+
     /// How many of each piece a company of this size needs. Original: `stdEq`.
     public static func standardEquipment(_ bd: Trade, size: Double) -> [String: Double] {
         var out: [String: Double] = [:]
@@ -417,11 +422,11 @@ public enum CompanySetup {
             if let model = e.vehicleModels?.first {
                 let price = data.catalog.tables.vehicles[model]?.price ?? 300000
                 r.vehicles += price * q * w.inflationIndex * 0.2
-                if e.isRequired { r.requiredVehicles += price * q * w.inflationIndex * 0.2 }
+                if opensTheTrade(e, bd, tables: data.catalog.tables) { r.requiredVehicles += price * q * w.inflationIndex * 0.2 }
                 vehicleFull += price * q
             } else {
                 r.equipment += equipmentPrice(e, company: co, w) * q
-                if e.isRequired {
+                if opensTheTrade(e, bd, tables: data.catalog.tables) {
                     let unit = equipmentPrice(e, company: co, w)
                     r.requiredEquipment += unit * q
                     r.requiredEquipmentUpfront += EquipmentMarket.canFinance(e, tradeID: bd.id, total: unit * q, company: co, w, tables: data.catalog.tables) ? unit * q * 0.2 : unit * q
@@ -465,13 +470,13 @@ public enum CompanySetup {
 
     // MARK: Quick setup
 
-    /// How far quick set-up may go. The default is the original's: everything the trade normally has, no look at the cash left.
+    /// How far quick set-up may go. The default buys only what the trade needs to open and trade (`opensTheTrade`), never the optional extras, and does not look at the cash left.
     /// A player-facing start passes a budget: required equipment only unless asked, the minimum viable team, and no hire the company's cash cannot
     /// carry for `payrollMonthsReserve` months. Anything left out is returned (never bought silently) so the screen can show it with its cost.
     public struct SetupOptions: Equatable, Sendable {
         public enum Team: String, Equatable, Sendable { case minimum, standard }
         public var team: Team = .standard
-        public var optionalEquipment = true
+        public var optionalEquipment = false
         /// nil: hire without looking at cash. A number: hire only while cash covers (wages so far + this one + rent) for that many months.
         public var payrollMonthsReserve: Double? = nil
         /// A business that was bought brings its equipment and people with it: set-up neither buys the equipment nor hires the team.
@@ -482,7 +487,7 @@ public enum CompanySetup {
         public var applyDocuments = true
         public var autoPremises = true
         public var buyProperty = true
-        public init(team: Team = .standard, optionalEquipment: Bool = true, payrollMonthsReserve: Double? = nil, equipmentInPlace: Bool = false, teamInPlace: Bool = false) {
+        public init(team: Team = .standard, optionalEquipment: Bool = false, payrollMonthsReserve: Double? = nil, equipmentInPlace: Bool = false, teamInPlace: Bool = false) {
             self.team = team; self.optionalEquipment = optionalEquipment; self.payrollMonthsReserve = payrollMonthsReserve
             self.equipmentInPlace = equipmentInPlace; self.teamInPlace = teamInPlace
         }
@@ -509,7 +514,7 @@ public enum CompanySetup {
     }
 
     /// Do everything a company needs to open with sensible standard choices: apply for all documents, rent a
-    /// standard place, buy the standard equipment, hire the standard team. It then opens by itself once the
+    /// standard place, buy the equipment needed to open and trade, hire the standard team. It then opens by itself once the
     /// paperwork is approved. Returns what could not be done (usually: not enough cash). Original: `autoSetup`.
     /// The original makes one offer to the median-priced candidate per job and does not retry a refusal; the app retries and picks the
     /// best value. `faithfulHiring` switches to the original's way (used only by the statistical comparison tests).
@@ -539,7 +544,7 @@ public enum CompanySetup {
         for e in bd.equipment.filter({ $0.vehicleModels == nil }) + bd.equipment.filter({ $0.vehicleModels != nil }) {
             let q = need[e.id] ?? (e.isRequired ? 1 : 0)
             if q <= 0 || options.equipmentInPlace { continue }
-            if !options.optionalEquipment && !e.isRequired {
+            if !options.optionalEquipment && !opensTheTrade(e, bd, tables: data.catalog.tables) {
                 let each: Double
                 if let model = e.vehicleModels?.first {
                     each = (data.catalog.tables.vehicles[model]?.price ?? 300000) * w.inflationIndex * 0.2

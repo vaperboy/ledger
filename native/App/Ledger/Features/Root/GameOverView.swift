@@ -59,6 +59,7 @@ struct GameOverView: View {
         .task { await playEntrance() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: Theme.Space.s) {
+                SecondChanceOffer()
                 if store.canRetrySameSetup {
                     Button("Retry with the same setup") { Haptics.tap(); store.retryWithSameSetup(); ads.resetForNewSave() }
                         .buttonStyle(PrimaryButtonStyle(fullWidth: true))

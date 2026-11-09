@@ -116,6 +116,7 @@ struct GroupEntityMoney: View {
         pending = PendingAction(title: "Pay \(cur.tidyShort(amt)) to yourself?", message: "It comes out of the holding's retained profits and is added to your dividends for the year, with \(PayRules.dividendTaxText(engine)). It cannot be paid back in as a dividend.", button: "Pay dividend", amount: amt, currency: cur) {
             switch store.act({ $0.payDividend(companyID: id, amount: amt) }) {
             case .ok?: Haptics.success(); store.show("Dividend of \(cur.tidyShort(amt)) paid.", tone: "good")
+            case .needsBoard?: Haptics.warning(); store.show("This company has partners. A board meeting must vote for a dividend.", tone: "warn")
             case .noRetainedProfit?: Haptics.warning(); store.show("There are no retained profits to pay out.", tone: "warn")
             default: Haptics.warning(); store.show("Not enough cash in the holding.", tone: "warn")
             }

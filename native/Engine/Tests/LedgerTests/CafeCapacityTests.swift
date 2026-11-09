@@ -9,7 +9,8 @@ final class CafeCapacityTests: XCTestCase {
     private func newCafe() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 2026)
         e.update { s, _, _ in Ledger.move(&s, .me, 20_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 4_000_000) else { throw XCTSkip("could not start a company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 4_000_000, quickSetup: false) else { throw XCTSkip("could not start a company") }
+        e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }   // the usual full kit
         return (e, id)
     }
 

@@ -1,0 +1,37 @@
+# OWNER STEPS (run once, from the repo root): install the Supabase CLI and `supabase login`; run
+# `supabase link --project-ref ktcjbitrwuieuxthrqhu` (it asks for the database password, which only you hold; never commit it);
+# run `supabase db push` to apply supabase/migrations, then paste supabase/seed.sql into the dashboard SQL editor (dev data only).
+# In the dashboard under Authentication > Providers enable Apple (Services ID + key) and Google (web client ID + secret) and turn on
+# "Allow anonymous sign-ins"; under Authentication > URL Configuration set the site URL and redirect URLs to the app's URL scheme
+# (for example ledger://auth-callback). Keep the provider secrets in the dashboard or in a git-ignored supabase/.env, never in this file.
+# Finally set `OnlineConfig.useServer = true` in native/App/Ledger/Core/Online/OnlineConfig.swift and ship a build.
+
+project_id = "ktcjbitrwuieuxthrqhu"
+
+[api]
+enabled = true
+schemas = ["public"]
+max_rows = 100
+
+[db]
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "ledger://auth-callback"
+additional_redirect_urls = ["ledger://auth-callback"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[auth.external.apple]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = false

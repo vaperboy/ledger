@@ -31,6 +31,8 @@ public enum Unlocks {
     static let globalKey = "unlkG"
     public static let weeksChain = 52
     public static let weeksResearch = 8
+    /// Weeks of trading before the calm engagement pages open (Desk, weekly plan, Rivals); never inside the first-session ladder.
+    public static let weeksDesk = 6, weeksFocus = 8, weeksRivals = 12
 
     struct Def {
         var id: String
@@ -48,6 +50,9 @@ public enum Unlocks {
         Def(id: "research", title: "Market research", hidden: false, silent: false, target: "research"),
         Def(id: "dividends", title: "Dividends", hidden: false, silent: false, target: "money"),
         Def(id: "marketplace", title: "Marketplace", hidden: false, silent: true, target: "marketplace"),
+        Def(id: "desk", title: "Desk", hidden: true, silent: true, target: "desk"),
+        Def(id: "focus", title: "Weekly plan", hidden: true, silent: true, target: "focus"),
+        Def(id: "rivals", title: "Rivals", hidden: true, silent: true, target: "rivals"),
     ]
 
     /// True when the player has already earned this unlock through any company (or the older per-company table holds it).
@@ -95,8 +100,19 @@ public enum Unlocks {
         }
     }
 
+    /// The first-session ladder is over (first profitable month done); a game without a ladder is always past it.
+    static func ladderPast(_ s: GameState) -> Bool { !Gates.ladderOn(s) || Gates.goalDone(s, 7) }
+
+    /// A player-level engagement page (`desk`, `focus`, `rivals`) has opened for any company of the player (recorded by the weekly sweep).
+    public static func isOpen(_ s: GameState, _ id: String) -> Bool { playerHas(s, id) }
+
     /// The rule and its words come from `Gates.table`; this adds what the company already uses and the progress count.
     static func check(_ d: Def, _ s: GameState, _ co: Company, context: FinanceContext) -> (ok: Bool, reason: String) {
+        if d.id == "desk" || d.id == "focus" || d.id == "rivals" {
+            let need: Int = d.id == "desk" ? weeksDesk : d.id == "focus" ? weeksFocus : weeksRivals
+            let weeks: Int = weeksTraded(s, co)
+            return (weeks >= need && ladderPast(s), "Unlocks when the company has traded \(need) weeks (\(weeks) so far) and the first steps are done")
+        }
         let e: RuleEntry = Gates.entry(.unlock(d.id))
         let ok: Bool = Gates.met(e.rule, s, data: nil, company: co, context: context) || alreadyUses(d.id, s, co)
         var reason: String = e.text

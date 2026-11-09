@@ -20,12 +20,16 @@ public struct GameState: Codable, Equatable, Sendable {
     public var homeCountryCode: String
     public var player: Player
     /// The player's private current account. Never change directly: use `Ledger.move`.
-    public var cash: Double
+    public package(set) var cash: Double
     /// The starting loan amount; the ledger check compares against it. Original: `cash0`.
     public var openingCash: Double
     /// Sum of everything booked to each cash holder ("me", "co<id>"). Lets tests prove cash equals what was booked.
     public var cashFlow: [String: Double]
-    public var savings: Double
+    /// The savings account. Never change directly: use `Ledger.moveSavings`.
+    public package(set) var savings: Double
+    /// Sum of everything booked to savings, and the balance it started from; the books check compares them.
+    public package(set) var savingsFlow: Double
+    public package(set) var openingSavings: Double
     public var loans: [Loan]
     /// 0-100 credit score.
     public var credit: Double
@@ -75,7 +79,11 @@ public struct GameState: Codable, Equatable, Sendable {
         cash = take("cash").double
         openingCash = take("cash0").double
         cashFlow = take("flow").object.mapValues { $0.double }
-        savings = take("sav")["bal"].double
+        let sav = take("sav")
+        savings = sav["bal"].double
+        savingsFlow = sav["flow"].double
+        // A save from before savings were tracked starts its books check from the balance it loads with.
+        openingSavings = sav["open"].isNull ? savings - savingsFlow : sav["open"].double
         loans = take("loans").array.map { Loan(raw: $0.object) }
         credit = take("credit").double
         overdraftLimit = take("overdraftLimit").double
@@ -113,7 +121,7 @@ public struct GameState: Codable, Equatable, Sendable {
         o["cash"] = .number(cash)
         o["cash0"] = .number(openingCash)
         o["flow"] = .object(cashFlow.mapValues { .number($0) })
-        o["sav"] = .object(["bal": .number(savings)])
+        o["sav"] = .object(["bal": .number(savings), "flow": .number(savingsFlow), "open": .number(openingSavings)])
         o["loans"] = .array(loans.map { .object($0.raw) })
         o["credit"] = .number(credit)
         o["overdraftLimit"] = .number(overdraftLimit)

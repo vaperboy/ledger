@@ -7,7 +7,7 @@
       "familyShareable" : true,
       "internalID" : "6740000001",
       "localizations" : [
-        { "description" : "Every locked item, for good. Removes ads.", "displayName" : "Ledger Pro", "locale" : "en_US" }
+        { "description" : "Every locked item and three save slots, for good. Removes ads.", "displayName" : "Ledger Pro", "locale" : "en_US" }
       ],
       "productID" : "com.ledger.pro",
       "referenceName" : "Ledger Pro",
@@ -18,7 +18,7 @@
       "familyShareable" : true,
       "internalID" : "6740000002",
       "localizations" : [
-        { "description" : "Pro, your name in the Rich List, a gold icon and all future paid packs.", "displayName" : "Founder's Edition", "locale" : "en_US" }
+        { "description" : "Everything in Ledger Pro, once, with a Founder mark in Settings.", "displayName" : "Founder's Edition", "locale" : "en_US" }
       ],
       "productID" : "com.ledger.founder",
       "referenceName" : "Founder's Edition",
@@ -46,7 +46,7 @@
           "internalID" : "6740000003",
           "introductoryOffer" : { "internalID" : "6740000013", "paymentMode" : "free", "subscriptionPeriod" : "P1W" },
           "localizations" : [
-            { "description" : "Advisor, auto-week, multi-company brief, cloud backup, early access.", "displayName" : "Ledger Plus, monthly", "locale" : "en_US" }
+            { "description" : "Everything in Ledger Pro, ads removed. Season pass included from the first season.", "displayName" : "Ledger Plus, monthly", "locale" : "en_US" }
           ],
           "productID" : "com.ledger.plus.monthly",
           "recurringSubscriptionPeriod" : "P1M",
@@ -64,7 +64,7 @@
           "internalID" : "6740000004",
           "introductoryOffer" : { "internalID" : "6740000014", "paymentMode" : "free", "subscriptionPeriod" : "P1W" },
           "localizations" : [
-            { "description" : "Advisor, auto-week, multi-company brief, cloud backup, early access.", "displayName" : "Ledger Plus, yearly", "locale" : "en_US" }
+            { "description" : "Everything in Ledger Pro, ads removed. Season pass included from the first season.", "displayName" : "Ledger Plus, yearly", "locale" : "en_US" }
           ],
           "productID" : "com.ledger.plus.yearly",
           "recurringSubscriptionPeriod" : "P1Y",

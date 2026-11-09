@@ -2,7 +2,7 @@ import Foundation
 
 /// Offline gift codes that open the full game for a period. A code is 10 bytes: kind, serial, and a keyed hash of both, written as
 /// 16 base-32 characters. The app only checks the hash and remembers which serials it has used on this device; sharing is stopped
-/// by trust, not by a server.
+/// by trust, not by a server. For AltStore builds only: App Store builds should hand out StoreKit offer codes instead.
 public enum GiftCodes {
     public struct Gift: Equatable, Sendable {
         public var serial: Int
@@ -62,6 +62,40 @@ public enum GiftCodes {
             if bits >= 8 { bits -= 8; out.append(UInt8((acc >> UInt32(bits)) & 255)) }
         }
         return out
+    }
+}
+
+/// The used serials, the gift's end and the newest date the clock has shown, kept together so the app can mirror them in two places
+/// (UserDefaults and the keychain) and merge them. The clock only moves forward here, so setting the phone back cannot stretch a gift.
+public struct GiftWallet: Codable, Equatable, Sendable {
+    public var serials: [Int] = []
+    public var expires: Date?
+    public var lastSeen: Date?
+    public init() {}
+
+    public enum Result: Equatable, Sendable { case invalid, used, ok(until: Date) }
+
+    /// The later of the real clock and the newest date seen.
+    public func trustedNow(_ now: Date) -> Date { max(now, lastSeen ?? now) }
+    public mutating func noteSeen(_ now: Date) { lastSeen = trustedNow(now) }
+
+    /// Union of two copies: every serial used anywhere stays used, the later dates win.
+    public func merged(_ o: GiftWallet) -> GiftWallet {
+        var m = GiftWallet()
+        m.serials = Array(Set(serials).union(o.serials)).sorted()
+        m.expires = [expires, o.expires].compactMap { $0 }.max()
+        m.lastSeen = [lastSeen, o.lastSeen].compactMap { $0 }.max()
+        return m
+    }
+
+    /// Redeems a typed code: the period is added to any time still left, counted from the trusted clock.
+    public mutating func redeem(_ text: String, now: Date) -> Result {
+        guard let gift = GiftCodes.check(text) else { return .invalid }
+        if serials.contains(gift.serial) { return .used }
+        let t = trustedNow(now)
+        let end = max(t, expires ?? t).addingTimeInterval(Double(gift.days) * AdPolicy.passDuration)
+        serials.append(gift.serial); expires = end; lastSeen = t
+        return .ok(until: end)
     }
 }
 

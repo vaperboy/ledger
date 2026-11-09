@@ -11,13 +11,21 @@ struct NewsView: View {
     private var P: OutsidePalette { .news }
     @EnvironmentObject var store: GameStore
     @State private var showPaper = false
+    @State private var section: NewsSection = .world
 
     var body: some View {
         if let e = store.engine {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     masthead(e)
-                    frontPage(e)
+                    sectionPicker
+                    switch section {
+                    case .world:
+                        sourceNote("Source: the newsroom. Weather, banks, markets and the economy, and what happens to your companies.")
+                        frontPage(e)
+                    case .players:
+                        PlayerNewsSection(engine: e)
+                    }
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
                 .frame(maxWidth: 760).frame(maxWidth: .infinity)
@@ -63,6 +71,35 @@ struct NewsView: View {
             .accessibilityIdentifier("news-paper-link")
         }
         .padding(.bottom, 14)
+    }
+
+    // MARK: Sections
+
+    enum NewsSection: String, CaseIterable, Identifiable {
+        case world = "World and economy", players = "Players"
+        var id: String { rawValue }
+    }
+
+    private var sectionPicker: some View {
+        HStack(spacing: 8) {
+            ForEach(NewsSection.allCases) { (s: NewsSection) in
+                Button { section = s } label: {
+                    Text(s.rawValue).textStyle(.caption, tint: section == s ? P.accentInk : P.inkSoft, weight: .semibold)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .background(Capsule().fill(section == s ? P.accent : Color.clear))
+                        .overlay(Capsule().stroke(section == s ? Color.clear : P.lineStrong, lineWidth: 1))
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityIdentifier("news-section-\(s == .world ? "world" : "players")")
+                .accessibilityAddTraits(section == s ? .isSelected : [])
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.bottom, 10)
+    }
+
+    private func sourceNote(_ text: String) -> some View {
+        Text(text).textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
     }
 
     // MARK: Front page

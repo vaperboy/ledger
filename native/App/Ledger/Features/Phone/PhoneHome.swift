@@ -13,6 +13,8 @@ struct PhoneHome: View {
     typealias Page = NavRoute
 
     @EnvironmentObject var store: GameStore
+    /// The Store tile appears only after the player confirmed they are 18 or older.
+    @AppStorage(AgeConfirmation.key) private var adultConfirmed = false
     @Environment(\.tabBarClearance) private var clearance
     /// The Phone stack lives in the store; opening an app from the grid pushes through it like every other link.
     private var path: PhonePath { PhonePath(store: store) }
@@ -33,9 +35,9 @@ struct PhoneHome: View {
             VStack(spacing: 16) {
                 clock
                 LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(PhoneApp.launcher) { app in
+                    ForEach(PhoneApp.launcher.filter { $0 != .store || adultConfirmed }) { app in
                         if gateState(app) != .hidden {
-                            AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText) {
+                            AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
                                 Haptics.tap()
                                 if app == .luxury { ent.run(.luxuryGivingFootball, "Luxury") { path.append(.app(app)) } } else { path.append(.app(app)) }
                             }
@@ -104,6 +106,8 @@ struct AppIcon: View {
     var badge: Int
     /// The lock text of a gate that is near (`Unlocks ...`): the tile is dimmed and does not open.
     var lock: String? = nil
+    /// A small still dot instead of a number: something is waiting but nothing is urgent (the Desk's question of the day).
+    var quietDot = false
     var action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -115,13 +119,16 @@ struct AppIcon: View {
             }
             .animation(Motion.quick(reduceMotion), value: lock)
             .frame(maxWidth: .infinity)
-            .overlay(alignment: .topTrailing) { RedBubble(count: badge).offset(x: -2, y: -5) }
+            .overlay(alignment: .topTrailing) {
+                if quietDot { Circle().fill(Theme.accent).frame(width: 10, height: 10).offset(x: -10, y: -3).accessibilityHidden(true) }
+                else { RedBubble(count: badge).offset(x: -2, y: -5) }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle())
         .disabled(lock != nil)
         .accessibilityLabel(app.title)
-        .accessibilityValue(badge > 0 ? "\(badge) waiting" : "")
+        .accessibilityValue(quietDot ? "Today's question is waiting" : badge > 0 ? "\(badge) waiting" : "")
         .accessibilityIdentifier("phone-app-\(app.title)")
     }
 }
@@ -186,6 +193,16 @@ struct PhoneAppScreen: View {
             AtlasApp()
         case .marketplace:
             MarketplaceApp()
+        case .friends:
+            FriendsApp()
+        case .season:
+            SeasonView().appScreen(title: app.title, subtitle: app.subtitle)
+        case .desk:
+            DeskApp().appScreen(title: app.title, subtitle: app.subtitle)
+        case .rivals:
+            RivalsApp().appScreen(title: app.title, subtitle: app.subtitle)
+        case .store:
+            StoreApp()
         }
     }
 }

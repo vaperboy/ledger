@@ -31,7 +31,7 @@ public struct TradeAffordability: Identifiable, Equatable, Sendable {
         let available = Payments.liquid(s)
         // A limited company needs its share capital in the account before it can even be priced; price it on a copy that has it.
         var probe = s; probe.cash += Double(Int32.max)
-        let rows: [TradeAffordability] = data.catalog.all.map { t in
+        let rows: [TradeAffordability] = data.catalog.all.filter { !SpecialFamilies.isRetired($0) }.map { t in
             let blocked = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "Coming in a later update")
             guard blocked == nil else { return TradeAffordability(tradeID: t.id, cost: nil, available: available, blocked: blocked) }
             let form: LegalForm = t.needsLimitedCompany ? .limited : .soleTrader

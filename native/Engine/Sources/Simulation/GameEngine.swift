@@ -110,7 +110,8 @@ public struct GameEngine {
         } else if story == .fresh {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard let tradeID, LifeStories.applyFresh(&state, data: data, context: ctx, tradeID: tradeID, name: companyName ?? "", chooseFirstItem: chooseFirstItem) else { throw CocoaError(.fileReadUnknown) }
-            state.note("Welcome to Ledger. \(state.companies.first?.name ?? "Your business") is open. Tap Next day to begin.", tone: "good")
+            state.note("Welcome to Ledger. \(state.companies.first?.name ?? "Your business") is open. Pick what it sells first; the guide shows where to press.", tone: "good")
+            if chooseFirstItem { Tutorial.start(&state) }
         } else {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }
@@ -175,6 +176,8 @@ public struct GameEngine {
             if m.actionID == VolumeContracts.action { VolumeContracts.answer(&s, message: m, option: idx); return true }
             if m.actionID == "g27poach" { RivalGroups.answerPoach(&s, message: m, option: idx, data: d); return true }
             if m.actionID == RivalBids.action { RivalBids.answer(&s, message: m, option: idx, data: d, context: c); return true }   // rival group bids ("g27bid")
+            if m.actionID == WeeklyFocus.action { WeeklyFocus.answer(&s, message: m, option: idx, data: d); return true }
+            if RivalStories.handlesAnswer(m.actionID) { RivalStories.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if m.actionID == "fav31" { WorldAround.answerFavour(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "sue16" { Lawsuits.answer(&s, message: m, option: idx, data: d); return true }
             if m.actionID == "cy56r" { Cyber.answerRansom(&s, message: m, option: idx, data: d); return true }
@@ -243,6 +246,7 @@ public struct GameEngine {
         sweepCareer()
         checkMilestones(weekClosed: completed)
         routeFreshDecisions(state.inbox.filter { !before.contains($0.id) })   // a hired rank takes what is theirs
+        Tutorial.advance(&state, from: .nextDay)
         let fresh = state.inbox.filter { !before.contains($0.id) }
         return DayOutcome(newMessages: fresh, completedWeek: completed, gameOver: state.isGameOver)
     }
@@ -253,9 +257,11 @@ public struct GameEngine {
     }
 
     mutating func tradeAndPay(day: Int) {
+        Engagement.runDay(&state, data: data)   // Desk answers come due in the morning (Businesses/Desk.swift)
         JobAds.runDay(&state, data: data)   // applicants to job ads arrive over the weeks
         Agency.runDay(&state, data: data)
         StoreOrders.runDay(&state, data: data)   // TechPro Store orders arrive on their delivery day
+        ManagerOpening.runDay(&state, data: data)   // a manager builds a new place up day by day
         DailyTrade.runDay(&state, day: day, data: data)
         ProjectWeek.runDay(&state, day: day, data: data)
         Payday.onDay(&state, data: data, context: context)
@@ -451,6 +457,7 @@ public struct GameEngine {
             Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
             EventEngine.expire(&state, data: data, context: context)
             Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
+            Engagement.weekly(&state, data: data)   // weekly plan and rival stories, once their pages are open (Businesses/Engagement.swift)
         case 4:
             StrategicDecisions.weekly(&state, data: data, context: context)
             Ventures.weekly(&state, data: data, context: context)   // startups, private equity, the big meeting, owners of your companies

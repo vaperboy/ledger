@@ -20,6 +20,7 @@ struct MarketWorldPage: View {
             let regions: [String] = Array(Set(rest.map { (c: MarketUI.CountryLine) -> String in c.region })).sorted()
             ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                 hero(e, mine)
+                WorldPricesCard()
                 rankings(e)
                 MarketLabel(title: "Where you are")
                 countryList(mine)

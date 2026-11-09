@@ -88,10 +88,10 @@ final class SpecialTradesTests: XCTestCase {
         for c in clubs where !c.isFixed {
             let offer = e.offerForClub(clubID: c.id, multiple: 3)
             if offer.answer == .accept || offer.answer == .counter, let p = offer.price {
-                if case .ok(let id) = e.buyClub(clubID: c.id, price: p) { bought = id; break }
+                if case .ok(let id) = e.buyClub(clubID: c.id, price: p, allowRetired: true) { bought = id; break }
             }
         }
-        if bought == 0, case .ok(let id) = e.foundClub(countryCode: "NO") { bought = id }
+        if bought == 0, case .ok(let id) = e.foundClub(countryCode: "NO", allowRetired: true) { bought = id }
         XCTAssertNotEqual(bought, 0)
         Self.play(&e, days: 52 * 7 * 2)
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
@@ -120,11 +120,11 @@ final class SpecialTradesTests: XCTestCase {
                     for c in [mid] + clubs {
                         for _ in 0..<2 {
                             let o = e.offerForClub(clubID: c.id, multiple: 4)
-                            if let p = o.price, o.answer == .accept || o.answer == .counter, case .ok(let i) = e.buyClub(clubID: c.id, price: p) { id = i; invested = p; break }
+                            if let p = o.price, o.answer == .accept || o.answer == .counter, case .ok(let i) = e.buyClub(clubID: c.id, price: p, allowRetired: true) { id = i; invested = p; break }
                         }
                         if id != 0 { break }
                     }
-                    if id == 0, case .ok(let i) = e.foundClub(countryCode: country) { id = i; invested = e.foundingCost(countryCode: country) ?? 0 }
+                    if id == 0, case .ok(let i) = e.foundClub(countryCode: country, allowRetired: true) { id = i; invested = e.foundingCost(countryCode: country) ?? 0 }
                 } else {
                     id = Self.start(&e, trade, extra: trade == "salmon" ? 100_000_000 : 300_000_000)
                     if trade == "oilgas" { e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: 1_500_000_000) }; _ = e.buyOilStake(companyID: id, thousandBarrels: 5000) }

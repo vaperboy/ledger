@@ -209,7 +209,7 @@ struct CompanySwitcherBar: View {
             .accessibilityLabel("Switch company")
             .accessibilityValue(context)
             .padding(.horizontal, Theme.Space.page)
-            .background(P.ground.ignoresSafeArea(edges: .top))
+            .background(P == .game ? Color.clear : P.ground)
         }
     }
 

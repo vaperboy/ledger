@@ -264,13 +264,16 @@ public extension GameEngine {
         return r
     }
     func clubPurchasePlan(clubID: String, price: Double) -> FootballModel.PurchasePlan? { FootballModel.purchasePlan(state, clubID: clubID, price: price) }
-    mutating func buyClub(clubID: String, price: Double) -> FootballModel.BuyResult {
+    /// Football clubs are hidden from the game: only a test or a tool passes `allowRetired`.
+    mutating func buyClub(clubID: String, price: Double, allowRetired: Bool = false) -> FootballModel.BuyResult {
         var r = FootballModel.BuyResult.notAvailable
+        guard allowRetired || !SpecialFamilies.retiredTrades.contains("club") else { return r }
         update { s, d, c in r = FootballModel.buy(&s, clubID: clubID, price: price, data: d, context: c) }
         return r
     }
-    mutating func foundClub(countryCode: String) -> FootballModel.BuyResult {
+    mutating func foundClub(countryCode: String, allowRetired: Bool = false) -> FootballModel.BuyResult {
         var r = FootballModel.BuyResult.notAvailable
+        guard allowRetired || !SpecialFamilies.retiredTrades.contains("club") else { return r }
         update { s, d, _ in if let c = d.countries[countryCode] { r = FootballModel.found(&s, country: c, cityID: nil, data: d) } }
         return r
     }

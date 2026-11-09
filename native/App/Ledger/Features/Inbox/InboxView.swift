@@ -63,9 +63,16 @@ struct InboxView: View {
 
     /// One chronological list, newest first, no sub-folders.
     private func blocks(_ e: GameEngine, _ list: [Message]) -> [Block] {
-        let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in a.week != b.week ? a.week > b.week : a.id > b.id }
+        // While the first-steps guide runs, information comes before questions: the questions stay one tap away under Needs you.
+        let guide: Bool = store.tutorialActive
+        let sorted: [Message] = list.sorted { (a: Message, b: Message) -> Bool in
+            if guide, isQuestion(a) != isQuestion(b) { return !isQuestion(a) }
+            return a.week != b.week ? a.week > b.week : a.id > b.id
+        }
         return sorted.isEmpty ? [] : [Block(id: "all", title: "", messages: sorted)]
     }
+
+    private func isQuestion(_ m: Message) -> Bool { m.status == "open" && m.isOwnerAddressed }
 
     /// The blocks cut to the first `limit` messages, so a long inbox stays quick.
     private func limited(_ blocks: [Block]) -> (blocks: [Block], hidden: Int) {
@@ -144,6 +151,14 @@ struct InboxView: View {
         }
     }
 
+    /// While the first-steps guide runs the Inbox opens on everything (information first), not on the questions; with nothing to read the
+    /// guide's reading step is over.
+    private func openOnInformation() {
+        guard store.tutorialActive, detailID == nil, tab == .decisions else { return }
+        tab = .all
+        if store.tutorialStep == .readInbox, (store.engine?.tutorialInboxGuide ?? []).isEmpty { store.tutorialAdvance(from: .readInbox) }
+    }
+
     private func takeRequest() {
         guard let id = store.takeMessageRequest() else { return }
         tab = .all; query = ""; companyFilter = nil
@@ -178,7 +193,10 @@ struct InboxView: View {
                 }
             }
         }
-        .onAppear { takeRequest() }
+        .onAppear {
+            takeRequest()
+            openOnInformation()
+        }
         .onChange(of: store.appRequest) { _, _ in takeRequest() }
         .safeAreaInset(edge: .top, spacing: 0) {
             SectionTabs(items: Tab.allCases, title: { $0.rawValue }, selection: $tab, badge: { tab in tab == .decisions ? waitingCount : 0 })
@@ -210,17 +228,23 @@ struct InboxView: View {
     private func mailList(_ e: GameEngine, list: [Message], cut: (blocks: [Block], hidden: Int), _ k: Tab) -> some View {
         let week: Int = e.state.week
         let alerts: [PayrollAlert] = payrollAlerts(e, k)
+        let guide: [Int] = store.tutorialActive ? e.tutorialInboxGuide : []
         return List {
             if !list.isEmpty || !alerts.isEmpty || k == .all {
                 hero(e, k, list, extra: alerts.count).mailRowStyle().listRowSeparator(.hidden)
             }
             if k == .all { searchField.padding(.bottom, Theme.Space.s).mailRowStyle().listRowSeparator(.hidden) }
+            if k == .all, !guide.isEmpty {
+                Text("New here? Open the messages marked Read next. Questions that need you are under Needs you.")
+                    .textStyle(.caption, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    .mailRowStyle().listRowSeparator(.hidden)
+            }
             if companyFilter != nil { filterLine(e).mailRowStyle() }
             if list.isEmpty && alerts.isEmpty { empty(e, k).mailRowStyle() }
             ForEach(alerts) { (a: PayrollAlert) in payrollRow(a).mailRowStyle() }
             ForEach(cut.blocks) { (b: Block) in
                 ForEach(b.messages) { (m: Message) in
-                    mailRow(m, week: week, inline: k == .decisions).transition(.opacity)
+                    mailRow(m, week: week, inline: k == .decisions, guide: k == .all ? guide : []).transition(.opacity)
                 }
             }
             if cut.hidden > 0 {
@@ -235,10 +259,15 @@ struct InboxView: View {
         .frame(maxWidth: 760).frame(maxWidth: .infinity)
     }
 
-    private func mailRow(_ m: Message, week: Int, inline: Bool) -> some View {
+    private func mailRow(_ m: Message, week: Int, inline: Bool, guide: [Int] = []) -> some View {
         let pinnedNow: Bool = pinned.contains(m.id)
         let answer: ((Int) -> Void)? = inline ? { (i: Int) in ask(m, i, inline: true) } : nil
-        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: { detailID = m.id }, answer: answer)
+        let marked: Bool = guide.contains(m.id)
+        return InboxMailRow(message: m, week: week, pinned: pinnedNow, openDetail: {
+            detailID = m.id
+            if marked { store.tutorialAdvance(from: .readInbox) }
+        }, answer: answer, guided: marked)
+            .coachAnchor(.inboxGuided, enabled: marked && m.id == guide.first)
             .id(m.id)
             .mailRowStyle()
             .swipeActions(edge: .leading, allowsFullSwipe: true) {

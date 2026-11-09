@@ -13,10 +13,14 @@ public enum SpecialFamilies {
         bd.family == "energy" || bd.family == "hold" || bd.family == "club" || bd.id == "salmon" || bd.id == StartupModel.tradeID
     }
 
-    /// Trades that are started from the trade menu. A holding and a football club have their own entry points
-    /// (a holding takes the companies it holds, a club is bought or founded in a league).
+    /// Trades nobody can start any more: a saved game that already owns one keeps it running, but the new-company list does not offer it
+    /// (loans and insurance stay as world services; football clubs and leagues are hidden for now).
+    public static let retiredTrades: Set<String> = ["bank", "insco", "fund", "casino", "club"]
+    public static func isRetired(_ bd: Trade) -> Bool { retiredTrades.contains(bd.id) }
+
+    /// Trades that are started from the trade menu. A holding has its own entry point (it takes the companies it holds).
     public static func isStartable(_ bd: Trade) -> Bool {
-        CompanyWeek.isSupported(bd) && bd.family != "hold" && bd.family != "club" && bd.id != StartupModel.tradeID
+        CompanyWeek.isSupported(bd) && bd.family != "hold" && bd.family != "club" && bd.id != StartupModel.tradeID && !isRetired(bd)
     }
 
     /// The week of a company with a special model: returns what the common bookkeeping (`book`, `weekEnd`) needs.

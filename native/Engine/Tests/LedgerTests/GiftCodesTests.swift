@@ -41,4 +41,24 @@ final class GiftCodesTests: XCTestCase {
         print("OWNER " + GiftCodes.make(kind: 2, serial: 1))
         for s in 101...104 { print("GIFT " + GiftCodes.make(kind: 1, serial: s)) }
     }
+
+    func testWalletRemembersUsedSerialsMergesCopiesAndNeverMovesTheClockBack() throws {
+        var w = GiftWallet()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let code = GiftCodes.make(kind: 1, serial: 11)
+        XCTAssertEqual(w.redeem("nonsense", now: now), .invalid)
+        XCTAssertEqual(w.redeem(code, now: now), .ok(until: now.addingTimeInterval(365 * 86_400)))
+        XCTAssertEqual(w.redeem(code, now: now), .used)
+        // The phone clock is set back a year: the gift is still counted from the newest date seen.
+        let back = now.addingTimeInterval(-365 * 86_400)
+        XCTAssertEqual(w.trustedNow(back), now)
+        XCTAssertEqual(w.redeem(GiftCodes.make(kind: 1, serial: 12), now: back), .ok(until: now.addingTimeInterval(2 * 365 * 86_400)))
+        // One copy lost (defaults wiped): the other still knows the serial.
+        var other = GiftWallet(); other.serials = [99]
+        let both = GiftWallet().merged(w).merged(other)
+        XCTAssertEqual(both.serials, [11, 12, 99]); XCTAssertEqual(both.expires, w.expires)
+        var fresh = both
+        XCTAssertEqual(fresh.redeem(code, now: now), .used)
+        XCTAssertEqual(try JSONDecoder().decode(GiftWallet.self, from: JSONEncoder().encode(both)), both)
+    }
 }

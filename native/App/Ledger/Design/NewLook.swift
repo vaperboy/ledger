@@ -392,7 +392,14 @@ struct AppScreen<Trailing: View>: ViewModifier {
                 AppHeader(title: title, subtitle: subtitle, onBack: (showsBack && !hidesRootBack) ? { dismiss() } : nil, trailing: trailing)
                     .environment(\.outsidePalette, palette == OutsidePalette.bank ? OutsidePalette.forest : palette)
                     .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
-                    .background((palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top))
+                    .background {
+                        if palette == .game {
+                            // Soft scrim, no opaque strip: the photo backdrop runs under the status bar and header.
+                            LinearGradient(colors: [Theme.page.opacity(0.6), Theme.page.opacity(0.25)], startPoint: .top, endPoint: .bottom).ignoresSafeArea(edges: .top)
+                        } else {
+                            (palette == OutsidePalette.bank ? FinanceColor.forest : palette.ground).ignoresSafeArea(edges: .top)
+                        }
+                    }
             }
     }
 }
@@ -713,6 +720,8 @@ struct PillTabItem: Identifiable, Equatable {
     var changeable: Bool = false
     /// A small label drawn on the tab (the Custom tab's "Edit" while it points nowhere); empty for none.
     var chip: String = ""
+    /// True while the tab is not unlocked: drawn grayed with a lock, and a tap calls `onLocked` instead of changing tab.
+    var locked: Bool = false
 }
 
 /// The floating tab bar: a 66 pt bordered capsule over the page, the selected tab washed in a champagne pill, red bubbles for counts.
@@ -724,6 +733,8 @@ struct PillTabBar: View {
     var onReselect: (String) -> Void = { _ in }
     /// Called with the item's id when a `changeable` item is long-pressed.
     var onLongPress: (String) -> Void = { _ in }
+    /// Called with the item's id when a locked item is tapped.
+    var onLocked: (String) -> Void = { _ in }
     @State private var longPressed: String?
     /// The tab that flashes for a moment when a re-tap sends it back to its root.
     @State private var flashing: String?
@@ -742,10 +753,14 @@ struct PillTabBar: View {
                 let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
                 Button {
                     if longPressed == item.id { longPressed = nil; return }
+                    if item.locked { Haptics.tap(); onLocked(item.id); return }
                     if on { onReselect(item.id); flash(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
                         LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? Theme.accent : Theme.inkSoft)
+                            .overlay(alignment: .topTrailing) {
+                                if item.locked { LockBadge(size: 10).padding(2).background(Circle().fill(Theme.surfaceRaised)).offset(x: 8, y: -6) }
+                            }
                         Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? Theme.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .id(item.glyph + item.title)
@@ -765,6 +780,7 @@ struct PillTabBar: View {
                         }
                     }
                     .overlay(alignment: .topTrailing) { RedBubble(count: item.badge, size: .small).padding(.trailing, 14).offset(y: -4) }
+                    .opacity(item.locked ? 0.4 : 1)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
@@ -782,7 +798,7 @@ struct PillTabBar: View {
                 .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
                 .accessibilityLabel(item.title)
                 .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
-                .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
+                .accessibilityValue(item.locked ? "Locked" : (item.badge > 0 ? "\(item.badge) waiting" : ""))
                 .accessibilityIdentifier("tab-\(item.title)")
                 .accessibilityAddTraits(traits)
             }

@@ -293,9 +293,8 @@ extension EnvironmentValues {
 }
 
 /// Keeps scrolled content from ever drawing over the status bar, the Back button or the title. It does not depend on the global
-/// `UINavigationBar` appearance: the navigation bar gets the page colour as an always-visible background (the bar then clips the
-/// scroll content under it), and a page-coloured strip the height of the top safe area is pinned above the scroll container as a
-/// second guard for screens without a navigation bar. Applied by `ledgerBackground()`, so every screen gets it.
+/// `UINavigationBar` appearance: an outside app's navigation bar gets its ground as an always-visible background and a ground-coloured strip
+/// covers the top safe area; the game palette uses a transparent bar and a soft scrim so the photo backdrop shows through. Applied by `ledgerBackground()`, so every screen gets it.
 struct LedgerScreen: ViewModifier {
     /// Height of the floating tab bar plus margin (0 where there is none); set by `PhoneShell`.
     @Environment(\.tabBarClearance) private var tabBarClearance
@@ -305,12 +304,37 @@ struct LedgerScreen: ViewModifier {
         content
             .environment(\.tabBarClearance, 0)
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: tabBarClearance) }
-            .toolbarBackground(palette.ground, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .modifier(TopBarBackground(palette: palette))
             .toolbarColorScheme(palette.isLight ? .light : .dark, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
-                Color.clear.frame(height: 0).background(palette.ground.ignoresSafeArea(edges: .top))
+                Color.clear.frame(height: 0).background(TopStrip(palette: palette))
             }
+    }
+}
+
+/// The navigation bar's background: transparent in the game palette (the photo backdrop runs under it), the flat ground of an outside app otherwise.
+private struct TopBarBackground: ViewModifier {
+    var palette: OutsidePalette
+    @ViewBuilder func body(content: Content) -> some View {
+        if palette == .game {
+            content.toolbarBackground(.hidden, for: .navigationBar)
+        } else {
+            content.toolbarBackground(palette.ground, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
+        }
+    }
+}
+
+/// The strip over the top safe area: a soft dark scrim in the game palette (scrolled content fades out under the clock, the photo stays visible),
+/// the flat ground of an outside app otherwise.
+private struct TopStrip: View {
+    var palette: OutsidePalette
+    var body: some View {
+        if palette == .game {
+            LinearGradient(colors: [Theme.page.opacity(0.55), Theme.page.opacity(0)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .top).allowsHitTesting(false)
+        } else {
+            palette.ground.ignoresSafeArea(edges: .top)
+        }
     }
 }
 extension View {

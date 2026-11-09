@@ -37,15 +37,20 @@ final class Entitlements {
 
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var expiry: Task<Void, Never>?
-    @ObservationIgnored private var hadPlus = false
+    /// Used gift codes, the gift's end and the newest date the clock showed; mirrored in UserDefaults and the keychain (`GiftVault`).
+    @ObservationIgnored private var wallet = GiftWallet()
+    /// The last snapshot the store confirmed. Used at a cold start and offline; removed only when the store answers without it.
+    @ObservationIgnored private var cache: StoredEntitlements?
+    /// True once this launch has heard from the store (products loaded, an update, a purchase or a restore).
+    @ObservationIgnored private var storeAnswered = false
 
     private enum Keys {
         static let pass = "ledger.proPassExpires"
         static let debug = "ledger.debugEntitlements"
-        static let hadPlus = "ledger.hadPlus"
-        static let gift = "ledger.giftExpires"
-        static let giftSerials = "ledger.giftSerials"
+        static let cache = "ledger.entitlementCache"
     }
+    /// Apple's longest grace period. It is asked again on every refresh, so access ends when the store stops reporting it.
+    private static let graceWindow: TimeInterval = 16 * 24 * 3600
 
     init() {
         #if DEBUG
@@ -53,10 +58,21 @@ final class Entitlements {
         #endif
         let t: Double = UserDefaults.standard.double(forKey: Keys.pass)
         if t > 0 { snapshot.passExpires = Date(timeIntervalSince1970: t) }
-        let g: Double = UserDefaults.standard.double(forKey: Keys.gift)
-        if g > 0 { snapshot.giftExpires = Date(timeIntervalSince1970: g) }
-        hadPlus = UserDefaults.standard.bool(forKey: Keys.hadPlus)
+        wallet = GiftVault.load()
+        wallet.noteSeen(Date())
+        GiftVault.save(wallet)
+        snapshot.giftExpires = wallet.expires
+        if let d = UserDefaults.standard.data(forKey: Keys.cache), let c = try? JSONDecoder().decode(StoredEntitlements.self, from: d) {
+            cache = c
+            let kept: EntitlementSnapshot = c.snapshot
+            snapshot.owned = kept.owned
+            snapshot.plusExpires = kept.plusExpires
+            snapshot.plusGraceUntil = kept.plusGraceUntil
+        }
     }
+
+    /// The clock for every entitlement check: never earlier than the newest date seen, so setting the phone back does not stretch a gift or a pass.
+    private var now: Date { wallet.trustedNow(Date()) }
 
     // MARK: Reads (the only thing gates use)
 
@@ -72,14 +88,21 @@ final class Entitlements {
         #endif
         return snapshot
     }
-    var isPro: Bool { effective.isPro(now: Date()) }
-    var isPlus: Bool { effective.isPlus(now: Date()) }
+    var isPro: Bool { effective.isPro(now: now) }
+    var isPlus: Bool { effective.isPlus(now: now) }
     var isFounder: Bool { effective.isFounder() }
     var ownsPro: Bool { effective.ownsPro() }
-    var hasPass: Bool { effective.hasPass(now: Date()) }
-    var plusRenews: Date? { effective.isPlus(now: Date()) ? effective.plusExpires : nil }
+    var hasPass: Bool { effective.hasPass(now: now) }
+    var hasGift: Bool { effective.hasGift(now: now) }
+    /// The next renewal date; nil when Plus is off or only running on grace (the date is then in the past).
+    var plusRenews: Date? {
+        guard effective.isPlus(now: now), let end = effective.plusExpires, end > now else { return nil }
+        return end
+    }
+    /// True when the store holds a purchase or subscription for this player (a pass or a gift does not count).
+    var hasStorePurchase: Bool { !snapshot.owned.isEmpty || snapshot.plusExpires != nil || snapshot.plusGraceUntil != nil }
 
-    func isUnlocked(_ f: LockedFeature) -> Bool { effective.isUnlocked(f, now: Date()) }
+    func isUnlocked(_ f: LockedFeature) -> Bool { effective.isUnlocked(f, now: now) }
 
     /// True when the feature is open. Otherwise opens the paywall for `title` and returns false.
     @discardableResult
@@ -99,6 +122,21 @@ final class Entitlements {
         return saved >= 1 ? "Save \(Int(saturating: saved.rounded()))%" : ""
     }
 
+    /// The free trial of a Plus plan as words ("7 days", "1 month"), read from the store; nil when the plan has none.
+    func trialLength(_ p: LedgerProduct) -> String? {
+        guard let offer = products[p]?.subscription?.introductoryOffer, offer.paymentMode == .freeTrial else { return nil }
+        let n: Int = offer.period.value
+        let unit: String
+        switch offer.period.unit {
+        case .day: unit = "day"
+        case .week: unit = "week"
+        case .month: unit = "month"
+        case .year: unit = "year"
+        @unknown default: unit = "period"
+        }
+        return n == 1 ? "1 \(unit)" : "\(n) \(unit)s"
+    }
+
     // MARK: Store
 
     /// Call once at launch: watches transactions, loads products, reads what is owned.
@@ -107,6 +145,7 @@ final class Entitlements {
             updates = Task { [weak self] in
                 for await result in StoreKit.Transaction.updates {
                     if case .verified(let t) = result { await t.finish() }
+                    self?.storeAnswered = true
                     await self?.refresh()
                 }
             }
@@ -120,13 +159,25 @@ final class Entitlements {
             var map: [LedgerProduct: Product] = [:]
             for p in list { if let k = LedgerProduct(rawValue: p.id) { map[k] = p } }
             products = map
+            storeAnswered = true
             if let sub = map[.plusYearly]?.subscription { trialEligible = await sub.isEligibleForIntroOffer }
         } catch {
             message = "The store could not be reached."
         }
     }
 
-    /// `StoreKit.StoreKit.Transaction.currentEntitlements`: on launch and on foreground.
+    /// While Apple has the Plus subscription in its grace or billing-retry period the player keeps Plus; nil otherwise or when the store cannot say.
+    private func graceEnd() async -> Date? {
+        guard let sub = (products[.plusYearly] ?? products[.plusMonthly])?.subscription, let statuses = try? await sub.status else { return nil }
+        for st in statuses where st.state == .inGracePeriod || st.state == .inBillingRetryPeriod {
+            if case .verified(let t) = st.transaction, t.revocationDate == nil, LedgerProduct(rawValue: t.productID)?.isPlus == true {
+                return Date().addingTimeInterval(Self.graceWindow)
+            }
+        }
+        return nil
+    }
+
+    /// `StoreKit.Transaction.currentEntitlements`: on launch and on foreground. An empty answer from a store that did not answer keeps the last confirmed snapshot.
     func refresh() async {
         var owned: Set<LedgerProduct> = []
         var plusEnd: Date?
@@ -135,40 +186,53 @@ final class Entitlements {
             owned.insert(p)
             if p.isPlus, let end = t.expirationDate { plusEnd = max(plusEnd ?? end, end) }
         }
-        var next = EntitlementSnapshot(owned: owned, plusExpires: plusEnd, passExpires: snapshot.passExpires, giftExpires: snapshot.giftExpires)
-        if let pe = next.passExpires, pe <= Date() { next.passExpires = nil; UserDefaults.standard.removeObject(forKey: Keys.pass) }
-        if plusEnd != nil { hadPlus = true; UserDefaults.standard.set(true, forKey: Keys.hadPlus) }
-        else if hadPlus { plusEndedNotice = true; hadPlus = false; UserDefaults.standard.set(false, forKey: Keys.hadPlus) }
+        let fresh = EntitlementSnapshot(owned: owned, plusExpires: plusEnd, plusGraceUntil: await graceEnd())
+        let out = EntitlementCache.resolve(fresh: fresh, cached: cache, storeAnswered: storeAnswered, now: Date())
+        cache = out.stored
+        if let c = out.stored, let d = try? JSONEncoder().encode(c) {
+            UserDefaults.standard.set(d, forKey: Keys.cache)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Keys.cache)
+        }
+        wallet.noteSeen(Date())
+        GiftVault.save(wallet)
+        var next: EntitlementSnapshot = out.snapshot
+        next.passExpires = snapshot.passExpires
+        next.giftExpires = wallet.expires
+        if let pe = next.passExpires, pe <= now { next.passExpires = nil; UserDefaults.standard.removeObject(forKey: Keys.pass) }
+        if out.plusEnded { plusEndedNotice = true }
         snapshot = next
         scheduleExpiryRefresh()
     }
 
     /// Redeems a gift code on this device: it opens the full game for the code's period, added to any time still left.
-    /// Each code works once per device. Returns the line to show.
+    /// Each code works once per device (the used list is kept in UserDefaults and the keychain). Returns the line to show.
     @discardableResult
     func redeem(_ text: String) -> String {
-        guard let gift = GiftCodes.check(text) else { return "That code is not valid. Check it and try again." }
-        var used: [Int] = UserDefaults.standard.array(forKey: Keys.giftSerials) as? [Int] ?? []
-        if used.contains(gift.serial) { return "That code has already been used on this device." }
-        let start: Date = max(Date(), snapshot.giftExpires ?? Date())
-        let end: Date = start.addingTimeInterval(Double(gift.days) * AdPolicy.passDuration)
-        used.append(gift.serial)
-        UserDefaults.standard.set(used, forKey: Keys.giftSerials)
-        UserDefaults.standard.set(end.timeIntervalSince1970, forKey: Keys.gift)
-        snapshot.giftExpires = end
-        scheduleExpiryRefresh()
-        let f: DateFormatter = DateFormatter(); f.dateStyle = .medium
-        return "Unlocked until \(f.string(from: end))."
+        switch wallet.redeem(text, now: Date()) {
+        case .invalid:
+            return "That code is not valid. Check it and try again."
+        case .used:
+            return "That code has already been used on this device."
+        case .ok(let end):
+            GiftVault.save(wallet)
+            snapshot.giftExpires = end
+            scheduleExpiryRefresh()
+            let f: DateFormatter = DateFormatter()
+            f.dateStyle = .medium
+            return "Unlocked until \(f.string(from: end))."
+        }
     }
 
     func purchase(_ p: LedgerProduct) async {
+        guard !isBusy else { return }
         guard let product = products[p] else { message = "That product is not available right now."; return }
         isBusy = true
         defer { isBusy = false }
         do {
             switch try await product.purchase() {
             case .success(let result):
-                if case .verified(let t) = result { await t.finish(); message = nil } else { message = "The purchase could not be verified." }
+                if case .verified(let t) = result { await t.finish(); message = nil; storeAnswered = true } else { message = "The purchase could not be verified." }
             case .pending: message = "Waiting for approval."
             default: break
             }
@@ -178,11 +242,19 @@ final class Entitlements {
         }
     }
 
+    /// Syncs with the store. The line says a purchase was restored only when one was found.
     func restore() async {
+        guard !isBusy else { return }
         isBusy = true
         defer { isBusy = false }
-        do { try await AppStore.sync(); await refresh(); message = isPro ? "Purchases restored." : "Nothing to restore." }
-        catch { message = "Restore did not work. Try again." }
+        do {
+            try await AppStore.sync()
+            storeAnswered = true
+            await refresh()
+            message = hasStorePurchase ? "Purchases restored." : "Nothing to restore."
+        } catch {
+            message = "Restore did not work. Try again."
+        }
     }
 
     func manageSubscription() async {
@@ -197,10 +269,11 @@ final class Entitlements {
         scheduleExpiryRefresh()
     }
 
-    /// When the pass or a Plus period ends, look again so the locks come back without a restart.
+    /// When the pass, a Plus period or a gift ends, look again so the locks come back without a restart.
     private func scheduleExpiryRefresh() {
         expiry?.cancel()
-        let next: Date? = [snapshot.passExpires, snapshot.plusExpires, snapshot.giftExpires].compactMap { $0 }.filter { $0 > Date() }.min()
+        let current: Date = now
+        let next: Date? = [snapshot.passExpires, snapshot.plusExpires, snapshot.plusGraceUntil, snapshot.giftExpires].compactMap { $0 }.filter { $0 > current }.min()
         guard let when = next else { return }
         expiry = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(min(max(1, when.timeIntervalSinceNow + 1), 86_400 * 30) * 1_000_000_000))

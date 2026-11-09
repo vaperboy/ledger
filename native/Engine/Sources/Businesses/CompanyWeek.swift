@@ -145,7 +145,8 @@ public enum CompanyWeek {
             return (DemandModel.compute(co, bd, w), CapacityModel.compute(co, bd, w), Pricing.ticket(co, bd, w), Vat.rate(co, bd, w),
                     goodsEffect(co, bd, marketing, w.state, data))
         }()
-        var D = dm.customers
+        // A supplier the owner chose may have missed a delivery this week (SupplyCatalogue).
+        var D = dm.customers * SupplyCatalogue.availability(s, s.companies[i], bd, week: s.week, data: data)
         let cap = cp.capacity
         var price = ticketPrice
         if bd.hasTrait("rateIdx") { price *= s.economy.freight }
@@ -262,7 +263,8 @@ public enum CompanyWeek {
     /// Supplier class: cost and quality of goods. Original: `goodsEff` (default class; vendor choice not yet ported).
     static func goodsEffect(_ co: Company, _ bd: Trade, _ m: MarketingTables, _ s: GameState, _ data: GameData) -> (m: Double, q: Double) {
         let r = Suppliers.goodsEffect(s, company: co, bd, data: data, classes: m.goodsClasses)
-        return (r.m, r.q)
+        let c = SupplyCatalogue.cogsEffect(s, co, bd, data: data)
+        return (r.m * c.m, r.q + c.q)
     }
 
     /// Membership clubs (gyms) work with members, not walk-ins. Original: `FAM.venue.units`.
@@ -521,8 +523,7 @@ public enum CompanyWeek {
         CompanyCosts.rent(&s, companyIndex: i, data: data)
         let w = World(state: s, data: data)
         co = s.companies[i]
-        let fixed = CompanyCosts.fixedOverhead(co, bd, w)
-        Payments.companyPays(&s, companyID: id, amount: fixed, category: "oth")
+        let fixed = SupplyCatalogue.settleOverhead(&s, i, bd, base: CompanyCosts.fixedOverhead(co, bd, w), util: ctx.util, data: data)
         Vat.input(&s, companyIndex: i, net: fixed, data: data)   // input VAT on the overhead, by the country's rules
         accountantFee(&s, i, data: data)
         // Insurance

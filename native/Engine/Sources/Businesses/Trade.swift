@@ -20,6 +20,9 @@ public struct EquipmentSpec: Equatable, Sendable {
 
     public var isRequired: Bool { flags.contains("r") }
     public var limitsCapacity: Bool { flags.contains("c") }
+    /// Needed to open and trade: required to open, or the thing that sets how many customers can be served (without it capacity is zero).
+    /// Everything else (quality extras, wellness, spare units) is bought later.
+    public var opensTheTrade: Bool { isRequired || limitsCapacity }
     public var affectsQuality: Bool { flags.contains("q") }
     public var allowsOwnCar: Bool { flags.contains("o") }
 }

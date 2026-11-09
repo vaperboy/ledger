@@ -5,10 +5,22 @@ import Finance
 import Businesses
 
 public extension GameEngine {
+    /// Whether the debug-only games below may be made: on in debug builds, and in release builds only when the test run sets LEDGER_DEBUG_TOOLS=1, so no one can mint the showcase money.
+    nonisolated(unsafe) package static var debugToolsEnabled: Bool = {
+        #if DEBUG
+        return true
+        #else
+        return ProcessInfo.processInfo.environment["LEDGER_DEBUG_TOOLS"] == "1"
+        #endif
+    }()
+
+    package enum DebugError: Error, Equatable { case debugToolsOff }
+
     /// A game in progress for screenshots, UI tests and demos: a café and a gym a few months in, payroll approved as it comes.
     /// Deterministic for a given seed. Not used by the normal game.
     /// `extraTrades`: more companies started next to the café and the gym (screenshot runs of other trades only).
     static func showcase(seed: Int = 2026, days: Int = 120, wealthy: Bool = false, board: Bool = false, extraTrades: [String] = []) throws -> GameEngine {
+        guard debugToolsEnabled else { throw DebugError.debugToolsOff }
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Alex", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Showcase funds") }
         for trade in ["cafe", "gym"] + extraTrades {
