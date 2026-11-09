@@ -88,7 +88,7 @@ final class DismissalCharacterizationTests: XCTestCase {
         XCTAssertEqual(e.hireManager(personID: pick.id, companyID: id, monthlyWage: pick.askingMonthlyWage * 1.2), .ok)
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].set("mgrW0", s.week - 260) }
         let co = try XCTUnwrap(e.state.company(id))
-        let expected = owed(e, id, wage: co.managerMonthlyWage, tenureWeeks: 260, .redundancy, age: e.state.people[pick.id].map { Double($0.age) })
+        let expected = owed(e, id, wage: co.managerMonthlyWage, tenureWeeks: 260, .redundancy)
         XCTAssertGreaterThan(expected, 0)
         let before = cash(e, id)
         let sev = e.dismissManager(companyID: id)
