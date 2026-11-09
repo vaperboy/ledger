@@ -439,7 +439,7 @@ struct ClubMarketView: View {
                 Text(a.message.tidyMoney).popupText(a.answer == .accept || a.answer == .counter ? .body : .risk)
                 if let p = a.price, a.answer == .accept || a.answer == .counter {
                     if let plan = store.engine?.clubPurchasePlan(clubID: c.id, price: p) {
-                        Text("The club starts with \(cur.tidyShort(plan.clubCash)) of its own cash" + (plan.debt > 0 ? " and takes over \(cur.tidyShort(plan.debt)) of debt, \(cur.tidyShort(plan.monthlyDebtPayment)) a month for twenty years" : "") + ". You pay \(cur.tidyShort(p)) from cash and savings and have \(cur.tidyShort(max(0, plan.liquidAfter))) left." + (plan.affordable ? "" : " That is more than you have."))
+                        Text("The club starts with \(cur.tidyShort(plan.clubCash)) of its own cash" + (plan.debt > 0 ? " and takes over \(cur.tidyShort(plan.debt)) of debt, \(cur.tidyShort(plan.monthlyDebtPayment)) a month for twenty years" : "") + ". You pay \(cur.tidyShort(p)) from your cash and have \(cur.tidyShort(max(0, plan.liquidAfter))) left." + (plan.affordable ? "" : " That is more than you have."))
                             .popupText(plan.affordable ? .caption : .risk)
                     }
                     Button((a.answer == .accept ? "Buy for " : "Accept ") + cur.tidyShort(p)) {

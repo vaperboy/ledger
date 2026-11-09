@@ -7,7 +7,7 @@ import Simulation
 
 // MARK: - Money
 
-/// An entity's money as one vertical list: cash with Put in and Take out, group loans, dividends, and (a holding) a dividend to you.
+/// An entity's money as one vertical list: cash with Put in, group loans, dividends, and (a holding) a dividend to you.
 /// A holding invests its treasury in the Market app.
 struct GroupEntityMoney: View {
     @EnvironmentObject var store: GameStore

@@ -32,12 +32,11 @@ struct TradeDetailView: View {
         if let e = store.engine, let t = e.data.catalog[tradeID] {
             let country = e.homeCountry
             let cur = e.homeCurrency
-            let form: LegalForm = .limited
             let city = cityID.isEmpty ? e.state.player.cityID : cityID
             let cityName = country.cities.first { $0.id == city }?.name ?? "town"
             let ban = CompanySetup.banReason(t.id, country: country) ?? (SpecialFamilies.isStartable(t) ? nil : "This kind of business is coming in a later update.")
             let pick = rentIndex.map { NewCompanyPlan.Pick(listingIndex: $0, buy: buying) }
-            let plan = ban == nil ? e.newCompanyPlan(tradeID: t.id, cityID: city, form: form, size: size, pick: pick, choices: choices) : nil
+            let plan = ban == nil ? e.newCompanyPlan(tradeID: t.id, cityID: city, size: size, pick: pick, choices: choices) : nil
             let brands = e.franchiseBrands().filter { $0.tradeID == t.id }
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
@@ -48,15 +47,15 @@ struct TradeDetailView: View {
                     if way == .brand && !brands.isEmpty {
                         brandList(e, brands, cur)
                     } else {
-                        whereAndHow(t, country, city, form)
+                        whereAndHow(t, country, city)
                         if let plan {
                             premises(t, plan, cur)
                             PlanStatement(plan: plan, cur: cur, choices: $choices, onAlternative: { alt in applyAlternative(alt, t) })
                             AccountantStep(countryCode: e.state.homeCountryCode, currency: cur, accountantID: $accountantID)
                             risks(plan)
                             PrimaryAction(title: "Review and start · \(cur.tidyShort(plan.neededNow))",
-                                          blockedReason: plan.registrationShortfall > 0 ? "Your current account needs \(cur.tidyShort(plan.registrationShortfall)) more for registration and share capital. Move money from savings in Bank." : nil) {
-                                pending = confirmation(e, t, plan, form, city, cityName, cur)
+                                          blockedReason: plan.registrationShortfall > 0 ? "Your cash is \(cur.tidyShort(plan.registrationShortfall)) short for registration and share capital." : nil) {
+                                pending = confirmation(e, t, plan, city, cityName, cur)
                             }
                         } else if ban == nil {
                             EmptyState(title: "This trade cannot be priced here.", centered: false)
@@ -72,7 +71,7 @@ struct TradeDetailView: View {
             .scrollDismissesKeyboard(.interactively)
             .appScreen(title: t.name, subtitle: way == .brand ? "Under a franchise brand" : t.category, tab: .company)
             .confirmAction($pending)
-            .onAppear { if !sizeSet { size = e.affordableStartSize(tradeID: t.id, cityID: city) ?? CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); choices = e.suggestedChoices(tradeID: t.id, cityID: city, form: form, size: size); sizeSet = true } }
+            .onAppear { if !sizeSet { size = e.affordableStartSize(tradeID: t.id, cityID: city) ?? CompanySetup.recommendedSize(t, city: country.cities.first { $0.id == city } ?? country.cities[0]); choices = e.suggestedChoices(tradeID: t.id, cityID: city, size: size); sizeSet = true } }
         }
     }
 
@@ -109,11 +108,11 @@ struct TradeDetailView: View {
 
     // MARK: Where and how
 
-    @ViewBuilder private func whereAndHow(_ t: Trade, _ country: Country, _ city: String, _ form: LegalForm) -> some View {
+    @ViewBuilder private func whereAndHow(_ t: Trade, _ country: Country, _ city: String) -> some View {
         CardSection("Where and how") {
             Picker("City", selection: Binding(get: { city }, set: { cityID = $0; rentIndex = nil })) { ForEach(country.cities) { Text($0.name).tag($0.id) } }.pickerStyle(.menu)
             CardLine()
-            Text("Your personal assets are protected; profits are taxed in the company and again when paid out. Needs share capital and a registration fee.")
+            Text("Needs share capital and a registration fee.")
                 .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
             if t.maxSize > t.minSize {
                 CardLine()
@@ -199,7 +198,7 @@ struct TradeDetailView: View {
 
     // MARK: Confirmation and result
 
-    private func confirmation(_ e: GameEngine, _ t: Trade, _ plan: NewCompanyPlan, _ form: LegalForm, _ city: String, _ cityName: String, _ cur: Currency) -> PendingAction {
+    private func confirmation(_ e: GameEngine, _ t: Trade, _ plan: NewCompanyPlan, _ city: String, _ cityName: String, _ cur: Currency) -> PendingAction {
         let place: String = {
             switch plan.premisesKind {
             case .none: return "No premises."
@@ -211,7 +210,7 @@ struct TradeDetailView: View {
         }()
         let msg = "Needed now: \(cur.tidyShort(plan.neededNow)) (recommended investment \(cur.tidyShort(plan.recommendedInvestment)); nothing is bought or hired for you, you equip and staff it yourself). Of that \(cur.tidyShort(plan.mandatoryTotal)) that must be paid, \(cur.tidyShort(plan.optionalTotal)) of optional extras you chose and \(cur.tidyShort(plan.workingCapital)) of working capital. \(cur.tidyShort(plan.intoCompany)) goes into the company from your cash now" + (plan.estimate.shareCapital > 0 ? ", plus \(cur.tidyShort(plan.estimate.shareCapital)) share capital" : "") + ". You keep \(cur.tidyShort(plan.accountsAfter)) (your reserve is \(cur.tidyShort(plan.personalReserve))). \(place) " +
             (plan.shortfall > 0 ? "The company is \(cur.tidyShort(plan.shortfall)) short of that scope, so set-up skips what the cash cannot carry and opening waits for money. " : "") +
-            "A limited company protects your personal assets. Risk: it earns nothing until it is set up and open."
+            "Risk: it earns nothing until it is set up and open."
         let pick = plan.pick
         let fund = plan.intoCompany
         let nm = name.trimmingCharacters(in: .whitespaces)
@@ -219,7 +218,7 @@ struct TradeDetailView: View {
         let chosen = choices
         let accountant = accountantID
         return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
-            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, form: form, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen, accountantID: accountant) }
+            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen, accountantID: accountant) }
             switch r {
             case .success(let out)?:
                 Haptics.success()

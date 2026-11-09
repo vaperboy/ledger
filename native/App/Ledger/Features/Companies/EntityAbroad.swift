@@ -33,7 +33,7 @@ struct EntityAbroadSection: View {
     @ViewBuilder private func openSection(_ e: GameEngine, _ co: Company, _ options: [Abroad.Option]) -> some View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(spacing: Theme.Space.s) { Text("EXPAND ABROAD").capsLabel(); ProMark(feature: .expansionAbroad) }
-                Text("A foreign subsidiary of \(co.name) is a new limited company that takes part of its brand along.")
+                Text("A foreign subsidiary of \(co.name) is a new company that takes part of its brand along.")
                     .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 if options.isEmpty {
                     Text("This trade cannot be opened in any other country.").textStyle(.caption, tint: Theme.inkFaint)

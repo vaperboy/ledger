@@ -31,7 +31,7 @@ struct PayYourselfSheet: View {
                     Text("Company profit tax here is \(Currency.percent(r.corporateRate, decimals: 1)). Dividends carry \(PayRules.dividendTaxText(e)); a salary is taxed as income instead.")
                         .popupText(.caption).fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text(amount > 0 ? "Only a limited company can pay a salary or a dividend." : "Enter an amount to compare.").popupText(.caption)
+                    Text(amount > 0 ? "Nothing can be paid out of this company right now." : "Enter an amount to compare.").popupText(.caption)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
