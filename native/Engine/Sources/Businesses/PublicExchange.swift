@@ -303,7 +303,6 @@ public enum PublicExchange {
         case .buy:
             if Double(pos.shares + o.shares) * price > ExchangeRules.serverPositionLimit(cur) { s.note("Your order for \(inst.name) was cancelled: it is over the position limit.", tone: "n"); return false }
             if Payments.liquid(s) < gross + fee { s.note("Your order for \(inst.name) was cancelled: not enough money at the close.", tone: "n"); return false }
-            Payments.transferFromSavings(&s, need: gross + fee)
             Ledger.move(&s, .me, -(gross + fee), why: "Bought \(o.shares) \(inst.name)")
             pos.shares += o.shares; pos.cost += gross + fee; pos.since = now
             book.positions[inst.id] = pos
