@@ -107,7 +107,8 @@ enum SampleRoster {
             for _ in 0..<min(1 + s.next(4), row.level / 3 + 1) { let b = badges[s.next(badges.count)]; if !picked.contains(b) { picked.append(b) } }
             return PlayerProfile(id: id, code: code(for: id), displayName: row.name, avatarColour: s.next(PlayerProfile.avatarColourCount), countryCode: row.country,
                                  level: row.level, badges: picked, privacy: row.privacy, companyCount: companies.count, companies: companies,
-                                 isSimulated: row.simulated, gameWeek: row.week, tradesCompleted: row.level * 3 + s.next(12), relation: .none)
+                                 isSimulated: row.simulated, gameWeek: row.week, tradesCompleted: row.level * 3 + s.next(12), relation: .none,
+                                 avatarIcon: AvatarCatalog.simulatedIcon(for: row.name))
         }
     }
 }

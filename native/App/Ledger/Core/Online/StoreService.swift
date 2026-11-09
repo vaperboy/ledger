@@ -52,6 +52,8 @@ protocol StoreService: Sendable {
     func buyBoxBundle(_ bundleID: String, paidBoxesAllowed: Bool) async throws -> StoreState
     /// Spends gold on a store cosmetic. The caller adds it to the wardrobe.
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState
+    /// Spends gold on a profile icon (`AvatarCatalog`). The caller adds it to the owned icons.
+    func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState
     /// Opens a box from the stock, or pays for a paid one in gold when the stock has none.
     func openBox(_ kind: BoxKind, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening
     /// Boxes and gold from the Season Pass.

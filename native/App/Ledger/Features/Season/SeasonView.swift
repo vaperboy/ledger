@@ -100,7 +100,8 @@ struct SeasonView: View {
             Button { tap(track, t) } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
-                        Text(r.kind.label).textStyle(.label, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
+                        ItemArt(reward: r, size: 24)
+                        Text(r.kind.label).textStyle(.label, tint: Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.6)
                         Spacer(minLength: 0)
                         if claimed { LedgerGlyph(glyph: Glyph.check, size: 12, tint: Theme.gain) }
                         else if locked { LedgerGlyph(glyph: Glyph.lock, size: 12, tint: Theme.inkFaint) }
@@ -212,15 +213,9 @@ struct SeasonView: View {
         }
     }
 
-    /// A small gradient of the reward's own colours (a theme, plate or backdrop); a plain ring for the rest.
-    @ViewBuilder private func swatch(_ r: SeasonReward) -> some View {
-        if r.colors.isEmpty {
-            Circle().strokeBorder(Theme.line, lineWidth: 1).frame(width: 28, height: 28)
-        } else {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(LinearGradient(colors: (r.colors.count == 1 ? [r.colors[0], r.colors[0]] : r.colors).map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 28, height: 28)
-        }
+    /// The reward's drawn art (see `ItemArt`).
+    private func swatch(_ r: SeasonReward) -> some View {
+        ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 36)
     }
 
     /// The tint of the equipped reward of a kind (a theme's first colour), nil when none is chosen.

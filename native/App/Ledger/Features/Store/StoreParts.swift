@@ -64,10 +64,8 @@ struct ArtifactRow: View {
     var body: some View {
         let def: ArtifactDef? = ArtifactCatalog.def(item.defID)
         HStack(spacing: Theme.Space.m) {
-            RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous)
-                .fill((def?.rarity.tint ?? Theme.inkSoft).opacity(0.22))
-                .overlay(LedgerGlyph(glyph: Glyph.luxury, size: Theme.Icon.small, tint: def?.rarity.tint ?? Theme.inkSoft))
-                .frame(width: 40, height: 40)
+            if let def { ItemArt(artifact: def, size: 40) }
+            else { RoundedRectangle(cornerRadius: Theme.Radius.small, style: .continuous).fill(Theme.inset).frame(width: 40, height: 40) }
             VStack(alignment: .leading, spacing: 2) {
                 Text(def?.name ?? "Artifact").textStyle(.headline).lineLimit(2)
                 HStack(spacing: Theme.Space.xs) {

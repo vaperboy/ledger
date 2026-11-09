@@ -109,7 +109,7 @@ struct ThumbnailView: View {
     }
 
     #if canImport(UIKit)
-    /// The sliced sheet cell for the kind; premises, people and trades have no picture and show their icon or initials.
+    /// The sliced sheet cell for the kind; premises and people have no picture and show their icon or initials, trades their drawn emblem (`ItemArt`).
     private var picture: UIImage? {
         switch kind {
         case .premises, .person, .trade:
@@ -139,7 +139,9 @@ struct ThumbnailView: View {
     #endif
 
     @ViewBuilder private var placeholder: some View {
-        if shape == .round {
+        if kind == .trade && EmblemCatalog.hasTrade(key) {
+            ItemArt(trade: key, size: size, shape: shape == .round ? .round : .tile)
+        } else if shape == .round {
             if kind == .person || kind == .logo, let initials, !initials.isEmpty {
                 TeamInitials(name: initials, size: size)
             } else {

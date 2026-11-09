@@ -91,6 +91,14 @@ actor GoldVault {
         return state()
     }
 
+    func buyAvatar(_ id: String, owned: Set<String>) throws -> StoreState {
+        guard let def = AvatarCatalog.def(id), let price = def.price else { throw StoreError.unknownItem }
+        guard !owned.contains(id) else { throw StoreError.alreadyOwned }
+        guard wallet.spend(price) else { throw StoreError.notEnoughGold(missing: price - wallet.available) }
+        save()
+        return state()
+    }
+
     func openBox(_ kind: BoxKind, owned: Set<String>, paidBoxesAllowed: Bool) throws -> BoxOpening {
         if kind.isPaid && !paidBoxesAllowed { throw StoreError.paidBoxesUnavailable }
         var fromStock = false

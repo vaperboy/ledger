@@ -81,6 +81,8 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var gameWeek: Int?
     var tradesCompleted: Int?
     var relation: FriendRelation
+    /// The profile icon the player wears (`AvatarCatalog` id); nil shows the initials on the avatar colour.
+    var avatarIcon: String? = nil
 
     static let avatarColourCount = 8
     var initials: String {
@@ -100,10 +102,12 @@ struct ProfileUpdate: Codable, Sendable {
     var level: Int?
     var badges: [String]?
     var gameWeek: Int?
+    var avatarIcon: String?
     init(displayName: String? = nil, avatarColour: Int? = nil, countryCode: String? = nil, privacy: PrivacyLevel? = nil,
-         companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil) {
+         companies: [OnlineCompany]? = nil, level: Int? = nil, badges: [String]? = nil, gameWeek: Int? = nil, avatarIcon: String? = nil) {
         self.displayName = displayName; self.avatarColour = avatarColour; self.countryCode = countryCode; self.privacy = privacy
         self.companies = companies; self.level = level; self.badges = badges; self.gameWeek = gameWeek
+        self.avatarIcon = avatarIcon
     }
 }
 

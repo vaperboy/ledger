@@ -74,6 +74,7 @@ struct StoreApp: View {
     private func boxRow(_ kind: BoxKind) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack {
+                ItemArt(box: kind, size: 36)
                 Text(kind.title).textStyle(.headline)
                 Spacer()
                 GoldAmount(amount: kind.price)
@@ -213,14 +214,7 @@ struct StoreApp: View {
     }
 
     @ViewBuilder private func swatch(_ c: GoldCosmetic) -> some View {
-        if c.item.colors.isEmpty {
-            RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.line, lineWidth: 1).frame(width: 32, height: 32)
-        } else {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(LinearGradient(colors: (c.item.colors.count == 1 ? [c.item.colors[0], c.item.colors[0]] : c.item.colors).map { Color(hex: $0) },
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 32, height: 32)
-        }
+        ItemArt(cosmetic: c, size: 36)
     }
 
     private func askCosmetic(_ c: GoldCosmetic) {

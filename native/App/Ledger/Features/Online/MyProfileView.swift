@@ -31,7 +31,7 @@ struct MyProfileView: View {
 
     private func header(_ p: PlayerProfile) -> some View {
         VStack(spacing: Theme.Space.s) {
-            ProfileAvatar(initials: p.initials, colour: p.avatarColour, size: 84)
+            PlayerAvatar(player: p, size: 84)
             NamePlateText(name: p.displayName)
             Text(p.subline).textStyle(.caption)
             if !p.badges.isEmpty {
@@ -76,6 +76,22 @@ struct MyProfileView: View {
 
     private func lookGroup(_ p: PlayerProfile) -> some View {
         OnlineGroup(title: "Look") {
+            NavigationLink { AvatarPickerView() } label: {
+                HStack(spacing: Theme.Space.m) {
+                    PlayerAvatar(player: p, size: 40)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Profile icon").textStyle(.headline)
+                        Text("Free, earned or bought with gold").textStyle(.caption)
+                    }
+                    Spacer(minLength: Theme.Space.s)
+                    LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
+                }
+                .padding(.vertical, Theme.Space.s).frame(minHeight: 56)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("profile-icon")
+            Hairline()
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 Text("Avatar colour").textStyle(.headline)
                 HStack(spacing: Theme.Space.s) {

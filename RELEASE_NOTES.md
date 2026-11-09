@@ -1,4 +1,5 @@
 # What's new
+- Drawn artwork for every trade, artifact, box, theme, backdrop, name plate, flair and Season Pass reward, with rarity frames; profile icons you can wear (free, earned or bought with gold) that show in friends lists, profiles and the rich list; real pictures can be added later without code changes
 - One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
 - A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
 - Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies

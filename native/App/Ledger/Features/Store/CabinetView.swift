@@ -31,6 +31,11 @@ struct CabinetView: View {
                         Spacer()
                         Text(done ? "Complete" : "\(p.have) of \(p.total)").textStyle(.caption, tint: done ? Theme.gain : Theme.inkSoft, numeric: true)
                     }
+                    HStack(spacing: Theme.Space.s) {
+                        ForEach(col.members, id: \.self) { (id: String) in
+                            if let def = ArtifactCatalog.def(id) { ItemArt(artifact: def, size: 40).opacity(cabinet.owns(id) ? 1 : 0.3) }
+                        }
+                    }
                     ProgressView(value: Double(p.have), total: Double(p.total)).tint(done ? Theme.gain : Theme.accent)
                     Text(col.blurb + " Reward: " + (GoldCosmetics.cosmetic(col.rewardID)?.item.title ?? "a cosmetic") + ".").textStyle(.caption)
                         .fixedSize(horizontal: false, vertical: true)
@@ -78,9 +83,7 @@ struct WardrobeGroup: View {
                     if i > 0 { Hairline() }
                     let on: Bool = season.pass.equipped[r.kind.rawValue] == r.id
                     HStack(spacing: Theme.Space.m) {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(LinearGradient(colors: (r.colors.count == 1 ? [r.colors[0], r.colors[0]] : r.colors).map { Color(hex: $0) }, startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 32, height: 32)
+                        ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 36)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(r.title).textStyle(.headline)
                             Text(r.kind.label).textStyle(.caption)

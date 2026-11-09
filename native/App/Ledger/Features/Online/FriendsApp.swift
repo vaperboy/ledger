@@ -16,7 +16,7 @@ struct FriendsApp: View {
         }
         .appScreen(title: "Friends", subtitle: "Requests, search and your friends") {
             if let p = online.profile, online.isSignedIn {
-                NavigationLink { MyProfileView() } label: { ProfileAvatar(initials: p.initials, colour: p.avatarColour, size: 34) }
+                NavigationLink { MyProfileView() } label: { PlayerAvatar(player: p, size: 34) }
                     .accessibilityLabel("My profile")
             }
         }

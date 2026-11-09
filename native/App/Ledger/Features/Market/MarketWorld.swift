@@ -260,7 +260,7 @@ struct MarketRankingsPage: View {
         let near: [RichList.Person] = st.around.filter { (p: RichList.Person) -> Bool in !shown.contains(p.rank) }
         VStack(spacing: 0) {
             ForEach(Array(top.enumerated()), id: \.element.id) { (pair: (offset: Int, element: RichList.Person)) in
-                if pair.offset > 0 { Hairline().padding(.leading, 44 + Theme.Space.m) }
+                if pair.offset > 0 { Hairline().padding(.leading, 44 + 32 + Theme.Space.m * 2) }
                 personRow(pair.element)
             }
         }
@@ -268,7 +268,7 @@ struct MarketRankingsPage: View {
             MarketLabel(title: (st.rank ?? 101) <= 100 ? "Around you" : "The way in")
             VStack(spacing: 0) {
                 ForEach(Array(near.enumerated()), id: \.element.id) { (pair: (offset: Int, element: RichList.Person)) in
-                    if pair.offset > 0 { Hairline().padding(.leading, 44 + Theme.Space.m) }
+                    if pair.offset > 0 { Hairline().padding(.leading, 44 + 32 + Theme.Space.m * 2) }
                     personRow(pair.element)
                 }
             }
@@ -283,6 +283,7 @@ struct MarketRankingsPage: View {
     private func personRow(_ p: RichList.Person) -> some View {
         HStack(spacing: Theme.Space.m) {
             Text(p.isYou && p.rank == 0 ? "\u{00B7}" : "\(p.rank)").textStyle(.figure, tint: p.isYou ? P.accent : P.inkSoft).frame(width: 44, alignment: .leading)
+            PlayerAvatar(name: p.name, isYou: p.isYou, size: 32)
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(p.name).textStyle(.headline, tint: p.isYou ? P.accent : nil).lineLimit(1)
                 Text(p.isYou ? "You" : p.source.capitalized).textStyle(.caption).lineLimit(1)

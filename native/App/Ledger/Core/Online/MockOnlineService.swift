@@ -100,6 +100,7 @@ actor MockOnlineService: OnlineService {
         if let l = update.level { me.level = l }
         if let b = update.badges { me.badges = b }
         if let w = update.gameWeek { me.gameWeek = w }
+        if let icon = update.avatarIcon, AvatarCatalog.def(icon) != nil { me.avatarIcon = icon }
         state.me = me
         save()
         me.relation = .you
