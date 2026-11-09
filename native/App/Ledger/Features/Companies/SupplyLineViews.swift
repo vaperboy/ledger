@@ -110,8 +110,8 @@ struct SupplyOffersPopup: View {
             if row.governed == nil && !SupplyMarketCatalogue.tradesSupplying(line: row.id).isEmpty {
                 SupplyWaysBlock(companyID: companyID, row: row, currency: cur, onBrowse: onBrowse)
                 Hairline()
-                Text("House suppliers").capsLabel(Theme.ivoryFaint)
-                Text("The backup if a player supplier stops, at market price.").popupText(.caption)
+                Text("Other suppliers").capsLabel(Theme.ivoryFaint)
+                Text("The backup if a supplier stops, at market price.").popupText(.caption)
             }
             ForEach(Array(row.offers.enumerated()), id: \.element.id) { (n: Int, o: SupplyOfferRow) in
                 if n > 0 { Hairline() }

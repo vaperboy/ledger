@@ -1,4 +1,5 @@
 import Foundation
+import Businesses
 
 /// The stand-in for the online server: about forty sample players in memory, the signed-in player's own state saved in UserDefaults.
 /// It enforces profile privacy and the friend rules the way the real server will, so the screens never have to.
@@ -24,9 +25,6 @@ actor MockOnlineService: OnlineService {
     private let roster: [PlayerProfile]
     private var state: State
 
-    /// Requests to computer players are answered after this long.
-    private static let simulatedReply: TimeInterval = 2
-
     init(suiteName: String? = nil, key: String = "ledger.online.mock.v1", latencyMilliseconds: UInt64 = 350) {
         let defaults: UserDefaults = suiteName.flatMap { UserDefaults(suiteName: $0) } ?? .standard
         self.defaults = defaults
@@ -46,6 +44,10 @@ actor MockOnlineService: OnlineService {
         let account = OnlineAccount(playerID: existing ?? "me-" + UUID().uuidString.prefix(8).lowercased(), provider: provider, createdAt: state.account?.createdAt ?? Date())
         if existing == nil { createMyProfile(account) }
         state.account = account
+        if state.extra["testFriends.v1"] == nil {   // the test players start as friends once, so their friends-only profiles can be read
+            for id in SampleRoster.testPlayerIDs where !state.friendIDs.contains(id) && !state.blocked.contains(id) { state.friendIDs.append(id) }
+            state.extra["testFriends.v1"] = Data([1])
+        }
         save()
         return account
     }
@@ -259,16 +261,16 @@ actor MockOnlineService: OnlineService {
         let digits: String = String(account.playerID.suffix(4))
         state.me = PlayerProfile(id: account.playerID, code: SampleRoster.code(for: account.playerID), displayName: "Player " + digits.uppercased(), avatarColour: 0,
                                  countryCode: region == "GB" ? "UK" : region, level: 1, badges: [], privacy: .everyone, companyCount: 0, companies: [],
-                                 isSimulated: false, gameWeek: nil, tradesCompleted: 0, relation: .you)
+                                 gameWeek: nil, tradesCompleted: 0, relation: .you)
         state.friendIDs = ["p01", "p16"]
         state.incoming = ["p06": Date().addingTimeInterval(-3600 * 5), "p12": Date().addingTimeInterval(-3600 * 30)]
     }
 
-    /// Computer players answer a request after a short while; people do not.
-    private func settle() {
+    /// Computer players answer a request the way people do: after minutes or hours, inside their own waking hours (`PlayerRhythm`).
+    private func settle(now: Date = Date()) {
         var changed = false
-        for (id, at) in state.outgoing where Date().timeIntervalSince(at) >= Self.simulatedReply {
-            guard roster.first(where: { $0.id == id })?.isSimulated == true else { continue }
+        for (id, at) in state.outgoing where SampleRoster.isComputer(id) {
+            guard now >= PlayerRhythm.replyTime(id: id, countryCode: SampleRoster.countryCode(of: id), sentAt: at) else { continue }
             state.outgoing[id] = nil
             if !state.friendIDs.contains(id) { state.friendIDs.append(id) }
             changed = true

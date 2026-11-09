@@ -134,7 +134,7 @@ public enum RivalGroups {
         for r in riv where r["g27"].isNull {
             let h = HashedRandom.first("\(s.seed):ga:\(r["id"].int)")
             let p = r["size"].double > 1.1 ? 0.62 : r["size"].double > 0.8 ? 0.45 : 0.25
-            let pick: String = (!cand.isEmpty && h < p) ? cand[Int(h * 1009) % cand.count]["id"].string : "0"
+            let pick: String = (!r["real"].bool && !cand.isEmpty && h < p) ? cand[Int(h * 1009) % cand.count]["id"].string : "0"
             Rivals.mutate(&s, key: k, id: r["id"].int) { $0["g27"] = .string(pick) }
         }
     }

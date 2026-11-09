@@ -56,7 +56,7 @@ struct PlayerRow<Trailing: View>: View {
             ProfileAvatar(initials: player.initials, colour: player.avatarColour, size: 40)
             VStack(alignment: .leading, spacing: 2) {
                 Text(player.displayName).textStyle(.headline).lineLimit(1)
-                Text(player.isSimulated ? player.subline + " · Simulated" : player.subline).textStyle(.caption).lineLimit(1)
+                Text(player.subline).textStyle(.caption).lineLimit(1)
             }
             Spacer(minLength: Theme.Space.s)
             trailing()

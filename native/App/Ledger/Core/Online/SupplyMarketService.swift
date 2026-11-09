@@ -160,14 +160,14 @@ protocol SupplyMarketService: AnyObject {
         }
     }
 
-    /// The contract is gone: the line goes back to the House supplier at market price, the Inbox says so, and one popup states what changed.
+    /// The contract is gone: the line goes back to a market supplier at market price, the Inbox says so, and one popup states what changed.
     func fallBack(_ store: GameStore, _ f: SupplyFallback) {
         returnToHouse(store, companyID: f.contract.buyerCompanyID, lineID: f.contract.lineID)
         _ = store.act { $0.update { s, _, _ in SupplyMarketBooks.tellBuyer(&s, fallback: f) } }
         store.tell(f.title, f.body, tone: "bad")
     }
 
-    /// Puts a line back on the House supplier (the market offer of the existing Suppliers screen) when it is not already there.
+    /// Puts a line back on a market supplier (the market offer of the existing Suppliers screen) when it is not already there.
     func returnToHouse(_ store: GameStore, companyID: Int, lineID: String) {
         guard let e = store.engine,
               let row = e.supplyLines(companyID: companyID).flatMap({ $0.rows }).first(where: { $0.id == lineID }),

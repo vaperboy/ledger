@@ -1,4 +1,6 @@
 import SwiftUI
+import Businesses
+import Simulation
 
 /// The sample players the supply market reads, refreshed from the online service when the app starts.
 enum OnlineDirectoryCache {
@@ -8,6 +10,26 @@ enum OnlineDirectoryCache {
         guard let mock = service as? MockOnlineService else { return }
         players = await mock.visibleDirectory()
         await StartupMarketStore.shared.attach(mock)
+    }
+
+    /// The companies players run that the viewer may see, as rivals and ranking rows for the game (the order is fixed, so the game stays the same).
+    static func playerCompanies() -> [RealCompany] {
+        players.flatMap { (p: PlayerProfile) -> [RealCompany] in
+            (p.companies ?? []).map { (c: OnlineCompany) -> RealCompany in
+                let size: Double
+                switch c.health { case .thriving: size = 1.3; case .growing: size = 1.1; case .steady: size = 1; case .struggling: size = 0.7; case .new: size = 0.6 }
+                return RealCompany(name: c.name, owner: p.displayName, trade: c.trade, city: c.city, countryCode: c.countryCode, size: size)
+            }
+        }
+    }
+}
+
+extension GameStore {
+    /// Hands the players' companies to the running game, so they stand as rivals in their own trade and city.
+    @MainActor func syncPlayerCompanies() {
+        let list = OnlineDirectoryCache.playerCompanies()
+        guard !list.isEmpty else { return }
+        _ = act { $0.setPlayerCompanies(list) }
     }
 }
 

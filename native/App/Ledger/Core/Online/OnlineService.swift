@@ -76,8 +76,6 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var privacy: PrivacyLevel
     var companyCount: Int?
     var companies: [OnlineCompany]?
-    /// True for a computer player standing in for a person.
-    var isSimulated: Bool
     var gameWeek: Int?
     var tradesCompleted: Int?
     var relation: FriendRelation

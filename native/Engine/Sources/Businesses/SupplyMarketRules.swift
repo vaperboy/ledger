@@ -315,12 +315,12 @@ public struct SupplyFallback: Equatable, Sendable {
     public let title = "Your supplier stopped supplying"
     /// One statement of what changed, for the popup and the Inbox.
     public var body: String {
-        "\(contract.supplierName) \(reason.phrase). The contract ended at once and this line now comes from the House supplier at market price."
+        "\(contract.supplierName) \(reason.phrase). The contract ended at once and this line now comes from a market supplier at market price."
     }
 }
 
 public enum SupplyContracts {
-    /// Ends every contract with the supplier at once. The buyers fall back to the House supplier.
+    /// Ends every contract with the supplier at once. The buyers fall back to a market supplier.
     public static func end(_ contracts: [SupplyContract], supplierOwnerID: String, reason: SupplyEnd) -> (kept: [SupplyContract], fallbacks: [SupplyFallback]) {
         let gone = contracts.filter { $0.supplierOwnerID == supplierOwnerID }
         return (contracts.filter { $0.supplierOwnerID != supplierOwnerID }, gone.map { SupplyFallback(contract: $0, reason: reason) })

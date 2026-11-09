@@ -152,7 +152,7 @@ struct SupplySignBlock: View {
                 }
                 if let message { Text(message).popupText(.risk) }
                 PopupOptionButton(title: "Use \(listing.ownerName)", highlighted: true) { sign() }
-                Text("If they stop supplying, \(lineTitle.lowercased()) goes back to the House supplier at market price.").popupText(.caption)
+                Text("If they stop supplying, \(lineTitle.lowercased()) goes back to a market supplier at market price.").popupText(.caption)
             }
         }
         .onAppear { if units < Double(listing.minOrder) { units = Double(min(max(listing.minOrder, 20), max(listing.minOrder, room))) } }
@@ -170,7 +170,7 @@ struct SupplySignBlock: View {
         switch r {
         case .signed:
             Haptics.success()
-            store.outcome(chosen: "\(listing.ownerName) for \(lineTitle)", result: "\(listing.ownerName) now supplies \(lineTitle.lowercased()), \(Int(units)) units a week. The House supplier is the backup.")
+            store.outcome(chosen: "\(listing.ownerName) for \(lineTitle)", result: "\(listing.ownerName) now supplies \(lineTitle.lowercased()), \(Int(units)) units a week. A market supplier is the backup.")
             onSigned()
         case .refused(let why):
             Haptics.warning()

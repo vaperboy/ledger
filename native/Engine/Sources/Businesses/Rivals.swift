@@ -165,7 +165,21 @@ public enum Rivals {
         let country = data.countries[countryCode] ?? data.countries.countries[0]
         let taken = Set(riv.map { $0["name"].string } + s.companies.map { $0.name })
         var used = taken
-        while riv.count < want {
+        // Players' own companies in this trade and city come first; computer rivals fill the market only when no player is there.
+        let real = RealRivals.matching(s, key: key, trade: bd, countryCode: countryCode, data: data)
+        for rc in real where riv.count < want && !used.contains(rc.name) {
+            used.insert(rc.name)
+            var h = HashedRandom("\(s.seed):real:\(key):\(rc.name)")
+            let id = nextID(&s)
+            let st = strategies[Int(h.next() * Double(strategies.count)) % strategies.count]
+            let bias = st == "cheap" ? 0.93 : st == "premium" ? 1.08 : 1
+            riv.append(.object(["id": .number(Double(id)), "name": .string(rc.name), "owner": .string(rc.owner), "size": .number(rc.size),
+                                "rel": .number(jsRound(30 + h.next() * 25)), "listed": false, "ign": 0, "lock": 0, "meet": -99, "real": true,
+                                "pm16": .number(clamp(jsRound(initialPrice(seed: s.seed, id: id) * bias * 1000) / 1000, 0.7, 1.6)), "ig16": 1,
+                                "nx16": .number(Double(s.week + 4 + Int(h.next() * 14))), "st": .string(st), "fort": .number(jsRound((0.8 + h.next() * 0.5) * 100) / 100),
+                                "w0": .number(Double(s.week))]))
+        }
+        while riv.count < want && real.isEmpty {
             var h = HashedRandom("\(s.seed):rivals:\(key):\(riv.count + 7 * m["gone"].int)")   // a rival that closed does not come back under the same name
             var name = ""
             for g in 0..<40 {
@@ -174,8 +188,8 @@ public enum Rivals {
                 if !used.contains(name) { break }
             }
             used.insert(name)
-            let owner = country.firstNames.isEmpty ? "Alex" : country.firstNames[Int(h.next() * Double(country.firstNames.count)) % country.firstNames.count]
-                + " " + (country.lastNames.isEmpty ? "Smith" : country.lastNames[Int(h.next() * Double(country.lastNames.count)) % country.lastNames.count])
+            let first = country.firstNames.isEmpty ? "Alex" : country.firstNames[Int(h.next() * Double(country.firstNames.count)) % country.firstNames.count]
+            let owner = first + " " + (country.lastNames.isEmpty ? "Smith" : country.lastNames[Int(h.next() * Double(country.lastNames.count)) % country.lastNames.count])
             let id = nextID(&s)
             let size = jsRound((0.45 + h.next() * 1.05) * 100) / 100
             let rel = jsRound(30 + h.next() * 25), listed = h.next() < 0.12

@@ -51,14 +51,14 @@ struct LedgerApp: App {
                 .environment(ads)
                 .environment(online)
                 .task { entitlements.start() }
-                .task { OnlineWiring.install(); await online.start(); await OnlineDirectoryCache.refresh(from: online.service) }
+                .task { OnlineWiring.install(); await online.start(); await OnlineDirectoryCache.refresh(from: online.service); store.syncPlayerCompanies() }
                 // Dark everywhere, except while a light outside app is on screen: then the status bar text turns dark too.
                 .preferredColorScheme(statusBar.light ? .light : .dark)
                 .tint(Theme.gold)
                 .toggleStyle(LedgerToggleStyle())
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { store.scheduleReminders(); store.noteLeaving(); Task { await online.shareProgress(from: store.engine) } }
-                    if phase == .active { Reminders.cancelAll(); store.showReturnRecap(); Task { await entitlements.refresh() } }
+                    if phase == .active { store.syncPlayerCompanies(); Reminders.cancelAll(); store.showReturnRecap(); Task { await entitlements.refresh() } }
                 }
             }
         }
