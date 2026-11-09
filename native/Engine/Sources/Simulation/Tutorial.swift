@@ -4,7 +4,8 @@ import Businesses
 
 /// The five guided steps of a new player, in order. The step lives in the save (`rest["tutorial"]`). Every step can be skipped.
 public enum TutorialStep: String, CaseIterable, Sendable {
-    case openCompany, setPrice, pickSupplier, nextDay, claimGoal
+    // The supplier is asked when the first product is picked, so it comes before the price.
+    case openCompany, pickSupplier, setPrice, nextDay, claimGoal
 
     var following: TutorialStep? {
         let all: [TutorialStep] = TutorialStep.allCases

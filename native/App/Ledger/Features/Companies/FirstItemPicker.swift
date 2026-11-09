@@ -12,6 +12,8 @@ struct FirstItemPicker: View {
     var company: Company
     var noun: String
     var onAddOwn: () -> Void
+    /// Called with the id of the item that was picked, so the caller can ask who supplies it.
+    var onChosen: (String) -> Void = { _ in }
     @State private var picked: String?
     @Environment(\.outsidePalette) private var P
 
@@ -48,6 +50,6 @@ struct FirstItemPicker: View {
         let id: Int = company.id
         let r = store.act { $0.chooseFirstItem(companyID: id, itemID: itemID) }
         if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
-        else { Haptics.success() }
+        else { Haptics.success(); onChosen(itemID) }
     }
 }

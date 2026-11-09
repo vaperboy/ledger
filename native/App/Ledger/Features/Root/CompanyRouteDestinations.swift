@@ -13,7 +13,7 @@ struct CompanyRouteDestination: View {
             case .company(let id): CompanyDetailView(companyID: id).companySwitcher(route)
             case .companyAt(let id, let sec): CompanyPage(companyID: id, section: sec, part: nil).companySwitcher(route)
             case .companyPart(let id, let sec, let part): CompanyPage(companyID: id, section: sec, part: part).companySwitcher(route)
-            case .newCompany: NewCompanyView()
+            case .newCompany: NewCompanyRoute()
             case .applicants(let id, let role): ApplicantsView(companyID: id == 0 ? nil : id, role: role.isEmpty ? nil : role)
             // The store turns this route into the Market app (`GameStore.setPath`); this is the same app.
             case .market: MarketApp()

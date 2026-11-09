@@ -228,7 +228,7 @@ struct CompanyOverview: View {
         guard CompanyDetailView.availableSections(company, engine).contains(target) else { return }
         Haptics.choose()
         switch target {
-        case .staff, .holding: openTab(.people)
+        case .staff, .holding: openTab(.team)
         case .operations: openPage(.run)
         case .finances: openPage(.stats)
         case .salesMarket: openPage(.sales)

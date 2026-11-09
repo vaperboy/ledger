@@ -48,7 +48,7 @@ struct GivingView: View {
         }
         .scrollIndicators(.hidden)
         .ledgerBackground()
-        .appScreen(title: "Giving back", subtitle: "Gifts, sponsorships and your foundation", tab: .company)
+        .appScreen(title: "Giving back", subtitle: "Gifts, sponsorships and your foundation", tab: .phone)
         .confirmAction($pending)
     }
 

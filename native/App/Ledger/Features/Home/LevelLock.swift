@@ -5,12 +5,6 @@ import Simulation
 
 extension GameStore {
     func levelOpen(_ f: LevelFeature) -> Bool { engine.map { (e: GameEngine) -> Bool in LevelGates.isOpen(f, e.state) } ?? true }
-
-    func tabShown(_ t: AppTab) -> Bool {
-        switch t {
-        case .market, .store, .company, .group: return true
-        }
-    }
 }
 
 struct LevelLockCard: View {

@@ -104,7 +104,7 @@ extension GameStore {
     }
 
     /// Every launcher app with a badge above zero.
-    /// Kept until the engine or `seenMarks` changes (the Market tab, Home and the Apps list read it on every render).
+    /// Kept until the engine or `seenMarks` changes (the tab bar, Home and the Phone read it on every render).
     var phoneBadges: [PhoneApp: Int] {
         memo("badges") { (_: GameEngine) -> [PhoneApp: Int] in
             var out: [PhoneApp: Int] = [:]
@@ -115,6 +115,9 @@ extension GameStore {
             return out
         } ?? [:]
     }
+
+    /// The number on the Phone tab: every badge added up.
+    var waitingCount: Int { phoneBadges.values.reduce(0, +) }
 
     private func fill(_ m: inout UpdateMarks, _ e: GameEngine) {
         let maxID: Int = UpdateFeed.maxMessageID(e)

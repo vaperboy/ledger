@@ -11,19 +11,11 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case desk, rivals
     case country
     case store
-    case apps
     case profile
     var id: String { rawValue }
 
-    static var launcher: [PhoneApp] { allCases.filter { $0 != .market && $0 != .store && $0 != .season && $0 != .apps && $0 != .profile } }
-
-    var ownTab: AppTab? {
-        switch self {
-        case .market: return .market
-        case .store: return .store
-        default: return nil
-        }
-    }
+    /// The apps on the Phone's grid. Season is opened from Home and the Store; Profile from Home.
+    static var launcher: [PhoneApp] { allCases.filter { $0 != .season && $0 != .profile } }
 
     var title: String {
         switch self {
@@ -48,7 +40,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .rivals: return "Rivals"
         case .country: return "Country"
         case .store: return "Store"
-        case .apps: return "Apps"
         case .profile: return "Profile"
         }
     }
@@ -76,7 +67,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .rivals: return Glyph.rivalsFlag
         case .country: return Glyph.civicDome
         case .store: return Glyph.luxury
-        case .apps: return Glyph.list
         case .profile: return Glyph.person
         }
     }
@@ -104,7 +94,6 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .rivals: return "Named competitors and what they are up to"
         case .country: return "Treasury, rates, president and the law"
         case .store: return "Gold, boxes and cosmetics"
-        case .apps: return "Everything on your phone"
         case .profile: return "You, your trophies and your friends"
         }
     }
@@ -134,7 +123,6 @@ extension PhoneApp {
         case .rivals: return Color(hex: 0xB78F8A)
         case .country: return Color(hex: 0xCBAA6B)
         case .store: return Color(hex: 0xE0BC5E)
-        case .apps: return Color(hex: 0xA19B8F)
         case .profile: return Color(hex: 0xD6B889)
         }
     }
@@ -150,7 +138,7 @@ extension GateVisibility {
 extension PhoneApp {
     var gate: Gate? {
         switch self {
-        case .inbox, .reports, .settings, .friends, .desk, .rivals, .store, .apps, .profile: return nil
+        case .inbox, .reports, .settings, .friends, .desk, .rivals, .store, .profile: return nil
         case .bank: return .bank
         case .weather: return .weather
         case .marketplace: return .marketplace

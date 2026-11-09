@@ -3,39 +3,6 @@ import GameCore
 import Simulation
 import Businesses
 
-struct AppsList: View {
-    @Environment(Entitlements.self) private var ent
-    @EnvironmentObject var store: GameStore
-
-    var body: some View {
-        let badges: [PhoneApp: Int] = store.phoneBadges
-        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
-        FixedScreen(spacing: 16, top: 16, maxWidth: 560, overflowScrolls: true) {
-            LazyVGrid(columns: columns, spacing: 18) {
-                ForEach(PhoneApp.launcher) { app in
-                    if gateState(app) != .hidden {
-                        AppIcon(app: app, badge: badges[app] ?? 0, lock: gateState(app).lockText, quietDot: app == .desk && store.deskWaitingNow) {
-                            Haptics.tap()
-                            if app == .luxury { ent.run(.luxuryGivingFootball, "Luxury") { store.openApp(app) } } else { store.openApp(app) }
-                        }
-                    }
-                }
-            }
-            .padding(.top, 2)
-            .frame(maxWidth: .infinity)
-        }
-        .background(PhoneBackdrop())
-        .onAppear { store.endVisits() }
-        .appScreen(title: "Apps", subtitle: "Everything on your phone")
-        .accessibilityIdentifier("phone-home")
-    }
-
-    private func gateState(_ app: PhoneApp) -> GateVisibility {
-        guard let e = store.engine else { return GateVisibility.open }
-        return app.visibility(e)
-    }
-}
-
 struct PhoneBackdrop: View {
     var body: some View {
         RadialGradient(colors: [Color(hex: 0x1B1C1F), Theme.page], center: .top, startRadius: 0, endRadius: 560)
@@ -79,7 +46,7 @@ struct PhoneAppScreen: View {
     @EnvironmentObject var store: GameStore
 
     var body: some View {
-        if app == .apps || app == .profile {
+        if app == .profile {
             PhoneAppContent(app: app)
         } else {
             AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint,
@@ -142,8 +109,6 @@ struct PhoneAppContent: View {
             StoreApp()
         case .country:
             LevelGuard(feature: .government) { CountryApp() }
-        case .apps:
-            AppsList()
         case .profile:
             ProfileView()
         }

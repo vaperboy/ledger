@@ -175,6 +175,7 @@ struct CompaniesView: View {
                     Button { Haptics.tap(); store.push(.company(r.co.id), on: .company) } label: { CompanyRow(engine: e, company: r.co, health: r.h) }
                         .buttonStyle(PressableStyle())
                         .accessibilityHint("Opens the company")
+                        .coachAnchor(.homeCompany, enabled: i == 0)
                         .transition(.opacity)
                 }
             }

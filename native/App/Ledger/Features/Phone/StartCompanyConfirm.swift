@@ -16,6 +16,10 @@ struct StartConfirmView: View {
     @State private var estimate: StartEstimate?
     @State private var facts: StartFacts?
     @State private var refusal: String?
+    /// The company's own name (blank: the trade's name) and where it works.
+    @State private var name = ""
+    @State private var rentIndex: Int?
+    @State private var buying = false
 
     init(tradeID: String, cityID: String) {
         self.tradeID = tradeID
@@ -28,6 +32,7 @@ struct StartConfirmView: View {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     if let f = facts {
                         setup(e, f)
+                        if let plan = premisesPlan(e, f) { PremisesPicker(plan: plan, cur: e.homeCurrency, rentIndex: $rentIndex, buying: $buying) }
                         ifYouOpen(f)
                         if let refusal {
                             Text(refusal).textStyle(.body, tint: Theme.loss).fixedSize(horizontal: false, vertical: true)
@@ -48,6 +53,8 @@ struct StartConfirmView: View {
             }
             .appScreen(title: facts?.name ?? "Open a company", subtitle: "Check it before you open", tab: .company)
             .task(id: cityID) {
+                rentIndex = nil
+                buying = false
                 estimate = nil
                 facts = e.startFacts(tradeID: tradeID, cityID: cityID)
                 estimate = await estimator.estimate(e, tradeID: tradeID, cityID: cityID)
@@ -66,6 +73,13 @@ struct StartConfirmView: View {
         let cities: [Country.City] = e.homeCountry.cities
         return CardSection("The setup") {
             HStack {
+                Text("Name").textStyle(.caption)
+                Spacer(minLength: Theme.Space.m)
+                TextField(f.name, text: $name).textFieldStyle(.plain).multilineTextAlignment(.trailing)
+                    .accessibilityIdentifier("start-company-name")
+            }
+            CardLine()
+            HStack {
                 Text("City").textStyle(.caption)
                 Spacer(minLength: Theme.Space.m)
                 Menu {
@@ -82,6 +96,22 @@ struct StartConfirmView: View {
             CardLine()
             row("Opening cost", store.money(f.startCost))
         }
+    }
+
+    // MARK: Premises
+
+    private func premisesPlan(_ e: GameEngine, _ f: StartFacts) -> NewCompanyPlan? {
+        e.newCompanyPlan(tradeID: f.tradeID, cityID: f.cityID, size: f.size, withAlternatives: false)
+    }
+
+    /// The place picked, or nil for the standard rented one.
+    private func currentPick(_ plan: NewCompanyPlan?) -> NewCompanyPlan.Pick? {
+        guard let plan, plan.premisesKind == .place else { return nil }
+        let chosen: Int = rentIndex ?? plan.standardIndex
+        let canBuy: Bool = plan.options.first { (o: NewCompanyPlan.PremisesOption) -> Bool in o.index == chosen }?.canBuy ?? false
+        let buy: Bool = buying && canBuy
+        if rentIndex == nil && !buy { return nil }
+        return NewCompanyPlan.Pick(listingIndex: chosen, buy: buy)
     }
 
     // MARK: If you open it
@@ -136,10 +166,13 @@ struct StartConfirmView: View {
         let unlocked: Bool = TradeAccess.isUnlocked(tradeID: f.tradeID, startUpCost: cost, medianWage: e.homeCountry.medianMonthlyWage, entitlements: ent.effective, now: Date())
         if !unlocked { ent.run(.tradeAboveCostLine, "Open a " + f.name.lowercased()) {}; return }
         let choices: SetupChoices = e.suggestedChoices(tradeID: f.tradeID, cityID: f.cityID, size: f.size)
-        let r = store.act { $0.startCompanyChoosingPremises(tradeID: f.tradeID, cityID: f.cityID, size: f.size, name: nil, pick: nil, fundWith: f.invest, choices: choices, accountantID: nil) }
+        let typed: String = name.trimmingCharacters(in: .whitespaces)
+        let pick: NewCompanyPlan.Pick? = currentPick(premisesPlan(e, f))
+        let r = store.act { $0.startCompanyChoosingPremises(tradeID: f.tradeID, cityID: f.cityID, size: f.size, name: typed.isEmpty ? nil : typed, pick: pick, fundWith: f.invest, choices: choices, accountantID: nil) }
         switch r {
         case .success(let out)?:
             Haptics.success()
+            PlayerHistory.noteStarted()
             var text = "Registered. Set it up, then open for business."
             var tone = "good"
             if out.premises == .notEnoughCash { text = "Registered, but the company could not pay for the place. Choose premises in AirStay."; tone = "warn" }

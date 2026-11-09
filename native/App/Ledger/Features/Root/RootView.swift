@@ -33,6 +33,9 @@ struct RootView: View {
         .centerSheet(item: $store.workerPopup, category: .detail, tone: .info) { (w: WorkerPopupRef) -> AnyView in
             AnyView(WorkerProfileSheet(companyID: w.companyID, employeeID: w.id).environmentObject(store))
         }
+        .centerSheet(isPresented: $store.customPickerOpen, category: .medium, tone: .info) {
+            CustomTabPicker().environmentObject(store)
+        }
         .modifier(PostM7Paywall())
         .overlay(alignment: .top) { LinkRewardBanner() }
         .overlay { PopupLayer() }
@@ -54,12 +57,19 @@ struct GameShell: View {
     }
 }
 
+/// iPhone: the floating pill tab bar (Ventures, Group, Home, Custom, Phone), all always shown, over the pages. The system tab bar is hidden;
+/// the pages stay alive in a sliding `TabPager`. The tab bar is the only thing that changes tab: every link pushes on the tab it was tapped on.
+/// The Phone tab's bubble is the total waiting count.
 struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var tipVisible = false
 
     private var items: [PillTabItem] {
-        AppTab.allCases.filter { (tab: AppTab) -> Bool in store.tabShown(tab) }.map { (tab: AppTab) -> PillTabItem in
-            PillTabItem(id: tab.rawValue, title: tab.title, glyph: tab.glyph, accent: tab.accent, badge: tab == .market ? store.appBadge(.market) : 0)
+        let waiting: Int = store.waitingCount
+        return AppTab.allCases.map { (tab: AppTab) -> PillTabItem in
+            PillTabItem(id: tab.rawValue, title: store.title(for: tab), glyph: store.glyph(for: tab), accent: tab.accent,
+                        badge: tab == .phone ? waiting : 0, changeable: tab == .custom)
         }
     }
 
@@ -72,17 +82,54 @@ struct PhoneShell: View {
             TabContent(tab: tab)
         }
         .environment(\.tabBarClearance, PillTabBar.height + 16)
+        // The VoiceOver escape gesture (a two-finger Z) returns to the tab that was open before this one.
         .accessibilityAction(.escape) { store.returnToPreviousTab() }
         .overlay(alignment: .bottom) {
-            PillTabBar(items: items, selection: selection, onReselect: { raw in
-                if let t = AppTab(rawValue: raw) { Haptics.tap(); store.selectTab(t) }
-            })
-            .coachAnchor(.tabBar)
+            VStack(spacing: 0) {
+                if tipVisible && !store.popupOpen { customTip }
+                PillTabBar(items: items, selection: selection, onReselect: { raw in
+                    if let t = AppTab(rawValue: raw) { Haptics.tap(); store.selectTab(t) }
+                }, onLongPress: { raw in
+                    if raw == AppTab.custom.rawValue { store.customPickerOpen = true }
+                })
+                .coachAnchor(.tabBar)
+            }
         }
-        .onChange(of: store.tab) { _, _ in Haptics.tap() }
+        .onChange(of: store.tab) { _, now in
+            Haptics.tap()
+            if now != .custom { showCustomTip() }
+        }
+    }
+
+    /// One-time hint on the first tab change: the Custom tab is the player's own and is changed with a long press.
+    private var customTip: some View {
+        Button { tipVisible = false } label: {
+            Text("Tip: press and hold the Custom tab to choose what it opens.").textStyle(.caption, tint: Theme.ink)
+                .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.s)
+                .background(Capsule().fill(Theme.surfaceRaised))
+                .overlay(Capsule().strokeBorder(Theme.accent.opacity(0.45), lineWidth: 1))
+        }
+        .buttonStyle(PressableStyle())
+        .padding(.horizontal, Theme.Space.l)
+        .transition(.opacity)
+        .accessibilityLabel("Tip: press and hold the Custom tab to choose what it opens. Double tap to dismiss.")
+        .accessibilityIdentifier("custom-tab-tip")
+    }
+
+    private func showCustomTip() {
+        guard !FirstRunFlags.seen(FirstRunFlags.customTabTip) else { return }
+        FirstRunFlags.mark(FirstRunFlags.customTabTip)
+        withAnimation(Motion.quick(reduceMotion)) { tipVisible = true }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 7_000_000_000)
+            withAnimation(Motion.quick(reduceMotion)) { tipVisible = false }
+        }
     }
 }
 
+/// iPad: a sidebar with the same five destinations (the Custom row has a "Change destination" menu) as the iPhone tab bar and a wide detail area.
+/// Only the chosen tab is in the detail column. Each tab's navigation stack lives in the store, so what a link pushed on one tab never appears on another.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
 
@@ -101,10 +148,13 @@ struct SidebarShell: View {
                     }
                 }
                 Section {
-                    ForEach(AppTab.allCases.filter { (tab: AppTab) -> Bool in store.tabShown(tab) }) { tab in
-                        SidebarLabel(title: tab.title, symbol: tab.symbol)
-                            .badge(tab == .market ? store.appBadge(.market) : 0)
+                    ForEach(AppTab.allCases) { (tab: AppTab) in
+                        SidebarLabel(title: store.title(for: tab), symbol: tab.symbol)
+                            .badge(tab == .phone ? store.waitingCount : 0)
                             .tag(tab)
+                            .contextMenu {
+                                if tab == .custom { Button("Change destination") { store.customPickerOpen = true } }
+                            }
                     }
                 }
             }
@@ -122,41 +172,10 @@ struct TabContent: View {
     var body: some View {
         switch tab {
         case .company: CompaniesView()
+        case .custom: CustomTabView()
         case .group: GroupView()
-        case .market: AppTabRoot(app: .market, tab: .market)
-        case .store: AppTabRoot(app: .store, tab: .store)
+        case .projects: ProjectsView()
+        case .phone: PhoneHome()
         }
-    }
-}
-
-private struct HidesRootBackKey: EnvironmentKey { static let defaultValue: Bool = false }
-extension EnvironmentValues {
-    var hidesRootBack: Bool {
-        get { self[HidesRootBackKey.self] }
-        set { self[HidesRootBackKey.self] = newValue }
-    }
-}
-
-struct AppTabRoot: View {
-    @EnvironmentObject var store: GameStore
-    var app: PhoneApp
-    var tab: AppTab
-
-    var body: some View {
-        NavigationStack(path: Binding<[NavRoute]>(get: { store.path(for: tab) }, set: { store.setPath($0, for: tab) })) {
-            PhoneAppContent(app: app)
-                .environment(\.hidesRootBack, true)
-                .id(store.rootToken(tab))
-                .markerBudget()
-                .appFirstOpenHelp(app)
-                .overlay(alignment: .top) {
-                    Color.clear.frame(height: 88).allowsHitTesting(false).coachAnchor(.appHeader, enabled: store.showsApp(app))
-                }
-                .companyRouteDestinations()
-        }
-        .onAppear { if store.tab == tab { store.markSeen(app) } }
-        .onChange(of: store.tab) { _, now in if now == tab { store.markSeen(app) } }
-        .onChange(of: store.engine?.state.day) { _, _ in if store.tab == tab { store.markSeen(app) } }
-        .accessibilityIdentifier("tab-root-\(tab.rawValue)")
     }
 }

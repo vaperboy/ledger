@@ -37,7 +37,7 @@ struct HomeGoldChip: View {
     private let session = StoreSession.shared
 
     var body: some View {
-        Button { Haptics.tap(); store.selectTab(.store, resetRoot: false) } label: {
+        Button { Haptics.tap(); store.openApp(.store) } label: {
             HStack(spacing: Theme.Space.xs) {
                 Circle().fill(Theme.gold).frame(width: 10, height: 10)
                 Text(session.gold.formatted()).textStyle(.body, tint: Theme.ink, numeric: true, weight: .semibold).lineLimit(1)
@@ -84,9 +84,5 @@ struct HomeRoundButton: View {
 
 extension GameStore {
     func openProfile() { openApp(.profile) }
-    func openSeason() {
-        selectTab(.store, resetRoot: false)
-        push(.app(.season), on: .store)
-    }
-    var appsBadge: Int { phoneBadges.filter { (k: PhoneApp, _: Int) -> Bool in k != .inbox }.values.reduce(0, +) }
+    func openSeason() { openApp(.season) }
 }

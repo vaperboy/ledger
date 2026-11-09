@@ -38,12 +38,12 @@ private struct CoachTourLayer: View {
 
     /// Anything that must be read or answered first: a popup, a queued announcement, a day in progress.
     private var blocked: Bool {
-        host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.workerPopup != nil || store.isAdvancing
+        host.hasVisible || store.popupOpen || !store.unlockQueue.isEmpty || store.customPickerOpen || store.workerPopup != nil || store.isAdvancing
     }
 
     private func atRoot(_ t: AppTab) -> Bool { store.tab == t && store.path(for: t).isEmpty }
 
-    /// A company page is on top of the tab being shown (pushed).
+    /// A company page is on top of the tab being shown (pushed, or the Custom tab's destination).
     private var companyOnTop: Bool {
         if let r = store.path(for: store.tab).last {
             switch r {
@@ -51,6 +51,7 @@ private struct CoachTourLayer: View {
             default: return false
             }
         }
+        if store.tab == .custom, case .company = store.customTarget { return true }
         return false
     }
 

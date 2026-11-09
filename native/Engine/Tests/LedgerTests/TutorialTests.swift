@@ -18,20 +18,23 @@ final class TutorialTests: XCTestCase {
         XCTAssertTrue(loan.tutorialComplete)
     }
 
-    func testOpeningPricingSupplierDayAndGoalWalkTheSteps() throws {
+    func testOpeningSupplierPricingDayAndGoalWalkTheSteps() throws {
         var e = try fresh()
         let id = try XCTUnwrap(e.state.companies.first { $0.type != "hold" }?.id)
         e.tutorialAdvance(from: .setPrice)
         XCTAssertEqual(e.tutorialStep, .openCompany)
         e.tutorialAdvance(from: .openCompany)
-        XCTAssertEqual(e.tutorialStep, .setPrice)
+        XCTAssertEqual(e.tutorialStep, .pickSupplier)
         let choice = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
         XCTAssertFalse(e.chooseFirstItem(companyID: id, itemID: choice.id).isRefused)
-        XCTAssertEqual(e.tutorialStep, .setPrice)
+        XCTAssertEqual(e.tutorialStep, .pickSupplier)
         let item = try XCTUnwrap(e.salesItems(companyID: id).first)
+        // A price set early does not skip the supplier step.
         XCTAssertFalse(e.setItemPrice(companyID: id, itemID: item.id, price: item.price).isRefused)
         XCTAssertEqual(e.tutorialStep, .pickSupplier)
         e.tutorialAdvance(from: .pickSupplier)
+        XCTAssertEqual(e.tutorialStep, .setPrice)
+        XCTAssertFalse(e.setItemPrice(companyID: id, itemID: item.id, price: item.price).isRefused)
         XCTAssertEqual(e.tutorialStep, .nextDay)
         e.nextDay()
         XCTAssertEqual(e.tutorialStep, .claimGoal)

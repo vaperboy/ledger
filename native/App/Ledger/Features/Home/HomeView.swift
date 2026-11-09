@@ -95,8 +95,6 @@ struct HomeTopLine: View {
             Spacer(minLength: Theme.Space.xxs)
             HomeGoldChip()
             HomeRoundButton(glyph: Glyph.inbox, label: "Inbox", badge: store.appBadge(.inbox), identifier: "home-inbox") { store.openApp(.inbox) }
-                .coachAnchor(.phoneInbox)
-            HomeRoundButton(glyph: PhoneApp.apps.glyph, label: "Apps", badge: store.appsBadge, identifier: "home-apps") { store.openApp(.apps) }
             if secondCompanyOpen {
                 HomeRoundButton(glyph: Glyph.hire, label: "New company", identifier: "home-new-company", action: onNewCompany)
             }

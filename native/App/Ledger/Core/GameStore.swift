@@ -8,18 +8,25 @@ import Events
 import SaveSystem
 import Simulation
 
+/// The five tabs, left to right: Ventures (Projects), Group, Home (the middle tab, where the game opens), the player's Custom tab (any
+/// destination, see `CustomTabTarget`) and Phone (the apps; Inbox, Market and Store are apps inside it). The raw values are the route and
+/// deep-link names and never change: `.company` is displayed as "Home", `.projects` as "Ventures". All five are always shown.
 enum AppTab: String, Hashable, CaseIterable, Identifiable {
-    case company, group, market, store
+    case projects, group, company, custom, phone
     var id: String { rawValue }
-    var title: String { switch self { case .company: return "Home"; case .group: return "Companies"; case .market: return "Market"; case .store: return "Store" } }
+    /// The fixed title; the Custom tab's real title is the chosen destination's (`GameStore.title(for:)`).
+    var title: String { switch self { case .company: return "Home"; case .custom: return "Custom"; case .group: return "Group"; case .projects: return "Ventures"; case .phone: return "Phone" } }
+    /// SF Symbol for the iPad sidebar; the floating tab bar uses `glyph`.
     var symbol: String {
-        switch self { case .company: return "house"; case .group: return "square.stack.3d.up"; case .market: return "chart.line.uptrend.xyaxis"; case .store: return "bag" }
+        switch self { case .company: return "house"; case .custom: return "star"; case .group: return "square.stack.3d.up"; case .projects: return "hammer"; case .phone: return "iphone" }
     }
+    /// The tab's icon (SVG path data); the Custom tab's real icon is the destination's (`GameStore.glyph(for:)`).
     var glyph: String {
-        switch self { case .company: return Glyph.home; case .group: return Glyph.group; case .market: return Glyph.market; case .store: return Glyph.luxury }
+        switch self { case .company: return Glyph.home; case .custom: return Glyph.bank; case .group: return Glyph.group; case .projects: return Glyph.projects; case .phone: return Glyph.phone }
     }
+    /// The accent of the tab's pill in the bar.
     var accent: Color {
-        switch self { case .company: return Theme.gold; case .group: return Color(hex: 0x7F9BC4); case .market: return Color(hex: 0x86B890); case .store: return Color(hex: 0xA58BD0) }
+        switch self { case .company: return Theme.gold; case .custom: return Color(hex: 0xA58BD0); case .group: return Color(hex: 0x7F9BC4); case .projects: return Color(hex: 0xE0BC5E); case .phone: return Color(hex: 0x86B890) }
     }
     static let launch: AppTab = .company
     static func from(raw: String) -> AppTab { AppTab(rawValue: raw) ?? .launch }
@@ -50,6 +57,8 @@ enum AppRequest: Equatable {
     case techPro(companyID: Int, equipmentID: String)
     /// Atlas Insurance for one company.
     case atlas(companyID: Int)
+    /// The merged Ventures screen (the Projects tab) on its Portfolio segment.
+    case ventures
 }
 
 /// One notice, told in the in-game popup: a refusal, a warning or a problem the player must see.
@@ -250,7 +259,12 @@ final class GameStore: ObservableObject {
     }
     private struct LastPush { var route: NavRoute; var tab: AppTab; var at: Date }
     private var lastPush: LastPush?
+    /// Every tab's navigation stack (the Custom tab's root is its chosen destination). The tab roots bind to these; nothing else holds a stack.
     @Published private(set) var stacks: [AppTab: [NavRoute]] = [:]
+    /// The Custom tab's destination, kept in UserDefaults ("customTab"); Store until the player picks another.
+    @Published var customTarget: CustomTabTarget = CustomTabTarget.stored()
+    /// The "Change the Custom tab" popup.
+    @Published var customPickerOpen = false
     /// Set for the Market app: it opens on its Overview, where the latest market events are.
     var marketNewsPending = false
     /// Bumped each time a tab is re-selected: the tab root resets its own sub-tab and scrolls to the top.
@@ -699,6 +713,8 @@ final class GameStore: ObservableObject {
     func returnToOrigin() {}
 
     func path(for tab: AppTab) -> [NavRoute] { stacks[tab] ?? [] }
+    var phonePath: [NavRoute] { path(for: .phone) }
+    var customPath: [NavRoute] { path(for: .custom) }
     /// How many screens are pushed on a tab (0 = its root).
     func depth(_ tab: AppTab) -> Int { path(for: tab).count }
     func rootToken(_ tab: AppTab) -> Int { rootTokens[tab] ?? 0 }
@@ -778,6 +794,13 @@ final class GameStore: ObservableObject {
     @available(*, deprecated, message: "Links never change tab: use push(_:)")
     func open(_ route: NavRoute, on dest: AppTab) { push(route) }
 
+    func setPhonePath(_ new: [NavRoute]) { setPath(new, for: .phone) }
+    func setCustomPath(_ new: [NavRoute]) { setPath(new, for: .custom) }
+
+    /// The Ventures part of the Projects tab, pushed as the Ventures app on the open tab (on the Projects root it switches the segment).
+    @available(*, deprecated, message: "Links never change tab: use openApp(_:) or push(_:)")
+    func jump(to destination: AppTab) { if destination == .projects { openApp(.ventures) } }
+
     private func clearStack(_ tab: AppTab) { stacks[tab] = [] }
 
     /// A tab chosen on the tab bar or the sidebar: the only way the selected tab changes. A tap (`resetRoot` true) shows that tab's ROOT;
@@ -802,12 +825,9 @@ final class GameStore: ObservableObject {
 
     func openApp(_ app: PhoneApp, request: AppRequest? = nil) {
         if var e = engine, e.noteVisit(app: app.rawValue) { engine = e }   // a daily goal may be waiting on this app
-        if let own = app.ownTab {
-            if tab != own { selectTab(own, resetRoot: false) }
-            appRequest = request
-            return
-        }
-        appRequest = request
+        // Ventures is a part of the Projects tab: on that tab's root it switches to Portfolio.
+        if app == .ventures, tab == .projects, depth(.projects) == 0 { appRequest = .ventures; return }
+        appRequest = app == .ventures ? nil : request
         push(.app(app))
     }
 
@@ -847,6 +867,11 @@ final class GameStore: ObservableObject {
     func openMessage(_ id: Int) { openApp(.inbox, request: .message(id)) }
 
     /// The apps take their request when they appear and when it changes. A request whose target is gone (a message that was removed) is dropped.
+    func takeVenturesRequest() -> Bool {
+        guard case .ventures? = appRequest else { return false }
+        appRequest = nil
+        return true
+    }
     func takeMessageRequest() -> Int? {
         guard case .message(let id)? = appRequest else { return nil }
         appRequest = nil
@@ -923,7 +948,7 @@ final class GameStore: ObservableObject {
 
     /// Everything on the Phone that asks for the player, most urgent first (see `PhoneAlert`).
     var phoneAlerts: [PhoneAlert] { engine.map { PhoneAlerts.all(engine: $0, formatter: self) } ?? [] }
-    // The red bubbles (`appBadge`, `phoneBadges`) are in UpdateBadges.swift.
+    // The red bubbles (`appBadge`, `phoneBadges`, `waitingCount`) are in UpdateBadges.swift.
 }
 
 extension Int {

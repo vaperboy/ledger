@@ -6,7 +6,7 @@ import Finance
 import Simulation
 
 /// Start a company, screen 1: the player's cash, a guided way in (three questions, three matches) and the full list of trades.
-struct NewCompanyView: View {
+struct GuidedStartView: View {
     @EnvironmentObject var store: GameStore
     @StateObject private var estimator = StartEstimator()
 

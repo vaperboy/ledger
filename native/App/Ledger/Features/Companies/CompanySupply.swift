@@ -28,11 +28,16 @@ struct CompanySupply: View {
     var body: some View {
         let groups: [SupplyGroup] = engine.supplyLines(companyID: company.id)
         let cur: Currency = engine.currency(for: company)
+        let sells: Bool = !engine.salesItems(companyID: company.id).isEmpty
         return VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            Text("What this company needs each week, and who supplies it.").textStyle(.body, tint: P.inkSoft)
+            Text("Who supplies what: the things you sell, and everything the company buys to run.").textStyle(.body, tint: P.inkSoft)
+            if sells { ItemSupplySection(engine: engine, company: company) }
             if groups.isEmpty {
-                EmptyState(glyph: Glyph.suppliers, title: "Buys nothing from suppliers", message: "What the business buys shows here once it is open.", centered: false)
+                if !sells {
+                    EmptyState(glyph: Glyph.suppliers, title: "Buys nothing from suppliers", message: "What the business buys shows here once it is open.", centered: false)
+                }
             } else {
+                Text("What the business needs each week").textStyle(.label, tint: P.inkFaint)
                 ForEach(groups) { (g: SupplyGroup) in
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Text(g.name).textStyle(.label, tint: P.inkFaint)
@@ -125,7 +130,6 @@ private struct NeedCard: View {
                     Button("Change") { Haptics.tap(); onChange() }
                         .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
                         .accessibilityIdentifier("supply-change-\(row.id)")
-                        .coachAnchor(.itemSupplier)
                 }
             }
             if let why = row.governed ?? row.note {

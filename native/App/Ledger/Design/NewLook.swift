@@ -716,12 +716,17 @@ struct PillTabItem: Identifiable, Equatable {
     var glyph: String
     var accent: Color = Theme.accent
     var badge: Int = 0
+    /// True for the tab the player can re-point with a long press (the Custom tab).
+    var changeable: Bool = false
 }
 
 struct PillTabBar: View {
     var items: [PillTabItem]
     @Binding var selection: String
     var onReselect: (String) -> Void = { _ in }
+    /// Called with the item's id when a `changeable` item is long-pressed.
+    var onLongPress: (String) -> Void = { _ in }
+    @State private var longPressed: String?
     @State private var flashing: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -738,12 +743,16 @@ struct PillTabBar: View {
                 let on = item.id == selection
                 let traits: AccessibilityTraits = on ? [.isButton, .isSelected] : [.isButton]
                 Button {
+                    if longPressed == item.id { longPressed = nil; return }
                     if on { onReselect(item.id); flash(item.id) } else { selection = item.id }
                 } label: {
                     VStack(spacing: 3) {
                         LedgerGlyph(glyph: item.glyph, size: Theme.Icon.medium, tint: on ? item.accent : Theme.inkSoft)
                         Text(item.title).font(.system(size: 11, weight: on ? .medium : .regular)).foregroundStyle(on ? item.accent : Theme.inkSoft).lineLimit(1).minimumScaleFactor(0.8)
                     }
+                    .id(item.glyph + item.title)
+                    .transition(.opacity)
+                    .animation(Motion.quickAnimation, value: item.title)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(selectedPill(on, accent: item.accent))
@@ -752,8 +761,19 @@ struct PillTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle())
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                    longPressed = item.id
+                    Haptics.tap()
+                    onLongPress(item.id)
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 400_000_000)
+                        longPressed = nil
+                    }
+                }, including: item.changeable ? .all : .subviews)
                 .animation(reduceMotion ? nil : Motion.moveAnimation, value: on)
+                .coachAnchor(.customTab, enabled: item.id == AppTab.custom.rawValue)
                 .accessibilityLabel(item.title)
+                .accessibilityActions { if item.changeable { Button("Change destination") { onLongPress(item.id) } } }
                 .accessibilityValue(item.badge > 0 ? "\(item.badge) waiting" : "")
                 .accessibilityIdentifier("tab-\(item.title)")
                 .accessibilityAddTraits(traits)

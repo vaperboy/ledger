@@ -25,20 +25,39 @@ struct ItemsList: View {
     var items: [SalesItem]
     var service: Bool
     var onOpen: (String) -> Void
+    var onAdd: () -> Void
+    /// Called with the id of the first item once it was picked.
+    var onChosen: (String) -> Void = { _ in }
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
         let cur: Currency = engine.currency(for: company)
+        let noun: String = service ? "service" : "product"
         return PageGroup(service ? "Services" : "Products") {
-            if items.isEmpty {
+            if items.isEmpty && company.status == .open && engine.needsFirstItemChoice(companyID: company.id) {
+                FirstItemPicker(engine: engine, company: company, noun: noun, onAddOwn: onAdd, onChosen: onChosen)
+            } else if items.isEmpty {
                 EmptyState(glyph: service ? Glyph.opsWrench : Glyph.opsBox, title: "Nothing is on sale yet",
-                           message: company.status == .open ? "Add what you sell under Prices." : "", centered: false)
+                           message: company.status == .open ? "Add what you sell." : "", centered: false)
             }
             LazyVStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, it: SalesItem) in
                     if i > 0 { RowRule(inset: 52) }
-                    row(it, cur)
+                    row(it, cur).coachAnchor(.firstItemRow, enabled: i == 0)
                 }
+            }
+            if company.status == .open && !items.isEmpty {
+                Hairline()
+                Button { Haptics.tap(); onAdd() } label: {
+                    HStack(spacing: Theme.Space.m) {
+                        LedgerGlyph(glyph: Glyph.hire, size: Theme.Icon.medium, tint: P.accent).frame(width: 40)
+                        Text("Add a \(noun)").textStyle(.headline, tint: P.accent)
+                        Spacer()
+                    }
+                    .frame(minHeight: 52).contentShape(Rectangle())
+                }
+                .buttonStyle(AcctPressStyle())
+                .accessibilityIdentifier("sales-add-item")
             }
         }
     }
@@ -85,6 +104,7 @@ struct ItemPageView: View {
     @EnvironmentObject var store: GameStore
     var companyID: Int
     var itemID: String
+    @State private var draftPrice: Double?
     @State private var weeks = 4
     @State private var draftPercent: Int?
     @State private var showWeeks = false
@@ -96,13 +116,13 @@ struct ItemPageView: View {
         if let e = store.engine, let co = e.state.company(companyID),
            let base = e.itemPage(companyID: companyID, itemID: itemID) {
             let cur: Currency = e.currency(for: co)
-            let price: Double = base.item.price
-            let pg: ItemPageData = base
+            let price: Double = draftPrice ?? base.item.price
+            let pg: ItemPageData = draftPrice == nil ? base : (e.itemPage(companyID: companyID, itemID: itemID, price: price) ?? base)
             let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xxl) {
-                    priceLine(pg, cur, f)
-                    demandBlock(pg, f, cur, move: 0)
+                    priceBlock(pg, co, cur, price, f, setBy: pg.item.priceSetter.isOwner ? nil : pg.item.priceSetter.label)
+                    demandBlock(pg, f, cur, move: base.item.price > 0 ? price / base.item.price - 1 : 0)
                     promotionBlock(co, pg.item)
                     TradeItemBlocks(e: e, companyID: companyID, itemID: itemID, price: price, cur: cur)
                     plansBlock(pg)
@@ -122,11 +142,78 @@ struct ItemPageView: View {
         }
     }
 
-    private func priceLine(_ p: ItemPageData, _ cur: Currency, _ f: ItemForecast) -> some View {
+    /// The price: the number as the hero, a slider with its profit band, the price typed next to the market price and one tap to use the
+    /// market price. `setBy`: who sets this price when it is not the owner (a manager within the owner's price position); nil: the owner sets it here.
+    private func priceBlock(_ p: ItemPageData, _ co: Company, _ cur: Currency, _ price: Double, _ f: ItemForecast, setBy: String? = nil) -> some View {
+        let range: ClosedRange<Double> = store.engine?.itemPriceRange(companyID: co.id) ?? SalesItems.priceRange
+        let lo: Double = p.item.marketPrice * range.lowerBound
+        let hi: Double = p.item.marketPrice * range.upperBound
+        let amount = Binding<Double>(get: { min(max(price, lo), hi) }, set: { (v: Double) in draftPrice = v })
         let reading = itemProfitReading(p.live, cur)
         let each: String = p.live.outcome == .breakEven ? "break-even on each" : reading.text + " each"
-        let facts: String = String(format: "about %.0f sold a week", f.units) + "  \u{00B7}  market " + itemAmount(p.item.marketPrice, cur)
-        return CompanyHero(label: "Price " + (p.item.isService ? "per service" : "each"), value: itemAmount(p.item.price, cur), change: each, changeTint: reading.tint, context: facts)
+        let facts: String = String(format: "about %.0f sold a week", f.units)
+        let unit: String = p.item.isService ? "per service" : "each"
+        return VStack(alignment: .leading, spacing: Theme.Space.l) {
+            CompanyHero(label: "Your price " + unit, value: itemAmount(price, cur), change: each, changeTint: reading.tint, context: facts)
+            if let who = setBy {
+                Text("Set by \(who)").textStyle(.caption, tint: P.inkFaint)
+                Text("Market price " + itemAmount(p.item.marketPrice, cur)).textStyle(.caption, tint: P.inkFaint)
+            } else if hi > lo {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    LedgerSlider(value: amount, in: lo...hi, onEditingChanged: { (editing: Bool) in
+                        if !editing { commitPrice(draftPrice ?? p.item.price) }
+                    })
+                    .tint(P.accent)
+                    .accessibilityIdentifier("sales-item-price")
+                    ProfitBand(lo: lo, hi: hi, cost: p.unitCost, price: price)
+                }
+                TypedPriceField(price: price, range: lo...hi, cur: cur, unit: unit, market: p.item.marketPrice,
+                                hint: { (v: Double) -> String? in
+                    let lp = ItemModels.liveProfit(price: v, cost: p.unitCost)
+                    return lp.outcome == .breakEven ? "At this price you break even on each one." : "At this price: \(lp.word) \(itemAmount(lp.amount, cur)) on each one."
+                }, onSet: { (v: Double) in draftPrice = v; commitPrice(v) })
+                quickPrices(p, cur, lo: lo, hi: hi)
+            }
+            keepPriceButton(setBy: setBy)
+            listToggle(co, p.item)
+        }
+        .coachAnchor(.itemPrice)
+    }
+
+    /// While the first-steps guide waits for a price, a plain way to say the price shown is fine.
+    @ViewBuilder private func keepPriceButton(setBy: String?) -> some View {
+        if setBy == nil, store.tutorialStep == .setPrice {
+            Button("Keep this price") { Haptics.tap(); store.tutorialAdvance(from: .setPrice) }
+                .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
+                .accessibilityIdentifier("item-keep-price")
+        }
+    }
+
+    /// One tap prices: the market price, or the cost.
+    private func quickPrices(_ p: ItemPageData, _ cur: Currency, lo: Double, hi: Double) -> some View {
+        let cost: Double = p.unitCost
+        let market: Double = p.item.marketPrice
+        return WrapRow {
+            if market >= lo && market <= hi {
+                Button("Use market price \(itemAmount(market, cur))") { Haptics.tap(); commitPrice(market) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.accent))
+                    .accessibilityIdentifier("item-use-market-price")
+            }
+            if cost >= lo && cost <= hi {
+                Button("At cost \(itemAmount(cost, cur))") { Haptics.tap(); commitPrice(cost) }
+                    .buttonStyle(TertiaryButtonStyle(size: .compact, tint: P.inkSoft))
+            }
+        }
+    }
+
+    private func commitPrice(_ price: Double) {
+        let id: Int = companyID
+        let item: String = itemID
+        let cur: Currency? = store.engine.flatMap { (e: GameEngine) in e.state.company(id).map { e.currency(for: $0) } }
+        let r = store.act { $0.setItemPrice(companyID: id, itemID: item, price: price) }
+        draftPrice = nil
+        if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
+        else if r?.didChange == true, let cur { store.saved("price " + itemAmount(price, cur)) }
     }
 
     @ViewBuilder private func promotionBlock(_ co: Company, _ it: SalesItem) -> some View {
