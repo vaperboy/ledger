@@ -62,8 +62,9 @@ final class AdMobProvider: NSObject, AdProvider, GADFullScreenContentDelegate {
     }
 
     func showRewarded() async -> Bool {
+        guard finish == nil else { return false }   // one full-screen ad at a time: a second call would leak the first continuation
         if rewarded == nil { await load() }
-        guard let ad = rewarded, let vc = top else { return false }
+        guard finish == nil, let ad = rewarded, let vc = top else { return false }
         rewarded = nil
         var earned = false
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in

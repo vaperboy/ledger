@@ -14,6 +14,7 @@ struct PaywallView: View {
             header
             options
             buyButton
+            if choice.isPlus { disclosure }
             if let note = ent.message { Text(note).textStyle(.caption) }
             passLink
             footer
@@ -32,14 +33,14 @@ struct PaywallView: View {
 
     @ViewBuilder private var options: some View {
         VStack(spacing: 0) {
-            planCard(.plusYearly, title: "Ledger Plus, yearly", badge: ent.yearlySaving, detail: "Everything in Pro, plus Advisor, auto-week, cloud backup and early access.")
+            planCard(.plusYearly, title: "Ledger Plus, yearly", badge: ent.yearlySaving, detail: "Everything in Pro, ads removed. Season pass included: coming with the first season.")
             Hairline().padding(.leading, 22 + Theme.Space.m)
             planCard(.plusMonthly, title: "Ledger Plus, monthly", badge: "", detail: "")
             Hairline().padding(.leading, 22 + Theme.Space.m)
             if ent.ownsPro {
                 ownedRow
             } else {
-                planCard(.pro, title: "Ledger Pro, once", badge: "", detail: "Every locked item, for good. Removes ads. Family Sharing on.")
+                planCard(.pro, title: "Ledger Pro, once", badge: "", detail: "Every locked item and three save slots, for good. Removes ads. Family Sharing on.")
             }
         }
     }
@@ -72,7 +73,7 @@ struct PaywallView: View {
                     }
                     if !badge.isEmpty { Text(badge).textStyle(.caption, tint: Theme.gain, weight: .semibold) }
                     if !detail.isEmpty { Text(detail).textStyle(.caption).fixedSize(horizontal: false, vertical: true) }
-                    if p.isPlus && ent.trialEligible { Text("7 days free, then \(ent.price(p))").textStyle(.caption, tint: Theme.inkSoft) }
+                    if p.isPlus, ent.trialEligible, let trial = ent.trialLength(p) { Text("\(trial) free, then \(priceLine(p))").textStyle(.caption, tint: Theme.inkSoft) }
                 }
             }
             .padding(.vertical, Theme.Space.m).frame(maxWidth: .infinity, alignment: .leading)
@@ -81,6 +82,18 @@ struct PaywallView: View {
         .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? .isSelected : [])
         .accessibilityIdentifier("paywall-\(p.rawValue)")
+    }
+
+    /// The auto-renew terms of the selected Plus plan: price, period, trial, and the App Store's renewal rules.
+    private var disclosure: some View {
+        let price: String = ent.price(choice)
+        let period: String = choice == .plusYearly ? "year" : "month"
+        var lines: [String] = []
+        if ent.trialEligible, let trial = ent.trialLength(choice) { lines.append("\(trial) free, then \(price) per \(period).") }
+        else if !price.isEmpty { lines.append("\(price) per \(period).") }
+        lines.append("Payment is charged to your Apple ID. The subscription renews automatically unless it is cancelled at least 24 hours before the period ends, and your account is charged for the renewal within 24 hours before it ends. Manage or cancel it in your App Store account settings.")
+        return Text(lines.joined(separator: " ")).textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("paywall-disclosure")
     }
 
     private func priceLine(_ p: LedgerProduct) -> String {
@@ -115,28 +128,32 @@ struct PaywallView: View {
                 Text("Try Pro for a day: watch an ad")
             }
             .buttonStyle(PopupTextActionStyle(tint: PopupTone.prestige.color))
+            .disabled(ads.isShowing || ent.isBusy)
             .accessibilityIdentifier("paywall-pass")
         }
     }
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 6) {
+            // Founder adds only a mark on top of Pro, so a Pro owner is not offered it.
             if !ent.ownsPro {
                 Button { Task { await ent.purchase(.founder) } } label: {
-                    Text("Founder's Edition: Pro, your name in the Rich List, a gold icon and future packs. \(ent.price(.founder))")
+                    Text("Founder's Edition: everything in Pro, once, with a Founder mark in Settings. \(ent.price(.founder))")
                         .textStyle(.caption).multilineTextAlignment(.leading).lineLimit(4).fixedSize(horizontal: false, vertical: true)
                 }
                 .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
-                .disabled(ent.price(.founder).isEmpty)
+                .disabled(ent.isBusy || ent.price(.founder).isEmpty)
+                .accessibilityIdentifier("paywall-founder")
             }
             HStack(spacing: 14) {
                 Button { Task { await ent.restore() } } label: { Text("Restore purchases") }
                     .buttonStyle(PlainTextButtonStyle(tint: Theme.ivoryMuted))
+                    .disabled(ent.isBusy)
                     .accessibilityIdentifier("paywall-restore")
                 Link("Terms", destination: LedgerLinks.terms).textStyle(.caption)
                 Link("Privacy", destination: LedgerLinks.privacy).textStyle(.caption)
             }
-            Text("Plus renews until cancelled. Manage it in your App Store account settings.").textStyle(.caption, tint: Theme.inkFaint)
+            Text("Ledger Pro and Founder's Edition are one-time purchases. Ledger Plus is a subscription.").textStyle(.caption, tint: Theme.inkFaint)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

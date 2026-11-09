@@ -66,7 +66,7 @@ final class PlaceholderAdProvider: AdProvider {
     }
 }
 
-/// App Tracking Transparency: the system prompt only, asked once, after the first week report.
+/// App Tracking Transparency: the system prompt only, asked once, right after the consent form and before the first ad is shown.
 enum TrackingPermission {
     private static let key = "ledger.attAsked"
     static var asked: Bool { UserDefaults.standard.bool(forKey: key) }

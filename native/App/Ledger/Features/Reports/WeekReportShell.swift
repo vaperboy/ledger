@@ -110,8 +110,11 @@ struct WeekReportShell<More: View>: View {
     }
 
     private var footer: some View {
-        PopupActionBar {
-            PopupOptionButton(title: "Continue", highlighted: true, identifier: "report-continue") { continueTapped() }
+        VStack(spacing: Theme.Space.xs) {
+            if digest.kind == .week { DoubleGrantLink() }
+            PopupActionBar {
+                PopupOptionButton(title: "Continue", highlighted: true, identifier: "report-continue") { continueTapped() }
+            }
         }
     }
 

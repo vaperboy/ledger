@@ -183,7 +183,7 @@ struct SettingsView: View {
 
     private var planName: String {
         if ent.isPlus { return "Plus" }
-        if ent.effective.hasGift(now: Date()) && !ent.ownsPro { return "Gift" }
+        if ent.hasGift && !ent.ownsPro { return "Gift" }
         if ent.isFounder { return "Founder" }
         if ent.ownsPro { return "Pro" }
         return ent.hasPass ? "Pro for a day" : "Free"
