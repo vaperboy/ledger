@@ -71,28 +71,13 @@ final class AccountFlowTests: XCTestCase {
         }
     }
 
-    func testTheSessionWaitsForTheConfirmationThenPaysTheRewardOnce() async {
+    func testSigningInCreatesTheProfileAndPaysTheRewardOnce() async {
         let online = OnlineSession(service: service())
         let ok = await online.signIn(with: .apple)
         XCTAssertTrue(ok)
-        XCTAssertTrue(online.awaitingAdultConfirmation)
-        XCTAssertNil(online.profile)
-        XCTAssertNil(online.linkReward)
-        let made = await online.confirmAdult()
-        XCTAssertTrue(made)
         XCTAssertFalse(online.awaitingAdultConfirmation)
         XCTAssertNotNil(online.profile)
         XCTAssertEqual(online.linkReward?.granted, true)
-    }
-
-    func testDecliningRemovesTheEmptyAccount() async {
-        let online = OnlineSession(service: service())
-        _ = await online.signIn(with: .google)
-        XCTAssertTrue(online.awaitingAdultConfirmation)
-        await online.declineProfile()
-        XCTAssertFalse(online.isSignedIn)
-        XCTAssertNil(online.profile)
-        XCTAssertNotNil(online.notice)
     }
 
     func testTheRulesKeepInsideTheirFixedLimits() throws {

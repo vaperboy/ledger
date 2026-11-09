@@ -40,7 +40,7 @@ struct BoxView: View {
                 StorePurchase.afterPopup { pending = StorePurchase.pack(p) }
             })
         }
-        .navigationDestination(isPresented: $showPacks) { GoldPacksView() }
+        .navigationDestination(isPresented: $showPacks) { StoreApp() }
     }
 
     private var header: some View {

@@ -49,7 +49,6 @@ public extension GameEngine {
             return SalesItems.starterIDs(bd, SalesItems.items(seeded.companies[i], bd)).contains(itemID) ? nil : "That choice is not on offer."
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.settlePick(&s, companyID: companyID, keeping: itemID, data: d)
-            Tutorial.advance(&s, from: .pickProduct)
         }
     }
 
@@ -119,7 +118,6 @@ public extension GameEngine {
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, d, _ in
             SalesItems.add(&s, companyID: companyID, name: clean, isService: isService, data: d)
-            Tutorial.advance(&s, from: .pickProduct)   // a product of their own is also a first choice
         }
     }
 

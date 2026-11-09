@@ -47,6 +47,7 @@ public extension GameEngine {
             return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
             ItemModels.setSupplier(&s, companyID: companyID, itemID: itemID, vendorID: vendorID)
+            Tutorial.advance(&s, from: .pickSupplier)
         }
     }
 }

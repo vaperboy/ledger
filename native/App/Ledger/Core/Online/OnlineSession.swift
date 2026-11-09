@@ -57,7 +57,7 @@ final class OnlineSession {
 
     var isSignedIn: Bool { if case .signedIn = state { return true }; return false }
     var provider: SignInProvider? { if case .signedIn(let p) = state { return p }; return nil }
-    /// Signed in, but the profile waits for the 18+ confirmation.
+    /// Signed in, but the server has not created the profile yet (the first attempt failed).
     var awaitingAdultConfirmation: Bool { isSignedIn && status?.adultConfirmed == false }
     /// What linking pays, once the server has said so.
     var linkRewardGold: Int { status?.linkRewardGold ?? 0 }
@@ -68,6 +68,7 @@ final class OnlineSession {
         adopt(account)
         await refreshStatus()
         if status?.adultConfirmed == true { profile = try? await service.myProfile() }
+        else if status?.adultConfirmed == false { await confirmAdult() }
     }
 
     func finishAccountScreen() {
@@ -102,8 +103,8 @@ final class OnlineSession {
         UserDefaults.standard.set(Array(all), forKey: Self.adminKey)
     }
 
-    /// Signs in (or links, for a guest who adds an account later). Returns whether it worked. A new account has no profile yet: the
-    /// 18+ confirmation comes first (`awaitingAdultConfirmation`); a returning one gets its profile back and, if never paid, the reward.
+    /// Signs in (or links, for a guest who adds an account later). Returns whether it worked. A new account gets its profile at once, sent with
+    /// the adult flag the terms already confirmed; a returning one gets its profile back and, if never paid, the reward.
     @discardableResult
     func signIn(with provider: SignInProvider) async -> Bool {
         problem = nil
@@ -118,6 +119,8 @@ final class OnlineSession {
             if status?.adultConfirmed == true {
                 profile = try? await service.myProfile()
                 await collectLinkReward()
+            } else if status?.adultConfirmed == false {
+                await confirmAdult()
             }
             return true
         } catch {
@@ -127,7 +130,7 @@ final class OnlineSession {
         }
     }
 
-    /// The player confirmed they are 18 or older: the server creates the profile and the reward follows.
+    /// The terms were accepted, which confirms 18 or older: the server creates the profile and the reward follows.
     @discardableResult
     func confirmAdult() async -> Bool {
         problem = nil
@@ -139,18 +142,6 @@ final class OnlineSession {
         } catch {
             problem = (error as? LocalizedError)?.errorDescription ?? "Could not create the profile. Try again."
             return false
-        }
-    }
-
-    /// The player is under 18, or does not want a profile: the empty account is removed again and they carry on as a guest.
-    func declineProfile() async {
-        problem = nil
-        do {
-            try await service.deleteAccount()
-            clearAccount()
-            notice = "No profile was created. You can keep playing as a guest."
-        } catch {
-            problem = (error as? LocalizedError)?.errorDescription ?? "Could not remove the account. Try again."
         }
     }
 

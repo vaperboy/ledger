@@ -81,6 +81,7 @@ struct HomeMissionStrip: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
+        .coachAnchor(.goalCard)
         .accessibilityIdentifier("home-mission-card")
     }
 

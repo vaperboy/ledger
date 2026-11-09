@@ -213,7 +213,6 @@ struct AvatarPickerView: View {
     @Environment(Entitlements.self) private var ent
     @ObservedObject private var avatars = AvatarModel.shared
     private let session = StoreSession.shared
-    @AppStorage(AgeConfirmation.key) private var adult = false
     @State private var selected: String = ""
     @State private var pending: PendingAction?
     @State private var shortOfGold = false
@@ -256,7 +255,7 @@ struct AvatarPickerView: View {
         .appScreen(title: "Profile icon", subtitle: "What other players see")
         .confirmAction($pending)
         .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(onPacks: { shortOfGold = false; showPacks = true }, onPick: { (_: GoldPack) in shortOfGold = false; showPacks = true }) }
-        .navigationDestination(isPresented: $showPacks) { GoldPacksView() }
+        .navigationDestination(isPresented: $showPacks) { StoreApp() }
         .task {
             await session.load()
             if let e = store.engine { avatars.note(rank: e.careerStatus.rank.index, badges: e.careerCosmetics) }
@@ -313,13 +312,9 @@ struct AvatarPickerView: View {
                 .disabled(worn)
                 .accessibilityIdentifier("avatar-use")
         } else if let price = d.price {
-            if adult {
-                Button("Buy for \(StoreText.gold(price))") { ask(d, price: price) }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .accessibilityIdentifier("avatar-buy")
-            } else {
-                Text("Gold purchases are for players aged 18 or older.").textStyle(.caption).multilineTextAlignment(.center)
-            }
+            Button("Buy for \(StoreText.gold(price))") { ask(d, price: price) }
+                .buttonStyle(PrimaryButtonStyle())
+                .accessibilityIdentifier("avatar-buy")
         }
     }
 

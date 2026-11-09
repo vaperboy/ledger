@@ -286,6 +286,7 @@ public extension GameEngine {
             }
             if SupplyDeals.governedBy(s, co, input: input) != nil { r = .governed; return }
             r = SupplyDeals.perform(&s, d, companyID: companyID, input: input, to: change)
+            if r == .ok { Tutorial.advance(&s, from: .pickSupplier) }
         }
         return r
     }

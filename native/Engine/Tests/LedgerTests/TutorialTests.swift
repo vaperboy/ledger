@@ -10,31 +10,38 @@ final class TutorialTests: XCTestCase {
         try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11, story: .fresh, tradeID: "cafe", chooseFirstItem: true)
     }
 
-    func testFreshGameStartsOnPickProductAndOtherStartsHaveNone() throws {
+    func testFreshGameStartsOnOpenCompanyAndOtherStartsHaveNone() throws {
         let e = try fresh()
-        XCTAssertEqual(e.tutorialStep, .pickProduct)
+        XCTAssertEqual(e.tutorialStep, .openCompany)
         XCTAssertFalse(e.tutorialComplete)
         let loan = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 11)
         XCTAssertTrue(loan.tutorialComplete)
     }
 
-    func testPickingThenPricingThenADayWalkTheSteps() throws {
+    func testOpeningPricingSupplierDayAndGoalWalkTheSteps() throws {
         var e = try fresh()
         let id = try XCTUnwrap(e.state.companies.first { $0.type != "hold" }?.id)
-        // Out of order does nothing.
         e.tutorialAdvance(from: .setPrice)
-        XCTAssertEqual(e.tutorialStep, .pickProduct)
+        XCTAssertEqual(e.tutorialStep, .openCompany)
+        e.tutorialAdvance(from: .openCompany)
+        XCTAssertEqual(e.tutorialStep, .setPrice)
         let choice = try XCTUnwrap(e.firstItemChoices(companyID: id).first)
         XCTAssertFalse(e.chooseFirstItem(companyID: id, itemID: choice.id).isRefused)
         XCTAssertEqual(e.tutorialStep, .setPrice)
-        // The same price kept counts as set.
         let item = try XCTUnwrap(e.salesItems(companyID: id).first)
         XCTAssertFalse(e.setItemPrice(companyID: id, itemID: item.id, price: item.price).isRefused)
+        XCTAssertEqual(e.tutorialStep, .pickSupplier)
+        e.tutorialAdvance(from: .pickSupplier)
         XCTAssertEqual(e.tutorialStep, .nextDay)
         e.nextDay()
-        XCTAssertEqual(e.tutorialStep, .openInbox)
-        e.tutorialAdvance(from: .openInbox)
-        e.tutorialAdvance(from: .readInbox)
+        XCTAssertEqual(e.tutorialStep, .claimGoal)
+        e.tutorialAdvance(from: .claimGoal)
+        XCTAssertTrue(e.tutorialComplete)
+    }
+
+    func testSkipEndsTheTutorialAtAnyStep() throws {
+        var e = try fresh()
+        e.tutorialFinish()
         XCTAssertTrue(e.tutorialComplete)
     }
 
@@ -42,7 +49,7 @@ final class TutorialTests: XCTestCase {
         let e = try fresh()
         let data = try JSONEncoder().encode(e.state)
         let back = try JSONDecoder().decode(GameState.self, from: data)
-        XCTAssertEqual(Tutorial.step(back), .pickProduct)
+        XCTAssertEqual(Tutorial.step(back), .openCompany)
     }
 
     func testStandardTeamAndExtraEquipmentAreNeverBoughtForThePlayer() throws {
@@ -57,18 +64,5 @@ final class TutorialTests: XCTestCase {
         XCTAssertFalse(held.optionalEquipment)
         e.tutorialFinish()
         XCTAssertEqual(e.tutorialLimited(wide).team, .minimum, "never bought for the player, tutorial or not")
-    }
-
-    func testInboxGuideSkipsDecisionsAndReadMessages() throws {
-        var e = try fresh()
-        e.update { s, _, _ in
-            s.addMessage(from: "Bank", title: "First news", body: "Info")
-            s.addMessage(kind: "ask", from: "Staff", title: "A question", body: "Decide", status: "open")
-        }
-        let guide = e.tutorialInboxGuide
-        XCTAssertFalse(guide.isEmpty)
-        XCTAssertLessThanOrEqual(guide.count, 3)
-        for m in e.state.inbox where guide.contains(m.id) { XCTAssertFalse(m.status == "open" && m.isOwnerAddressed) }
-        XCTAssertFalse(guide.contains { id in e.state.inbox.first { $0.id == id }?.title == "A question" })
     }
 }

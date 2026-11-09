@@ -117,15 +117,9 @@ private struct CoachTourLayer: View {
 
     private var tutorialPosition: Int { (TutorialStep.allCases.firstIndex(where: { (s: TutorialStep) -> Bool in s == store.tutorialStep }) ?? 0) + 1 }
 
-    /// Keeps the player on the guided path: the first product is chosen on the Sales page of the company, and Next day is on Home.
-    private func guideNavigation() {
-        guard let step = store.tutorialStep, !blocked, store.tab == .company else { return }
-        let atRoot: Bool = store.path(for: .company).isEmpty
-        if step.locksPlay, atRoot, let id = firstCompanyID {
-            store.openCompany(id, section: .salesMarket)
-        } else if step == .nextDay, !atRoot {
-            store.setPath([], for: .company)
-        }
+    /// Opening a company page is the first step.
+    private func noteCompanyOpened() {
+        if companyOnTop { store.tutorialAdvance(from: .openCompany) }
     }
 
     /// The guide has nothing left to point at when the company is gone.
@@ -168,16 +162,11 @@ private struct CoachTourLayer: View {
             }
             .onChange(of: tour?.id) { _, id in activeID = id }
         }
-        .onChange(of: store.showsApp(.inbox)) { _, open in
-            if open { store.tutorialAdvance(from: .openInbox) }
-        }
-        .onChange(of: store.tutorialStep) { _, _ in guideNavigation() }
-        .onChange(of: blocked) { _, _ in guideNavigation() }
-        .onChange(of: store.path(for: .company).count) { _, _ in guideNavigation() }
+        .onChange(of: store.path(for: store.tab).count) { _, _ in noteCompanyOpened() }
+        .onChange(of: store.tab) { _, _ in noteCompanyOpened() }
         .onAppear {
             endIfAbandoned()
-            if store.showsApp(.inbox) { store.tutorialAdvance(from: .openInbox) }
-            guideNavigation()
+            noteCompanyOpened()
         }
     }
 

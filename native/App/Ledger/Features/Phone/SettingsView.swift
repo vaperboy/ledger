@@ -1,34 +1,28 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import GameCore
 import Simulation
-import StoreKit
 
-/// Settings app: a plain list like the system Settings. Grouped rows with an icon in front, switches for on and off, popups for
-/// a choice, chevrons for what opens something; no hero and no figures. Every control keeps its engine call and its "Saved" message.
 struct SettingsView: View {
-    /// Inside the Start screen's popup: the popup is the panel, so no background of its own.
     var embedded = false
     @EnvironmentObject var store: GameStore
     @Environment(Entitlements.self) private var ent
     @Environment(AdCoordinator.self) private var ads
+    @Environment(OnlineSession.self) private var online
     @State private var haptics = Haptics.enabled
     @State private var sounds = SoundCues.enabled
     @State private var reminders: Bool = Reminders.enabled
-    @State private var showImporter = false
-    @State private var showPaste = false
-    @State private var showRedeem = false
-    @State private var pasted = ""
     @State private var askStep = ConfirmThreshold.step
     @State private var pending: PendingAction?
     @State private var showWardrobe = false
+    @State private var showAdmin = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 AccountSettingsGroup()
                 feelGroup
-                savingGroup
+                if store.engine != nil { helpGroup }
+                if store.engine != nil && !embedded { savingGroup }
                 proGroup
                 if store.classicStartUnlocked { newGameGroup }
                 gameGroup
@@ -44,22 +38,8 @@ struct SettingsView: View {
         .onChange(of: reminders) { _, v in Reminders.enabled = v; store.saved("reminders " + (v ? "on" : "off")) }
         .confirmAction($pending)
         .centerSheet(isPresented: $showWardrobe, title: "Wardrobe", size: .tall) { WardrobeView() }
-        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.plainText, .json, .data]) { result in importPicked(result) }
-        // The App Store's own sheet takes the offer code; a successful redemption arrives as a normal transaction and the plan updates.
-        .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await ent.restore() } }
-        .centerSheet(isPresented: $showPaste) {
-            VStack(spacing: Theme.Space.m) {
-                TextEditor(text: $pasted).popupText(.code).frame(height: 220)
-                    .scrollContentBackground(.hidden)
-                    .overlay(alignment: .top) { Hairline() }.overlay(alignment: .bottom) { Hairline() }
-                Button(store.hasSavedGame ? "Import and replace" : "Import") { importPasted() }
-                    .buttonStyle(QuietButtonStyle()).disabled(pasted.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            .centerSheetTitle("Paste save text")
-        }
+        .navigationDestination(isPresented: $showAdmin) { AdminAccessView() }
     }
-
-    // MARK: Groups
 
     private var feelGroup: some View {
         group("Feel") {
@@ -76,40 +56,33 @@ struct SettingsView: View {
         }
     }
 
-    private var savingGroup: some View {
-        group("Saves", footer: store.engine == nil ? "" : "Saved daily, with a monthly backup.") {
-            if store.engine != nil {
-                Button { store.save(backup: true); store.show("Saved.", tone: "good"); Haptics.success() } label: {
-                    plainRow(Glyph.save, "Save now", chevron: true)
-                }.buttonStyle(PressableStyle())
-                if let text = store.exportText() {
-                    rule
-                    ShareLink(item: text, subject: Text("Ledger save"), message: Text("Ledger save")) {
-                        plainRow(Glyph.share, "Export this game", chevron: true)
-                    }.buttonStyle(PressableStyle())
-                }
-                if !embedded {
-                    rule
-                    NavigationLink {
-                        PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Named copies and cloud backup")
-                    } label: {
-                        plainRow(Glyph.save, "Save slots", detail: "Named copies of this game", chevron: true)
-                    }.buttonStyle(PressableStyle())
-                }
-                rule
-            }
-            Button { showImporter = true } label: {
-                plainRow(Glyph.download, "Import a save from the web game", chevron: true)
+    private var helpGroup: some View {
+        group("Help") {
+            Button { askReplay() } label: {
+                plainRow(Glyph.info, "Replay the tutorial", detail: "Five short steps on your own company", chevron: true)
             }.buttonStyle(PressableStyle())
-            rule
-            Button { showPaste = true } label: {
-                plainRow(Glyph.download, "Paste save text", chevron: true)
+            .accessibilityIdentifier("settings-replay-tutorial")
+        }
+    }
+
+    private func askReplay() {
+        pending = PendingAction(title: "Replay the tutorial?", message: "The five steps start again from the first one. Nothing in your game changes.",
+                                button: "Replay", alwaysAsk: true) {
+            store.tutorialReplay()
+            store.show("The tutorial starts again.", tone: "good")
+        }
+    }
+
+    private var savingGroup: some View {
+        group("Saves", footer: "The game saves itself after every day.") {
+            NavigationLink {
+                PhonePageScroll(spacing: 14) { SaveSlotsView() }.appScreen(title: "Save slots", subtitle: "Named copies and cloud backup")
+            } label: {
+                plainRow(Glyph.save, "Save slots", detail: "Named copies of this game", chevron: true)
             }.buttonStyle(PressableStyle())
         }
     }
 
-    /// The two older ways to begin, once the new-player ladder has reached them. Their own group in red, away from the saves: each
-    /// replaces the running game (confirmed first).
     private var newGameGroup: some View {
         group("New game", footer: "Replaces the game you are playing; the copy before it is kept as a backup.") {
             Button { askNewGame(.loan) } label: {
@@ -129,7 +102,6 @@ struct SettingsView: View {
                                 button: "Start new game", destructive: true) { store.newGame(name: who, countryCode: code, story: story); ads.resetForNewSave() }
     }
 
-    /// Current plan, renewal date, manage, restore. Prices are never written here.
     private var proGroup: some View {
         group("Ledger Pro") {
             plainRow(Glyph.lock, "Plan", value: planName)
@@ -137,10 +109,10 @@ struct SettingsView: View {
                 rule
                 plainRow(Glyph.info, "Plus renews", value: end.formatted(date: .abbreviated, time: .omitted))
             }
-            if !ent.isPlus {
+            if store.engine != nil && !embedded {
                 rule
-                Button { ent.paywall = PaywallRequest(title: ent.ownsPro ? "Ledger Plus" : "Ledger Pro") } label: {
-                    plainRow(Glyph.lock, ent.ownsPro ? "Get Ledger Plus" : "Get Ledger Pro", chevron: true)
+                Button { Haptics.tap(); store.openApp(.store) } label: {
+                    plainRow(Glyph.lock, ent.isPlus ? "Open the Store" : (ent.ownsPro ? "Get Ledger Plus in the Store" : "Get Ledger Pro in the Store"), chevron: true)
                 }.buttonStyle(PressableStyle())
                 .accessibilityIdentifier("settings-ledger-pro")
             }
@@ -154,16 +126,6 @@ struct SettingsView: View {
                 plainRow(Glyph.lock, "Wardrobe", detail: "Badges and colours", value: ent.isPro ? "" : "Preview", chevron: true)
             }.buttonStyle(PressableStyle())
             .accessibilityIdentifier("settings-wardrobe")
-            rule
-            if ent.offerCodesAvailable {
-                Button { Haptics.tap(); showRedeem = true } label: { plainRow(Glyph.lock, "Redeem an offer code", detail: "A code from the App Store", chevron: true) }
-                    .buttonStyle(PressableStyle())
-                    .accessibilityIdentifier("settings-redeem")
-                rule
-            }
-            Button { Task { await ent.restore() } } label: { plainRow(Glyph.download, "Restore purchases", detail: ent.message ?? "", chevron: true) }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-restore")
             #if DEBUG
             rule
             Button { cycleDebugPlan() } label: { plainRow(Glyph.info, "Debug plan", value: ent.debugMode.rawValue) }
@@ -180,7 +142,6 @@ struct SettingsView: View {
     }
 
     #if DEBUG
-    /// Force free, Pro or Plus for testing (debug builds only).
     private func cycleDebugPlan() {
         let all = Entitlements.DebugMode.allCases
         let next: Int = ((all.firstIndex(of: ent.debugMode) ?? 0) + 1) % all.count
@@ -190,51 +151,43 @@ struct SettingsView: View {
 
     private var gameGroup: some View {
         group("Game") {
-            if store.engine != nil {
-                Button { store.quitToMenu() } label: {
-                    plainRow(Glyph.exit, "Back to the start screen", detail: "Saved first", tint: Theme.loss, chevron: true)
+            if store.engine != nil || online.isSignedIn {
+                Button { askLeave() } label: {
+                    plainRow(Glyph.exit, leaveTitle, detail: store.engine != nil ? "Saved first" : "", tint: Theme.loss, chevron: true)
                 }.buttonStyle(PressableStyle())
+                .accessibilityIdentifier("settings-sign-out")
                 rule
             }
             plainRow(Glyph.info, "Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
+                .onLongPressGesture(minimumDuration: 1.5) { if !embedded { Haptics.tap(); showAdmin = true } }
         }
     }
 
-    // MARK: Import
-
-    /// Pasted text replaces the running game, so it is asked first (the file path does the same).
-    private func importPasted() {
-        let text: String = pasted
-        showPaste = false
-        pasted = ""
-        guard store.hasSavedGame else { store.importLegacy(text: text); return }
-        pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                button: "Import and replace", destructive: true) { store.importLegacy(text: text) }
+    private var leaveTitle: String {
+        if !online.isSignedIn { return "Back to the start menu" }
+        return store.engine != nil ? "Sign out and back to the start menu" : "Sign out"
     }
 
-    private func importPicked(_ result: Result<URL, Error>) {
-        guard case .success(let url) = result else { return }
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { store.errorText = "That file could not be read as text."; return }
-        // Ask once the file picker has gone: an import replaces the game you are playing.
-        DispatchQueue.main.async {
-            pending = PendingAction(title: "Import this save?", message: "It replaces the game you are playing now. The copy before it is kept as a backup file, but the game will no longer open it.",
-                                    button: "Import and replace", destructive: true) { store.importLegacy(text: text) }
+    private func askLeave() {
+        let signedIn: Bool = online.isSignedIn
+        let inGame: Bool = store.engine != nil
+        if !signedIn { store.quitToMenu(); return }
+        pending = PendingAction.online(title: "Sign out?",
+                                       effect: inGame ? "you become a guest on this device and return to the start menu. Your game is saved first and stays on this device."
+                                                      : "you become a guest on this device. Your game stays; your profile and progress wait for you to sign in again.",
+                                       button: "Sign out", tone: .info, icon: "rectangle.portrait.and.arrow.right") {
+            Task {
+                await online.signOut()
+                if inGame { store.quitToMenu() }
+            }
         }
     }
 
-    // MARK: Words
-
-    /// "Always ask", or the size under which small spends are not asked, in the home currency.
     private func askLabel(_ step: Int) -> String {
         guard step > 0, let cur = store.engine?.homeCurrency else { return "Always ask" }
         return "Under " + cur.tidyShort(ConfirmThreshold.limit(step: step, currency: cur)).tidyMoney
     }
 
-    // MARK: Rows
-
-    /// The hairline between rows, starting under the title (past the icon).
     private var rule: some View { Hairline().padding(.leading, Theme.Icon.medium + Theme.Space.m) }
 
     private func group<Content: View>(_ title: String, footer: String = "", @ViewBuilder _ content: () -> Content) -> some View {
@@ -282,7 +235,6 @@ struct SettingsView: View {
     }
 }
 
-/// The page background, except inside a popup that already paints the panel.
 private struct SettingsBackdrop: ViewModifier {
     var embedded: Bool
 

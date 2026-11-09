@@ -10,15 +10,15 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var popups = PopupHost()
+    @AppStorage(Terms.key) private var termsAccepted = false
     /// Screenshots only: `-showcase-gameover` shows the end screen over the showcase game.
+    private static let showcase: Bool = ProcessInfo.processInfo.arguments.contains("-showcase")
     private static let showsGameOver: Bool = ProcessInfo.processInfo.arguments.contains("-showcase-gameover")
 
     var body: some View {
         Group {
-            // The account screen comes once, on a new install, before anything else. A profile that waits for its 18+ confirmation
-            // comes first of all, so linking is never left half done.
-            if online.awaitingAdultConfirmation && store.engine == nil {
-                ProfileCreationView()
+            if !termsAccepted && !Self.showcase {
+                TermsView { termsAccepted = true }
             } else if online.needsAccountScreen && store.engine == nil {
                 AccountWelcomeView()
             } else if let e = store.engine {

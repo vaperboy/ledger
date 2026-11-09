@@ -117,7 +117,10 @@ public extension GameEngine {
     mutating func claimGoal(kind: GoalClaims.Kind, id: String, now: Date = Date()) -> GoalClaims.Result {
         var r: GoalClaims.Result = .notReady
         let today: String = Self.dayString(now)
-        update { s, d, ctx in r = GoalClaims.claim(&s, kind: kind, id: id, data: d, currency: ctx.homeCurrency(s), today: today) }
+        update { s, d, ctx in
+            r = GoalClaims.claim(&s, kind: kind, id: id, data: d, currency: ctx.homeCurrency(s), today: today)
+            if case .claimed = r { Tutorial.advance(&s, from: .claimGoal) }
+        }
         return r
     }
 }

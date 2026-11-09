@@ -9,10 +9,10 @@ import Finance
 
 /// First screen. The game keeps one save (written after every day, with the previous copy and month-end backups kept by
 /// `SaveStore`), so the screen has three states:
-/// - no save: start a new game or bring one over from the web game;
+/// - no save: start a new game;
 /// - a save: continue it, with what it holds (who, where, which week, how many companies, when it was saved);
-/// - a save that could not be opened: why, a retry, and the warning that a new game or an import replaces it.
-/// Starting or importing over an existing save asks first, because it replaces that save.
+/// - a save that could not be opened: why, a retry, and the warning that a new game replaces it.
+/// Starting over an existing save asks first, because it replaces that save.
 struct StartView: View {
     @EnvironmentObject var store: GameStore
     @Environment(AdCoordinator.self) private var ads

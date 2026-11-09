@@ -54,8 +54,6 @@ struct InboxMailRow: View {
     var openDetail: () -> Void
     /// A decision with one to three options is answered from the row (the same confirmation rules apply).
     var answer: ((Int) -> Void)? = nil
-    /// Set while the first-steps guide is running: a gentle marker on the messages worth opening next.
-    var guided: Bool = false
 
     private var open: Bool { message.status == "open" }
     private var unread: Bool { open || !message.isRead }
@@ -112,9 +110,6 @@ struct InboxMailRow: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(title).textStyle(.headline, tint: unread ? P.ink : P.inkSoft, weight: unread ? .semibold : .regular).lineLimit(2)
                 Text(consequence).textStyle(.caption, tint: P.inkSoft).lineLimit(2)
-                if guided {
-                    Text("Read next").textStyle(.caption, tint: P.accent, weight: .semibold).lineLimit(1)
-                }
                 if !message.handledBy.isEmpty {
                     Text("Handled by " + message.handledBy).textStyle(.caption, tint: P.accent, weight: .medium).lineLimit(1)
                 }
@@ -126,10 +121,6 @@ struct InboxMailRow: View {
             if open { expiryPill } else if unread { Circle().fill(P.accent).frame(width: 7, height: 7).padding(.top, Theme.Space.xs).accessibilityLabel("Unread") }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, guided ? Theme.Space.s : 0)
-        .overlay(alignment: .leading) {
-            if guided { Capsule().fill(P.accent.opacity(0.7)).frame(width: 3).accessibilityHidden(true) }
-        }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }

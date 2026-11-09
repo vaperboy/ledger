@@ -89,7 +89,6 @@ enum StoreBackend {
     }
 }
 
-/// The age confirmation: the player says they are 18 or older. Unknown counts as under 18. A device preference, set on the account screen.
 enum AgeConfirmation {
     static let key = "ledger.account.adultConfirmed"
     static var isAdult: Bool { UserDefaults.standard.bool(forKey: key) }
@@ -97,10 +96,7 @@ enum AgeConfirmation {
 }
 
 enum StoreGate {
-    /// The Phone tile is shown only to confirmed adults.
-    static var tileVisible: Bool { AgeConfirmation.isAdult }
-
     static func access(countryCode: String?) -> StoreAccess.Access {
-        StoreAccess.access(adultConfirmed: AgeConfirmation.isAdult ? true : nil, countryCode: countryCode ?? Locale.current.region?.identifier)
+        StoreAccess.access(adultConfirmed: true, countryCode: countryCode ?? Locale.current.region?.identifier)
     }
 }

@@ -392,6 +392,7 @@ struct ItemPageView: View {
                                 badge: o.relationshipWord, current: current, action: current ? nil : { choose(o.vendorID, o.vendorName) })
                 }
             }
+            .coachAnchor(.itemSupplier)
         }
     }
 

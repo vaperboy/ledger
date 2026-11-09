@@ -1,8 +1,6 @@
 import SwiftUI
 import Businesses
 
-/// The Account section of Settings: link Apple or Google (profile memory only, with a one-time gold reward), own profile, friends, sign out,
-/// export and delete, and the administrator entry. A guest sees only the link rows; single-player works the same either way.
 struct AccountSettingsGroup: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
@@ -12,18 +10,11 @@ struct AccountSettingsGroup: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.l) {
-            Group {
-                if online.awaitingAdultConfirmation { ProfileCreationView(embedded: true) }
-                else if online.isSignedIn { signedIn }
-                else { guest }
-            }
+            if online.isSignedIn { signedIn } else { guest }
             if online.isSignedIn && !online.awaitingAdultConfirmation { mergeCard }
-            AgeConfirmationGroup()
         }
         .confirmAction($pending)
     }
-
-    // MARK: Guest
 
     private var guest: some View {
         OnlineGroup(title: "Account", footer: guestFooter) {
@@ -49,7 +40,7 @@ struct AccountSettingsGroup: View {
             Haptics.tap()
             pending = PendingAction.online(
                 title: "Link " + provider.title + "?",
-                effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward. You are asked to confirm you are 18 or older before a profile is created.",
+                effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward.",
                 button: "Continue with " + provider.title, tone: .info, icon: "person.crop.circle") {
                 working = true
                 Task { _ = await online.signIn(with: provider); working = false }
@@ -62,31 +53,30 @@ struct AccountSettingsGroup: View {
         .accessibilityIdentifier("settings-link-" + provider.rawValue)
     }
 
-    // MARK: Signed in
-
     private var signedIn: some View {
         OnlineGroup(title: "Account", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
             OnlineLine(glyph: Glyph.person, title: "Linked with " + (online.provider?.title ?? ""), note: online.profile?.displayName ?? "")
-            Hairline()
-            NavigationLink {
-                MyProfileView()
-            } label: { OnlineLine(glyph: Glyph.person, title: "My profile", note: "Name, colour, privacy and companies", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
-            Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
-                .buttonStyle(PressableStyle())
+            if online.awaitingAdultConfirmation {
+                Hairline()
+                Button {
+                    working = true
+                    Task { _ = await online.confirmAdult(); working = false }
+                } label: { OnlineLine(glyph: Glyph.warning, title: "Finish your profile", note: "It could not be created yet. Try again.", chevron: true) }
+                    .buttonStyle(PressableStyle())
+                    .disabled(working)
+                    .accessibilityIdentifier("settings-finish-profile")
+            } else {
+                Hairline()
+                NavigationLink {
+                    MyProfileView()
+                } label: { OnlineLine(glyph: Glyph.person, title: "Profile", chevron: true) }
+                    .buttonStyle(PressableStyle())
+                Hairline()
+                Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
+                    .buttonStyle(PressableStyle())
+            }
             Hairline()
             exportRow
-            Hairline()
-            adminRow
-            Hairline()
-            Button {
-                pending = PendingAction.online(title: "Sign out?",
-                                               effect: "you become a guest on this device. Your game stays; your profile and progress wait for you to sign in again.",
-                                               button: "Sign out", tone: .info, icon: "rectangle.portrait.and.arrow.right") { Task { await online.signOut() } }
-            } label: { OnlineLine(glyph: Glyph.exit, title: "Sign out", chevron: true) }
-                .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-sign-out")
             Hairline()
             Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
                 .buttonStyle(PressableStyle())
@@ -97,25 +87,6 @@ struct AccountSettingsGroup: View {
         }
     }
 
-    /// The administrator entry. Whether the account is an administrator is the server's answer (`OnlineSession.isAdmin`), never a setting here.
-    @ViewBuilder private var adminRow: some View {
-        if online.isAdmin {
-            NavigationLink { AdminScreen() } label: {
-                OnlineLine(glyph: Glyph.settings, title: "Administration", note: "World rules, confirmations and the audit log", chevron: true)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("settings-admin")
-        } else {
-            NavigationLink { AdminAccessView() } label: {
-                OnlineLine(glyph: Glyph.lock, title: "Administrator access", note: "Have a one-time code?", chevron: true)
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityIdentifier("settings-admin-access")
-        }
-    }
-
-    /// An account that supplies other players under open contracts cannot be deleted until those are served out or handed over. Once it is deleted, the
-    /// listings stop and the buyers fall back to the House supplier at once.
     private func askToDelete() {
         let market: SupplyMarketStore = SupplyMarketStore.shared
         let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
@@ -133,7 +104,6 @@ struct AccountSettingsGroup: View {
         }
     }
 
-    /// Two steps: prepare the file, then share it.
     @ViewBuilder private var exportRow: some View {
         if let url = exportURL {
             ShareLink(item: url) { OnlineLine(glyph: Glyph.share, title: "Share my data file", note: "Everything the server holds about you", chevron: true) }
@@ -153,9 +123,6 @@ struct AccountSettingsGroup: View {
         }
     }
 
-    // MARK: Progress
-
-    /// Shown when the account already holds more progress than this device's game, until the player has chosen which side stays.
     @ViewBuilder private var mergeCard: some View {
         if let m = online.mergePrompt {
             OnlineGroup(title: "Two games, one profile",

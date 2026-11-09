@@ -92,7 +92,6 @@ struct AccountWelcomeView: View {
                 title: "Link " + provider.title + "?",
                 effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward. The account is not used to find friends.",
                 button: "Continue with " + provider.title,
-                risk: "A profile is only created after you confirm you are 18 or older.",
                 tone: .info, icon: "person.crop.circle") {
                 working = provider
                 Task { _ = await online.signIn(with: provider); working = nil }

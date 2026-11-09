@@ -146,7 +146,7 @@ struct SaveSlotsView: View {
     }
 
     private func backUp() {
-        guard let text = store.exportText() else { return }
+        guard let text = store.backupText() else { return }
         if let problem = CloudBackup.back(up: text) { store.show(problem + ".", tone: "warn") }
         else { backedUp = CloudBackup.lastBackup; store.show("Backed up.", tone: "good") }
     }
@@ -154,7 +154,7 @@ struct SaveSlotsView: View {
     private func askRestore() {
         guard let text = CloudBackup.restoreText() else { store.show("No backup found.", tone: "warn"); return }
         pending = PendingAction(title: "Restore the backup?", message: "It replaces the game you are playing. That game is kept as a backup file.", button: "Restore backup", alwaysAsk: true) {
-            store.save(backup: true); store.importLegacy(text: text); reload()
+            store.save(backup: true); store.restoreBackup(text: text); reload()
         }
     }
 }

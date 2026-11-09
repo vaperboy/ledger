@@ -397,18 +397,18 @@ final class GameStore: ObservableObject {
         }
     }
 
-    /// Import a save from the HTML game. The original text is kept in `Imports/` untouched.
-    func importLegacy(text: String) {
+    /// Makes the game stored in a cloud backup the game being played.
+    func restoreBackup(text: String) {
         guard let saves else { return }
         do { try start(with: saves.importLegacy(text: text)); loadProblem = nil; resetNavigation(); save() }
-        catch { errorText = "That save could not be imported. " + Self.describe(error) }
+        catch { errorText = "That backup could not be restored. " + Self.describe(error) }
     }
 
-    /// Set once the new-player ladder reaches its last goal: the classic loan start and the family café become selectable under Settings > Saves > New game.
+    /// Set once the new-player ladder reaches its last goal: the classic loan start and the family café become selectable under Settings > New game.
     static let classicStartKey = "ledger.classicStartUnlocked"
     var classicStartUnlocked: Bool { UserDefaults.standard.bool(forKey: Self.classicStartKey) }
 
-    func exportText() -> String? {
+    func backupText() -> String? {
         guard let engine, let d = try? JSONEncoder().encode(engine.state) else { return nil }
         return String(data: d, encoding: .utf8)
     }
@@ -421,7 +421,7 @@ final class GameStore: ObservableObject {
     /// advanced twice by one press, and a week/month/year report is always read before the next day runs. The pause before the
     /// engine runs is only long enough for the button to show its progress state (the engine itself runs at once).
     func nextDay() {
-        guard !isAdvancing, !tutorialHoldsDay, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, engine != nil else { return }
+        guard !isAdvancing, blockingMessageID == nil, reportSheet == nil, celebrationQueue.isEmpty, unlockQueue.isEmpty, engine != nil else { return }
         isAdvancing = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)

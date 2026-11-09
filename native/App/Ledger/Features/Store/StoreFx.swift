@@ -155,27 +155,6 @@ struct StoreCoinHeap: View {
     }
 }
 
-/// The gold balance: the number counts up to its value with a soft ease. Shows the value at once under Reduce Motion.
-struct GoldCounter: View {
-    var amount: Int
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shown: Double = 0
-
-    var body: some View {
-        HStack(spacing: Theme.Space.s) {
-            StoreCoin(size: 30).storeFloat(amplitude: 2, period: 3.6)
-            CountingNumber(value: reduceMotion ? Double(amount) : shown).textStyle(.display, tint: Theme.ink, numeric: true)
-            Text("gold").textStyle(.caption)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(StoreText.gold(amount))
-        .onAppear { if reduceMotion { shown = Double(amount) } else { Motion.animate(.easeOut(duration: 1.0)) { shown = Double(amount) } } }
-        .onChange(of: amount) { (_: Int, new: Int) in
-            if reduceMotion { shown = Double(new) } else { Motion.animate(.easeOut(duration: 0.9)) { shown = Double(new) } }
-        }
-    }
-}
-
 /// A number the animation system can count: it redraws once per step of the value.
 struct CountingNumber: View, Animatable {
     var value: Double
