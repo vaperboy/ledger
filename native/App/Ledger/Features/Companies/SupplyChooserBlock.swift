@@ -6,7 +6,7 @@ import Businesses
 import Simulation
 
 /// The three ways to choose a player supplier for a purchase, in the offers popup: Well known (best records and volume), Random pick (drawn from
-/// the fair-price reliable pool, one new draw allowed) and Browse (search and filters on their own page). The House suppliers below stay as
+/// the fair-price reliable pool, one new draw allowed) and Browse (search and filters on their own page). The market suppliers below stay as
 /// the backup and the automatic fallback.
 struct SupplyWaysBlock: View {
     @EnvironmentObject var store: GameStore
@@ -47,7 +47,7 @@ struct SupplyWaysBlock: View {
                 Chip(text: "Player supplier", tint: Theme.gold)
             }
             Text("\(c.unitsPerWeek) units a week.").popupText(.caption)
-            QuietButton(title: "End and use the House supplier", fullWidth: true) {
+            QuietButton(title: "End and use a market supplier", fullWidth: true) {
                 market.service.endContract(buyerCompanyID: companyID, lineID: row.id)
                 market.returnToHouse(store, companyID: companyID, lineID: row.id)
                 Haptics.tap()

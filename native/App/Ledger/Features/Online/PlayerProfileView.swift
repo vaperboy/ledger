@@ -47,7 +47,6 @@ struct PlayerProfileView: View {
             ProfileAvatar(initials: p.initials, colour: p.avatarColour, size: 84)
             Text(p.displayName).textStyle(.title)
             Text(p.subline).textStyle(.caption)
-            if p.isSimulated { Text("Simulated company").textStyle(.caption, tint: Theme.inkFaint) }
             if !p.badges.isEmpty {
                 Text(p.badges.joined(separator: "  ·  ")).textStyle(.caption, tint: Theme.accent).multilineTextAlignment(.center)
             }

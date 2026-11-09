@@ -57,7 +57,7 @@ struct CompanyRankingSection: View {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(en.name + (en.isYou ? " (you)" : "")).textStyle(.headline, tint: en.isYou ? P.accent : nil).lineLimit(1)
                 Text(en.isYou ? "\(en.companyCount) \(en.companyCount == 1 ? "company" : "companies")"
-                     : en.rivalID != nil ? "Your rival" : "\(en.companyCount) sites").textStyle(.caption).lineLimit(1)
+                     : en.rivalID != nil ? "Your rival" : "\(en.companyCount) \(en.companyCount == 1 ? "site" : "sites")").textStyle(.caption).lineLimit(1)
             }
             Spacer(minLength: Theme.Space.s)
             VStack(alignment: .trailing, spacing: Theme.Space.xxs) {

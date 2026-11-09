@@ -108,6 +108,26 @@ public enum CompanyRanking {
         return out
     }
 
+    /// Companies that players run (`RealRivals`), as ordinary rows, except those already shown as a rival you face.
+    static func playerEntries(_ s: GameState, data: GameData, skipping names: Set<String>) -> [Entry] {
+        guard let list = s.rest["real"]?.array, !list.isEmpty else { return [] }
+        var out: [Entry] = []
+        for j in list {
+            let name = j["name"].string, cc = j["cc"].string
+            guard !names.contains(name), let c = data.countries[cc],
+                  let bd = data.catalog.order.compactMap({ data.catalog[$0] }).first(where: { $0.name.lowercased() == j["trade"].string.lowercased() }) else { continue }
+            let demand = c.cities.first { $0.name.lowercased() == j["city"].string.lowercased() }?.demand ?? 1
+            let size = j["size"].double > 0 ? j["size"].double : 1
+            let rev = (bd.normalDemand == 0 ? 1 : bd.normalDemand) * bd.ticket * demand * size * 0.9 * 52 * c.priceLevel
+            let profit = rev * clamp(bd.margin, -0.12, 0.45)
+            let val = (rev * (max(0.04, bd.margin) * 4.5 + 0.15) / 1000).rounded() * 1000
+            var h = HashedRandom("\(s.seed):pr:\(name)")
+            out.append(Entry(id: "pr:\(name)", name: name, countryCode: cc, countries: [cc], trades: [bd.id], revenue: rev, profit: profit, value: val,
+                             growth: (h.next() - 0.45) * 0.1, previousRevenue: rev, previousProfit: profit, previousValue: val, companyCount: 1))
+        }
+        return out
+    }
+
     // MARK: The crowd of ordinary firms
 
     struct Bucket { var cc: String, trade: String, n: Double, ur: Double, m: Double }
@@ -152,6 +172,7 @@ public enum CompanyRanking {
         guard let me = yourEntry(s, data: data) else { return Board(entries: [], total: 0) }
         let mt = Set(me.trades), mc = Set(RivalGroups.myCountries(s))
         var L = groupEntries(s) + rivalEntries(s, data: data)
+        L += playerEntries(s, data: data, skipping: Set(L.map { $0.name }))
         L = L.filter { e in
             switch scope {
             case .industries: return e.trades.contains { mt.contains($0) } && e.countries.contains { mc.contains($0) }

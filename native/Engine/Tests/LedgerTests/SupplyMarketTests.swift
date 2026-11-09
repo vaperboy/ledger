@@ -126,7 +126,7 @@ final class SupplyMarketTests: XCTestCase {
         XCTAssertEqual(r.kept, [c2])
         XCTAssertEqual(r.fallbacks.count, 1)
         XCTAssertEqual(r.fallbacks[0].title, "Your supplier stopped supplying")
-        XCTAssertTrue(r.fallbacks[0].body.contains("House supplier at market price"))
+        XCTAssertTrue(r.fallbacks[0].body.contains("market supplier at market price"))
         XCTAssertTrue(r.fallbacks[0].body.contains("went bankrupt"))
         XCTAssertEqual(SupplyContracts.end([c1, c2], listingID: "L2", reason: .stopped).kept, [c1])
     }

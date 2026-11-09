@@ -24,7 +24,7 @@ final class SupabaseWireTests: XCTestCase {
     func testPrivateProfileKeepsHiddenFieldsNil() throws {
         let json = """
         {"id":"u1","code":"K7M-4PQ2","displayName":"Mara Voss","avatarColour":3,"countryCode":"GB","level":null,"badges":[],
-         "privacy":"onlyMe","companyCount":null,"companies":null,"isSimulated":true,"gameWeek":null,"tradesCompleted":null,"relation":"none"}
+         "privacy":"onlyMe","companyCount":null,"companies":null,"gameWeek":null,"tradesCompleted":null,"relation":"none"}
         """
         let p = try SupabaseWire.decodeProfile(Data(json.utf8))
         XCTAssertNil(p.level); XCTAssertNil(p.companyCount); XCTAssertNil(p.companies); XCTAssertNil(p.gameWeek); XCTAssertNil(p.tradesCompleted)
@@ -35,7 +35,7 @@ final class SupabaseWireTests: XCTestCase {
     func testPublicProfileWithCompaniesDecodes() throws {
         let json = """
         {"id":"u2","code":"AAA-BBBB","displayName":"Ines","avatarColour":1,"countryCode":"NG","level":9,"badges":["First Profit"],
-         "privacy":"everyone","companyCount":1,"isSimulated":false,"gameWeek":108,"tradesCompleted":27,"relation":"friend",
+         "privacy":"everyone","companyCount":1,"gameWeek":108,"tradesCompleted":27,"relation":"friend",
          "companies":[{"id":"c1","name":"Ines & Co","trade":"Bakery","city":"Lagos","countryCode":"NG","health":"steady"}]}
         """
         let p = try SupabaseWire.decodeProfile(Data(json.utf8))
@@ -48,7 +48,7 @@ final class SupabaseWireTests: XCTestCase {
         let json = """
         {"friends":[],"outgoing":[],"incoming":[{"sentAt":"2026-11-09T10:15:30.123456+00:00","player":
           {"id":"u3","code":"CCC-DDDD","displayName":"Tomas","avatarColour":0,"countryCode":"ES","badges":[],"privacy":"friends",
-           "isSimulated":false,"relation":"requestReceived"}}]}
+           "relation":"requestReceived"}}]}
         """
         let o = try SupabaseWire.makeDecoder().decode(FriendsOverview.self, from: Data(json.utf8))
         XCTAssertEqual(o.incoming.count, 1)
