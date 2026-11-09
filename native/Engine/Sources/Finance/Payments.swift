@@ -162,7 +162,8 @@ public enum Payments {
         return max(0, (min(equity, co.cash - context.weeklyCost(co, s) * 2)).rounded(.down))
     }
 
-    public enum DividendResult: Equatable, Sendable { case ok, notLimitedCompany, noRetainedProfit, notEnoughCash }
+    /// `needsBoard`: the company has partners, so a board meeting must vote for the dividend first.
+    public enum DividendResult: Equatable, Sendable { case ok, notLimitedCompany, noRetainedProfit, notEnoughCash, needsBoard }
 
     /// A limited company pays a dividend. Original: `payDividend`.
     public static func payDividend(_ s: inout GameState, companyID: Int, amount: Double, context: FinanceContext) -> DividendResult {

@@ -5,6 +5,7 @@ import Employees
 import Finance
 import Businesses
 import Investments
+import Events
 
 /// Everything the player can do. Each action is one function here, so a button in the app is always one call, and
 /// every action can be tested without any screen. Original: the `ACT.*` handlers in the HTML game (the ones ported so far).
@@ -274,6 +275,7 @@ public extension GameEngine {
 
     mutating func payDividend(companyID: Int, amount: Double) -> Payments.DividendResult {
         var r = Payments.DividendResult.notEnoughCash
+        if JointVenture.payoutBlock(state, companyID: companyID) != nil { return .needsBoard }
         update { s, _, ctx in r = Payments.payDividend(&s, companyID: companyID, amount: amount, context: ctx) }
         return r
     }
@@ -282,6 +284,7 @@ public extension GameEngine {
     mutating func setOwnerSalary(companyID: Int, monthly: Double) -> SettingResult {
         applySetting(refuse: { s in
             guard let co = s.company(companyID) else { return "That company no longer exists." }
+            if let why = JointVenture.payoutBlock(s, companyID: companyID), monthly > co.ownerMonthlySalary { return why }
             return co.form == .limited ? nil : "Only a limited company can pay its owner a salary."
         }, probe: { $0.companySnapshot(companyID) }) { s, data, ctx in
             guard let i = s.companyIndex(companyID), s.companies[i].form == .limited else { return }
