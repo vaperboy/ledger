@@ -159,8 +159,9 @@ public enum CompanyWeek {
             price = close.averagePrice
             paidDuringWeek = close.cashAlreadyTaken
         } else {
-            units = min(D, cap)
-            units = max(0, min(cap, units * (1 + s.random.gauss() * salesNoise)))
+            let serve = cap * data.balance.firstYear.serveShare(s)
+            units = min(D, serve)
+            units = max(0, min(serve, units * (1 + s.random.gauss() * salesNoise)))
             units = unitsForSpecialModels(&s, i, bd, demand: D, capacity: cap, units: units, data: data)
             units = jsRound(min(units, cap) * 10) / 10
         }

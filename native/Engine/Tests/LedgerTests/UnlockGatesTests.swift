@@ -231,7 +231,11 @@ final class UnlockGatesTests: XCTestCase {
         let w = World(state: e.state, data: e.data)
         let co = try XCTUnwrap(e.state.company(id))
         let bd = try XCTUnwrap(e.data.catalog[co.type])
-        let early = DemandModel.compute(co, bd, w)
+        let untended = DemandModel.compute(co, bd, w)
+        XCTAssertEqual(untended.parts.first { $0.name == "firstYear" }?.value, f.untendedDemand)
+        e.update { s, _, _ in s.rest["ldr"] = .object(["done": .object(["M1": .object([:]), "M2": .object([:])])]) }
+        let chosen = World(state: e.state, data: e.data)
+        let early = DemandModel.compute(co, bd, chosen)
         XCTAssertEqual(early.parts.first { $0.name == "firstYear" }?.value, 1.25)
     }
 

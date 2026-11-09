@@ -406,6 +406,7 @@ public enum CompanySetup {
         let code = countryCode ?? s.homeCountryCode
         guard let country = data.countries[code], let city = country.city(cityID) ?? country.cities.first else { return nil }
         var tmp = s
+        tmp.cash = max(tmp.cash, 1e12)
         let cx = FinanceContext(countries: data.countries, trades: data.catalog)
         let result = create(&tmp, tradeID: tradeID, cityID: city.id, size: size, name: "tmp", countryCode: code, data: data, context: cx)
         guard case .success(let id) = result, let i = tmp.companyIndex(id) else { return nil }
