@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Events
 
 /// The weekly steps of the smaller systems (staff record, ambitions, giving, weather, cyber attacks, perks ...), in the order the
 /// original runs them after the companies (`week.after` steps). One place, so GameEngine has a single line for all of them.
@@ -24,6 +25,8 @@ enum MiscWeekly {
         Stories.weekly(&s, data: data)   // staff stories, the rivalry, the Top 50 (before the paper picks its front page)
         Press.weekly(&s, data: data)
         WeatherEvents.weekly(&s, data: data)
+        Shipments.weekly(&s, data: data)
+        StockInsurance.weekly(&s, data: data)
     }
 
     /// Original: `regulationMonth` and the other month-end steps of these systems. Runs on the last day of the month (`GameEngine.runMonthEnd`).
