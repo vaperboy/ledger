@@ -10,8 +10,9 @@ enum SignInProvider: String, Codable, CaseIterable, Sendable {
     var title: String { self == .apple ? "Apple" : "Google" }
 }
 
-/// Who can see what on a profile. Everyone sees the name, level, badges and company count at Public and Friends;
-/// Friends adds the companies and how they are doing; Private shows the name only. The server enforces it, not the view.
+/// Who can see what on a profile, as the server enforces it (the view only shows what it was given):
+/// Public: everyone sees name, level, badges and company count, friends also see the companies and how they are doing.
+/// Friends: everyone sees name, level and badges; only friends see the company count and the companies. Private: the name only, to everyone.
 enum PrivacyLevel: String, Codable, CaseIterable, Sendable {
     case everyone, friends, onlyMe
     var title: String {
@@ -23,8 +24,8 @@ enum PrivacyLevel: String, Codable, CaseIterable, Sendable {
     }
     var note: String {
         switch self {
-        case .everyone: return "Anyone sees your name, level, badges and how many companies you run. Friends also see the companies."
-        case .friends: return "Everyone sees your name, level and badges. Only friends see your companies."
+        case .everyone: return "Anyone sees your name, level, badges and how many companies you run. Only friends see the companies."
+        case .friends: return "Everyone sees your name, level and badges. Only friends see your companies and how many you run."
         case .onlyMe: return "Everyone sees your name only."
         }
     }
@@ -60,8 +61,8 @@ enum FriendRelation: String, Codable, Sendable {
     case none, you, friend, requestSent, requestReceived, blocked
 }
 
-/// A player as the viewer is allowed to see them. `companies` is empty when the privacy level or relation hides them; `companyCount`
-/// is shown whenever the level is Public or Friends. `gameWeek` is the week the player's own game has reached (players are on different dates).
+/// A player as the viewer is allowed to see them. A nil `level`, `companyCount`, `companies`, `gameWeek` or `tradesCompleted` is hidden from this
+/// viewer by the player's privacy level. `gameWeek` is the week the player's own game has reached (players are on different dates).
 struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     var id: String
     /// The shareable code, "K7M-4PQ2".
@@ -70,15 +71,15 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
     /// Index into the avatar colours (0..<`PlayerProfile.avatarColourCount`).
     var avatarColour: Int
     var countryCode: String
-    var level: Int
+    var level: Int?
     var badges: [String]
     var privacy: PrivacyLevel
-    var companyCount: Int
-    var companies: [OnlineCompany]
+    var companyCount: Int?
+    var companies: [OnlineCompany]?
     /// True for a computer player standing in for a person.
     var isSimulated: Bool
     var gameWeek: Int?
-    var tradesCompleted: Int
+    var tradesCompleted: Int?
     var relation: FriendRelation
 
     static let avatarColourCount = 8
@@ -87,8 +88,6 @@ struct PlayerProfile: Codable, Hashable, Identifiable, Sendable {
         let letters: [Character] = parts.prefix(2).compactMap { $0.first }
         return String(letters).uppercased()
     }
-    /// Companies are visible to this viewer.
-    var showsCompanies: Bool { !companies.isEmpty || companyCount == 0 }
 }
 
 /// What the player may change on their own profile; nil leaves a field as it is.
