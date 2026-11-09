@@ -14,7 +14,6 @@ extension PhoneApp {
         case .airStay: return "AirStay lists offices, shops and storage to rent. Pick the place a company works from and see the rent before you commit."
         case .luxury: return "Luxury is where wealth is spent: cars, watches, art, yachts, jets and homes. Nothing here helps a company, but it shows how far you have come."
         case .marketplace: return "The Marketplace sells used items from private sellers. Make an offer and haggle: the price is rarely the last word."
-        case .stats: return "Stats shows how things are going: your net worth, how you are playing, and a few facts worth knowing."
         default: return nil
         }
     }
@@ -42,8 +41,7 @@ private struct AppFirstOpenHelp: ViewModifier {
                 for _ in 0..<12 {
                     try? await Task.sleep(nanoseconds: 700_000_000)
                     if Task.isCancelled { return }
-                    // A Custom tab kept alive behind another tab must not raise its app's sheet there.
-                    let hidden: Bool = store.tab != .phone && !(store.tab == .custom && store.customTarget == .app(app))
+                    let hidden: Bool = !store.showsApp(app)
                     if !hidden && !store.popupOpen && store.unlockQueue.isEmpty {
                         FirstRunFlags.mark(FirstRunFlags.appHelp(app.rawValue))
                         open = true

@@ -1,0 +1,248 @@
+import SwiftUI
+import PhotosUI
+import GameCore
+import Events
+import Finance
+import Businesses
+import Simulation
+
+struct ProfileView: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
+    @ObservedObject private var local = ProfileLocal.shared
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var editingName = false
+    @State private var nameDraft = ""
+    @State private var friends: [PlayerProfile] = []
+
+    var body: some View {
+        Group {
+            if let e = store.engine {
+                PhonePageScroll(spacing: Theme.Space.xl) {
+                    identity(e)
+                    tiles(e)
+                    trophies(e)
+                    collectionRow
+                    friendsSection
+                    runSection(e)
+                    if online.isSignedIn { onlineRow }
+                }
+            }
+        }
+        .appScreen(title: "Profile", subtitle: "") {
+            Button("Settings") { Haptics.tap(); store.openApp(.settings) }
+                .buttonStyle(SecondaryButtonStyle(size: .compact))
+                .accessibilityIdentifier("profile-settings")
+        }
+        .task(id: online.isSignedIn) { await loadFriends() }
+        .onChange(of: pickedPhoto) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { local.setPhoto(data: data) }
+                pickedPhoto = nil
+            }
+        }
+    }
+
+    private func shownName(_ e: GameEngine) -> String { local.name.isEmpty ? e.state.player.name : local.name }
+
+    private func identity(_ e: GameEngine) -> some View {
+        let info: PlayerLevel.Info = e.playerLevel
+        let rank: String = e.careerStatus.rank.title
+        return VStack(spacing: Theme.Space.s) {
+            ProfilePicture(name: shownName(e), size: 84)
+            HStack(spacing: Theme.Space.s) {
+                PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                    Text("Change photo").textStyle(.body, tint: Theme.accent, weight: .medium).frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("profile-photo")
+                if local.photo != nil {
+                    Button("Remove") { Haptics.tap(); local.removePhoto() }
+                        .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
+                }
+            }
+            if editingName { nameEditor(e) } else { nameLine(e) }
+            Text("Level \(info.level) · \(rank)").textStyle(.caption, tint: Theme.inkSoft)
+            ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3).frame(maxWidth: 160)
+            NavigationLink { AvatarPickerView() } label: {
+                Text("Choose a profile icon").textStyle(.caption, tint: Theme.accent).frame(minHeight: 44)
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("profile-icon")
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func nameLine(_ e: GameEngine) -> some View {
+        Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: {
+            HStack(spacing: Theme.Space.xs) {
+                Text(shownName(e)).textStyle(.title).lineLimit(1).minimumScaleFactor(0.7)
+                Image(systemName: "pencil").font(.caption.weight(.semibold)).foregroundStyle(Theme.inkFaint)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityLabel("Name, \(shownName(e)). Double tap to change.")
+        .accessibilityIdentifier("profile-name")
+    }
+
+    private func nameEditor(_ e: GameEngine) -> some View {
+        let clean: String = ProfileRules.clean(nameDraft)
+        let problem: String? = clean == shownName(e) ? nil : ProfileRules.problem(with: nameDraft)
+        return VStack(spacing: Theme.Space.xs) {
+            HStack(spacing: Theme.Space.s) {
+                TextField("Name", text: $nameDraft)
+                    .textFieldStyle(.plain).textStyle(.headline, weight: .regular)
+                    .textInputAutocapitalization(.words).autocorrectionDisabled()
+                    .submitLabel(.done).onSubmit { saveName(clean, problem) }
+                    .frame(minHeight: 44)
+                Button("Save") { saveName(clean, problem) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact)).disabled(problem != nil || clean.isEmpty)
+                Button("Cancel") { editingName = false }
+                    .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
+            }
+            if let problem { Text(problem).textStyle(.caption, tint: Theme.loss) }
+        }
+        .padding(.horizontal, Theme.Space.l)
+    }
+
+    private func saveName(_ clean: String, _ problem: String?) {
+        guard problem == nil, !clean.isEmpty else { return }
+        local.setName(clean)
+        editingName = false
+        if online.isSignedIn { Task { _ = await online.update(ProfileUpdate(displayName: clean)) } }
+    }
+
+    private func tiles(_ e: GameEngine) -> some View {
+        let companies: Int = e.state.companies.filter { (c: Company) -> Bool in c.type != "hold" && c.status.isLive }.count
+        return HStack(spacing: Theme.Space.s) {
+            tile("Net worth", store.short(e.netWorth.total))
+            tile("Companies", "\(companies)")
+            tile("Weeks played", "\(e.state.week)")
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func tile(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(title).textStyle(.label, tint: Theme.inkFaint).lineLimit(1).minimumScaleFactor(0.7)
+            Text(value).textStyle(.headline, numeric: true).lineLimit(1).minimumScaleFactor(0.6)
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .glassSurface()
+        .accessibilityElement(children: .combine)
+    }
+
+    private func trophies(_ e: GameEngine) -> some View {
+        let got: [Trophies.Entry] = TrophyList.unlocked(e)
+        return VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack {
+                Text("Trophies").capsLabel(Theme.inkFaint)
+                Spacer()
+                NavigationLink { TrophyShowcase() } label: { Text("See all").textStyle(.body, tint: Theme.accent).frame(minHeight: 44) }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("profile-trophies-all")
+            }
+            if got.isEmpty {
+                Text("Firsts and milestones show up here: the first customer, the first employee, the first million.")
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+            } else {
+                ScrollView(.horizontal) {
+                    HStack(spacing: Theme.Space.s) {
+                        ForEach(got.prefix(12)) { (t: Trophies.Entry) in
+                            VStack(spacing: Theme.Space.xs) {
+                                ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: t.id, group: t.group), size: 48, shape: .round, glyph: Glyph.achievements, tint: Theme.gold)
+                                Text(t.name).textStyle(.caption, tint: Theme.ink).lineLimit(2).multilineTextAlignment(.center)
+                            }
+                            .frame(width: 84)
+                            .padding(.vertical, Theme.Space.s)
+                            .glassSurface()
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+    }
+
+    private var collectionRow: some View {
+        NavigationLink { CollectionView() } label: {
+            LedgerRow(leading: .glyph(Glyph.luxury), title: "Collection", subtitle: "Artifacts, trophies and auctions", chevron: true)
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("profile-collection")
+    }
+
+    private var friendsSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack {
+                Text("Friends").capsLabel(Theme.inkFaint)
+                Spacer()
+                Button("Add friend") { Haptics.tap(); store.openApp(.friends) }
+                    .buttonStyle(SecondaryButtonStyle(size: .compact))
+                    .accessibilityIdentifier("profile-add-friend")
+            }
+            if friends.isEmpty {
+                Text(online.isSignedIn ? "No friends yet." : "Link an account to add friends.").textStyle(.caption)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
+                        if i > 0 { Hairline() }
+                        NavigationLink { PlayerProfileView(playerID: p.id) } label: {
+                            PlayerRow(player: p) { LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint) }
+                        }
+                        .buttonStyle(PressableStyle())
+                    }
+                }
+            }
+        }
+    }
+
+    private struct Fact: Identifiable {
+        var id: String
+        var glyph: String
+        var title: String
+        var value: String
+    }
+
+    private func facts(_ e: GameEngine) -> [Fact] {
+        let s = e.state
+        let best: Double = max(s.stats.peakNetWorth, e.netWorth.total)
+        let m: MilestoneProgress = e.milestoneProgress
+        var out: [Fact] = [Fact(id: "days", glyph: Glyph.clock, title: "Days in business", value: "\(s.week * 7 + s.day)")]
+        if best > 0 { out.append(Fact(id: "best", glyph: Glyph.stats, title: "Best net worth so far", value: store.short(best))) }
+        if m.bestWeek > 0 { out.append(Fact(id: "week", glyph: Glyph.arrowIn, title: "Best single week", value: store.short(m.bestWeek))) }
+        if m.bestStreak > 1 { out.append(Fact(id: "run", glyph: Glyph.check, title: "Longest run of growing weeks", value: "\(m.bestStreak)")) }
+        if s.stats.companiesSold > 0 { out.append(Fact(id: "sold", glyph: Glyph.bank, title: "Companies sold", value: "\(s.stats.companiesSold)")) }
+        if s.stats.dividendsReceived > 0 { out.append(Fact(id: "div", glyph: Glyph.arrowIn, title: "Dividends you received", value: store.short(s.stats.dividendsReceived))) }
+        return Array(out.prefix(5))
+    }
+
+    private func runSection(_ e: GameEngine) -> some View {
+        let list: [Fact] = facts(e)
+        return LedgerSection("Your run") {
+            VStack(spacing: 0) {
+                ForEach(Array(list.enumerated()), id: \.element.id) { (i: Int, f: Fact) in
+                    if i > 0 { Hairline() }
+                    LedgerRow(leading: .glyph(f.glyph), title: f.title, value: f.value, density: .compact)
+                }
+            }
+        }
+    }
+
+    private var onlineRow: some View {
+        NavigationLink { MyProfileView() } label: {
+            LedgerRow(leading: .glyph(Glyph.person), title: "Online profile", subtitle: "Colour, country and who can see you", chevron: true)
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityIdentifier("profile-online")
+    }
+
+    private func loadFriends() async {
+        guard online.isSignedIn else { friends = []; return }
+        friends = (try? await online.service.friends().friends) ?? []
+    }
+}

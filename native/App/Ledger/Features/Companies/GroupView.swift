@@ -41,7 +41,7 @@ struct GroupView: View {
 
     private func landing(_ e: GameEngine) -> some View {
         VStack(spacing: 0) {
-            Text("Group").textStyle(.title).lineLimit(1)
+            Text("Companies").textStyle(.title).lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.xs)

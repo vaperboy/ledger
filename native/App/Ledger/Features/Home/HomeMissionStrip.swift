@@ -96,6 +96,9 @@ struct HomeMissionStrip: View {
                 Text("Season Pass").textStyle(.label, tint: Theme.inkFaint)
                 Text(pass.isComplete ? "All tiers reached" : "Tier \(pass.tier) of \(SeasonPass.tierCount)").textStyle(.body, tint: Theme.ink, numeric: true).lineLimit(1)
                 ProgressLine(fraction: pass.tierProgress, height: 3)
+                if !pass.isComplete, let next = SeasonRewards.reward(.free, tier: pass.tier + 1) {
+                    Text("Next: \(next.title)").textStyle(.caption).lineLimit(1)
+                }
                 if open > 0 {
                     action(open == 1 ? "Claim 1 reward" : "Claim \(open) rewards", id: "home-season-claim") { claimSeason() }
                 } else if ads.canOfferSeasonBonus {
@@ -103,7 +106,7 @@ struct HomeMissionStrip: View {
                 }
             }
         }
-        .onTapGesture { Haptics.tap(); store.openApp(.season) }
+        .onTapGesture { Haptics.tap(); store.openSeason() }
         .accessibilityIdentifier("home-season-card")
     }
 

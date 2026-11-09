@@ -265,10 +265,7 @@ struct StoreApp: View {
 
     private var moreGroup: some View {
         OnlineGroup(title: "Collect and trade", footer: "") {
-            NavigationLink { CabinetView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Cabinet", note: "Artifacts, collections and what you wear", chevron: true) }
-                .buttonStyle(PressableStyle())
-            Hairline()
-            NavigationLink { AuctionsApp() } label: { OnlineLine(glyph: Glyph.market, title: "Auctions", note: "Bid on artifacts or sell your own, in gold", chevron: true) }
+            NavigationLink { CollectionView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Collection", note: "Artifacts, trophies and auctions", chevron: true) }
                 .buttonStyle(PressableStyle())
         }
     }

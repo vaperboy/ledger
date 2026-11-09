@@ -52,7 +52,7 @@ struct CompaniesView: View {
                     .onAppear { ownInsets = g.safeAreaInsets }
                     .onChange(of: g.safeAreaInsets) { _, v in ownInsets = v }
             })
-            .onAppear { store.refreshPending() }
+            .onAppear { store.refreshPending(); store.endVisits() }
             .navigationTitle("Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
@@ -313,8 +313,6 @@ struct StatusChip: View {
     }
 }
 
-/// One company in the Home list, unboxed between inset hairlines: the trade picture, the name over "trade · city · people", and on
-/// the right the profit a year (gain or loss) over the cash. A warning mark leads the name when the company needs attention.
 struct CompanyRow: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -323,48 +321,52 @@ struct CompanyRow: View {
     @Environment(Entitlements.self) private var ent
     @AppStorage(CosmeticKeys.badge) private var badgeID: String = Cosmetics.defaultBadgeID
     @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
-    /// Where the separators start: past the picture, under the text.
-    static let textInset: CGFloat = 36 + Theme.Space.m
+    static let textInset: CGFloat = 28 + Theme.Space.m
 
     var body: some View {
         let co = company, h = health
-        // The player's worn badge marks their own companies, in the theme accent.
         let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
         let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
-        let profitTint: Color = h.profitTTM < -0.5 ? Theme.loss : h.profitTTM > 0.5 ? Theme.gain : Theme.inkSoft
-        HStack(spacing: Theme.Space.m) {
-            ThumbnailView(kind: .trade, key: co.type, size: 36)
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+        let month: Double = h.profitTTM / 12
+        let profitTint: Color = month < -0.5 ? Theme.loss : month > 0.5 ? Theme.gain : Theme.inkSoft
+        HStack(spacing: Theme.Space.s) {
+            ThumbnailView(kind: .trade, key: co.type, size: 28)
+            VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: Theme.Space.xs) {
                     if urgent { LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.small, tint: Theme.loss).accessibilityLabel("Needs attention") }
                     Text(co.name).textStyle(.headline).lineLimit(1)
                     CosmeticBadgeView(badge: badge, tint: accent, size: 14)
                 }
-                Text(subtitle(co)).textStyle(.caption).lineLimit(1)
+                Text(status(co, h)).textStyle(.caption, tint: statusTint(co, h)).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: Theme.Space.xxs) {
-                Text((h.profitTTM < -0.5 ? "−" : h.profitTTM > 0.5 ? "+" : "") + store.short(abs(h.profitTTM), in: co))
-                    .textStyle(.headline, tint: profitTint, numeric: true)
-                Text("a year").textStyle(.caption, tint: Theme.inkFaint)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text((month < -0.5 ? "\u{2212}" : month > 0.5 ? "+" : "") + store.short(abs(month), in: co) + " a month")
+                    .textStyle(.body, tint: profitTint, numeric: true, weight: .medium)
+                Text("Cash " + store.short(co.cash, in: co)).textStyle(.caption, tint: co.cash < 0 ? Theme.loss : Theme.inkFaint, numeric: true)
             }
             .lineLimit(1)
             .layoutPriority(1)
+            LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
         }
-        .padding(.vertical, Theme.Space.s)
-        .frame(minHeight: 56)
+        .padding(.vertical, Theme.Space.xs)
+        .frame(minHeight: 48)
         .contentShape(Rectangle())
         .zoomSource(.company(co.id))
         .accessibilityElement(children: .combine)
     }
 
-    /// "Gym · London · 3 people", with the status (or "out of cash") in place of the people when that matters more.
-    private func subtitle(_ co: Company) -> String {
-        let tail: String
-        if co.status == .open { tail = co.cash < 0 ? "Out of cash" : co.staff.count.peopleText }
-        else { tail = co.status == .setup ? "Setting up" : co.status.rawValue.capitalized }
-        return "\(engine.tradeName(co)) · \(engine.cityName(co)) · \(tail)"
+    private func status(_ co: Company, _ h: CompanyHealth) -> String {
+        switch co.status {
+        case .open: return co.cash < 0 ? "Out of cash" : h.label
+        case .setup: return "Setting up"
+        default: return co.status.rawValue.capitalized
+        }
+    }
+
+    private func statusTint(_ co: Company, _ h: CompanyHealth) -> Color {
+        co.status == .open ? (co.cash < 0 ? Theme.loss : HealthChip.tint(h.label)) : Theme.inkFaint
     }
 }
 

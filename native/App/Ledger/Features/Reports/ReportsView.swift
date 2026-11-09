@@ -85,7 +85,7 @@ struct ReportsPage: View {
                 picker(r, all)
                 summaryPage(r, all)
                 Color.clear.frame(height: 0).navigationDestination(item: openedBinding) { (d: ReportDest) in
-                    SettingsPage(title: d.title, subtitle: r.title, tab: companyID == nil ? .phone : .company) { detail(d, r, all) }
+                    SettingsPage(title: d.title, subtitle: r.title, tab: .company) { detail(d, r, all) }
                 }
             } else {
                 EmptyState(glyph: Glyph.reports, title: "No report yet",

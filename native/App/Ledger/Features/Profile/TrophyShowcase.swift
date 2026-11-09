@@ -3,57 +3,52 @@ import GameCore
 import Events
 import Simulation
 
-/// The showroom: only what has been won. Trophies stand in a two-column display, group by group with the newest group first, and the
-/// yearly business awards sit below. Nothing locked or missing is shown.
-struct AchievementsView: View {
+enum TrophyList {
+    static func unlocked(_ e: GameEngine) -> [Trophies.Entry] {
+        Trophies.entries(e.state).filter { $0.reachedWeek != nil }.sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
+    }
+
+    static func awards(_ e: GameEngine) -> [(year: Int, result: Awards.Result)] {
+        Awards.years(e.state).flatMap { (y: Awards.Year) -> [(year: Int, result: Awards.Result)] in
+            y.results.filter { $0.won }.map { (year: y.year, result: $0) }
+        }
+    }
+}
+
+struct TrophyShowcase: View {
     @EnvironmentObject var store: GameStore
 
     private let columns: [GridItem] = [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible(), spacing: Theme.Space.m)]
 
     var body: some View {
-        if let e = store.engine {
-            let entries: [Trophies.Entry] = Trophies.entries(e.state)
-            let got: [Trophies.Entry] = entries.filter { $0.reachedWeek != nil }
-            let awards: [(year: Int, result: Awards.Result)] = Awards.years(e.state).flatMap { (y: Awards.Year) -> [(year: Int, result: Awards.Result)] in
-                y.results.filter { $0.won }.map { (year: y.year, result: $0) }
-            }
-            if got.isEmpty && awards.isEmpty {
-                ScrollView {
-                    EmptyState(glyph: Glyph.achievements, title: "Nothing in the showroom yet",
-                               message: "Firsts and milestones show up here: the first customer, the first employee, the first million.", centered: true)
-                        .padding(.top, Theme.Space.xxl)
-                }
-                .ledgerBackground()
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                        hero(trophies: got.count, awards: awards.count)
-                        ForEach(Trophies.groups, id: \.id) { g in
-                            let list: [Trophies.Entry] = got.filter { $0.group == g.id }
-                                .sorted { ($0.reachedWeek ?? 0) > ($1.reachedWeek ?? 0) }
-                            if !list.isEmpty { section(g.name, list) }
-                        }
-                        if !awards.isEmpty { awardsSection(awards) }
+        Group {
+            if let e = store.engine {
+                let got: [Trophies.Entry] = TrophyList.unlocked(e)
+                let awards: [(year: Int, result: Awards.Result)] = TrophyList.awards(e)
+                if got.isEmpty && awards.isEmpty {
+                    ScrollView {
+                        EmptyState(glyph: Glyph.achievements, title: "Nothing in the showroom yet",
+                                   message: "Firsts and milestones show up here: the first customer, the first employee, the first million.", centered: true)
+                            .padding(.top, Theme.Space.xxl)
                     }
-                    .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 24)
-                    .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                            ForEach(Trophies.groups, id: \.id) { g in
+                                let list: [Trophies.Entry] = got.filter { $0.group == g.id }
+                                if !list.isEmpty { section(g.name, list) }
+                            }
+                            if !awards.isEmpty { awardsSection(awards) }
+                        }
+                        .padding(.horizontal, Theme.Space.margin).padding(.top, Theme.Space.s).padding(.bottom, 24)
+                        .frame(maxWidth: 760).frame(maxWidth: .infinity)
+                    }
+                    .scrollIndicators(.hidden)
                 }
-                .scrollIndicators(.hidden)
-                .ledgerBackground()
             }
         }
-    }
-
-    private func hero(trophies: Int, awards: Int) -> some View {
-        HStack(spacing: Theme.Space.l) {
-            GoldRingMark(glyph: Glyph.achievements, size: 64)
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("\(trophies) \(trophies == 1 ? "trophy" : "trophies")").textStyle(.title)
-                if awards > 0 { Text("\(awards) business \(awards == 1 ? "award" : "awards")").textStyle(.caption, tint: Theme.accent) }
-            }
-            Spacer(minLength: 0)
-        }
-        .accessibilityElement(children: .combine)
+        .ledgerBackground()
+        .appScreen(title: "Trophies", subtitle: "Everything you have won")
     }
 
     private func section(_ title: String, _ list: [Trophies.Entry]) -> some View {
@@ -65,7 +60,6 @@ struct AchievementsView: View {
         }
     }
 
-    /// One trophy on its stand: the art, the name, a line on what it was for, and when it was won.
     private func plinth(_ t: Trophies.Entry) -> some View {
         VStack(spacing: Theme.Space.s) {
             ThumbnailView(kind: .trophy, key: ArtLibrary.trophyKey(id: t.id, group: t.group), size: 72, shape: .round, glyph: Glyph.achievements, tint: Theme.gold)
@@ -79,7 +73,6 @@ struct AchievementsView: View {
         .padding(Theme.Space.m)
         .glassSurface()
         .accessibilityElement(children: .combine)
-        .newMarker(.achievements, "t" + t.id, style: .dot, alignment: .topLeading)
     }
 
     private func awardsSection(_ awards: [(year: Int, result: Awards.Result)]) -> some View {
