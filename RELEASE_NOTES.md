@@ -1,4 +1,5 @@
 # What's new
+- Startups funded by other players (Ventures, Startup market): browse by trade, stage and viral, open a startup for a high entry cost, invest in three escrow-released stages at a price set by a fixed rule, with caps, a resale lock-up, a price band and taxes; every action first says what will happen; the other players are a local stand-in for now
 - Rivals with named competitors and a story of their moves, a weekly plan decision, and the Desk: one small question a day with a notebook that fills over time
 - Popups are rounded at the bottom as well, the top of the screen shows the photo instead of black, and Group and Ventures are locked with a lock and an unlock popup until you earn them; Pick tab only offers tabs you have unlocked
 - A guided first game: the tutorial tells you what to press, you pick your first product and price before anything else, the Inbox points to what to read, and Your next goal opens a list of the goals being tracked

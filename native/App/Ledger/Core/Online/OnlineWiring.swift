@@ -7,6 +7,7 @@ enum OnlineDirectoryCache {
     static func refresh(from service: any OnlineService) async {
         guard let mock = service as? MockOnlineService else { return }
         players = await mock.visibleDirectory()
+        await StartupMarketStore.shared.attach(mock)
     }
 }
 

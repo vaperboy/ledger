@@ -134,6 +134,7 @@ struct VenturesHome: View {
                 if fig.groupCount > 0 || fig.bigOffer != nil || !e.rivalGroupsAround().isEmpty {
                     VenturesGroupsSection(engine: e, open: $open, sheet: $sheet, pending: $pending)
                 }
+                StartupMarketEntry()
                 VenturesSoftwareSection(engine: e)
             }
             .confirmAction($pending)
