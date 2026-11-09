@@ -13,7 +13,7 @@ final class CapTableTests: XCTestCase {
         var id = 0
         e.update { s, d, c in
             Ledger.move(&s, .me, 900_000_000, why: "funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: d, context: c) { id = i }
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: d, context: c) { id = i }
             _ = Payments.injectCash(&s, companyID: id, amount: 50_000_000)
         }
         return (e, id)

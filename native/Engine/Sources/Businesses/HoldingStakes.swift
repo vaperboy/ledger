@@ -252,7 +252,7 @@ public enum HoldingStakes {
     }
 
     static func eligibleCompany(_ c: Company, holdingID hid: Int, in s: GameState) -> Bool {
-        c.status.isLive && c.form == .limited && c.type != "hold" && c.id != hid && !s.isBranch(c) && !isDivision(c)
+        c.status.isLive && c.type != "hold" && c.id != hid && !s.isBranch(c) && !isDivision(c)
     }
     static func openHolding(_ s: GameState, _ hid: Int) -> Company? {
         guard let h = s.company(hid), h.type == "hold", h.status.isLive else { return nil }
@@ -623,7 +623,6 @@ public enum HoldingStakes {
             CapTable.sync(&s.companies[ci], total: t.total, me: me, holders: list)
             let hname = s.companies[hi].name, cname = s.companies[ci].name
             if buyer == .owner {
-                Payments.transferFromSavings(&s, need: q.price)
                 Payments.playerPays(&s, q.price, label: "Bought shares of \(cname) from \(hname)", companyID: companyID)
             }
             Ledger.moveRaw(&s, .company(holdingID), q.price)
@@ -789,7 +788,7 @@ public enum HoldingStakes {
         guard let c = s.company(companyID), eligibleCompany(c, holdingID: holdingID, in: s) else { return no(Failure.notFound.reason) }
         guard let host = s.company(hid), host.status.isLive, host.id != c.id else { return no("That company is not available as the host.", c) }
         if host.type != "hold" {
-            guard host.form == .limited, !isDivision(host), host.holdingID == holdingID, !s.isBranch(host) else { return no("\(host.name) must be a company the holding owns outright, and not itself a division.", c, host) }
+            guard !isDivision(host), host.holdingID == holdingID, !s.isBranch(host) else { return no("\(host.name) must be a company the holding owns outright, and not itself a division.", c, host) }
         } else if host.id != h.id {
             return no("A division can only join this holding or one of its companies.", c, host)
         }

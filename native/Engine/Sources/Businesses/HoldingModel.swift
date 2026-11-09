@@ -100,7 +100,7 @@ public enum HoldingModel {
             let wc = max(fc.currency(h.countryCode, s).scaledPrice(1500), fc.weeklyCost(h, s))
             if h.cash >= wc * 4 { continue }
             let need = wc * 13 - h.cash
-            let subs = s.companies.filter { $0.holdingID == h.id && $0.status == .open && $0.form == .limited }.sorted { $0.cash > $1.cash }
+            let subs = s.companies.filter { $0.holdingID == h.id && $0.status == .open }.sorted { $0.cash > $1.cash }
             for sub in subs {
                 let spare = sub.cash - fc.weeklyCost(sub, s) * 6
                 if spare <= 0 { continue }
@@ -133,7 +133,7 @@ public enum HoldingModel {
         guard let country = data.countries[code] else { return .failure(.notAllowed) }
         let city = s.player.cityID
         let nm = (name?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? "\(s.player.name.split(separator: " ").last.map(String.init) ?? "My") Holding"
-        let r = CompanySetup.create(&s, tradeID: "hold", cityID: city, form: .limited, size: 1, name: nm, countryCode: code, accountantID: accountantID, data: data, context: fc)
+        let r = CompanySetup.create(&s, tradeID: "hold", cityID: city, size: 1, name: nm, countryCode: code, accountantID: accountantID, data: data, context: fc)
         guard case .success(let id) = r, let i = s.companyIndex(id) else {
             if case .failure(.notEnoughCash) = r { return .failure(.notEnoughCash) }
             return .failure(.notAllowed)
@@ -162,7 +162,7 @@ public enum HoldingModel {
     public static func move(_ s: inout GameState, companyID: Int, into holdingID: Int, data: GameData? = nil) -> Bool {
         guard let ci = s.companyIndex(companyID), let hi = s.companyIndex(holdingID) else { return false }
         let h = s.companies[hi], c = s.companies[ci]
-        guard h.type == "hold", h.status.isLive, c.form == .limited, c.type != "hold", c.status.isLive else { return false }
+        guard h.type == "hold", h.status.isLive, c.type != "hold", c.status.isLive else { return false }
         let before = c.holdingID
         s.companies[ci].holdingID = holdingID
         if let data = data {
@@ -251,12 +251,11 @@ public enum HoldingModel {
 
     /// The companies that share this year's profits and losses with `co`, or nil. Original: `taxGroup`.
     public static func taxGroup(of co: Company, in s: GameState) -> [Company]? {
-        guard co.form == .limited else { return nil }
         let h: Company?
         if co.type == "hold" { h = co } else if co.holdingID != 0 { h = s.company(co.holdingID) } else { h = HoldingStakes.controllingHolding(of: co, in: s) }
         guard let hold = h, hold.status.isLive else { return nil }
         let members = [hold] + s.companies.filter {
-            $0.id != hold.id && $0.form == .limited && $0.status.isLive && $0.status != .setup && HoldingStakes.sharePercent(of: $0, holdingID: hold.id) >= HoldingStakes.squeezeOutFrom
+            $0.id != hold.id && $0.status.isLive && $0.status != .setup && HoldingStakes.sharePercent(of: $0, holdingID: hold.id) >= HoldingStakes.squeezeOutFrom
                 && $0.countryCode == hold.countryCode
         }
         return members.count > 1 && members.contains(where: { $0.id == co.id }) ? members : nil

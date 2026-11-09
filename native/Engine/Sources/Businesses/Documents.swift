@@ -37,7 +37,7 @@ public enum Documents {
             for o in Knobs.activeOptions(co, knob) { for d in o.requiredDocs where !need.contains(d) { need.append(d) } }
         }
         if !co.value("foreignOf").isNull && !need.contains("foreign_entity") { need.append("foreign_entity") }
-        if co.form == .limited && !need.contains("accountant_agreement") { need.append("accountant_agreement") }
+        if !need.contains("accountant_agreement") { need.append("accountant_agreement") }
         // VAT registration is always on the opening list: you do it once and forget it. Not for an exempt business.
         if !need.contains("vat") && !Vat.isExempt(co, w) { need.append("vat") }
         return need.filter { !isSkipped($0, country: country) }
@@ -57,7 +57,6 @@ public enum Documents {
             c = local.double * w.rates.rate(country) * (abroad ? 1.8 : 1)
         }
         if id == "accountant_agreement" { c = 0 }
-        if co.form == .soleTrader, country.pack["documents"]["freeForSoleTraders"].array.contains(where: { $0.string == id }) { c = 0 }
         let fx = w.rates.rate(country)
         return jsRound(Currency.nicePrice(c / fx) * fx)
     }

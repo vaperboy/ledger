@@ -18,9 +18,9 @@ final class ProjectTradeTests: XCTestCase {
         var invested = 0.0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 2_000_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             invested = (est?.total ?? 1_000_000) * 1.3
             if trade == "realdev" { invested += 40_000_000 }
             Payments.injectCash(&s, companyID: id, amount: invested)
@@ -106,7 +106,7 @@ final class ProjectTradeTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: "electrician", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: "electrician", cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
             Payments.injectCash(&s, companyID: id, amount: 20_000_000)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
@@ -135,9 +135,9 @@ final class ProjectTradeTests: XCTestCase {
             var id = 0
             e.update { s, data, ctx in
                 Ledger.move(&s, .me, 500_000_000, why: "Test funds")
-                guard case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+                guard case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) else { return }
                 id = i
-                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, size: 1, state: s, data: data)
                 Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.3 + (t == "realdev" ? 30_000_000 : 0))
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
             }

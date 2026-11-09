@@ -91,7 +91,7 @@ public extension GameEngine {
         var h = dayHistory
         var values: [Int: Double] = [:]
         for co in state.companies where co.status.isLive { values[co.id] = Valuation.companyValue(co, state: state, trades: data.catalog) }
-        h.append(netWorth, cash: state.cash + state.savings, newWeek: state.day == 0, companyValues: values, companyCash: groupCash)
+        h.append(netWorth, cash: state.cash, newWeek: state.day == 0, companyValues: values, companyCash: groupCash)
         let json = h.json
         update { s, _, _ in s.rest["dayHist"] = json }
     }

@@ -26,7 +26,7 @@ public enum TaxSettlement {
     }
 
     /// Refresh the stored estimate (`rest["taxEst"]`) and the overdraft line about monthly; warn once a year when the coming true-up
-    /// (tax still to settle after what was paid as it arose) is more than cash plus savings.
+    /// (tax still to settle after what was paid as it arose) is more than the account holds.
     static func refresh(_ s: inout GameState, data: GameData, context: FinanceContext) {
         if let last = s.rest["taxEst"], !last.isNull, s.week - last["week"].int < refreshWeeks, s.week >= last["week"].int { return }
         let nw = Valuation.netWorth(s, trades: data.catalog).total
@@ -40,12 +40,12 @@ public enum TaxSettlement {
         s.overdraftLimit = line
 
         let year = GameCalendar.year(week: s.week)
-        let liquid = max(0, s.cash) + max(0, s.savings)
+        let liquid = max(0, s.cash)
         guard b.total > liquid, PersonalFinance.weeksToYearEnd(week: s.week) <= warnWeeks, s.rest["taxWarn"]?.int != year else { return }
         s.rest["taxWarn"] = .number(Double(year))
         let cur = context.homeCurrency(s)
         s.addMessage(from: "Tax office", title: "Your year-end tax settlement may be more than your cash",
-                     body: "About \(cur.display(b.total)) of personal tax is still to settle at year end, and cash plus savings come to \(cur.display(liquid)). "
+                     body: "About \(cur.display(b.total)) of personal tax is still to settle at year end, and your account holds \(cur.display(liquid)). "
                          + "Take dividends or a salary, sell investments or arrange a loan before then.",
                      tone: "bad", sev: 2)
     }
@@ -79,7 +79,6 @@ public enum TaxSettlement {
                 left -= h.value * f
             }
             PersonalFinance.withholdNow(&s, context: context)   // the tax on the gains of these sales is paid at once
-            Payments.transferFromSavings(&s, need: owed)
             Payments.playerPays(&s, owed, label: "Annual tax: balance paid from investments")
         case 1:
             let nw = Valuation.netWorth(s, trades: data.catalog).total
@@ -98,7 +97,6 @@ public enum TaxSettlement {
                 }
                 if let li = s.loans.firstIndex(where: { $0.id == loan.id }) { s.loans[li].name = "Tax loan (secured on your companies)" }
             }
-            Payments.transferFromSavings(&s, need: owed)
             Payments.playerPays(&s, owed, label: "Annual tax: balance paid with a bank loan")
         case 2:
             var plan = Loan(raw: [:])

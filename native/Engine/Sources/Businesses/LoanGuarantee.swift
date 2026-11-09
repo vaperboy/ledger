@@ -36,7 +36,6 @@ public enum LoanGuarantee {
     static func unavailable(_ loan: Loan, company co: Company?, state s: GameState) -> String? {
         guard loan.companyID != 0, let co = co else { return "This loan is your own debt; there is no guarantee to release." }
         if !loan.isGuaranteed { return "This loan has no personal guarantee." }
-        if co.form != .limited { return "A sole trader is personally liable for the business's debts. The bank will only release a guarantee once the business is a limited company." }
         if loan.int("miss") > 0 { return "The bank will not talk while an instalment is missed." }
         if co.monthlyHistory.count < 3 { return "The bank wants at least three months of accounts as a limited company before it considers releasing a guarantee." }
         if Double(s.week) < loan.num("guarLock") { return "The bank will not discuss this again for now." }

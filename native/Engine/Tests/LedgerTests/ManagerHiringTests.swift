@@ -15,7 +15,7 @@ final class ManagerHiringTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+            if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) { id = i }
             Payments.injectCash(&s, companyID: id, amount: cash)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: false)
             if let i = s.companyIndex(id) { s.companies[i].status = .open }

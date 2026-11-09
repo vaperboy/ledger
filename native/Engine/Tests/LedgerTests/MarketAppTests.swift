@@ -19,11 +19,11 @@ final class MarketAppTests: XCTestCase {
         let fee = Brokerage.brokerFee(50_000, currency: cur)
         XCTAssertEqual(q.fee, fee, accuracy: 1e-9)
         XCTAssertEqual(q.cashChange, -(50_000 + fee), accuracy: 1e-9)
-        let before = e.state.cash + e.state.savings
+        let before = e.state.cash
         let r = e.marketBuy(asset: "fund:idx", owner: .player, amount: 50_000)
         XCTAssertTrue(r.done, r.refusal ?? "")
         XCTAssertEqual(r.cashChange, -(50_000 + fee), accuracy: 1e-6)
-        XCTAssertEqual(e.state.cash + e.state.savings, before - 50_000 - fee, accuracy: 1e-6)
+        XCTAssertEqual(e.state.cash, before - 50_000 - fee, accuracy: 1e-6)
 
         var p = try position(e, "me:fund:idx")
         XCTAssertEqual(p.costBasis, 50_000 + fee, accuracy: 1e-6)

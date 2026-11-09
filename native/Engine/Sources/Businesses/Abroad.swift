@@ -24,7 +24,7 @@ public enum Abroad {
         guard let co = s.company(companyID), co.status == .open, !co.value("franchise")["fran"].bool else { return [] }
         var out: [Option] = []
         for c in data.countries.countries where c.code != co.countryCode && CompanySetup.banReason(co.type, country: c) == nil {
-            let est = CompanySetup.estimate(tradeID: co.type, cityID: c.cities.first?.id ?? "", form: .limited, size: 1, countryCode: c.code, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: co.type, cityID: c.cities.first?.id ?? "", size: 1, countryCode: c.code, state: s, data: data)
             let doc = Documents.definition("foreign_entity", country: c, tables: data.catalog.tables)?.weeks ?? 3
             let desk = hasDesk(s, country: c.code)
             out.append(Option(countryCode: c.code, name: c.name, estimatedStartCost: est?.total ?? 0,
@@ -49,7 +49,7 @@ public enum Abroad {
         guard let C = data.countries[code], code != co.countryCode else { return .failure(.unknownCountry) }
         if co.reputation < 35 { return .failure(.brandTooWeak) }
         if let why = CompanySetup.banReason(co.type, country: C) { return .failure(.banned(why)) }
-        let r = CompanySetup.create(&s, tradeID: co.type, cityID: cityID ?? (C.cities.first?.id ?? ""), form: .limited, name: co.name + " " + C.name,
+        let r = CompanySetup.create(&s, tradeID: co.type, cityID: cityID ?? (C.cities.first?.id ?? ""), name: co.name + " " + C.name,
                                     countryCode: code, data: data, context: context)
         switch r {
         case .failure(let e): return .failure(.cannotStart(e))

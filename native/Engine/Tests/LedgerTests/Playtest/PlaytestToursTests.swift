@@ -28,7 +28,7 @@ final class PlaytestToursTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tour", seed: seed)
         cur = e.homeCurrency
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(30_000_000), why: "Test capital") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(8_000_000), quickSetup: quick) else {
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cur.scaledPrice(8_000_000), quickSetup: quick) else {
             XCTFail("\(tour): cannot start \(trade)"); throw CocoaError(.fileReadUnknown)
         }
         openUp(&e, id)
@@ -60,7 +60,7 @@ final class PlaytestToursTests: XCTestCase {
         tour = "SetupAndOpen"
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: 5); cur = e.homeCurrency
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(30_000_000), why: "Test capital") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(8_000_000), quickSetup: false) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(8_000_000), quickSetup: false) else { return XCTFail("start") }
         ex(e.state.company(id)?.status == .setup, "a new company starts in setup")
         let list = e.openingChecklist(companyID: id)
         ex(!list.isEmpty && list.contains { !$0.isDone }, "checklist lists open items for a new company")
@@ -439,7 +439,7 @@ final class PlaytestToursTests: XCTestCase {
         if let p = e.pendingReportPrompt() { e.dismissReportPrompt(p); ex(e.pendingReportPrompt()?.id != p.id, "dismissing a report prompt removes it") }
     }
 
-    // MARK: 14 Investments and savings
+    // MARK: 14 Investments
 
     func testInvestments() throws {
         tour = "Investments"
@@ -452,7 +452,6 @@ final class PlaytestToursTests: XCTestCase {
         let b = e.buyInvestment(.fund, symbol: sym, amount: cur.scaledPrice(100_000))
         ex("\(b)".contains("ok") || "\(b)".contains("bought"), "buying the index fund works (got \(b))")
         ex(e.state.cash < cash0, "cash falls after buying")
-        ex(e.moveToSavings(cur.scaledPrice(50_000)), "moving money to savings works")
         ex(e.openDeposit(amount: cur.scaledPrice(50_000), weeks: 26), "opening a deposit works")
         for _ in 0..<(30 * 7) { e.nextDay() }
         e.sellInvestment(.fund, symbol: sym, fraction: 1)
@@ -468,7 +467,7 @@ final class PlaytestToursTests: XCTestCase {
         var (e2, id2) = (e, id)
         _ = (e2, id2)
         let id3 = { () -> Int in
-            guard case .success(let n) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, form: .limited, fundWith: cur.scaledPrice(500_000)) else { return 0 }
+            guard case .success(let n) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(500_000)) else { return 0 }
             return n }()
         ex(id3 != 0, "second company starts")
         openUp(&e, id3)

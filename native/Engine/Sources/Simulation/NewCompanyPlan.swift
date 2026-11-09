@@ -146,27 +146,27 @@ public struct NewCompanyOutcome: Equatable {
 public extension GameEngine {
     /// A copy of the state with a throw-away company, so a listing and its terms can be priced before the company exists. The account
     /// is topped up in the copy so registration never hides the numbers (affordability is reported separately).
-    func previewCompany(tradeID: String, cityID: String, form: LegalForm, size: Double, countryCode: String? = nil) -> (state: GameState, companyID: Int)? {
+    func previewCompany(tradeID: String, cityID: String, size: Double, countryCode: String? = nil) -> (state: GameState, companyID: Int)? {
         var tmp = state
         tmp.cash += Double(Int32.max)
         let cx = FinanceContext(countries: data.countries, trades: data.catalog)
-        guard case .success(let id) = CompanySetup.create(&tmp, tradeID: tradeID, cityID: cityID, form: form, size: size, name: "tmp", countryCode: countryCode, data: data, context: cx) else { return nil }
+        guard case .success(let id) = CompanySetup.create(&tmp, tradeID: tradeID, cityID: cityID, size: size, name: "tmp", countryCode: countryCode, data: data, context: cx) else { return nil }
         return (tmp, id)
     }
 
     /// The full plan for a trade in a city. `pick` nil means the standard rented place.
-    func newCompanyPlan(tradeID: String, cityID: String, form: LegalForm, size: Double, pick: NewCompanyPlan.Pick? = nil, countryCode: String? = nil,
+    func newCompanyPlan(tradeID: String, cityID: String, size: Double, pick: NewCompanyPlan.Pick? = nil, countryCode: String? = nil,
                         choices: SetupChoices = SetupChoices(), withAlternatives: Bool = true) -> NewCompanyPlan? {
         guard let bd = data.catalog[tradeID] else { return nil }
         var probe = state
         probe.cash += Double(Int32.max)
-        guard let est = CompanySetup.estimate(tradeID: tradeID, cityID: cityID, form: form, size: size, countryCode: countryCode, state: probe, data: data) else { return nil }
+        guard let est = CompanySetup.estimate(tradeID: tradeID, cityID: cityID, size: size, countryCode: countryCode, state: probe, data: data) else { return nil }
         let kind: NewCompanyPlan.PremisesKind = {
             guard let k = bd.premisesKind, k != "none" else { return .none }
             return k == "home" ? .home : .place
         }()
         var options: [NewCompanyPlan.PremisesOption] = []
-        if kind == .place, let (tmp, id) = previewCompany(tradeID: tradeID, cityID: cityID, form: form, size: size, countryCode: countryCode), let co = tmp.company(id) {
+        if kind == .place, let (tmp, id) = previewCompany(tradeID: tradeID, cityID: cityID, size: size, countryCode: countryCode), let co = tmp.company(id) {
             let w = World(state: tmp, data: data)
             for l in CompanySetup.listings(for: co, bd, w) {
                 guard let t = CompanySetup.premisesTerms(co, l, data: data, world: w) else { continue }
@@ -245,11 +245,7 @@ public extension GameEngine {
         if est.wait > 0 {
             risks.append("A long licence is needed. Wages and rent while you wait (\(cur.short(est.wait))) are already in the cost, and the company earns nothing until it is approved.")
         }
-        if form == .soleTrader {
-            risks.append("As a sole trader you are personally liable for the company's debts" + ((chosen?.buy ?? false) ? ", including the mortgage on a bought place." : "."))
-        } else {
-            risks.append("Share capital of \(cur.short(est.shareCapital)) is locked into the limited company. Profit is taxed in the company and again when you take it out.")
-        }
+        risks.append("Share capital of \(cur.short(est.shareCapital)) is locked into the limited company. Profit is taxed in the company and again when you take it out.")
         if kind == .home { risks.append("It starts at home with no rent. From four people on the team, morale and quality slip every week until you move into a place of its own.") }
         if (chosen?.buy ?? false) { risks.append("Buying ties up the down payment and leaves a 15-year mortgage; selling later takes the market's price, not what you paid.") }
         risks.append("It earns nothing until it is set up and open; most new businesses need months to break even.")
@@ -270,23 +266,23 @@ public extension GameEngine {
         // The money does not carry the usual place: start from the cheapest one on offer (the player can still pick another).
         if pick == nil, kind == .place, plan.shortfall > 0, let cheap = options.min(by: { $0.rentUpfront < $1.rentUpfront }), cheap.index != standard,
            cheap.rentUpfront < (chosenOption?.rentUpfront ?? .infinity),
-           var cheaper = newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: size, pick: .init(listingIndex: cheap.index, buy: false), countryCode: countryCode, choices: choices, withAlternatives: false),
+           var cheaper = newCompanyPlan(tradeID: tradeID, cityID: cityID, size: size, pick: .init(listingIndex: cheap.index, buy: false), countryCode: countryCode, choices: choices, withAlternatives: false),
            cheaper.shortfall < plan.shortfall {
             cheaper.pick = nil; cheaper.standardIndex = cheap.index
             plan = cheaper
         }
         if withAlternatives && (shortfall > 0 || !plan.keepsReserve) {
-            plan.alternatives = setupAlternatives(plan, form: form, size: size, cityID: cityID, countryCode: countryCode, pick: pick)
+            plan.alternatives = setupAlternatives(plan, size: size, cityID: cityID, countryCode: countryCode, pick: pick)
         }
         return plan
     }
 
     /// The opening stock a first company can afford: the full standard stock when the money carries it, else half, else none (stock can be bought as sales start).
-    func suggestedChoices(tradeID: String, cityID: String, form: LegalForm, size: Double, pick: NewCompanyPlan.Pick? = nil) -> SetupChoices {
+    func suggestedChoices(tradeID: String, cityID: String, size: Double, pick: NewCompanyPlan.Pick? = nil) -> SetupChoices {
         var c = SetupChoices()
         for stock in [SetupChoices.Stock.full, .half, .none] {
             c.stock = stock
-            if let p = newCompanyPlan(tradeID: tradeID, cityID: cityID, form: form, size: size, pick: pick, choices: c, withAlternatives: false), p.isFunded { return c }
+            if let p = newCompanyPlan(tradeID: tradeID, cityID: cityID, size: size, pick: pick, choices: c, withAlternatives: false), p.isFunded { return c }
         }
         return c
     }
@@ -298,7 +294,7 @@ public extension GameEngine {
     }
 
     /// Cheaper ways to start the same trade: a smaller size, renting instead of buying, the core team only, no optional extras.
-    private func setupAlternatives(_ plan: NewCompanyPlan, form: LegalForm, size: Double, cityID: String, countryCode: String?, pick: NewCompanyPlan.Pick?) -> [PlanAlternative] {
+    private func setupAlternatives(_ plan: NewCompanyPlan, size: Double, cityID: String, countryCode: String?, pick: NewCompanyPlan.Pick?) -> [PlanAlternative] {
         guard let bd = data.catalog[plan.tradeID] else { return [] }
         let cur = homeCurrency
         var out: [PlanAlternative] = []
@@ -310,24 +306,17 @@ public extension GameEngine {
             var c = plan.choices
             c.optionalEquipment = false; c.team = .minimum; c.stock = plan.choices.stock == .full ? .half : .none; c.putInto = nil
             offer("lean", "Core team, only what it must have", "Only the required equipment, the core team and less opening stock.",
-                  newCompanyPlan(tradeID: plan.tradeID, cityID: cityID, form: form, size: size, pick: pick, countryCode: countryCode, choices: c, withAlternatives: false))
+                  newCompanyPlan(tradeID: plan.tradeID, cityID: cityID, size: size, pick: pick, countryCode: countryCode, choices: c, withAlternatives: false))
         }
         if pick?.buy == true {
             let rented = NewCompanyPlan.Pick(listingIndex: pick?.listingIndex ?? plan.standardIndex, buy: false)
             offer("rent", "Rent the place instead of buying", "Only a deposit and the fit-out go out now.",
-                  newCompanyPlan(tradeID: plan.tradeID, cityID: cityID, form: form, size: size, pick: rented, countryCode: countryCode, choices: plan.choices, withAlternatives: false))
+                  newCompanyPlan(tradeID: plan.tradeID, cityID: cityID, size: size, pick: rented, countryCode: countryCode, choices: plan.choices, withAlternatives: false))
         }
         let smaller = max(bd.minSize, ((size - 0.5) * 2).rounded() / 2)
         if smaller < size {
             offer("smaller", "Start smaller (size \(String(format: "%.1f", smaller)))", "Fewer people, less equipment and a smaller place.",
-                  newCompanyPlan(tradeID: plan.tradeID, cityID: cityID, form: form, size: smaller, pick: nil, countryCode: countryCode, choices: plan.choices, withAlternatives: false))
-        }
-        if form == .limited && !bd.needsLimitedCompany {
-            // a sole trader skips share capital and the registration fee, and is personally liable
-            let saved = plan.estimate.shareCapital + plan.estimate.registration
-            if saved > 0 {
-                out.append(PlanAlternative(id: "sole", title: "Start as a sole trader", detail: "No share capital or registration fee (\(cur.short(saved))), but you are personally liable for its debts.", needed: plan.neededNow, saving: saved))
-            }
+                  newCompanyPlan(tradeID: plan.tradeID, cityID: cityID, size: smaller, pick: nil, countryCode: countryCode, choices: plan.choices, withAlternatives: false))
         }
         return out
     }
@@ -343,10 +332,10 @@ public extension GameEngine {
     /// Start a company, take the picked place (rent or buy) and then do the set-up the owner chose. The set-up is budgeted: required
     /// equipment, the core team (or the whole team if chosen) only while the company's cash carries the wages, and an opening stock of the
     /// chosen share. What was left out comes back in `skipped` with its cost. `choices` default to the careful start.
-    mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, form: LegalForm, size: Double?, name: String?, pick: NewCompanyPlan.Pick?, fundWith amount: Double,
+    mutating func startCompanyChoosingPremises(tradeID: String, cityID: String, size: Double?, name: String?, pick: NewCompanyPlan.Pick?, fundWith amount: Double,
                                                choices requested: SetupChoices = SetupChoices(), accountantID: Int? = nil) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         let choices: SetupChoices = tutorialLimited(requested)
-        let r = startCompany(tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, accountantID: accountantID, fundWith: amount, quickSetup: false)
+        let r = startCompany(tradeID: tradeID, cityID: cityID, size: size, name: name, accountantID: accountantID, fundWith: amount, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }
             return .failure(.notAllowedHere)
@@ -370,7 +359,7 @@ public extension GameEngine {
             out.setupNotes = rep.log
             out.skipped = rep.skipped
             out.companyCash = s.company(id)?.cash ?? 0
-            out.accountsAfter = s.cash + s.savings
+            out.accountsAfter = s.cash
         }
         return .success(out)
     }

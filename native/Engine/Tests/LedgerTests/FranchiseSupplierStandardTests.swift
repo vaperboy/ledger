@@ -17,7 +17,7 @@ final class FranchiseSupplierStandardTests: XCTestCase {
             for _ in 0..<(4 * 7) { e.nextDay() }
             guard e.franchiseApplication(brand.id)["st"].string == "invited", let n = e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()), n.kind == .accept, let terms = n.terms else { continue }
             e.signFranchiseTerms(brand.id, terms: terms)
-            guard case .success(let id) = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, form: .limited, name: "Franchised", fundWith: 3_000_000_000) else { continue }
+            guard case .success(let id) = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, name: "Franchised", fundWith: 3_000_000_000) else { continue }
             return (e, id, brand)
         }
         return nil

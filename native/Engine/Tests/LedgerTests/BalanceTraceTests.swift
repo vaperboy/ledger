@@ -26,8 +26,8 @@ final class BalanceTraceTests: XCTestCase {
                 var id = 0
                 e.update { s, data, ctx in
                     Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-                    if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
-                    let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                    if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) { id = i }
+                    let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, size: 1, state: s, data: data)
                     Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
                     _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
                 }
@@ -58,12 +58,12 @@ final class BalanceTraceTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         for t in ["cafe", "gym", "restaurant", "bakery", "courier", "barber", "boutique", "webdev"] {
             let e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 1000)
-            let est = CompanySetup.estimate(tradeID: t, cityID: e.state.player.cityID, form: .limited, size: 1, state: e.state, data: e.data)!
+            let est = CompanySetup.estimate(tradeID: t, cityID: e.state.player.cityID, size: 1, state: e.state, data: e.data)!
             var e2 = e
             var id = 0; var before = 0.0
             e2.update { s, data, ctx in
                 Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-                if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+                if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) { id = i }
                 Payments.injectCash(&s, companyID: id, amount: est.total * 1.6)
                 before = s.company(id)!.cash
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
@@ -84,8 +84,8 @@ final class BalanceTraceTests: XCTestCase {
             var id = 0
             e.update { s, data, ctx in
                 Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-                if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
-                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) { id = i }
+                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, size: 1, state: s, data: data)
                 Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
             }
@@ -109,8 +109,8 @@ final class BalanceTraceTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
-            let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) { id = i }
+            let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
@@ -132,8 +132,8 @@ final class BalanceTraceTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
-            let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            if case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) { id = i }
+            let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }

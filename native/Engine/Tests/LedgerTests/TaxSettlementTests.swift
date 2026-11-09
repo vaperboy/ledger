@@ -10,29 +10,10 @@ final class TaxSettlementTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in
             Ledger.set(&s, .me, to: 0)
-            s.savings = 0
             s.loans.removeAll()
             s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
         }
         return e
-    }
-
-    func testBillIsPaidFromSavingsBeforeTheAccountGoesNegative() throws {
-        var e = try game()
-        e.update { s, _, ctx in
-            let cur = ctx.homeCurrency(s)
-            s.tax.gains = cur.scaledPrice(100_000)
-            s.savings = cur.scaledPrice(100_000)
-            PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
-            XCTAssertGreaterThanOrEqual(s.cash, 0, "savings covered it")
-            XCTAssertLessThan(s.savings, cur.scaledPrice(100_000))
-            XCTAssertEqual(s.tax.pending, 0)
-            let last = PersonalFinance.lastAssessment(s)
-            XCTAssertNotNil(last)
-            XCTAssertGreaterThan(last?.gainsTax ?? 0, 0)
-            XCTAssertEqual(last?.total ?? 0, last?.gainsTax ?? -1, accuracy: 1)
-            XCTAssertFalse(s.inbox.contains { $0.actionID == PersonalFinance.dueAction })
-        }
     }
 
     func testBillBeyondTheAccountsAsksBeforeAnythingIsForced() throws {
@@ -70,13 +51,12 @@ final class TaxSettlementTests: XCTestCase {
             let cur = ctx.homeCurrency(s)
             let base = cur.scaledPrice(25000)
             s.credit = 70
-            s.savings = cur.scaledPrice(500_000_000)
+            Ledger.move(&s, .me, cur.scaledPrice(500_000_000), why: "Test funds")
             s.tax.dividends = cur.scaledPrice(1_000_000)
             TaxSettlement.refresh(&s, data: data, context: ctx)
             XCTAssertNotNil(PersonalFinance.storedEstimate(s))
             XCTAssertGreaterThan(PersonalFinance.storedEstimate(s)?.dividendTax ?? 0, 0)
             XCTAssertGreaterThan(s.overdraftLimit, base, "wealth raises the line")
-            s.savings = 0
         }
         XCTAssertGreaterThan(e.taxEstimate().total, 0)
     }

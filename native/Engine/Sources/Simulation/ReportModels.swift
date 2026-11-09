@@ -97,7 +97,7 @@ public struct ReportEvent: Codable, Equatable, Sendable {
 
 /// What the player is worth, in the parts the Home screen shows.
 public struct ReportNetWorth: Codable, Equatable, Sendable {
-    /// Current account and savings.
+    /// The account's balance.
     public var cash = 0.0
     /// Shares, crypto, funds and deposits.
     public var investments = 0.0
@@ -126,7 +126,7 @@ public struct ReportCompany: Codable, Equatable, Sendable, Identifiable {
     public var pnl = ReportPnL()
     public var cashStart = 0.0
     public var cashEnd = 0.0
-    /// Money the owner put in, and money taken out (dividends and drawings).
+    /// Money the owner put in, and money taken out (dividends and salary).
     public var ownerIn = 0.0
     public var ownerOut = 0.0
     /// Principal borrowed and repaid on the company's loans.
@@ -166,11 +166,9 @@ public struct ReportFlow: Codable, Equatable, Sendable, Identifiable {
 /// The whole group (all companies and the player's own money) in one period.
 public struct ReportGroup: Codable, Equatable, Sendable {
     public var pnl = ReportPnL()
-    /// The player's current account and savings, and cash in all companies.
+    /// The player's account, and cash in all companies.
     public var accountStart = 0.0
     public var accountEnd = 0.0
-    public var savingsStart = 0.0
-    public var savingsEnd = 0.0
     public var companyCashStart = 0.0
     public var companyCashEnd = 0.0
     /// Movements on the player's current account, by kind, plus what is left unexplained (`other`). They add up to the account's change.

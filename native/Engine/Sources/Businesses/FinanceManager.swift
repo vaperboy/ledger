@@ -91,14 +91,13 @@ public enum FinanceManager {
         }
     }
 
-    /// Hand `amount` to one of the candidates with a mandate. The money leaves your account (savings first if short).
+    /// Hand `amount` to one of the candidates with a mandate. The money leaves your account.
     public static func hire(_ s: inout GameState, personID: Int, mandate: Mandate, amount: Double) -> HireResult {
         guard let n = s.people[personID], n.role == "fin" else { return .unknown }
         if account(s) != nil || n.employerID != 0 { return .busy }
         let amt = jsRound(amount)
         if amt < 1 { return .tooSmall }
         if Payments.liquid(s) < amt { return .notEnoughCash }
-        Payments.transferFromSavings(&s, need: amt)
         Ledger.move(&s, .me, -amt, why: "To \(n.name), your fund manager")
         s.rest["fm"] = .object(["npc": .number(Double(personID)), "mandate": .string(mandate.rawValue), "fee": .number(n.num("fee")),
                                 "bal": .number(amt), "cost": .number(amt), "skill": .number(n.skill), "ret": .number(0), "feesPaid": .number(0)])

@@ -21,9 +21,9 @@ final class ManagedTargetsProbeTests: XCTestCase {
                 var id = 0
                 e.update { s, data, ctx in
                     Ledger.move(&s, .me, 60_000_000_000, why: "Test funds")
-                    guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+                    guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
                     id = i
-                    let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                    let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
                     Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.3)
                     _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
                 }

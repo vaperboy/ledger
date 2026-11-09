@@ -8,9 +8,9 @@ import Simulation
 /// Rules: per-trade price ranges, every store item for every company,
 /// the dividend desk, document refusal and reapplying, delegation lines.
 final class PricingDividendsDelegationTests: XCTestCase {
-    private func open(_ e: inout GameEngine, _ trade: String, form: LegalForm = .limited) throws -> Int {
+    private func open(_ e: inout GameEngine, _ trade: String) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: form, fundWith: 60_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 60_000_000) else { throw XCTSkip("no company") }
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return id
     }
@@ -137,7 +137,7 @@ final class PricingDividendsDelegationTests: XCTestCase {
     func testStartingACompanyFillsInNoDocumentsAndBuysNothing() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 28)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("no start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("no start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let docs = co.value("docs").object
         XCTAssertTrue(docs.filter { $0.key != "accountant_agreement" }.isEmpty, "no document is applied for the player: \(docs.keys.sorted())")

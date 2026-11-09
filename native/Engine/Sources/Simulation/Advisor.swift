@@ -42,7 +42,7 @@ public extension GameEngine {
         }
         if s.cash < 0 {
             out.append(Suggestion(id: "overdraft", symbol: "exclamationmark.triangle", title: "Your account is overdrawn",
-                                  detail: "\(cur.display(-s.cash)) overdrawn. Move savings in, borrow, or take money from a company.", tone: .bad, action: .openLoans, actionLabel: "Open bank"))
+                                  detail: "\(cur.display(-s.cash)) overdrawn. Put money in, borrow, or take a dividend or salary from a company.", tone: .bad, action: .openLoans, actionLabel: "Open bank"))
         }
         for co in s.liveCompanies {
             if co.cash < 0 {
@@ -55,12 +55,12 @@ public extension GameEngine {
         }
         // The monthly estimate covers income, dividends, gains, interest and wealth tax; before the first one, the income-side estimate stands in.
         let est = PersonalFinance.storedEstimate(s)?.total ?? PersonalFinance.taxEstimate(s, context: context)
-        let liquid = max(0, s.cash) + max(0, s.savings)
+        let liquid = max(0, s.cash)
         if s.tax.pending > 0 {
             out.append(Suggestion(id: "tax", symbol: "doc.text", title: "Tax to pay", detail: "\(cur.display(s.tax.pending)) is still owed. Keep cash for it.", tone: .warn, action: .openTax, actionLabel: "See tax"))
         } else if est > liquid, PersonalFinance.weeksToYearEnd(week: s.week) <= TaxSettlement.warnWeeks {
             out.append(Suggestion(id: "taxshort", symbol: "doc.text", title: "Tax bill is bigger than your cash",
-                                  detail: "About \(cur.display(est)) is left to settle at year end; cash and savings hold \(cur.display(liquid)). Take dividends, sell investments or arrange a loan.",
+                                  detail: "About \(cur.display(est)) is left to settle at year end; your account holds \(cur.display(liquid)). Take dividends, sell investments or arrange a loan.",
                                   tone: .bad, action: .openTax, actionLabel: "See tax"))
         } else if est > 0 {
             out.append(Suggestion(id: "taxest", symbol: "doc.text", title: "Tax estimate", detail: "About \(cur.display(est)) still to settle at year end; the rest was paid as it arose.", tone: .neutral, action: .openTax, actionLabel: "See tax"))

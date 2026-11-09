@@ -16,7 +16,7 @@ final class JobContractsTests: XCTestCase {
     func start(_ trade: String, weeks: Int = 2, seed: Int = 7, setup: Bool = false) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 20_000_000) else { throw XCTSkip("could not start \(trade)") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("could not start \(trade)") }
         if setup { e.update { s, d, _ in _ = CompanySetup.quickSetup(&s, companyID: id, data: d) } }
         for _ in 0..<weeks { e.w7week() }
         return (e, id)
@@ -240,9 +240,9 @@ final class JobContractsTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.3)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
             if let co = s.company(id), let bd = data.catalog[co.type], (bd.ownerFTE == 0 || bd.standardStaff.reduce(0, { $0 + $1.count }) >= 4), co.managerID == nil {

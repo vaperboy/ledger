@@ -63,7 +63,6 @@ final class FoundationTests: XCTestCase {
             XCTAssertEqual(c.startLoanTermMonths, e["loanTermM"].int)
             assertClose(c.shareCapitalMinimum, e["asCapital"].double, tol: 1e-12)
             assertClose(c.registrationFee, e["asFee"].double, tol: 1e-12)
-            assertClose(c.conversionFee, e["asConvFee"].double, tol: 1e-12)
             assertClose(c.vatThreshold, e["vatThr"].double, tol: 1e-12)
             if !Self.correctedEmployerCost.contains(c.code) { assertClose(c.employerCostFactor, 1 + e["empNI"].double + e["otp"].double + e["injury"].double, tol: 1e-12) }
             assertClose(c.inheritanceFree, e["inhFree"].double, tol: 1e-12)

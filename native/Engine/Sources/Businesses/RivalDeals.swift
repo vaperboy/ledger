@@ -14,7 +14,7 @@ extension Rivals {
     public static func startupMoney(_ s: GameState, _ co: Company, rival r: Rival, data: GameData) -> Double {
         guard let bd = data.catalog[co.type] else { return 0 }
         let size = clamp(r.size * 0.8, bd.minSize, bd.maxSize)
-        return jsRound((CompanySetup.estimate(tradeID: co.type, cityID: co.cityID, form: .limited, size: size, countryCode: co.countryCode, state: s, data: data)?.total ?? 0) * 1.15)
+        return jsRound((CompanySetup.estimate(tradeID: co.type, cityID: co.cityID, size: size, countryCode: co.countryCode, state: s, data: data)?.total ?? 0) * 1.15)
     }
 
     /// Share of the price spent on integration, and the dip in demand while the rival's customers decide whether to stay.
@@ -32,7 +32,7 @@ extension Rivals {
         if Payments.liquid(s) < price + startup + cur.scaledPrice(200000) { return .notEnoughCash }
         let group = RivalGroups.group(s, id: r.groupID)
         let troubled = r.groupID != nil ? (group?.inTrouble ?? false) : (s.rest["mk"]?[k]["riv"].array.first { $0["id"].int == rivalID }?["dist27"].double ?? 0) != 0
-        guard case .success(let id) = CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, form: .limited, size: size, name: r.name, countryCode: co.countryCode, data: data, context: context) else {
+        guard case .success(let id) = CompanySetup.create(&s, tradeID: co.type, cityID: co.cityID, size: size, name: r.name, countryCode: co.countryCode, data: data, context: context) else {
             return .failed("The new company could not be set up.")
         }
         Payments.playerPays(&s, price, label: "Acquisition of \(r.name)", companyID: id)

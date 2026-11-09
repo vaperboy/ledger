@@ -16,8 +16,8 @@ final class InboxReportsGoalsTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 80_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
-            let est = CompanySetup.estimate(tradeID: "cafe", cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: data, context: ctx) { id = i }
+            let est = CompanySetup.estimate(tradeID: "cafe", cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + 3_000_000)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
@@ -344,8 +344,6 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(r.cash, r.wages, "the staff can still be paid in full")
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertGreaterThanOrEqual(CompanyFigures.billsOwed(co), 70_000)
-        let sheet = try XCTUnwrap(e.companyBalanceSheet(companyID: id))
-        XCTAssertEqual(sheet.debts.first { $0.id == "legal" }?.amount, 40_000)
     }
 
     func testPartialSettlementThenFullSettlementClearsTheLiability() throws {
@@ -414,59 +412,5 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertEqual(r.wages, 20_000)
         XCTAssertGreaterThanOrEqual(r.cash, 20_000, "wages stay covered")
         XCTAssertEqual(r.legal, 60_000 + 5_000 - 5_000, accuracy: 0.5, "claim 60,000 plus half the costs 5,000 less the 5,000 paid from spare cash")
-    }
-
-    func testStaleLatenessWithNoWagesOwedIsNotAnAlertAndClears() throws {
-        var (e, id) = try cafeGame(weeks: 3)
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            let t = Payday.dayNumber(week: s.week, day: s.day)
-            var cfg = Payday.config(s.companies[i], today: t)
-            cfg.lateSince = t - 3; cfg.lateWhy = "cash"; cfg.lateMonth = Payday.monthNumber(t); cfg.lateOwed = 12_000
-            s.companies[i].set("pr29", cfg.json)
-            s.companies[i].payables["wages"] = 0
-            s.companies[i].wageShortfall = 12_000
-        }
-        let o = try XCTUnwrap(e.payrollOverview(companyID: id))
-        XCTAssertFalse(o.isLate, "nothing is owed to staff, so the payroll is not late")
-        XCTAssertFalse(e.payrollAlerts().contains { $0.companyID == id && $0.isLate })
-        e.nextDay()
-        let t = Payday.dayNumber(week: e.state.week, day: e.state.day)
-        let cfg = Payday.config(try XCTUnwrap(e.state.company(id)), today: t)
-        XCTAssertNil(cfg.lateSince, "the stored lateness is cleared too, not just hidden")
-        XCTAssertEqual(e.state.company(id)?.wageShortfall, 0)
-    }
-
-    func testGenuinelyLatePayrollStaysAnAlertUntilWagesArePaid() throws {
-        var (e, id) = try cafeGame(weeks: 3)
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            let t = Payday.dayNumber(week: s.week, day: s.day)
-            var cfg = Payday.config(s.companies[i], today: t)
-            cfg.lateSince = t - 1; cfg.lateWhy = "cash"; cfg.lateMonth = Payday.monthNumber(t); cfg.lateOwed = 8_000
-            s.companies[i].set("pr29", cfg.json)
-            s.companies[i].payables["wages"] = 8_000
-            s.companies[i].wageShortfall = 8_000
-            Ledger.set(&s, .company(id), to: -1_000)
-        }
-        XCTAssertTrue(try XCTUnwrap(e.payrollOverview(companyID: id)).isLate)
-        // Cash arrives (for instance a court award): the back pay goes out and the alert ends with the liability.
-        e.update { s, _, _ in Ledger.set(&s, .company(id), to: 500_000) }
-        e.nextDay()
-        let o = try XCTUnwrap(e.payrollOverview(companyID: id))
-        XCTAssertFalse(o.isLate)
-        XCTAssertEqual(o.wagesOwed, 0, accuracy: 0.5)
-    }
-
-    func testUnapprovedPayrollIsNeverAnAlertBeforeThePayDate() throws {
-        var (e, _) = try cafeGame(weeks: 1)
-        for _ in 0..<(100 * 1) {
-            e.nextDay()
-            let today = Payday.dayNumber(week: e.state.week, day: e.state.day)
-            for a in e.payrollAlerts() where !a.isLate {
-                let o = try XCTUnwrap(e.payrollOverview(companyID: a.companyID))
-                XCTAssertLessThanOrEqual(o.nextPayDay, today, "an unapproved payroll alerts only on or after its pay date")
-            }
-        }
     }
 }

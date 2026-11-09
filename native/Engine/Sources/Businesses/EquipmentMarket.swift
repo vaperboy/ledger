@@ -484,7 +484,7 @@ public enum EquipmentMarket {
         loan.termMonths = months
         loan.companyID = companyID
         loan.startWeek = s.week
-        loan.isGuaranteed = s.companies[i].form != .limited
+        loan.isGuaranteed = false
         loan.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + loan.margin, months: Double(months))
         s.loans.append(loan)
         return loan.id

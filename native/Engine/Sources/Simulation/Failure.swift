@@ -5,11 +5,10 @@ import Finance
 import Businesses
 
 /// When things go wrong: company bankruptcy, forced sales, the bank closing in, game over.
-/// Original: `bankruptcyCore`, `forcedSale`, `checkOver`, `coverFromENK` (engine/core/week.js).
+/// Original: `bankruptcyCore`, `forcedSale`, `checkOver` (engine/core/week.js).
 ///
 /// A company fails when it cannot pay: cash below its overdraft room for many weeks, or bills unpaid for months.
-/// A *limited company's* owner loses what was put in (unless they signed a personal guarantee); a *sole trader*
-/// is personally liable for everything.
+/// Every company is a limited company: its owner loses what was put in, and answers personally only for loans they guaranteed.
 public enum Failure {
     /// `announce` false: one store of a chain that fails as a whole (`chainBankrupt` sends the one message, counts it once and hits credit once).
     /// Returns what lands on the owner personally.
@@ -26,31 +25,38 @@ public enum Failure {
         var debts: Double = loanBalance + CompanyFigures.billsOwed(co)
         debts -= min(0, co.cash)
         var personalHit = 0.0
-        // Secured lenders are paid first from what the company owns; only what is left of a guaranteed loan lands on the owner.
+        // Lenders come first from what the company owns: its things (sold at a discount), then, once the bills are paid, its cash. The owner
+        // gets something only when every lender is paid in full, so borrowed money cannot be walked away with. Only what is left of a
+        // loan the owner guaranteed lands on the owner.
         var pool = assets
+        var unpaid: [Int: Double] = [:]
         for l in ownLoans {
-            guard let li = s.loans.firstIndex(where: { $0.id == l.id }) else { continue }
-            if l.isGuaranteed || co.form == .soleTrader {
-                let cut = min(pool, l.balance)
-                s.loans[li].balance -= cut
-                pool -= cut
-                s.loans[li].companyID = 0
-                s.loans[li].name += " (taken over by you)"
-                personalHit += s.loans[li].balance
-            } else {
-                Banking.close(loanID: l.id, repaid: l.balance * 0.4, state: &s)
-            }
+            let cut = min(pool, l.balance)
+            pool -= cut
+            unpaid[l.id] = l.balance - cut
         }
         let cashPart = max(0, co.cash)
-        var shortfall = max(0, debts - loanBalance - pool - cashPart)
-        if co.form == .soleTrader {
-            shortfall = max(0, debts - loanBalance - pool - cashPart)
-            Ledger.move(&s, .me, -shortfall, why: "Debts of failed \(co.name)")
-            personalHit += shortfall
-        } else if pool + cashPart > debts - loanBalance {
-            let rest = (pool + cashPart) - (debts - loanBalance)
-            if rest > 0 && co.ownership > 0 { Payments.playerReceives(&s, rest * co.ownership / 100 * 0.2, label: "Remaining value from \(co.name)") }
+        let billsDue = max(0, debts - loanBalance)
+        var spare = max(0, pool + cashPart - billsDue)
+        var repaidToLoans = 0.0
+        for l in ownLoans {
+            guard let li = s.loans.firstIndex(where: { $0.id == l.id }) else { continue }
+            let more = min(unpaid[l.id] ?? 0, spare)
+            spare -= more
+            let left = (unpaid[l.id] ?? 0) - more
+            repaidToLoans += l.balance - left
+            if l.isGuaranteed {
+                s.loans[li].balance = left
+                s.loans[li].companyID = 0
+                s.loans[li].name += " (taken over by you)"
+                personalHit += left
+                if left < 1 { s.loans.remove(at: li) }
+            } else {
+                Banking.close(loanID: l.id, repaid: l.balance - left, state: &s)
+            }
         }
+        let rest = assets + cashPart - billsDue - repaidToLoans
+        if rest > 0 && co.ownership > 0 { Payments.playerReceives(&s, rest * co.ownership / 100 * 0.2, label: "Remaining value from \(co.name)") }
         // Staff are released.
         for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
         if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
@@ -62,8 +68,8 @@ public enum Failure {
         HoldingModel.holdingFailed(&s, holdingID: co.id)
         guard announce else { return personalHit }
         s.stats.bankruptcies += 1
-        s.credit = clamp(s.credit - (co.form == .soleTrader ? 22 : 14), 0, 100)
-        s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why(reason) + liability(personalHit, co.form, cur) + "Credit score hit.", companyID: co.id, tone: "bad")
+        s.credit = clamp(s.credit - 14, 0, 100)
+        s.addMessage(from: co.name, title: "\(co.name) has gone bankrupt", body: why(reason) + liability(personalHit, cur) + "Credit score hit.", companyID: co.id, tone: "bad")
         s.news("\(co.name) files for bankruptcy.", tone: "bad", companyID: co.id)
         return personalHit
     }
@@ -71,9 +77,9 @@ public enum Failure {
     static func why(_ reason: String) -> String {
         reason == "unpaid" ? "Bills went unpaid for months. " : reason == "insolvent" ? "The regulator closed it: its capital was gone. " : reason == "loan" ? "The bank called its loan after missed instalments. " : "Cash ran out. "
     }
-    static func liability(_ personalHit: Double, _ form: LegalForm, _ cur: Currency) -> String {
+    static func liability(_ personalHit: Double, _ cur: Currency) -> String {
         personalHit > 0
-            ? "About \(cur.display(personalHit)) lands on you personally (\(form == .soleTrader ? "sole proprietors are personally liable" : "guarantees you signed")). "
+            ? "About \(cur.display(personalHit)) lands on you personally (guarantees you signed). "
             : "As a limited company, your loss is limited to what you put in. "
     }
 
@@ -108,8 +114,8 @@ public enum Failure {
         for c in L { if let i = s.companyIndex(c.id) { hit += bankrupt(&s, companyIndex: i, reason: reason, data: data, context: context, announce: false) } }
         let name = ch["name"].string
         s.stats.bankruptcies += 1
-        s.credit = clamp(s.credit - (head.form == .soleTrader ? 22 : 14), 0, 100)
-        s.addMessage(from: name, title: "\(name) has gone bankrupt", body: why(reason) + "All \(L.count) branches close with the chain. " + liability(hit, head.form, context.homeCurrency(s)) + "Credit score hit.",
+        s.credit = clamp(s.credit - 14, 0, 100)
+        s.addMessage(from: name, title: "\(name) has gone bankrupt", body: why(reason) + "All \(L.count) branches close with the chain. " + liability(hit, context.homeCurrency(s)) + "Credit score hit.",
                      companyID: head.id, tone: "bad")
         s.news("\(name) files for bankruptcy and closes its \(L.count) branches.", tone: "bad", companyID: head.id)
     }
@@ -151,33 +157,11 @@ public enum Failure {
         s.companies[i].status = .sold
     }
 
-    /// Sole traders are the same person as their business: spare business cash covers a negative private account.
-    /// Original: `coverFromENK`.
-    static func coverFromSoleTraders(_ s: inout GameState, context: FinanceContext) {
-        if s.cash >= 0 { return }
-        var moved = 0.0
-        var names: [String] = []
-        let order = s.companies.indices.filter { s.companies[$0].form == .soleTrader && [.open, .closed, .setup].contains(s.companies[$0].status) }
-            .sorted { s.companies[$0].cash > s.companies[$1].cash }
-        for i in order {
-            if s.cash >= 0 { break }
-            let spare = s.companies[i].cash - context.weeklyCost(s.companies[i], s) * 2
-            if spare <= 0 { continue }
-            let take = min(spare, -s.cash + (s.overdraftLimit * 0.25).rounded())
-            if take <= 0 { continue }
-            if Payments.withdrawCash(&s, companyID: s.companies[i].id, amount: take) == .ok { moved += take; names.append(s.companies[i].name) }
-        }
-        if moved > 0 {
-            s.note("Moved \(context.homeCurrency(s).display(moved)) from \(names.joined(separator: ", ")) to your private account to cover a negative balance. As a sole trader it is the same money.", tone: "n")
-        }
-    }
-
     /// The end-of-week check: overdraft limit, bank warnings, forced sales, game over. Original: `checkOver`.
     public static func checkOver(_ s: inout GameState, data: GameData, context: FinanceContext, liquidate: (inout GameState, Double) -> Void) {
         PersonalFinance.withholdNow(&s, context: context)   // sweep: gains, dividends and interest that had no call of their own
         TaxSettlement.collectIfRefused(&s, context: context)
         TaxSettlement.refresh(&s, data: data, context: context)
-        coverFromSoleTraders(&s, context: context)
         CreditorPressure.weekly(&s, data: data)   // very large groups: lenders lose confidence and ask for cash back (CreditorPressure.swift)
         var od = s.rest["flags"]?["od"].int ?? 0
         // While the player is choosing how to pay a tax bill, the bank's clock waits.
@@ -188,11 +172,11 @@ public enum Failure {
             od += 1
             if od == 1 {
                 s.addMessage(from: "Bank", title: "Overdraft limit exceeded",
-                             body: "Your private account is below the limit. Within 8 weeks the bank sells your investments and then forces a sale of a company. Pay yourself a salary or dividend, or put money in.", tone: "bad")
+                             body: "Your account is below the limit. Within 8 weeks the bank sells your investments and then forces a sale of a company. Pay yourself a salary or dividend, or put money in.", tone: "bad")
             }
             if od == 5 {
                 s.addMessage(from: "Bank", title: "Final warning: forced sale in 3 weeks",
-                             body: "Your private account is still below the overdraft limit. Bring it back up or the bank forces a sale.", tone: "bad")
+                             body: "Your account is still below the overdraft limit. Bring it back up or the bank forces a sale.", tone: "bad")
             }
             if od >= 8 {
                 liquidate(&s, -s.overdraftLimit * 0.5)

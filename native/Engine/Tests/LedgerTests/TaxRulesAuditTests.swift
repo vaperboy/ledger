@@ -48,9 +48,9 @@ final class TaxRulesAuditTests: XCTestCase {
                 s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
                 s.tax.gains = 2_000_000; s.tax.interest = 100_000
                 Ledger.move(&s, .me, 100_000_000, why: "Test funds")   // enough to pay the whole bill without a payment decision
-                let before = s.cash + s.savings
+                let before = s.cash
                 PersonalFinance.yearEnd(&s, context: ctx, netWorth: 0, ownedCompanyValue: 0)
-                XCTAssertEqual(before - (s.cash + s.savings), 2_000_000 * k.capitalGainsTax + 100_000 * k.savingsInterestTax, accuracy: 3, code)
+                XCTAssertEqual(before - (s.cash), 2_000_000 * k.capitalGainsTax + 100_000 * k.savingsInterestTax, accuracy: 3, code)
             }
         }
     }
@@ -59,7 +59,7 @@ final class TaxRulesAuditTests: XCTestCase {
         for code in ["UK", "US", "JP"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 3)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { XCTFail(code); continue }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { XCTFail(code); continue }
             e.update { s, data, ctx in
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open
@@ -91,7 +91,7 @@ final class TaxRulesAuditTests: XCTestCase {
         // End to end in the US: 100M of old losses, 20M profit: only 80% of the profit is covered, tax on the other 20%.
         var e = try GameEngine.newGame(countryCode: "US", playerName: "T", seed: 4)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open
@@ -153,7 +153,7 @@ final class TaxRulesAuditTests: XCTestCase {
         for code in ["UK", "DE", "FR", "US", "JP", "SE"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 6)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { XCTFail(code); continue }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { XCTFail(code); continue }
             e.update { s, data, _ in
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open

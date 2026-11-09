@@ -38,7 +38,6 @@ public enum CrowdStartups {
         if Payments.liquid(s) < q.total { return .refused("You need \(Int(q.total.rounded())) in cash: the entry cost, your own money and the registration.") }
         switch Startups.found(&s, name: name, sector: sector, product: product, model: model, who: who, seedMultiple: seedMultiple, data: data, context: fc) {
         case .ok(let id):
-            Payments.transferFromSavings(&s, need: q.entryCost)
             Payments.playerPays(&s, q.entryCost, label: "Startup entry cost", companyID: id)
             let rec = Startups.founded(s, id: id)
             let st = CrowdStartupRules.Startup(id: "S\(id)", name: s.company(id)?.name ?? "Startup", trade: rec?.sectorName ?? sector, pitch: pitch, founderID: me, founderName: "You", founderLinkKey: me,
@@ -60,7 +59,6 @@ public enum CrowdStartups {
         case .refused(let r): return .refused(r.message)
         case .ok(let q):
             if Payments.liquid(s) < amt { return .refused("You do not have that much in cash.") }
-            Payments.transferFromSavings(&s, need: amt)
             Payments.playerPays(&s, amt, label: "Invested in \(st.name) (held until \(q.releasedAtMilestone.lowercased()))")
             st.investments.append(.init(id: "\(st.id)-\(st.investments.count)", investorID: me, linkKey: linkKeys.first ?? me, stage: q.stage, amount: amt, percent: q.percent, day: today))
             return .ok(q, CrowdStartupRules.Holding(startupID: st.id, ownerID: me, linkKey: linkKeys.first ?? me, percent: q.percent, paid: amt, boughtDay: today))
@@ -110,7 +108,6 @@ public enum CrowdStartups {
         case .refused(let r): return .failure(SaleFailure(message: r.message))
         case .ok(let q):
             if Payments.liquid(s) < q.buyerPays { return .failure(SaleFailure(message: "You do not have that much in cash.")) }
-            Payments.transferFromSavings(&s, need: q.buyerPays)
             Payments.playerPays(&s, q.price, label: "Bought \(String(format: "%.1f", percent))% of \(st.name)")
             Payments.playerPays(&s, q.transferTax, label: "Transfer tax: \(st.name)")
             return .success((q, CrowdStartupRules.Holding(startupID: st.id, ownerID: me, linkKey: linkKeys.first ?? me, percent: percent, paid: q.price, boughtDay: today)))

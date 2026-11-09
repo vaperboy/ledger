@@ -97,7 +97,6 @@ final class UnlocksTests: XCTestCase {
     func testBoardOpensForALimitedCompanyWithAManager() throws {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
-        XCTAssertEqual(e.state.company(id)?.form, .limited)
         XCTAssertFalse(try XCTUnwrap(e.unlockItem("board", companyID: id)).unlocked)
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }

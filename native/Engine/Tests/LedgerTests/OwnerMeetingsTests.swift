@@ -13,7 +13,7 @@ final class OwnerMeetingsTests: XCTestCase {
     private func setup(seed: Int, holders: Bool = false) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 6_000_000) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 6_000_000) else { throw XCTSkip("start") }
         e.update { s, d, _ in _ = CompanySetup.quickSetup(&s, companyID: id, data: d) }
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)

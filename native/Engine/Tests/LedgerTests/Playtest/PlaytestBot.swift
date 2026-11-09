@@ -76,9 +76,9 @@ final class PlayBot {
 
     // MARK: Setup
 
-    func estimate(_ trade: String, form: LegalForm = .limited) -> Double? {
+    func estimate(_ trade: String) -> Double? {
         var rich = e.state; rich.cash += 1e12
-        return CompanySetup.estimate(tradeID: trade, cityID: e.state.player.cityID, form: form, size: 1, state: rich, data: e.data)?.total
+        return CompanySetup.estimate(tradeID: trade, cityID: e.state.player.cityID, size: 1, state: rich, data: e.data)?.total
     }
 
     /// Opens a company the way the Company tab "+" does. Tops personal funds up (and says so) when the trade costs more than the start loan.
@@ -92,15 +92,14 @@ final class PlayBot {
         }
         let want = fund ?? max(0, liquid * 0.9)
         // Competent and reckless players take the app's route (one-page start, then the Setup screen); the passive one takes the quick-setup shortcut.
-        func start(_ form: LegalForm) -> Result<Int, CompanySetup.StartError> {
-            if job.policy == .passive { return e.startCompany(tradeID: trade, cityID: city, form: form, fundWith: want) }
-            switch e.startCompanyChoosingPremises(tradeID: trade, cityID: city, form: form, size: nil, name: nil, pick: nil, fundWith: want) {
+        func start() -> Result<Int, CompanySetup.StartError> {
+            if job.policy == .passive { return e.startCompany(tradeID: trade, cityID: city, fundWith: want) }
+            switch e.startCompanyChoosingPremises(tradeID: trade, cityID: city, size: nil, name: nil, pick: nil, fundWith: want) {
             case .success(let out): return .success(out.companyID)
             case .failure(let err): return .failure(err)
             }
         }
-        var r = start(.limited)
-        if case .failure = r { r = start(.soleTrader) }
+        let r = start()
         switch r {
         case .success(let id):
             structural(); bought()
@@ -346,7 +345,7 @@ final class PlayBot {
         let s = e.state
         let g = Ledger.gaps(s)
         if !g.isEmpty { find(1, "ledger-gap", "Ledger.gaps not empty: \(g.map { "\($0.holder)=\(Int($0.difference))" }.joined(separator: ", ").prefix(120))", "Finance/Ledger.swift / the action that moved cash without booking", "") }
-        if !s.cash.isFinite || !s.savings.isFinite { find(1, "nan-personal", "Personal cash/savings not finite", "Finance/Payments.swift", "") }
+        if !s.cash.isFinite { find(1, "nan-personal", "Personal cash not finite", "Finance/Payments.swift", "") }
         for m in out.newMessages { checkMessage(m) }
         checkRouting(out)
         // blocking/open pile

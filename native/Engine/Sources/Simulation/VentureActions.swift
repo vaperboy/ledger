@@ -194,7 +194,7 @@ public extension GameEngine {
     }
     /// The same for a private share sale at a percentage (mode "primary": new shares, the company is paid; "secondary": part of your stake, you are paid).
     func shareSaleTerms(companyID: Int, percent: Double, mode: String) -> CapTable.DealTerms? {
-        guard let co = state.company(companyID), co.form == .limited else { return nil }
+        guard let co = state.company(companyID) else { return nil }
         let v = max(1, Valuation.companyValue(co, state: state, trades: data.catalog))
         let t = CapTable.table(co)
         if mode == "primary" {

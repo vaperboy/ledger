@@ -42,7 +42,7 @@ public extension GameEngine {
     /// Salary against dividend against keeping `amount` in a limited company: net in hand and the tax each adds on top of this year's
     /// income and dividends so far. Nil for a company that is not a limited company or does not exist.
     func ownerPayOptions(companyID: Int, amount: Double) -> OwnerPayComparison? {
-        guard let co = state.company(companyID), co.form == .limited, amount > 0 else { return nil }
+        guard let co = state.company(companyID), amount > 0 else { return nil }
         let country = context.country(of: co, state)
         let home = context.homeCountry(state)
         let corp = data.catalog[co.type].map { MonthEnd.taxRate(co, $0, country) } ?? country.corporateTax

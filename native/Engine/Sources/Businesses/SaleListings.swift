@@ -19,7 +19,6 @@ public enum SaleListings {
         guard let co = s.company(companyID), canSell(s, companyID: companyID) else { return "This company cannot be sold now." }
         if isListed(s, companyID: companyID) { return "It is already on the market." }
         if pct < 100 {
-            if co.form != .limited { return "Only a limited company has shares to sell." }
             if co.ownership * Double(pct) / 100 > co.ownership - 1 { return "You must keep at least 1%." }
             if route == "mbo" { return "A management buyout takes the whole company." }
         }

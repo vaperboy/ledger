@@ -12,7 +12,7 @@ final class StaffExpensesTests: XCTestCase {
     private func shop(seed: Int = 5, trade: String = "cafe") throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
         return (e, id)

@@ -180,34 +180,34 @@ public extension GameEngine {
     }
 
     /// What a new franchised unit needs to start with: the usual start-up estimate, plus the entry fee, less the franchisor's support.
-    func franchiseStartEstimate(brandID: String, cityID: String, form: LegalForm) -> (estimate: CompanySetup.Estimate, fee: Double, size: Double)? {
+    func franchiseStartEstimate(brandID: String, cityID: String) -> (estimate: CompanySetup.Estimate, fee: Double, size: Double)? {
         guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID), let bd = data.catalog[b.tradeID] else { return nil }
         let country = franchiseApplication(brandID)["country"].string
         let cc = country.isEmpty ? state.homeCountryCode : country
         guard let c = data.countries[cc], let city = c.city(cityID) ?? c.cities.first else { return nil }
         let size = CompanySetup.recommendedSize(bd, city: city, brandStrength: b.strength / 100)
-        guard let est = CompanySetup.estimate(tradeID: b.tradeID, cityID: city.id, form: form, size: size, countryCode: cc, state: state, data: data) else { return nil }
+        guard let est = CompanySetup.estimate(tradeID: b.tradeID, cityID: city.id, size: size, countryCode: cc, state: state, data: data) else { return nil }
         return (est, t.fee, size)
     }
 
     /// The New company plan for a franchised unit: the same picture as `newCompanyPlan` (places to rent or buy, what the pick costs, risks), priced in the
     /// country the franchise application is for, plus the entry fee the franchisor charges on top of it. Nil when the terms are not agreed.
-    func franchiseStartPlan(brandID: String, cityID: String, form: LegalForm, pick: NewCompanyPlan.Pick? = nil) -> (plan: NewCompanyPlan, fee: Double)? {
-        guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID), let est = franchiseStartEstimate(brandID: brandID, cityID: cityID, form: form) else { return nil }
+    func franchiseStartPlan(brandID: String, cityID: String, pick: NewCompanyPlan.Pick? = nil) -> (plan: NewCompanyPlan, fee: Double)? {
+        guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID), let est = franchiseStartEstimate(brandID: brandID, cityID: cityID) else { return nil }
         let country = franchiseApplication(brandID)["country"].string
-        guard let plan = newCompanyPlan(tradeID: b.tradeID, cityID: cityID, form: form, size: est.size, pick: pick, countryCode: country.isEmpty ? nil : country) else { return nil }
+        guard let plan = newCompanyPlan(tradeID: b.tradeID, cityID: cityID, size: est.size, pick: pick, countryCode: country.isEmpty ? nil : country) else { return nil }
         return (plan, t.fee)
     }
 
     /// Open a franchised unit and take the picked place (rent or buy) before the standard set-up does everything else; with no pick it is the
     /// standard rented place. Original: `ACT.ncgo` with `st.fran`/`st.deal`, `applyBrand`. The place is the franchisee's own premises, so the brand's rent rules apply to it.
-    mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, form: LegalForm, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?, fundWith amount: Double) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
+    mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?, fundWith amount: Double) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID) else { return .failure(.notAllowedHere) }
         let country = franchiseApplication(brandID)["country"].string
         let cc = country.isEmpty ? state.homeCountryCode : country
         let size = data.countries[cc].flatMap { c in c.city(cityID).flatMap { city in data.catalog[b.tradeID].map { CompanySetup.recommendedSize($0, city: city, brandStrength: b.strength / 100) } } }
         let nm = (name?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 }
-        let r = startCompany(tradeID: b.tradeID, cityID: cityID, form: form, size: size, name: nm, countryCode: cc, accountantID: accountantID, fundWith: amount, quickSetup: false)
+        let r = startCompany(tradeID: b.tradeID, cityID: cityID, size: size, name: nm, countryCode: cc, accountantID: accountantID, fundWith: amount, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }
             return .failure(.notAllowedHere)

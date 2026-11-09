@@ -91,11 +91,11 @@ final class PersonalFinanceAuditTests: XCTestCase {
                 s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
                 s.tax.gains = 1_000_000; s.tax.dividends = 500_000; s.tax.dividendShield = 100_000; s.tax.interest = 20_000
                 let nw = 400_000_000.0
-                let before = s.cash + s.savings
+                let before = s.cash
                 PersonalFinance.yearEnd(&s, context: ctx, netWorth: nw, ownedCompanyValue: 0)
                 let expected = 1_000_000 * c.capitalGainsTax + 400_000 * c.dividendTax + 20_000 * c.savingsInterestTax
                     + max(0, nw - c.wealthThreshold) * c.wealthRate
-                XCTAssertEqual(before - (s.cash + s.savings), expected, accuracy: 3, "\(code) year-end tax")
+                XCTAssertEqual(before - (s.cash), expected, accuracy: 3, "\(code) year-end tax")
                 XCTAssertEqual(s.tax.gains, 0, "\(code) tax year reset")
                 XCTAssertEqual(s.tax.dividends, 0, code)
             }

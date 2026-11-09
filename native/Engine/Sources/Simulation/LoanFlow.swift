@@ -11,10 +11,8 @@ import Investments
 
 /// Where the money of a loan lands.
 public enum LoanPayout: String, CaseIterable, Sendable {
-    /// The borrower's current account (a company's account for a company loan).
+    /// The borrower's account (a company's account for a company loan).
     case current
-    /// A personal loan can be paid straight into savings.
-    case savings
 }
 
 public struct LoanPayoutAccount: Equatable, Sendable, Identifiable {
@@ -103,19 +101,18 @@ public extension GameEngine {
             let q = loanQuote(kind: kind, amount: atMax, termMonths: t, companyID: companyID)
             return LoanExample(termMonths: t, monthlyPayment: q.monthlyPayment, totalInterest: q.totalInterest)
         } : []
-        let guarantee = kind == "biz" ? (companyID.flatMap { state.company($0) }?.form != .limited) : false
+        let guarantee = false
         var conditions = [
             "The loan owed is the full amount you choose; the arrangement fee of \(String(format: "%.2f%%", probe.feeRate * 100)) is taken when the money is paid out.",
             "Interest follows the central bank rate plus the bank's margin for credit band \(offer.creditBand). The instalment is re-worked every month at that month's rate.",
             "Instalments are taken on the last day of each month. A payment the account cannot cover adds the unpaid interest and a penalty and lowers the credit score.",
         ]
-        if kind == "biz" { conditions.append(guarantee ? "You are personally liable for this loan." : "Loans signed earlier keep your personal guarantee; this new one is the company's.") }
+        if kind == "biz" { conditions.append("This loan is the company's: you are not personally liable unless you sign a guarantee.") }
         var accounts: [LoanPayoutAccount] = []
         if let c = companyID.flatMap({ state.company($0) }) {
             accounts.append(LoanPayoutAccount(id: .current, name: c.name + " account", balance: c.cash))
         } else {
-            accounts.append(LoanPayoutAccount(id: .current, name: "Your personal account", balance: state.cash))
-            accounts.append(LoanPayoutAccount(id: .savings, name: "Your savings", balance: state.savings))
+            accounts.append(LoanPayoutAccount(id: .current, name: "Your account", balance: state.cash))
         }
         return LoanAssessment(kind: kind, companyID: companyID, borrowerName: borrower, approved: approved, refusal: refusal, minimum: minimum, maximum: atMax,
                               creditBand: offer.creditBand, yearlyRate: probe.yearlyRate, feeRate: probe.feeRate, termOptions: terms, defaultTermMonths: defaultTerm,

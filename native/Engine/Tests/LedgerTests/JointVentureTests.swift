@@ -95,7 +95,7 @@ final class JointVentureTests: XCTestCase {
     private func makeCompany(seed: Int) throws -> (engine: GameEngine, id: Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 8_000_000) else { throw XCTSkip("could not start a company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 8_000_000) else { throw XCTSkip("could not start a company") }
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return (e, id)
     }

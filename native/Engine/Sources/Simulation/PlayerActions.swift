@@ -15,13 +15,13 @@ public extension GameEngine {
     // MARK: Companies
 
     /// Create a company and set it up with standard choices. Returns its id.
-    mutating func startCompany(tradeID: String, cityID: String, form: LegalForm, size: Double? = nil, name: String? = nil, countryCode: String? = nil,
+    mutating func startCompany(tradeID: String, cityID: String, size: Double? = nil, name: String? = nil, countryCode: String? = nil,
                                accountantID: Int? = nil, fundWith amount: Double, quickSetup: Bool = true) -> Result<Int, CompanySetup.StartError> {
         var result: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
         // Trades whose weekly model is not ported yet would sit inert, so they cannot be started.
         guard let trade = data.catalog[tradeID], SpecialFamilies.isStartable(trade) else { return .failure(.notYetAvailable) }
         update { s, data, ctx in
-            result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, form: form, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
+            result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
             if case .success(let id) = result {
                 if amount > 0 { Payments.injectCash(&s, companyID: id, amount: min(amount, Payments.liquid(s))) }
                 if quickSetup && Tutorial.isComplete(s) { _ = CompanySetup.quickSetup(&s, companyID: id, data: data) }
@@ -229,7 +229,7 @@ public extension GameEngine {
             let co = companyID.flatMap { s.company($0) }
             let value = co.map { Valuation.companyValue($0, state: s, trades: data.catalog) }
             let collateral = Luxury.collateral(s)
-            switch Banking.take(kind: kind, amount: amount, termMonths: termMonths, company: co, guaranteed: co?.form == .soleTrader, state: &s, netWorth: nw, collateral: collateral,
+            switch Banking.take(kind: kind, amount: amount, termMonths: termMonths, company: co, guaranteed: false, state: &s, netWorth: nw, collateral: collateral,
                                 companyValue: value, context: ctx) {
             case .ok: out = .ok
             case .declined: out = .declined
@@ -256,18 +256,11 @@ public extension GameEngine {
         return ok
     }
 
-    mutating func takeMoneyOut(companyID: Int, amount: Double) -> Payments.WithdrawResult {
-        var r = Payments.WithdrawResult.notEnoughCash
-        update { s, _, _ in r = Payments.withdrawCash(&s, companyID: companyID, amount: amount) }
-        return r
-    }
-
-    /// Pays the owner whatever the company's form allows: a salary (limited) or a drawing (sole trader). Either completes ladder M6.
+    /// Pays the owner a salary through the company's payroll (the only way to take money out besides dividends). Completes ladder M6.
     @discardableResult
     mutating func payYourself(companyID: Int, monthly: Double) -> Bool {
-        guard let co = state.company(companyID) else { return false }
-        if co.form == .limited { return !setOwnerSalary(companyID: companyID, monthly: monthly).isRefused }
-        return takeMoneyOut(companyID: companyID, amount: monthly / 4) == .ok
+        guard state.company(companyID) != nil else { return false }
+        return !setOwnerSalary(companyID: companyID, monthly: monthly).isRefused
     }
 
     /// True once ladder milestone M8 has unlocked the classic start (the app mirrors it into `ledger.classicStartUnlocked`).
@@ -280,14 +273,26 @@ public extension GameEngine {
         return r
     }
 
+    /// Most monthly owner pay a company can carry: a sixth of its own equity (assets less debts, so borrowed cash adds nothing) plus its average
+    /// monthly profit over the last three months before owner pay. Stops a loan being drawn out as salary and the company then walking away from it.
+    func ownerSalaryRoom(companyID: Int) -> Double {
+        guard let co = state.company(companyID) else { return 0 }
+        let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: state.loans)
+        let recent = co.monthlyHistory.suffix(3)
+        let earned = recent.isEmpty ? 0 : recent.reduce(0) { $0 + $1.profit } / Double(recent.count) + co.ownerMonthlySalary
+        return max(0, equity / 6) + max(0, earned)
+    }
+
     @discardableResult
     mutating func setOwnerSalary(companyID: Int, monthly: Double) -> SettingResult {
+        let room = ownerSalaryRoom(companyID: companyID)
         applySetting(refuse: { s in
             guard let co = s.company(companyID) else { return "That company no longer exists." }
             if let why = JointVenture.payoutBlock(s, companyID: companyID), monthly > co.ownerMonthlySalary { return why }
-            return co.form == .limited ? nil : "Only a limited company can pay its owner a salary."
+            if monthly > room && monthly > co.ownerMonthlySalary { return "That is more than this company can carry as owner pay. Take the rest as a dividend." }
+            return nil
         }, probe: { $0.companySnapshot(companyID) }) { s, data, ctx in
-            guard let i = s.companyIndex(companyID), s.companies[i].form == .limited else { return }
+            guard let i = s.companyIndex(companyID) else { return }
             s.companies[i].ownerMonthlySalary = max(0, ctx.currency(s.companies[i].countryCode, s).roundedStep(monthly, about: 100))
         }
     }
@@ -307,41 +312,12 @@ public extension GameEngine {
             PersonalFinance.withholdNow(&s, context: ctx)   // the tax on the gain is paid at the sale
         }
     }
-    mutating func moveToSavings(_ amount: Double) -> Bool {
-        var ok = false
-        update { s, _, _ in ok = Brokerage.moveToSavings(&s, amount) }
-        return ok
-    }
     mutating func openDeposit(amount: Double, weeks: Int) -> Bool {
         var ok = false
         update { s, _, _ in ok = Brokerage.openDeposit(&s, amount: amount, weeks: weeks) }
         return ok
     }
 
-    // MARK: Payroll
-
-    /// Change a company's pay day (1, 5, 10, 12, 15, 20, 25, 28 or 0 = last day). The change is queued until this month's payroll is paid.
-    @discardableResult
-    mutating func setPayday(companyID: Int, day: Int) -> Payday.PaydayChange {
-        var r = Payday.PaydayChange.noCompany
-        update { s, _, _ in
-            r = Payday.setPayday(&s, companyID: companyID, day: day, today: Payday.dayNumber(week: s.week, day: s.day))
-        }
-        return r
-    }
-
-    /// LEGACY: the player no longer chooses who runs payroll (`Payday.responsibility` derives it: qualified accountant, else suitable manager, else the player).
-    /// The value is only remembered in the save (`PayrollOverview.legacyChosenMode`).
-    @discardableResult
-    mutating func setPayrollMode(companyID: Int, mode: Payday.Mode?) -> SettingResult {
-        applySetting(refuse: { $0.company(companyID) == nil ? "That company no longer exists." : nil }, probe: { $0.companySnapshot(companyID) }) { s, _, _ in
-            guard let i = s.companyIndex(companyID) else { return }
-            let t = Payday.dayNumber(week: s.week, day: s.day)
-            var cfg = Payday.config(s.companies[i], today: t)
-            cfg.mode = mode
-            s.companies[i].set("pr29", cfg.json)
-        }
-    }
 }
 
 public extension Banking {

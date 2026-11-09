@@ -146,7 +146,7 @@ public enum CompanySetup {
             Payments.companyPays(&s, companyID: companyID, amount: t.downPayment, category: nil, label: "Premises purchase (equity)")
             let loanID = EquipmentMarket.openLoan(&s, companyID: companyID, name: "Commercial mortgage", amount: t.purchasePrice - t.downPayment, months: 180,
                                                   extraMargin: max(0.012, Banking.creditMargin(s.credit) * 0.45) + 0.004 - Banking.creditMargin(s.credit))
-            if let li = s.loans.firstIndex(where: { $0.id == loanID }) { s.loans[li].isGuaranteed = co.form != .limited }
+            if let li = s.loans.firstIndex(where: { $0.id == loanID }) { s.loans[li].isGuaranteed = false }
             s.companies[i].set("prem", .object(["kind": .string(kind), "m2": .number(m2), "rent": 0, "owned": true, "val": .number(t.purchasePrice), "loan": .number(Double(loanID)), "cost": .number(t.purchasePrice),
                                                 "loc": .number(lst.location), "lname": .string(lst.name), "landlord": .string(lst.landlord)]))
         } else {
@@ -282,9 +282,9 @@ public enum CompanySetup {
 
     // MARK: Creating a company
 
-    /// Create a company in the setup state. The legal form decides liability and tax: a limited company needs share
-    /// capital and a registration fee and an accountant; a sole trader needs none but is personally liable.
-    public static func create(_ s: inout GameState, tradeID: String, cityID: String, form: LegalForm, size: Double? = nil, name: String? = nil,
+    /// Create a company in the setup state. Every company is a limited company: it needs share capital, a registration fee and an
+    /// accountant, and its owner is liable only for what was put in (plus loans signed personally).
+    public static func create(_ s: inout GameState, tradeID: String, cityID: String, size: Double? = nil, name: String? = nil,
                               countryCode: String? = nil, accountantID: Int? = nil, data: GameData, context: FinanceContext) -> Result<Int, StartError> {
         guard let bd = data.catalog[tradeID] else { return .failure(.notAllowedHere) }
         let code = countryCode ?? s.homeCountryCode
@@ -294,13 +294,13 @@ public enum CompanySetup {
         let abroad = code != s.homeCountryCode
         let abroadFee = abroad ? Luxury.abroadFee(Ambitions.abroadFee(context.currency(code, s).scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) : 0
         if abroad && s.cash < abroadFee + currency.scaledPrice(50000) { return .failure(.notEnoughCash) }
-        if form == .limited && s.cash < country.shareCapitalMinimum + country.registrationFee + abroadFee { return .failure(.notEnoughCash) }
+        if s.cash < country.shareCapitalMinimum + country.registrationFee + abroadFee { return .failure(.notEnoughCash) }
         let chosenSize = size ?? recommendedSize(bd, city: city)
         var co = Company(raw: [:])
         co.id = s.makeID()
         co.type = tradeID; co.countryCode = code
         co.name = name ?? generateName(country: country, family: bd.family, &s.random)
-        co.cityID = city.id; co.form = form; co.size = chosenSize; co.status = .setup
+        co.cityID = city.id; co.size = chosenSize; co.status = .setup
         co.foundedWeek = s.week; co.openedWeek = nil; co.cash = 0; co.ownership = 100
         co.set("holders", .array([])); co.set("docs", .object([:])); co.set("eq", .object([:])); co.set("veh", .array([])); co.set("lease", .object([:]))
         co.set("staff", .array([])); co.set("mgrWage", 0); co.set("mgrBonus", 0)
@@ -325,16 +325,14 @@ public enum CompanySetup {
         s.companies.append(co)
         let i = s.companies.count - 1
         let id = co.id
-        if form == .limited {
-            Payments.playerPays(&s, country.registrationFee, label: "Registration of \(co.name)", companyID: id)
-            Payments.playerPays(&s, country.shareCapitalMinimum, label: "Share capital", companyID: id)
-            Ledger.moveRaw(&s, .company(id), country.shareCapitalMinimum)
-            s.companies[i].ownerNetFlow += country.shareCapitalMinimum
-            s.companies[i].shareCapital = country.shareCapitalMinimum
-            s.companies[i].injectedCapital += country.shareCapitalMinimum
-            s.companies[i].addTransaction(week: s.week, amount: country.shareCapitalMinimum, label: "Share capital paid in")
-            chooseAccountant(&s, companyID: id, accountantID: accountantID, data: data)
-        }
+        Payments.playerPays(&s, country.registrationFee, label: "Registration of \(co.name)", companyID: id)
+        Payments.playerPays(&s, country.shareCapitalMinimum, label: "Share capital", companyID: id)
+        Ledger.moveRaw(&s, .company(id), country.shareCapitalMinimum)
+        s.companies[i].ownerNetFlow += country.shareCapitalMinimum
+        s.companies[i].shareCapital = country.shareCapitalMinimum
+        s.companies[i].injectedCapital += country.shareCapitalMinimum
+        s.companies[i].addTransaction(week: s.week, amount: country.shareCapitalMinimum, label: "Share capital paid in")
+        chooseAccountant(&s, companyID: id, accountantID: accountantID, data: data)
         if abroad { Payments.playerPays(&s, abroadFee, label: "Local representative, travel and legal counsel abroad", companyID: id) }
         // The owner works there within the hours they have left.
         let used = CapacityModel.ownerHoursCommitted(s, except: id)
@@ -402,13 +400,13 @@ public enum CompanySetup {
     }
 
     /// What it takes to start this business, on the new-company screen. Original: `setupEstimate`.
-    public static func estimate(tradeID: String, cityID: String, form: LegalForm, size: Double, countryCode: String? = nil, state s: GameState, data: GameData) -> Estimate? {
+    public static func estimate(tradeID: String, cityID: String, size: Double, countryCode: String? = nil, state s: GameState, data: GameData) -> Estimate? {
         guard let bd = data.catalog[tradeID] else { return nil }
         let code = countryCode ?? s.homeCountryCode
         guard let country = data.countries[code], let city = country.city(cityID) ?? country.cities.first else { return nil }
         var tmp = s
         let cx = FinanceContext(countries: data.countries, trades: data.catalog)
-        let result = create(&tmp, tradeID: tradeID, cityID: city.id, form: form, size: size, name: "tmp", countryCode: code, data: data, context: cx)
+        let result = create(&tmp, tradeID: tradeID, cityID: city.id, size: size, name: "tmp", countryCode: code, data: data, context: cx)
         guard case .success(let id) = result, let i = tmp.companyIndex(id) else { return nil }
         let co = tmp.companies[i]
         let w = World(state: tmp, data: data)
@@ -463,7 +461,7 @@ public enum CompanySetup {
         r.premisesFitOut = min(r.premises, round(r.premisesFitOut)); r.monthlyRent = round(monthlyRent); r.premisesLeast = min(r.premises, round(r.premisesLeast))
         r.requiredEquipment = round(r.requiredEquipment); r.requiredEquipmentUpfront = round(r.requiredEquipmentUpfront); r.requiredVehicles = round(r.requiredVehicles); r.minimumPayroll = round(r.minimumPayroll)
         r.stock = round(r.stock); r.firstPayroll = round(r.firstPayroll); r.buffer = round(r.buffer); r.property = round(r.property); r.wait = round(r.wait)
-        if form == .limited { r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum }
+        r.registration = country.registrationFee; r.shareCapital = country.shareCapitalMinimum
         if code != s.homeCountryCode { r.abroad = Luxury.abroadFee(Ambitions.abroadFee(cur.scaledPrice(220000 + bd.openingCost * 1.5), s, data), s) }
         return r
     }

@@ -14,7 +14,7 @@ final class EmploymentTests: XCTestCase {
     private func shop(_ code: String = "UK", trade: String = "cafe", seed: Int = 9) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 200_000_000) else { XCTFail("start \(code)"); throw CocoaError(.fileReadUnknown) }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 200_000_000) else { XCTFail("start \(code)"); throw CocoaError(.fileReadUnknown) }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { _ = e.nextDay(); days += 1 }
         return (e, id)
@@ -59,9 +59,6 @@ final class EmploymentTests: XCTestCase {
                 let booked = try XCTUnwrap(e.employerCost(companyID: id, personID: pid))
                 XCTAssertEqual(booked.totalMonthly, preview.totalMonthly, accuracy: 0.5, "\(code) \(pct): preview equals booked")
                 XCTAssertEqual(booked.workingPercentage, pct / 100, accuracy: 0.004)
-                let sheet = try XCTUnwrap(e.timesheets(companyID: id)?.first { $0.id == pid })
-                XCTAssertEqual(sheet.contractedHoursPerWeek, EmploymentContract.hours(m), accuracy: 1e-9, "\(code) \(pct): timesheet expects the contracted hours")
-                XCTAssertEqual(sheet.expectedHoursInMonth, EmploymentContract.hours(m) * 52 / 12, accuracy: 1e-6)
             }
             let tm = try XCTUnwrap(e.teamMetrics(companyID: id))
             let hours = e.state.company(id)!.staff.reduce(0) { $0 + EmploymentContract.hours($1) }

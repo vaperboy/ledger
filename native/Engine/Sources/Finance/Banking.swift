@@ -112,7 +112,7 @@ public enum Banking {
         let owedC = co.map { c in s.loans.filter { $0.companyID == c.id }.reduce(0) { $0 + $1.balance } } ?? 0
         let payP = personal.reduce(0) { $0 + $1.monthlyPayment } * 12
         let payC = co.map { c in s.loans.filter { $0.companyID == c.id }.reduce(0) { $0 + $1.monthlyPayment } * 12 } ?? 0
-        let openLimited = s.companies.filter { $0.status == .open && $0.form == .limited }
+        let openLimited = s.companies.filter { $0.status == .open }
         let ownerSalaries = openLimited.reduce(0) { $0 + $1.ownerMonthlySalary * 12 }
         let profitShare = 0.4 * s.companies.filter { $0.status == .open }.reduce(0) {
             $0 + max(0, CompanyFigures.yearlyProfitEstimate($1, currentWeek: s.week)) * $1.ownership / 100
@@ -271,7 +271,6 @@ public enum Banking {
         if l.companyID != 0, let ci = s.companyIndex(l.companyID) {
             if s.companies[ci].cash < amount { return .notEnoughMoney }
         } else if Payments.liquid(s) < amount { return .notEnoughMoney }
-        if l.companyID == 0 { Payments.transferFromSavings(&s, need: amount) }
         settle(&s, loan: l, inst: inst, context: context)
         guard let lj = s.loans.firstIndex(where: { $0.id == loanID }) else { return .paid(amount) }
         s.loans[lj].set("ptm", .number(Double(GameCalendar.monthIndex(week: s.week))))
@@ -313,8 +312,7 @@ public enum Banking {
             Payments.companyPays(&s, companyID: loan.companyID, amount: amt, category: nil, label: "Loan repaid")
             if accrued > 0 { Payments.companyPays(&s, companyID: loan.companyID, amount: accrued, category: "int", label: "Loan interest to payoff date") }
         } else {
-            if s.cash + s.savings < amt + accrued { return false }
-            Payments.transferFromSavings(&s, need: amt + accrued)
+            if s.cash < amt + accrued { return false }
             Payments.playerPays(&s, amt, label: "Loan repaid")
             if accrued > 0 { Payments.playerPays(&s, accrued, label: "Loan interest to payoff date"); s.stats.interestPaid += accrued }
         }

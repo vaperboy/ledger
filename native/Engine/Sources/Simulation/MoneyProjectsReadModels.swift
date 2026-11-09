@@ -61,7 +61,7 @@ public struct AcquisitionPlan: Equatable, Sendable {
     public var startupMoney: Double
     /// The reserve a bank wants you to keep after buying a business as its own company.
     public var reserve: Double
-    /// What you have: cash plus savings (own company, branch, own bank) or the current account (merge, close, franchise).
+    /// What you have: the account's balance.
     public var liquid: Double
     public var cash: Double
     /// The rival is in money trouble: unpaid bills may surface after the purchase.

@@ -16,9 +16,9 @@ final class SpecialTradesTests: XCTestCase {
     static func start(_ e: inout GameEngine, _ trade: String, extra: Double = 0) -> Int {
         var id = 0
         e.update { s, data, ctx in
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.3 + extra)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
@@ -129,7 +129,7 @@ final class SpecialTradesTests: XCTestCase {
                     id = Self.start(&e, trade, extra: trade == "salmon" ? 100_000_000 : 300_000_000)
                     if trade == "oilgas" { e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: 1_500_000_000) }; _ = e.buyOilStake(companyID: id, thousandBarrels: 5000) }
                     invested = e.state.company(id)?.value("inj").double ?? 0
-                    let est = CompanySetup.estimate(tradeID: trade, cityID: e.state.player.cityID, form: .limited, size: 1, state: e.state, data: e.data)
+                    let est = CompanySetup.estimate(tradeID: trade, cityID: e.state.player.cityID, size: 1, state: e.state, data: e.data)
                     invested = (est?.total ?? 0)
                 }
                 guard id != 0 else { lines.append("seed \(seed): not started"); continue }

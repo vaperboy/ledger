@@ -25,9 +25,9 @@ final class BalanceProbeTests: XCTestCase {
         var id = 0, invested = 0.0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             invested = (est?.total ?? 1_000_000) * (Double(ProcessInfo.processInfo.environment["LEDGER_CASHX"] ?? "") ?? 1.3)
             Payments.injectCash(&s, companyID: id, amount: invested)
             // An owner who does not work in the business: the standard team does everything (how an empire scales)
@@ -145,9 +145,9 @@ extension BalanceProbeTests {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * (Double(ProcessInfo.processInfo.environment["LEDGER_CASHX"] ?? "") ?? 1.3))
             if ProcessInfo.processInfo.environment["LEDGER_NOOWNER"] != nil { s.companies[s.companyIndex(id)!].ownerHours = 0 }
             print("TRACE setup log:", CompanySetup.quickSetup(&s, companyID: id, data: data))
@@ -239,9 +239,9 @@ final class BalanceGuardTests: XCTestCase {
             var id = 0
             e.update { s, data, ctx in
                 Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-                guard case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+                guard case .success(let i) = CompanySetup.create(&s, tradeID: t, cityID: s.player.cityID, data: data, context: ctx) else { return }
                 id = i
-                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                let est = CompanySetup.estimate(tradeID: t, cityID: s.player.cityID, size: 1, state: s, data: data)
                 Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 0) * 1.2)
                 _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
             }
@@ -257,7 +257,7 @@ final class BalanceGuardTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
             Payments.injectCash(&s, companyID: id, amount: 3_000_000)
             s.companies[s.companyIndex(id)!].ownerHours = 0

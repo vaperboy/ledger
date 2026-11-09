@@ -15,7 +15,7 @@ final class BrokersTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 900_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
             _ = Payments.injectCash(&s, companyID: id, amount: 6_000_000)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
@@ -95,7 +95,7 @@ final class BrokersTests: XCTestCase {
         var (e, id) = try game("travel")
         var airline = 0
         e.update { s, data, ctx in
-            guard case .success(let a) = CompanySetup.create(&s, tradeID: "airline", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let a) = CompanySetup.create(&s, tradeID: "airline", cityID: s.player.cityID, data: data, context: ctx) else { return }
             airline = a
             _ = Payments.injectCash(&s, companyID: a, amount: 5_000_000)
             s.companies[s.companyIndex(a)!].status = .open

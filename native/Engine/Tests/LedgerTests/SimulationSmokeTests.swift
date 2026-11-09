@@ -12,14 +12,14 @@ final class SimulationSmokeTests: XCTestCase {
         try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
     }
 
-    func startCompany(_ e: inout GameEngine, trade: String, form: LegalForm = .limited, fund: Double = 0) throws -> Int {
+    func startCompany(_ e: inout GameEngine, trade: String, fund: Double = 0) throws -> Int {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            let r = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: form, data: data, context: ctx)
+            let r = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx)
             if case .success(let i) = r { id = i }
             // The reference script (tools/ref/snippets/stats_run.js) asks for the estimate at size 1, whatever size the company has.
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: form, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.6 + fund)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data, faithfulHiring: BalanceTraceTests.faithful)
         }
@@ -62,7 +62,7 @@ final class SimulationSmokeTests: XCTestCase {
     func testEveryNativeFamilyRunsWithoutErrors() throws {
         for trade in ["barber", "boutique", "webdev", "bakery", "taxi", "gym", "cleaning", "courier", "hotel", "hardware", "physio", "brewery", "restaurant", "grocery", "kiosk"] {
             var e = try newEngine("DE", seed: 99)
-            let id = try startCompany(&e, trade: trade, form: .limited, fund: 3_000_000)
+            let id = try startCompany(&e, trade: trade, fund: 3_000_000)
             for _ in 0..<(10 * 7) { e.nextDay() }
             let gaps = Ledger.gaps(e.state)
             XCTAssertTrue(gaps.isEmpty, "\(trade): ledger gaps \(gaps)")
@@ -121,7 +121,7 @@ extension SimulationSmokeTests {
         var log: [String] = []
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: data, context: ctx) { id = i }
             Payments.injectCash(&s, companyID: id, amount: 3_000_000)
             log = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
@@ -191,8 +191,8 @@ extension SimulationSmokeTests {
             var id = 0
             e.update { s, data, ctx in
                 Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-                if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
-                let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: s.company(id)!.size, state: s, data: data)!
+                if case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) { id = i }
+                let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: s.company(id)!.size, state: s, data: data)!
                 print("SETUP \(trade) size=\(s.company(id)!.size) est=\(est)")
                 Payments.injectCash(&s, companyID: id, amount: est.total * 1.6)
                 let before = s.company(id)!.cash
@@ -325,7 +325,7 @@ extension SimulationSmokeTests {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            if case .success(let i) = CompanySetup.create(&s, tradeID: "gym", cityID: s.player.cityID, form: .limited, data: data, context: ctx) { id = i }
+            if case .success(let i) = CompanySetup.create(&s, tradeID: "gym", cityID: s.player.cityID, data: data, context: ctx) { id = i }
         }
         for role in ["trainer", "recept"] {
             var ratios: [Double] = [], skills: [Double] = [], asks: [Double] = [], mkt = 0.0
@@ -371,7 +371,7 @@ extension SimulationSmokeTests {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 21)
         e.update { s, _, _ in Ledger.move(&s, .me, 40_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 8_000_000) else { return }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 8_000_000) else { return }
         for d in 0..<(120 * 7) {
             e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
             if d % (7 * 10) == 0 { let co = e.state.company(id)!; print("TALK wk=\(e.state.week) status=\(co.status) staff=\(co.staff.count) open=\(e.openDecisions.map { $0.title }.prefix(3)) cash=\(Int(co.cash))") }
@@ -411,7 +411,7 @@ extension SimulationSmokeTests {
         guard ProcessInfo.processInfo.environment["LEDGER_STATS"] != nil else { return }
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 8_000_000) else { return }
+        guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, fundWith: 8_000_000) else { return }
         for d in 0..<(20 * 7) {
             e.nextDay()
             if d % 14 == 0 { let c = e.state.company(id)!; print("PAYDBG wk=\(e.state.week) st=\(c.status) staff=\(c.staff.count) cash=\(Int(c.cash)) msgs=\(e.state.inbox.filter { $0.actionID.hasPrefix("pay") }.map { $0.actionID + ":" + $0.status })") }

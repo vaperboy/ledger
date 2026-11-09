@@ -6,12 +6,6 @@ public enum CompanyStatus: String, Sendable {
     public var isLive: Bool { self != .sold && self != .bust }
 }
 
-/// Which legal form. Original: `co.form`. ENK = sole trader (the owner is personally liable), AS = limited company.
-public enum LegalForm: String, Sendable {
-    case soleTrader
-    case limited
-}
-
 /// Category totals for a company's books: this week, this month, this year, last year and since the start.
 /// Categories: rev, cogs, wages, rent, mkt, ins, oth, dep, int, fine, loss, acc, tax.
 public struct Books: Equatable, Sendable {
@@ -57,7 +51,6 @@ public struct Company: JSONRecord, Identifiable {
     public var countryCode: String { get { str("country") } set { set("country", newValue) } }
     public var name: String { get { str("name") } set { set("name", newValue) } }
     public var cityID: String { get { str("city") } set { set("city", newValue) } }
-    public var form: LegalForm { get { LegalForm(rawValue: str("form")) ?? .soleTrader } set { set("form", newValue.rawValue) } }
     public var size: Double { get { num("size", 1) } set { set("size", newValue) } }
     public var status: CompanyStatus { get { CompanyStatus(rawValue: str("st", "setup")) ?? .setup } set { set("st", newValue.rawValue) } }
     /// Week the company was founded / opened. Original: `w0`, `wOpen`.

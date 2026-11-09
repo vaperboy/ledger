@@ -86,7 +86,7 @@ public enum Unlocks {
     /// The board matters now: it exists (a chain, or co-owners), or a limited company has a manager who advises it.
     static func boardPossible(_ s: GameState, _ co: Company) -> Bool {
         if ManagerModel.boardActive(s, key: ManagerModel.boardKey(s, co)) { return true }
-        return co.form == .limited && co.managerID != nil
+        return co.managerID != nil
     }
 
     /// A company that already uses a feature keeps it, whatever the rule says.
@@ -117,7 +117,6 @@ public enum Unlocks {
         let ok: Bool = Gates.met(e.rule, s, data: nil, company: co, context: context) || alreadyUses(d.id, s, co)
         var reason: String = e.text
         if case .weeksTraded = e.rule { reason += " (\(weeksTraded(s, co)) so far)" }
-        if d.id == "dividends" && co.form != .limited { reason = "Unlocks for a limited company with retained profit" }
         return (ok, reason)
     }
 

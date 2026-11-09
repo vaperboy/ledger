@@ -93,7 +93,6 @@ public enum Shareholders {
         let list = s.companies[i].value("holders").array
         guard let k = list.firstIndex(where: { $0["name"].string == name }) else { return false }
         let h = list[k]
-        Payments.transferFromSavings(&s, need: price)
         Payments.playerPays(&s, price, label: "Bought \(name)'s stake in \(s.companies[i].name)", companyID: companyID)
         CapTable.buyFromHolder(&s, i, holder: name)
         if h["pct"].double >= 20 {
@@ -121,7 +120,7 @@ public enum Shareholders {
     /// Dividend by policy, then the owners' mood. Original: `quarter`.
     static func quarter(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
-        guard co.status == .open, co.form == .limited, co.type != "hold" else { return }
+        guard co.status == .open, co.type != "hold" else { return }
         // A chain's quarter is decided once, at its head office, on the profit of all its branches.
         let br = s.chainStores(of: co)
         if br.count >= 2 && br[0].id != co.id { return }
@@ -264,7 +263,6 @@ public enum Shareholders {
             if idx == 0 {
                 let amt = d["amt"].double
                 if Payments.liquid(s) >= amt, CapTable.table(co).holders.contains(where: { $0.name == hn }) {
-                    Payments.transferFromSavings(&s, need: amt)
                     Payments.playerPays(&s, amt, label: "Bought \(hn)'s stake in \(co.name)", companyID: id)
                     CapTable.buyFromHolder(&s, i, holder: hn)
                     s.note("You bought \(hn)'s stake in \(co.name) before it could be sold on. You now own \(Int(saturating: s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)
@@ -279,7 +277,6 @@ public enum Shareholders {
             if idx == 0, let k = list.firstIndex(where: { $0["name"].string == hn }) {
                 let h = list[k], amt = d["amt"].double
                 if Payments.liquid(s) < amt { s.note("You do not have \(fc.currency(co.countryCode, s).display(amt)) to buy the stake.", tone: "bad", companyID: id); refused(&s, i, d, data: data, context: fc); return }
-                Payments.transferFromSavings(&s, need: amt)
                 Payments.playerPays(&s, amt, label: "Bought \(hn)'s stake in \(co.name)", companyID: id)
                 CapTable.buyFromHolder(&s, i, holder: hn)
                 s.note("You bought back \(String(format: "%.1f", h["pct"].double))% of \(co.name). You now own \(Int(saturating: s.companies[i].ownership.rounded()))%.", tone: "good", companyID: id)

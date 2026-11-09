@@ -5,7 +5,7 @@ import Finance
 import Investments
 
 /// What a purchase or a sale would do, read from the same rules `Brokerage.buy` and `Brokerage.sell` apply (fee, smallest order, the price
-/// the crypto trade really gets, savings topping up the current account). Nothing here changes the game.
+/// the crypto trade really gets). Nothing here changes the game.
 public struct TradeQuote: Equatable, Sendable {
     public var amount: Double
     public var fee: Double
@@ -14,7 +14,7 @@ public struct TradeQuote: Equatable, Sendable {
     /// Selling: what reaches the account after the fee. Buying: what leaves it (amount plus fee).
     public var cashChange: Double
     public var minimumPurchase: Double
-    /// Buying: current account plus savings, what the broker can draw on.
+    /// Buying: the account's balance, what the broker can draw on.
     public var available: Double
     public var cashAfter: Double
     /// Why it would not go through, in words (nil when it would).
@@ -32,11 +32,11 @@ public extension GameEngine {
         let liquid = Payments.liquid(state)
         var refusal: String?
         if amt < minimum { refusal = "The smallest order is \(cur.display(minimum))." }
-        else if liquid < amt + fee { refusal = "That needs \(cur.display(amt + fee)) with the fee; the current account and savings hold \(cur.display(max(0, liquid)))." }
+        else if liquid < amt + fee { refusal = "That needs \(cur.display(amt + fee)) with the fee; your account holds \(cur.display(max(0, liquid)))." }
         else if kind == .stock { refusal = "Buying shares in listed companies is not offered. Shares you already hold can be sold." }
         else if kind == .crypto, state.rest["crypto"]?[symbol]["dead"].bool == true { refusal = "Trading in \(symbol) has stopped." }
         return TradeQuote(amount: amt, fee: fee, units: px > 0 ? amt / px : 0, cashChange: amt + fee, minimumPurchase: minimum, available: liquid,
-                          cashAfter: state.cash + state.savings - (amt + fee), refusal: refusal)
+                          cashAfter: state.cash - (amt + fee), refusal: refusal)
     }
 
     /// Selling `fraction` (0...1) of what is held.
@@ -50,6 +50,6 @@ public extension GameEngine {
         let fee = kind == .crypto ? value * 0.004 : Brokerage.brokerFee(value, currency: cur)
         let refusal: String? = units <= 0 ? "There is nothing held to sell." : nil
         return TradeQuote(amount: value, fee: fee, units: units, cashChange: max(0, value - fee), minimumPurchase: 0, available: Payments.liquid(state),
-                          cashAfter: state.cash + state.savings + max(0, value - fee), refusal: refusal)
+                          cashAfter: state.cash + max(0, value - fee), refusal: refusal)
     }
 }

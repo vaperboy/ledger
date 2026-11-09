@@ -15,8 +15,8 @@ final class DaySlicesTests: XCTestCase {
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 400_000_000, why: "Test funds")
             for _ in 0..<count {
-                guard case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { continue }
-                let est = CompanySetup.estimate(tradeID: "cafe", cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+                guard case .success(let i) = CompanySetup.create(&s, tradeID: "cafe", cityID: s.player.cityID, data: data, context: ctx) else { continue }
+                let est = CompanySetup.estimate(tradeID: "cafe", cityID: s.player.cityID, size: 1, state: s, data: data)
                 Payments.injectCash(&s, companyID: i, amount: (est?.total ?? 1_000_000) * 1.6 + 3_000_000)
                 _ = CompanySetup.quickSetup(&s, companyID: i, data: data)
                 ids.append(i)

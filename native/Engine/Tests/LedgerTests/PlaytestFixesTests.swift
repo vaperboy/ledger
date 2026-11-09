@@ -22,7 +22,7 @@ final class PlaytestFixesTests: XCTestCase {
     func testBusinessLoanDecisionAgreesWithOffer() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds"); s.credit = 85 }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("could not start") }
         let most = e.loanOffer(kind: "biz", amount: 0, companyID: id).maximum
         XCTAssertGreaterThan(most, 0)
         let docs = LoanDocuments(fullName: "T", incomeProof: .payslips, companyPapers: .registration)

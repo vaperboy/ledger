@@ -9,7 +9,7 @@ final class ComplaintAnswerTests: XCTestCase {
     private func run(_ answer: Satisfaction.Answer) throws -> (result: Bool?, again: Bool?, open: Int, gaps: Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 5_000_000) else { throw XCTSkip("no cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { throw XCTSkip("no cafe") }
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             s.companies[i].set("compl", .array([.object(["id": 5, "w": .number(Double(s.week)), "who": "A", "t": "Late.", "sev": 2, "st": "open"])]))

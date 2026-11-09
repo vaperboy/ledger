@@ -8,10 +8,10 @@ import Simulation
 
 /// The books balance after each money event, valuation is not double counted, employment pay lines, management routing, and a save mid-game.
 final class ReconciliationTests: XCTestCase {
-    private func firm(_ code: String = "UK", trade: String = "cafe", form: LegalForm = .limited, seed: Int = 31, days: Int = 14) throws -> (GameEngine, Int) {
+    private func firm(_ code: String = "UK", trade: String = "cafe", seed: Int = 31, days: Int = 14) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 400_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: form, fundWith: 120_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 120_000_000) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
         for _ in 0..<days { _ = e.nextDay() }
@@ -34,14 +34,6 @@ final class ReconciliationTests: XCTestCase {
 
     // MARK: financial reconciliation
 
-    func testConversionKeepsTheBooksBalanced() throws {
-        var (e, id) = try firm(form: .soleTrader)
-        XCTAssertEqual(e.convertToLimited(companyID: id), .ok)
-        balanced(e, "conversion")
-        for _ in 0..<14 { _ = e.nextDay() }
-        balanced(e, "two weeks after conversion")
-    }
-
     func testLoanTakenAndRepaidKeepsTheBooksBalanced() throws {
         var (e, id) = try firm()
         XCTAssertEqual(e.takeLoan(kind: "biz", amount: 3_000_000, termMonths: 24, companyID: id), .ok)
@@ -57,11 +49,8 @@ final class ReconciliationTests: XCTestCase {
 
     func testPayrollInvoicesTaxAndDividendKeepTheBooksBalanced() throws {
         var (e, id) = try firm(days: 10)
-        _ = e.runPayrollFromAccounting(companyID: id)
-        balanced(e, "payroll run")
         for _ in 0..<(6 * 7) { _ = e.nextDay() }      // invoices raised, sent and paid; a tax month closes
         balanced(e, "six weeks of trading")
-        XCTAssertNotNil(e.invoices(companyID: id))
         e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: 30_000_000) }
         if e.maximumDividend(companyID: id) > 0 { XCTAssertGreaterThan(e.payDividendShare(companyID: id, share: 0.5), 0) }
         balanced(e, "dividend paid")
@@ -138,8 +127,8 @@ final class ReconciliationTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 41)
         e.update { s, _, _ in Ledger.move(&s, .me, 800_000_000, why: "Test funds") }
         let city = e.state.player.cityID
-        let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "grocery", cityID: city, form: .limited, size: 1))
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, form: .limited, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
+        let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "grocery", cityID: city, size: 1))
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
         let id = out.companyID
         let c = try XCTUnwrap(e.state.company(id))
         XCTAssertTrue(c.staff.isEmpty, "no staff are hired for you at the start")

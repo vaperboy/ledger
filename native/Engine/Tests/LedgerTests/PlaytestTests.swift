@@ -113,7 +113,7 @@ final class PlaytestTests: XCTestCase {
                 second = true
                 // The bot keeps no spare cash by design: test funds stand in for the owner's savings so M9 can be reached.
                 e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(400_000), why: "Test funds") }
-                _ = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, name: "Second Cafe", fundWith: cur.scaledPrice(150_000))
+                _ = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, name: "Second Cafe", fundWith: cur.scaledPrice(150_000))
             }
             if m10 == nil, Gates.goalDone(e.state, 10) { m10 = e.state.week; break }
         }

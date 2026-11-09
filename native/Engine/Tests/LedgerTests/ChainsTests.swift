@@ -8,8 +8,8 @@ import Simulation
 /// Chains, franchises (both sides) and supply between your own companies: they run, and the books balance.
 extension GameEngine {
     /// Start a franchised unit in the standard place (test set-up; the app picks the place).
-    mutating func startFranchisedCompany(brandID: String, cityID: String, form: LegalForm, name: String?, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
-        startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, form: form, name: name, pick: nil, fundWith: amount).map { $0.companyID }
+    mutating func startFranchisedCompany(brandID: String, cityID: String, name: String?, fundWith amount: Double) -> Result<Int, CompanySetup.StartError> {
+        startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: cityID, name: name, pick: nil, fundWith: amount).map { $0.companyID }
     }
 }
 
@@ -22,9 +22,9 @@ final class ChainsTests: XCTestCase {
     static func start(_ e: inout GameEngine, _ trade: String, name: String? = nil) -> Int {
         var id = 0
         e.update { s, data, ctx in
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, name: name, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, name: name, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 1_000_000) * 1.5)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
@@ -62,7 +62,7 @@ final class ChainsTests: XCTestCase {
         let n = try XCTUnwrap(e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()))
         XCTAssertEqual(n.kind, .accept)
         e.signFranchiseTerms(brand.id, terms: try XCTUnwrap(n.terms))
-        let r = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, form: .limited, name: "Franchised", fundWith: 3_000_000_000)
+        let r = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, name: "Franchised", fundWith: 3_000_000_000)
         guard case .success(let id) = r else { return XCTFail("\(r)") }
         XCTAssertEqual(e.state.company(id)?.value("franchise")["brandId"].string, brand.id)
         Self.play(&e, days: 40 * 7)
@@ -86,16 +86,16 @@ final class ChainsTests: XCTestCase {
         }
         let (e0, brand) = try prepared()
         let city = e0.state.player.cityID
-        let std = try XCTUnwrap(e0.franchiseStartPlan(brandID: brand.id, cityID: city, form: .limited))
+        let std = try XCTUnwrap(e0.franchiseStartPlan(brandID: brand.id, cityID: city))
         XCTAssertEqual(std.plan.premisesKind, .place)
         XCTAssertGreaterThan(std.plan.options.count, 2)
         XCTAssertGreaterThan(std.fee, 0)
         let other = try XCTUnwrap(std.plan.options.first { $0.index != std.plan.standardIndex })
-        let picked = try XCTUnwrap(e0.franchiseStartPlan(brandID: brand.id, cityID: city, form: .limited, pick: .init(listingIndex: other.index, buy: false)))
+        let picked = try XCTUnwrap(e0.franchiseStartPlan(brandID: brand.id, cityID: city, pick: .init(listingIndex: other.index, buy: false)))
         XCTAssertEqual(picked.plan.premisesCost, other.rentUpfront, accuracy: 0.5)
         for buy in [false, true] {
             var (e, _) = try prepared()
-            let r = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, form: .limited, name: "Unit", pick: .init(listingIndex: other.index, buy: buy), fundWith: 3_000_000_000)
+            let r = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, name: "Unit", pick: .init(listingIndex: other.index, buy: buy), fundWith: 3_000_000_000)
             guard case .success(let out) = r else { return XCTFail("\(r)") }
             XCTAssertEqual(out.premises, .ok)
             let co = try XCTUnwrap(e.state.company(out.companyID))
@@ -106,8 +106,8 @@ final class ChainsTests: XCTestCase {
         }
         // No pick: the old call and the new one with no pick agree on the standard place.
         var (a, _) = try prepared(), (b, _) = try prepared()
-        guard case .success(let ida) = a.startFranchisedCompany(brandID: brand.id, cityID: city, form: .limited, name: "U", fundWith: 3_000_000_000),
-              case .success(let outb) = b.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, form: .limited, name: "U", pick: nil, fundWith: 3_000_000_000) else { return XCTFail("start") }
+        guard case .success(let ida) = a.startFranchisedCompany(brandID: brand.id, cityID: city, name: "U", fundWith: 3_000_000_000),
+              case .success(let outb) = b.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: city, name: "U", pick: nil, fundWith: 3_000_000_000) else { return XCTFail("start") }
         XCTAssertEqual(a.state.company(ida)?.value("prem"), b.state.company(outb.companyID)?.value("prem"))
     }
 

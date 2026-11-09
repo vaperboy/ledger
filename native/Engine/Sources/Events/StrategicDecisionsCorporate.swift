@@ -126,7 +126,7 @@ extension StrategicDecisions {
                      opts: [
                         Opt(label: "Sign now", detail: "A new company is registered there; you set it up like any new business.") { s, x in
                             let co = s.companies[x.i], nm = "\(co.name) \(x.d["cn"].string)"
-                            switch CompanySetup.create(&s, tradeID: co.type, cityID: x.d["city"].string, form: .limited, name: nm, countryCode: co.countryCode, data: x.data, context: x.fc) {
+                            switch CompanySetup.create(&s, tradeID: co.type, cityID: x.d["city"].string, name: nm, countryCode: co.countryCode, data: x.data, context: x.fc) {
                             case .success(let id):
                                 if let n = s.companyIndex(id) {
                                     var f = s.companies[n].value("flags"); f["rent27"] = .object(["m": .number(1 - x.d["disc"].double / 100), "until": .number(Double(s.week + 104))]); s.companies[n].set("flags", f)
@@ -184,7 +184,6 @@ extension StrategicDecisions {
                         Opt(label: "Go public", detail: "A bank listing fee of about 1.5 million (in your currency).") { s, x in
                             guard let hi = s.companyIndex(x.d["h"].int) else { return }
                             let fee = x.fc.homeCurrency(s).scaledPrice(Funding.listingFee)
-                            Payments.transferFromSavings(&s, need: fee)
                             Payments.playerPays(&s, fee, label: "Stock exchange listing")
                             s.companies[hi].set("listed", 1)
                             s.note("\(s.companies[hi].name) is listed on the stock exchange.", tone: "good", companyID: s.companies[hi].id) },
@@ -241,7 +240,6 @@ extension StrategicDecisions {
                             guard let hi = s.companyIndex(x.d["h"].int) else { return }
                             let h = s.companies[hi], add = min(100 - h.ownership, 10), c = jsRound(value(h, s, x.data) * add / 100 * 1.15)
                             if Payments.liquid(s) < c { s.note("Not enough cash to buy back shares.", tone: "bad"); hostile(&s, h: h, d: x.d, p: 0.6, x: x); return }
-                            Payments.transferFromSavings(&s, need: c)
                             Payments.playerPays(&s, c, label: "Share buyback in \(h.name)")
                             CapTable.buyBackPercent(&s, hi, percent: add)
                             hostile(&s, h: s.companies[hi], d: x.d, p: 0.25, x: x) },
@@ -337,7 +335,7 @@ extension StrategicDecisions {
                          let k = Currency(country: data.countries.resolve(co.countryCode, orHome: s.homeCountryCode), rates: ExchangeRates(drift: s.exchangeRates.values))
                          let c = data.countries.resolve(co.countryCode, orHome: s.homeCountryCode)
                          let wk = EventEngine.context(for: co, data: data, country: c).wk
-                         return co.form == .limited && !s.isBranch(co) && co.ownership > 80 && s.week - co.foundedWeek < 156 && wk * 52 > k.scaledPrice(2e6) },
+                         return !s.isBranch(co) && co.ownership > 80 && s.week - co.foundedWeek < 156 && wk * 52 > k.scaledPrice(2e6) },
                      make: { s, i, data, _ in .object(["v": .number((value(s.companies[i], s, data) * 1.6 / 1000).rounded() * 1000)]) },
                      title: { co, _, _ in "Venture capital wants to invest in \(co.name)" },
                      body: { co, d, cur in "A fund values \(co.name) at \(cur.display(d["v"].double)) and wants 20% in new shares. Money to grow fast, a board seat for them, and less of the company for you." },
@@ -360,7 +358,7 @@ extension StrategicDecisions {
     // MARK: Who the corporate decisions are about
 
     static func peTarget(_ s: GameState, _ data: GameData) -> Company? {
-        liveCompanies(s, data).map { s.companies[$0] }.filter { $0.form == .limited && !s.isBranch($0) && ebit12($0, s) > scaled(s, $0, data, 1e6) && $0.ownership >= 90 }
+        liveCompanies(s, data).map { s.companies[$0] }.filter { !s.isBranch($0) && ebit12($0, s) > scaled(s, $0, data, 1e6) && $0.ownership >= 90 }
             .max { value($0, s, data) < value($1, s, data) }
     }
     static func activistTarget(_ s: GameState, _ data: GameData) -> Company? {

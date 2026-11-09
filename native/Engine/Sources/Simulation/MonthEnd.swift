@@ -11,7 +11,7 @@ import Businesses
 ///  1. each company: manager bonus, corporate tax accrual (profit minus losses carried forward), VAT registration
 ///     reminder, the tax accrued so far paid at once, VAT settled when the return is due, bills that could not be paid counted,
 ///     monthly history line written, month's books closed;
-///  2. the player: overdraft and savings interest, loan instalments, credit score; tax on interest, sole-trader income tax and wealth tax;
+///  2. the player: overdraft interest, loan instalments, credit score; tax on interest and wealth tax;
 ///  3. the currencies drift.
 /// Payroll and supplier bills are NOT paid here: they have their own days (see `Payday`).
 public enum MonthEnd {
@@ -127,16 +127,13 @@ public enum MonthEnd {
         var co = s.companies[i]
         let month = co.books.month
         let profit = (month["rev"] ?? 0) - Books.expenses(month)
-        if co.form == .limited && co.status != .setup {
+        if co.status != .setup {
             if co.lossCarryAtYearStart == nil {
                 co.lossCarryAtYearStart = co.lossCarryForward
                 co.yearProfitSoFar = 0
                 co.taxAccrued = 0
             }
-            // The part of the conversion month before the conversion was closed into the owner's personal return (CompanyConversion).
-            var corporateProfit = profit
-            if !co.value("convMonthProfit").isNull { corporateProfit -= co.num("convMonthProfit"); co.raw.removeValue(forKey: "convMonthProfit") }
-            co.yearProfitSoFar += corporateProfit
+            co.yearProfitSoFar += profit
             s.companies[i] = co
             accrueTax(&s, companyIndex: i, bd, data: data)
             co = s.companies[i]
@@ -243,7 +240,7 @@ public enum MonthEnd {
     public static func closeMonth(_ s: inout GameState, data: GameData, context: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive { closeMonth(&s, companyIndex: i, data: data, context: context) }
         // A tax group is settled once every member's month is in. Original: 'a tax group is settled once every member's month is in'.
-        for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].form == .limited && s.companies[i].status != .setup
+        for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].status != .setup
             && s.companies[i].lossCarryAtYearStart != nil && HoldingModel.taxGroup(of: s.companies[i], in: s) != nil {
             if let bd = data.catalog[s.companies[i].type] {
                 accrueTax(&s, companyIndex: i, bd, data: data)
@@ -254,7 +251,6 @@ public enum MonthEnd {
         // Dividends are never automatic: the owner decides in Group.
         PersonalFinance.monthly(&s, context: context)
         PersonalFinance.withholdNow(&s, context: context)
-        PersonalFinance.advanceTaxMonthly(&s, context: context)
         TaxSettlement.withholdWealthTax(&s, data: data, context: context)
         var rates = ExchangeRates(drift: s.exchangeRates.values)
         rates.monthlyDrift(book: data.countries, homeCode: s.homeCountryCode, random: &s.random)
@@ -274,7 +270,7 @@ public enum MonthEnd {
         for i in s.companies.indices where s.companies[i].status.isLive {
             var co = s.companies[i]
             var flags = co.value("flags"); flags["fraud"] = 0; co.set("flags", flags)
-            if co.form == .limited {
+            do {
                 let country = world.country(co)
                 rollLossLots(&co, country: country, closingYear: closingYear)
                 // The year's tax was paid month by month on the profit so far, so the last month's accrual was the true-up; only unpaid tax is arrears.

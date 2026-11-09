@@ -74,7 +74,7 @@ public struct GameEngine {
         json["player"] = .object(["name": .string(playerName.isEmpty ? "You" : playerName), "age": .number(Double(min(110, max(1, age)))),
                                   "city": .string(cityID ?? country.cities[0].id), "skill": .object([:])])
         let startCash = story == .loan ? loan : 0   // other stories are funded through the ledger, so no loan record is ever made and removed
-        json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:]); json["sav"] = .object(["bal": 0])
+        json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:])
         json["loans"] = .array([]); json["credit"] = 62; json["overdraft"] = 0
         json["overdraftLimit"] = .number(currency.scaledPrice(25000))
         json["inv"] = .object(["stocks": .object([:]), "crypto": .object([:]), "funds": .object([:]), "deposits": .array([])])
@@ -115,7 +115,7 @@ public struct GameEngine {
         } else {
             let ctx = FinanceContext(countries: data.countries, trades: data.catalog)
             guard LifeStories.applyHeir(&state, data: data, context: ctx) else { throw CocoaError(.fileReadUnknown) }
-            state.note("Welcome to Ledger. The family café is yours, open and trading, with \(currency.display(state.cash)) in savings and no loan.", tone: "good")
+            state.note("Welcome to Ledger. The family café is yours, open and trading, with \(currency.display(state.cash)) in your account and no loan.", tone: "good")
         }
         let bank = country.pack["authorities"]["cb"].string
         state.news("\(bank): policy rate unchanged at \(Currency.percent(state.economy.policyRate, decimals: 2)). New year, new opportunities.")
@@ -186,10 +186,6 @@ public struct GameEngine {
             if m.actionID == Press.interviewAction { Press.answerInterview(&s, questionIndex: m.value("data")["q"].int, option: idx); return true }
             if m.actionID == WeatherEvents.prepareAction { WeatherEvents.answerPrepare(&s, data: d, message: m, option: idx); return true }
             if m.actionID == "pay29s" { return true }   // a payroll-short notice: acknowledging it moves no money; back pay is automatic
-            if m.actionID == "pay29" || m.actionID == "pay29all" {
-                Payday.answer(&s, action: m.actionID, data: m.value("data"), option: idx, companyID: m.companyID, data: d, context: c)
-                return true
-            }
             // An action nobody handles must not be marked as answered: the message stays open and the problem is logged.
             s.note("Unknown inbox action \"\(m.actionID)\": the answer was not applied.", tone: "bad")
             return false

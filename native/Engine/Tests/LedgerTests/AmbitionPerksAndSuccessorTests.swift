@@ -10,7 +10,7 @@ final class AmbitionPerksAndSuccessorTests: XCTestCase {
     func testFinancierPerkCutsTheLoanMarginAndRanksAreReal() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 21)
         e.update { s, _, _ in Ledger.move(&s, .me, 20_000_000, why: "Test funds") }
-        guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 8_000_000) else { throw XCTSkip("no company") }
+        guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 8_000_000) else { throw XCTSkip("no company") }
         let plain = Banking.offer(kind: "cons", amount: 1000, company: nil, state: e.state, netWorth: 1_000_000, context: e.context).margin
         e.update { s, _, _ in
             s.rest["amb27"] = .object(["path": .string("financier"), "tier": .object(["financier": .number(1)]), "done": .object([:]), "score": 0, "since": 0, "settle": 0,
@@ -31,7 +31,7 @@ final class AmbitionPerksAndSuccessorTests: XCTestCase {
     func testSuccessorSearchAndFinanceManagerRaise() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 30_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.2, profitBonus: 0.05), .ok)
         XCTAssertEqual(e.state.company(id)?.managerProfitBonus ?? 0, 0.05, accuracy: 1e-9)

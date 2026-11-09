@@ -3,7 +3,7 @@ import GameCore
 import Countries
 import Finance
 
-/// Buying and selling investments, savings and fixed deposits. Original: `buyAsset`, `sellAsset`, `saveMove`,
+/// Buying and selling investments and fixed deposits. Original: `buyAsset`, `sellAsset`, `saveMove`,
 /// `openDeposit`, `investWeek` (engine/world/investing.js).
 public enum Brokerage {
     public enum Kind: String, Sendable { case stock, crypto, fund }
@@ -29,10 +29,7 @@ public enum Brokerage {
         if amt < minimumPurchase(currency) { return .tooSmall }
         let px = kind == .crypto ? price(s, kind, sym) * 1.008 : price(s, kind, sym)
         let fee = kind == .crypto ? amt * 0.004 : brokerFee(amt, currency: currency)
-        if s.cash < amt + fee {
-            if Payments.liquid(s) < amt + fee { return .notEnoughCash }
-            Payments.transferFromSavings(&s, need: amt + fee)
-        }
+        if s.cash < amt + fee { return .notEnoughCash }
         if kind == .crypto && s.rest["crypto"]?[sym]["dead"].bool == true { return .delisted }
         Ledger.move(&s, .me, -(amt + fee), why: "Bought \(sym)")
         var inv = s.rest["inv"] ?? .object([:])
@@ -77,21 +74,6 @@ public enum Brokerage {
         return p.isNull ? 0 : p["q"].double * price(s, kind, sym)
     }
 
-    /// Move money to (positive) or from (negative) savings. Original: `saveMove`.
-    public static func moveToSavings(_ s: inout GameState, _ amount: Double) -> Bool {
-        let amt = jsRound(amount)
-        if amt > 0 {
-            if s.cash < amt { return false }
-            Ledger.move(&s, .me, -amt, why: "To savings")
-            Ledger.moveSavings(&s, amt)
-        } else {
-            if s.savings < -amt { return false }
-            Ledger.moveSavings(&s, amt)
-            Ledger.move(&s, .me, -amt, why: "From savings")
-        }
-        return true
-    }
-
     /// A fixed deposit pays more the longer it is locked. Original: `openDeposit`.
     public static func openDeposit(_ s: inout GameState, amount: Double, weeks: Int) -> Bool {
         if s.cash < amount { return false }
@@ -131,13 +113,8 @@ public enum Brokerage {
         s.rest["inv"] = inv
     }
 
-    /// Sell everything to cover debts, savings first, until `cash >= need`. Original: `liquidateInvestments`.
+    /// Sell everything to cover debts, fixed deposits first, until `cash >= need`. Original: `liquidateInvestments`.
     public static func liquidate(_ s: inout GameState, need: Double, currency: Currency? = nil) {
-        if s.savings > 0 {
-            let v = s.savings
-            Ledger.move(&s, .me, v, why: "Savings emptied to cover debts")
-            Ledger.moveSavings(&s, -v)
-        }
         if s.cash >= need { return }
         var inv = s.rest["inv"] ?? .object([:])
         for d in inv["deposits"].array { Ledger.move(&s, .me, d["bal"].double, why: "Fixed deposit broken to cover debts") }

@@ -55,7 +55,7 @@ public enum ChainLocations {
     public static func quote(_ s: GameState, chainID: Int, cityID: String, size: Double = 1, data: GameData) -> Quote? {
         guard let ch = Chains.chain(s, id: chainID), let first = Chains.stores(s, ch).first,
               let total = Chains.newStoreCost(s, chainID: chainID, cityID: cityID, size: size, data: data),
-              let est = CompanySetup.estimate(tradeID: ch["type"].string, cityID: cityID, form: first.form, size: size, countryCode: first.countryCode, state: s, data: data),
+              let est = CompanySetup.estimate(tradeID: ch["type"].string, cityID: cityID, size: size, countryCode: first.countryCode, state: s, data: data),
               let found = data.countries.city(cityID, preferring: first.countryCode) else { return nil }
         let fitOut = est.premisesFitOut + est.equipment + est.vehicles
         let deposit = max(0, est.premises - est.premisesFitOut)

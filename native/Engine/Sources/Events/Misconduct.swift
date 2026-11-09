@@ -174,7 +174,7 @@ public enum Misconduct {
         // The owner answers personally for part of the penalty.
         var personal = 0.0
         if fine > 0 {
-            personal = jsRound(fine * (co0.form == .soleTrader ? 0.35 : 0.2))
+            personal = jsRound(fine * 0.2)
             if personal > 0 { Payments.playerPays(&s, personal, label: "Personal liability: \(co0.name)", companyID: id) }
         }
         st["cases"] = .array(all.filter { c in !hit.contains { $0["w"].int == c["w"].int && $0["k"].string == c["k"].string && $0["g"].double == c["g"].double } })
@@ -263,7 +263,7 @@ extension StrategicDecisions {
 
         // MARK: Tax: hidden takings (and the legal route)
         L.append(Def(id: "m_tax", cls: "mis", stages: ["grow", "est"], w: 2, tone: "n", from: "Your accountant", exp: 4, def: 2,
-                     cond: { s, co, _ in co.form == .limited && ebit12(co, s) > 0 },
+                     cond: { s, co, _ in ebit12(co, s) > 0 },
                      make: { s, i, data, fc in
                          let co = s.companies[i], profit = ebit12(co, s)
                          guard profit > scaledC(s, i, fc, 150_000) else { return nil }

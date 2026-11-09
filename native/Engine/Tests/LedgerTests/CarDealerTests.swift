@@ -10,7 +10,7 @@ final class CarDealerTests: XCTestCase {
     private func game(seed: Int = 7, country: String = "UK", cash: Double = 900_000_000) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 2_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cardealer", cityID: e.state.player.cityID, form: .limited, fundWith: cash) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cardealer", cityID: e.state.player.cityID, fundWith: cash) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
         var n = 0

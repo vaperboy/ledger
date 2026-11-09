@@ -14,7 +14,7 @@ final class MockDataExport: XCTestCase {
         guard let path = ProcessInfo.processInfo.environment["LEDGER_MOCKDATA"] else { return }
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Alex Carter", seed: 2027)
         e.update { s, _, _ in Ledger.move(&s, .me, 45_000_000, why: "Demo funds") }
-        func start(_ t: String, _ city: String, _ fund: Double) { _ = e.startCompany(tradeID: t, cityID: city, form: .limited, fundWith: fund) }
+        func start(_ t: String, _ city: String, _ fund: Double) { _ = e.startCompany(tradeID: t, cityID: city, fundWith: fund) }
         func play(_ days: Int) { for _ in 0..<days { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }; if e.state.isGameOver { break } } }
         start("acctfirm", "lon", 2_500_000); start("cafe", "lon", 4_000_000); start("gym", "man", 14_000_000)
         for (k, n) in [("google", 1), ("seo", 1)] { if let ch = e.marketing.channels[k], let id = e.state.liveCompanies.first?.id { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[n]) } }
@@ -35,7 +35,7 @@ final class MockDataExport: XCTestCase {
             let cr = e.currency(for: co).rate
             func c(_ v: Double) -> Double { (v / cr).rounded() }
             cos.append([
-                "name": co.name, "trade": e.tradeName(co), "city": e.cityName(co), "form": co.form == .limited ? "Ltd" : "Sole trader",
+                "name": co.name, "trade": e.tradeName(co), "city": e.cityName(co), "form": "Ltd",
                 "status": co.status.rawValue, "health": hh.label, "value": c(hh.value), "revenueTTM": c(hh.revenueTTM), "profitTTM": c(hh.profitTTM),
                 "margin": hh.marginTTM ?? 0, "growth": hh.revenueGrowth ?? NSNull(), "cash": c(co.cash), "debt": c(hh.debt), "staff": co.staff.count,
                 "weeklyCost": c(hh.weeklyCost), "weeksOfCash": hh.weeksOfCash, "runway": hh.runwayWeeks ?? NSNull(),
@@ -60,7 +60,7 @@ final class MockDataExport: XCTestCase {
             "decisions": e.openDecisions.prefix(4).map { ["title": e.localized($0.title, companyID: $0.companyID), "from": $0.from, "body": e.localized($0.body, companyID: $0.companyID)] },
             "suggestions": e.suggestions(limit: 4).map { ["title": $0.title, "detail": $0.detail, "tone": $0.tone.rawValue] },
             "economy": e.state.economy.phase, "policyRate": e.state.economy.policyRate, "inflation": e.state.economy.inflation,
-            "savings": p(e.state.savings), "cashAccount": p(e.state.cash), "credit": Banking.creditWord(e.state.credit),
+            "cashAccount": p(e.state.cash), "credit": Banking.creditWord(e.state.credit),
             "loans": e.state.loans.filter { $0.companyID == 0 }.map { ["name": $0.name, "balance": p($0.balance), "payment": p($0.monthlyPayment)] },
             "statement": e.state.statement.prefix(8).map { ["label": $0.label, "amount": p($0.amount)] },
             "holdings": e.quotes(.stock).filter { $0.value > 0 }.map { ["symbol": $0.symbol, "name": $0.name, "value": p($0.value), "week": $0.weekChange ?? 0] },

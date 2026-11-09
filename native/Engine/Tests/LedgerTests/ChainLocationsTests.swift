@@ -48,7 +48,7 @@ final class ChainLocationsTests: XCTestCase {
             XCTAssertFalse(seen.contains(n)); XCTAssertFalse(hasDigit(n))
             seen.append(n)
             e.update { s, d, c in
-                if case .success = CompanySetup.create(&s, tradeID: "cafe", cityID: "oslo", form: .limited, name: n, countryCode: "NO", data: d, context: c) {} else { created = false }
+                if case .success = CompanySetup.create(&s, tradeID: "cafe", cityID: "oslo", name: n, countryCode: "NO", data: d, context: c) {} else { created = false }
             }
             guard created else { throw XCTSkip("companies could not be created") }
         }

@@ -130,7 +130,7 @@ extension ManagerModel {
 
     /// What the shares in the package are worth a month to the person, spread over three years.
     static func promotionExtras(_ s: GameState, _ c: Candidate, terms: PromotionTerms, data: GameData) -> Double {
-        terms.sharesPercent > 0 && c.co.form == .limited ? max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 : 0
+        terms.sharesPercent > 0 ? max(0, Valuation.companyValue(c.co, state: s, trades: data.catalog)) * terms.sharesPercent / 100 / 36 : 0
     }
 
     /// Offer the post. At or above what the person asks they accept. Below it they ask for more through the shared `Negotiation` (patience by the level of
@@ -193,7 +193,7 @@ extension ManagerModel {
         let duties: [String] = post.kind == "exec" ? fixedExecutiveDuties : post.kind == "mgr" ? fixedManagerDuties : []
         let k11: JSONValue = .object(["post": .string(post.id), "t": .string(post.title), "wage": .number(w), "duties": .array(duties.map { .string($0) }), "auth": .number(Double(u.authority)),
                                       "w0": .number(Double(s.week)), "from": .object(["co": .number(Double(co.id)), "role": .string(c.role)])])
-        let shares = u.sharesPercent > 0 && co.form == .limited && co.ownership > u.sharesPercent
+        let shares = u.sharesPercent > 0 && co.ownership > u.sharesPercent
         if post.kind == "role" {
             let role = String(post.id.dropFirst(5))
             guard let k = co.staff.firstIndex(where: { $0.id == n.id }) else { return "Something went wrong." }

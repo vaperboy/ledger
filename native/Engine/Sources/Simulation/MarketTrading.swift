@@ -235,7 +235,7 @@ public extension GameEngine {
 
     // MARK: Trading
 
-    /// Buy `amount` of an asset for you (current account, topped up from savings) or for a holding (its cash). Refused with the quote's reason.
+    /// Buy `amount` of an asset for you (your account) or for a holding (its cash). Refused with the quote's reason.
     @discardableResult
     mutating func marketBuy(asset: String, owner: PortfolioOwner, amount: Double) -> MarketTradeResult {
         let q = marketQuote(asset: asset, owner: owner, amount: amount)
@@ -280,7 +280,7 @@ public extension GameEngine {
 
     private func ownerCash(_ o: PortfolioOwner) -> Double {
         switch o {
-        case .player: return state.cash + state.savings
+        case .player: return state.cash
         case .holding(let h): return state.company(h)?.cash ?? 0
         }
     }

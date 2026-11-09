@@ -12,7 +12,7 @@ final class DealerWiringTests: XCTestCase {
     private func game(trade: String, seed: Int = 7, cash: Double = 900_000_000) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 2_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: cash) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cash) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
@@ -32,8 +32,6 @@ final class DealerWiringTests: XCTestCase {
         let before = CompanyFigures.billsOwed(e.state.company(id)!)
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].payables["warr"] = 50_000 } }
         XCTAssertEqual(CompanyFigures.billsOwed(e.state.company(id)!) - before, 50_000, accuracy: 0.01)
-        let sheet = try XCTUnwrap(e.companyBalanceSheet(companyID: id))
-        XCTAssertEqual(sheet.debts.first { $0.label == "Warranty reserve" }?.amount ?? 0, 50_000, accuracy: 0.01)
         days(&e, 70)
         XCTAssertEqual(e.state.company(id)!.payables["warr"] ?? 0, 50_000, accuracy: 0.01, "paydays and month ends never pay the reserve")
     }
@@ -66,7 +64,7 @@ final class DealerWiringTests: XCTestCase {
 
     func testOwnGarageBillCarriesVatInTheSameCountry() throws {
         var (e, id) = try game(trade: "usedcar")
-        guard case .success(let rid) = e.startCompany(tradeID: "carrepair", cityID: e.state.player.cityID, form: .limited, fundWith: 100_000_000) else { throw XCTSkip("no mechanic") }
+        guard case .success(let rid) = e.startCompany(tradeID: "carrepair", cityID: e.state.player.cityID, fundWith: 100_000_000) else { throw XCTSkip("no mechanic") }
         _ = e.quickSetup(companyID: rid)
         _ = e.openCompany(companyID: rid)
         e.update { s, _, _ in if let i = s.companyIndex(rid) { s.companies[i].status = .open } }
@@ -128,9 +126,9 @@ final class DealerWiringTests: XCTestCase {
                 var id = 0, est = 0.0
                 e.update { s, data, ctx in
                     Ledger.move(&s, .me, 20_000_000_000, why: "Test funds")
-                    guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+                    guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: s.player.cityID, data: data, context: ctx) else { return }
                     id = i
-                    est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)?.total ?? 0
+                    est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)?.total ?? 0
                     Payments.injectCash(&s, companyID: id, amount: est * 1.3 + (trade == "usedcar" ? 6_000_000 : 40_000_000))
                     _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
                     if let bd = data.catalog[trade] {

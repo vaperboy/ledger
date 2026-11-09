@@ -15,7 +15,7 @@ final class StartNetWorthTests: XCTestCase {
             e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
             let put = 30_000_000.0
             let before = e.netWorth.total
-            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: e.state.player.cityID, form: .limited, size: nil, name: nil,
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: e.state.player.cityID, size: nil, name: nil,
                                                                           pick: NewCompanyPlan.Pick(listingIndex: 2, buy: false), fundWith: put) else { XCTFail("\(trade) did not start"); continue }
             _ = e.quickSetup(companyID: out.companyID)
             let delta = e.netWorth.total - before
@@ -65,7 +65,7 @@ final class StartNetWorthTests: XCTestCase {
         for trade in ["gym", "cafe", "hotel"] {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
             e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 80_000_000) else { XCTFail(trade); continue }
+            guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 80_000_000) else { XCTFail(trade); continue }
             let co = try XCTUnwrap(e.state.company(id))
             let bd = try XCTUnwrap(e.data.catalog[trade])
             for eq in bd.equipment where !eq.opensTheTrade && eq.vehicleModels == nil { XCTAssertEqual(CapacityModel.equipmentCount(co, eq), 0, "\(trade): \(eq.id)") }

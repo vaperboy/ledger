@@ -48,7 +48,6 @@ public enum Reports {
         var week: Int
         var partial = false
         var cash = 0.0
-        var savings = 0.0
         var cum: [String: Double] = [:]
         var stats: [String: Double] = [:]
         var nw = ReportNetWorth()
@@ -60,7 +59,6 @@ public enum Reports {
     static func capture(_ s: GameState, data: GameData) -> Snapshot {
         var snap = Snapshot(week: s.week)
         snap.cash = s.cash
-        snap.savings = s.savings
         snap.cum = ReportCounters.totals(s)
         snap.stats = ["taxPaid": s.stats.taxPaid, "dividends": s.stats.dividendsReceived, "wagesPaid": s.stats.wagesPaid, "interest": s.stats.interestPaid]
         let nw = Valuation.netWorth(s, trades: data.catalog)
@@ -248,7 +246,6 @@ public enum Reports {
         var g = ReportGroup()
         g.pnl = groupPnL
         g.accountStart = b.cash; g.accountEnd = now.cash
-        g.savingsStart = b.savings; g.savingsEnd = now.savings
         g.companyCashStart = b.companies.reduce(0) { $0 + $1.cash }
         g.companyCashEnd = now.companies.reduce(0) { $0 + $1.cash }
         g.ownerIn = rows.reduce(0) { $0 + $1.ownerIn }
@@ -258,12 +255,12 @@ public enum Reports {
         func stat(_ k: String) -> Double { (now.stats[k] ?? 0) - (b.stats[k] ?? 0) }
         g.taxPaid = stat("taxPaid"); g.dividendsReceived = stat("dividends"); g.wagesPaid = stat("wagesPaid"); g.interestPaid = stat("interest")
         g.personalTax = -cum(ReportCounters.Key.tax)
-        g.ownerPay = cum(ReportCounters.Key.salary) + cum(ReportCounters.Key.drawings)
+        g.ownerPay = cum(ReportCounters.Key.salary)
         g.decisionsAnswered = Int(saturating: cum(ReportCounters.Key.answered).rounded())
         let labels: [(String, String)] = [
             (ReportCounters.Key.invested, "Put into your companies"), (ReportCounters.Key.dividends, "Dividends received"),
-            (ReportCounters.Key.salary, "Salary from your companies"), (ReportCounters.Key.drawings, "Drawings from your businesses"),
-            (ReportCounters.Key.markets, "Shares, crypto and funds"), (ReportCounters.Key.savings, "Savings and deposits"),
+            (ReportCounters.Key.salary, "Salary from your companies"),
+            (ReportCounters.Key.markets, "Shares, crypto and funds"), (ReportCounters.Key.deposits, "Fixed deposits"),
             (ReportCounters.Key.tax, "Personal tax"), (ReportCounters.Key.loans, "Loans drawn and instalments paid"),
             (ReportCounters.Key.interest, "Overdraft interest"), (ReportCounters.Key.companies, "Founding and selling companies"),
         ]
@@ -365,7 +362,7 @@ public extension GameEngine {
     func latestReport(_ kind: ReportKind) -> PeriodReport? { reports(kind).last }
 
     /// What the year in progress looks like so far for the player's own tax: the income tax that would be due if the year ended now,
-    /// on sole-trader profit, salary, dividends and interest, minus what was already withheld. Original: `personalTaxEstimate`.
+    /// on salary, dividends and interest, minus what was already withheld. Original: `personalTaxEstimate`.
     struct YearInProgress: Equatable, Sendable {
         public var year: Int
         public var weeksIn: Int

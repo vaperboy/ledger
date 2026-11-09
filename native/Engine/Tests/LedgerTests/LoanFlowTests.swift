@@ -10,7 +10,7 @@ final class LoanFlowTests: XCTestCase {
     private func world(seed: Int = 21, loanAmount: Double = 3_000_000) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 400_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 120_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 120_000_000) else {
             XCTFail("start"); throw XCTSkip("no company")
         }
         _ = e.quickSetup(companyID: id)
@@ -99,7 +99,7 @@ final class LoanFlowTests: XCTestCase {
         let a = e.loanAssessment(kind: "cons", companyID: nil)
         XCTAssertTrue(a.approved)
         XCTAssertGreaterThan(a.maximum, a.minimum)
-        XCTAssertEqual(a.payoutAccounts.map(\.id), [.current, .savings])
+        XCTAssertEqual(a.payoutAccounts.map(\.id), [.current])
         XCTAssertFalse(a.examplesAtMaximum.isEmpty)
         XCTAssertTrue(a.conditions.count >= 3)
         let docs = LoanDocuments(fullName: e.state.player.name, incomeProof: .payslips)
@@ -107,15 +107,13 @@ final class LoanFlowTests: XCTestCase {
         let cash0 = e.state.cash
         if case .approved = e.applyForLoan(kind: "cons", amount: a.maximum + 100_000, termMonths: 36, companyID: nil, documents: docs, agreed: true) { XCTFail("above the maximum") }
         XCTAssertEqual(e.state.cash, cash0)
-        // Below the maximum, paid into savings.
+        // Below the maximum, paid into the account.
         let amount = (a.maximum / 2 / 1000).rounded() * 1000
-        let sav0 = e.state.savings
-        guard case .approved(let loanID, let fee, let net) = e.applyForLoan(kind: "cons", amount: amount, termMonths: 36, companyID: nil, documents: docs, agreed: true, payInto: .savings) else { return XCTFail("approved") }
-        XCTAssertEqual(e.state.savings - sav0, net, accuracy: 1)
+        guard case .approved(let loanID, let fee, let net) = e.applyForLoan(kind: "cons", amount: amount, termMonths: 36, companyID: nil, documents: docs, agreed: true) else { return XCTFail("approved") }
         XCTAssertEqual(net, amount - fee, accuracy: 1)
-        XCTAssertEqual(e.state.cash, cash0, accuracy: 2, "the money went to savings, not the current account")
+        XCTAssertEqual(e.state.cash - cash0, net, accuracy: 2, "the money went into the account")
         let rec = try XCTUnwrap(e.loanRecords(companyID: 0).first { $0.id == loanID })
-        XCTAssertEqual(rec.payoutAccount, "savings")
+        XCTAssertEqual(rec.payoutAccount, "current")
         XCTAssertEqual(rec.arrangementFee, fee, accuracy: 0.5)
         XCTAssertTrue(rec.number.hasPrefix("LN-"))
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

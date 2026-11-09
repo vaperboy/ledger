@@ -24,9 +24,9 @@ final class AccountantActionsTests: XCTestCase {
         XCTAssertEqual(e.accountantOffers(countryCode: code), offers, "preparing twice does not change the pool")
     }
 
-    func testSetAccountantChangesFeeAndPayrollStillDerived() throws {
+    func testSetAccountantChangesFee() throws {
         var e = try game(12)
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 100_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 100_000_000) else { return XCTFail("start") }
         let code = try XCTUnwrap(e.state.company(id)?.countryCode)
         let offers = e.accountantOffers(countryCode: code)
         let current = try XCTUnwrap(e.state.company(id)?.value("acc")["id"].int)
@@ -40,23 +40,8 @@ final class AccountantActionsTests: XCTestCase {
         XCTAssertEqual(e.setAccountant(companyID: id, accountantID: other.id), .unchanged)
         XCTAssertTrue(e.setAccountant(companyID: id, accountantID: -5).isRefused)
         XCTAssertTrue(e.setAccountant(companyID: 987_654, accountantID: other.id).isRefused)
-        let o = try XCTUnwrap(e.payrollOverview(companyID: id))
-        XCTAssertEqual(o.responsibility?.who, .accountant)
-        XCTAssertEqual(o.responsibility?.name, other.name)
-        XCTAssertEqual(o.mode, .accountant)
         for _ in 0..<35 { _ = e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    func testSoleTraderAppointsAccountantAndPayrollFollows() throws {
-        var e = try game(13)
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 100_000_000) else { return XCTFail("start") }
-        XCTAssertEqual(e.payrollOverview(companyID: id)?.responsibility?.who, .owner)
-        let code = try XCTUnwrap(e.state.company(id)?.countryCode)
-        e.prepareAccountants(countryCode: code)
-        let pick = try XCTUnwrap(e.accountantOffers(countryCode: code).last)
-        XCTAssertEqual(e.setAccountant(companyID: id, accountantID: pick.id), .applied)
-        XCTAssertEqual(e.payrollOverview(companyID: id)?.responsibility?.who, .accountant)
     }
 
     func testNewCompanyTakesTheChosenAccountant() throws {
@@ -64,18 +49,8 @@ final class AccountantActionsTests: XCTestCase {
         let code = e.state.homeCountryCode
         e.prepareAccountants(countryCode: code)
         let pick = try XCTUnwrap(e.accountantOffers(countryCode: code).first { !$0.isDefault })
-        let r = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, size: nil, name: nil, pick: nil, fundWith: 100_000_000, accountantID: pick.id)
+        let r = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: nil, name: nil, pick: nil, fundWith: 100_000_000, accountantID: pick.id)
         guard case .success(let out) = r else { return XCTFail("start") }
         XCTAssertEqual(e.state.company(out.companyID)?.value("acc")["id"].int, pick.id)
-    }
-
-    func testConversionTakesTheChosenAccountant() throws {
-        var e = try game(15)
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .soleTrader, fundWith: 100_000_000) else { return XCTFail("start") }
-        let code = try XCTUnwrap(e.state.company(id)?.countryCode)
-        e.prepareAccountants(countryCode: code)
-        let pick = try XCTUnwrap(e.accountantOffers(countryCode: code).first { !$0.isDefault })
-        XCTAssertEqual(e.convertToLimited(companyID: id, accountantID: pick.id), .ok)
-        XCTAssertEqual(e.state.company(id)?.value("acc")["id"].int, pick.id)
     }
 }

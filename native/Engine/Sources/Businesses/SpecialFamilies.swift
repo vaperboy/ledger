@@ -83,7 +83,7 @@ public enum SpecialFamilies {
         co.id = s.makeID()
         co.type = tradeID; co.countryCode = country.code
         co.name = name
-        co.cityID = cityID; co.form = .limited; co.size = size; co.status = .setup
+        co.cityID = cityID; co.size = size; co.status = .setup
         co.foundedWeek = s.week; co.openedWeek = nil; co.cash = 0; co.ownership = 100
         co.set("holders", .array([])); co.set("docs", .object([:])); co.set("eq", .object([:])); co.set("veh", .array([])); co.set("lease", .object([:]))
         co.set("staff", .array([])); co.set("mgrWage", 0); co.set("mgrBonus", 0)

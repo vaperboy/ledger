@@ -11,7 +11,7 @@ final class HiringRebuildTests: XCTestCase {
     private func company(_ seed: Int, trade: String) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, form: .limited, fundWith: 100_000_000) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 100_000_000) else { throw XCTSkip("start") }
         return (e, id)
     }
 

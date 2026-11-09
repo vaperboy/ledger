@@ -9,7 +9,7 @@ final class CompanyValueChangeTests: XCTestCase {
     func testCompanyValueChangeFollowsItsOwnHistory() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 50_000_000) else { return XCTFail("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { return XCTFail("no company") }
         for _ in 0..<5 { e.nextDay() }
         let series = try XCTUnwrap(e.dayHistory.perCompany[id])
         XCTAssertGreaterThanOrEqual(series.count, 5)

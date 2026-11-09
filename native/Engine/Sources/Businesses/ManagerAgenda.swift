@@ -115,7 +115,7 @@ extension ManagerModel {
                     risk: "It cannot be undone, and notice and redundancy pay come first.", recommends: deep6,
                     reason: deep6 ? "Six months of losses, \(cur.short(-p6)) in all." : "Six months of small losses. It may still turn.")
             }
-            if c.form == .limited, c.str("dp27", "none") == "none", !c.value("holders").array.isEmpty, h3.count == 3, p3 > 0, c.cash > 0 {
+            if c.str("dp27", "none") == "none", !c.value("holders").array.isEmpty, h3.count == 3, p3 > 0, c.cash > 0 {
                 add("dividend", "Start a regular dividend at \(c.name)", effect: "\(c.name) pays 25% of profit to its owners each quarter, when there is profit and cash after costs.",
                     risk: "Cash leaves the company every quarter. You receive your share.", recommends: c.cash > p3,
                     reason: "It made \(cur.short(p3)) over three months and pays its owners nothing." + (c.cash > p3 ? "" : " Cash is thin, so I would wait."))
@@ -208,7 +208,6 @@ extension ManagerModel {
             guard listForSale(&s, companyID: co.id) else { return .refused("\(co.name) cannot be listed for sale now.") }
             return .done("\(co.name) is listed with a broker. Offers will reach you.")
         case "dividend":
-            guard co.form == .limited else { return .refused("Only a limited company pays dividends.") }
             if co.str("dp27", "none") != "none" { return .refused("\(co.name) already pays a dividend.") }
             s.companies[ci].set("dp27", "low")
             return .done("\(co.name) will pay 25% of profit each quarter.")

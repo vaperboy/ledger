@@ -131,7 +131,7 @@ public enum ReportSummary {
     /// The part of net worth that changed most, as a phrase.
     private static func driver(_ r: PeriodReport) -> String? {
         let d = r.netWorthEnd - r.netWorthStart
-        let parts: [(String, Double)] = [("cash and savings", d.cash), ("investments", d.investments), ("the value of your companies", d.companies),
+        let parts: [(String, Double)] = [("your account", d.cash), ("investments", d.investments), ("the value of your companies", d.companies),
                                          ("luxury items", d.luxury), ("debt", -d.debt)]
         guard let top = parts.max(by: { abs($0.1) < abs($1.1) }), abs(top.1) >= 1 else { return nil }
         if abs(top.1) < abs(d.total) * 0.3 { return nil }

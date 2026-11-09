@@ -9,7 +9,7 @@ final class CafeCapacityTests: XCTestCase {
     private func newCafe() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 2026)
         e.update { s, _, _ in Ledger.move(&s, .me, 20_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, fundWith: 4_000_000, quickSetup: false) else { throw XCTSkip("could not start a company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 4_000_000, quickSetup: false) else { throw XCTSkip("could not start a company") }
         e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }   // the usual full kit
         return (e, id)
     }
@@ -135,9 +135,9 @@ final class CafeCapacityTests: XCTestCase {
         var id = 0
         e.update { s, data, ctx in
             Ledger.move(&s, .me, 50_000_000, why: "Test funds")
-            guard case .success(let i) = CompanySetup.create(&s, tradeID: "handy", cityID: s.player.cityID, form: .limited, data: data, context: ctx) else { return }
+            guard case .success(let i) = CompanySetup.create(&s, tradeID: "handy", cityID: s.player.cityID, data: data, context: ctx) else { return }
             id = i
-            let est = CompanySetup.estimate(tradeID: "handy", cityID: s.player.cityID, form: .limited, size: 1, state: s, data: data)
+            let est = CompanySetup.estimate(tradeID: "handy", cityID: s.player.cityID, size: 1, state: s, data: data)
             Payments.injectCash(&s, companyID: id, amount: (est?.total ?? 0) * 1.2)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }

@@ -20,7 +20,7 @@ final class ReadMemoTests: XCTestCase {
         same(e, "after a day")
         let afterDay = e.tradePickerRows()
         XCTAssertEqual(before.count, afterDay.count)
-        _ = e.startCompany(tradeID: "bakery", cityID: e.state.player.cityID, form: .limited, fundWith: 3_000_000)   // a purchase
+        _ = e.startCompany(tradeID: "bakery", cityID: e.state.player.cityID, fundWith: 3_000_000)   // a purchase
         same(e, "after starting a company")
         e.update { s, _, _ in Ledger.move(&s, .me, -30_000_000, why: "Test spend") }   // an action that only changes money
         same(e, "after money moved")

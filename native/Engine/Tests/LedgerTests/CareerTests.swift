@@ -90,7 +90,7 @@ final class CareerTests: XCTestCase {
             if c > seenCareer { log.append("  day \(d) (wk \(e.state.week)): career goals \(c)") ; seenCareer = c }
             if cel != seenCele { seenCele = cel }
             if expert, d % 28 == 0, Gates.goalDone(e.state, 8), Gates.companiesOwned(e.state) < 3, e.state.cash + (e.state.company(id)?.cash ?? 0) > cur.scaledPrice(300_000) {
-                _ = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, form: .limited, name: "Cafe \(d)", fundWith: cur.scaledPrice(100_000))
+                _ = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, name: "Cafe \(d)", fundWith: cur.scaledPrice(100_000))
             }
             if [10, 70, 364].contains(d) { log.append("  day \(d): rank \(e.careerStatus.rank.title), net worth \(cur.display(nw(e))), celebrations waiting \(e.pendingCelebrations.count)") }
         }

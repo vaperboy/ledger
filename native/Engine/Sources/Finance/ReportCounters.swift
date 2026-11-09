@@ -14,9 +14,8 @@ public enum ReportCounters {
         public static let invested = "p.invested"       // money put into your companies
         public static let dividends = "p.dividends"     // dividends from your companies
         public static let salary = "p.salary"           // salary from your companies
-        public static let drawings = "p.drawings"       // drawings from a sole trader business
         public static let markets = "p.markets"         // shares, crypto and funds bought and sold, and their dividends
-        public static let savings = "p.savings"         // savings and fixed deposits (transfers to and from the account)
+        public static let deposits = "p.deposits"       // fixed deposits (money in and back)
         public static let tax = "p.tax"                 // personal income, advance, dividend, gains, interest and wealth tax
         public static let loans = "p.loans"             // loans drawn and instalments paid
         public static let interest = "p.interest"       // overdraft interest
@@ -25,7 +24,7 @@ public enum ReportCounters {
         public static let answered = "n.answered"       // decisions the player answered (a count)
     }
 
-    public static let personalKeys: [String] = [Key.invested, Key.dividends, Key.salary, Key.drawings, Key.markets, Key.savings, Key.tax, Key.loans, Key.interest, Key.companies, Key.other]
+    public static let personalKeys: [String] = [Key.invested, Key.dividends, Key.salary, Key.markets, Key.deposits, Key.tax, Key.loans, Key.interest, Key.companies, Key.other]
 
     /// Which total a statement label belongs to.
     public static func key(forLabel label: String) -> String {
@@ -33,10 +32,9 @@ public enum ReportCounters {
         if has("Invested in") { return Key.invested }
         if has("Dividend from") { return Key.dividends }
         if has("Salary from") { return Key.salary }
-        if has("Drawing from") { return Key.drawings }
         if has("Dividend tax") || has("Tax on ") || has("Wealth tax") { return Key.tax }
         if has("Bought ") || has("Sold ") || has("Dividend ") { return Key.markets }
-        if has("To savings") || has("From savings") || has("Fixed deposit") || has("Deposit matured") || has("Savings emptied") { return Key.savings }
+        if has("Fixed deposit") || has("Deposit matured") { return Key.deposits }
         if has("Annual tax") || has("Advance tax") { return Key.tax }
         if has("Loan ") { return Key.loans }
         if has("Overdraft interest") { return Key.interest }
