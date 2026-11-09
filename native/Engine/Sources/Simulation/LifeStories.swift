@@ -129,9 +129,6 @@ enum LifeStories {
             docs[d] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week)), "w0": .number(Double(s.week))])
         }
         s.companies[i].set("docs", docs)
-        var staff = s.companies[i].staff
-        for k in staff.indices { for it in StaffExtras.items(role: staff[k].role) { StaffExtras.tick(&staff[k], key: it.key) } }
-        s.companies[i].staff = staff
         _ = OpeningChecklist.open(&s, companyIndex: i, data: data)
         s.companies[i].awareness = max(s.companies[i].awareness, 45)
         s.companies[i].reputation = max(s.companies[i].reputation, 60)

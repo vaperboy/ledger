@@ -15,8 +15,6 @@ enum StaffIssue {
         if let f = m.value("flag").isNull ? nil : m.str("flag"), let t = StaffProfile.problemText[f] { out.append(t) }
         if m.sickUntilWeek != nil { out.append("off sick") }
         if m.tiredness > 60 { out.append("tired") }
-        let papers = StaffExtras.missing(m).count
-        if papers > 0 { out.append("\(papers) papers missing") }
         if m.int("warn") > 0 { out.append("\(m.int("warn")) warning\(m.int("warn") == 1 ? "" : "s")") }
         return out
     }
@@ -24,7 +22,7 @@ enum StaffIssue {
     static func needsAttention(_ m: StaffMember) -> Bool { list(m).contains { !$0.hasSuffix("warning") && !$0.hasSuffix("warnings") } }
 }
 
-/// The company's own staff as clean rows: the paperwork alert first (a card, it needs you), then who needs attention, then everyone else,
+/// The company's own staff as clean rows: who needs attention first, then everyone else,
 /// grouped by role once the team is big. Each row shows the role and the mood; a tap pushes the person's profile, where every action lives.
 struct CompanyStaffRoster: View {
     @EnvironmentObject var store: GameStore
@@ -58,7 +56,6 @@ struct CompanyStaffRoster: View {
         let mood: [Int: String] = moods
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if staff.count > 12 { LedgerField(placeholder: "Search by name or role", text: $query) }
-            paperwork
             if !attention.isEmpty {
                 group("Needs you \u{00B7} \(attention.count)", tint: P.caution) { rows(attention, cur, mood) }
             }
@@ -125,35 +122,6 @@ struct CompanyStaffRoster: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("team-worker-\(id)")
-    }
-
-    /// Missing paperwork across the team: the one card of the list (it needs you), with one action that ticks it all.
-    @ViewBuilder private var paperwork: some View {
-        let staff = company.staff
-        let papers = staff.reduce(0) { $0 + StaffExtras.missing($1).count }
-        if papers > 0 {
-            HStack(alignment: .center, spacing: Theme.Space.m) {
-                LedgerGlyph(glyph: Glyph.warning, size: Theme.Icon.medium, tint: P.caution)
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text("\(papers) paperwork \(papers == 1 ? "item" : "items") missing").textStyle(.headline)
-                    Text("An inspection can fine you.").textStyle(.caption)
-                }
-                Spacer(minLength: Theme.Space.s)
-                Button("Do all") {
-                    Haptics.tap()
-                    var done = 0
-                    for m in staff { done += store.act({ $0.completePaperwork(companyID: company.id, personID: m.id) }) ?? 0 }
-                    let left = store.engine?.state.company(company.id).map { $0.staff.reduce(0) { $0 + StaffExtras.missing($1).count } } ?? papers
-                    if done > 0 && left == 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") }
-                    else if done > 0 { Haptics.warning(); store.show("\(done) \(done == 1 ? "item" : "items") ticked; \(left) still missing.", tone: "warn") }
-                    else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
-                }
-                .buttonStyle(TertiaryButtonStyle(size: .compact))
-            }
-            .padding(Theme.Space.l)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.surfaceRaised))
-        }
     }
 
     /// Cutting costs: a quiet row at the end of the list whose menu picks how many of the weakest go; each choice asks first.

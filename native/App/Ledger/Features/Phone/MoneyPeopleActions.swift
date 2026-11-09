@@ -276,13 +276,6 @@ struct HoldingFinanceManagerCard: View {
         if let e = staffEntry {
             let id = e["id"].int
             Text("Hired: \(e["name"].string), \(cur.tidyShort(e["wage"].double)) a month, paid by the group.").textStyle(.caption)
-            ForEach(engine.officePaperwork(personID: id), id: \.key) { item in
-                HStack {
-                    Text(item.text.tidyMoney).textStyle(.caption, tint: item.done ? Theme.inkFaint : Theme.ink)
-                    Spacer(minLength: 8)
-                    if !item.done { QuietButton(title: "Done") { store.act { $0.tickOfficePaperwork(personID: id, item: item.key) } } }
-                }
-            }
             QuietButton(title: "Let go", tint: Theme.loss) { askToFire() }
         } else if room == .ok {
             Text("Wage about \(cur.tidyShort(cur.scaledPrice(role?.monthlyPay ?? 82000))) a month, more for a better one. Effect: \(role?.text ?? "Runs your holding companies.")").textStyle(.caption).fixedSize(horizontal: false, vertical: true)

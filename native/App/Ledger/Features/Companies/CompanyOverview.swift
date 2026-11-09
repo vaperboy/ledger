@@ -340,9 +340,9 @@ struct CompanyOverview: View {
 
     // MARK: What needs the owner
 
-    /// Staff matters (paperwork, worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
+    /// Staff matters (worn-out staff, a manager leaving or struggling), the same list the Team tab shows.
     private func staffMatters(_ co: Company) -> [TeamOverview.Issue] {
-        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.paperwork, .tired, .managerLeaving, .managerWeak].contains($0.kind) }
+        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == co.id && $0.needsOwner && [.tired, .managerLeaving, .managerWeak].contains($0.kind) }
     }
 
     /// Everything that needs the owner, most urgent first: money trouble, nobody in charge, decisions waiting, setup, closure, people.
@@ -381,7 +381,7 @@ struct CompanyOverview: View {
         if co.status == .closed { out.append(CompanyIssue(id: "closed", glyph: Glyph.settings, tint: P.warn, title: "Closed", sub: "Reopen it or close down for good", action: "Open settings") { goMoney(.settings) }) }
         if !matters.isEmpty {
             let one: Bool = matters.count == 1
-            out.append(CompanyIssue(id: "matters", glyph: Glyph.person, tint: P.warn, title: one ? matters[0].title : "\(matters.count) staff matters need you", sub: one ? matters[0].detail : "Paperwork, tired staff or your manager", action: "Open Team") { go(.staff) })
+            out.append(CompanyIssue(id: "matters", glyph: Glyph.person, tint: P.warn, title: one ? matters[0].title : "\(matters.count) staff matters need you", sub: one ? matters[0].detail : "Tired staff or your manager", action: "Open Team") { go(.staff) })
         }
         if people > 0 { out.append(CompanyIssue(id: "people", glyph: Glyph.team, tint: P.warn, title: "\(people) \(people == 1 ? "person needs" : "people need") attention", sub: "Problems, notice or sickness", action: "Open Team") { go(.staff) }) }
         return out

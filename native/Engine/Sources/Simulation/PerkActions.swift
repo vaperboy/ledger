@@ -90,6 +90,4 @@ public extension GameEngine {
     var topFifty: Stories.TopFifty? { Stories.topFifty(state) }
     /// What has happened in a worker's working life at your company, newest first.
     func staffStory(companyID: Int, staffID: Int) -> [(week: Int, text: String)] { Stories.story(state, companyID: companyID, staffID: staffID) }
-    /// People who retired from your companies, newest first.
-    var retirementHall: [(name: String, text: String, week: Int)] { Stories.hall(state) }
 }

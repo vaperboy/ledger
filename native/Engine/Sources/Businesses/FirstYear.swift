@@ -11,9 +11,9 @@ public struct FirstYear: Sendable, Equatable {
     /// False: suppliers do not cut a buyer off until `supplierCutoffWeek`.
     public var supplierCutoffEnabled = false
     public var supplierCutoffWeek = 27
-    /// False: the competition authority stays away until the player owns `competitionAuthorityCompanies` companies.
+    /// False: the competition authority stays away until `competitionAuthorityWeek`.
     public var competitionAuthorityEnabled = false
-    public var competitionAuthorityCompanies = 3
+    public var competitionAuthorityWeek = 52
     /// False: no company goes bankrupt before `bankruptcyWeek`; after `frozenAfterWeeks` weeks below zero the bank freezes the account instead.
     public var bankruptcyEnabled = false
     public var bankruptcyWeek = 27
@@ -31,7 +31,7 @@ public struct FirstYear: Sendable, Equatable {
         if !j["supplierCutoffEnabled"].isNull { supplierCutoffEnabled = j["supplierCutoffEnabled"].bool }
         if !j["supplierCutoffWeek"].isNull { supplierCutoffWeek = j["supplierCutoffWeek"].int }
         if !j["competitionAuthorityEnabled"].isNull { competitionAuthorityEnabled = j["competitionAuthorityEnabled"].bool }
-        if !j["competitionAuthorityCompanies"].isNull { competitionAuthorityCompanies = j["competitionAuthorityCompanies"].int }
+        if !j["competitionAuthorityWeek"].isNull { competitionAuthorityWeek = j["competitionAuthorityWeek"].int }
         if !j["bankruptcyEnabled"].isNull { bankruptcyEnabled = j["bankruptcyEnabled"].bool }
         if !j["bankruptcyWeek"].isNull { bankruptcyWeek = j["bankruptcyWeek"].int }
         if !j["frozenAfterWeeks"].isNull { frozenAfterWeeks = j["frozenAfterWeeks"].int }
@@ -52,7 +52,7 @@ public struct FirstYear: Sendable, Equatable {
     public func supplierCutoffActive(week: Int) -> Bool { supplierCutoffEnabled || week >= supplierCutoffWeek }
     public func bankruptcyActive(week: Int) -> Bool { bankruptcyEnabled || week >= bankruptcyWeek }
     public func competitionAuthorityActive(_ s: GameState) -> Bool {
-        competitionAuthorityEnabled || Gates.companiesOwned(s) >= competitionAuthorityCompanies
+        competitionAuthorityEnabled || s.week >= competitionAuthorityWeek
     }
 
     public static let frozenAction = "bankfrz"
@@ -97,10 +97,10 @@ public struct FirstYear: Sendable, Equatable {
                          body: "A company in the red can now go bankrupt instead of being frozen, and suppliers can stop selling to a buyer who keeps paying late. Pay bills on time and watch your cash.",
                          tone: "bad")
         }
-        if !f.competitionAuthorityEnabled, done["authority"].isNull, Gates.companiesOwned(s) >= f.competitionAuthorityCompanies {
+        if !f.competitionAuthorityEnabled, done["authority"].isNull, s.week >= f.competitionAuthorityWeek {
             done["authority"] = .number(1)
             s.addMessage(from: "Your accountant", title: "The competition authority is watching you",
-                         body: "With \(f.competitionAuthorityCompanies) companies you are a group. The competition authority can now look into a company that holds a big share of its market.",
+                         body: "After a year in business the competition authority can look into a company that holds a big share of its market.",
                          tone: "n")
         }
         s.rest["fyNotes"] = done

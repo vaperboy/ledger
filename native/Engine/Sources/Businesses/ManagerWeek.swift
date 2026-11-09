@@ -68,21 +68,10 @@ extension ManagerModel {
         return Wages.market(baseMonthlyWage: base, country: w.country(co), city: city, economy: s.economy, rates: w.rates)
     }
 
-    /// Paperwork, mistakes of the inexperienced, and the monthly pay review. Original: `mgrStaffWork`.
+    /// Mistakes of the inexperienced, and the monthly pay review. Original: `mgrStaffWork`.
     static func staffWork(_ s: inout GameState, _ ci: Int, _ bd: Trade, _ n: Person, _ q: Double, data: GameData, revenue: Double) {
         var co = s.companies[ci]
         let actsAlone = budget(of: co).actsAlone
-        let doesAll = co.value("flags")["onbAll"].bool || n.num("exp") >= 5
-        let risk = n.value("stats")["risk"].double
-        var staff = co.staff
-        for k in staff.indices {
-            let miss = StaffExtras.missing(staff[k])
-            if miss.isEmpty { continue }
-            if doesAll { miss.forEach { StaffExtras.tick(&staff[k], key: $0.key) } }
-            else if s.random.chance(0.25 + risk * 0.003) { StaffExtras.tick(&staff[k], key: miss[0].key) }
-        }
-        co.staff = staff
-        s.companies[ci] = co
         let cur = World(state: s, data: data).currency(co)
         // Inexperience: costly mistakes
         let expF = clamp(1 - n.num("exp") / 8, 0, 1)
@@ -122,7 +111,7 @@ extension ManagerModel {
             let yearOn = lrW >= 52 && ten >= 52 && m.noticeWeeks == 0
             let askW = m.raw["askW"].flatMap { $0.isNull ? nil : $0.int }
             guard let reason = why, yearOn || mk0 > paid * 1.03, askW == nil || askW == 0 || s.week - askW! >= 12 else { continue }
-            let felt = StaffTalks.raiseNeeded(role: m.role, age: nn.age, tables: data.catalog.tables)
+            let felt = StaffTalks.raiseNeeded(role: m.role, tables: data.catalog.tables)
             let target = yearOn && mk0 <= m.monthlyWage * (1 + felt) ? cur.roundedStep(m.monthlyWage * (1 + felt + (1 - rq) * 0.01), about: 100)
                 : max(m.monthlyWage + 100, cur.roundedStep(m.monthlyWage + (mk0 - m.monthlyWage) * (1 - 0.55 * rq), about: 100))
             let d = target - m.monthlyWage

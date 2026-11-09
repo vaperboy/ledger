@@ -12,10 +12,10 @@ final class LadderTests: XCTestCase {
         let g = try XCTUnwrap(PlayerGoals.ladder(e.state))
         XCTAssertEqual(g.map { $0.id }, (1...10).map { "M\($0)" })
         XCTAssertEqual(g.map { $0.title }, ["Get through your first week", "Choose how you sell", "Hire your first worker", "Answer a decision", "Word gets around",
-                                            "Pay yourself", "Make a profit in a month", "Hire a manager", "Open a second company", "Survive a bad week"])
+                                            "Pay yourself", "Make a profit in a month", "Hire a manager", "Trade for a quarter", "Survive a bad week"])
         XCTAssertEqual(g.map { $0.pastTense }, ["You got through your first week.", "You chose how you sell.", "You hired your first worker.", "You answered your first decision.",
                                                 "Your first campaign ran.", "You paid yourself.", "Your first profitable month.", "You hired a manager.",
-                                                "You opened a second company.", "You survived a bad week."])
+                                                "You traded for a quarter.", "You survived a bad week."])
         XCTAssertEqual(PlayerGoals.currentLadderGoal(e.state)?.id, "M1")
         XCTAssertEqual(g.first { $0.id == "M2" }?.link, "sales")
     }

@@ -137,8 +137,6 @@ public extension GameEngine {
     @discardableResult
     mutating func fireOffice(personID: Int) -> Bool { var ok = false; update { s, _, _ in ok = Headquarters.fire(&s, personID: personID) }; return ok }
     @discardableResult
-    mutating func tickOfficePaperwork(personID: Int, item: String) -> Bool { var ok = false; update { s, _, _ in ok = Headquarters.tickPaperwork(&s, personID: personID, item: item) }; return ok }
-    func officePaperwork(personID: Int) -> [(key: String, text: String, done: Bool)] { Headquarters.paperwork(state, personID: personID) }
     mutating func setPerformanceAnalystAuto(_ on: Bool) { update { s, _, _ in Headquarters.setPerformanceAuto(&s, on) } }
     func managerScorecard(companyID: Int) -> Headquarters.Scorecard? { Headquarters.review(state, companyID: companyID) }
     @discardableResult

@@ -27,7 +27,6 @@ final class HireOnePathTests: XCTestCase {
         var staffCount: Int
         var wage: Double?
         var basis: String?
-        var onboarding: String?
         var ownCar: Bool
         var gaps: Int
     }
@@ -36,7 +35,7 @@ final class HireOnePathTests: XCTestCase {
         let co = e.state.company(id)!
         let m = co.staff.first { $0.id == pid }
         return Outcome(result: r, randomState: e.state.random.state, staffCount: co.staff.count, wage: m?.monthlyWage, basis: m?.payBasis,
-                       onboarding: m.map { "\($0.value("onb"))" }, ownCar: m?.flag("ownCar") ?? false, gaps: Ledger.gaps(e.state).count)
+                       ownCar: m?.flag("ownCar") ?? false, gaps: Ledger.gaps(e.state).count)
     }
 
     /// Offers of every size (refused, accepted) give the same result and use the same random draws through either entry point and the core function.
@@ -67,14 +66,13 @@ final class HireOnePathTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    func testRecordAndPaperworkAreCreatedTogether() throws {
+    func testTheStaffRecordIsCreatedWithTheHire() throws {
         var (e, id) = try shop("cafe")
         let pid = candidate(&e, id, role: "barista")
         XCTAssertEqual(e.hire(personID: pid, companyID: id, monthlyWage: e.state.people[pid]!.askingMonthlyWage * 1.5), .ok)
         let m = try XCTUnwrap(e.state.company(id)!.staff.first { $0.id == pid })
         XCTAssertEqual(m.hiredWeek, e.state.week)
         XCTAssertEqual(e.state.people[pid]!.employerID, id)
-        XCTAssertFalse(m.value("onb").isNull)
     }
 
     /// Own car: asked for through `Terms`, for estate agents only (the player-facing path). The old plain overload's flag did not check the role.

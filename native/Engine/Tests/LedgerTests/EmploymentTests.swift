@@ -577,12 +577,6 @@ final class EmploymentTests: XCTestCase {
         XCTAssertEqual(StaffBehaviour.resignationNotice(m, person: e.state.people[pid]!, week: 3, standardNotice: 8).abrupt, false, "a contented person works their notice")
     }
 
-    func testRaiseThresholdHasNoAgeInIt() {
-        let t = (try? GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 1))?.data.catalog.tables
-        XCTAssertNotNil(t)
-        XCTAssertEqual(StaffTalks.raiseNeeded(role: "cook", age: 19, tables: t!), StaffTalks.raiseNeeded(role: "cook", age: 55, tables: t!))
-    }
-
     // MARK: Promises to group employees
 
     func testPromisesToTheAnalystAreKeptByRealGroupActions() throws {

@@ -133,12 +133,11 @@ public enum Suppliers {
         return relationshipDiscount(relationship(s, id)) + (s.rest["agree"]?[scope].string == id ? 0.03 : 0)
     }
 
-    public enum AgreeResult: Equatable, Sendable { case ok, fewCompanies, cash, unknown }
+    public enum AgreeResult: Equatable, Sendable { case ok, cash, unknown }
 
     /// Call the board together and agree to buy through one supplier for every company (nil ends the agreement). Original: `boardDeal`.
     public static func agree(_ s: inout GameState, scope: String, vendorID: String?, data: GameData) -> AgreeResult {
         guard ["goods", "eq", "fix"].contains(scope) else { return .unknown }
-        if s.liveCompanies.count < 2 { return .fewCompanies }
         let cost = homeCurrency(s, data).scaledPrice(9000)
         if s.cash < cost { return .cash }
         Payments.playerPays(&s, cost, label: "Board meeting and dinner")

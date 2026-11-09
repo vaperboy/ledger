@@ -323,7 +323,7 @@ public enum MarketMap {
         var office = s.rest["office"] ?? .object(["tier": "home", "since": .number(Double(s.week)), "staff": .array([])])
         var staff = office["staff"].array
         staff.append(.object(["id": .number(Double(personID)), "role": .string(dataAnalystRole), "name": .string(n.name), "wage": .number(wage),
-                              "w0": .number(Double(s.week)), "onb": .object([:]), "by": "mm"]))
+                              "w0": .number(Double(s.week)), "by": "mm"]))
         office["staff"] = .array(staff)
         s.rest["office"] = office
         return .ok

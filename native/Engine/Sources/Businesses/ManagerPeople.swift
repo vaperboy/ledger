@@ -330,7 +330,7 @@ extension ManagerModel {
 
     public static let assistantDuties: [(key: String, title: String, text: String)] = [
         ("comp", "Customer complaints", "Answers complaints before they become reviews"),
-        ("paper", "Paperwork and insurance", "Staff papers and documents"),
+        ("insure", "Insurance", "Keeps basic insurance in place"),
         ("equip", "Equipment and stock", "Services worn equipment and keeps stock up")]
 
     /// Job ad for an assistant: a fee and three candidates, paid more than a worker and less than a manager. Original: `ACT.asstsearch`.
@@ -421,11 +421,6 @@ extension ManagerModel {
         guard co.status == .open else { return }
         let sk = (n.skill.isZero ? 55 : n.skill) / 100
         let duties = a["duties"].array.map { $0.string }
-        if duties.contains("paper") {
-            var staff = s.companies[ci].staff
-            for k in staff.indices { for it in StaffExtras.missing(staff[k]) where s.random.chance(0.7 + sk * 0.3) { StaffExtras.tick(&staff[k], key: it.key) } }
-            s.companies[ci].staff = staff
-        }
         if duties.contains("equip") {
             var eq = s.companies[ci].value("eq")
             for (id, r) in eq.object.sorted(by: { $0.key < $1.key }) where id != "fit" && r["sub"].isNull && !r["soft"].bool && !r["cond"].isNull {

@@ -188,8 +188,7 @@ public enum ChainBranches {
         var pay = going.reduce(0) { $0 + (Dismissal.quote(s, companyID: co.id, staffID: $1.id, reason: .redundancy, data: data)?.total ?? 0) }
         if let mid = co.managerID {
             let hired = co.value("mgrW0").isNull ? Double(s.week - 52) : co.num("mgrW0")
-            pay += Dismissal.quote(World(state: s, data: data), co, monthlyWage: co.managerMonthlyWage, tenureWeeks: Double(s.week) - hired, reason: .redundancy,
-                                   age: s.people[mid].map { Double($0.age) }).total
+            pay += Dismissal.quote(World(state: s, data: data), co, monthlyWage: co.managerMonthlyWage, tenureWeeks: Double(s.week) - hired, reason: .redundancy).total
         }
         let eq = co.value("eq").object
         return ClosurePlan(storeID: co.id, storeName: co.name, receiverID: to.id, receiverName: to.name,

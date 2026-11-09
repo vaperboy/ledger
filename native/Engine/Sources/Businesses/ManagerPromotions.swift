@@ -238,7 +238,7 @@ extension ManagerModel {
                 var nn = s.people[n.id]!; nn.employerID = -3; s.people[n.id] = nn
                 var o = s.rest["office"] ?? .null
                 var l = o["staff"].array
-                l.append(.object(["id": .number(Double(n.id)), "role": .string(role), "name": .string(n.name), "wage": .number(w), "w0": .number(Double(s.week)), "onb": .object([:])]))
+                l.append(.object(["id": .number(Double(n.id)), "role": .string(role), "name": .string(n.name), "wage": .number(w), "w0": .number(Double(s.week))]))
                 o["staff"] = .array(l); s.rest["office"] = o
                 ok = true
             }

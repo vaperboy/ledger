@@ -30,6 +30,7 @@ enum ExchangeUI {
     static func kindWord(_ kind: String) -> String {
         switch kind {
         case "srv": return "Index"
+        case "com": return "Raw material"
         case "own": return "Yours"
         default: return "Player"
         }

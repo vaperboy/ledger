@@ -70,7 +70,7 @@ struct StaffProfileView: View {
     }
 }
 
-/// The one action of a profile, Discuss contract, with every other action (warn, talk, paperwork, course, duty, letting go last) in a "…" menu.
+/// The one action of a profile, Discuss contract, with every other action (warn, talk, course, duty, letting go last) in a "…" menu.
 struct WorkerActionBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -92,7 +92,6 @@ struct WorkerActionBar: View {
 
     private func bar(_ e: GameEngine, _ co: Company, _ p: WorkerProfile, _ s: StaffProfile.Profile?, _ cur: Currency) -> some View {
         let extras: [RoleOption] = e.recommendedRoles(companyID: companyID).filter { (r: RoleOption) -> Bool in !r.isCore }
-        let missing: Int = co.staff.first(where: { $0.id == employeeID }).map { StaffExtras.missing($0).count } ?? 0
         let courses: [StaffProfile.Course] = s?.courses ?? []
         let problem: Bool = s?.problem != nil
         return HStack(spacing: Theme.Space.s) {
@@ -102,7 +101,6 @@ struct WorkerActionBar: View {
             Menu {
                 Button("Give a written warning") { warn(p.name) }
                 if problem { Button("Talk to them") { talk() } }
-                if missing > 0 { Button("Paperwork done (\(missing))") { paperwork() } }
                 if let s, !courses.isEmpty {
                     Menu("Send on a course") {
                         ForEach(courses, id: \.id) { (c: StaffProfile.Course) in
@@ -146,12 +144,6 @@ struct WorkerActionBar: View {
         if worked == nil { Haptics.warning(); store.show("The warning could not be given now.", tone: "warn"); return }
         Haptics.tap()
         store.show(worked == true ? "The warning worked. \(name) has improved." : "Warning on file for \(name).", tone: worked == true ? "good" : "n")
-    }
-
-    private func paperwork() {
-        let cid = companyID, eid = employeeID
-        let done = store.act { $0.completePaperwork(companyID: cid, personID: eid) } ?? 0
-        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
     }
 
     private func confirmCourse(_ c: StaffProfile.Course, _ s: StaffProfile.Profile, _ cur: Currency) {

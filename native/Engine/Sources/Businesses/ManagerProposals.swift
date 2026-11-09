@@ -202,12 +202,12 @@ extension ManagerModel {
 
     // MARK: Assistants: monthly suggestion and basic insurance
 
-    /// Every fourth week the assistant advises on something; with the paperwork duty they also take out basic insurance. Original: `asstWeek` (end).
+    /// Every fourth week the assistant advises on something; with the insurance duty they also take out basic insurance. Original: `asstWeek` (end).
     static func assistantExtras(_ s: inout GameState, companyIndex ci: Int, data: GameData) {
         let co = s.companies[ci]
         var a = co.value("asst")
         guard a["npc"].int != 0, let n = s.people[a["npc"].int], co.status == .open else { return }
-        if a["duties"].array.contains(where: { $0.string == "paper" }), !co.value("insr").isNull, co.value("ins").object.values.allSatisfy({ !$0.bool }) {
+        if a["duties"].array.contains(where: { $0.string == "insure" }), !co.value("insr").isNull, co.value("ins").object.values.allSatisfy({ !$0.bool }) {
             // A policy the owner switched off themselves (`insOwn`) stays off: the assistant only fills gaps the owner left.
             let own = co.value("insOwn")
             var ins = co.value("ins"); if own["liab"].isNull { ins["liab"] = 1 }

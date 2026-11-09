@@ -126,24 +126,24 @@ public enum Headquarters {
 
     // MARK: Roles: when they open, whether there is room
 
-    /// Roles open up as the group grows. Original: `hqUnlocked`.
+    /// Roles open up as the payroll grows, whether it sits in one company or several. Original: `hqUnlocked`.
     public static func unlocked(_ s: GameState, _ role: String, _ data: GameData) -> Bool {
         let live = s.liveCompanies
-        let n = live.count, mgrs = live.filter { $0.managerID != nil }.count, staffN = live.reduce(0) { $0 + $1.staff.count }
+        let mgrs = live.filter { $0.managerID != nil }.count, staffN = live.reduce(0) { $0 + $1.staff.count }
         switch role {
         case "pa": return true
-        case "hr": return n >= 2 || staffN >= 8
-        case "acc", "proc": return n >= 2
-        case "law", "ana", "mkt": return n >= 3
-        case "perf": return mgrs >= 2
-        case "strat": return n >= 4 && Valuation.netWorth(s, trades: data.catalog).total >= ManagerModel.playerCurrency(s, data).scaledPrice(2e7)
+        case "hr": return staffN >= 8
+        case "acc", "proc": return staffN >= 15
+        case "law", "ana", "mkt": return staffN >= 30
+        case "perf": return mgrs >= 1
+        case "strat": return staffN >= 100 && Valuation.netWorth(s, trades: data.catalog).total >= ManagerModel.playerCurrency(s, data).scaledPrice(2e7)
         case "fin": return s.companies.contains { $0.type == "hold" && $0.status == .open }
         default: return true
         }
     }
     public static func unlockText(_ role: String) -> String {
-        ["hr": "2 companies or 8 staff", "acc": "2 companies", "law": "3 companies", "ana": "3 companies", "proc": "2 companies", "perf": "2 managed companies",
-         "mkt": "3 companies", "strat": "4 companies and a large net worth", "fin": "a holding company"][role] ?? ""
+        ["hr": "8 staff", "acc": "15 staff", "law": "30 staff", "ana": "30 staff", "proc": "15 staff", "perf": "a managed company",
+         "mkt": "30 staff", "strat": "100 staff and a large net worth", "fin": "a holding company"][role] ?? ""
     }
 
     public enum RoomResult: String, Equatable, Sendable { case ok, office, bad, locked, have, homeoffice, desks }
@@ -232,10 +232,10 @@ public enum Headquarters {
         s.people[personID] = n
         var o = office(s)
         var l = o["staff"].array
-        l.append(.object(["id": .number(Double(personID)), "role": .string(role), "name": .string(n.name), "wage": .number(wage), "w0": .number(Double(s.week)), "onb": .object([:])]))
+        l.append(.object(["id": .number(Double(personID)), "role": .string(role), "name": .string(n.name), "wage": .number(wage), "w0": .number(Double(s.week))]))
         o["staff"] = .array(l)
         s.rest["office"] = o
-        s.note("\(n.name) joins your main office as \(self.role(role, data)?.title.lowercased() ?? role). Complete the paperwork.", tone: "good")
+        s.note("\(n.name) joins your main office as \(self.role(role, data)?.title.lowercased() ?? role).", tone: "good")
         return .ok
     }
 
@@ -247,22 +247,6 @@ public enum Headquarters {
         s.rest["office"] = o
         ManagerModel.removeSeat(&s, personID: personID)
         return true
-    }
-
-    /// Tick one item of the paperwork of a main-office employee. Original: `ACT.hqtick`.
-    @discardableResult
-    public static func tickPaperwork(_ s: inout GameState, personID: Int, item: String) -> Bool {
-        guard var o = s.rest["office"] else { return false }
-        var l = o["staff"].array
-        guard let k = l.firstIndex(where: { $0["id"].int == personID }) else { return false }
-        l[k]["onb"][item] = .number(1)
-        o["staff"] = .array(l)
-        s.rest["office"] = o
-        return true
-    }
-    public static func paperwork(_ s: GameState, personID: Int) -> [(key: String, text: String, done: Bool)] {
-        guard let st = staff(s).first(where: { $0["id"].int == personID }) else { return [] }
-        return StaffExtras.items(role: "hq_\(st["role"].string)").map { ($0.key, $0.text, st["onb"][$0.key].double != 0) }
     }
 
     /// Assign a company to your marketing director or performance analyst. Original: `ACT.hqas`.
@@ -279,22 +263,13 @@ public enum Headquarters {
         Payments.playerPays(&s, a, label: label)
     }
 
-    /// Rent and salaries each month, fines for missing paperwork, the strategy memo and the manager scorecards. Original: `officeMonth`.
+    /// Rent and salaries each month, the strategy memo and the manager scorecards. Original: `officeMonth`.
     static func monthly(_ s: inout GameState, data: GameData) {
         guard let t = tier(s, data) else { return }
         let o = office(s)
         var cost = rent(s, tier: t, cityID: o["city"].string, data: data) * 1.02
         for x in o["staff"].array { cost += x["wage"].double * 1.14 }
         if cost > 0 { payHeadOffice(&s, cost, label: "Main office and its staff") }
-        let cur = ManagerModel.playerCurrency(s, data)
-        for x in o["staff"].array {
-            let miss = StaffExtras.items(role: "hq_\(x["role"].string)").filter { x["onb"][$0.key].double == 0 }
-            if !miss.isEmpty && s.week - x["w0"].int >= 3 && s.random.chance(0.035 * Double(miss.count)) {
-                let f = jsRound(s.random.range(8000, 25000) * cur.country.costIndex * (has(s, "law") ? 0.85 : 1))
-                Payments.playerPays(&s, f, label: "Paperwork fine: main office staff")
-                s.news("Inspectors fined you \(cur.display(f)) for missing paperwork at your main office.")
-            }
-        }
         if GameCalendar.monthIndex(week: s.week) % 3 == 2 && has(s, "strat") { strategyMemo(&s, data: data) }
         let auto = o["perfAuto"].isNull ? true : o["perfAuto"].bool
         if has(s, "perf") && auto { managerScorecards(&s, data: data) }
@@ -310,7 +285,6 @@ public enum Headquarters {
         public var margin: Double
         public var reputation: Int
         public var quality: Int
-        public var paperworkGaps: Int
         public var fraud: Double
         public var weeks: Int
     }
@@ -321,13 +295,12 @@ public enum Headquarters {
         let h = Array(co.monthlyHistory.suffix(3))
         let rev = h.reduce(0) { $0 + $1.revenue }, pr = h.reduce(0) { $0 + $1.profit }
         let margin = rev > 0 ? pr / rev : 0
-        let paper = co.staff.filter { !StaffExtras.missing($0).isEmpty }.count
         let mist = n.num("mist"), fraud = co.value("flags")["fraud"].double
         let tl = co.value("tg58")["log"].array.suffix(3)
         let tg: Double? = tl.isEmpty ? nil : tl.reduce(0.0) { $0 + $1["n"].double / max(1, $1["of"].double) } / Double(tl.count)
-        let score = jsRound(clamp(50 + clamp(margin * 100, -25, 25) * 0.9 + (co.reputation - 50) * 0.3 + (co.quality - 50) * 0.2 - mist * 4 - Double(paper) * 3 - (fraud > 0 ? 25 : 0) + (tg.map { ($0 - 0.5) * 20 } ?? 0), 0, 100))
+        let score = jsRound(clamp(50 + clamp(margin * 100, -25, 25) * 0.9 + (co.reputation - 50) * 0.3 + (co.quality - 50) * 0.2 - mist * 4 - (fraud > 0 ? 25 : 0) + (tg.map { ($0 - 0.5) * 20 } ?? 0), 0, 100))
         return Scorecard(id: co.id, companyName: co.name, managerName: n.name, score: Int(score), margin: margin, reputation: Int(saturating: jsRound(co.reputation)), quality: Int(saturating: jsRound(co.quality)),
-                         paperworkGaps: paper, fraud: fraud, weeks: s.week - co.int("mgrW0"))
+                         fraud: fraud, weeks: s.week - co.int("mgrW0"))
     }
     /// Run (and remember) the review of every managed company; with a performance analyst this happens each month. Original: `managerScorecards`.
     @discardableResult

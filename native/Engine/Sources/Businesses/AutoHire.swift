@@ -172,7 +172,7 @@ public enum AutoHire {
         let world = World(state: s, data: data)
         let cityWage = world.city(co)?.wage ?? 1, infl = world.inflationIndex, heads = Double(co.staff.count)
         return bestDeal(candidates, hirer: h, rank: "manager", floor: world.minimumWage(co), currency: world.currency(co), about: 500,
-                        fair: { p, perceived in ManagerModel.askingPay(heads: heads, skill: perceived, tier: Hiring.tier(forAge: p.age), experience: p.num("exp"), cityWage: cityWage, inflation: infl) },
+                        fair: { p, perceived in ManagerModel.askingPay(heads: heads, skill: perceived, tier: p.value("tier").isNull ? "mid" : p.str("tier"), experience: p.num("exp"), cityWage: cityWage, inflation: infl) },
                         factor: { _ in 1 }, state: &s)
     }
 }

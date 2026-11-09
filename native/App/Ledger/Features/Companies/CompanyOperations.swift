@@ -49,7 +49,6 @@ struct CompanyOperations: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             CompanyPerformance(engine: engine, company: company)
-            FixFirstCard(issues: issues, heading: "Needs you")
             runRows
             CompanyOtherSections(engine: engine, company: company)
         }
@@ -112,23 +111,6 @@ struct CompanyOperations: View {
                          identifier: "manage-equipment") { part = .equipment }
     }
 
-    // MARK: What needs you
-
-    private var paperworkIssues: [TeamOverview.Issue] {
-        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == company.id && $0.kind == .paperwork }
-    }
-
-    /// Paperwork that can bring a fine.
-    private var issues: [CompanyIssue] {
-        let paper: [TeamOverview.Issue] = paperworkIssues
-        let id: Int = company.id
-        var out: [CompanyIssue] = []
-        if let first = paper.first {
-            out.append(CompanyIssue(id: "paper", glyph: Glyph.reports, tint: P.warn, title: paper.count == 1 ? first.title : "\(paper.count) paperwork matters",
-                                    sub: paper.count == 1 ? first.detail : "An inspection can fine you", action: "Open Team") { store.openCompany(id, section: .staff) })
-        }
-        return out
-    }
 }
 
 /// Demand (bars, gold where it passes capacity) against what the company could serve (dashed line), one point a week.

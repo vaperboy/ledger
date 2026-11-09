@@ -91,7 +91,6 @@ public struct Player: JSONRecord {
     public init(raw: [String: JSONValue]) { self.raw = raw }
 
     public var name: String { get { str("name", "You") } set { set("name", newValue) } }
-    public var age: Int { get { int("age", 30) } set { set("age", newValue) } }
     public var cityID: String { get { str("city") } set { set("city", newValue) } }
 }
 

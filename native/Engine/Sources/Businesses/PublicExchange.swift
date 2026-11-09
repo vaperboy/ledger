@@ -66,6 +66,9 @@ public struct ExchangeRow: Identifiable, Equatable, Sendable {
 public enum PublicExchange {
     public static let worldBank = "srv:wb"
     public static let worldIndex = "srv:wi"
+    public static let commodityPrefix = "com:"
+
+    public static func commodityID(_ id: String) -> String { commodityPrefix + id }
 
     public static func today(_ s: GameState) -> Int { s.week * 7 + s.day }
 
@@ -77,15 +80,18 @@ public enum PublicExchange {
         switch id {
         case worldBank: p = s.rest["stocks"]?["BANK"]["p"].double ?? 0
         case worldIndex: p = s.rest["idx"]?.double ?? 0
-        default: return nil
+        default:
+            guard id.hasPrefix(commodityPrefix) else { return nil }
+            p = CommodityMarket.price(s, String(id.dropFirst(commodityPrefix.count))) ?? 0
         }
         return p > 0 ? ExchangeRules.round4(p) : nil
     }
 
     static func ensureServerStocks(_ s: GameState, _ book: inout ExchangeBook) {
-        for (id, name) in [(worldBank, "World Bank"), (worldIndex, "World Index")] where book.instruments[id] == nil {
+        let listed = [(worldBank, "World Bank", "srv"), (worldIndex, "World Index", "srv")] + CommodityMarket.listed.map { (commodityID($0.id), $0.name, "com") }
+        for (id, name, kind) in listed where book.instruments[id] == nil {
             guard let f = fair(s, id) else { continue }
-            book.instruments[id] = ExchangeInstrument(id: id, name: name, kind: "srv", shares: Int(1e9), nav: f, close: f, previousClose: f, closeDay: -1, listedDay: 0,
+            book.instruments[id] = ExchangeInstrument(id: id, name: name, kind: kind, shares: Int(1e9), nav: f, close: f, previousClose: f, closeDay: -1, listedDay: 0,
                                                       holdingID: 0, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [f])
         }
     }
@@ -215,7 +221,7 @@ public enum PublicExchange {
         if ended <= 4 {
             for id in book.instruments.keys.sorted() {
                 guard var inst = book.instruments[id], !inst.halted, inst.kind != "ext" else { continue }
-                if inst.kind == "srv" {
+                if inst.isServer {
                     guard let f = fair(s, id) else { continue }
                     inst.nav = f
                 } else {
@@ -239,7 +245,7 @@ public enum PublicExchange {
                 let bounds = ExchangeRules.closeBounds(previous: previous, nav: inst.nav, rules: s.worldRules)
                 var price = ExchangeRules.round4(clamp(previous, bounds.low, bounds.high))
                 var traded = 0
-                if inst.kind == "srv" {
+                if inst.isServer {
                     var r = HashedRandom("\(s.seed):xch:\(id):\(now)")
                     price = ExchangeRules.round4(clamp(inst.nav * (1 + (r.next() - 0.5) * 0.008), bounds.low, bounds.high))
                     for o in book.orders.filter({ $0.instrument == id }).sorted(by: { $0.seq < $1.seq }) {
@@ -381,6 +387,7 @@ public enum PublicExchange {
             let note: String
             switch i.kind {
             case "srv": note = i.id == worldBank ? "Pays a dividend each quarter." : "Follows the whole market. No dividend."
+            case "com": note = "Raw material priced by world supply and demand. No dividend."
             case "own": note = "Results in \(ExchangeRules.nextResultsDay(listedDay: i.listedDay, today: now) - now) days."
             default: note = "Another player's company."
             }

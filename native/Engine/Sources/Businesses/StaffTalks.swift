@@ -7,15 +7,14 @@ import Employees
 /// salary. Originals: `raiseFelt`, `raiseStaff`, `setFixedPay`, `wantsFix`, `ACTS.staffx` and the 'payask' / 'fixask' parts of
 /// `handleStaffEvent` (engine/people/people.js, staff_extras.js).
 public enum StaffTalks {
-    /// The raise that feels like a raise: in better-paid jobs a larger one is needed to be noticed. Age plays no part; the argument
-    /// `age` is kept so existing callers compile.
-    public static func raiseNeeded(role: String, age: Int, tables: TradeTables) -> Double {
+    /// The raise that feels like a raise: in better-paid jobs a larger one is needed to be noticed. 
+    public static func raiseNeeded(role: String, tables: TradeTables) -> Double {
         let base = tables.roles[role]?.baseMonthlyWage ?? 50000
         return base >= 70000 ? 0.07 : 0.06
     }
 
     /// Some people want a fixed salary, some prefer hours. Stable per person. Original: `wantsFix`.
-    static func wantsFixedSalary(_ n: Person) -> Bool { HashedRandom.first("fix:\(n.id)") < (n.age < 26 ? 0.55 : 0.8) }
+    static func wantsFixedSalary(_ n: Person) -> Bool { HashedRandom.first("fix:\(n.id)") < 0.75 }
 
     /// Skill including what they have learned, minus the "not rested" penalty, plus the lift of commission. Original: `staffSkill`.
     static func skill(_ m: StaffMember, _ n: Person, salesRoles: Set<String>) -> Double {
@@ -69,7 +68,7 @@ public enum StaffTalks {
         let cur = w.currency(s.companies[i])
         var staff = s.companies[i].staff
         var m = staff[k]
-        let need = raiseNeeded(role: m.role, age: n.age, tables: data.catalog.tables)
+        let need = raiseNeeded(role: m.role, tables: data.catalog.tables)
         m.monthlyWage = (m.weeklyHours ?? 0) != 0 ? m.monthlyWage * (1 + percent) : cur.roundedStep(m.monthlyWage * (1 + percent), about: 100)
         if m.commissionMode == nil || m.commissionMode == "fix" {   // a raise never leaves pay under the minimum wage
             m.monthlyWage = max(m.monthlyWage, w.minimumWage(s.companies[i], hours: m.weeklyHours ?? StaffModel.fullWeekHours))
