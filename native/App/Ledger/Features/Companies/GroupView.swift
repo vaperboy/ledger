@@ -104,7 +104,7 @@ struct EntityBreadcrumb: View {
             let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(e)
             StructureCrumbs(crumbs: crumbs(e, list))
                 .padding(.horizontal, Theme.Space.page)
-                .background(P.ground.ignoresSafeArea(edges: .top))
+                .background(P == .game ? Color.clear : P.ground)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("entity-breadcrumb")
         }

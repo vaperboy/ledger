@@ -32,7 +32,8 @@ struct CustomTabView: View {
     @ViewBuilder private var root: some View {
         if let target = store.customTarget {
             switch target {
-            case .app(let app): PhoneAppScreen(app: app)
+            case .app(let app):
+                if store.isLocked(app) { CustomTabEmpty() } else { PhoneAppScreen(app: app) }
             case .company(let id):
                 if store.engine?.state.company(id) != nil { CompanyRouteDestination(route: .company(id)) } else { CustomTabEmpty() }
             }
@@ -75,17 +76,40 @@ struct CustomTabPicker: View {
         .accessibilityIdentifier("custom-picker")
     }
 
+    /// The apps the player has unlocked first, then the locked ones grayed with what they wait for; a locked row cannot be chosen.
     private var appGrid: some View {
+        let open: [PhoneApp] = CustomTabTarget.apps.filter { (a: PhoneApp) -> Bool in !store.isLocked(a) }
+        let shut: [PhoneApp] = CustomTabTarget.apps.filter { (a: PhoneApp) -> Bool in store.isLocked(a) }
         let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
-        let apps: [PhoneApp] = CustomTabTarget.apps
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 12) {
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(apps) { (app: PhoneApp) in
-                    appCell(app)
-                }
+                ForEach(open) { (app: PhoneApp) in appCell(app) }
             }
             if hasCompanies { companyEntry }
+            if !shut.isEmpty {
+                Text("Locked").popupText(.caption)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(shut) { (app: PhoneApp) in lockedRow(app) }
+                }
+            }
         }
+    }
+
+    private func lockedRow(_ app: PhoneApp) -> some View {
+        let goal: String = app.gate?.goalLine ?? ""
+        return HStack(spacing: 10) {
+            IconCircle(glyph: app.glyph, size: 32)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(app.title).popupText(.body).lineLimit(1)
+                Text(goal).popupText(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            LockBadge(size: 13)
+        }
+        .opacity(0.45)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(app.title), locked. \(goal)")
+        .accessibilityIdentifier("custom-locked-\(app.title)")
     }
 
     private func appCell(_ app: PhoneApp) -> some View {

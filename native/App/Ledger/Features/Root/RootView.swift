@@ -43,12 +43,20 @@ struct RootView: View {
 struct GameShell: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The locked tab whose "what unlocks it" popup is open.
+    @State private var lockedTab: AppTab?
 
     var body: some View {
         Group {
-            if sizeClass == .regular { SidebarShell() } else { PhoneShell() }
+            if sizeClass == .regular { SidebarShell(lockedTab: $lockedTab) } else { PhoneShell(lockedTab: $lockedTab) }
         }
         .modifier(CoachTourHost())
+        .hostedPopup(key: "tab-lock-\(lockedTab?.rawValue ?? "")", priority: .panel, active: lockedTab != nil, onClose: { lockedTab = nil }) {
+            if let t = lockedTab { TabLockPopup(tab: t, onClose: { lockedTab = nil }).environmentObject(store) }
+        }
+        // A remembered Custom tab choice is checked against what the player has unlocked, on launch and as the game moves on.
+        .onAppear { store.validateCustomTarget() }
+        .onChange(of: store.engine?.state.week) { _, _ in store.validateCustomTarget() }
     }
 }
 
@@ -59,17 +67,25 @@ struct PhoneShell: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var tipVisible = false
+    @Binding var lockedTab: AppTab?
 
     private var items: [PillTabItem] {
         let waiting: Int = store.waitingCount
         return AppTab.allCases.map { tab in
             PillTabItem(id: tab.rawValue, title: store.title(for: tab), glyph: store.glyph(for: tab), badge: tab == .phone ? waiting : 0, changeable: tab == .custom,
-                         chip: tab == .custom && store.customTarget == nil ? "Edit" : "")
+                         locked: store.isLocked(tab))
         }
     }
 
     private var selection: Binding<String> {
-        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { store.selectTab(t) } })
+        Binding<String>(get: { store.tab.rawValue }, set: { raw in if let t = AppTab(rawValue: raw) { open(t) } })
+    }
+
+    /// Changes tab. A locked tab opens its popup instead; the Custom tab with no choice yet opens the picker.
+    private func open(_ t: AppTab) {
+        if store.isLocked(t) { lockedTab = t; return }
+        if t == .custom && store.customTarget == nil { store.customPickerOpen = true; return }
+        store.selectTab(t)
     }
 
     var body: some View {
@@ -81,9 +97,11 @@ struct PhoneShell: View {
             VStack(spacing: 0) {
             if tipVisible && !store.popupOpen { customTip }
             PillTabBar(items: items, selection: selection, onReselect: { raw in
-                if let t = AppTab(rawValue: raw) { Haptics.tap(); store.selectTab(t) }
+                if let t = AppTab(rawValue: raw) { Haptics.tap(); open(t) }
             }, onLongPress: { raw in
                 if raw == AppTab.custom.rawValue { store.customPickerOpen = true }
+            }, onLocked: { raw in
+                if let t = AppTab(rawValue: raw) { lockedTab = t }
             })
             .coachAnchor(.tabBar)
             }
@@ -127,10 +145,11 @@ struct PhoneShell: View {
 /// Each tab's navigation stack lives in the store, so what a link pushed on one tab never appears on another.
 struct SidebarShell: View {
     @EnvironmentObject var store: GameStore
+    @Binding var lockedTab: AppTab?
 
     var body: some View {
         NavigationSplitView {
-            List(selection: Binding<AppTab?>(get: { store.tab }, set: { if let t = $0, t != store.tab { store.selectTab(t); Haptics.tap() } })) {
+            List(selection: Binding<AppTab?>(get: { store.tab }, set: { if let t = $0, t != store.tab { open(t) } })) {
                 if let e = store.engine {
                     Section {
                         VStack(alignment: .leading, spacing: 2) {
@@ -144,7 +163,8 @@ struct SidebarShell: View {
                 }
                 Section {
                     ForEach(AppTab.allCases) { tab in
-                        SidebarLabel(title: store.title(for: tab), symbol: tab.symbol)
+                        SidebarLabel(title: store.title(for: tab), symbol: store.isLocked(tab) ? "lock.fill" : tab.symbol)
+                            .opacity(store.isLocked(tab) ? 0.45 : 1)
                             .badge(tab == .phone ? store.waitingCount : 0)
                             .tag(tab)
                             .contextMenu {
@@ -159,6 +179,14 @@ struct SidebarShell: View {
         } detail: {
             TabContent(tab: store.tab).id(store.tab)
         }
+    }
+
+    /// Changes tab. A locked tab opens its popup instead; the Custom tab with no choice yet opens the picker.
+    private func open(_ t: AppTab) {
+        if store.isLocked(t) { lockedTab = t; return }
+        if t == .custom && store.customTarget == nil { store.customPickerOpen = true; return }
+        store.selectTab(t)
+        Haptics.tap()
     }
 }
 

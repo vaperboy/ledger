@@ -180,6 +180,8 @@ struct CenterSheetFrame<Content: View>: View {
         .environment(\.popupCategory, cat)
         .frame(height: size == .tall ? cardMax : nil)
         .overlayPreferenceValue(CenterSheetFooterKey.self, alignment: .bottom) { (f: AnyView?) in footerLayer(f) }
+        // Body, header and the footer bar are cut to the card's one rounded shape, so no square corner shows at the bottom.
+        .clipShape(RoundedRectangle(cornerRadius: PopupLayout.radius, style: .continuous))
         .modifier(PopupGlass(tone: shade, light: P.isLight))
         .overlay { celebration }
         // The scheme wraps the glass too, so a light palette gets light material behind its dark text.
