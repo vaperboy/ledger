@@ -283,6 +283,17 @@ public struct SupplyContract: Identifiable, Equatable, Sendable {
     public var supplierName: String
     public var unitsPerWeek: Int
     public var startDay: Int
+
+    public init(id: String, buyerCompanyID: Int, lineID: String, listingID: String, supplierOwnerID: String, supplierName: String, unitsPerWeek: Int, startDay: Int) {
+        self.id = id
+        self.buyerCompanyID = buyerCompanyID
+        self.lineID = lineID
+        self.listingID = listingID
+        self.supplierOwnerID = supplierOwnerID
+        self.supplierName = supplierName
+        self.unitsPerWeek = unitsPerWeek
+        self.startDay = startDay
+    }
 }
 
 public enum SupplyEnd: String, Sendable {
