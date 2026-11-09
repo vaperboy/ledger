@@ -15,12 +15,14 @@ public enum PlayerGoals {
 
     // MARK: Daily goal
 
-    /// Today's goal and the streak it keeps. There is no cash: the badge counts days in a row.
+    /// Today's goal and the streak it keeps. Finishing it makes a small reward that waits to be claimed (`GoalClaims`).
     public struct DailyGoal: Equatable, Sendable {
         public var id: String, title: String, progress: String
         public var done: Bool
         /// Days in a row, counting today once the goal is done.
         public var streak: Int
+        /// True once today's reward was claimed (`GoalClaims`).
+        public var claimed: Bool = false
         /// Where today's goal is done (a `GameStore.openLadderLink` key).
         public var link: String { PlayerGoals.dailyDefs.first { $0.id == id }?.link ?? "" }
     }
@@ -36,7 +38,6 @@ public enum PlayerGoals {
         DailyDef(id: "hire", title: "Hire someone", link: "hire"),
         DailyDef(id: "cmp", title: "Answer the complaints waiting", link: "customers"),
         DailyDef(id: "grow", title: "Grow your net worth by 1%", link: "money"),
-        DailyDef(id: "pay", title: "Approve payroll early", link: "accounting"),
         DailyDef(id: "ans", title: "Answer an Inbox decision today", link: "inbox"),
         DailyDef(id: "news", title: "Read one news story", link: "news", visit: "news"),
         DailyDef(id: "stock", title: "Check the stock page", link: "market", visit: "market"),
@@ -79,7 +80,6 @@ public enum PlayerGoals {
         case "start", "hire", "weeks": return false
         case "grow", "news", "stock", "quote": return !live(s).isEmpty
         case "cmp": return openComplaints(s) > 0
-        case "pay": return openPayrollAsks(s) > 0
         case "ans": return openDecisionCount(s) > 0
         case "collect": return receivableCount(s) > 0 && !families(s, data).isDisjoint(with: ["svc", "project"])
         case "reviews": return !families(s, data).isDisjoint(with: ["venue", "retail"])
@@ -96,7 +96,6 @@ public enum PlayerGoals {
         case "hire": return staffCount(s) > b["staff"].int
         case "cmp": return openComplaints(s) < b["cmp"].int
         case "grow": return b["nw"].double > 0 && nw >= b["nw"].double * 1.01
-        case "pay": return openPayrollAsks(s) < b["pay"].int
         case "ans": return answeredCount(s) > b["ans"].int
         case "collect": return receivableCount(s) < b["rcv"].int
         default: return false
@@ -111,7 +110,6 @@ public enum PlayerGoals {
         case "hire": return staffCount(s) > b["staff"].int ? "Done" : "Not yet"
         case "cmp": return "\(openComplaints(s)) still open"
         case "grow": return (nw >= b["nw"].double ? "+" : "-") + cur.display(abs(nw - b["nw"].double)) + " of " + cur.display(b["nw"].double * 0.01) + " so far"
-        case "pay": return "\(openPayrollAsks(s)) waiting"
         case "ans": return answeredCount(s) > b["ans"].int ? "Done" : "\(openDecisionCount(s)) waiting"
         case "collect": return "\(receivableCount(s)) invoices waiting"
         default: return ""
@@ -172,8 +170,9 @@ public enum PlayerGoals {
             if streak > d["best"].int { d["best"] = .number(Double(streak)) }
             grantStreakPerks(&s, &d, streak: streak)
             s.rest["dy59"] = d
+            PlayerLevel.award(&s, PlayerLevel.dailyXP)
         }
-        return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, today: today, cur), done: done, streak: streak)
+        return DailyGoal(id: g.id, title: g.title, progress: dailyProgress(g.id, d["b"], s, nw: nw, today: today, cur), done: done, streak: streak, claimed: d["cl"].string == today)
     }
 
     /// Missions are optional: a player who turns them off sees no daily goal. The key exists only once it was set.
@@ -222,6 +221,8 @@ public enum PlayerGoals {
         public var done: Bool
         /// An optional goal after the ladder (`advancedGoals`); the ten ladder goals are never advanced.
         public var advanced: Bool = false
+        /// Finished, but the reward has not been claimed yet (`GoalClaims.claim`).
+        public var unclaimed: Bool = false
     }
 
     /// Weeks after M9 when M10 completes by itself if no bad week came: the player has kept the lights on all that time.
@@ -270,7 +271,7 @@ public enum PlayerGoals {
     /// All ten goals with their state; nil when the game has no ladder.
     public static func ladder(_ s: GameState) -> [LadderGoal]? {
         guard let l = s.rest["ldr"] else { return nil }
-        return ladderList.map { LadderGoal(id: $0.id, title: $0.title, body: $0.body, button: $0.button, link: $0.link, pastTense: $0.past, reward: $0.reward, done: !l["done"][$0.id].isNull) }
+        return ladderList.map { LadderGoal(id: $0.id, title: $0.title, body: $0.body, button: $0.button, link: $0.link, pastTense: $0.past, reward: $0.reward, done: !l["done"][$0.id].isNull, unclaimed: l["done"][$0.id]["u"].int != 0) }
     }
 
     /// The one open goal; nil after M9 (M10 finishes quietly in the background, so no card asks for it) or without a ladder.
@@ -283,7 +284,7 @@ public enum PlayerGoals {
         return hit.first?.past
     }
 
-    /// Finish every goal whose turn has come and whose condition holds (several can fall at once), apply its reward once. Returns the ids finished.
+    /// Finish every goal whose turn has come and whose condition holds (several can fall at once). The reward waits until the player claims it. Returns the ids finished.
     @discardableResult
     public static func ladderSweep(_ s: inout GameState, currency cur: Currency) -> [String] {
         guard s.rest["ldr"] != nil else { return [] }
@@ -291,10 +292,9 @@ public enum PlayerGoals {
         for g in ladderList where s.rest["ldr"]?["done"][g.id].isNull ?? true {
             guard ladderCondition(g.id, s) else { break }
             var l = s.rest["ldr"] ?? .object([:])
-            var d = l["done"]; d[g.id] = .object(["w": .number(Double(s.week))]); l["done"] = d
+            var d = l["done"]; d[g.id] = .object(["w": .number(Double(s.week)), "u": .number(1)]); l["done"] = d
             s.rest["ldr"] = l
-            let line: String = ladderReward(&s, g.id, cur)
-            if !line.isEmpty { s.note(line, tone: "good") }
+            PlayerLevel.award(&s, PlayerLevel.ladderXP)
             Celebrations.add(&s, kind: "goal", title: g.title, detail: g.past, reward: g.reward, art: "goal." + g.id, tier: 1)   // a goal completion celebrates
             finished.append(g.id)
         }
@@ -302,8 +302,8 @@ public enum PlayerGoals {
         return finished
     }
 
-    /// Applies the reward of a finished goal and returns the line for the report ("" when the goal changes nothing). Rewards are real
-    /// consequences (credit score, reputation, awareness, an opened feature), never cash.
+    /// Applies the effect of a claimed goal and returns the line for the report ("" when the goal changes nothing). The effects are real
+    /// consequences (credit score, reputation, awareness, an opened feature); the cash part is paid by `GoalClaims`.
     public static func ladderReward(_ s: inout GameState, _ id: String, _ cur: Currency) -> String {
         func each(_ f: (inout Company) -> Void) { for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].type != "hold" { f(&s.companies[i]) } }
         switch id {

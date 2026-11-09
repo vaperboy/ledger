@@ -97,7 +97,6 @@ extension GameStore {
     @discardableResult func openLadderLink(_ link: String) -> Bool {
         if link == "inbox" { openApp(.inbox); return true }
         if ["news", "market", "techPro", "reviews", "weather"].contains(link), let app = PhoneApp(rawValue: link) { openApp(app); return true }   // daily goals that open a Phone app
-        if link == "accounting" { openApp(.bank); return true }
         if link == "achievements" { openApp(.achievements); return true }
         if link == "newCompany" { push(.newCompany); return true }
         guard let id = ladderCompany(for: link) else {

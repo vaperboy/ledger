@@ -1,4 +1,5 @@
 # What's new
+- Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week
 - One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started
 - A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold
 - Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies

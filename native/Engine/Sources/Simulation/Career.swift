@@ -157,6 +157,8 @@ public enum Career {
         public var horizon: Horizon
         public var progress: Double
         public var done: Bool
+        /// Finished, but the reward has not been claimed yet (`GoalClaims.claim`).
+        public var unclaimed: Bool = false
         /// Where the goal is worked on (a `GameStore.openLadderLink` key); empty when it has no single place.
         public var link: String { Career.links[id] ?? "" }
     }
@@ -182,7 +184,7 @@ public enum Career {
         let f = facts(s, data: data, currency: cur)
         return defs.map { d in
             let done = isDone(s, d.id)
-            return Goal(id: d.id, title: d.text(d.title, cur), body: d.text(d.body, cur), reward: d.reward, horizon: d.horizon, progress: done ? 1 : min(1, d.progress(f)), done: done)
+            return Goal(id: d.id, title: d.text(d.title, cur), body: d.text(d.body, cur), reward: d.reward, horizon: d.horizon, progress: done ? 1 : min(1, d.progress(f)), done: done, unclaimed: (s.rest["car"]?["done"][d.id]["u"].int ?? 0) != 0)
         }
     }
 
@@ -208,12 +210,11 @@ public enum Career {
         var finished: [String] = []
         for d in defs where !isDone(s, d.id) && d.progress(f) >= 1 {
             var c = s.rest["car"] ?? .object(["done": .object([:])])
-            var done = c["done"]; done[d.id] = .object(["w": .number(Double(s.week))]); c["done"] = done
-            if !d.cosmetic.isEmpty { c["cos"] = .array((c["cos"].array ?? []) + [.string(d.cosmetic)]) }
+            var done = c["done"]; done[d.id] = .object(["w": .number(Double(s.week)), "u": .number(1)]); c["done"] = done
             s.rest["car"] = c
-            d.grant(&s)
+            PlayerLevel.award(&s, d.horizon == .short ? 40 : d.horizon == .medium ? 80 : 150)
             let title = d.text(d.title, cur)
-            s.note("Goal reached: \(title)", tone: "good")
+            s.note("Goal reached: \(title). Claim the reward on Home.", tone: "good")
             Celebrations.add(&s, kind: "goal", title: title, detail: d.horizon.label + " goal reached", reward: d.reward, art: "goal.career", tier: d.horizon == .short ? 1 : 2)
             finished.append(d.id)
         }

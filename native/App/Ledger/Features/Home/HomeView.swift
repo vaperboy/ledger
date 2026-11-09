@@ -46,6 +46,8 @@ struct HomeSummary<Companies: View>: View {
             if fills { Self.gap }
             if trim < 2 {
                 HomeProgressStrip(engine: e)
+                HomeLevelBar(engine: e)
+                if trim < 1 { HomeMissionStrip(engine: e) }
                 if fills { Self.gap }
             }
             if sizeClass != .regular { TopPriorities(engine: e, compact: compact).coachAnchor(.needsYou) }

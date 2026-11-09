@@ -66,6 +66,8 @@ final class CareerTests: XCTestCase {
         var e = try cafe()
         e.update { s, _, _ in for i in s.companies.indices { s.companies[i].reputation = 80 } }
         e.sweepCareer()
+        XCTAssertFalse(e.careerCosmetics.contains("logo.star"), "the badge comes with the claim")
+        e.claimGoal(kind: .career, id: "k3")
         XCTAssertTrue(e.careerCosmetics.contains("logo.star"))
     }
 
