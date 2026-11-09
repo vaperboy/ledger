@@ -68,6 +68,7 @@ protocol StartupMarketService: AnyObject {
 }
 
 /// Observable wrapper the screens watch, so they do not depend on which service stands behind it.
+@MainActor
 final class StartupMarketStore: ObservableObject {
     static let shared = StartupMarketStore()
     static let storageKey = "startupMarket.v1"
