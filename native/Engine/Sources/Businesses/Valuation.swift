@@ -19,13 +19,15 @@ public struct NetWorth: Equatable, Sendable {
     public var debt: Double
     /// Tax assessed but not yet paid
     public var pendingTax: Double
+    /// Shares held on the public exchange, at the last closing price
+    public var exchange: Double = 0
 
     /// Everything the player owns, before debts
-    public var totalAssets: Double { personal + stocks + crypto + funds + companies + luxury }
+    public var totalAssets: Double { personal + stocks + crypto + funds + companies + luxury + exchange }
     /// Assets minus private debts and pending tax: the one number shown as "Net worth".
     public var total: Double { totalAssets - debt - pendingTax }
     /// Investments as the game shows them in one group
-    public var investments: Double { stocks + crypto + funds }
+    public var investments: Double { stocks + crypto + funds + exchange }
 }
 
 public enum Valuation {
@@ -100,6 +102,6 @@ public enum Valuation {
         let lux = (s.rest["lux"]?.array ?? []).filter { $0["co"].isNull || $0["co"].double == 0 }.reduce(0) { $0 + $1["val"].double }
         let debt = s.loans.filter { $0.companyID == 0 }.reduce(0) { $0 + $1.balance }
         return NetWorth(personal: s.cash + s.savings + HeldMoney.playerRemaining(s), stocks: stocks, crypto: crypto, funds: funds, companies: companies,
-                        luxury: lux, debt: debt, pendingTax: s.tax.pending)
+                        luxury: lux, debt: debt, pendingTax: s.tax.pending, exchange: PublicExchange.holdingsValue(s))
     }
 }
