@@ -77,8 +77,8 @@ struct BoxView: View {
     }
 
     private func buttonTitle(_ stock: Int) -> String {
-        if stock > 0 { return "Open a box from stock" }
-        return kind.isPaid ? "Open for \(StoreText.gold(kind.price))" : "No box to open"
+        if stock > 0 { return "Open box" }
+        return kind.isPaid ? "Open box for \(StoreText.gold(kind.price))" : "No box to open"
     }
 
     private func open() {
@@ -87,7 +87,7 @@ struct BoxView: View {
         Task {
             let out = await session.openBox(kind, paidBoxesAllowed: paidBoxesAllowed)
             working = false
-            if let out { Haptics.success(); opened = OpenedBox(opening: out) }
+            if let out { opened = OpenedBox(opening: out) }
             else if session.problem != nil && session.available < kind.price && kind.isPaid { shortNeed = kind.price; shortOfGold = true }
         }
     }
@@ -113,6 +113,10 @@ struct BoxResultCard: View {
     private let session = StoreSession.shared
     @State private var working = false
     @State private var revealed = false
+    @State private var canSkip = false
+    @State private var start = Date()
+    @State private var ring = false
+    @State private var showOdds = false
 
     private func close() { if let c = popupClose { c() } else { systemDismiss() } }
     private var shown: Bool { revealed || reduceMotion }
@@ -123,7 +127,10 @@ struct BoxResultCard: View {
             stage(r)
             if shown {
                 VStack(spacing: Theme.Space.s) {
-                    RarityTag(rarity: r.rarity)
+                    HStack(spacing: Theme.Space.s) {
+                        RarityTag(rarity: r.rarity)
+                        if let tag = newTag(r) { StoreTag(text: tag.text, tint: tag.tint) }
+                    }
                     content(r)
                     if r.guaranteed { Text("This was your guaranteed rare.").textStyle(.caption) }
                     ForEach(opened.opening.completed, id: \.id) { (c: ArtifactCollection) in
@@ -132,36 +139,109 @@ struct BoxResultCard: View {
                     }
                 }
                 .transition(.opacity.combined(with: .offset(y: 10)))
+                pityLine
+                oddsLine
                 buyMore
             }
         }
         .frame(maxWidth: .infinity)
         .task(id: opened.id) { await play() }
         .popupFooter {
-            PopupFooter(cancel: "Done", action: againTitle, onCancel: { close() }, onAction: { another() }, actionEnabled: canAgain && !working)
+            PopupFooter(cancel: "Done", action: againTitle, onCancel: { close() }, onAction: { another() }, actionEnabled: canAgain && !working && shown)
         }
     }
 
     // MARK: Reveal
 
+    private func anticipation(_ rarity: BoxRarity) -> Double {
+        switch rarity {
+        case .common: return 1.1
+        case .rare: return 1.5
+        case .epic: return 1.9
+        case .legendary: return 2.3
+        }
+    }
+
     private func play() async {
-        if reduceMotion { revealed = true; return }
+        if reduceMotion { revealed = true; Haptics.success(); return }
         revealed = false
-        try? await Task.sleep(nanoseconds: 900_000_000)
-        if Task.isCancelled { return }
+        canSkip = false
+        ring = false
+        showOdds = false
+        start = Date()
+        let total: Double = anticipation(opened.opening.result.rarity)
+        var elapsed: Double = 0
+        while elapsed < total {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            if Task.isCancelled || revealed { return }
+            elapsed += 0.25
+            if elapsed >= 1 { canSkip = true }
+            Haptics.tap()
+        }
         reveal()
     }
 
     private func reveal() {
         if revealed { return }
         Motion.animate(.spring(response: 0.55, dampingFraction: 0.66)) { revealed = true }
+        Motion.animate(.easeOut(duration: 0.7)) { ring = true }
+        Haptics.success()
+        if opened.opening.result.rarity >= .epic {
+            Task {
+                try? await Task.sleep(nanoseconds: 180_000_000)
+                Haptics.success()
+            }
+        }
+    }
+
+    private func newTag(_ r: BoxResult) -> (text: String, tint: Color)? {
+        switch r.content {
+        case .cosmetic, .artifact: return ("New!", Theme.gain)
+        case .gold: return ("Gold added", Theme.gold)
+        case .money: return nil
+        }
+    }
+
+    @ViewBuilder private var pityLine: some View {
+        if kind.isPaid {
+            let pity: BoxPity = opened.opening.state.pity
+            let threshold: Int = BoxPity.threshold
+            VStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    ForEach(0..<threshold, id: \.self) { (i: Int) in
+                        Capsule().fill(i < min(threshold, pity.sinceRare) ? Theme.gold : Theme.inkFaint.opacity(0.3)).frame(height: 5)
+                    }
+                }
+                .accessibilityHidden(true)
+                Text(pity.nextIsGuaranteed ? "Your next paid box is guaranteed to hold a rare or better item." : "A rare or better is guaranteed within \(threshold - pity.sinceRare) more paid boxes. Finding one sooner restarts the count.")
+                    .textStyle(.caption).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var oddsLine: some View {
+        VStack(spacing: Theme.Space.s) {
+            Button { Motion.animate(.easeInOut(duration: 0.2)) { showOdds.toggle() } } label: {
+                Text(showOdds ? "Hide odds" : "See the odds for this box").textStyle(.caption, tint: Theme.accent)
+            }
+            .buttonStyle(.plain)
+            if showOdds { BoxOddsTable(kind: kind) }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private func stage(_ r: BoxResult) -> some View {
-        ZStack {
+        let tint: Color = r.rarity.tint
+        return ZStack {
             if shown {
-                StoreRays(tint: r.rarity.tint, size: 280, strength: r.rarity >= .epic ? 0.6 : 0.32)
+                StoreRays(tint: tint, size: 280, strength: r.rarity >= .epic ? 0.6 : 0.32)
                     .transition(.opacity)
+                Circle().strokeBorder(tint, lineWidth: 3)
+                    .frame(width: 140, height: 140)
+                    .scaleEffect(ring ? 2.4 : 0.4)
+                    .opacity(ring ? 0 : 0.9)
+                    .allowsHitTesting(false)
                 prizeTile(r)
                     .transition(.scale(scale: 0.3).combined(with: .opacity))
                 if r.rarity >= .rare && !reduceMotion {
@@ -169,14 +249,35 @@ struct BoxResultCard: View {
                         .id(opened.id)
                 }
             } else {
-                BoxArt(kind: kind, size: 110).storeFloat(amplitude: 4, period: 1.8)
+                shaking(r)
             }
         }
         .frame(maxWidth: .infinity).frame(height: 220)
+        .overlay(alignment: .bottom) {
+            if !shown && canSkip { Text("Tap to skip").textStyle(.caption) }
+        }
         .contentShape(Rectangle())
-        .onTapGesture { reveal() }
+        .onTapGesture { if canSkip { reveal() } }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(shown ? "Prize: \(r.rarity.title)" : "Opening the box")
+    }
+
+    private func shaking(_ r: BoxResult) -> some View {
+        let total: Double = anticipation(r.rarity)
+        let tint: Color = r.rarity.tint
+        return TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { tl in
+            let t: Double = tl.date.timeIntervalSince(start)
+            let p: Double = min(1, max(0, t / total))
+            ZStack {
+                Circle()
+                    .fill(RadialGradient(colors: [tint.opacity(0.15 + 0.6 * p), .clear], center: .center, startRadius: 4, endRadius: 40 + 90 * p))
+                    .frame(width: 240, height: 240)
+                BoxArt(kind: kind, size: 110)
+                    .scaleEffect(1 + 0.12 * p)
+                    .rotationEffect(.degrees(sin(t * 30) * (2 + 11 * p)))
+                    .offset(x: CGFloat(sin(t * 47)) * CGFloat(1 + 4 * p))
+            }
+        }
     }
 
     private func prizeTile(_ r: BoxResult) -> some View {
@@ -263,7 +364,7 @@ struct BoxResultCard: View {
         Task {
             let out = await session.openBox(kind, paidBoxesAllowed: paidBoxesAllowed)
             working = false
-            if let out { Haptics.success(); onNew(OpenedBox(opening: out)) }
+            if let out { onNew(OpenedBox(opening: out)) }
             else { close(); onShort() }
         }
     }

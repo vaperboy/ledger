@@ -29,6 +29,13 @@ struct FriendsApp: View {
     // MARK: Signed in
 
     @ViewBuilder private var signedIn: some View {
+        OnlineGroup(title: "") {
+            NavigationLink { WorldFeedView() } label: {
+                OnlineLine(glyph: Glyph.world, title: "World", note: "Events, friends' activity and invitations", chevron: true)
+            }
+            .buttonStyle(PressableStyle())
+            .accessibilityIdentifier("friends-world")
+        }
         searchGroup
         if let o = overview {
             if !o.incoming.isEmpty { incomingGroup(o.incoming) }

@@ -9,6 +9,12 @@ struct MyProfileView: View {
         PhonePageScroll(spacing: Theme.Space.l) {
             if let p = online.profile, online.isSignedIn {
                 header(p)
+                OnlineGroup(title: "") {
+                    NavigationLink { WorldFeedView() } label: {
+                        OnlineLine(glyph: Glyph.world, title: "World", note: "Events, friends' activity and invitations", chevron: true)
+                    }
+                    .buttonStyle(PressableStyle())
+                }
                 lookGroup(p)
                 privacyGroup(p)
                 companiesGroup(p)
