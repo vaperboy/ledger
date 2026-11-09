@@ -64,7 +64,7 @@ struct NextDayDock: View {
         }
         .buttonStyle(PressableStyle())
         .coachAnchor(.nextDay)
-        .disabled(over || (busy || (blockID == nil && store.reportSheet != nil)))
+        .disabled(over || store.tutorialHoldsDay || (busy || (blockID == nil && store.reportSheet != nil)))
         .accessibilityLabel(title)
         .accessibilityValue(caption)
         .accessibilityIdentifier("next-day")
