@@ -189,7 +189,6 @@ public enum PublicExchange {
         case .noRetainedProfit: return .refused("The company has no retained profit to pay out.")
         case .notEnoughCash: return .refused("The company needs to keep cash for two weeks of costs.")
         case .needsBoard: return .refused("The board must vote for this dividend first.")
-        case .notLimitedCompany: return .refused("Only a limited company pays dividends.")
         }
         let dps = amount / Double(max(1, inst.shares))
         inst.dividendDay = now
