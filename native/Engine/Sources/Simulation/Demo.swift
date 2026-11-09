@@ -5,12 +5,12 @@ import Finance
 import Businesses
 
 public extension GameEngine {
-    /// Whether the debug-only games below may be made: on in debug builds, off in release builds, so no one can mint the showcase money.
+    /// Whether the debug-only games below may be made: on in debug builds, and in release builds only when the test run sets LEDGER_DEBUG_TOOLS=1, so no one can mint the showcase money.
     nonisolated(unsafe) package static var debugToolsEnabled: Bool = {
         #if DEBUG
         return true
         #else
-        return false
+        return ProcessInfo.processInfo.environment["LEDGER_DEBUG_TOOLS"] == "1"
         #endif
     }()
 

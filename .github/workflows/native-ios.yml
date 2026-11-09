@@ -40,6 +40,7 @@ jobs:
         working-directory: native/Engine
         env:
           LEDGER_PROGRESS: "1"
+          LEDGER_DEBUG_TOOLS: "1"
         run: |
           set -o pipefail
           # Release build with testing enabled: the same tests, several times faster (the long balance probes ran past what the
