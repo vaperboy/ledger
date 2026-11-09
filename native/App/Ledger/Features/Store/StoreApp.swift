@@ -1,13 +1,15 @@
 import SwiftUI
 import Simulation
 
-/// The Store app: your gold, boxes with their odds, gold packs with value deals, box bundles and cosmetics. Only for players who confirmed they are
-/// 18 or older (anyone else sees an explanation, never the offers). No timers, no limited offers, nothing that repeats.
+/// The Store app: your gold, featured offers, boxes with their odds, gold packs, box bundles and cosmetics. Only for players who confirmed they are
+/// 18 or older (anyone else sees an explanation, never the offers). Prices are always written out; the only countdown is the real end of the season.
 struct StoreApp: View {
     @Environment(OnlineSession.self) private var online
+    @ObservedObject private var season = SeasonModel.shared
     private let session = StoreSession.shared
     @State private var pending: PendingAction?
     @State private var shortOfGold = false
+    @State private var shortNeed = 0
     @State private var showPacks = false
     /// Read so the page redraws when the age answer changes.
     @AppStorage(AgeConfirmation.key) private var adultFlag = false
@@ -19,9 +21,11 @@ struct StoreApp: View {
             case .hidden:
                 StoreAgeGate()
             case .open(let paid):
-                PhonePageScroll(spacing: Theme.Space.l) {
-                    walletCard
-                    if paid { boxesGroup } else { regionNote }
+                PhonePageScroll(spacing: Theme.Space.xl) {
+                    walletCard.storeAppear(0)
+                    FeaturedCarousel(features: features(paid: paid), onAsk: ask).storeAppear(1)
+                    SeasonBanner().storeAppear(2)
+                    if paid { boxesGroup.storeAppear(3) } else { regionNote }
                     stockGroup
                     if paid { bundlesGroup }
                     packsGroup
@@ -30,7 +34,12 @@ struct StoreApp: View {
                     Text(StoreText.goldRule).textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
                 }
                 .confirmAction($pending)
-                .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(onPacks: { shortOfGold = false; showPacks = true }) }
+                .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") {
+                    ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }, onPick: { (p: GoldPack) in
+                        shortOfGold = false
+                        StorePurchase.afterPopup { pending = StorePurchase.pack(p) }
+                    })
+                }
                 .navigationDestination(isPresented: $showPacks) { GoldPacksView() }
             }
         }
@@ -43,7 +52,7 @@ struct StoreApp: View {
     private var walletCard: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             Text("Your gold").capsLabel()
-            GoldAmount(amount: session.gold, style: .display)
+            GoldCounter(amount: session.gold)
             if session.state.wallet.held > 0 {
                 Text("\(StoreText.gold(session.state.wallet.held)) held for leading bids. \(StoreText.gold(session.available)) available.").textStyle(.caption)
             }
@@ -51,43 +60,70 @@ struct StoreApp: View {
                 Text("Preview store: nothing is charged and no real purchase happens in this build.").textStyle(.caption)
             }
             NavigationLink { GoldPacksView() } label: { Text("Get gold").frame(maxWidth: .infinity) }
-                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
                 .accessibilityIdentifier("store-get-gold")
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassSurface(radius: Theme.Radius.hero)
+        .background(StoreSurface(tint: Theme.gold, glow: true))
+    }
+
+    // MARK: Featured
+
+    /// Real offers only: the season bundle (with the true days left in the season), the pack with the most gold per unit of money, the box with the best odds
+    /// and the biggest box saving.
+    private func features(paid: Bool) -> [StoreFeature] {
+        var out: [StoreFeature] = []
+        let b: SeasonBundle = GoldStore.seasonBundle
+        let left: Int = season.pass.daysLeft(today: season.today)
+        let ends: String = left == 1 ? "Season \(season.pass.seasonNumber) ends tomorrow." : "Season \(season.pass.seasonNumber) ends in \(left) days."
+        out.append(StoreFeature(id: "season", tag: "Season bundle", title: b.name,
+                                gets: [StoreText.gold(b.gold), StorePurchase.boxText(b), "Ledger Plus for this season"],
+                                price: GoldStore.priceText(cents: b.priceCents),
+                                footnote: ends + (session.isVisualOnly ? " Preview build: Ledger Plus is not added." : ""),
+                                action: .seasonBundle))
+        if let p = StorePurchase.bestPack {
+            let first: Bool = !session.state.firstPurchaseDone
+            var gets: [String] = [StoreText.gold(GoldStore.totalGold(p, firstPurchase: first))]
+            if first { gets.append("Includes \(GoldStore.firstPurchaseBonus(p).formatted()) one-time bonus gold") }
+            gets.append("\(GoldStore.extraPercent(p))% more gold per \(GoldStore.priceText(cents: 100)) than the \(GoldStore.packs[0].name)")
+            out.append(StoreFeature(id: "pack", tag: "Best value", title: "The \(p.name)", gets: gets, price: GoldStore.priceText(cents: p.priceCents), highlight: true, action: .pack(p)))
+        }
+        if paid {
+            let rarePlus: Double = BoxOdds.rarityPercent(.grand).filter { $0.rarity >= .rare }.reduce(0) { $0 + $1.percent }
+            out.append(StoreFeature(id: "grand", tag: "Best odds", title: BoxKind.grand.title,
+                                    gets: ["One opening of the Grand box", "\(String(format: "%.2f", rarePlus))% chance of a rare or better item", "A rare or better item guaranteed at least once in \(BoxPity.threshold) paid boxes"],
+                                    price: StoreText.gold(BoxKind.grand.price), tint: BoxRarity.epic.tint, action: .box(.grand)))
+            if let bb = StorePurchase.bestBundle {
+                out.append(StoreFeature(id: "bundle", tag: "Best saving", title: "\(bb.count) \(bb.kind.title)es",
+                                        gets: ["\(bb.count) \(bb.kind.title)es in your stock", "\(bb.savingPercent)% less than \(StoreText.gold(bb.singlesPrice)) for single boxes", "Nothing is opened until you choose"],
+                                        price: StoreText.gold(bb.price), action: .boxBundle(bb)))
+            }
+        }
+        return out
+    }
+
+    private func ask(_ a: StoreFeature.Action) {
+        switch a {
+        case .seasonBundle: pending = StorePurchase.seasonBundle()
+        case .pack(let p): pending = StorePurchase.pack(p)
+        case .boxBundle(let b): askBundle(b)
+        case .box: break
+        }
     }
 
     // MARK: Boxes
 
     private var boxesGroup: some View {
-        OnlineGroup(title: "Boxes", footer: "Every box shows its exact odds here and on its page. \(session.state.pity.text)") {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Boxes").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
             ForEach(Array(BoxKind.allCases.filter { $0.isPaid }.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
-                if i > 0 { Hairline() }
-                NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { boxRow(kind) }
+                NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { BoxShowcaseCard(kind: kind, index: i) }
                     .buttonStyle(PressableStyle())
             }
+            Text("Every box shows its exact odds here and on its page. \(session.state.pity.text)")
+                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private func boxRow(_ kind: BoxKind) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            HStack {
-                Text(kind.title).textStyle(.headline)
-                Spacer()
-                GoldAmount(amount: kind.price)
-                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
-            }
-            Text(oddsLine(kind)).textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.vertical, Theme.Space.s).frame(minHeight: 60, alignment: .leading)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-
-    private func oddsLine(_ kind: BoxKind) -> String {
-        BoxOdds.rarityPercent(kind).map { "\($0.rarity.title) \(String(format: "%.2f", $0.percent))%" }.joined(separator: "  ·  ")
     }
 
     private var regionNote: some View {
@@ -112,59 +148,56 @@ struct StoreApp: View {
         }
     }
 
+    // MARK: Bundles
+
     private var bundlesGroup: some View {
-        OnlineGroup(title: "Box bundles", footer: "Bought with gold. The boxes wait in your stock; each one shows its odds when you open it.") {
-            ForEach(Array(GoldStore.boxBundles.enumerated()), id: \.element.id) { (i: Int, b: BoxBundle) in
-                if i > 0 { Hairline() }
+        let best: String? = StorePurchase.bestBundle?.id
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Box bundles").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
+            ForEach(GoldStore.boxBundles) { (b: BoxBundle) in
                 Button { askBundle(b) } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(b.count) \(b.kind.title)es").textStyle(.headline)
-                            Text("\(b.savingPercent)% less than \(b.count) single boxes (\(StoreText.gold(b.singlesPrice)))").textStyle(.caption)
+                    HStack(spacing: Theme.Space.m) {
+                        BoxArt(kind: b.kind, size: 40).padding(.trailing, Theme.Space.xs)
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: Theme.Space.s) {
+                                Text("\(b.count) \(b.kind.title)es").textStyle(.headline)
+                                if b.id == best { StoreTag(text: "Best saving") }
+                            }
+                            Text("\(b.savingPercent)% less than \(b.count) single boxes (\(StoreText.gold(b.singlesPrice)))").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
                         }
-                        Spacer()
+                        Spacer(minLength: Theme.Space.s)
                         GoldAmount(amount: b.price)
                     }
-                    .padding(.vertical, Theme.Space.s).frame(minHeight: 56)
+                    .padding(Theme.Space.m).frame(minHeight: 64)
+                    .background(StoreSurface(tint: Theme.gold, glow: b.id == best, radius: Theme.Radius.card))
+                    .storeSheen(radius: Theme.Radius.card, enabled: b.id == best, offset: 2)
                     .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
                 }
                 .buttonStyle(PressableStyle())
             }
+            Text("Bought with gold. The boxes wait in your stock; each one shows its odds when you open it.")
+                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     private func askBundle(_ b: BoxBundle) {
-        if session.available < b.price { shortOfGold = true; return }
-        pending = PendingAction(title: "Buy \(b.count) \(b.kind.title)es?", message: "Costs \(StoreText.gold(b.price)). The boxes go into your stock; nothing is opened yet.", button: "Buy",
-                                alwaysAsk: true, tone: .investment, icon: "shippingbox") {
-            Task { if await session.buyBoxBundle(b, paidBoxesAllowed: true) { Haptics.success() } }
-        }
+        if session.available < b.price { shortNeed = b.price; shortOfGold = true; return }
+        pending = StorePurchase.boxBundle(b)
     }
 
     // MARK: Packs
 
     private var packsGroup: some View {
         let first: Bool = !session.state.firstPurchaseDone
-        return OnlineGroup(title: "Gold packs", footer: first ? "Your first pack carries a one-time bonus. Bigger packs give more gold for the same money." : "Bigger packs give more gold for the same money.") {
-            ForEach(Array(GoldStore.packs.enumerated()), id: \.element.id) { (i: Int, pack: GoldPack) in
-                if i > 0 { Hairline() }
-                NavigationLink { GoldPacksView() } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(pack.name).textStyle(.headline)
-                            Text(GoldStore.extraPercent(pack) == 0 ? "The base rate" : "\(GoldStore.extraPercent(pack))% more gold per unit than the \(GoldStore.packs[0].name)").textStyle(.caption)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            GoldAmount(amount: GoldStore.totalGold(pack, firstPurchase: first))
-                            Text(GoldStore.priceText(cents: pack.priceCents)).textStyle(.caption, tint: Theme.accent, numeric: true)
-                        }
-                    }
-                    .padding(.vertical, Theme.Space.s).frame(minHeight: 56)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableStyle())
+        let best: String? = StorePurchase.bestPack?.id
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Gold packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
+            ForEach(GoldStore.packs) { (pack: GoldPack) in
+                PackCard(pack: pack, first: first, best: pack.id == best) { pending = StorePurchase.pack(pack) }
             }
+            Text(first ? "Your first pack carries a one-time bonus. Bigger packs give more gold for the same money." : "Bigger packs give more gold for the same money.")
+                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -173,11 +206,15 @@ struct StoreApp: View {
     private var cosmeticsGroup: some View {
         let owned: Set<String> = SeasonModel.shared.pass.owned
         let items: [GoldCosmetic] = GoldCosmetics.storeItems
-        return OnlineGroup(title: "Cosmetics and comfort", footer: "Wear what you own in the Cabinet. These change how things look and how many saves you can keep, never how the game plays.") {
-            ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, c: GoldCosmetic) in
-                if i > 0 { Hairline() }
-                cosmeticRow(c, owned: owned.contains(c.id), blocked: isLockedSlot(c, owned: owned))
+        return VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Cosmetics and comfort").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m), GridItem(.flexible())], spacing: Theme.Space.m) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { (i: Int, c: GoldCosmetic) in
+                    cosmeticTile(c, owned: owned.contains(c.id), blocked: isLockedSlot(c, owned: owned), index: i)
+                }
             }
+            Text("Wear what you own in the Cabinet. These change how things look and how many saves you can keep, never how the game plays.")
+                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -188,48 +225,47 @@ struct StoreApp: View {
         return !owned.contains(slots[i - 1].id)
     }
 
-    private func cosmeticRow(_ c: GoldCosmetic, owned: Bool, blocked: Bool) -> some View {
-        Button { askCosmetic(c) } label: {
-            HStack(spacing: Theme.Space.m) {
-                swatch(c)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(c.item.title).textStyle(.headline)
-                    HStack(spacing: Theme.Space.xs) {
-                        RarityTag(rarity: c.rarity)
-                        Text(c.item.kind.label).textStyle(.caption)
-                    }
+    private func cosmeticTile(_ c: GoldCosmetic, owned: Bool, blocked: Bool, index: Int) -> some View {
+        let shiny: Bool = c.rarity >= .epic
+        return Button { askCosmetic(c) } label: {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                swatch(c).frame(height: 56).frame(maxWidth: .infinity)
+                Text(c.item.title).textStyle(.headline).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: Theme.Space.xs) {
+                    RarityTag(rarity: c.rarity)
+                    Text(c.item.kind.label).textStyle(.caption).lineLimit(1)
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 if owned { Text("Owned").textStyle(.caption, tint: Theme.gain) }
                 else if blocked { Text("Buy the one before").textStyle(.caption) }
                 else if let p = c.price { GoldAmount(amount: p) }
             }
-            .padding(.vertical, Theme.Space.s).frame(minHeight: 56)
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, minHeight: 156, alignment: .topLeading)
+            .background(StoreSurface(tint: c.rarity.tint, radius: Theme.Radius.card))
+            .storeSheen(radius: Theme.Radius.card, enabled: shiny && !owned, offset: Double(index) * 0.7, strength: 0.22)
             .contentShape(Rectangle())
+            .accessibilityElement(children: .combine)
         }
         .buttonStyle(PressableStyle())
         .disabled(owned || blocked)
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private func swatch(_ c: GoldCosmetic) -> some View {
         if c.item.colors.isEmpty {
-            RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Theme.line, lineWidth: 1).frame(width: 32, height: 32)
+            RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.line, lineWidth: 1)
+                .overlay(Image(systemName: "tray.full").font(.system(size: 20)).foregroundStyle(Theme.inkSoft))
         } else {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(LinearGradient(colors: (c.item.colors.count == 1 ? [c.item.colors[0], c.item.colors[0]] : c.item.colors).map { Color(hex: $0) },
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 32, height: 32)
         }
     }
 
     private func askCosmetic(_ c: GoldCosmetic) {
         guard let price = c.price else { return }
-        if session.available < price { shortOfGold = true; return }
-        pending = PendingAction(title: "Buy \(c.item.title)?", message: "Costs \(StoreText.gold(price)). \(c.item.detail)", button: "Buy",
-                                alwaysAsk: true, tone: .investment, icon: "paintpalette") {
-            Task { if await session.buyCosmetic(c) { Haptics.success() } }
-        }
+        if session.available < price { shortNeed = price; shortOfGold = true; return }
+        pending = StorePurchase.cosmetic(c, price: price)
     }
 
     // MARK: More
