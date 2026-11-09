@@ -63,6 +63,22 @@ final class SeasonModel: ObservableObject {
         if p != pass { pass = p; persist() }
     }
 
+    private static let adDayKey = "ledger.seasonAdDay"
+
+    /// The watch-an-ad bonus is offered once per real day.
+    var adBonusAvailable: Bool { UserDefaults.standard.integer(forKey: Self.adDayKey) != today }
+
+    /// Pays the ad bonus XP and uses up today's offer. Returns the XP granted.
+    @discardableResult
+    func grantAdBonus() -> Int {
+        guard adBonusAvailable else { return 0 }
+        var p: SeasonPass = pass
+        let xp: Int = p.addBonus(SeasonPass.adBonusXP)
+        UserDefaults.standard.set(today, forKey: Self.adDayKey)
+        if xp > 0 { pass = p; persist() }
+        return xp
+    }
+
     private func persist() {
         if let data = try? JSONEncoder().encode(pass) { UserDefaults.standard.set(data, forKey: Self.key) }
     }

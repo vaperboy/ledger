@@ -122,6 +122,17 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         return granted
     }
 
+    /// XP from a watched reward ad: it sits outside the daily cap (the app offers it once a real day) but never past the last tier.
+    @discardableResult
+    public mutating func addBonus(_ amount: Int) -> Int {
+        let top: Int = max(0, Self.tierCount * Self.xpPerTier - xp)
+        let granted: Int = min(max(0, amount), top)
+        xp += granted
+        return granted
+    }
+
+    public static let adBonusXP = 40
+
     /// Compares the game with the last look and awards XP for what happened. A different game (seed) or an earlier week only resets the
     /// baseline, so loading another save never pays. Returns the XP granted.
     @discardableResult

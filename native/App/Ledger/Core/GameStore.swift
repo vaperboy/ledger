@@ -577,6 +577,19 @@ final class GameStore: ObservableObject {
         return goal
     }
 
+    /// Goal rewards waiting to be claimed (ladder, career and today's goal).
+    var claimableGoals: [GoalClaims.Claimable] { engine?.claimableGoals(now: Date()) ?? [] }
+
+    /// Claims one finished goal: its effect applies and its cash lands on the personal account.
+    func claimGoal(_ kind: GoalClaims.Kind, id: String) {
+        guard case .claimed(let title, let reward, let cash)? = act({ $0.claimGoal(kind: kind, id: id) }) else { return }
+        Haptics.success()
+        var parts: [String] = [title]
+        if !reward.isEmpty { parts.append(reward) }
+        if cash > 0, let cur = engine?.homeCurrency { parts.append("+" + cur.display(cash)) }
+        tell("Reward claimed", parts.joined(separator: ". "), tone: "good")
+    }
+
     func answer(_ message: Message, option: Int) {
         act { $0.answer(messageID: message.id, option: option) }
         Haptics.success()

@@ -229,7 +229,7 @@ final class InboxReportsGoalsTests: XCTestCase {
         XCTAssertEqual(Celebrations.pending(back).last?.title, "Goal 19")
     }
 
-    func testFinishedLadderGoalIsCelebratedOnceAndItsRewardIsNotCash() throws {
+    func testFinishedLadderGoalIsCelebratedOnceAndItsRewardWaitsForTheClaim() throws {
         var (e, id) = try cafeGame(weeks: 0)
         let cur = e.homeCurrency
         e.update { s, _, _ in var c = s.companies[s.companyIndex(id)!]; c.monthlyHistory = [MonthRecord(monthIndex: 1, revenue: 10, profit: 5, cash: 10)]; s.companies[s.companyIndex(id)!] = c }
@@ -242,8 +242,10 @@ final class InboxReportsGoalsTests: XCTestCase {
         }
         let list = e.pendingCelebrations.filter { $0.kind == "goal" && $0.title == "Make a profit in a month" }
         XCTAssertEqual(list.count, 1)
+        XCTAssertEqual(e.state.credit, credit, "the reward waits for the claim")
+        XCTAssertEqual(e.state.cash, cash, accuracy: 0.001, "no cash is handed out before the claim")
+        guard case .claimed = e.claimGoal(kind: .ladder, id: "M7") else { return XCTFail("M7 should be claimable") }
         XCTAssertGreaterThan(e.state.credit, credit)
-        XCTAssertEqual(e.state.cash, cash, accuracy: 0.001, "no cash is handed out")
     }
 
     func testAmbitionMilestoneIsCelebratedWithLegacyPoints() throws {

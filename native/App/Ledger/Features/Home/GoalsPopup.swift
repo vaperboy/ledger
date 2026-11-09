@@ -1,5 +1,6 @@
 import SwiftUI
 import GameCore
+import Countries
 import Simulation
 
 /// The goals popup on Home (there is no Goals app): your rank, every goal being tracked (the ladder goal, today's goal and the next career
@@ -49,7 +50,8 @@ struct GoalsPopup: View {
         let groups = rows
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             rank
-            if groups.isEmpty {
+            if !store.claimableGoals.isEmpty { claimSection }
+            if groups.isEmpty && store.claimableGoals.isEmpty {
                 Text("No goals are open right now.").textStyle(.body, tint: Theme.inkSoft)
             }
             ForEach(Array(groups.enumerated()), id: \.offset) { (_: Int, g: (heading: String, rows: [Row])) in
@@ -78,6 +80,35 @@ struct GoalsPopup: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Claim
+
+    /// Finished goals whose reward waits: one tap on Claim applies it and pays the cash.
+    private var claimSection: some View {
+        let cur: Currency? = engine.homeCurrency
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text("Ready to claim").textStyle(.label, tint: Theme.inkFaint)
+            ForEach(store.claimableGoals) { (c: GoalClaims.Claimable) in
+                HStack(alignment: .center, spacing: Theme.Space.m) {
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(c.title.tidyMoney).textStyle(.headline).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                        let words: String = ([c.reward] + (c.cash > 0 ? [cur.map { "+" + $0.display(c.cash) } ?? ""] : [])).filter { !$0.isEmpty }.joined(separator: ". ")
+                        if !words.isEmpty { Text(words).textStyle(.caption, tint: Theme.accent).fixedSize(horizontal: false, vertical: true) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button { store.claimGoal(c.kind, id: c.goalID) } label: {
+                        Text("Claim").textStyle(.body, tint: Theme.accentInk, weight: .semibold)
+                            .padding(.horizontal, Theme.Space.l).frame(minHeight: 36)
+                            .background(Capsule().fill(Theme.accent))
+                    }
+                    .buttonStyle(PressableStyle())
+                    .accessibilityIdentifier("claim-" + c.id)
+                }
+                .padding(.vertical, Theme.Space.xs)
+                .accessibilityElement(children: .contain)
+            }
+        }
     }
 
     // MARK: Ambition

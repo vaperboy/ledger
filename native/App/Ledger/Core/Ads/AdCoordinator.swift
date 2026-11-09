@@ -130,6 +130,18 @@ final class AdCoordinator {
         return ok
     }
 
+    // MARK: Placement 5: Season Pass bonus
+
+    /// Is `Watch an ad for Season XP` offered on Home? Free players only, once per real day, and never while another ad is up.
+    var canOfferSeasonBonus: Bool { available && !isShowing && !entitlements.effective.isAdFree(now: Date()) && SeasonModel.shared.adBonusAvailable }
+
+    /// Watch the ad, then add the XP. Returns the XP granted (0 when the ad was not finished).
+    @discardableResult
+    func watchForSeasonBonus() async -> Int {
+        guard canOfferSeasonBonus, await rewardedFinished() else { return 0 }
+        return SeasonModel.shared.grantAdBonus()
+    }
+
     // MARK: Placement 4: Pro for a day
 
     /// Is `Try Pro for a day: watch an ad` offered in the paywall? Never to anyone with Pro, Plus, a gift or a running pass.
