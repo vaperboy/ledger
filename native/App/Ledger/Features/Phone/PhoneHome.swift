@@ -200,6 +200,8 @@ struct PhoneAppScreen: View {
             RivalsApp().appScreen(title: app.title, subtitle: app.subtitle)
         case .store:
             StoreApp()
+        case .country:
+            CountryApp()
         }
     }
 }

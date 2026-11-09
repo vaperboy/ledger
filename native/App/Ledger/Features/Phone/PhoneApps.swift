@@ -16,6 +16,8 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case friends
     /// Calm daily and slow-moving pages that open a few weeks in: the Desk (one question a day) and Rivals (named competitors).
     case desk, rivals
+    /// The state: treasury, rates, president, printed money, elections, convictions and the dark side of business.
+    case country
     /// Gold, boxes, cosmetics and the way to the Cabinet and auctions. Shown only to players who confirmed they are 18 or older.
     case store
     var id: String { rawValue }
@@ -46,6 +48,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .friends: return "Friends"
         case .desk: return "Desk"
         case .rivals: return "Rivals"
+        case .country: return "Country"
         case .store: return "Store"
         }
     }
@@ -74,6 +77,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .friends: return Glyph.team
         case .desk: return Glyph.deskNotebook
         case .rivals: return Glyph.rivalsFlag
+        case .country: return Glyph.civicDome
         case .store: return Glyph.luxury
         }
     }
@@ -102,6 +106,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .friends: return "Players, requests and profiles"
         case .desk: return "One small question a day, and your notebook"
         case .rivals: return "Named competitors and what they are up to"
+        case .country: return "Treasury, rates, president and the law"
         case .store: return "Gold, boxes, cosmetics and auctions"
         }
     }
@@ -132,6 +137,7 @@ extension PhoneApp {
         case .friends: return Color(hex: 0x8FB0C9)
         case .desk: return Color(hex: 0xB9A27A)
         case .rivals: return Color(hex: 0xB78F8A)
+        case .country: return Color(hex: 0xCBAA6B)
         case .store: return Color(hex: 0xE0BC5E)
         }
     }
@@ -160,7 +166,7 @@ extension PhoneApp {
         case .atlas: return .insurance
         case .luxury: return .luxury
         case .ventures: return .venturesFeed
-        case .stats, .activity, .news, .market, .achievements, .season: return .bank
+        case .stats, .activity, .news, .market, .achievements, .season, .country: return .bank
         }
     }
 

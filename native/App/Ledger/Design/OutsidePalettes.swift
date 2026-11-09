@@ -230,6 +230,7 @@ extension PhoneApp {
         case .techPro: return .techPro
         case .atlas: return .atlas
         case .marketplace: return .marketplace
+        case .country: return .civic
         }
     }
 
