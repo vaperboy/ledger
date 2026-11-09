@@ -59,10 +59,8 @@ public enum StaffRoutine {
                 staff[idx] = m
                 continue
             }
-            // Paperwork inspections, commission mishaps, hidden talent (original: staffExtra)
             var person = n
-            let extra = StaffExtras.week(&m, person: &person, week: s.week, random: &s.random, companyUtilisation: utilisationLast,
-                                         hasManager: co.managerID != nil, managerLearned: co.value("flags")["onbAll"].bool)
+            let extra = StaffExtras.week(&m, person: &person, week: s.week, random: &s.random, companyUtilisation: utilisationLast)
             if person.raw != n.raw { changedPeople[m.id] = person }
             extras.append(extra)
             if extra.left { goneIDs.append(m.id); var p2 = person; p2.employerID = 0; changedPeople[m.id] = p2; staff[idx] = m; continue }
@@ -106,7 +104,6 @@ public enum StaffRoutine {
             }
             staff[idx] = m
         }
-        StaffExtras.filedByAccountant(&staff, random: &s.random)
         co.staff = staff.filter { !goneIDs.contains($0.id) }
         co.set("payGap", payGap)
         s.companies[i] = co
@@ -134,23 +131,16 @@ public enum StaffRoutine {
         odds * StaffPerks.quitFactor(co, m) * (1 - 0.13 * co.value("tm")["hr"].double)
     }
 
-    /// Book what the paperwork and commission checks found: fines, lost reputation, and the notes.
+    /// Book what the commission checks found: fines, lost reputation, and the notes.
     static func applyExtras(_ s: inout GameState, companyIndex i: Int, _ list: [StaffExtras.Outcome], currency cur: Currency) {
         for x in list {
             let co = s.companies[i]
             for f in x.fines {
-                let label = f.note.hasPrefix("Inspectors") ? "Paperwork fine" : "Mis-selling complaint"
                 let fine = cur.scaledPrice(f.amount)   // fines are written at the reference price level
-                Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: label)
+                Payments.companyPays(&s, companyID: co.id, amount: fine, category: "fine", label: "Mis-selling complaint")
                 s.note(f.note.replacingOccurrences(of: "{co}", with: co.name).replacingOccurrences(of: "{fine}", with: cur.display(fine)), tone: "bad", companyID: co.id)
             }
             if x.reputationLoss > 0 { s.companies[i].reputation = clamp(s.companies[i].reputation - x.reputationLoss, 0, 100) }
-            if x.managerLearnsPaperwork {
-                var flags = s.companies[i].value("flags"); flags["onbAll"] = 1; s.companies[i].set("flags", flags)
-                if let mid = s.companies[i].managerID, let mn = s.people[mid] {
-                    s.note("\(mn.name) got the fine at \(co.name) and now completes all staff paperwork straight away.", tone: "n", companyID: co.id)
-                }
-            }
             for n in x.notes { s.note(n.text.replacingOccurrences(of: "{co}", with: co.name), tone: n.tone, companyID: co.id) }
         }
     }
@@ -208,10 +198,7 @@ public enum StaffRoutine {
                 s.people[m.id] = n
             }
             let cur = n.skill + m.skillGain
-            let hired = m.raw["w0"].map { $0.isNull ? s.week : $0.int } ?? s.week
-            let age = n.age + (s.week - hired) / 52
-            let ageF: Double = age < 25 ? 1.35 : age < 35 ? 1.1 : age < 50 ? 0.85 : age < 60 ? 0.6 : 0.35
-            m.skillGain = clamp(m.skillGain + max(0, (n.potential ?? n.skill) - cur) * 0.0065 * ageF * StaffExpenses.learnFactor(m), -10, max(30, (n.potential ?? n.skill) - n.skill))
+            m.skillGain = clamp(m.skillGain + max(0, (n.potential ?? n.skill) - cur) * 0.0065 * StaffExpenses.learnFactor(m), -10, max(30, (n.potential ?? n.skill) - n.skill))
             staff[idx] = m
         }
         co.staff = staff

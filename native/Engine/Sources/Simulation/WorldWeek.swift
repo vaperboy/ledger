@@ -26,13 +26,10 @@ public enum WorldWeek {
         let tgt = targets[E.phase] ?? 1
         E.demand += (tgt - E.demand) * 0.04 + s.random.gauss() * 0.002
         func meanRevert(_ x: Double, _ m: Double, _ k: Double, _ v: Double, _ r: inout DeterministicRandom) -> Double { x + (m - x) * k + r.gauss() * v }
-        E.fuel = clamp(meanRevert(E.fuel, 1.0 + (E.phase == "boom" ? 0.1 : 0), 0.03, 0.02, &s.random), 0.6, 2.2)
-        E.materials = clamp(meanRevert(E.materials, 1.0, 0.02, 0.012, &s.random), 0.75, 1.6)
         // The electricity price follows the global supply and demand (Businesses/EnergyMarket.swift).
         E.power = EnergyMarket.step(index: E.power, target: EnergyMarket.prepare(&s, data: data), noise: s.random.gauss(), band: s.worldRules.powerBand)
-        E.oil = clamp(meanRevert(E.oil, 1.0, 0.02, 0.03, &s.random), 0.3, 2.5)
+        CommodityMarket.step(&s, economy: &E)
         E.freight = clamp(meanRevert(E.freight, E.demand, 0.04, 0.03, &s.random), 0.5, 2.2)
-        E.salmon = clamp(meanRevert(E.salmon, 1.0, 0.03, 0.03, &s.random), 0.55, 1.8)
         E.housing = clamp(E.housing * (1 + 0.0007 + (E.demand - 1) * 0.004 - (E.policyRate - 0.04) * 0.012 / 4 + s.random.gauss() * 0.0025), 0.6, 2.2)
         E.inflation = clamp(E.inflation + (0.025 + (E.demand - 1) * 0.15 - E.inflation) * 0.01 + s.random.gauss() * 0.0003, 0.0, 0.1)
         E.inflationIndex *= pow(1 + E.inflation, 1.0 / 52)
@@ -106,6 +103,7 @@ public enum WorldWeek {
             mk[key] = m
         }
         s.rest["mk"] = mk
+        MarketPrices.weekly(&s, data: data)
     }
 
     /// A cheap rival with a loophole enters and drags prices; regulators eventually close it. Original: `disruptWeek`.

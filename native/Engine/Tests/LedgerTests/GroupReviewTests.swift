@@ -60,7 +60,7 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertTrue(e.reviewHistory.isEmpty)
     }
 
-    func testRuleIsTheSecondCompanyOrAFirstYear() throws {
+    func testRuleIsAFirstYearPlayed() throws {
         var e = try newEngine()
         XCTAssertFalse(Gates.reviewOpen(e.state))
         e.update { s, _, _ in s.week = 51 }
@@ -69,9 +69,8 @@ final class GroupReviewTests: XCTestCase {
         XCTAssertTrue(Gates.reviewOpen(e.state))
         e.update { s, _, _ in s.week = 3 }
         try startCompany(&e, trade: "cafe")
-        XCTAssertFalse(Gates.reviewOpen(e.state))
         try startCompany(&e, trade: "gym")
-        XCTAssertTrue(Gates.reviewOpen(e.state))
+        XCTAssertFalse(Gates.reviewOpen(e.state))
     }
 
     // MARK: Quarters, grading, history

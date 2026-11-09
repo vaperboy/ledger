@@ -84,7 +84,6 @@ public enum LegacyIds {
         "ysk": "driver_certificate",
         "zone": "slope_zoning",
     ]
-    static let paperwork: [String: String] = ["areg": "authority_report", "hms": "safety_intro"]
     static let stocks: [String: String] = ["NRDK": "ENRG", "FJSF": "FOOD", "HVBK": "BANK", "STVK": "INDU", "TLNR": "TELE", "SKOG": "MATL", "SHIP": "TRAN", "EIEN": "PROP"]
     static let crypto: [String: String] = ["NRC": "ALT"]
 
@@ -105,13 +104,6 @@ public enum LegacyIds {
                 for (k, v) in docs.object { renamed[documents[k] ?? k] = v }
                 companies[i]["docs"] = .object(renamed)
             }
-            var staff = companies[i]["staff"].array
-            for k in staff.indices where !staff[k]["onb"].isNull {
-                var o: [String: JSONValue] = [:]
-                for (key, v) in staff[k]["onb"].object { o[paperwork[key] ?? key] = v }
-                staff[k]["onb"] = .object(o)
-            }
-            if !staff.isEmpty { companies[i]["staff"] = .array(staff) }
         }
         if !companies.isEmpty { root["cos"] = .array(companies) }
         RentalFinance.migrateLegacy(&root)

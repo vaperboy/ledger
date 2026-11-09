@@ -40,8 +40,8 @@ final class UnlockGatesTests: XCTestCase {
             (.bank, 7, "Unlocks after your first profitable month"), (.newCompany, 7, "Unlocks after your first profitable month"),
             (.management, 7, "Unlocks after your first profitable month"), (.techpro, 7, "Unlocks after your first profitable month"),
             (.accounting, 7, "Opens with your first profitable month"),
-            (.property, 9, "Unlocks with your second company"), (.rivals, 9, "Unlocks with your second company"),
-            (.airstay, 9, "Unlocks with your second company"),
+            (.property, 9, "Unlocks after your first quarter of trading"), (.rivals, 9, "Unlocks after your first quarter of trading"),
+            (.airstay, 9, "Unlocks after your first quarter of trading"),
         ]
         var e = try Self.fresh()
         for (g, n, text) in rows {
@@ -133,7 +133,7 @@ final class UnlockGatesTests: XCTestCase {
             XCTAssertFalse(item.title.isEmpty); XCTAssertFalse(item.condition.isEmpty, item.id)
             XCTAssertTrue((0...1).contains(item.progress), item.id)
         }
-        XCTAssertEqual(road.first { $0.id == "gate.group" }?.detail, "1 of 3 companies")
+        XCTAssertEqual(road.first { $0.id == "gate.group" }?.detail, "Goal 2 of 7")
         XCTAssertEqual(road.first { $0.id == "unlock.chain" }?.companyID, id)
         XCTAssertEqual(road.map { $0.progress }, road.map { $0.progress }.sorted(by: >), "closest first")
         // Opening something removes it from the list.
@@ -157,16 +157,25 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(Gates.ownerHoursCap(e.state), OwnerHours.weeklyCap)
     }
 
-    func testThreeCompaniesOpenGroupAndAtlas() throws {
+    func testOneCompanyOpensGroupWithTheFirstProfitableMonth() throws {
         var e = try ChainsTests.engine()
         Self.doneUpTo(&e, 0)
         _ = ChainsTests.start(&e, "cafe")
         XCTAssertEqual(vis(e, .group), .hidden)
-        _ = ChainsTests.start(&e, "kiosk")
-        XCTAssertEqual(vis(e, .group), .locked("Unlocks with three companies"))
-        _ = ChainsTests.start(&e, "barber")
+        Self.doneUpTo(&e, 6)
+        XCTAssertEqual(vis(e, .group), .locked("Unlocks after your first profitable month"))
+        Self.doneUpTo(&e, 7)
         XCTAssertEqual(vis(e, .group), .open)
         XCTAssertEqual(Gate.atlas.lockText, Gate.insurance.lockText, "Atlas opens with the insurance gate")
+    }
+
+    func testAnOpenedGateStaysOpenAfterItsConditionIsLost() throws {
+        var e = try Self.fresh()
+        Self.doneUpTo(&e, 7)
+        XCTAssertEqual(vis(e, .group), .open)
+        e.update { s, d, _ in Gates.recordOpen(&s, data: d) }
+        Self.doneUpTo(&e, 0)
+        XCTAssertEqual(vis(e, .group), .open)
     }
 
     func testVenturesNeedTwoClosedYearsWithProfit() throws {
@@ -211,13 +220,14 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertFalse(f.bankruptcyActive(week: 26)); XCTAssertTrue(f.bankruptcyActive(week: 27))
     }
 
-    func testFirstYearDemandIsHigherEarlyOnAndTheAuthorityWaitsForThreeCompanies() throws {
+    func testFirstYearDemandIsHigherEarlyOnAndTheAuthorityWaitsForAYear() throws {
         var e = try ChainsTests.engine()
         let id = ChainsTests.start(&e, "cafe")
         let f = e.data.balance.firstYear
         XCTAssertFalse(f.competitionAuthorityActive(e.state))
-        _ = ChainsTests.start(&e, "kiosk"); _ = ChainsTests.start(&e, "barber")
+        e.update { s, _, _ in s.week = 52 }
         XCTAssertTrue(f.competitionAuthorityActive(e.state))
+        e.update { s, _, _ in s.week = 0 }
         let w = World(state: e.state, data: e.data)
         let co = try XCTUnwrap(e.state.company(id))
         let bd = try XCTUnwrap(e.data.catalog[co.type])

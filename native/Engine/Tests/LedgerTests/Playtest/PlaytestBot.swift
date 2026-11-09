@@ -174,7 +174,7 @@ final class PlayBot {
         guard var offer = e.hearTheirAsk(post: post, companyID: id, personID: p.id) else { find(2, "ask-nil:\(role)", "hearTheirAsk returned nil for a shortlisted \(role)", "HiringNegotiation.swift:hearTheirAsk", "co=\(id)"); return false }
         for _ in 0..<4 {
             switch e.hireOffer(post: post, companyID: id, personID: p.id, monthlyWage: offer) {
-            case .hired: bought(); structural(); _ = e.completePaperwork(companyID: id, personID: p.id); return true
+            case .hired: bought(); structural(); return true
             case .countered(let a, _): offer = a
             case .termsRefused(let why), .blocked(let why):
                 hireFails[role, default: 0] += 1; find(2, "hire-blocked:\(role)", "Hiring \(role) refused: \(why.prefix(60))", "HiringNegotiation.swift:hireOffer", "co=\(id)"); return false

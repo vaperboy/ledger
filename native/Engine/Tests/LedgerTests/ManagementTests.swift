@@ -57,7 +57,7 @@ final class ManagementTests: XCTestCase {
         let a = try XCTUnwrap(e.searchAssistants(companyID: id))
         XCTAssertEqual(e.hireAssistant(personID: a[0].id, companyID: id, monthlyWage: a[0].askingMonthlyWage * 1.2), .ok)
         XCTAssertTrue(e.toggleAssistantDuty(companyID: id, duty: "comp"))
-        XCTAssertTrue(e.toggleAssistantDuty(companyID: id, duty: "paper"))
+        XCTAssertTrue(e.toggleAssistantDuty(companyID: id, duty: "insure"))
         XCTAssertFalse(e.toggleAssistantDuty(companyID: id, duty: "equip"), "two jobs at most")
         for _ in 0..<(8 * 7) { e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)

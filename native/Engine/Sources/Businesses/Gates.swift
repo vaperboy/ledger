@@ -8,8 +8,8 @@ import Finance
 public enum UnlockRule: Equatable, Sendable {
     /// Nothing to wait for (a company-level feature only needs the company to exist).
     case always
-    /// A game week, a ladder goal (1 to 10), a number of companies, profitable closed years, or wealth.
-    case week(Int), goal(Int), companies(Int), profitableYears(Int), rich
+    /// A game week, a ladder goal (1 to 10), profitable closed years, or wealth.
+    case week(Int), goal(Int), profitableYears(Int), rich
     /// A week closed with sales, a month closed in profit, a loss or fine booked or a month closed at a loss.
     case firstSalesWeek, firstProfitMonth, firstLossEvent
     /// Company level: weeks traded, twelve closed months in profit, a proven pilot, a possible board seat, profit to pay out.
@@ -103,10 +103,10 @@ public enum Gates {
                   text: "Unlocks with your first profitable month or your first loss", roadmap: false),
         RuleEntry(feature: .gate(.suppliers), title: "Suppliers", rule: .firstSalesWeek, text: "Unlocks after your first week of sales"),
         RuleEntry(feature: .gate(.marketplace), title: "Marketplace", rule: .firstSalesWeek, text: "Unlocks after your first week of sales", roadmap: false),
-        RuleEntry(feature: .gate(.property), title: "Property", rule: .goal(9), text: "Unlocks with your second company"),
-        RuleEntry(feature: .gate(.rivals), title: "Rivals", rule: .goal(9), text: "Unlocks with your second company"),
-        RuleEntry(feature: .gate(.airstay), title: "AirStay", rule: .goal(9), text: "Unlocks with your second company", roadmap: false),
-        RuleEntry(feature: .gate(.group), title: "Group", rule: .companies(3), text: "Unlocks with three companies"),
+        RuleEntry(feature: .gate(.property), title: "Property", rule: .goal(9), text: "Unlocks after your first quarter of trading"),
+        RuleEntry(feature: .gate(.rivals), title: "Rivals", rule: .goal(9), text: "Unlocks after your first quarter of trading"),
+        RuleEntry(feature: .gate(.airstay), title: "AirStay", rule: .goal(9), text: "Unlocks after your first quarter of trading", roadmap: false),
+        RuleEntry(feature: .gate(.group), title: "Group", rule: .goal(7), text: "Unlocks after your first profitable month"),
         RuleEntry(feature: .gate(.atlas), title: "Atlas", rule: .anyOf([.firstProfitMonth, .firstLossEvent]),
                   text: "Unlocks with your first profitable month or your first loss"),
         RuleEntry(feature: .gate(.ventures), title: "Ventures", rule: .profitableYears(2), text: "Unlocks after two profitable years"),
@@ -170,8 +170,8 @@ public enum Gates {
     /// Companies that have been trading (a holding does not trade); closed ones still count, their history is the player's.
     static func trading(_ s: GameState) -> [Company] { s.companies.filter { $0.type != "hold" } }
 
-    /// The quarterly group review and the annual report open with the second company or a first full year played (never in the first weeks).
-    public static let reviewRule: UnlockRule = .anyOf([.companies(2), .week(52)])
+    /// The quarterly group review and the annual report open after a first full year played.
+    public static let reviewRule: UnlockRule = .week(52)
     public static func reviewOpen(_ s: GameState) -> Bool { met(reviewRule, s, data: nil, company: nil, context: nil) }
 
     /// The one test of a rule. `company` is needed for company-level rules, `data` for wealth and `context` for dividends.
@@ -180,7 +180,6 @@ public enum Gates {
         case .always: return company?.status.isLive ?? true
         case .week(let w): return s.week >= w
         case .goal(let n): return goalDone(s, n)
-        case .companies(let n): return companiesOwned(s) >= n
         case .profitableYears(let n): return profitableYears(s) >= n
         case .rich:
             guard let data else { return false }
@@ -221,7 +220,6 @@ public enum Gates {
         case .always: return (1, "")
         case .week(let w): return (ratio(Double(s.week), Double(w)), "Week \(s.week) of \(w)")
         case .goal(let n): return (ratio(Double(goalsDone(s)), Double(n)), "Goal \(min(goalsDone(s), n)) of \(n)")
-        case .companies(let n): return (ratio(Double(companiesOwned(s)), Double(n)), "\(min(companiesOwned(s), n)) of \(n) companies")
         case .profitableYears(let n): return (ratio(Double(profitableYears(s)), Double(n)), "\(min(profitableYears(s), n)) of \(n) profitable years")
         case .rich:
             guard let data else { return (0, "") }
@@ -258,17 +256,31 @@ public enum Gates {
         }
     }
 
+    static let openKey = "gateG"
+
     public static func isOpen(_ g: Gate, _ s: GameState, data: GameData) -> Bool {
         guard ladderOn(s) else { return true }
+        if !(s.rest[openKey]?[g.rawValue] ?? .null).isNull { return true }
         return met(g.rule, s, data: data, company: nil, context: nil)
     }
 
-    /// A closed rule is "near" when it is one goal, two weeks, one company or one year away (event rules from week 2).
+    /// Records every gate whose rule holds, so a surface the player has opened never closes again.
+    public static func recordOpen(_ s: inout GameState, data: GameData) {
+        guard ladderOn(s) else { return }
+        var rec: JSONValue = s.rest[openKey] ?? .object([:])
+        var changed = false
+        for g in Gate.allCases where rec[g.rawValue].isNull && met(g.rule, s, data: data, company: nil, context: nil) {
+            rec[g.rawValue] = .number(Double(s.week))
+            changed = true
+        }
+        if changed { s.rest[openKey] = rec }
+    }
+
+    /// A closed rule is "near" when it is one goal, two weeks or one year away (event rules from week 2).
     static func near(_ r: UnlockRule, _ s: GameState) -> Bool {
         switch r {
         case .week(let w): return w - s.week <= nearWeeks
         case .goal(let n): return n - goalsDone(s) <= 1
-        case .companies(let n): return companiesOwned(s) + 1 >= n
         case .profitableYears(let n): return profitableYears(s) + 1 >= n
         case .firstSalesWeek, .firstProfitMonth, .firstLossEvent: return s.week >= eventNearWeek
         case .anyOf(let rs): return rs.contains { (x: UnlockRule) -> Bool in near(x, s) }
@@ -289,7 +301,7 @@ public enum Gates {
     }
 
     /// Every feature still locked, closest first (ties in table order): app surfaces by the player's state, company features by the
-    /// company nearest to opening them. A feature any live company has already opened is not listed.
+    /// company nearest to opening them. A feature the player has opened through any company is not listed.
     public static func roadmap(_ s: GameState, data: GameData, context: FinanceContext) -> [UnlockRoadmapItem] {
         let live: [Company] = s.companies.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
         var rows: [(order: Int, item: UnlockRoadmapItem)] = []
@@ -300,6 +312,7 @@ public enum Gates {
                 let p = progress(e.rule, s, data: data, company: nil)
                 rows.append((i, UnlockRoadmapItem(id: "gate." + g.rawValue, title: e.title, condition: e.text, progress: p.fraction, detail: p.detail, companyID: nil)))
             case .unlock(let id):
+                if Unlocks.playerHas(s, id) { continue }
                 var open = false
                 var bestFraction = 0.0
                 var bestDetail = ""

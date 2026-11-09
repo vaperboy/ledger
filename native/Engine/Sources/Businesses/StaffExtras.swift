@@ -3,78 +3,16 @@ import GameCore
 import Countries
 import Employees
 
-/// Paperwork for new people, inspection fines, commission mishaps and hidden talent.
-/// Originals: `ONB_BASE`, `ONB_X`, `ONB_ROLE`, `onbMissing`, `staffExtra`, `managerOnboard` (engine/people/staff_extras.js).
 public enum StaffExtras {
-    public static let baseItems: [(key: String, text: String)] = [
-        ("contract", "Employment contract signed"), ("tax", "Tax deduction registered"), ("authority_report", "Employment reported to the authorities"),
-        ("ins", "Injury insurance and pension set up"), ("safety_intro", "Workplace safety introduction given"),
-    ]
-    static let roleItem: [String: String] = [
-        "food": "Food hygiene training documented", "police": "Police certificate", "drive": "Driving licence checked", "cert": "Trade certificate verified",
-        "health": "Health authorisation verified", "guard": "Security guard approval", "avi": "Aviation licence verified", "fin": "Financial authorisation checked",
-    ]
-    static let roleKind: [String: String] = [
-        "cook": "food", "chef": "food", "baker": "food", "barista": "food", "waiter": "food", "bartender": "food", "guard": "guard",
-        "physio": "health", "dentist": "health", "dentnurse": "health", "lawyer": "cert", "elec": "cert", "plumb": "cert", "carp": "cert", "mech": "cert",
-        "driver": "drive", "truckd": "drive", "driverB": "drive", "courier": "drive", "instr": "drive", "pilot": "avi", "fo": "avi", "cabin": "avi",
-        "banker": "fin", "broker": "fin", "agent": "fin", "underw": "fin", "groom": "police", "tutor": "police", "trainer": "police",
-    ]
-    static let seriousItems: Set<String> = ["police", "cert", "avi", "fin"]
-
-    /// Everything the paperwork for this role consists of.
-    public static func items(role: String) -> [(key: String, text: String)] {
-        var l = baseItems
-        if let k = roleKind[role], let text = roleItem[k] { l.append((k, text)) }
-        return l
-    }
-
-    /// Items not yet done for this person.
-    public static func missing(_ m: StaffMember) -> [(key: String, text: String)] {
-        guard !m.value("onb").isNull else { return [] }
-        let done = m.value("onb")
-        return items(role: m.role).filter { !done[$0.key].bool && done[$0.key].double == 0 }
-    }
-
-    public static func tick(_ m: inout StaffMember, key: String) {
-        var o = m.value("onb"); o[key] = .number(1); m.set("onb", o)
-    }
-
-    /// Weekly chance that a person completes one of their own missing items; an accountant on the payroll files for the others (`filedByAccountant`).
-    static let selfFilingChance = 0.3
-    static let accountantFilingChance = 0.7
-
-    /// An accountant on the team does the filing for everyone else's missing items.
-    static func filedByAccountant(_ staff: inout [StaffMember], random r: inout DeterministicRandom) {
-        guard staff.contains(where: { $0.role == "acct" && $0.noticeWeeks == 0 }) else { return }
-        for k in staff.indices where staff[k].role != "acct" {
-            for it in missing(staff[k]) where r.chance(accountantFilingChance) { tick(&staff[k], key: it.key) }
-        }
-    }
-
     public struct Outcome {
         public var fines: [(amount: Double, note: String)] = []
         public var reputationLoss = 0.0
         public var notes: [(text: String, tone: String)] = []
         public var left = false
-        public var managerLearnsPaperwork = false
     }
 
-    /// One person, one week. Original: `staffExtra`. Returns what happened; the caller books fines and notes.
-    public static func week(_ m: inout StaffMember, person n: inout Person, week: Int, random r: inout DeterministicRandom,
-                            companyUtilisation util: Double?, hasManager: Bool, managerLearned: Bool) -> Outcome {
+    public static func week(_ m: inout StaffMember, person n: inout Person, week: Int, random r: inout DeterministicRandom, companyUtilisation util: Double?) -> Outcome {
         var out = Outcome()
-        // People fill in their own forms as part of settling in: a contract to sign, a tax card to hand over, a certificate to copy.
-        for it in missing(m) where r.chance(selfFilingChance) { tick(&m, key: it.key) }
-        let miss = missing(m)
-        if !miss.isEmpty, week - m.hiredWeek >= 3 {
-            for it in miss where r.chance(0.009) {
-                let f = jsRound(r.range(6000, 20000) * (seriousItems.contains(it.key) ? 2 : 1))
-                out.fines.append((f, "Inspectors fined {co} {fine}: \"\(it.text)\" missing for \(n.name)."))
-                out.reputationLoss += 1
-                if hasManager && !managerLearned { out.managerLearnsPaperwork = true }
-            }
-        }
         if m.commissionMode == "com" {
             if r.chance(0.003) {
                 let f = jsRound(r.range(10000, 40000))
@@ -87,7 +25,6 @@ public enum StaffExtras {
                 return out
             }
         }
-        // Hidden potential: some young people with the right character grow faster.
         let goodCharacter = ["driven", "steady", "loyal"].contains(n.str("pers"))
         if n.flag("golden") && goodCharacter && (week - m.hiredWeek) % 4 == 3 {
             m.skillGain = clamp(m.skillGain + 1.6, -10, 30)

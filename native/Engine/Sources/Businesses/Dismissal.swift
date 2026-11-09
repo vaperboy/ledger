@@ -52,8 +52,8 @@ public enum Dismissal {
 
     /// The quote for a wage, tenure and reason in this company's country. The single arithmetic behind every dismissal figure.
     public static func quote(_ world: World, _ co: Company, monthlyWage: Double, tenureWeeks: Double, reason: Reason, onNotice: Bool = false,
-                             age: Double? = nil, massLayoff: Bool = false) -> Quote {
-        let p = world.terminationPayments(co, monthlyWage: monthlyWage, tenureWeeks: tenureWeeks, onNotice: onNotice, reason: reason, age: age, massLayoff: massLayoff)
+                             massLayoff: Bool = false) -> Quote {
+        let p = world.terminationPayments(co, monthlyWage: monthlyWage, tenureWeeks: tenureWeeks, onNotice: onNotice, reason: reason, massLayoff: massLayoff)
         return Quote(reason: reason, notice: p.notice, severance: p.severance, fine: p.fine, canClaimUnfairDismissal: world.labour(co).canClaimUnfairDismissal(tenureWeeks: tenureWeeks))
     }
 
@@ -61,7 +61,7 @@ public enum Dismissal {
     public static func quote(_ s: GameState, companyID: Int, staffID: Int, reason: Reason? = nil, noticeServed: Bool = false, data: GameData) -> Quote? {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == staffID }) else { return nil }
         let world = World(state: s, data: data), why = reason ?? reasonForDismissing(m), onNotice = noticeServed || m.noticeWeeks > 0
-        var q = quote(world, co, monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: why, onNotice: onNotice, age: s.people[staffID].map { Double($0.age) })
+        var q = quote(world, co, monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: why, onNotice: onNotice)
         // Extra notice agreed in a contract talk (ContractTalk, key "nx") is owed on top, in the cases where the country's law owes notice at all.
         let extra = Double(m.int("nx"))
         if extra > 0, !onNotice, world.labour(co).noticeReasons.contains(why.rawValue) {
@@ -110,8 +110,7 @@ public enum Dismissal {
     public static func expire(_ s: inout GameState, companyID: Int, staffID: Int, noticeGiven: Bool, data: GameData) -> Quote? {
         guard let ci = s.companyIndex(companyID), let k = s.companies[ci].staff.firstIndex(where: { $0.id == staffID }) else { return nil }
         let m = s.companies[ci].staff[k]
-        var q = quote(World(state: s, data: data), s.companies[ci], monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: .expiry,
-                      age: s.people[staffID].map { Double($0.age) })
+        var q = quote(World(state: s, data: data), s.companies[ci], monthlyWage: m.monthlyWage, tenureWeeks: Double(s.week - m.hiredWeek), reason: .expiry)
         if noticeGiven { q.notice = 0 }
         s.companies[ci].staff.remove(at: k)
         if var p = s.people[staffID] { p.employerID = 0; s.people[staffID] = p }
@@ -128,7 +127,7 @@ public enum Dismissal {
         guard let ci = s.companyIndex(companyID), let mid = s.companies[ci].managerID else { return nil }
         let hired = s.companies[ci].value("mgrW0").isNull ? Double(s.week - 52) : s.companies[ci].num("mgrW0")
         let q = quote(World(state: s, data: data), s.companies[ci], monthlyWage: s.companies[ci].managerMonthlyWage, tenureWeeks: Double(s.week) - hired, reason: reason,
-                      onNotice: noticeServed, age: s.people[mid].map { Double($0.age) })
+                      onNotice: noticeServed)
         if var n = s.people[mid] { n.employerID = 0; s.people[mid] = n }
         book(&s, payer: .company(companyID), notice: q.notice, severance: q.severance, fine: q.fine, labels: .manager)
         ManagerModel.stepDown(&s, ci)

@@ -43,8 +43,6 @@ public struct LabourRules: Equatable, Sendable {
     public var noticeBands: [Band] = []
     /// Severance in tiers of weeks per year of service (`severanceTiersMonths`: [[fromYears, monthsOfReferenceSalaryPerYear]], a month being 52/12 weeks).
     public var severanceTiers: [Band] = []
-    /// Severance weeks per year by the person's age (`severanceAgeBands`: [[fromAge, weeksPerYear]]); used when the age is known.
-    public var severanceAgeBands: [Band] = []
     /// A flat part of severance in weeks on top of the per-year part (an indemnity of a number of months plus days a year), and an extra per-year premium.
     public var severanceBaseWeeks = 0.0
     public var severancePremiumPerYear = 0.0
@@ -89,7 +87,6 @@ public struct LabourRules: Equatable, Sendable {
         leaveDays = n("leaveDays"); leaveCalendarDays = j["leaveUnit"].string == "calendar"; probationWeeks = n("probationWeeks"); probationNoticeWeeks = n("probationNoticeWeeks"); atWill = j["atWill"].bool
         noticeBands = j["noticeBands"].array.map { Band(from: $0[0].double, value: $0[1].double) }.sorted { $0.from < $1.from }
         severanceTiers = j["severanceTiersMonths"].array.map { Band(from: $0[0].double, value: $0[1].double * 52 / 12) }.sorted { $0.from < $1.from }
-        severanceAgeBands = j["severanceAgeBands"].array.map { Band(from: $0[0].double, value: $0[1].double) }.sorted { $0.from < $1.from }
         severanceBaseWeeks = n("severanceBaseWeeks"); severancePremiumPerYear = n("severancePremiumPerYear"); severanceMaxYears = n("severanceMaxYears")
         if !j["severanceReasons"].isNull { severanceReasons = Set(j["severanceReasons"].array.map { $0.string }) }
         if !j["noticeReasons"].isNull { noticeReasons = Set(j["noticeReasons"].array.map { $0.string }) }
@@ -180,9 +177,9 @@ public struct LabourRules: Equatable, Sendable {
     }
 
     /// Notice (paid in lieu), severance and any termination fine for letting someone go after `tenureWeeks`. The one place the game works this
-    /// out for staff, layoffs and the manager. Whether each is owed depends on the reason and on service (and age, where the data uses it).
+    /// out for staff, layoffs and the manager. Whether each is owed depends on the reason and on service.
     public func termination(tenureWeeks: Double, withCause: Bool = false, onNotice: Bool = false, reason: TerminationReason? = nil,
-                            age: Double? = nil, massLayoff: Bool = false) -> Termination {
+                            massLayoff: Bool = false) -> Termination {
         let why = reason ?? (withCause ? .forCause : .redundancy)
         if onNotice { return Termination(noticeWeeks: 0, severanceWeeks: 0) }
         let years = max(0, tenureWeeks) / 52
@@ -212,9 +209,7 @@ public struct LabourRules: Equatable, Sendable {
                     part += max(0, min(y, upper) - t.from) * t.value
                 }
             } else {
-                var perYear = severancePerYear
-                if let age, let band = severanceAgeBands.last(where: { age >= $0.from }) { perYear = band.value }
-                part = perYear * y
+                part = severancePerYear * y
             }
             sev = max(severanceMin, severanceBaseWeeks + part + severancePremiumPerYear * y)
             if severanceMax > 0 { sev = min(sev, severanceMax) }

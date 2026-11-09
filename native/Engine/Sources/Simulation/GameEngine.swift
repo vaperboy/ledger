@@ -56,7 +56,7 @@ public struct GameEngine {
 
     /// Start a new game. Original: `newGame` (engine/core/state.js). The player begins with a start-up loan and an empty
     /// current account of that size, and no companies.
-    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, age: Int = 30, story: LifeStory = .loan, ambition: String? = nil,
+    public static func newGame(countryCode: String, playerName: String, cityID: String? = nil, seed: Int? = nil, story: LifeStory = .loan, ambition: String? = nil,
                                tradeID: String? = nil, companyName: String? = nil, chooseFirstItem: Bool = false,
                                difficulty: Difficulty = .classic, entitlements: EntitlementSnapshot = .free, now: Date = Date(),
                                admins: Set<String>? = nil, worldRules: WorldRules? = nil) throws -> GameEngine {
@@ -72,7 +72,7 @@ public struct GameEngine {
         json["v"] = .number(Double(GameState.legacyVersion))
         json["seed"] = .number(Double(seed)); json["rs"] = .number(Double(Int32(truncatingIfNeeded: seed)))
         json["uid"] = 1000; json["week"] = 0; json["day"] = 0; json["country"] = .string(country.code)
-        json["player"] = .object(["name": .string(playerName.isEmpty ? "You" : playerName), "age": .number(Double(min(110, max(1, age)))),
+        json["player"] = .object(["name": .string(playerName.isEmpty ? "You" : playerName),
                                   "city": .string(cityID ?? country.cities[0].id), "skill": .object([:])])
         let startCash = story == .loan ? loan : 0   // other stories are funded through the ledger, so no loan record is ever made and removed
         json["cash"] = .number(startCash); json["cash0"] = .number(startCash); json["flow"] = .object([:])
@@ -459,6 +459,7 @@ public struct GameEngine {
             Aftermath.weekly(&state, data: data, context: context)   // follow-ups of earlier lawsuits, breakdowns, resignations ... (Events/Aftermath.swift)
             EventEngine.expire(&state, data: data, context: context)
             Unlocks.weekly(&state, context: context)   // newly satisfied unlocks are recorded once per company (Businesses/Unlocks.swift)
+            Gates.recordOpen(&state, data: data)
             Engagement.weekly(&state, data: data)   // weekly plan and rival stories, once their pages are open (Businesses/Engagement.swift)
         case 4:
             StrategicDecisions.weekly(&state, data: data, context: context)

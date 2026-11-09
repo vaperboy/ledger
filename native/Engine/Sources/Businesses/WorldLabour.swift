@@ -15,15 +15,15 @@ extension World {
     /// The one-off payments for letting someone go, kept apart: notice (or pay in lieu, with the employer charge at this wage), severance, and any
     /// termination fund fine. Routine payroll is not part of this. The one helper for staff, layoffs and managers.
     public func terminationPayments(_ co: Company, monthlyWage: Double, tenureWeeks: Double, withCause: Bool = false, onNotice: Bool = false,
-                                    reason: LabourRules.TerminationReason? = nil, age: Double? = nil, massLayoff: Bool = false) -> (notice: Double, severance: Double, fine: Double) {
+                                    reason: LabourRules.TerminationReason? = nil, massLayoff: Bool = false) -> (notice: Double, severance: Double, fine: Double) {
         let c = country(co)
-        return labour(co).termination(tenureWeeks: tenureWeeks, withCause: withCause, onNotice: onNotice, reason: reason, age: age, massLayoff: massLayoff)
+        return labour(co).termination(tenureWeeks: tenureWeeks, withCause: withCause, onNotice: onNotice, reason: reason, massLayoff: massLayoff)
             .payments(monthlyWage: monthlyWage, employerSocial: c.employerOnCost(monthlyWage: monthlyWage))
     }
 
     public func terminationCost(_ co: Company, monthlyWage: Double, tenureWeeks: Double, withCause: Bool = false, onNotice: Bool = false,
-                                reason: LabourRules.TerminationReason? = nil, age: Double? = nil) -> Double {
-        let p = terminationPayments(co, monthlyWage: monthlyWage, tenureWeeks: tenureWeeks, withCause: withCause, onNotice: onNotice, reason: reason, age: age)
+                                reason: LabourRules.TerminationReason? = nil) -> Double {
+        let p = terminationPayments(co, monthlyWage: monthlyWage, tenureWeeks: tenureWeeks, withCause: withCause, onNotice: onNotice, reason: reason)
         return p.notice + p.severance + p.fine
     }
 }

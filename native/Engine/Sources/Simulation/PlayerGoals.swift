@@ -237,7 +237,7 @@ public enum PlayerGoals {
         ("M6", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Open money", "money", "You paid yourself.", ""),
         ("M7", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Open company", "company", "Your first profitable month.", "Your credit score goes up, and you can choose an ambition"),
         ("M8", "Hire a manager", "They run it day to day while you grow.", "Open management", "management", "You hired a manager.", "A better reputation"),
-        ("M9", "Open a second company", "Pick a trade and see the full start-up cost before you decide.", "New company", "newCompany", "You opened a second company.", "World ranking unlocks"),
+        ("M9", "Trade for a quarter", "Thirteen weeks of keeping the doors open.", "", "", "You traded for a quarter.", "World ranking unlocks"),
         ("M10", "Survive a bad week", "Something will go wrong. Keep the lights on.", "", "", "You survived a bad week.", "Your credit score goes up a little"),
     ]
 
@@ -255,7 +255,7 @@ public enum PlayerGoals {
         case "M6": return stepDone("pay", s)
         case "M7": return stepDone("profit", s)
         case "M8": return stepDone("mgr", s)
-        case "M9": return stepsLive(s).count >= 2
+        case "M9": return s.week >= 13
         case "M10":
             // Nothing else waits on this goal: it finishes when a bad week was survived, or on its own once enough quiet weeks have passed.
             let since: Int = s.rest["ldr"]?["done"]["M9"]["w"].int ?? s.week

@@ -13,8 +13,8 @@ public enum Hiring {
     /// the automatic hirers (managers, auto-staffing, start-ups) that search without a fee.
     public enum SearchMode: Sendable { case ads, network, agency }
 
-    /// Age groups only decide who turns up (age, skill range, experience, how often a CV is padded). They do NOT move pay: asks follow experience and skill
-    /// (`askSpread`), never age.
+    /// Candidate pools decide who turns up (skill range, experience, how often a CV is padded). They do NOT move pay: asks follow experience and skill
+    /// (`askSpread`). The age is only a portrait detail that goes with the pool.
     static let tiers: [String: (age: (Int, Int), skill: (Double, Double), exp: (Double, Double), lie: Double)] = [
         "young": ((18, 24), (12, 48), (0, 1.5), 0.3),
         "mid": ((25, 40), (35, 78), (2, 12), 0.22),
@@ -215,7 +215,7 @@ public enum Hiring {
     static func payBasis(_ n: Person, terms: Terms, fixedSalaryRoles: Set<String>) -> (basis: String, factor: Double) {
         let part = terms.isPartTime
         let basis = part ? (terms.basis == "fix" ? "fix" : "hour") : terms.basis ?? (fixedSalaryRoles.contains(n.role) ? "fix" : "hour")
-        let wantsFixed = HashedRandom.first("fix:\(n.id)") < (n.age < 26 ? 0.55 : 0.8)
+        let wantsFixed = StaffTalks.wantsFixedSalary(n)
         let factor = basis == "fix" ? (fixedSalaryRoles.contains(n.role) ? 1 : 1.03) : (wantsFixed && !part ? (fixedSalaryRoles.contains(n.role) ? 0.94 : 0.98) : 1)
         return (basis, factor)
     }
@@ -225,9 +225,6 @@ public enum Hiring {
     static func skillCurve(_ skill: Double, lie: Bool = false, experience: Double = 6) -> Double { askSpread(skill: skill, experience: experience, lie: lie) }
     /// What someone of this skill (and typical experience for the age group) would ask, as a multiple of the going rate for the job.
     static func askCurve(tier: String, skill: Double) -> Double { askSpread(skill: skill, experience: (tiers[tier]!.exp.0 + tiers[tier]!.exp.1) / 2) }
-
-    /// The age group of a person (the groups do not overlap).
-    static func tier(forAge age: Int) -> String { age <= tiers["young"]!.age.1 ? "young" : age <= tiers["mid"]!.age.1 ? "mid" : "senior" }
 
     /// The employer id of someone who took a job somewhere else while the talk went on: no longer on the market.
     public static let goneElsewhere = -9
@@ -317,7 +314,7 @@ public enum Hiring {
         var m = StaffMember(raw: [:])
         m.id = personID; m.set("role", n.role); m.monthlyWage = wage0
         m.hiredWeek = s.week; m.payBasis = basis; m.lastRaiseWeek = s.week
-        m.set("pm", 0); m.skillGain = 0; m.set("warn", 0); m.set("crs", 0); m.set("onb", .object([:]))
+        m.set("pm", 0); m.skillGain = 0; m.set("warn", 0); m.set("crs", 0)
         if part { StaffTalks.applyPartTime(&m, terms: terms, week: s.week) }
         else if terms.ownCar { m.set("ownCar", 1) }
         if m.flag("ownCar"), let bd = data.catalog[s.companies[ci].type], !PersonalEquipment.canUseOwnCar(role: m.role, bd, tables: data.catalog.tables) { m.set("ownCar", 0) }
@@ -332,26 +329,12 @@ public enum Hiring {
         if let plan = terms.bonusPlan, let l = WorkerBonus.level(plan), !l.isNone { m.set("bp", l.id) }
         for x in terms.expenseItems where StaffExpenses.item(x) != nil { var ex = m.value("ex"); if ex.isNull { ex = .object([:]) }; ex[x] = 1; m.set("ex", ex) }
         ContractHistory.append(&m, week: s.week, kind: "hired", text: "Hired: " + EmploymentContract.typeLabels(m).joined(separator: ", ").lowercased() + ", \(ContractHistory.fmt(EmploymentContract.percent(m))) percent of a full week.")
-        onboardByManager(&m, company: s.companies[ci], state: &s)
         Agency.markHire(&m, person: n, week: s.week)
         var staff = s.companies[ci].staff
         staff.append(m)
         s.companies[ci].staff = staff
         for d in terms.promises { StaffPromises.make(&s, companyID: companyID, personID: personID, draft: d) }
         return .ok
-    }
-
-    /// A manager does the new person's paperwork. Experienced managers (5+ years), or ones who have been fined before, do all of it;
-    /// newer ones sometimes forget one or two items. Original: `managerOnboard`.
-    static func onboardByManager(_ m: inout StaffMember, company co: Company, state s: inout GameState) {
-        guard let mid = co.managerID, let mgr = s.people[mid] else { return }
-        let items = StaffExtras.items(role: m.role)
-        let experience = mgr.num("exp")
-        if co.value("flags")["onbAll"].bool || experience >= 5 { items.forEach { StaffExtras.tick(&m, key: $0.key) }; return }
-        var missed = 0
-        for it in items {
-            if missed < 2 && !s.random.chance(0.78 + experience * 0.03) { missed += 1 } else { StaffExtras.tick(&m, key: it.key) }
-        }
     }
 
     /// Roles where a fixed salary is the custom from the start. Original: `FIX_NORM`.

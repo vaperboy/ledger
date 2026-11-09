@@ -72,6 +72,7 @@ public enum Pricing {
             m *= w.balance.priceLevelByTrade[bd.id] ?? 1
         }
         m *= wineCountryFactor(co, w)
+        m *= MarketPrices.index(w.state, co)
         m *= Development.factor(co, "tick")
         return m
     }

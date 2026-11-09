@@ -76,7 +76,6 @@ public enum EmploymentContract {
     public static func summary(_ s: GameState, companyID: Int, personID: Int, data: GameData) -> Summary? {
         guard let co = s.company(companyID), let m = co.staff.first(where: { $0.id == personID }) else { return nil }
         let lab = World(state: s, data: data).labour(co)
-        let age = Double(s.people[personID]?.age ?? 35)
         let labels = typeLabels(m)
         let h = hours(m)
         let end = FixedTerm.endWeek(m)
@@ -93,8 +92,8 @@ public enum EmploymentContract {
                        seasonMonths: months, seasonText: months.isEmpty ? "" : StaffTalks.seasonText(months), onSeason: onSeason,
                        nextSeasonStartWeek: onSeason ? nil : nextStart, nextSeasonEndWeek: onSeasonEnd,
                        resignationNoticeWeeks: (m.hiredWeek < s.week - 52 ? 8 : 4) + m.int("nx"),
-                       employerNoticeWeeks: lab.termination(tenureWeeks: tenure, reason: .unjustified, age: age).noticeWeeks,
-                       termEndNoticeWeeks: lab.termination(tenureWeeks: tenure, reason: .expiry, age: age).noticeWeeks,
+                       employerNoticeWeeks: lab.termination(tenureWeeks: tenure, reason: .unjustified).noticeWeeks,
+                       termEndNoticeWeeks: lab.termination(tenureWeeks: tenure, reason: .expiry).noticeWeeks,
                        renewalQuestionWeek: end.map { $0 - FixedTerm.reviewWindowWeeks(lab) }, renewals: FixedTerm.renewals(m),
                        hoursLimit: m.value("maxH").isNull ? nil : m.num("maxH"), history: ContractHistory.entries(m))
     }

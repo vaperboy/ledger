@@ -1,7 +1,7 @@
 import Foundation
 import GameCore
 
-/// A share that trades on the exchange. Kinds: "srv" (the World Bank and the World Index, priced by the server's market and always
+/// A share that trades on the exchange. Kinds: "com" (a raw material, priced by world supply and demand), "srv" (the World Bank and the World Index, priced by the server's market and always
 /// open to trade at the close), "own" (a holding of yours that went public) and "ext" (another player's listing, mirrored from the server).
 public struct ExchangeInstrument: Equatable, Identifiable, Sendable {
     public var id: String
@@ -26,7 +26,8 @@ public struct ExchangeInstrument: Equatable, Identifiable, Sendable {
     public var history: [Double]
 
     public var isOwn: Bool { kind == "own" }
-    public var isServer: Bool { kind == "srv" }
+    public var isServer: Bool { kind == "srv" || kind == "com" }
+    public var isCommodity: Bool { kind == "com" }
     public var change: Double { previousClose > 0 ? close / previousClose - 1 : 0 }
 }
 

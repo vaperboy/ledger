@@ -52,11 +52,9 @@ public extension GameEngine {
             }
             for m in co.staff {
                 let role = m.role.prefix(1).uppercased() + m.role.dropFirst()
-                let missing = StaffExtras.missing(m).count
                 var note = "steady"
                 var attention = true
-                if missing > 0 { note = "\(missing) item\(missing == 1 ? "" : "s") missing" }
-                else if m.noticeWeeks > 0 { note = "working notice" }
+                if m.noticeWeeks > 0 { note = "working notice" }
                 else if (m.sickUntilWeek ?? -1) >= state.week { note = "off sick" }
                 else if m.tiredness > 75 { note = "worn out" }
                 else { attention = false }

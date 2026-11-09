@@ -453,7 +453,7 @@ public enum ContractTalk {
         switch p.topic {
         case .payRise:
             if let m = sub.member {
-                let need = StaffTalks.raiseNeeded(role: m.role, age: sub.person.age, tables: data.catalog.tables)
+                let need = StaffTalks.raiseNeeded(role: m.role, tables: data.catalog.tables)
                 c.lines.append(p.amount >= need ? "A raise they will notice: it reaches the \(Int(saturating: (need * 100).rounded()))% people feel." : "They take it, but under \(Int(saturating: (need * 100).rounded()))% does not feel like a raise and they stay unhappy.")
             }
         case .promotion:
@@ -500,7 +500,7 @@ public enum ContractTalk {
                 if p.choice == "perm" { c.lines.append("Permanent: no end date.") }
                 else if let end = after?.member.flatMap({ FixedTerm.endWeek($0) }) {
                     c.lines.append("Fixed term until week \(end) (\(end - s.week) weeks from now). \(first) is asked about renewal \(FixedTerm.reviewWindowWeeks(lab)) weeks before.")
-                    let end0 = lab.termination(tenureWeeks: Double(end - m.hiredWeek), reason: .expiry, age: Double(sub.person.age))
+                    let end0 = lab.termination(tenureWeeks: Double(end - m.hiredWeek), reason: .expiry)
                     c.labour.append(end0.noticeWeeks + end0.severanceWeeks > 0
                                     ? "When it ends on its date the labour rules require: \(Int(saturating: end0.noticeWeeks.rounded())) weeks of notice and \(Int(saturating: end0.severanceWeeks.rounded())) weeks of severance."
                                     : "When it ends on its date nothing is owed: the country's labour data lists no notice or severance for the end of a fixed term.")
@@ -510,7 +510,7 @@ public enum ContractTalk {
         case .notice:
             if let m = sub.member {
                 let years = Double(s.week - m.hiredWeek)
-                let t0 = lab.termination(tenureWeeks: years, reason: .unjustified, age: Double(sub.person.age))
+                let t0 = lab.termination(tenureWeeks: years, reason: .unjustified)
                 c.labour.append("Notice by law at their service: \(Int(saturating: t0.noticeWeeks.rounded())) weeks" + (t0.severanceWeeks > 0 ? ", severance \(Int(saturating: t0.severanceWeeks.rounded())) weeks of pay" : "") + " (if you let them go without cause).")
                 if p.amount > 0 { c.lines.append("\(Int(p.amount)) weeks more notice on top, owed by both sides: if they resign they work it, if you let them go without cause you pay it.") }
             }
@@ -775,7 +775,7 @@ public enum ContractTalk {
         case .ok(let text):
             var text = text
             if p.topic == .payRise, let m = sub.member {
-                let need = StaffTalks.raiseNeeded(role: m.role, age: sub.person.age, tables: data.catalog.tables)
+                let need = StaffTalks.raiseNeeded(role: m.role, tables: data.catalog.tables)
                 if p.amount < need { text += " It is less than the \(Int(saturating: (need * 100).rounded()))% people feel as a raise, so they stay unhappy." }
             }
             finish()
@@ -836,7 +836,7 @@ public enum ContractTalk {
             st[k].set("askW", s.week)
             let lastRaise = m.raw["lr"].map { $0.isNull ? m.hiredWeek : $0.int } ?? m.hiredWeek
             let years = (s.week - lastRaise) / 52
-            let big = max(StaffTalks.raiseNeeded(role: m.role, age: n.age, tables: data.catalog.tables), 0.06)
+            let big = max(StaffTalks.raiseNeeded(role: m.role, tables: data.catalog.tables), 0.06)
             let why = s.week - lastRaise >= 52 ? "It has been \(years > 1 ? "\(years) years" : "a year") since my last raise." : "I have looked around, and people doing my job earn more."
             talk = Talk(opener: .employee, proposal: Proposal(.payRise, amount: big), week: s.week); talk.ask = big; talk.reason = why
             title = "\(n.name) asks about pay at \(co.name)"; body = "\(why) I like it here and would like to stay. Could we look at my pay? (\(roleName))"
