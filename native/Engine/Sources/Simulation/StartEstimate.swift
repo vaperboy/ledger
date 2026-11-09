@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Events
 
 public enum StartBudget: String, CaseIterable, Sendable { case small, medium, large }
 
