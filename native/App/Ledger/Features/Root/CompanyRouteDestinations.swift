@@ -127,7 +127,7 @@ struct CompanyPage: View {
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
             if let tab = CompanyDetailView.tab(for: section, co, e) {
-                CompanyDetailView(companyID: companyID, initial: tab, part: part ?? (section == .customers ? StatsPart.customers.rawValue : nil))
+                CompanyDetailView(companyID: companyID, initial: tab, part: part ?? CompanyDetailView.landing(section))
             } else if section == .chain || CompanyDetailView.availableSections(co, e).contains(section) {
                 CompanySectionScreen(companyID: companyID, section: section)
             } else {

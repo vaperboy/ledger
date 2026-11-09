@@ -5,13 +5,10 @@ import Employees
 import Businesses
 import Simulation
 
-/// Which worker a list row opens. The engine's types are never made Identifiable: this wraps the id for `.centerSheet(item:)`.
 struct WorkerRef: Identifiable, Hashable {
     var id: Int
 }
 
-/// The worker's profile as a popup (from the inbox): the same `WorkerProfileBody` as the pushed page, with the actions inline.
-/// The contract discussion replaces the profile inside this popup (its close steps back to the profile) instead of opening a second popup.
 struct WorkerProfileSheet: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -36,7 +33,6 @@ struct WorkerProfileSheet: View {
     }
 }
 
-/// The worker's profile as a pushed page (from the Team roster): the same body, with Discuss contract pinned at the bottom.
 struct StaffProfileView: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -70,14 +66,12 @@ struct StaffProfileView: View {
     }
 }
 
-/// The one action of a profile, Discuss contract, with every other action (warn, talk, paperwork, course, duty, letting go last) in a "…" menu.
 struct WorkerActionBar: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var companyID: Int
     var employeeID: Int
     var onDiscuss: () -> Void
-    /// Called after the person has left, so the container closes.
     var onGone: () -> Void
     @State private var pending: PendingAction?
 
@@ -92,7 +86,6 @@ struct WorkerActionBar: View {
 
     private func bar(_ e: GameEngine, _ co: Company, _ p: WorkerProfile, _ s: StaffProfile.Profile?, _ cur: Currency) -> some View {
         let extras: [RoleOption] = e.recommendedRoles(companyID: companyID).filter { (r: RoleOption) -> Bool in !r.isCore }
-        let missing: Int = co.staff.first(where: { $0.id == employeeID }).map { StaffExtras.missing($0).count } ?? 0
         let courses: [StaffProfile.Course] = s?.courses ?? []
         let problem: Bool = s?.problem != nil
         return HStack(spacing: Theme.Space.s) {
@@ -102,7 +95,6 @@ struct WorkerActionBar: View {
             Menu {
                 Button("Give a written warning") { warn(p.name) }
                 if problem { Button("Talk to them") { talk() } }
-                if missing > 0 { Button("Paperwork done (\(missing))") { paperwork() } }
                 if let s, !courses.isEmpty {
                     Menu("Send on a course") {
                         ForEach(courses, id: \.id) { (c: StaffProfile.Course) in
@@ -148,12 +140,6 @@ struct WorkerActionBar: View {
         store.show(worked == true ? "The warning worked. \(name) has improved." : "Warning on file for \(name).", tone: worked == true ? "good" : "n")
     }
 
-    private func paperwork() {
-        let cid = companyID, eid = employeeID
-        let done = store.act { $0.completePaperwork(companyID: cid, personID: eid) } ?? 0
-        if done > 0 { Haptics.success(); store.show("Paperwork done: \(done) \(done == 1 ? "item" : "items") ticked.", tone: "good") } else { Haptics.warning(); store.show("Nothing could be ticked.", tone: "warn") }
-    }
-
     private func confirmCourse(_ c: StaffProfile.Course, _ s: StaffProfile.Profile, _ cur: Currency) {
         pending = PendingAction(title: "Send \(s.name) on \(c.name)?", message: "Costs \(cur.tidyDisplay(c.cost)) from company cash. \(c.benefit) It may also change nothing, and a good result may tempt a competitor to poach them.", button: "Send for \(cur.tidyShort(c.cost))", amount: c.cost, currency: cur, tone: .info, icon: "graduationcap") { course(c) }
     }
@@ -192,20 +178,14 @@ struct WorkerActionBar: View {
     }
 }
 
-/// THE profile of one worker, wherever it is shown. A hero (portrait, role, mood, and the monthly pay as the one big figure), their request
-/// when they have one, then what the pay lets you expect, growth, promises, why they feel as they do and how the work goes. The contract and
-/// the record open under one row. Figures and outcomes are the engine's (`workerProfile`, `staffProfile`).
 struct WorkerProfileBody: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
     var companyID: Int
     var employeeID: Int
-    /// The popup shows the name itself; the pushed page has it in its title.
     var showsName: Bool
-    /// The popup has no pinned bar: the actions sit under the hero.
     var inlineActions: Bool = true
     var onDiscuss: () -> Void
-    /// Called after the person has left, so the container closes.
     var onGone: () -> Void
     @State private var showDetails = false
 
@@ -234,8 +214,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    // MARK: Hero
-
     private func tenure(_ weeks: Int) -> String {
         weeks >= 52 ? String(format: "%.1f years here", Double(weeks) / 52) : "\(weeks) weeks here"
     }
@@ -244,7 +222,6 @@ struct WorkerProfileBody: View {
         e.recommendedRoles(companyID: companyID).first { (r: RoleOption) -> Bool in r.id == id }?.name ?? id
     }
 
-    /// Who they are and how they feel, then the pay as the one big figure with hours and contract as its context line.
     private func hero(_ e: GameEngine, _ p: WorkerProfile, _ s: StaffProfile.Profile?, _ cur: Currency) -> some View {
         let dutyID: String = p.duty ?? ""
         let duty: String = dutyID.isEmpty ? "" : " \u{00B7} duty: " + dutyName(e, dutyID)
@@ -267,7 +244,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    /// Their open request: the one card of the page (it needs you); Discuss contract answers it.
     private func requestCard(_ p: WorkerProfile, _ topic: String) -> some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             Image(systemName: "bubble.left.fill").foregroundStyle(P.accent).accessibilityHidden(true)
@@ -282,9 +258,6 @@ struct WorkerProfileBody: View {
         .background(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).fill(P.surfaceRaised))
     }
 
-    // MARK: Expectation
-
-    /// What the pay lets you expect, against what the work is worth now.
     private func expectation(_ p: WorkerProfile) -> some View {
         let tint: Color = p.meetsExpectation ? P.gain : P.caution
         return TeamBlock(title: "What the pay buys", trailing: {
@@ -298,9 +271,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    // MARK: Promises
-
-    /// Open promises with what you can do about each; broken ones stay listed with what they cost.
     @ViewBuilder private func promisesSection(_ e: GameEngine) -> some View {
         let open: [WorkerPromise] = e.promises(of: employeeID, companyID: companyID).filter { (x: WorkerPromise) -> Bool in x.isOpen }
         let broken: [StaffPromises.Promise] = e.promises(personID: employeeID).filter { (x: StaffPromises.Promise) -> Bool in x.status == .broken }
@@ -339,8 +309,6 @@ struct WorkerProfileBody: View {
         .padding(.vertical, Theme.Space.s)
     }
 
-    // MARK: Mood and work
-
     private func cap(_ t: String) -> String { String(t.prefix(1).uppercased() + t.dropFirst()) }
 
     private func moodLines(_ bad: [String], _ good: [String]) -> some View {
@@ -370,7 +338,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    /// What the work log says, in sentences built from what happened. No rating and no figure.
     private func workSection(_ s: StaffProfile.Profile) -> some View {
         TeamBlock("How the work goes") {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -390,9 +357,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    // MARK: Contract and record (one row that opens them)
-
-    /// `extras`: bonus, perks and paid expenses show only once the company has five staff or a manager.
     private func details(_ p: WorkerProfile, _ s: StaffProfile.Profile?, _ cur: Currency, extras: Bool) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Hairline()
@@ -425,7 +389,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    /// The employment contract: type, percentage, real dates, notice and the latest changes.
     @ViewBuilder private func contractSection(_ p: WorkerProfile, _ s: StaffProfile.Profile?) -> some View {
         if let c = s?.contract {
             let recent: [ContractHistory.Entry] = Array(c.history.suffix(4).reversed())
@@ -463,8 +426,6 @@ struct WorkerProfileBody: View {
         }
     }
 
-    // MARK: What the promise actions do
-
     private func keep(_ x: WorkerPromise) {
         let eid = employeeID, pid = x.id
         let r: PromiseReminders.Outcome? = store.act { $0.keepPromise(employeeID: eid, promiseID: pid) }
@@ -472,13 +433,11 @@ struct WorkerProfileBody: View {
         else { Haptics.success(); store.show("Promise kept.", tone: "good") }
     }
 
-    /// A promise that is due or falls due within four weeks and has not been moved yet (the engine moves a date once).
     private func atRisk(_ x: WorkerPromise) -> Bool {
         guard x.waits == 0, let week = store.engine?.state.week else { return false }
         return x.status == "Due" || x.dueWeek - week <= 4
     }
 
-    /// Asks for a new date. They may say no; the message is the engine's own answer.
     private func moreTime(_ x: WorkerPromise) {
         let eid = employeeID, pid = x.id
         let r: StaffPromises.RenegotiateResult? = store.act { $0.renegotiatePromise(personID: eid, promiseID: pid, newDueInWeeks: 4) }

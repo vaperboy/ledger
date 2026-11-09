@@ -22,7 +22,7 @@ final class ShotsTeamTests: FeatureTourCase {
     func openTeam() -> Bool {
         toRoot()
         guard openCompany("Caf") else { return false }
-        return tapID("company-tab-team", wait: 4)
+        return tapID("company-tab-people", wait: 4)
     }
 
     /// A worker of the roster: a row with a person id, else a role group then its first person (older layout).
@@ -201,7 +201,7 @@ final class ShotsTeamTests: FeatureTourCase {
         } else { miss("27-management", "no management link") }
 
         // Executive posts on the chain page (when the café is in a chain)
-        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), tapText("Open the chain", wait: 3) {
+        if openCompany("Caf"), tapID("company-tab-overview", wait: 3), tapText("Open the chain", wait: 3) {
             pause(1)
             shot("33-chain")
             if bringIn({ $0.label.localizedCaseInsensitiveContains("Chain management") || $0.label.localizedCaseInsensitiveContains("executive") }, wait: 2) != nil { shot("34-executive-posts") }
@@ -209,7 +209,7 @@ final class ShotsTeamTests: FeatureTourCase {
 
         // Paperwork: Manage > Licences > the signing form
         toRoot()
-        if openCompany("Caf"), tapID("company-tab-manage", wait: 3), scrolledDown(), tapWhere(wait: 3, { $0.label.hasPrefix("Licences") && $0.type != .staticText }) {
+        if openCompany("Caf"), tapID("company-tab-overview", wait: 3), scrolledDown(), tapWhere(wait: 3, { $0.label.hasPrefix("Licences") && $0.type != .staticText }) {
             pause(0.8)
             shot("35-licences")
             if tapText("Fill in and apply", wait: 2) || tapText("Apply again", wait: 2) || tapText("Apply", wait: 2) {

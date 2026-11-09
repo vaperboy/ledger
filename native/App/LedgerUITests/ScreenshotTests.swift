@@ -39,7 +39,7 @@ final class ScreenshotTests: TourCase {
         if first.waitForExistence(timeout: 3) {
             first.tap(); sleep(1); shot("04-company-hub")
             // A company opens on its Overview; the fixed bar switches Team, Manage, Sales and Stats in place.
-            for section in ["overview", "team", "manage", "sales", "stats"] {
+            for section in ["overview", "prices", "supply", "people"] {
                 let b = app.buttons["company-tab-" + section]
                 if b.waitForExistence(timeout: 2) { b.tap(); sleep(1); shot("05-company-" + section) }
                 else { note("no company section \(section)") }

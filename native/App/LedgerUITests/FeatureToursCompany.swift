@@ -26,14 +26,14 @@ extension FeatureToursTests {
             for p in ["finances", "customers"] {
                 step("company \(label): Stats part \(p)") {
                     guard opened else { return .skip("company not opened") }
-                    _ = tapID("company-tab-stats")
+                    _ = tapID("company-tab-overview")
                     guard tapID("stats-part-\(p)") else { return .skip("no \(p) part for this company") }
                     return health("company \(label) stats \(p)")
                 }
             }
             step("company \(label): one Back returns to Home from any section") {
                 guard opened else { return .skip("company not opened") }
-                _ = tapID("company-tab-sales")
+                _ = tapID("company-tab-prices")
                 guard tapBack() else { return .fail("no Back button") }
                 return homeVisible(4) ? .pass() : .fail("Back did not land on Home: \(signature().text)")
             }
@@ -43,7 +43,7 @@ extension FeatureToursTests {
     // MARK: T11 Team: hire flow and staff
 
     private func openHiring() -> Bool {
-        guard openCompany("Caf"), tapID("company-tab-team") else { return false }
+        guard openCompany("Caf"), tapID("company-tab-people") else { return false }
         return tapID("team-hire-workers", wait: 4) && has("back-button", wait: 3)
     }
 
@@ -71,7 +71,7 @@ extension FeatureToursTests {
             guard openHiring() else { return .skip("no company / Team section / Hire button") }
             let h: R = health("hire workers")
             guard tapBack() else { return .fail("no Back on the hiring screen") }
-            return isSelected("company-tab-team") ? h : .fail("Back did not return to the Team section: \(signature().text)")
+            return isSelected("company-tab-people") ? h : .fail("Back did not return to the Team section: \(signature().text)")
         }
         step("hire: the Post the ad button is in view without scrolling") {
             guard openHiring() else { return .skip("hiring screen not reachable") }
@@ -121,7 +121,7 @@ extension FeatureToursTests {
             return raw.isEmpty ? .pass("no result page: \(signature().text)") : .fail(raw.joined(separator: "; "))
         }
         step("team: a worker profile opens from the roster and Back returns to Team") {
-            guard openCompany("Caf"), tapID("company-tab-team") else { return .skip("no company / Team section") }
+            guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
             // The roster groups people by role ("Barista, 2 people"): open a group, then its first person.
             guard let group = bringIn({ $0.type == .button && ($0.label.contains(" people") || $0.label.contains(" person")) && !$0.label.hasPrefix("Staff") }, wait: 4) else { return .skip("no role group in the roster") }
             touch(group)
@@ -129,49 +129,49 @@ extension FeatureToursTests {
             guard has("back-button", wait: 3) else { return .fail("the profile did not open as a page: \(signature().text)") }
             let h: R = health("worker profile")
             guard tapBack() else { return .fail("no Back on the profile") }
-            return isSelected("company-tab-team") ? h : .fail("Back did not return to the Team section: \(signature().text)")
+            return isSelected("company-tab-people") ? h : .fail("Back did not return to the Team section: \(signature().text)")
         }
         step("team: Managers and executives pushes the entity's Management page on Home, and Back returns to Team") {
-            guard openCompany("Caf"), tapID("company-tab-team") else { return .skip("no company / Team section") }
+            guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
             guard tapID("team-open-management", wait: 4) else { return .skip("no management link") }
             pause(0.8)
             guard isSelected("tab-Home") else { return .fail("the link changed tab: \(tabState())") }
             guard isSelected("group-tab-Management") else { return .fail("the entity's Management page is not showing: \(signature().text)") }
             let h: R = health("team management", title: false)
             guard tapBack() else { return .fail("no Back on the entity page") }
-            return isSelected("company-tab-team") ? h : .fail("Back did not return to Team: \(signature().text)")
+            return isSelected("company-tab-people") ? h : .fail("Back did not return to Team: \(signature().text)")
         }
-        roundTrip("team: Perks popup closes and keeps Team", prepare: { openCompany("Caf") && tapID("company-tab-team") }) { tapLabel("Perks") }
+        roundTrip("team: Perks popup closes and keeps Team", prepare: { openCompany("Caf") && tapID("company-tab-people") }) { tapLabel("Perks") }
         step("team: Goals page opens and Back returns") {
-            guard openCompany("Caf"), tapID("company-tab-team") else { return .skip("no company / Team section") }
+            guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
             guard tapLabel("Goals") else { return .skip("no Goals row") }
             let h: R = health("team goals")
             _ = tapBack()
-            return isSelected("company-tab-team") ? h : .fail("Back did not return to Team: \(signature().text)")
+            return isSelected("company-tab-people") ? h : .fail("Back did not return to Team: \(signature().text)")
         }
         step("team: Applicants page opens and Back returns") {
-            guard openCompany("Caf"), tapID("company-tab-team") else { return .skip("no company / Team section") }
+            guard openCompany("Caf"), tapID("company-tab-people") else { return .skip("no company / Team section") }
             guard tapID("open-applicants", wait: 3) else { return .skip("no Applicants row") }
             let h: R = health("applicants")
             _ = tapBack()
-            return isSelected("company-tab-team") ? h : .fail("Back did not return to Team: \(signature().text)")
+            return isSelected("company-tab-people") ? h : .fail("Back did not return to Team: \(signature().text)")
         }
     }
 
     // MARK: T12 Manage > Operations > Suppliers (the owner's bug class)
 
     private func openSuppliers() -> Bool {
-        guard openCompany("Caf"), tapID("company-tab-manage") else { return false }
+        guard openCompany("Caf"), tapID("company-tab-overview") else { return false }
         return tapLabel("Suppliers") && has("back-button", wait: 3)
     }
 
     func testT12_ManageAndSuppliers() {
-        roundTrip("manage: Upkeep sheet closes and keeps Manage", prepare: { openCompany("Caf") && tapID("company-tab-manage") }) { tapText("Upkeep") }
+        roundTrip("manage: Upkeep sheet closes and keeps Manage", prepare: { openCompany("Caf") && tapID("company-tab-overview") }) { tapText("Upkeep") }
         step("manage: Suppliers page opens, health, Back returns to Manage") {
             guard openSuppliers() else { return .skip("no Suppliers row (the company buys nothing)") }
             let h: R = health("suppliers page")
             guard tapBack() else { return .fail("no Back on Suppliers") }
-            return isSelected("company-tab-manage") ? h : .fail("Back did not return to Manage: \(signature().text)")
+            return isSelected("company-tab-overview") ? h : .fail("Back did not return to Manage: \(signature().text)")
         }
         roundTrip("suppliers: tap a supplier -> detail popup closes and keeps Suppliers", prepare: { openSuppliers() }) {
             tapID("supplier-option", wait: 4)
@@ -190,12 +190,12 @@ extension FeatureToursTests {
             return inUse >= 1 ? .pass("\(inUse) in use") : .fail("no supplier row says 'In use'")
         }
         step("manage: Premises page opens and Back returns to Manage") {
-            guard openCompany("Caf"), tapID("company-tab-manage") else { return .skip("no Manage section") }
+            guard openCompany("Caf"), tapID("company-tab-overview") else { return .skip("no Manage section") }
             guard tapLabel("Premises", wait: 3) else { return .skip("no Premises row") }
             if popupUp(1) { closePopup(); return waitPopupGone(3) ? .pass("a popup") : .fail("its popup did not close") }
             let h: R = health("premises")
             guard tapBack() else { return .fail("no Back on Premises") }
-            return isSelected("company-tab-manage") ? h : .fail("Back did not return to Manage: \(signature().text)")
+            return isSelected("company-tab-overview") ? h : .fail("Back did not return to Manage: \(signature().text)")
         }
     }
 
@@ -216,12 +216,12 @@ extension FeatureToursTests {
     func testT13_SalesItemAndMarketing() {
         var onSales = false
         step("sales: section lists items") {
-            guard openCompany("Caf"), tapID("company-tab-sales") else { return .skip("no company / Sales section") }
+            guard openCompany("Caf"), tapID("company-tab-prices") else { return .skip("no company / Sales section") }
             onSales = true
             return health("sales list")
         }
         step("sales: item page opens with the price slider in view") {
-            guard onSales, openCompany("Caf"), tapID("company-tab-sales") else { return .skip("Sales not reachable") }
+            guard onSales, openCompany("Caf"), tapID("company-tab-prices") else { return .skip("Sales not reachable") }
             guard openFirstItem() else { return .fail("no item row opens a page: " + tabState()) }
             let r: R = primaryInView("sales-item-price")
             let h: R = health("sales item", clip: true)
@@ -230,7 +230,7 @@ extension FeatureToursTests {
             return h
         }
         step("sales: dragging the price slider changes the price, Back returns to Sales") {
-            guard onSales, openCompany("Caf"), tapID("company-tab-sales") else { return .skip("Sales not reachable") }
+            guard onSales, openCompany("Caf"), tapID("company-tab-prices") else { return .skip("Sales not reachable") }
             let sales: TourSig = signature()
             guard openFirstItem(), let sl = hit("sales-item-price", wait: 3) else { return .fail("no item page with a price slider") }
             let before: String = readout()
@@ -253,7 +253,7 @@ extension FeatureToursTests {
             return problems.isEmpty ? .pass("") : .fail(problems.prefix(3).joined(separator: "; "))
         }
         step("sales: typing a price in the price field sets it") {
-            guard onSales, openCompany("Caf"), tapID("company-tab-sales"), openFirstItem() else { return .skip("no item page") }
+            guard onSales, openCompany("Caf"), tapID("company-tab-prices"), openFirstItem() else { return .skip("no item page") }
             guard let f = bringIn({ $0.id == "typed-price" && $0.type == .textField }, wait: 3) else { return .skip("no typed-price field") }
             let before: String = readout()
             touch(f)
@@ -271,9 +271,9 @@ extension FeatureToursTests {
             _ = tapBack()
             return changed ? .pass() : .fail("typing 3.5 and return did not change the item page")
         }
-        roundTrip("sales: Marketing popup closes and keeps Sales", prepare: { openCompany("Caf") && tapID("company-tab-sales") }) { tapLabel("Marketing") }
+        roundTrip("sales: Marketing popup closes and keeps Sales", prepare: { openCompany("Caf") && tapID("company-tab-prices") }) { tapLabel("Marketing") }
         step("marketing: switching a channel on shows its effect, switching it off again") {
-            guard openCompany("Caf"), tapID("company-tab-sales"), tapLabel("Marketing", wait: 3), popupUp(2) else { return .skip("Marketing not reachable") }
+            guard openCompany("Caf"), tapID("company-tab-prices"), tapLabel("Marketing", wait: 3), popupUp(2) else { return .skip("Marketing not reachable") }
             guard let sw = bringIn({ $0.type == .button && $0.value == "Off" && $0.enabled }, wait: 2) else { closePopup(); return .skip("no channel that can be switched on") }
             let before: String = readout()
             touch(sw)
@@ -288,7 +288,7 @@ extension FeatureToursTests {
             return raw.isEmpty ? .pass() : .fail(raw.joined(separator: "; "))
         }
         step("sales: Add item opens and closes back to Sales") {
-            guard openCompany("Caf"), tapID("company-tab-sales") else { return .skip("no company / Sales section") }
+            guard openCompany("Caf"), tapID("company-tab-prices") else { return .skip("no company / Sales section") }
             let before: TourSig = signature()
             guard tapID("sales-add-item") else { return .skip("no Add item button") }
             if popupUp(2) { let raw = rawProblems("add item"); closePopup(); _ = waitPopupGone(3); return before.same(signature(), strictText: false) ? (raw.isEmpty ? .pass("popup") : .fail(raw.joined(separator: "; "))) : .fail("closing changed the screen: \(signature().text)") }
@@ -303,6 +303,6 @@ extension FeatureToursTests {
     func testT14_CompanyPopups() {
         roundTrip("home: 'About' info popup closes and keeps Home", prepare: { goTab("Home") }) { tapLabel("About ") }
         roundTrip("company overview: an 'About' info popup closes and keeps the page", prepare: { openCompany("Caf") }) { tapLabel("About ") }
-        roundTrip("company stats: an 'About' info popup closes and keeps the page", prepare: { openCompany("Gym") && tapID("company-tab-stats") }) { tapLabel("About ") }
+        roundTrip("company stats: an 'About' info popup closes and keeps the page", prepare: { openCompany("Gym") && tapID("company-tab-overview") }) { tapLabel("About ") }
     }
 }

@@ -5,22 +5,18 @@ import Countries
 import Businesses
 import Simulation
 
-/// Where Operations is: `setup` is the page itself; the others are the full-screen pages a row of its settings table opens
-/// (the company's links to Marketing and Premises open them directly).
 enum OpsPart: String, CaseIterable, Hashable {
-    case setup = "Operations", premises = "Premises", suppliers = "Suppliers"
+    case setup = "Operations", premises = "Premises"
     case equipment = "Equipment", insurance = "Insurance and advisers", licences = "Licences"
 }
 
 extension Glyph {
-    /// Icons for the Operations screens, in the same 24 x 24 outline style as the mockups' set.
     static let cost = "M12 3 A9 9 0 1 0 12 21 A9 9 0 1 0 12 3 M9 12 H15 M9 9 H15 M9 15 H15"
     static let capacity = "M4 18 A8 8 0 0 1 20 18 M12 18 L16 11"
     static let suppliers = "M3 7 H14 V17 H3 Z M14 10 H18 L21 13 V17 H14 M7 19 A1.5 1.5 0 1 0 7 22 M17 19 A1.5 1.5 0 1 0 17 22"
     static let building = "M5 21 V4 H15 V21 M15 9 H19 V21 M3 21 H21 M8 8 H12 M8 12 H12 M8 16 H12"
 }
 
-/// The words for the small Operations settings (labels only; the numbers behind them live in the engine).
 enum OpsWords {
     static let maintenance: [String] = ["Minimal", "Normal", "Thorough"]
     static let stock: [String] = ["Lean", "Balanced", "Generous"]
@@ -30,14 +26,11 @@ enum OpsWords {
     }
 }
 
-/// A small setting changed in a sheet.
 enum OpsSheet: String, Identifiable {
     case upkeep
     var id: String { rawValue }
 }
 
-/// Manage of one company on one page: capacity as the hero (how full the place is and what limits it), what needs fixing first, then how
-/// the place is run as plain rows (a small change opens a popup, a bigger one a page), and open complaints.
 struct CompanyOperations: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -49,19 +42,15 @@ struct CompanyOperations: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxl) {
             CompanyPerformance(engine: engine, company: company)
-            FixFirstCard(issues: issues, heading: "Needs you")
             runRows
             CompanyOtherSections(engine: engine, company: company)
         }
         .centerSheet(item: $sheet, category: .medium, tone: .info) { kind in OpsSettingSheet(kind: kind, companyID: company.id) }
     }
 
-    // MARK: How the place is run
-
     private var runRows: some View {
         let licences: [LicenceLine] = engine.licences(companyID: company.id)
         let rental: Bool = engine.tradeInfo(companyID: company.id)?.family == "rent"
-        let sourcing: Bool = CompanySourcing.isAvailable(engine: engine, company: company)
         return PageGroup("Run the place") {
             upkeepRow
             if !licences.isEmpty {
@@ -80,12 +69,6 @@ struct CompanyOperations: View {
                 RowRule()
                 equipmentRow
             }
-            if sourcing {
-                let bought: Int = engine.supplyLines(companyID: company.id).reduce(0) { $0 + $1.rows.count }
-                RowRule()
-                LedgerRow(leading: .glyph(Glyph.suppliers), leadingTint: P.inkSoft, title: "Suppliers",
-                          value: "\(bought)", valueNote: bought == 1 ? "thing bought" : "things bought", identifier: "manage-suppliers") { part = .suppliers }
-            }
             CompanyMorePages(engine: engine, company: company, pages: [.energy, .salmon, .club], ruled: true)
         }
     }
@@ -102,7 +85,6 @@ struct CompanyOperations: View {
         return r.machines || r.vehicles || r.software
     }
 
-    /// Opens the equipment list directly: what the company owns and what it still lacks.
     private var equipmentRow: some View {
         let needs: [EquipmentMarket.Need] = engine.equipmentNeeds(companyID: company.id)
         let missing: Int = needs.filter { $0.ofTrade && $0.need > 0 && $0.have + $0.leased < $0.need }.count
@@ -111,27 +93,8 @@ struct CompanyOperations: View {
                          value: missing > 0 ? "\(missing)" : "\(owned)", valueTint: missing > 0 ? P.warn : nil, valueNote: missing > 0 ? "missing" : "owned",
                          identifier: "manage-equipment") { part = .equipment }
     }
-
-    // MARK: What needs you
-
-    private var paperworkIssues: [TeamOverview.Issue] {
-        (store.teamOverviewNow ?? engine.teamOverview()).issues.filter { $0.companyID == company.id && $0.kind == .paperwork }
-    }
-
-    /// Paperwork that can bring a fine.
-    private var issues: [CompanyIssue] {
-        let paper: [TeamOverview.Issue] = paperworkIssues
-        let id: Int = company.id
-        var out: [CompanyIssue] = []
-        if let first = paper.first {
-            out.append(CompanyIssue(id: "paper", glyph: Glyph.reports, tint: P.warn, title: paper.count == 1 ? first.title : "\(paper.count) paperwork matters",
-                                    sub: paper.count == 1 ? first.detail : "An inspection can fine you", action: "Open Team") { store.openCompany(id, section: .staff) })
-        }
-        return out
-    }
 }
 
-/// Demand (bars, gold where it passes capacity) against what the company could serve (dashed line), one point a week.
 struct DemandCapacityChart: View {
     var weeks: [OperationsFigures.Week]
 

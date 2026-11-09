@@ -28,7 +28,7 @@ final class CompanySalesTourTests: CompanyBatchTourCase {
 
     func testSalesItemAndMarketingPopups() {
         guard openFirstCompany() else { return }
-        guard tapID("company-tab-sales") else { return }
+        guard tapID("company-tab-prices") else { return }
         shot("90-sales")
         if tapContaining("vs market") || tapContaining("At market") {
             shot("91-sales-item-popup")
@@ -52,7 +52,7 @@ final class CompanyStatsTourTests: CompanyBatchTourCase {
         app.swipeUp(); sleep(1)
         shot("93-overview-lower")
         app.swipeDown(); app.swipeDown(); sleep(1)
-        guard tapID("company-tab-stats") else { return }
+        guard tapID("company-tab-overview") else { return }
         shot("94-stats-finances")
         app.swipeUp(); sleep(1)
         shot("94-stats-finances-lower")

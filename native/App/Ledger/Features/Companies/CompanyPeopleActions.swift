@@ -5,13 +5,6 @@ import Finance
 import Businesses
 import Simulation
 
-// Three people actions of Company > Team, each grouped by its purpose and each with its own layout:
-//   Goals      (CompanyTargetsCard)  what the manager is judged on: month targets as progress bars, the year's budget, a history strip.
-//   Rewards    (CompanyPerksPopup)   what keeps people: a popup list of perks, each switched on or off for every worker.
-//   Succession (SuccessorSection)    what happens when the manager leaves: the search and the shortlist.
-// Every card says what an action costs, what it gains and what it risks before it is confirmed. The engine decides all of it.
-
-/// The head of a purpose card: a round icon, a serif title and one grey line on what the card is for.
 private struct PurposeHeader: View {
     var glyph: String
     var title: String
@@ -30,7 +23,6 @@ private struct PurposeHeader: View {
     }
 }
 
-/// Cost, benefit and risk of an action as three short lines, each with its own mark. Shown before the button that commits.
 private struct ConsequenceNote: View {
     var cost: String
     var benefit: String
@@ -57,7 +49,6 @@ private struct ConsequenceNote: View {
     }
 }
 
-/// One part of the Goals page straight on the page: a hairline above it and room around it, no box.
 private struct GoalsBlock<Content: View>: View {
     @ViewBuilder var content: () -> Content
     var body: some View {
@@ -68,10 +59,6 @@ private struct GoalsBlock<Content: View>: View {
     }
 }
 
-// MARK: - Goals: targets and the budget
-
-/// What the manager is judged on (Company > Team > Goals), read only: this month's targets, which follow the direction the owner gave, the
-/// year's budget with its one approval, and the last months. The direction itself is an order on the manager's sheet.
 struct CompanyTargetsCard: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -81,10 +68,8 @@ struct CompanyTargetsCard: View {
     private func value(_ key: String, _ v: Double, _ cur: Currency) -> String { key == "rev" || key == "profit" ? cur.tidyShort(v) : String(format: "%.0f", v) }
     private func share(_ now: Double, _ target: Double) -> Double { target > 0 ? min(1, max(0, now / target)) : 0 }
 
-    /// Who set the targets, in the words of the header.
     private func setterNote(_ st: ManagerTargets.Status) -> String { st.setter.isOwner ? "set by you" : "set by \(st.setter.title.lowercased())" }
 
-    /// The direction the targets follow, in a short line.
     private func directionNote(_ st: ManagerTargets.Status) -> String {
         guard let key = st.direction, let d = ManagerModel.Direction(rawValue: key) else {
             return "No direction given: the targets are a fair aim from last year and the market."
@@ -105,7 +90,6 @@ struct CompanyTargetsCard: View {
         }
     }
 
-    // This month: one bar per target.
     private func monthCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         GoalsBlock {
             VStack(alignment: .leading, spacing: 12) {
@@ -138,7 +122,6 @@ struct CompanyTargetsCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    // The year's budget.
     @ViewBuilder private func budgetCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if let b = st.budget {
             GoalsBlock {
@@ -179,7 +162,6 @@ struct CompanyTargetsCard: View {
         }
     }
 
-    // Past months: three pips each, filled for every target met.
     @ViewBuilder private func historyCard(_ st: ManagerTargets.Status, _ cur: Currency) -> some View {
         if !st.log.isEmpty {
             GoalsBlock {
@@ -208,10 +190,6 @@ struct CompanyTargetsCard: View {
     }
 }
 
-// MARK: - Rewards: staff perks
-
-/// The perks popup (Company > Team > Perks): one row per perk with a switch. A perk is on for ALL workers, active the moment it is
-/// switched on, and its monthly cost is shown while it is on. Closes with the small x or a tap outside.
 struct CompanyPerksPopup: View {
     @EnvironmentObject var store: GameStore
     @Environment(\.outsidePalette) private var P
@@ -224,7 +202,6 @@ struct CompanyPerksPopup: View {
         return "\(r.name) · \(role) · \(car), lease \(cur.tidyShort(r.monthlyLease)) a month"
     }
 
-    /// How much a perk keeps people, in words (never a percentage).
     private func fewer(_ p: StaffPerks.Perk) -> String {
         let f: Double = 1 - p.quitFactor
         return f >= 0.2 ? "much fewer" : f >= 0.1 ? "fewer" : "slightly fewer"
@@ -234,17 +211,10 @@ struct CompanyPerksPopup: View {
         if let e = store.engine, let co = e.state.company(companyID) {
             let cur: Currency = e.currency(for: co)
             let total: Double = e.staffPerksMonthlyTotal(companyID: companyID)
-            // Perks open at five staff or a manager; any already switched on stay visible so they can be switched off.
-            let locked: Bool = !e.staffTermsUnlocked(companyID: companyID) && total <= 0
             VStack(alignment: .leading, spacing: 10) {
-                if locked {
-                    Text("Perks open once you have five staff or a manager. Until then, pay the going rate and people stay or go on that.")
-                        .popupText(.subtitle)
-                } else {
-                    Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
-                        .popupText(.subtitle)
-                    VStack(spacing: 0) { perkRows(e, co, cur) }
-                }
+                Text(total > 0 ? "\(cur.tidyShort(total)) a month for everyone who works here." : "A perk is for every worker and starts the moment you switch it on.")
+                    .popupText(.subtitle)
+                VStack(spacing: 0) { perkRows(e, co, cur) }
             }
             .centerSheetTitle("Perks")
         } else {
@@ -285,7 +255,6 @@ struct CompanyPerksPopup: View {
         .padding(.vertical, 10)
     }
 
-    /// Switches the perk for everyone at once. The result is reported; nothing is asked (it can be switched off again).
     private func toggle(_ p: StaffPerks.Perk, _ cur: Currency) {
         let r = store.act { $0.toggleStaffPerk(companyID: companyID, perk: p.id) } ?? nil
         Haptics.tap()
@@ -301,9 +270,6 @@ struct CompanyPerksPopup: View {
     }
 }
 
-// MARK: - Succession: the search for a new manager
-
-/// Shown under the manager's notice: pay for the executive search for a successor and hire one of the candidates.
 struct SuccessorSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine

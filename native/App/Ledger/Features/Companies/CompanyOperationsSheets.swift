@@ -4,7 +4,6 @@ import Countries
 import Businesses
 import Simulation
 
-/// The full-screen page a row of the Operations table opens. Each reuses the screen that already holds the decision.
 struct OpsPageDestination: View {
     @EnvironmentObject var store: GameStore
     var part: OpsPart
@@ -22,7 +21,6 @@ struct OpsPageDestination: View {
         switch part {
         case .setup: EmptyView()
         case .premises: premisesPage(e, co)
-        case .suppliers: CompanySuppliersScreen(companyID: co.id)
         case .equipment: CompanyEquipmentScreen(companyID: co.id)
         case .insurance: CompanyCoverageScreen(companyID: co.id)
         case .licences: SettingsPage(title: "Licences", subtitle: co.name) { CompanyLicences(engine: e, company: co) }
@@ -33,15 +31,12 @@ struct OpsPageDestination: View {
         if e.tradeInfo(companyID: co.id)?.family == "rent" {
             SettingsPage(title: "Properties", subtitle: co.name) { CompanyProperties(engine: e, company: co) }
         } else {
-            // Premises are rented and bought in AirStay (Phone).
             EmptyState(glyph: Glyph.airStay, title: "Premises are in AirStay", message: "Places to rent and buy are in AirStay.")
                 .frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
     }
 }
 
-/// The small sheet for one simple Operations setting (hours, upkeep). It reads the company live, so the
-/// controls always show what the engine holds; every change goes through the same engine call the old cards used.
 struct OpsSettingSheet: View {
     @EnvironmentObject var store: GameStore
     var kind: OpsSheet
@@ -69,7 +64,6 @@ struct OpsSettingSheet: View {
         }
     }
 
-    /// Maintenance and stock in one sheet: both are how the company keeps its operation running between weeks.
     private func upkeepBody(_ co: Company) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Text("MAINTENANCE").capsLabel()
@@ -84,8 +78,6 @@ struct OpsSettingSheet: View {
             }
         }
     }
-
-    // MARK: Maintenance and stock
 
     private func levelBody(_ co: Company, names: [String], current: Int, note: String, set: @escaping (Int) -> Void) -> some View {
         let binding = Binding<Int>(get: { current }, set: { set($0) })
