@@ -18,8 +18,6 @@ struct RootView: View {
         Group {
             if !termsAccepted && !Self.showcase {
                 TermsView { termsAccepted = true }
-            } else if online.needsAccountScreen && store.engine == nil {
-                AccountWelcomeView()
             } else if let e = store.engine {
                 if e.state.isGameOver || Self.showsGameOver { GameOverView(engine: e) } else { GameShell() }
             } else { StartView() }

@@ -139,7 +139,6 @@ struct BoxTile: View {
             BoxArt(kind: kind, size: 64).storeFloat(phase: Double(index) * 0.35).padding(.top, Theme.Space.xs)
             Text(kind.title).textStyle(.headline)
             GoldAmount(amount: kind.price)
-            Text("Odds shown first").textStyle(.caption)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, minHeight: 156)

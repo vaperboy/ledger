@@ -70,7 +70,10 @@ public struct GameState: Codable, Equatable, Sendable {
         week = take("week").int
         day = take("day").int
         homeCountryCode = take("country").string
-        player = Player(raw: take("player").object)
+        // Old saves stored an age for the player; none is kept any more, so it is dropped on load.
+        var playerRaw: [String: JSONValue] = take("player").object
+        playerRaw.removeValue(forKey: "age")
+        player = Player(raw: playerRaw)
         cash = take("cash").double
         openingCash = take("cash0").double
         cashFlow = take("flow").object.mapValues { $0.double }

@@ -193,7 +193,7 @@ struct SeasonView: View {
                     .overlay(alignment: .bottom) { Hairline() }
                 }
             }
-            Text("A day gives at most \(SeasonPass.dailyXPCap) XP, so the pass fills at the pace of real play. Rewards are fixed. A Season box shows its odds before you open it, in the Store.").textStyle(.caption)
+            Text("A day gives at most \(SeasonPass.dailyXPCap) XP, so the pass fills at the pace of real play. Rewards are fixed.").textStyle(.caption)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

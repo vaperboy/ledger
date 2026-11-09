@@ -42,17 +42,13 @@ final class OnlineSession {
     var problem: String?
     /// A calm note (not an error), such as "No profile was created".
     var notice: String?
-    /// The account screen is shown once on a new install, before the start screen.
-    private(set) var needsAccountScreen: Bool
 
     @ObservationIgnored let service: any OnlineService
-    private static let seenKey = "ledger.online.accountScreenSeen"
     private static let adminKey = "ledger.online.adminAccounts"
     private static func choiceKey(_ id: String) -> String { "ledger.online.progressChoice." + id }
 
     init(service: any OnlineService = OnlineBackend.shared) {
         self.service = service
-        needsAccountScreen = !UserDefaults.standard.bool(forKey: Self.seenKey)
     }
 
     var isSignedIn: Bool { if case .signedIn = state { return true }; return false }
@@ -70,13 +66,6 @@ final class OnlineSession {
         if status?.adultConfirmed == true { profile = try? await service.myProfile() }
         else if status?.adultConfirmed == false { await confirmAdult() }
     }
-
-    func finishAccountScreen() {
-        needsAccountScreen = false
-        UserDefaults.standard.set(true, forKey: Self.seenKey)
-    }
-
-    func continueAsGuest() { finishAccountScreen() }
 
     private func adopt(_ account: OnlineAccount) {
         accountID = account.playerID
@@ -114,7 +103,6 @@ final class OnlineSession {
         do {
             let account = try await service.signIn(with: provider)
             adopt(account)
-            finishAccountScreen()
             await refreshStatus()
             if status?.adultConfirmed == true {
                 profile = try? await service.myProfile()

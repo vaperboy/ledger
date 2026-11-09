@@ -89,12 +89,6 @@ enum StoreBackend {
     }
 }
 
-enum AgeConfirmation {
-    static let key = "ledger.account.adultConfirmed"
-    static var isAdult: Bool { UserDefaults.standard.bool(forKey: key) }
-    static func set(_ adult: Bool) { UserDefaults.standard.set(adult, forKey: key) }
-}
-
 enum StoreGate {
     static func access(countryCode: String?) -> StoreAccess.Access {
         StoreAccess.access(adultConfirmed: true, countryCode: countryCode ?? Locale.current.region?.identifier)

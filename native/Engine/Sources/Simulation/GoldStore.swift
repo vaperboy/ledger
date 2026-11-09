@@ -72,16 +72,14 @@ public enum GoldStore {
     public static func price(_ box: BoxKind) -> Int { box.price }
 }
 
-/// Who may see the store and buy boxes. The store is for adults who confirmed their age; unknown counts as under 18.
+/// Who may see the store and buy boxes. The store is for adults: the terms confirm 18 or older, and without that confirmation it stays hidden.
 public enum StoreAccess {
-    public static let minimumAge = 18
-
     /// Countries (the game's country codes) where paid boxes are not offered. Empty by default: add a code here to hide paid boxes there
     /// (the store itself, gold and the auctions stay available; free boxes still open).
     public static let paidBoxRestrictedCountries: Set<String> = []
 
     public enum Access: Equatable, Sendable {
-        /// Under 18 or age not confirmed: the store is not shown at all.
+        /// The adult confirmation is missing: the store is not shown at all.
         case hidden
         case open(paidBoxes: Bool)
     }

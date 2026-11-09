@@ -9,6 +9,8 @@ struct StoreApp: View {
     @State private var pending: PendingAction?
     @State private var showPlans = false
     @State private var showRedeem = false
+    @State private var showInfo = false
+    @AppStorage(LootBoxChoice.key) private var lootOff = false
 
     var body: some View {
         let paid: Bool = paidBoxesAllowed
@@ -25,18 +27,24 @@ struct StoreApp: View {
         .appScreen(title: "Store", subtitle: "") { StoreGoldChip(amount: session.gold) }
         .confirmAction($pending)
         .centerSheet(isPresented: $showPlans, title: "Ledger Pro", category: .detail, tone: .prestige) { ProPlansView() }
+        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoContent(kind: .cabinet) }
         .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await ent.restore() } }
         .task { await session.load(); await ent.loadProducts() }
     }
 
     private var paidBoxesAllowed: Bool {
-        if case .open(let paid) = StoreGate.access(countryCode: online.profile?.countryCode) { return paid }
+        if case .open(let paid) = StoreGate.access(countryCode: online.profile?.countryCode) { return paid && !lootOff }
         return false
     }
 
     private func lootBoxes(paid: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Loot boxes").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
+            HStack {
+                Text("Loot boxes").capsLabel(Theme.inkFaint)
+                Spacer()
+                LootInfoButton { showInfo = true }
+            }
+            .padding(.horizontal, Theme.Space.m)
             if paid {
                 HStack(alignment: .top, spacing: Theme.Space.m) {
                     ForEach(Array(BoxKind.allCases.filter { $0.isPaid }.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
@@ -45,23 +53,21 @@ struct StoreApp: View {
                             .accessibilityIdentifier("store-box-" + kind.rawValue)
                     }
                 }
-                Text("Every box shows its exact odds here and on its page. \(session.state.pity.text)")
-                    .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
             } else {
-                Text("Paid boxes are not offered where you are. Season boxes can still be opened.").textStyle(.body, tint: Theme.inkSoft)
-                    .padding(.horizontal, Theme.Space.m)
+                Text(lootOff ? "Loot boxes are off. Cosmetics are on sale directly for gold below." : "Paid boxes are not offered where you are. Season boxes can still be opened.")
+                    .textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
             }
         }
     }
 
     @ViewBuilder private func stockGroup(paid: Bool) -> some View {
-        let kinds: [BoxKind] = BoxKind.allCases.filter { session.state.count($0) > 0 }
+        let kinds: [BoxKind] = BoxKind.allCases.filter { session.state.count($0) > 0 && (!$0.isPaid || paid) }
         if !kinds.isEmpty {
             OnlineGroup(title: "Boxes you have", footer: "") {
                 ForEach(Array(kinds.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
                     if i > 0 { Hairline() }
                     NavigationLink { BoxView(kind: kind, paidBoxesAllowed: paid) } label: {
-                        OnlineLine(glyph: Glyph.luxury, title: kind.title, note: "Open it, odds shown first", value: "\(session.state.count(kind))", chevron: true)
+                        OnlineLine(glyph: Glyph.luxury, title: kind.title, note: "Open it", value: "\(session.state.count(kind))", chevron: true)
                     }
                     .buttonStyle(PressableStyle())
                 }

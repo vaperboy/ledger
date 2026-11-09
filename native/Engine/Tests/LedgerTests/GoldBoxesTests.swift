@@ -136,7 +136,7 @@ final class GoldBoxesTests: XCTestCase {
     }
 
     func testStoreAccess() {
-        XCTAssertEqual(StoreAccess.access(adultConfirmed: nil, countryCode: "NO"), .hidden, "unknown counts as under 18")
+        XCTAssertEqual(StoreAccess.access(adultConfirmed: nil, countryCode: "NO"), .hidden, "no confirmation hides the store")
         XCTAssertEqual(StoreAccess.access(adultConfirmed: false, countryCode: "NO"), .hidden)
         XCTAssertEqual(StoreAccess.access(adultConfirmed: true, countryCode: "NO"), .open(paidBoxes: true))
         XCTAssertTrue(StoreAccess.paidBoxRestrictedCountries.isEmpty, "empty by default")

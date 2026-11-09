@@ -11,7 +11,14 @@ final class SaveRoundTripTests: XCTestCase {
     func testLegacySaveRoundTripsLosslessly() throws {
         for name in ["save_cafe_week3", "save_cafe_week15"] {
             let data = try loadRaw(name)
-            let original = try JSONDecoder().decode(JSONValue.self, from: data)
+            var original = try JSONDecoder().decode(JSONValue.self, from: data)
+            // Old saves carry a player age; it is ignored on load and not written back.
+            var originalObject = original.object
+            var oldPlayer = original["player"].object
+            XCTAssertNotNil(oldPlayer["age"], "the golden save still has the old age field")
+            oldPlayer.removeValue(forKey: "age")
+            originalObject["player"] = .object(oldPlayer)
+            original = .object(originalObject)
             let state = try JSONDecoder().decode(GameState.self, from: data)
             let written = try JSONEncoder().encode(state)
             var again = try JSONDecoder().decode(JSONValue.self, from: written)

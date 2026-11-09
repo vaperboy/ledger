@@ -3,6 +3,7 @@ import SwiftUI
 /// The Friends app: your code, search by name or profile code, requests in both directions and the friend list.
 /// A guest sees how to link an account instead.
 struct FriendsApp: View {
+    @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
     @State private var overview: FriendsOverview?
     @State private var query = ""
@@ -18,7 +19,7 @@ struct FriendsApp: View {
         .confirmAction($pending)
         .appScreen(title: "Friends", subtitle: "Requests, search and your friends") {
             if let p = online.profile, online.isSignedIn {
-                NavigationLink { MyProfileView() } label: { PlayerAvatar(player: p, size: 34) }
+                Button { store.openProfile() } label: { PlayerAvatar(player: p, size: 34) }
                     .accessibilityLabel("My profile")
             }
         }

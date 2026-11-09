@@ -103,7 +103,7 @@ struct StoreShelfView: View {
                 }
                 .buttonStyle(PressableStyle())
             }
-            Text("The boxes wait in your stock; each one shows its odds when you open it.")
+            Text("The boxes wait in your stock until you open them.")
                 .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
         }
     }

@@ -14,23 +14,26 @@ struct ProfileView: View {
     @State private var editingName = false
     @State private var nameDraft = ""
     @State private var friends: [PlayerProfile] = []
+    @State private var pending: PendingAction?
 
     var body: some View {
         Group {
             if let e = store.engine {
                 PhonePageScroll(spacing: Theme.Space.xl) {
                     identity(e)
+                    codeSection
                     tiles(e)
                     trophies(e)
                     collectionRow
                     friendsSection
                     runSection(e)
-                    if online.isSignedIn { onlineRow }
+                    if online.isSignedIn, let p = online.profile { privacySection(p) }
                 }
             }
         }
         .appScreen(title: "Profile", subtitle: "")
-        .task(id: online.isSignedIn) { await loadFriends() }
+        .confirmAction($pending)
+        .task(id: online.isSignedIn) { await syncOnline(); await loadFriends() }
         .onChange(of: pickedPhoto) { _, item in
             guard let item else { return }
             Task {
@@ -182,7 +185,7 @@ struct ProfileView: View {
                     .accessibilityIdentifier("profile-add-friend")
             }
             if friends.isEmpty {
-                Text(online.isSignedIn ? "No friends yet. Add one." : "Link an account in Settings to add friends.").textStyle(.caption)
+                Text(online.isSignedIn ? "No friends yet. Add one." : "Link an account above to add friends.").textStyle(.caption)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(friends.prefix(5).enumerated()), id: \.element.id) { (i: Int, p: PlayerProfile) in
@@ -229,12 +232,68 @@ struct ProfileView: View {
         }
     }
 
-    private var onlineRow: some View {
-        NavigationLink { MyProfileView() } label: {
-            LedgerRow(leading: .glyph(Glyph.person), title: "Online profile", subtitle: "Colour, country and who can see you", chevron: true)
+    /// The friend code of the one profile. A guest links an account here to get one; nothing else about the profile changes.
+    @ViewBuilder private var codeSection: some View {
+        if online.isSignedIn, let p = online.profile {
+            HStack(spacing: Theme.Space.xs) {
+                Text("Friend code").textStyle(.caption)
+                Text(p.code).textStyle(.headline, numeric: true)
+                ShareLink(item: p.code) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
+                    .accessibilityLabel("Share your friend code")
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("profile-code")
+        } else if !online.isSignedIn {
+            VStack(spacing: Theme.Space.xs) {
+                Text("Link an account to get a friend code and use the online world. Your game stays on this device.").textStyle(.caption).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: Theme.Space.s) {
+                    linkButton(.apple)
+                    linkButton(.google)
+                }
+                if let problem = online.problem { Text(problem).textStyle(.caption, tint: Theme.loss).multilineTextAlignment(.center) }
+            }
+            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(PressableStyle())
-        .accessibilityIdentifier("profile-online")
+    }
+
+    private func linkButton(_ provider: SignInProvider) -> some View {
+        Button {
+            Haptics.tap()
+            pending = PendingAction.online(
+                title: "Link " + provider.title + "?",
+                effect: "your profile and progress are saved to this \(provider.title) account and follow you to other devices, and you receive a one-time gold reward. The account is not used to find friends.",
+                button: "Continue with " + provider.title, tone: .info, icon: "person.crop.circle") {
+                Task { _ = await online.signIn(with: provider) }
+            }
+        } label: { Text(provider.title).frame(maxWidth: .infinity) }
+            .buttonStyle(SecondaryButtonStyle(size: .compact))
+            .disabled(online.state == .signingIn)
+            .accessibilityIdentifier("profile-link-" + provider.rawValue)
+    }
+
+    private func privacySection(_ p: PlayerProfile) -> some View {
+        HStack {
+            Text("Who can see my profile").textStyle(.headline)
+            Spacer()
+            Menu {
+                ForEach(PrivacyLevel.allCases, id: \.self) { (level: PrivacyLevel) in
+                    Button(level.title) { Task { _ = await online.update(ProfileUpdate(privacy: level)) } }
+                }
+            } label: { Text(p.privacy.title).textStyle(.body, tint: Theme.accent) }
+        }
+        .frame(minHeight: 48)
+        .accessibilityIdentifier("profile-privacy")
+    }
+
+    /// Keeps the online side in step with this profile: the name chosen at the start, and the open companies, level and week.
+    private func syncOnline() async {
+        guard online.isSignedIn else { return }
+        await online.refreshProfile()
+        let name: String = local.name
+        if name.isEmpty, let shown = online.profile?.displayName { local.setName(shown) }
+        else if !name.isEmpty, online.profile?.displayName != name, ProfileRules.problem(with: name) == nil { _ = await online.update(ProfileUpdate(displayName: name)) }
+        await online.shareProgress(from: store.engine)
     }
 
     private func loadFriends() async {

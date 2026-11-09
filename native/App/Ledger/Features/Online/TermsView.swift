@@ -6,13 +6,12 @@ enum Terms {
 
     static func accept() {
         UserDefaults.standard.set(true, forKey: key)
-        AgeConfirmation.set(true)
     }
 
     static let sections: [(title: String, text: String)] = [
         ("The game", "Ledger is a simulation. Companies, money and rivals are made up, and nothing in the game is financial advice."),
         ("Gold and purchases", "Gold buys boxes, cosmetics and extra slots. It never buys in-game money and cannot be cashed out. Purchases go through the App Store, and prices are always shown before you pay. Boxes show their exact odds."),
-        ("Your profile", "An account is optional and only keeps your profile and progress safe across devices. Other players see only what your privacy settings allow. You can delete the account at any time."),
+        ("Your profile", "You have one profile: your name, photo, friends and trophies. Linking an account is optional and only keeps it safe across devices. Other players see only what your privacy setting allows. You can delete the account at any time."),
         ("Fair play", "Do not cheat, exploit bugs for gain or harass other players. Accounts that do can be limited or removed."),
         ("Age", "Ledger is for players aged 18 or older. Only that confirmation is kept: no age or date of birth is asked for or stored."),
     ]
@@ -20,8 +19,14 @@ enum Terms {
 
 struct TermsView: View {
     var onAccept: () -> Void
+    /// The name of the one profile, asked here once; the profile screen shows and edits it from then on.
+    @State private var name = ""
 
     private let P: OutsidePalette = .passport
+
+    private var nameReady: Bool { ProfileRules.problem(with: name) == nil }
+    /// Shown only once something is typed, so the empty field does not start with a complaint.
+    private var nameProblem: String? { name.isEmpty ? nil : ProfileRules.problem(with: name) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,10 +61,19 @@ struct TermsView: View {
             .scrollBounceBehavior(.basedOnSize)
 
             VStack(spacing: Theme.Space.s) {
+                TextField("Your name", text: $name)
+                    .textFieldStyle(.plain).textStyle(.headline, tint: P.ink, weight: .regular)
+                    .textInputAutocapitalization(.words).autocorrectionDisabled()
+                    .padding(.horizontal, Theme.Space.m).frame(minHeight: 48)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(P.card))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(P.line, lineWidth: 0.8))
+                    .accessibilityIdentifier("terms-name")
+                if let problem = nameProblem { Text(problem).textStyle(.caption, tint: P.loss).multilineTextAlignment(.center) }
                 Text("By continuing you confirm you are 18 or older.").textStyle(.caption, tint: P.inkSoft).multilineTextAlignment(.center)
                 Button {
                     Haptics.tap()
                     Terms.accept()
+                    ProfileLocal.shared.setName(ProfileRules.clean(name))
                     onAccept()
                 } label: {
                     Text("Accept and continue").font(.system(size: 17, weight: .semibold)).foregroundStyle(P.onAccent)
@@ -67,6 +81,8 @@ struct TermsView: View {
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(P.accent))
                 }
                 .buttonStyle(PressableStyle())
+                .disabled(!nameReady)
+                .opacity(nameReady ? 1 : 0.5)
                 .accessibilityIdentifier("terms-accept")
             }
             .padding(.horizontal, Theme.Space.page).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.s)

@@ -56,25 +56,12 @@ struct AccountSettingsGroup: View {
     private var signedIn: some View {
         OnlineGroup(title: "Account", footer: "Deleting the account removes your profile, friends and requests from the server. The game on this device is not touched.") {
             OnlineLine(glyph: Glyph.person, title: "Linked with " + (online.provider?.title ?? ""), note: online.profile?.displayName ?? "")
-            if online.awaitingAdultConfirmation {
-                Hairline()
-                Button {
-                    working = true
-                    Task { _ = await online.confirmAdult(); working = false }
-                } label: { OnlineLine(glyph: Glyph.warning, title: "Finish your profile", note: "It could not be created yet. Try again.", chevron: true) }
-                    .buttonStyle(PressableStyle())
-                    .disabled(working)
-                    .accessibilityIdentifier("settings-finish-profile")
-            } else {
-                Hairline()
-                NavigationLink {
-                    MyProfileView()
-                } label: { OnlineLine(glyph: Glyph.person, title: "Profile", chevron: true) }
-                    .buttonStyle(PressableStyle())
-                Hairline()
-                Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
-                    .buttonStyle(PressableStyle())
-            }
+            Hairline()
+            Button { store.openProfile() } label: { OnlineLine(glyph: Glyph.person, title: "Profile", note: "Your name, friend code and who can see you", chevron: true) }
+                .buttonStyle(PressableStyle())
+            Hairline()
+            Button { store.openApp(.friends) } label: { OnlineLine(glyph: Glyph.team, title: "Friends", note: "Requests, search and your friends", chevron: true) }
+                .buttonStyle(PressableStyle())
             Hairline()
             exportRow
             Hairline()
