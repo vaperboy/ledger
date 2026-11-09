@@ -9,7 +9,7 @@ extension GameStore {
     func tabShown(_ t: AppTab) -> Bool {
         switch t {
         case .market: return levelOpen(.market) || tab == .market
-        case .store: return levelOpen(.store) || tab == .store
+        case .store: return true
         case .company, .group: return true
         }
     }

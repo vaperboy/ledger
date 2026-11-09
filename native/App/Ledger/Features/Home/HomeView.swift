@@ -93,7 +93,7 @@ struct HomeTopLine: View {
                 Text(name).textStyle(.title).lineLimit(1).minimumScaleFactor(0.6)
             }
             Spacer(minLength: Theme.Space.xxs)
-            if store.levelOpen(.store) { HomeGoldChip() }
+            HomeGoldChip()
             HomeRoundButton(glyph: Glyph.inbox, label: "Inbox", badge: store.appBadge(.inbox), identifier: "home-inbox") { store.openApp(.inbox) }
                 .coachAnchor(.phoneInbox)
             HomeRoundButton(glyph: PhoneApp.apps.glyph, label: "Apps", badge: store.appsBadge, identifier: "home-apps") { store.openApp(.apps) }
