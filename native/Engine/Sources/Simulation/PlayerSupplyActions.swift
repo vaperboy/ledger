@@ -38,7 +38,8 @@ public extension GameEngine {
     /// Sign a contract with a player's listing for one line. An own-company link on that kind of purchase ends first, as for any other switch.
     @discardableResult
     mutating func signPlayerSupplier(contract: SupplyContract, listing l: SupplyListing, weeklyMarketSpend: Double) -> Bool {
-        guard playerSupplyAllowed(companyID: contract.buyerCompanyID, listing: l), let co = state.company(contract.buyerCompanyID), let bd = data.catalog[co.type],
+        guard !l.stopped, !l.paused, l.stopsDay == nil, contract.unitsPerWeek > 0,
+              playerSupplyAllowed(companyID: contract.buyerCompanyID, listing: l), let co = state.company(contract.buyerCompanyID), let bd = data.catalog[co.type],
               let line = SupplyCatalogue.lines(co, bd).first(where: { $0.id == contract.lineID }) else { return false }
         if let k = line.input, k != "goods", k != "repair", IntercompanySupply.kind(k) != nil,
            IntercompanySupply.link(state, buyer: co.id, kind: k) != nil || AccountSupply.link(state, buyer: co.id, kind: k) != nil {
@@ -118,7 +119,7 @@ public extension GameEngine {
     /// Order stock from a player's listing: paid at once with freight and customs, it joins the shelves when it arrives (`Shipments`).
     @discardableResult
     mutating func orderFromSupplier(companyID: Int, listing l: SupplyListing, units: Int) -> Shipments.OrderResult {
-        guard l.lineID == "goods", units > 0, playerSupplyAllowed(companyID: companyID, listing: l), let basis = stockOrderBasis(companyID: companyID),
+        guard l.lineID == "goods", units > 0, !l.stopped, !l.paused, l.stopsDay == nil, playerSupplyAllowed(companyID: companyID, listing: l), let basis = stockOrderBasis(companyID: companyID),
               let co = state.company(companyID) else { return .badOrder }
         let cargo: TransportCost.Cargo = SupplyLanded.cargo(lineID: l.lineID, supplierTrade: l.tradeID) ?? .standard
         let offer = TransportCost.Offer(id: l.id, country: l.country.isEmpty ? co.countryCode : l.country, unitPrice: basis.unitCost * l.priceFactor)

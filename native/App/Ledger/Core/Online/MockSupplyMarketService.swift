@@ -300,7 +300,7 @@ final class MockSupplyMarketService: SupplyMarketService {
                 let sold: Int = made.reduce(0) { $0 + $1.delivered }
                 promised += want; delivered += sold; orders += made.count; late += made.filter { $0.late }.count
                 buyersOf[l.id] = made.count
-                if sold > 0 && unit > 0 { events.append(.sale(companyID: l.companyID ?? 0, units: sold, unitPrice: unit, unitCost: unit * 0.6)) }
+                if sold > 0 && unit > 0 { events.append(.sale(companyID: l.companyID ?? 0, units: sold, unitPrice: unit, unitCost: unit * 0.88)) }
                 all[i].committedUnits = contractUnits + want
             } else {
                 // Seeded suppliers: a missed delivery now and then, more for the weak.
