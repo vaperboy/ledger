@@ -33,6 +33,12 @@ public enum StockInsurance {
         return jsRound(co.inventory * yearlyRate / 52 * Advisers.premiumFactor(co))
     }
 
+    /// What the premium would be on the stock held now, whether or not the policy is on (the price shown before it is switched on).
+    public static func estimatedWeeklyPremium(_ co: Company) -> Double {
+        guard co.inventory > 0 else { return 0 }
+        return jsRound(co.inventory * yearlyRate / 52 * Advisers.premiumFactor(co))
+    }
+
     public struct Settlement: Equatable, Sendable {
         public var loss: Double
         public var paid: Double
@@ -87,7 +93,10 @@ public enum StockInsurance {
                 let st = settle(&s, companyID: id, amount: co.inventory * share, fromInventory: true, data: data)
                 let cur = World(state: s, data: data).currency(s.companies[i])
                 let tail = insured ? "The insurer paid \(cur.display(st.paid)); you bear \(cur.display(st.net))." : "It was not insured: \(cur.display(st.loss)) is a loss."
-                s.note("\(k.text) \(co.name) destroyed stock worth \(cur.display(st.loss)). \(tail)", tone: "bad", companyID: id)
+                let body = "\(k.text) \(co.name) destroyed stock worth \(cur.display(st.loss)). \(tail)"
+                s.note(body, tone: "bad", companyID: id)
+                s.addMessage(kind: "info", from: "Your insurer", title: k.name == "fire" ? "Fire in the stock room" : k.name == "water" ? "Water damage to stock" : "Stock stolen",
+                             body: body, companyID: id, tone: "bad")
                 break
             }
         }

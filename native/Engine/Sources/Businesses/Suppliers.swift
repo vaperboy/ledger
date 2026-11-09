@@ -186,6 +186,11 @@ public enum Suppliers {
         guard hasGoods(bd, co) else { return (1, 0, nil) }
         let cls = co.value("src")["c"].isNull ? 1 : co.value("src")["c"].int
         let c = classes.indices.contains(cls) ? classes[cls] : classes[1]
+        // A player supplier under contract: its quality tier picks the class, its price tier and freight set the cost.
+        if let pc = PlayerSupply.contract(s, buyer: co.id, line: "goods") {
+            let qc = classes.indices.contains(pc.qualityTier) ? classes[pc.qualityTier] : classes[1]
+            return (clamp(qc.cost * PlayerSupply.priceFactor(pc), 0.7, 1.6), qc.quality, nil)
+        }
         guard let v = goodsVendor(s, company: co, data: data) else { return (c.cost, c.quality, nil) }
         // A negotiated price (`SupplyDeals`) and the payment terms agreed (`SupplyTerms`) change the price; both exist only when the player set them.
         let deal = SupplyDeals.dealDiscount(co, scope: "goods", vendorID: v.id, week: s.week)
@@ -201,6 +206,8 @@ public enum Suppliers {
         return nil
     }
     public static func repairDiscount(_ s: GameState, company co: Company, data: GameData) -> Double {
+        // A player supplier under contract bills at its price tier: below the market is a discount, above it a surcharge.
+        if let pc = PlayerSupply.contract(s, buyer: co.id, line: "repair") { return 1 - SupplyCatalogue.tierPrice[min(2, max(0, pc.priceTier))] }
         guard let v = repairVendor(s, company: co, data: data) else { return 0 }
         return v.discount + SupplyDeals.dealDiscount(co, scope: "fix", vendorID: v.id, week: s.week)
     }

@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Events
 
 /// One insurance policy a company can hold (property, liability, cyber ...), with what it costs a week.
 public struct InsurancePolicyRow: Equatable, Sendable, Identifiable {
@@ -80,10 +81,17 @@ public extension GameEngine {
         }
         let on = co.value("ins")
         let repriced = co.value("flags")["premUntil"].double > Double(state.week) ? 1 + co.value("flags")["premUp"].double : 1
-        let policies = marketing.insuranceProducts.sorted { $0.key < $1.key }.compactMap { (k, p) -> InsurancePolicyRow? in
+        var policies = marketing.insuranceProducts.sorted { $0.key < $1.key }.compactMap { (k, p) -> InsurancePolicyRow? in
             guard p.count > 3 else { return nil }
             return InsurancePolicyRow(id: k, name: p[0].string, blurb: p[2].string, isOn: on[k].bool,
                                       weeklyPremium: CompanyCosts.insurancePremium(co, product: k, rate: p[3].double, w) * repriced)
+        }
+        // Stock cover is priced on the stock held and pays out for fire, water damage, theft and damage on the road (`StockInsurance`).
+        let holdsStock: Bool = data.catalog[co.type].map { $0.hasTrait("stock") } ?? false
+        if holdsStock || co.inventory > 0 || StockInsurance.isInsured(co) {
+            let premium: Double = StockInsurance.isInsured(co) ? StockInsurance.weeklyPremium(co) : StockInsurance.estimatedWeeklyPremium(co)
+            policies.append(InsurancePolicyRow(id: StockInsurance.product, name: "Stock", blurb: "Pays for stock lost to fire, water damage, theft or damage in transit, less an excess. About 1.2% of the stock held a year.",
+                                               isOn: StockInsurance.isInsured(co), weeklyPremium: premium))
         }
         return CoverageOverview(insurer: current(.insurer), lawFirm: current(.law), accountant: current(.accountant), policies: policies)
     }

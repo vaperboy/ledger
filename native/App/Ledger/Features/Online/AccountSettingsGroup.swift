@@ -1,4 +1,5 @@
 import SwiftUI
+import Businesses
 
 /// The Account section of Settings: link Apple or Google (profile memory only, with a one-time gold reward), own profile, friends, sign out,
 /// export and delete, and the administrator entry. A guest sees only the link rows; single-player works the same either way.
@@ -87,11 +88,7 @@ struct AccountSettingsGroup: View {
                 .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("settings-sign-out")
             Hairline()
-            Button {
-                pending = PendingAction.online(title: "Delete your account?",
-                                               effect: "your profile, friends, requests and progress are removed from the server for good. Your game on this device is kept.",
-                                               button: "Delete account", risk: "This cannot be undone.", destructive: true, tone: .danger, icon: "trash") { Task { await online.deleteAccount() } }
-            } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
+            Button { askToDelete() } label: { OnlineLine(glyph: Glyph.warning, title: "Delete account", note: "Removes everything online", tint: Theme.loss, chevron: true) }
                 .buttonStyle(PressableStyle())
                 .accessibilityIdentifier("settings-delete-account")
             if let problem = online.problem {
@@ -114,6 +111,25 @@ struct AccountSettingsGroup: View {
             }
             .buttonStyle(PressableStyle())
             .accessibilityIdentifier("settings-admin-access")
+        }
+    }
+
+    /// An account that supplies other players under open contracts cannot be deleted until those are served out or handed over. Once it is deleted, the
+    /// listings stop and the buyers fall back to the House supplier at once.
+    private func askToDelete() {
+        let market: SupplyMarketStore = SupplyMarketStore.shared
+        let rule = SupplyGuards.accountDeletion(openContracts: market.service.openContractsAsSupplier(ownerID: market.service.ownerID))
+        guard rule.allowed else {
+            Haptics.warning()
+            store.tell("The account cannot be deleted yet", rule.reason ?? "", tone: "warn")
+            return
+        }
+        pending = PendingAction(title: "Delete your account?", message: "Your profile, friends and requests are removed for good, and your supply listings stop. Your game on this device is kept.",
+                                button: "Delete account", destructive: true, alwaysAsk: true, risk: "This cannot be undone.") {
+            Task {
+                await online.deleteAccount()
+                if !online.isSignedIn { market.accountDeleted(store) }
+            }
         }
     }
 

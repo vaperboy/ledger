@@ -22,6 +22,7 @@ struct FranchisesView: View {
                         overview(e, brands, trades)
                     }
                     ForEach(trades, id: \.self) { t in tradeShelf(e, brands, trade: t) }
+                    PlayerFranchiseShelf()
                 }
                 // Brands sit on the page, separated by hairlines; plain cards draw flat.
                 .environment(\.insideCard, true)

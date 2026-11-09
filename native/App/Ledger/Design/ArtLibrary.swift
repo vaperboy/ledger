@@ -180,7 +180,7 @@ enum ArtLibrary {
 
     /// Atlas products (company policies `INSP` and the insurer's `INS_PRODS`).
     private static let insuranceFamilies: [String: [String]] = [
-        "prop": ["business_property_card"], "bi": ["business_property_card"], "property": ["business_property_card"], "business": ["business_property_card"],
+        "prop": ["business_property_card"], "stock": ["business_property_card"], "bi": ["business_property_card"], "property": ["business_property_card"], "business": ["business_property_card"],
         "liab": ["liability_card"], "prof": ["liability_card"], "cyber": ["cyber_card"], "key": ["workers_card"], "life": ["workers_card"], "workers": ["workers_card"],
         "motor": ["car_insurance_card"], "home": ["home_building_hero"], "travel": ["travel_card"], "fleet": ["fleet_card"],
     ]

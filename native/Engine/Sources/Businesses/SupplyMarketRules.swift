@@ -11,11 +11,11 @@ import Finance
 public enum SupplyMarketCatalogue {
     /// What each trade can supply, as catalogue line ids. A trade not listed supplies nothing to other players.
     public static let supplies: [String: [String]] = [
-        "bakery": ["goods", "pack"], "brewery": ["goods", "pack"], "farm": ["goods"], "vineyard": ["goods"], "salmon": ["goods"],
+        "bakery": ["goods"], "brewery": ["goods"], "farm": ["goods"], "vineyard": ["goods"], "salmon": ["goods"],
         "factory": ["goods", "mat", "pack", "parts"], "furniture": ["goods", "mat"], "grocery": ["goods"], "hardware": ["supplies", "parts", "pack"],
         "cleaning": ["clean", "laundry"], "carclean": ["clean"], "webdev": ["software"], "gamestudio": ["software"], "startup": ["software"],
         "carrepair": ["parts", "repair"], "handy": ["repair", "parts"], "electrician": ["repair", "parts"], "plumber": ["repair", "parts"],
-        "power": ["power"], "oilgas": ["fuel", "power"], "courier": ["fuel"],
+        "power": ["power"], "oilgas": ["fuel", "power"],
     ]
 
     public struct Line: Equatable, Identifiable, Sendable {
@@ -142,6 +142,8 @@ public struct SupplyListing: Identifiable, Equatable, Sendable {
     public var tradeName: String
     public var city: String
     public var region: String
+    /// The supplier's country code; empty counts as the buyer's own country (no freight beyond a local haul).
+    public var country: String
     public var lineID: String
     public var lineName: String
     public var priceTier: Int
@@ -165,12 +167,12 @@ public struct SupplyListing: Identifiable, Equatable, Sendable {
     public init(id: String, ownerID: String, ownerName: String, profileCode: String, companyName: String, companyID: Int? = nil, tradeID: String, tradeName: String,
                 city: String, region: String, lineID: String, lineName: String, priceTier: Int, qualityTier: Int, capacityPerWeek: Int, leadDays: Int, minOrder: Int,
                 termsDays: Int, linkKey: String, record: DeliveryRecord = DeliveryRecord(), isFriend: Bool = false, isHouse: Bool = false, paused: Bool = false,
-                stopped: Bool = false, expiresDay: Int? = nil, committedUnits: Int = 0) {
+                stopped: Bool = false, expiresDay: Int? = nil, committedUnits: Int = 0, country: String = "") {
         self.id = id; self.ownerID = ownerID; self.ownerName = ownerName; self.profileCode = profileCode; self.companyName = companyName; self.companyID = companyID
         self.tradeID = tradeID; self.tradeName = tradeName; self.city = city; self.region = region; self.lineID = lineID; self.lineName = lineName
         self.priceTier = priceTier; self.qualityTier = qualityTier; self.capacityPerWeek = capacityPerWeek; self.leadDays = leadDays; self.minOrder = minOrder
         self.termsDays = termsDays; self.linkKey = linkKey; self.record = record; self.isFriend = isFriend; self.isHouse = isHouse; self.paused = paused
-        self.stopped = stopped; self.expiresDay = expiresDay; self.committedUnits = committedUnits
+        self.stopped = stopped; self.expiresDay = expiresDay; self.committedUnits = committedUnits; self.country = country
     }
 
     public var word: DeliveryWord { SupplyRecordRules.word(record) }

@@ -13,7 +13,7 @@ struct MarketRivalsPage: View {
     @State private var query = ""
     @State private var filter: Filter = .all
 
-    enum Filter: String, CaseIterable, Hashable { case all = "All", forSale = "For sale", watching = "Watching", groups = "Groups" }
+    enum Filter: String, CaseIterable, Hashable { case all = "All", forSale = "For sale", watching = "Watching", groups = "Groups", players = "Players" }
 
     var body: some View {
         if let e = store.engine {
@@ -25,7 +25,9 @@ struct MarketRivalsPage: View {
                 LedgerField(placeholder: "Search", text: $query, identifier: "market-rival-search")
                 SegmentedPill(items: Filter.allCases, title: { (f: Filter) -> String in f.rawValue }, selection: $filter,
                               identifier: { (f: Filter) -> String in "market-rivals-\(f.rawValue)" })
-                if filter == .groups {
+                if filter == .players {
+                    PlayerCompanyOffers()
+                } else if filter == .groups {
                     groupList(groups.filter { (g: MarketUI.GroupItem) -> Bool in matches(g.name + " " + g.owner + " " + g.countries.joined(separator: " ")) })
                 } else {
                     rivalList(shown(all, watched), watched)
@@ -42,7 +44,7 @@ struct MarketRivalsPage: View {
     private func shown(_ all: [MarketUI.RivalItem], _ watched: Set<String>) -> [MarketUI.RivalItem] {
         all.filter { (r: MarketUI.RivalItem) -> Bool in
             switch filter {
-            case .all, .groups: break
+            case .all, .groups, .players: break
             case .forSale: if !r.forSale { return false }
             case .watching: if !watched.contains(r.id) { return false }
             }

@@ -33,6 +33,7 @@ struct CompanySaleSection: View {
                 } else {
                     SaleRoutePicker(engine: engine, company: company, onGoRaise: onGoRaise)
                 }
+                SaleToPlayersCard(companyID: company.id)
             }
             .centerSheet(item: Binding(get: { talking.map { TalkID(id: $0) } }, set: { talking = $0?.id })) { t in
                 BuyerTalkSheet(companyID: company.id, offerID: t.id) { o in laterAsk(o) }

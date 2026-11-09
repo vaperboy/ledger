@@ -91,6 +91,14 @@ public extension GameEngine {
     /// Switch the supplier of one row. Choosing an outside supplier of a kind your own company supplied ends that supply first.
     @discardableResult
     mutating func chooseSupply(companyID: Int, change: SupplyChange) -> SupplierSwitchResult {
+        // Choosing another supplier for a line ends a player supplier's contract on it.
+        if let co = state.company(companyID), let bd = data.catalog[co.type] {
+            let key: String
+            switch change { case .input(let id, _): key = id; case .catalogue(let line, _): key = line }
+            for l in SupplyCatalogue.lines(co, bd) where l.id == key || l.input == key {
+                if PlayerSupply.contract(state, buyer: companyID, line: l.id) != nil, !isPlayerOffer(change) { update { s, _, _ in PlayerSupply.end(&s, buyer: companyID, line: l.id) } }
+            }
+        }
         switch change {
         case .input(let input, let c):
             return switchSupplier(companyID: companyID, input: input, to: c)
@@ -104,6 +112,12 @@ public extension GameEngine {
             update { s, d, _ in ok = SupplyCatalogue.choose(&s, companyID: companyID, line: line, offer: offer, data: d) }
             return ok ? .ok : .notAllowed
         }
+    }
+
+    /// A catalogue change that picks a player supplier's contract (kept as it is).
+    private func isPlayerOffer(_ change: SupplyChange) -> Bool {
+        if case .catalogue(_, let offer) = change { return offer.hasPrefix("P:") }
+        return false
     }
 
     // MARK: Words

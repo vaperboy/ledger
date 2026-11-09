@@ -73,6 +73,7 @@ struct SupplyOtherPlayersScreen: View {
                             d.capacityPerWeek = max(5, min(cap.maxUnits, 50))
                             d.minOrder = min(10, d.capacityPerWeek)
                             d.unitValue = SupplyMarketBooks.unitValue(co)
+                            d.country = co.countryCode
                             editor = EditorPick(draft: d, maxCapacity: cap.maxUnits, lines: lines)
                         }
                     }
@@ -113,7 +114,7 @@ struct SupplyOtherPlayersScreen: View {
         guard let bd = e.data.catalog[co.type] else { return }
         var d = ListingDraft(listingID: l.id, companyID: co.id, companyName: co.name, tradeID: bd.id, lineID: l.lineID)
         d.priceTier = l.priceTier; d.qualityTier = l.qualityTier; d.capacityPerWeek = l.capacityPerWeek; d.leadDays = l.leadDays
-        d.minOrder = l.minOrder; d.termsDays = l.termsDays; d.unitValue = SupplyMarketBooks.unitValue(co)
+        d.minOrder = l.minOrder; d.termsDays = l.termsDays; d.unitValue = SupplyMarketBooks.unitValue(co); d.country = co.countryCode
         editor = EditorPick(draft: d, maxCapacity: SupplyMarketBooks.capacity(co, bd: bd).maxUnits, lines: SupplyMarketCatalogue.supplyableLines(tradeID: bd.id))
     }
 }
@@ -218,6 +219,12 @@ struct ListingOrdersPopup: View {
     @ObservedObject private var market: SupplyMarketStore = SupplyMarketStore.shared
     var listingID: String
 
+    /// The orders are the supplier company's takings, so they show in its own currency.
+    private var currency: Currency? {
+        guard let e = store.engine, let cid = market.service.listing(listingID)?.companyID, let co = e.state.company(cid) else { return nil }
+        return e.currency(for: co)
+    }
+
     var body: some View {
         let orders: [SupplyOrder] = market.service.orders(listingID: listingID)
         VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -232,7 +239,7 @@ struct ListingOrdersPopup: View {
                         Text("\(o.delivered) of \(o.units) units · " + (o.late ? "Late" : "On time")).popupText(.caption, variant: .standard)
                     }
                     Spacer(minLength: Theme.Space.s)
-                    if o.revenue > 0 { Text(store.engine.map { $0.homeCurrency.tidyShort(o.revenue) } ?? "").popupText(.rowValue) }
+                    if o.revenue > 0 { Text(currency.map { $0.tidyShort(o.revenue) } ?? "").popupText(.rowValue) }
                 }
             }
         }
