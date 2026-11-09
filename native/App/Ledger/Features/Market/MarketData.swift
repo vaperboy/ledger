@@ -15,7 +15,7 @@ import Simulation
 enum MarketUI {
     /// The five parts of the app.
     enum Tab: String, CaseIterable, Hashable {
-        case overview = "Overview", companies = "Companies", rivals = "Rivals", invest = "Invest", world = "World"
+        case overview = "Overview", companies = "Companies", rivals = "Rivals", invest = "Invest", exchange = "Exchange", standing = "Standing", world = "World"
     }
 
     /// Who holds a position or pays for a purchase: you (`.player`) or a holding company's treasury (`.holding(id)`).
