@@ -7,7 +7,7 @@ import Simulation
 
 /// One loan: what is left, the terms, the schedule from the live balance, this month's instalment paid now (taken once), an early
 /// payoff with its quote (balance plus the interest accrued since the last month end), part repayment, and, for a company loan you guaranteed, the
-/// bank discussion about releasing the guarantee (it stays after a conversion to a limited company). Every action is the engine's and reports its result.
+/// bank discussion about releasing the guarantee. Every action is the engine's and reports its result.
 struct LoanDetailSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -44,7 +44,7 @@ struct LoanDetailSheet: View {
     }
 
     private func accountName(_ e: GameEngine, _ rec: LoanRecord) -> String {
-        if rec.companyID == 0 { return "your current account" }
+        if rec.companyID == 0 { return "your account" }
         return (e.state.company(rec.companyID)?.name ?? "the company") + "'s account"
     }
 
@@ -64,7 +64,7 @@ struct LoanDetailSheet: View {
 
     private func termsCard(_ rec: LoanRecord, _ cur: Currency) -> some View {
         let period: String = "\(rec.termMonths) months (\(rec.monthsLeft) left)"
-        let payout: String = rec.payoutAccount == "savings" ? "Savings" : (rec.companyID == 0 ? "Current account" : "Company account")
+        let payout: String = rec.companyID == 0 ? "Your account" : "Company account"
         return PopupSection(title: rec.number) {
             VStack(spacing: 0) {
                 FlatRow(label: "Interest rate", value: Currency.percent(rec.yearlyRate, decimals: 2) + " a year", rule: false)
@@ -115,7 +115,7 @@ struct LoanDetailSheet: View {
         guard let q = e.loanPayoffQuote(loanID: rec.id) else { store.show("That loan is already paid off.", tone: "n"); return }
         let id: Int = rec.id
         let name: String = rec.name
-        let funds: Double = rec.companyID == 0 ? e.state.cash + e.state.savings : (e.state.company(rec.companyID)?.cash ?? 0)
+        let funds: Double = rec.companyID == 0 ? e.state.cash : (e.state.company(rec.companyID)?.cash ?? 0)
         var message: String = "Balance \(cur.tidyDisplay(q.balance)) plus \(cur.tidyDisplay(q.accruedInterest)) interest accrued since the last month end: \(cur.tidyDisplay(q.total)) from \(accountName(e, rec)). "
         message += "There is no early repayment fee, the interest still to come is saved and the loan ends today. "
         message += funds >= q.total ? "About \(cur.tidyShort(funds - q.total)) is left afterwards." : "It holds \(cur.tidyShort(funds)), which is not enough."
@@ -170,7 +170,7 @@ struct LoanDetailSheet: View {
             PopupSection(title: "Personal guarantee") {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(t.guaranteed ? "You guarantee it." : "Released.").popupText(.caption)
-                    Text("You guaranteed this loan personally. The guarantee stays with you, also after a company becomes a limited company, until the bank agrees to release it for a higher margin.")
+                    Text("You guaranteed this loan personally. The guarantee stays with you until the bank agrees to release it for a higher margin.")
                         .popupText(.subtitle)
                     if let why = t.unavailable {
                         Text(why.tidyText).popupText(.risk)

@@ -297,7 +297,7 @@ struct ReportsPage: View {
             VStack(spacing: 0) {
                 ReportTableHeader(first: "Start", second: "End", third: "Change")
                 if companyID == nil {
-                    row("Cash and savings", a.cash, b.cash)
+                    row("Your account", a.cash, b.cash)
                     CardLine()
                     row("Investments", a.investments, b.investments)
                     CardLine()
@@ -329,15 +329,11 @@ struct ReportsPage: View {
                     }
                     CardLine()
                     ReportLine(label: "Your account at end", value: f.short(g.accountEnd), strong: true, live: g.accountEnd, liveText: f.short)
-                    if g.savingsStart != 0 || g.savingsEnd != 0 {
-                        CardLine()
-                        ReportLine(label: "Savings, start to end", value: f.short(g.savingsStart) + " to " + f.short(g.savingsEnd), tint: Theme.change(g.savingsEnd - g.savingsStart))
-                    }
                     CardLine().padding(.vertical, 6)
                 }
                 ReportLine(label: companyID == nil ? "Company cash at start" : "Cash at start", value: f.short(g.companyCashStart), live: g.companyCashStart, liveText: f.short)
                 if g.ownerIn != 0 { CardLine(); line("Put in by you", g.ownerIn) }
-                if g.ownerOut != 0 { CardLine(); line("Paid out to you (dividends, drawings)", -g.ownerOut) }
+                if g.ownerOut != 0 { CardLine(); line("Paid out to you (dividends)", -g.ownerOut) }
                 if g.loansTaken != 0 { CardLine(); line("Loans taken", g.loansTaken) }
                 if g.loansRepaid != 0 { CardLine(); line("Loan principal repaid", -g.loansRepaid) }
                 CardLine()
@@ -420,7 +416,7 @@ struct ReportsPage: View {
                     CardLine()
                     ReportLine(label: "Personal income tax settled", value: f.short(g.personalTax))
                     CardLine()
-                    ReportLine(label: "Salary and drawings", value: f.short(g.ownerPay))
+                    ReportLine(label: "Salary", value: f.short(g.ownerPay))
                     CardLine()
                     VStack(spacing: 0) {
                         ReportLine(label: "Income tax estimate, \(engine.yearInProgress.year) so far", value: f.short(engine.yearInProgress.personalTaxEstimate))

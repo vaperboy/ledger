@@ -143,7 +143,7 @@ struct RepayPersonalLoanSheet: View {
                     let cur = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
                     let p = e.loanPayoff(loanID: l.id)
                     let pay = min(amount, l.balance)
-                    let available = l.companyID == 0 ? e.state.cash + e.state.savings : (e.state.company(l.companyID)?.cash ?? 0)
+                    let available = l.companyID == 0 ? e.state.cash : (e.state.company(l.companyID)?.cash ?? 0)
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(l.name).capsLabel()
@@ -159,7 +159,7 @@ struct RepayPersonalLoanSheet: View {
                         KeyFigures(items: [
                             .init(label: "You pay now", value: pay > 0 ? cur.tidyShort(pay) : "–"),
                             .init(label: "Left after", value: cur.tidyShort(max(0, l.balance - pay))),
-                            .init(label: "Available", value: cur.tidyShort(available), tint: available < pay ? P.loss : P.ink, sub: l.companyID == 0 ? "cash and savings" : "company cash"),
+                            .init(label: "Available", value: cur.tidyShort(available), tint: available < pay ? P.loss : P.ink, sub: l.companyID == 0 ? "your account" : "company cash"),
                         ])
                         Button(pay > 0 ? "Pay back \(cur.tidyShort(pay))" : "Choose an amount") {
                             if store.act({ $0.repayLoan(id: loanID, amount: pay) }) == true {

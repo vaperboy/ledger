@@ -87,7 +87,7 @@ struct BankAccountScreen: View {
 
     /// The balance leads; change this month beside it, then one strip of what can be spent. No box: the page is the surface.
     private func balanceCard(_ d: BankAccountDetail, _ fmt: BankFmt) -> some View {
-        let label: String = id == .personal ? "Current account" : "Company account"
+        let label: String = id == .personal ? "Your account" : "Company account"
         let tint: Color = d.balance < 0 ? P.loss : P.ink
         let overdraft: String = d.overdraftUsed > 0 ? fmt.short(d.overdraftUsed) + " used" : fmt.short(d.overdraftLimit)
         let rate: String = d.overdraftRate.map { Currency.percent($0, decimals: 2) } ?? "–"
@@ -107,10 +107,6 @@ struct BankAccountScreen: View {
                 KeyFigures.Item(label: "Overdraft", value: overdraft, tint: d.overdraftUsed > 0 ? P.warn : P.ink),
                 KeyFigures.Item(label: "Overdraft rate", value: rate),
             ])
-            if let s = d.savings {
-                let r: String = d.savingsRate.map { " at " + Currency.percent($0, decimals: 2) } ?? ""
-                Text("Savings \(fmt.short(s))\(r)").textStyle(.caption)
-            }
         }
     }
 
@@ -119,9 +115,11 @@ struct BankAccountScreen: View {
     /// Pay bill opens the Bills tab: one place for bills instead of a second list in a sheet.
     private func tiles(_ d: BankAccountDetail) -> some View {
         HStack(spacing: Theme.Space.s) {
-            ActionTile(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
-            ActionTile(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
-            ActionTile(glyph: BankGlyph.withdraw, title: "Withdraw") { move = .withdraw }
+            if id == .personal {
+                ActionTile(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
+            } else {
+                ActionTile(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
+            }
             ActionTile(glyph: BankGlyph.bill, title: "Pay bill") { tab = .bills }
         }
     }
@@ -232,7 +230,7 @@ struct BankAllMovementsSheet: View {
     }
 }
 
-/// The owner's salary from a limited company (moved here from the company's money desk).
+/// The owner's salary from a company (moved here from the company's money desk).
 struct BankOwnerSalary: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
@@ -252,7 +250,7 @@ struct BankOwnerSalary: View {
                         if now > 0 { Button("Stop salary") { set(0, cur) }.buttonStyle(SecondaryButtonStyle(size: .compact, tint: P.loss)) }
                     }
                     Button("Compare salary, dividend or keeping it in") { compare = true }.buttonStyle(TertiaryButtonStyle(size: .compact))
-                    Text("Paid with payroll while the company is open, with employer contributions on top; income tax is withheld. A salary is a cost to the company, a dividend is not.")
+                    Text("Paid with payroll on the 15th while the company is open, with employer contributions on top; income tax is withheld. A salary is a cost to the company, a dividend is not.")
                         .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
                 }
             }

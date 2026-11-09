@@ -51,14 +51,12 @@ struct BankAccountsScreen: View {
 
     private func roundButtons(_ all: BankAccounts) -> some View {
         HStack(spacing: 0) {
-            BankRoundButton(glyph: BankGlyph.deposit, title: "Deposit") { move = .deposit }
-            BankRoundButton(glyph: BankGlyph.withdraw, title: "Send") { move = .withdraw }
             BankRoundButton(glyph: BankGlyph.transfer, title: "Transfer") { move = .transfer }
         }
         .accessibilityIdentifier("bank-round-actions")
     }
 
-    /// Gifts, sponsorships and the foundation are paid from the personal account, so they live in the Bank (they used to sit in Group).
+    /// Gifts, sponsorships and the foundation are paid from your account, so they live in the Bank (they used to sit in Group).
     private func givingLink(_ e: GameEngine) -> some View {
         let n: Int = e.givingMarks.count
         let sub: String = "\(n) \(n == 1 ? "mark" : "marks")" + (e.foundation != nil ? " \u{00B7} foundation running" : "")
@@ -113,10 +111,7 @@ struct BankAccountsScreen: View {
     private func rowNote(_ r: BankAccountRow, _ fmt: BankFmt) -> String {
         var parts: [String] = []
         switch r.kind {
-        case .personal:
-            if let rate = r.savingsRate { parts.append("Savings \(Currency.percent(rate, decimals: 2))") }
-            if let s = r.savings, s > 0 { parts.append(fmt.short(s) + " saved") }
-        case .investments: break
+        case .personal, .investments: break
         case .company: parts.append(r.detail)
         }
         if r.loanCount > 0 { parts.append("\(r.loanCount) loan\(r.loanCount == 1 ? "" : "s")") }
@@ -124,7 +119,7 @@ struct BankAccountsScreen: View {
     }
 }
 
-/// Where the money is: a ring over the accounts that hold some (personal current account, savings, each company), the five
+/// Where the money is: a ring over the accounts that hold some (your account, each company), the five
 /// biggest named and the rest together. Only drawn when at least two places hold money; one place is not an allocation.
 struct BankHomeRing: View {
     @Environment(\.outsidePalette) private var P
@@ -144,8 +139,7 @@ struct BankHomeRing: View {
     private func slices() -> [PortfolioRingCard.Slice] {
         var raw: [(String, Double)] = []
         for r in all.rows where r.kind != .investments {
-            if r.balance > 0 { raw.append((r.kind == .personal ? "Current account" : r.name, r.balance)) }
-            if let s = r.savings, s > 0 { raw.append(("Savings", s)) }
+            if r.balance > 0 { raw.append((r.kind == .personal ? "Your account" : r.name, r.balance)) }
         }
         raw.sort { $0.1 > $1.1 }
         var out: [PortfolioRingCard.Slice] = []
