@@ -151,9 +151,9 @@ protocol SupplyMarketService: AnyObject {
         for ev in events {
             switch ev {
             case .sale(let id, let units, let price, let cost):
-                _ = store.act { $0.update { s, _, _ in _ = SupplyMarketBooks.bookSaleToPlayer(&s, supplierCompanyID: id, units: units, unitPrice: price, unitCost: cost) } }
+                _ = store.act { $0.update { s, _, _ in _ = SupplyMarketBooks.settleSupply(&s, supplierCompanyID: id, buyerCompanyID: nil, units: units, unitPrice: price, unitCost: cost) } }
             case .purchaseDifference(let id, let amount):
-                _ = store.act { $0.update { s, _, _ in SupplyMarketBooks.bookPurchaseDifference(&s, buyerCompanyID: id, saving: amount) } }
+                _ = store.act { $0.update { s, _, _ in _ = SupplyMarketBooks.settleSupply(&s, supplierCompanyID: nil, buyerCompanyID: id, units: 0, unitPrice: 0, unitCost: 0, buyerSaving: amount) } }
             case .supplierEnded(let f):
                 fallBack(store, f)
             }
