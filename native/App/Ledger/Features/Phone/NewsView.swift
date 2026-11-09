@@ -25,6 +25,8 @@ struct NewsView: View {
                         frontPage(e)
                     case .players:
                         PlayerNewsSection(engine: e)
+                    case .government:
+                        GovernmentNewsSection(engine: e)
                     }
                 }
                 .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
@@ -76,11 +78,17 @@ struct NewsView: View {
     // MARK: Sections
 
     enum NewsSection: String, CaseIterable, Identifiable {
-        case world = "World and economy", players = "Players"
+        case world = "World and economy", players = "Players", government = "Government"
         var id: String { rawValue }
     }
 
     private var sectionPicker: some View {
+        ScrollView(.horizontal) { sectionChips }
+            .scrollIndicators(.hidden)
+            .padding(.bottom, 10)
+    }
+
+    private var sectionChips: some View {
         HStack(spacing: 8) {
             ForEach(NewsSection.allCases) { (s: NewsSection) in
                 Button { section = s } label: {
@@ -90,12 +98,10 @@ struct NewsView: View {
                         .overlay(Capsule().stroke(section == s ? Color.clear : P.lineStrong, lineWidth: 1))
                 }
                 .buttonStyle(PressableStyle())
-                .accessibilityIdentifier("news-section-\(s == .world ? "world" : "players")")
+                .accessibilityIdentifier("news-section-\(s.rawValue.lowercased().components(separatedBy: " ")[0])")
                 .accessibilityAddTraits(section == s ? .isSelected : [])
             }
-            Spacer(minLength: 0)
         }
-        .padding(.bottom, 10)
     }
 
     private func sourceNote(_ text: String) -> some View {
