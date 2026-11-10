@@ -26,6 +26,7 @@ final class PurchaseManager {
     @ObservationIgnored private let entitlements: Entitlements
     @ObservationIgnored private var updates: Task<Void, Never>?
     @ObservationIgnored private var storeAnswered = false
+    @ObservationIgnored private var perkGold = 0
     private static let graceWindow: TimeInterval = 16 * 24 * 3600
 
     init(entitlements: Entitlements) {
@@ -164,6 +165,33 @@ final class PurchaseManager {
         }
         let fresh = EntitlementSnapshot(owned: owned, plusExpires: plusEnd, plusGraceUntil: await graceEnd())
         entitlements.apply(fresh, storeAnswered: storeAnswered)
+        await grantPerks(owned)
+    }
+
+    private func grantPerks(_ owned: Set<LedgerProduct>) async {
+        var gold: Int = 0
+        let season: Int = SeasonModel.shared.pass.seasonNumber
+        for p in owned {
+            PlanPerks.cosmetics(for: p).forEach { SeasonModel.shared.grantOwned($0) }
+            guard let perk = PlanPerk.perk(for: p) else { continue }
+            let key: String = perk.claimID(season: season)
+            if let r = await StoreSession.shared.deliver(.perk(perk), transactionID: key), r.delivered { gold += r.gold }
+            if perk == .founder, PlanPerks.founderPassOpen(season: season) {
+                let pass: PlanPerk = .founderPass
+                if let r = await StoreSession.shared.deliver(.perk(pass), transactionID: pass.claimID(season: season)), r.delivered {
+                    SeasonModel.shared.unlockTiers(GoldPrices.founderPassTiers)
+                }
+            }
+        }
+        if gold > 0 {
+            perkGold += gold
+            notice = PurchaseNotice(kind: .success, title: "Gold added", lines: [StoreText.gold(gold) + " added to your wallet."])
+        }
+    }
+
+    private func takePerkGold() -> Int {
+        defer { perkGold = 0 }
+        return perkGold
     }
 
     private func drainUnfinished() async {
@@ -194,8 +222,11 @@ final class PurchaseManager {
         case .plan:
             await transaction.finish()
             await refreshEntitlements()
-            if interactive && transaction.revocationDate == nil { notice = receipt(item, transactionID: transactionID, gold: 0) }
-        case .goldPack, .seasonBundle:
+            let granted: Int = takePerkGold()
+            if interactive && transaction.revocationDate == nil { notice = receipt(item, transactionID: transactionID, gold: granted) }
+        case .perk:
+            return
+        case .goldPack, .seasonBundle, .seasonLevels:
             if transaction.revocationDate != nil {
                 await StoreSession.shared.revoke(transactionID: transactionID)
                 await transaction.finish()
@@ -206,7 +237,8 @@ final class PurchaseManager {
                 return
             }
             if delivery.delivered {
-                if item == .seasonBundle { SeasonModel.shared.unlockPremium() }
+                if item == .seasonBundle || item == .seasonLevels { SeasonModel.shared.unlockPremium() }
+                if item == .seasonLevels { SeasonModel.shared.unlockTiers(GoldStore.seasonLevels.tiers) }
                 notice = receipt(item, transactionID: transactionID, gold: delivery.gold)
             }
             await transaction.finish()
@@ -219,11 +251,17 @@ final class PurchaseManager {
         switch item {
         case .plan:
             lines.append((product?.displayName ?? "Your plan") + " is active.")
+            if gold > 0 { lines.append(StoreText.gold(gold) + " added to your wallet.") }
         case .goldPack:
             lines.append(StoreText.gold(gold) + " added to your wallet.")
         case .seasonBundle:
             lines.append(StoreText.gold(gold) + " and " + StorePurchase.boxText(GoldStore.seasonBundle) + " added to your Store.")
-            lines.append("The premium Season Pass track is open for season \(SeasonModel.shared.pass.seasonNumber).")
+            lines.append("The premium Battle Pass track is open for season \(SeasonModel.shared.pass.seasonNumber).")
+        case .seasonLevels:
+            lines.append(StoreText.gold(gold) + " and " + StorePurchase.boxText(GoldStore.seasonLevels) + " added to your Store.")
+            lines.append("The premium Battle Pass track is open for season \(SeasonModel.shared.pass.seasonNumber), and \(GoldStore.seasonLevels.tiers) tiers are already unlocked.")
+        case .perk:
+            break
         }
         if let price = product?.displayPrice { lines.append("Paid " + price + ".") }
         lines.append("Receipt number " + transactionID)
@@ -250,7 +288,8 @@ final class PurchaseManager {
         switch item {
         case .plan: return "star.circle"
         case .goldPack: return "plus.circle"
-        case .seasonBundle: return "gift"
+        case .seasonBundle, .seasonLevels: return "gift"
+        case .perk: return "star.circle"
         }
     }
 
@@ -261,9 +300,12 @@ final class PurchaseManager {
             case .pro: return "Buy Ledger Pro?"
             case .founder: return "Buy Founder's Edition?"
             case .plusMonthly, .plusYearly: return "Subscribe to Ledger Plus?"
+            case .proYearly: return "Subscribe to Ledger Pro?"
             }
         case .goldPack(let id): return "Get the " + (GoldStore.packs.first { $0.id == id }?.name ?? "gold pack") + "?"
-        case .seasonBundle: return "Get the season bundle?"
+        case .seasonBundle: return "Get the Battle Pass?"
+        case .seasonLevels: return "Get Battle Pass Plus Levels?"
+        case .perk: return ""
         }
     }
 
@@ -274,7 +316,7 @@ final class PurchaseManager {
             let pay: String
             switch p {
             case .plusMonthly: pay = "You pay \(price) a month. It renews until you cancel it in your App Store settings."
-            case .plusYearly: pay = "You pay \(price) a year. It renews until you cancel it in your App Store settings."
+            case .plusYearly, .proYearly: pay = "You pay \(price) a year. It renews until you cancel it in your App Store settings."
             case .pro, .founder: pay = "You pay \(price) once. Nothing renews."
             }
             return "If you buy this, you get \(product.displayName): \(product.description) \(pay)"
@@ -286,7 +328,12 @@ final class PurchaseManager {
             return "\(get). You pay \(price)."
         case .seasonBundle:
             let b: SeasonBundle = GoldStore.seasonBundle
-            return "If you buy this, you get \(StoreText.gold(b.gold)), \(StorePurchase.boxText(b)) and the premium Season Pass track for this season. You pay \(price)."
+            return "If you buy this, you get the premium Battle Pass track for this season, \(StoreText.gold(b.gold)) and \(StorePurchase.boxText(b)). You pay \(price)."
+        case .seasonLevels:
+            let b: SeasonBundle = GoldStore.seasonLevels
+            return "If you buy this, you get the premium Battle Pass track for this season with \(b.tiers) tiers already unlocked, \(StoreText.gold(b.gold)) and \(StorePurchase.boxText(b)). You pay \(price)."
+        case .perk:
+            return ""
         }
     }
 }

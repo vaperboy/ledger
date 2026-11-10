@@ -17,13 +17,11 @@ struct StoreApp: View {
             StoreProRow(onPlans: { showPlans = true }).storeAppear(1)
             lootBoxes(paid: paid).storeAppear(2)
             stockGroup(paid: paid)
-            packsGroup.storeAppear(3)
-            seasonBundleRow.storeAppear(4)
-            collectionGroup.storeAppear(5)
+            collectionGroup.storeAppear(3)
             footer
         }
         .appScreen(title: "Store", subtitle: "") { StoreGoldChip(amount: session.gold) }
-        .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
+        .centerSheet(isPresented: $showPlans, title: "Plans and gold", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
         .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
         .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await purchases.codeRedeemed() } }
         .task { await session.load(); await purchases.loadProducts() }
@@ -82,39 +80,6 @@ struct StoreApp: View {
         }
     }
 
-    private var packsGroup: some View {
-        let first: Bool = !session.state.firstPurchaseDone
-        let best: String? = StorePurchase.bestPack?.id
-        let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: Theme.Space.s), count: 3)
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Gold packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m)
-            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-                ForEach(GoldStore.packs) { (pack: GoldPack) in
-                    PackTile(pack: pack, first: first, best: pack.id == best)
-                }
-            }
-            if let problem = purchases.catalogError {
-                Text(problem).textStyle(.caption, tint: Theme.warn).padding(.horizontal, Theme.Space.m)
-            }
-            Text(first ? "Your first pack carries a one-time bonus. Bigger packs give more gold for the same money." : "Bigger packs give more gold for the same money.")
-                .textStyle(.caption).padding(.horizontal, Theme.Space.m).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var seasonBundleRow: some View {
-        let b: SeasonBundle = GoldStore.seasonBundle
-        return HStack(spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(b.name).textStyle(.headline)
-                Text("\(StoreText.gold(b.gold)), \(StorePurchase.boxText(b)) and the premium Season Pass track for this season").textStyle(.caption).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: Theme.Space.s)
-            PurchaseButton(item: .seasonBundle, identifier: "pack-season-bundle")
-        }
-        .padding(Theme.Space.m)
-        .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
-    }
-
     private var collectionGroup: some View {
         OnlineGroup(title: "Collection", footer: "") {
             NavigationLink { CabinetView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Artifacts and cards", note: "Your pieces, collections and sales", chevron: true) }
@@ -128,10 +93,6 @@ struct StoreApp: View {
     private var footer: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(spacing: Theme.Space.l) {
-                Button { Task { await purchases.restore() } } label: { Text("Restore purchases").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 32) }
-                    .buttonStyle(PressableStyle())
-                    .disabled(purchases.isBusy)
-                    .accessibilityIdentifier("store-restore")
                 if purchases.offerCodesAvailable {
                     Button { Haptics.tap(); showRedeem = true } label: { Text("Redeem a code").textStyle(.caption, tint: Theme.accent, weight: .semibold).frame(minHeight: 32) }
                         .buttonStyle(PressableStyle())

@@ -77,7 +77,7 @@
    }
   ],
   "seasonBundle": {
-   "name": "Season bundle",
+   "name": "Battle Pass",
    "usdCents": 999,
    "gold": 10,
    "boxes": [
@@ -88,8 +88,32 @@
    ],
    "includesPlus": true
   },
+  "seasonLevels": {
+   "name": "Battle Pass Plus Levels",
+   "usdCents": 1999,
+   "gold": 10,
+   "boxes": [
+    {
+     "kind": "cabinet",
+     "count": 1
+    }
+   ],
+   "includesPlus": true,
+   "tiers": 10
+  },
+  "bundles": {
+   "pro": {
+    "gold": 250
+   },
+   "founder": {
+    "gold": 600,
+    "passTiers": 10,
+    "lastSeason": 1
+   }
+  },
   "plans": {
    "com.ledger.pro": 9999,
+   "com.ledger.pro.yearly": 3999,
    "com.ledger.founder": 19999,
    "com.ledger.plus.monthly": 399,
    "com.ledger.plus.yearly": 2499

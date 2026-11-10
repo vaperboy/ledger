@@ -168,6 +168,11 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public static let adBonusXP = 40
 
     @discardableResult
+    public mutating func unlockTiers(_ count: Int) -> Int {
+        addBonus(max(0, count) * Self.xpPerTier)
+    }
+
+    @discardableResult
     public mutating func observe(_ now: Snapshot, today: Int) -> Int {
         rollover(today: today)
         defer { baseline = now }

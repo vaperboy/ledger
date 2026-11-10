@@ -70,6 +70,10 @@ actor GoldVault {
             firstPurchaseDone = true
         case .seasonBundle:
             for (kind, n) in GoldStore.seasonBundle.boxes { boxes[kind.rawValue, default: 0] += n }
+        case .seasonLevels:
+            for (kind, n) in GoldStore.seasonLevels.boxes { boxes[kind.rawValue, default: 0] += n }
+        case .perk:
+            break
         case .plan:
             throw StoreError.unknownItem
         }

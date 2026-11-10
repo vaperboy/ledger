@@ -8,6 +8,9 @@ struct AvatarDef: Identifiable, Equatable {
         case gold
         case rank(Int)
         case pro
+        case plus
+        case proOwner
+        case founder
         case badge(String)
         case collection(String)
         case level(Int)
@@ -28,6 +31,9 @@ struct AvatarDef: Identifiable, Equatable {
         case .gold: return "Bought with gold"
         case .rank(let i): return "Reach the rank " + (i < Career.ranks.count ? Career.ranks[i].title : "of a tycoon")
         case .pro: return "Ledger Pro"
+        case .plus: return "Ledger Plus"
+        case .proOwner: return "Ledger Pro"
+        case .founder: return "Founder's Edition"
         case .badge(let b): return "Earn the " + Cosmetics.badge(b).title.lowercased() + " badge in Goals"
         case .collection(let c): return "Complete the " + (ArtifactCatalog.collection(c)?.name ?? "") + " collection"
         case .level(let n): return "Reach level \(n)"
@@ -48,6 +54,9 @@ enum AvatarCatalog {
         case "gold": return .gold
         case "rank": return .rank(value.int)
         case "pro": return .pro
+        case "plus": return .plus
+        case "proOwner": return .proOwner
+        case "founder": return .founder
         case "badge": return .badge(value.string)
         case "collection": return .collection(value.string)
         case "level": return .level(value.int)
@@ -94,7 +103,7 @@ final class AvatarModel: ObservableObject {
         bestLevel = max(1, d.integer(forKey: Key.level))
     }
 
-    func isUnlocked(_ def: AvatarDef, pro: Bool, cabinet: Cabinet) -> Bool {
+    func isUnlocked(_ def: AvatarDef, pro: Bool, plus: Bool = false, ownsPro: Bool = false, founder: Bool = false, cabinet: Cabinet) -> Bool {
         switch def.unlock {
         case .free: return true
         case .gold: return owned.contains(def.id)
@@ -102,6 +111,9 @@ final class AvatarModel: ObservableObject {
         case .level(let n): return bestLevel >= n
         case .season(let id): return SeasonModel.shared.pass.owned.contains(id)
         case .pro: return pro
+        case .plus: return plus
+        case .proOwner: return ownsPro
+        case .founder: return founder
         case .badge(let b): return earnedBadges.contains(b)
         case .collection(let c):
             guard let col = ArtifactCatalog.collection(c) else { return false }

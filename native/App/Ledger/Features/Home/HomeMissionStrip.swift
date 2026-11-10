@@ -115,7 +115,7 @@ struct HomeSeasonPromo: View {
 
     var body: some View {
         let pass: SeasonPass = season.pass
-        let premium: Bool = season.premiumOpen(plus: ent.isPlus)
+        let premium: Bool = season.premiumOpen(plus: ent.isPlus, founder: ent.isFounder)
         let open: Int = pass.claimableCount(isPlus: premium)
         let left: Int = pass.daysLeft(today: season.today)
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -144,7 +144,7 @@ struct HomeSeasonPromo: View {
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(StoreSurface(tint: Theme.gold, radius: Theme.Radius.card))
-        .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
+        .centerSheet(isPresented: $showPlans, title: "Plans and gold", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-season-card")
     }

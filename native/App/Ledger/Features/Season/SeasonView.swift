@@ -17,7 +17,7 @@ struct SeasonView: View {
     @Namespace private var tabLine
 
     private var pass: SeasonPass { model.pass }
-    private var premium: Bool { model.premiumOpen(plus: ent.isPlus) }
+    private var premium: Bool { model.premiumOpen(plus: ent.isPlus, founder: ent.isFounder) }
     private var accent: Color { tint(for: "theme") ?? Theme.accent }
 
     var body: some View {
@@ -44,7 +44,7 @@ struct SeasonView: View {
         .ledgerBackground()
         .safeAreaInset(edge: .bottom) { if !premium { unlockBar } }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showPlans, title: "Battle pass", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
+        .centerSheet(isPresented: $showPlans, title: "Plans and gold", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
     }
 
     private var summaryCard: some View {

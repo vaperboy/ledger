@@ -26,7 +26,7 @@ final class PurchaseCatalogTests: XCTestCase {
         let ids: [String] = PurchaseCatalog.allProductIDs
         XCTAssertEqual(Set(ids).count, ids.count)
         for id in ids { XCTAssertTrue(id.hasPrefix(PurchaseCatalog.productPrefix), id) }
-        XCTAssertEqual(ids.count, LedgerProduct.allCases.count + GoldStore.packs.count + 1)
+        XCTAssertEqual(ids.count, LedgerProduct.allCases.count + GoldStore.packs.count + 2)
     }
 
     func testTheStoreKitFileHoldsExactlyTheProductsTheCodeSells() throws {
@@ -35,8 +35,9 @@ final class PurchaseCatalogTests: XCTestCase {
         for item in PurchaseCatalog.items {
             let type: String = try XCTUnwrap(file[PurchaseCatalog.productID(item)])
             switch item {
-            case .plan(let p): XCTAssertEqual(type, p.isPlus ? "RecurringSubscription" : "NonConsumable", p.rawValue)
-            case .goldPack, .seasonBundle: XCTAssertEqual(type, "Consumable", PurchaseCatalog.productID(item))
+            case .plan(let p): XCTAssertEqual(type, p.isSubscription ? "RecurringSubscription" : "NonConsumable", p.rawValue)
+            case .goldPack, .seasonBundle, .seasonLevels: XCTAssertEqual(type, "Consumable", PurchaseCatalog.productID(item))
+            case .perk: XCTFail("a perk is not a store product")
             }
         }
     }
@@ -51,14 +52,16 @@ final class PurchaseCatalogTests: XCTestCase {
         }
         for pack in GoldStore.packs { XCTAssertEqual(try cents(PurchaseCatalog.productID(.goldPack(pack.id))), pack.priceCents, pack.id) }
         XCTAssertEqual(try cents(PurchaseCatalog.seasonBundleID), GoldStore.seasonBundle.priceCents)
+        XCTAssertEqual(try cents(PurchaseCatalog.seasonLevelsID), GoldStore.seasonLevels.priceCents)
     }
 
     func testOnlyPacksAndTheBundleAreConsumable() {
         XCTAssertFalse(PurchaseCatalog.isConsumable(.plan(.pro)))
         XCTAssertFalse(PurchaseCatalog.isConsumable(.plan(.plusMonthly)))
         XCTAssertTrue(PurchaseCatalog.isConsumable(.seasonBundle))
+        XCTAssertTrue(PurchaseCatalog.isConsumable(.seasonLevels))
         for p in GoldStore.packs { XCTAssertTrue(PurchaseCatalog.isConsumable(.goldPack(p.id))) }
-        XCTAssertEqual(PurchaseCatalog.consumableProductIDs.count, GoldStore.packs.count + 1)
+        XCTAssertEqual(PurchaseCatalog.consumableProductIDs.count, GoldStore.packs.count + 2)
     }
 
     func testProductIDsRoundTripToTheirItem() {

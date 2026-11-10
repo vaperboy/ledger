@@ -68,6 +68,8 @@ struct CompanyCustomiseView: View {
 
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 92), spacing: Theme.Space.s)]
 
+    private var planPerks: Set<String> { PlanPerks.perks(owned: ent.effective.owned) }
+
     var body: some View {
         Group {
             if let e = store.engine, let co = e.state.company(companyID) {
@@ -240,7 +242,7 @@ struct CompanyCustomiseView: View {
     private func logoGrid(_ e: GameEngine, _ co: Company) -> some View {
         let current: String = e.companyLogoID(companyID: co.id)
         return LazyVGrid(columns: columns, spacing: Theme.Space.s) {
-            ForEach(e.logoChoices()) { (c: LogoChoice) in
+            ForEach(e.logoChoices(perks: planPerks)) { (c: LogoChoice) in
                 let elsewhere: String? = e.companyUsingLogo(c.id, besides: co.id)?.name
                 LookTile(title: c.logo.name, note: c.unlocked ? (elsewhere.map { (n: String) -> String in "On " + n } ?? "") : c.how, worn: c.id == current, wornText: "In use", locked: !c.unlocked,
                          id: "company-logo-" + c.id, art: LogoBadge(logoID: c.id, size: 48), action: { pickLogo(c, current: current, elsewhere: elsewhere) })
@@ -251,10 +253,11 @@ struct CompanyCustomiseView: View {
     private func pickLogo(_ c: LogoChoice, current: String, elsewhere: String?) {
         let id: Int = companyID
         let logoID: String = c.id
+        let perks: Set<String> = planPerks
         guard c.unlocked else { Haptics.warning(); note = c.logo.name + ": " + c.how; return }
         let apply: () -> Void = {
             Haptics.success()
-            _ = store.act { (e: inout GameEngine) -> Void in _ = e.setCompanyLogo(companyID: id, logoID: logoID) }
+            _ = store.act { (e: inout GameEngine) -> Void in _ = e.setCompanyLogo(companyID: id, logoID: logoID, perks: perks) }
             note = ""
         }
         if c.id == current {

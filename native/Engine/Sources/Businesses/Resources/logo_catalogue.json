@@ -1,5 +1,5 @@
 {
- "about": "Company logos (LogoCatalogue.swift). how: free, level:N (the player's level) or box:<rarity> (common, rare, epic, legendary; owned once a box has dropped it). asset: the image the app looks for in the asset catalog; a neutral glyph shows until the image exists.",
+ "about": "Company logos (LogoCatalogue.swift). how: free, level:N (the player's level), plan:founder (Founder's Edition) or box:<rarity> (common, rare, epic, legendary; owned once a box has dropped it). asset: the image the app looks for in the asset catalog; a neutral glyph shows until the image exists.",
  "logos": [
   { "id": "mark", "name": "Plain mark", "how": "free", "asset": "logo.mark" },
   { "id": "ring", "name": "Ring", "how": "free", "asset": "logo.ring" },
@@ -24,6 +24,9 @@
   { "id": "falcon", "name": "Falcon", "how": "box:rare", "asset": "logo.falcon" },
   { "id": "lion", "name": "Lion", "how": "box:epic", "asset": "logo.lion" },
   { "id": "dragon", "name": "Dragon", "how": "box:epic", "asset": "logo.dragon" },
-  { "id": "phoenix", "name": "Phoenix", "how": "box:legendary", "asset": "logo.phoenix" }
+  { "id": "phoenix", "name": "Phoenix", "how": "box:legendary", "asset": "logo.phoenix" },
+  { "id": "founder.quill", "name": "Founder quill", "how": "plan:founder", "asset": "logo.founder.quill", "founderEdition": true },
+  { "id": "founder.vault", "name": "Founder vault", "how": "plan:founder", "asset": "logo.founder.vault", "founderEdition": true },
+  { "id": "founder.seal", "name": "Founder seal", "how": "plan:founder", "asset": "logo.founder.seal", "founderEdition": true }
  ]
 }

@@ -6,6 +6,7 @@ public enum LogoCatalogue {
         case free
         case level(Int)
         case box(String)
+        case plan(String)
     }
 
     public struct Logo: Identifiable, Equatable, Sendable {
@@ -27,16 +28,18 @@ public enum LogoCatalogue {
         let p = how.split(separator: ":").map(String.init)
         if p.count == 2, p[0] == "level", let n = Int(p[1]) { return .level(n) }
         if p.count == 2, p[0] == "box" { return .box(p[1]) }
+        if p.count == 2, p[0] == "plan" { return .plan(p[1]) }
         return .free
     }
 
     public static func logo(_ id: String) -> Logo? { all.first { $0.id == id } }
 
-    public static func isUnlocked(_ l: Logo, level: Int, ladderOn: Bool, owned: Set<String>) -> Bool {
+    public static func isUnlocked(_ l: Logo, level: Int, ladderOn: Bool, owned: Set<String>, perks: Set<String> = []) -> Bool {
         switch l.source {
         case .free: return true
         case .level(let n): return !ladderOn || level >= n
         case .box: return owned.contains(l.id)
+        case .plan(let perk): return perks.contains(perk)
         }
     }
 
@@ -45,6 +48,7 @@ public enum LogoCatalogue {
         case .free: return "Free"
         case .level(let n): return "Level \(n)"
         case .box(let rarity): return rarity.capitalized + " box"
+        case .plan(let perk): return perk == "founder" ? "Founder's Edition" : perk.capitalized
         }
     }
 }

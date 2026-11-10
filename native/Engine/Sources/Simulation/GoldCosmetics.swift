@@ -2,7 +2,7 @@ import Foundation
 import GameCore
 
 public struct GoldCosmetic: Equatable, Sendable, Identifiable {
-    public enum Source: String, Sendable { case box, store, collection }
+    public enum Source: String, Sendable { case box, store, collection, plan }
     public var item: SeasonReward
     public var rarity: BoxRarity
     public var source: Source
@@ -21,14 +21,14 @@ public enum GoldCosmetics {
         let price: Int? = GoldPrices.item(e["id"].string) ?? (source == .store ? GoldCosmetics.storePrice(rarity) : nil)
         let item: SeasonReward = SeasonReward(id: e["id"].string, tier: 0, premium: false, kind: SeasonReward.Kind(rawValue: e["kind"].string) ?? .badge,
                                               title: e["title"].string, detail: e["detail"].string, colors: ContentFile.colors(e["colors"]),
-                                              season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || source == .store)
+                                              season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || source == .store || source == .plan)
         return GoldCosmetic(item: item, rarity: rarity, source: source, price: price)
     }
 
     public static func cosmetic(_ id: String) -> GoldCosmetic? { all.first { $0.id == id } }
 
     public static func boxPool(_ rarity: BoxRarity, owned: Set<String>) -> [GoldCosmetic] {
-        all.filter { $0.rarity == rarity && $0.item.kind != .saveSlot && $0.source != .collection && !owned.contains($0.id) }
+        all.filter { $0.rarity == rarity && $0.item.kind != .saveSlot && $0.source != .collection && $0.source != .plan && !owned.contains($0.id) }
     }
 
     public static var storeItems: [GoldCosmetic] { all.filter { $0.price != nil } }

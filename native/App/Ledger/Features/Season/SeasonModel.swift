@@ -23,11 +23,19 @@ final class SeasonModel: ObservableObject {
         if loaded == nil { persist() }
     }
 
-    func premiumOpen(plus: Bool) -> Bool { plus || premiumSeason == pass.season }
+    func premiumOpen(plus: Bool, founder: Bool = false) -> Bool {
+        plus || premiumSeason == pass.season || (founder && PlanPerks.founderPassOpen(season: pass.seasonNumber))
+    }
 
     func unlockPremium() {
         premiumSeason = pass.season
         UserDefaults.standard.set(pass.season, forKey: Self.premiumKey)
+    }
+
+    func unlockTiers(_ count: Int) {
+        var p: SeasonPass = pass
+        p.unlockTiers(count)
+        if p != pass { pass = p; persist() }
     }
 
     var today: Int { GameStore.calendarDay() }
