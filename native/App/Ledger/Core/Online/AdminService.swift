@@ -5,7 +5,7 @@ enum RuleGroup: String, Codable, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .printing: return "Printing money"
+        case .printing: return "Inflation"
         case .taxes: return "Tax changes"
         case .bands: return "Price bands"
         case .electricity: return "Electricity price"
@@ -14,7 +14,7 @@ enum RuleGroup: String, Codable, CaseIterable, Sendable {
     }
     var blurb: String {
         switch self {
-        case .printing: return "How much a government may print, and how fast."
+        case .printing: return "How much new money a government may add, and how fast."
         case .taxes: return "How far and how often a president may move the transfer and gains tax."
         case .bands: return "How far from its value a shared deal may be priced."
         case .electricity: return "The range the world electricity price index stays inside."

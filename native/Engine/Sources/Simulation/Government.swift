@@ -123,8 +123,8 @@ public struct Government: Codable, Equatable, Sendable {
         let m = GovMint(id: takeID(), week: week, amount: a, reason: String(why.prefix(200)), admin: admin)
         supply.append(m)
         try treasury.post(a, kind: "mint", ref: String(m.id), week: week)
-        log(admin, "print", "\(a) printed: \(m.reason)", week: week)
-        publish("The treasury has printed \(Int(a)) in new money: \(m.reason)", tone: "n", week: week)
+        log(admin, "print", "\(a) of new money added: \(m.reason)", week: week)
+        publish("New money in circulation, \(Int(a)), will push up inflation: \(m.reason)", tone: "n", week: week)
         return m
     }
 

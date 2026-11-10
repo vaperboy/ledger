@@ -88,7 +88,6 @@ struct WorldOverview: View {
             supplyCard
             priceCard
             flowsCard
-            newsCard
         }
         .outsideScreen(.civic)
         .accessibilityIdentifier("world-overview")
@@ -109,7 +108,7 @@ struct WorldOverview: View {
             Rectangle().fill(P.accent.opacity(0.5)).frame(height: 1)
             HStack(alignment: .top, spacing: 0) {
                 stat("In circulation", r.cur.tidyShort(supply.total))
-                stat("Printed so far", supply.mints.isEmpty ? "None" : CivicWords.pct1((supply.total - supply.base) / supply.base))
+                stat("Inflation so far", supply.mints.isEmpty ? "None" : CivicWords.pct1((supply.total - supply.base) / supply.base))
                 stat("Price level", String(format: "%.3f", e.state.economy.inflationIndex))
             }
         }
@@ -232,9 +231,9 @@ struct WorldOverview: View {
     private var supplyCard: some View {
         let mints: [GovMint] = Array(r.gov.supply.mints.reversed())
         let shown: [GovMint] = showAllMints ? mints : Array(mints.prefix(4))
-        return section("Money printed", trailing: mints.count > 4 ? (showAllMints ? "Show fewer" : "Show all \(mints.count)") : "", onTrailing: { showAllMints.toggle() }) {
+        return section("Inflation", trailing: mints.count > 4 ? (showAllMints ? "Show fewer" : "Show all \(mints.count)") : "", onTrailing: { showAllMints.toggle() }) {
             if mints.isEmpty {
-                Text("Nothing has been printed. The supply is as it began.").textStyle(.body)
+                Text("No new money has been added. The supply is as it began.").textStyle(.body)
             } else {
                 ForEach(shown) { (m: GovMint) in
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -248,7 +247,7 @@ struct WorldOverview: View {
                     if m.id != shown.last?.id { Rectangle().fill(P.hairline).frame(height: 1) }
                 }
             }
-            Text("Every printing is public and stays on this record for good. One printing is at most 5% of the supply, and 15% in 12 weeks.")
+            Text("Every addition to the money supply is public and stays on this record for good. One addition is at most 5% of the supply, and 15% in 12 weeks.")
                 .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -260,13 +259,13 @@ struct WorldOverview: View {
         return section("Prices") {
             HStack(alignment: .bottom, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Added by printing").textStyle(.caption, tint: P.inkFaint)
+                    Text("Added by new money").textStyle(.caption, tint: P.inkFaint)
                     Text((extra >= 0 ? "+" : "") + CivicWords.pct1(extra))
                         .font(.system(size: 30, weight: .medium, design: .serif).monospacedDigit()).foregroundStyle(extra > 0.0005 ? P.caution : P.ink)
                 }
                 CivicSpark(values: series.count > 1 ? series : [1, 1], tint: P.accent).frame(height: 54)
             }
-            Text("Printing lifts prices \(GovInflation.lagWeeks) weeks later, over \(GovInflation.spread) weeks. Nothing brings prices back down.")
+            Text("New money in circulation drives inflation: prices rise \(GovInflation.lagWeeks) weeks later, over \(GovInflation.spread) weeks. Nothing brings prices back down.")
                 .textStyle(.caption, tint: P.inkFaint).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -298,27 +297,6 @@ struct WorldOverview: View {
             .buttonStyle(PressableStyle())
         }
     }
-
-    private var newsCard: some View {
-        let list: [GovNews] = Array(r.gov.news.prefix(4))
-        return section("From the government", trailing: "Open News", onTrailing: { store.openApp(.news) }) {
-            if list.isEmpty {
-                Text("Quiet. Announcements appear here and in News.").textStyle(.body)
-            } else {
-                ForEach(list) { (n: GovNews) in
-                    HStack(alignment: .top, spacing: 10) {
-                        Circle().fill(toneColor(n.tone)).frame(width: 8, height: 8).padding(.top, 6).accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(n.text).textStyle(.body).fixedSize(horizontal: false, vertical: true)
-                            Text(CivicWords.date(n.week)).textStyle(.caption, tint: P.inkFaint)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func toneColor(_ tone: String) -> Color { tone == "good" ? P.gain : tone == "bad" ? P.loss : P.accent }
 
     private func section<C: View>(_ title: String, trailing: String = "", onTrailing: @escaping () -> Void = {}, @ViewBuilder _ content: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 10) {

@@ -24,7 +24,7 @@ struct StoreApp: View {
         }
         .appScreen(title: "Store", subtitle: "") { StoreGoldChip(amount: session.gold) }
         .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
-        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet) }
+        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet, others: [.grand] + BoxKind.cardPacks) }
         .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await purchases.codeRedeemed() } }
         .task { await session.load(); await purchases.loadProducts() }
     }
@@ -44,12 +44,22 @@ struct StoreApp: View {
             .padding(.horizontal, Theme.Space.m)
             if paid {
                 HStack(alignment: .top, spacing: Theme.Space.m) {
-                    ForEach(Array(BoxKind.allCases.filter { $0.isPaid }.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
+                    ForEach(Array(BoxKind.standard.filter { $0.isPaid }.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
                         NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { BoxTile(kind: kind, index: i) }
                             .buttonStyle(PressableStyle())
                             .accessibilityIdentifier("store-box-" + kind.rawValue)
                     }
                 }
+                Text("Card packs").capsLabel(Theme.inkFaint).padding(.horizontal, Theme.Space.m).padding(.top, Theme.Space.s)
+                HStack(alignment: .top, spacing: Theme.Space.s) {
+                    ForEach(Array(BoxKind.cardPacks.enumerated()), id: \.element) { (i: Int, kind: BoxKind) in
+                        NavigationLink { BoxView(kind: kind, paidBoxesAllowed: true) } label: { BoxTile(kind: kind, index: i + 2) }
+                            .buttonStyle(PressableStyle())
+                            .accessibilityIdentifier("store-box-" + kind.rawValue)
+                    }
+                }
+                Text("Profile and company cards to customise with. A pricier pack has better odds of rare and animated cards, and the odds are shown before you open one.")
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
             } else {
                 Text("Paid boxes are not offered where you are. Season boxes can still be opened.")
                     .textStyle(.body, tint: Theme.inkSoft).padding(.horizontal, Theme.Space.m)
@@ -106,8 +116,8 @@ struct StoreApp: View {
     }
 
     private var collectionGroup: some View {
-        OnlineGroup(title: "Collection and auction", footer: "") {
-            NavigationLink { CollectionView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Collection", note: "Artifacts, trophies and auctions", chevron: true) }
+        OnlineGroup(title: "Collection", footer: "") {
+            NavigationLink { CollectionView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Collection", note: "Artifacts, cards and trophies", chevron: true) }
                 .buttonStyle(PressableStyle())
             Hairline()
             NavigationLink { StoreShelfView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Cosmetics and bundles", note: "Bought with gold", chevron: true) }

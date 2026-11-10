@@ -117,8 +117,25 @@ final class StoreSession {
     func acknowledgeOpening() { pendingOpening = nil }
 
     func receiveSeason(_ r: SeasonReward) {
+        if r.kind == .profileCard || r.kind == .companyCard {
+            let roll: Double = CardCatalog.roll("season|\(SeasonModel.shared.pass.season)|" + r.id)
+            Task { state = await store.grantCard(defID: r.id, roll: roll) }
+            return
+        }
         guard r.kind == .box || r.kind == .gold else { return }
         Task { state = await store.grantFromSeason(boxes: r.kind == .box ? r.amount : 0, gold: r.kind == .gold ? r.amount : 0) }
+    }
+
+    private static let levelCardsKey = "ledger.cards.levelGranted"
+
+    func receiveLevel(_ level: Int) {
+        let done: Set<String> = Set(UserDefaults.standard.stringArray(forKey: Self.levelCardsKey) ?? [])
+        let due: [CardCatalog.LevelReward] = CardCatalog.levelRewards(upTo: level).filter { (r: CardCatalog.LevelReward) -> Bool in !done.contains(r.defID) }
+        guard !due.isEmpty else { return }
+        UserDefaults.standard.set(Array(done.union(due.map(\.defID))), forKey: Self.levelCardsKey)
+        Task {
+            for r in due { state = await store.grantCard(defID: r.defID, roll: CardCatalog.roll("level|" + r.defID)) }
+        }
     }
 
     private func grantCollections(_ done: [ArtifactCollection]) {

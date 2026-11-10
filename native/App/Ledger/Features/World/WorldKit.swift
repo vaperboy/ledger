@@ -120,7 +120,7 @@ enum CivicWords {
     static func treasuryKind(_ k: String) -> String {
         switch k {
         case "donation": return "Donation"
-        case "mint": return "New money printed"
+        case "mint": return "New money in circulation"
         case "candidacy_fee": return "Candidacy fee"
         case "conviction_fine": return "Fine after a conviction"
         case "audit_fine": return "Audit settlement"

@@ -151,7 +151,7 @@ extension PhoneApp {
         case .luxury: return .luxury
         case .bank: return .forest
         case .inbox: return .inbox
-        case .stats, .market, .settings, .season, .desk, .store, .profile, .competition, .rankings: return nil
+        case .stats, .market, .settings, .season, .desk, .store, .profile, .competition, .rankings, .auctions: return nil
         case .airStay: return .airStay
         case .techPro: return .techPro
         case .atlas: return .atlas

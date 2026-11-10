@@ -5,7 +5,7 @@ import Simulation
 enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
     case bank, stats, atlas
     case market, luxury
-    case marketplace, airStay, techPro, store
+    case marketplace, auctions, airStay, techPro, store
     case competition, rankings, world
     case inbox, news, desk
     case profile, season, settings
@@ -24,6 +24,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return "AirStay"
         case .techPro: return "TechPro"
         case .store: return "Store"
+        case .auctions: return "Auctions"
         case .competition: return "Competition"
         case .rankings: return "Rankings"
         case .world: return "World"
@@ -47,6 +48,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return Glyph.airStay
         case .techPro: return Glyph.techPro
         case .store: return Glyph.shopBag
+        case .auctions: return Glyph.gavel
         case .competition: return Glyph.rivalsFlag
         case .rankings: return Glyph.rankPodium
         case .world: return Glyph.civicDome
@@ -70,6 +72,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .airStay: return "Offices, shops and storage to rent"
         case .techPro: return "Software, hardware, tools and vehicles"
         case .store: return "Gold, boxes and cosmetics"
+        case .auctions: return "Bid on artifacts and cards, or sell your own"
         case .competition: return "Rivals, reviews and how you stand against the field"
         case .rankings: return "Leaderboards and the Hall of Fame"
         case .world: return "One president, one treasury, every country"
@@ -96,7 +99,7 @@ enum PhoneSection: String, CaseIterable, Identifiable {
         switch self {
         case .money: return [.bank, .stats, .atlas]
         case .market: return [.market, .luxury]
-        case .shops: return [.marketplace, .airStay, .techPro, .store]
+        case .shops: return [.marketplace, .auctions, .airStay, .techPro, .store]
         case .field: return [.competition, .rankings, .world]
         case .daily: return [.inbox, .news, .desk]
         case .you: return [.profile, .season, .settings]
@@ -106,6 +109,7 @@ enum PhoneSection: String, CaseIterable, Identifiable {
 
 extension Glyph {
     static let shopBag = "M5 8 H19 L18 20 H6 Z M9 8 V6 A3 3 0 0 1 15 6 V8 M9 12 V13 M15 12 V13"
+    static let gavel = "M10 4 L16 10 L13 13 L7 7 Z M11 12 L4 19 M13 20 H21"
     static let rankPodium = "M3 20 H21 M4 20 V13 H9 V20 M9 20 V7 H15 V20 M15 20 V15 H20 V20"
 }
 
@@ -121,6 +125,7 @@ extension PhoneApp {
         case .airStay: return Color(hex: 0xCF6A6A)
         case .techPro: return Color(hex: 0x7FB088)
         case .store: return Color(hex: 0xE0BC5E)
+        case .auctions: return Color(hex: 0xC9A66B)
         case .competition: return Color(hex: 0xB78F8A)
         case .rankings: return Color(hex: 0xD2B97C)
         case .world: return Color(hex: 0xCBAA6B)
@@ -144,7 +149,7 @@ extension GateVisibility {
 extension PhoneApp {
     var gate: Gate? {
         switch self {
-        case .inbox, .stats, .settings, .desk, .store, .profile, .market, .rankings, .competition: return nil
+        case .inbox, .stats, .settings, .desk, .store, .profile, .market, .rankings, .competition, .auctions: return nil
         case .bank, .news, .season: return .bank
         case .marketplace: return .marketplace
         case .airStay: return .airstay
@@ -160,6 +165,11 @@ extension PhoneApp {
         if self == .competition {
             if e.rivalsOpen { return .open }
             return Gates.visibility(.reviews, e.state, data: e.data)
+        }
+        if self == .auctions {
+            if LevelGates.isOpen(.auctions, e.state) { return .open }
+            let away: Int = LevelGates.level(.auctions) - PlayerLevel.info(e.state).level
+            return away <= 1 ? .locked("Unlocks at level \(LevelGates.level(.auctions))") : .hidden
         }
         if self == .world {
             if LevelGates.isOpen(.government, e.state) { return .open }

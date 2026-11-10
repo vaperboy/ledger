@@ -146,6 +146,7 @@ struct SeasonView: View {
         switch r.kind {
         case .gold: return "\(r.title) added to your gold wallet in the Store."
         case .box: return "\(r.title) waiting in the Store, free to open."
+        case .profileCard, .companyCard: return "\(r.title) added to your cabinet. Wear it in Your look."
         default: return "\(r.title) added to your collection below."
         }
     }
@@ -156,7 +157,7 @@ struct SeasonView: View {
                 LedgerGlyph(glyph: Glyph.lock, size: 16, tint: accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Unlock premium track").textStyle(.headline)
-                    Text("The premium row adds themes, plates, backdrops and an extra save slot. It comes with Ledger Plus, or open it for this season with the season bundle. Nothing here changes how the game plays.").textStyle(.caption)
+                    Text("The premium row adds themes, plates, backdrops, cards and an extra save slot. It comes with Ledger Plus, or open it for this season with the season bundle. Nothing here changes how the game plays.").textStyle(.caption)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
@@ -186,7 +187,7 @@ struct SeasonView: View {
         }
     }
 
-    private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) && $0.kind != .box && $0.kind != .gold } }
+    private var collection: [SeasonReward] { SeasonRewards.all.filter { pass.owned.contains($0.id) && $0.kind != .box && $0.kind != .gold && $0.kind != .profileCard && $0.kind != .companyCard } }
 
     @ViewBuilder private var collectionSection: some View {
         if !collection.isEmpty {

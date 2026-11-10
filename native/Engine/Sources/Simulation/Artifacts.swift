@@ -64,7 +64,7 @@ public enum ArtifactCatalog {
         ArtifactCollection(id: "archive", name: "Town Archive", blurb: "Papers that made the town.", rewardID: "gold.coll.archive", members: ["stamp", "map", "scroll", "charter"])
     ]
 
-    public static func def(_ id: String) -> ArtifactDef? { defs.first { $0.id == id } }
+    public static func def(_ id: String) -> ArtifactDef? { defs.first { $0.id == id } ?? CardCatalog.artifactDef(id) }
     public static func collection(_ id: String) -> ArtifactCollection? { collections.first { $0.id == id } }
     public static func defs(of rarity: BoxRarity) -> [ArtifactDef] { defs.filter { $0.rarity == rarity } }
 

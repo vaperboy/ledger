@@ -163,6 +163,9 @@ struct BoxArt: View {
         case .free: return [Color(hex: 0x7FC79B), Color(hex: 0x2F5A44)]
         case .cabinet: return [Color(hex: 0xD6B889), Color(hex: 0x7A5A2E)]
         case .grand: return [Color(hex: 0xB59AD6), Color(hex: 0x4B3470)]
+        case .cardBasic: return [Color(hex: 0x8FB4C9), Color(hex: 0x2E4A5C)]
+        case .cardPremium: return [Color(hex: 0xC9A0D6), Color(hex: 0x4A2E5C)]
+        case .cardElite: return [Color(hex: 0xE6C463), Color(hex: 0x6B4E12)]
         }
     }
 

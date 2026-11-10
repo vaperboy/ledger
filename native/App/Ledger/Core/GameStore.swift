@@ -41,6 +41,7 @@ enum AppRequest: Equatable {
     case atlas(companyID: Int)
     case ventures
     case newsPlayers
+    case auctionListing(String)
 }
 
 struct Toast: Identifiable, Equatable {
@@ -378,6 +379,7 @@ final class GameStore: ObservableObject {
         let digest: ReportDigest? = e.pendingReportDigest()
         engine = e
         SeasonModel.shared.observe(e.state)
+        StoreSession.shared.receiveLevel(e.playerLevel.level)
         if PlayerGoals.ladderFlag(e.state, "classic") { UserDefaults.standard.set(true, forKey: GameStore.classicStartKey) }
         Haptics.nextDay()
         SoundCues.play(out.completedWeek ? .weekReport : .dayClose)
@@ -476,6 +478,7 @@ final class GameStore: ObservableObject {
         engine = e
         save()
         SeasonModel.shared.observe(e.state)
+        StoreSession.shared.receiveLevel(e.playerLevel.level)
         queueNotices()
         return r
     }
@@ -722,6 +725,11 @@ final class GameStore: ObservableObject {
         guard case .ventures? = appRequest else { return false }
         appRequest = nil
         return true
+    }
+    func takeAuctionListing() -> String? {
+        guard case .auctionListing(let id)? = appRequest else { return nil }
+        appRequest = nil
+        return id
     }
     func takeNewsPlayersRequest() -> Bool {
         guard case .newsPlayers? = appRequest else { return false }

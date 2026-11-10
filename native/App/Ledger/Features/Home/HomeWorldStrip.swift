@@ -81,7 +81,7 @@ struct HomeWorldStrip: View {
         case .market:
             Button { Haptics.tap(); store.openMarket() } label: { chipBody(it) }.buttonStyle(PressableStyle())
         case .auctions:
-            Button { Haptics.tap(); store.openApp(.store) } label: { chipBody(it) }.buttonStyle(PressableStyle())
+            Button { Haptics.tap(); store.openApp(.auctions) } label: { chipBody(it) }.buttonStyle(PressableStyle())
         case .ventures:
             Button { Haptics.tap(); store.openVentures() } label: { chipBody(it) }.buttonStyle(PressableStyle())
         }

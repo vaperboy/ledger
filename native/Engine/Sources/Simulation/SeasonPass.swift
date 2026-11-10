@@ -222,6 +222,19 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         equipped[r.kind.rawValue] = id
     }
 
+    public static let profileCardKey = "profileCard"
+
+    public mutating func equipProfileCard(_ itemID: String?) {
+        guard let itemID else { equipped[Self.profileCardKey] = nil; return }
+        guard CardCatalog.def(forItem: itemID)?.kind == .profile else { return }
+        equipped[Self.profileCardKey] = itemID
+    }
+
+    public func profileCard(cabinet: Cabinet) -> CardDef? {
+        guard let id = equipped[Self.profileCardKey], cabinet.contains(id), let d = CardCatalog.def(forItem: id), d.kind == .profile else { return nil }
+        return d
+    }
+
     public mutating func grantOwned(_ id: String) {
         guard let r = SeasonRewards.item(id) else { return }
         owned.insert(id)

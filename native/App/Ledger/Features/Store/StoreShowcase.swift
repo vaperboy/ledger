@@ -122,12 +122,12 @@ struct BoxTile: View {
     var body: some View {
         VStack(spacing: Theme.Space.xs) {
             BoxArt(kind: kind, size: 64).storeFloat(phase: Double(index) * 0.35).padding(.top, Theme.Space.xs)
-            Text(kind.title).textStyle(.headline)
+            Text(kind.title).textStyle(.headline).multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.8)
             GoldAmount(amount: kind.price)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, minHeight: 156)
-        .background(StoreSurface(tint: kind == .grand ? BoxRarity.epic.tint : Theme.gold, radius: Theme.Radius.card))
+        .background(StoreSurface(tint: kind == .grand || kind == .cardElite ? BoxRarity.epic.tint : Theme.gold, radius: Theme.Radius.card))
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }

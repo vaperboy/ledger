@@ -68,6 +68,12 @@ final class SeasonModel: ObservableObject {
         if p != pass { pass = p; persist() }
     }
 
+    func equipProfileCard(_ itemID: String?) {
+        var p: SeasonPass = pass
+        p.equipProfileCard(itemID)
+        if p != pass { pass = p; persist() }
+    }
+
     private static let adDayKey = "ledger.seasonAdDay"
 
     var adBonusAvailable: Bool { UserDefaults.standard.integer(forKey: Self.adDayKey) != today }

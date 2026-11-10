@@ -37,7 +37,7 @@ struct ItemArt: View {
     }
 
     init(box kind: BoxKind, size: CGFloat = 44) {
-        let r: BoxRarity = kind == .grand ? .epic : (kind == .cabinet ? .rare : .common)
+        let r: BoxRarity = kind == .grand || kind == .cardElite ? .epic : (kind == .cabinet || kind == .cardPremium ? .rare : .common)
         self.init(category: .box, id: kind.rawValue, rarity: r, size: size)
     }
 
@@ -65,6 +65,7 @@ struct ItemArt: View {
         case .richListFlair: return .flair
         case .tradePlate: return .tradePlate
         case .box: return .box
+        case .profileCard, .companyCard: return .artifact
         case .gold: return .gold
         }
     }

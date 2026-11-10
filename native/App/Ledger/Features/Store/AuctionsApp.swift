@@ -3,27 +3,41 @@ import Simulation
 
 struct AuctionsApp: View {
     enum Part: Hashable { case live, mine }
+    @EnvironmentObject var store: GameStore
+    @Environment(OnlineSession.self) private var online
     private let session = StoreSession.shared
     @State private var tab: Part = .live
     @State private var rarity: BoxRarity?
+    @State private var listing: ArtifactItem?
 
     var body: some View {
         PhonePageScroll(spacing: Theme.Space.l) {
-            cashLine
-            SegmentedChoice(items: [Part.live, Part.mine], title: { (t: Part) -> String in t == .live ? "Live auctions" : "My auctions" }, selection: $tab)
-            if session.auctions == nil {
-                ProgressView().frame(maxWidth: .infinity)
-            } else if tab == .live {
-                LiveAuctionsList(rarity: $rarity)
+            if StoreGate.access(countryCode: online.profile?.countryCode) == .hidden {
+                Text("Auctions are not offered where you are.").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity)
             } else {
-                MyAuctionsList()
+                cashLine
+                SegmentedChoice(items: [Part.live, Part.mine], title: { (t: Part) -> String in t == .live ? "Live auctions" : "My auctions" }, selection: $tab)
+                if session.auctions == nil {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else if tab == .live {
+                    LiveAuctionsList(rarity: $rarity)
+                } else {
+                    MyAuctionsList()
+                }
+                Text("Auctions are in cash, from and to your personal account. A sale carries a \(AuctionRules.feePercent)% fee taken from the seller, and that money leaves the economy. A bid in the last two minutes extends the auction by up to two minutes.")
+                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
             }
-            Text("Auctions are in cash, from and to your personal account. A sale carries a \(AuctionRules.feePercent)% fee taken from the seller, and that money leaves the economy. A bid in the last two minutes extends the auction by up to two minutes.")
-                .textStyle(.caption).fixedSize(horizontal: false, vertical: true).padding(.horizontal, Theme.Space.m)
         }
-        .appScreen(title: "Auctions", subtitle: "Artifacts, bought and sold for cash")
+        .appScreen(title: "Auctions", subtitle: "Artifacts and cards, bought and sold for cash")
+        .centerSheet(item: $listing, title: "Put it up for auction") { (item: ArtifactItem) in
+            ListingCard(item: item) { (listed: Bool) in
+                if listed { tab = .mine }
+                listing = nil
+            }
+        }
         .task {
             await session.load()
+            if let id = store.takeAuctionListing(), let item = session.state.cabinet.items.first(where: { (i: ArtifactItem) -> Bool in i.id == id }) { listing = item }
             while !Task.isCancelled {
                 await session.refreshAuctions()
                 try? await Task.sleep(nanoseconds: 4_000_000_000)
@@ -197,7 +211,7 @@ struct AuctionDetailView: View {
             OnlineGroup(title: "Piece", footer: def?.note ?? "") {
                 ArtifactRow(item: a.item)
                 Hairline()
-                OnlineLine(glyph: Glyph.luxury, title: ArtifactCatalog.collection(def?.collection ?? "")?.name ?? "Collection", note: "Seller: \(name(a.seller))")
+                OnlineLine(glyph: Glyph.luxury, title: ArtifactCatalog.collection(def?.collection ?? "")?.name ?? CardCatalog.def(a.item.defID)?.kind.title ?? "Collection", note: "Seller: \(name(a.seller))")
             }
             OnlineGroup(title: "Price", footer: "") {
                 OnlineLine(glyph: Glyph.market, title: a.bids.isEmpty ? "Start price" : "Current bid", value: session.money(a.currentPrice))

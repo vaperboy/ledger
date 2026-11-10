@@ -11,9 +11,9 @@ struct MockAdminBook {
     }
 
     static let defaults: [WorldRule] = [
-        rule("print.single_limit", .printing, "Largest single printing", .share, 0.05, 0.01, 0.10),
-        rule("print.window_limit", .printing, "Printing allowed in one window", .share, 0.15, 0.03, 0.30),
-        rule("print.window_weeks", .printing, "Weeks in the printing window", .weeks, 12, 4, 26),
+        rule("print.single_limit", .printing, "Largest single addition of new money", .share, 0.05, 0.01, 0.10),
+        rule("print.window_limit", .printing, "New money allowed in one window", .share, 0.15, 0.03, 0.30),
+        rule("print.window_weeks", .printing, "Weeks in the new-money window", .weeks, 12, 4, 26),
         rule("tax.transfer_max", .taxes, "Highest transfer tax", .share, 0.05, 0.01, 0.10),
         rule("tax.gains_min", .taxes, "Lowest gains tax", .share, 0.05, 0, 0.15),
         rule("tax.gains_max", .taxes, "Highest gains tax", .share, 0.40, 0.20, 0.60),
