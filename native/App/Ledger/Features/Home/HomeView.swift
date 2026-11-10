@@ -13,7 +13,6 @@ struct HomeSummary<Companies: View>: View {
     var fills: Bool = false
     var chart: Bool = true
     var trim: Int = 0
-    var onNewCompany: () -> Void
     @ViewBuilder var companies: () -> Companies
     @State private var showInsights = false
 
@@ -21,7 +20,7 @@ struct HomeSummary<Companies: View>: View {
         let e = engine
         VStack(alignment: .leading, spacing: compact ? Theme.Space.m : Theme.Space.l) {
             VStack(alignment: .leading, spacing: compact ? Theme.Space.s : Theme.Space.m) {
-                HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag) \(e.date)", engine: e, onNewCompany: onNewCompany)
+                HomeTopLine(name: playerName, dateText: "\(e.homeCountry.flag) \(e.date)", engine: e)
                 if e.cashIsTight { cashTightLine }
                 if ent.plusEndedNotice {
                     Text("Plus has ended. Your saves are safe.").textStyle(.caption)
@@ -79,7 +78,6 @@ struct HomeTopLine: View {
     var name: String
     var dateText: String
     var engine: GameEngine
-    var onNewCompany: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.s) {
@@ -91,15 +89,14 @@ struct HomeTopLine: View {
             Spacer(minLength: Theme.Space.xxs)
             HomeGoldChip()
             HomeRoundButton(glyph: Glyph.inbox, label: "Inbox", badge: store.appBadge(.inbox), identifier: "home-inbox") { store.openApp(.inbox) }
-            if secondCompanyOpen {
-                HomeRoundButton(glyph: Glyph.hire, label: "New company", identifier: "home-new-company", action: onNewCompany)
-            }
         }
     }
+}
 
-    private var secondCompanyOpen: Bool {
-        let none: Bool = !engine.state.companies.contains { (c: Company) -> Bool in c.status.isLive }
-        return none || Gates.isOpen(.newCompany, engine.state, data: engine.data)
+extension GameEngine {
+    var canStartCompany: Bool {
+        let none: Bool = !state.companies.contains { (c: Company) -> Bool in c.status.isLive }
+        return none || Gates.isOpen(.newCompany, state, data: data)
     }
 }
 

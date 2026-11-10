@@ -94,7 +94,7 @@ struct CompaniesView: View {
     }
 
     private func page(_ e: GameEngine, rows: [(co: Company, h: CompanyHealth)], limit: Int?, compact: Bool, fills: Bool = false, chart: Bool = true, trim: Int = 0) -> some View {
-        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim, onNewCompany: { store.push(.newCompany, on: .company) }) {
+        HomeSummary(engine: e, compact: compact, fills: fills, chart: chart, trim: trim) {
             companiesBlock(e, rows: rows, limit: limit, compact: compact)
         }
         .padding(.horizontal, Theme.Space.page).padding(.top, (compact ? Theme.Space.xs : Theme.Space.s) + missingTop).padding(.bottom, Theme.Space.m)
@@ -113,13 +113,20 @@ struct CompaniesView: View {
             let shown: [(co: Company, h: CompanyHealth)] = limit.map { Array(rows.prefix($0)) } ?? rows
             VStack(alignment: .leading, spacing: 0) {
                 HomeGroupLabel(title: "Companies") {
-                    if sizeClass == .regular {
-                        sortMenu
-                    } else if shown.count < rows.count {
-                        Button("All \(rows.count)") { Haptics.tap(); showAll = true }
-                            .buttonStyle(TertiaryButtonStyle(size: .compact))
-                            .accessibilityLabel("All \(rows.count) companies")
-                            .accessibilityIdentifier("show-all-companies")
+                    HStack(spacing: Theme.Space.s) {
+                        if e.canStartCompany {
+                            Button("Start a company") { Haptics.tap(); store.push(.newCompany, on: .company) }
+                                .buttonStyle(TertiaryButtonStyle(size: .compact))
+                                .accessibilityIdentifier("home-new-company")
+                        }
+                        if sizeClass == .regular {
+                            sortMenu
+                        } else if shown.count < rows.count {
+                            Button("All \(rows.count)") { Haptics.tap(); showAll = true }
+                                .buttonStyle(TertiaryButtonStyle(size: .compact))
+                                .accessibilityLabel("All \(rows.count) companies")
+                                .accessibilityIdentifier("show-all-companies")
+                        }
                     }
                 }
                 companyRows(e, rows: shown, compact: compact)

@@ -153,7 +153,7 @@ final class FeatureToursTests: FeatureTourCase {
             if !has("group-back") && find(wait: 3, { $0.id.hasPrefix("group-entity-") }) != nil { return h }
             return .fail("Back did not return to the picker: \(signature().text)")
         }
-        for name in ["Overview", "Management", "Boardroom", "Money", "Grow", "Owners and sales"] {
+        for name in ["Overview", "Management", "Boardroom", "Money"] {
             step("group entity page: \(name) tab opens, is selected and is clean") {
                 guard openEntityTab(entity, name) else { return .skip("no \(name) tab on the entity page") }
                 if !isSelected("group-tab-\(name)") { return .fail("tapped but not selected") }
@@ -187,19 +187,19 @@ final class FeatureToursTests: FeatureTourCase {
         let entity: String = groupEntity()
         for part in ["Owners", "Sell", "Raise", "Offers"] {
             step("ownership: \(part) page opens and is clean") {
-                guard openEntityTab(entity, "Owners and sales"), tapID("group-ownership-\(part)") else { return .skip("no Ownership > \(part) segment") }
+                guard openEntityTab(entity, "Money"), tapID("group-ownership-\(part)") else { return .skip("no Ownership > \(part) segment") }
                 return health("ownership \(part)", title: false)
             }
         }
         step("ownership: Sell lists the route picker") {
-            guard openEntityTab(entity, "Owners and sales"), tapID("group-ownership-Sell") else { return .skip("no Ownership > Sell segment") }
+            guard openEntityTab(entity, "Money"), tapID("group-ownership-Sell") else { return .skip("no Ownership > Sell segment") }
             let routes: [String] = ids(prefix: "sell-route-")
             if routes.isEmpty { return .fail("Sell shows no sell-route-* rows (a limited company with a route is expected): " + tabState()) }
             return .pass("\(routes.count) routes: " + routes.map { String($0.dropFirst(11)) }.joined(separator: ","))
         }
         for route in ["auction", "merger", "stake", "private"] {
             step("ownership: sell route \(route) opens and Cancel/close keeps Sell") {
-                guard openEntityTab(entity, "Owners and sales"), tapID("group-ownership-Sell") else { return .skip("no Sell segment") }
+                guard openEntityTab(entity, "Money"), tapID("group-ownership-Sell") else { return .skip("no Sell segment") }
                 let before: TourSig = signature()
                 guard tapID("sell-route-\(route)", wait: 2) else { return .skip("no sell-route-\(route)") }
                 if popupUp(2) {
