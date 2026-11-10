@@ -177,7 +177,7 @@ final class SupplyCatalogueTests: XCTestCase {
             var (e, id) = try open(trade)
             for g in e.supplyLines(companyID: id) {
                 for r in g.rows {
-                    guard let o = r.offers.first(where: { $0.quality == "Solid" && !$0.isCurrent && $0.blocked == nil && $0.name != "Market supplier" }), case .catalogue = o.change else { continue }
+                    guard let o = r.offers.first(where: { $0.quality == "Solid" && !$0.isCurrent && $0.blocked == nil && $0.name != "Standard supplier" }), case .catalogue = o.change else { continue }
                     XCTAssertEqual(e.chooseSupply(companyID: id, change: o.change), .ok, "\(trade) \(r.id)")
                 }
             }

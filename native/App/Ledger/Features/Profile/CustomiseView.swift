@@ -24,7 +24,7 @@ struct CustomiseView: View {
             switch self {
             case .icon: return "Shown beside your name everywhere."
             case .card: return "Fills the background of your profile. Rare cards move."
-            case .plate: return "Frames your name, or your company name, on your profile."
+            case .plate: return "Frames your name on your profile."
             case .backdrop: return "Fills the background of your profile, or tints it."
             case .flair: return "Sits beside your name on your profile."
             case .badge: return "Your rank badge and colour on the home screen."
@@ -34,7 +34,7 @@ struct CustomiseView: View {
 
         var kinds: [SeasonReward.Kind] {
             switch self {
-            case .plate: return [.namePlate, .tradePlate]
+            case .plate: return [.namePlate]
             case .backdrop: return [.backdrop, .theme]
             case .flair: return [.richListFlair]
             default: return []
