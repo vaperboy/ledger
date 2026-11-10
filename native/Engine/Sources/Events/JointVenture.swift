@@ -199,7 +199,7 @@ public enum JointVenture {
     }
 
     /// Check an invitation against the guard rails; nil when it is fine.
-    static func inviteProblem(_ s: GameState, _ co: Company, _ st: State, linkKey: String, pct: Double, price: Double, myLinkKeys: Set<String>, data: GameData) -> String? {
+    static func inviteProblem(_ s: GameState, _ co: Company, _ st: State, linkKey: String, pct: Double, price: Double, mock: Bool, myLinkKeys: Set<String>, data: GameData) -> String? {
         if !co.status.isLive || co.status == .setup { return "\(co.name) is not open yet." }
         if co.type == "hold" || s.isBranch(co) { return "Only an ordinary limited company can have partners." }
         if let why = JVRules.linkProblem(candidate: linkKey, mine: myLinkKeys, partners: Set(st.members.map { $0.linkKey })) { return why }
@@ -207,7 +207,7 @@ public enum JointVenture {
         let t = CapTable.table(co)
         let ownerAfter = Double(t.you) / Double(max(1, t.total + CapTable.sharesForPercent(pct, total: t.total))) * 100
         if let why = JVRules.stakeProblem(pct: pct, existingPartners: partners(st).count + st.invites.filter { $0.status == "sent" }.count, ownerAfterPct: ownerAfter) { return why }
-        return JVRules.priceProblem(price: price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: pct), rules: s.worldRules)
+        return JVRules.priceProblem(price: price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: pct), mock: mock, rules: s.worldRules)
     }
 
     @discardableResult
@@ -224,7 +224,7 @@ public enum JointVenture {
         guard let i = s.companyIndex(companyID) else { return .refused("That company is gone.") }
         let co = s.companies[i]
         var st = state(co) ?? State(members: [Member(id: Member.me, name: s.player.name, role: "chair", mock: false, joined: s.week, lockUntil: 0, linkKey: "me")])
-        if let why = inviteProblem(s, co, st, linkKey: linkKey, pct: pct, price: price, myLinkKeys: myLinkKeys, data: data) { return .refused(why) }
+        if let why = inviteProblem(s, co, st, linkKey: linkKey, pct: pct, price: price, mock: mock, myLinkKeys: myLinkKeys, data: data) { return .refused(why) }
         if partners(st).isEmpty {
             let inv = makeInvite(&s, i, &st, playerID: playerID, name: name, linkKey: linkKey, role: role, mock: mock, pct: pct, price: price)
             save(&s, i, st)
@@ -250,7 +250,7 @@ public enum JointVenture {
             return nil
         }
         // The company may have moved since the price was set: the price must still sit in the band.
-        if let why = JVRules.priceProblem(price: inv.price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: inv.pct), rules: s.worldRules) {
+        if let why = JVRules.priceProblem(price: inv.price, fair: JVRules.fairPrice(value: companyValue(s, co, data: data), pct: inv.pct), mock: inv.mock, rules: s.worldRules) {
             st.invites[k].status = "declined"; save(&s, i, st)
             s.addMessage(from: "\(co.name) partners", title: "\(inv.name) could not join", body: "The value of \(co.name) has moved since the price was set. \(why)", companyID: co.id)
             return why
@@ -566,7 +566,7 @@ public enum JointVenture {
             let started = SaleListings.start(&s, companyID: co.id, route: "broker", extra: ["jv": .number(1)])
             return started ? (true, "\(co.name) is listed with a broker. Offers come to its Sell page for you to answer for all owners; none under \(Int(JVRules.lowestSaleShare * 100))% of its value is accepted. When it sells, every owner is paid by their shares.") : (false, "\(co.name) cannot be listed now.")
         case .partner:
-            if let why = inviteProblem(s, co, st, linkKey: it.linkKey, pct: it.pct, price: it.price, myLinkKeys: [], data: data) { return (false, why) }
+            if let why = inviteProblem(s, co, st, linkKey: it.linkKey, pct: it.pct, price: it.price, mock: it.mock, myLinkKeys: [], data: data) { return (false, why) }
             makeInvite(&s, i, &st, playerID: it.playerID, name: it.name, linkKey: it.linkKey, role: it.role, mock: it.mock, pct: it.pct, price: it.price)
             return (true, "\(it.name) was invited. They join when they accept.")
         case .capital:

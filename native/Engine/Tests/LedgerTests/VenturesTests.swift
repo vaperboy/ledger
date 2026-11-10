@@ -22,6 +22,23 @@ final class VenturesTests: XCTestCase {
         return (e, id)
     }
 
+    func testInvestorsNeverValueTheCompanyAboveWhatItIsWorth() throws {
+        var (e, id) = try engine()
+        var seen = 0
+        for _ in 0..<12 {
+            let value = e.state.company(id).map { Valuation.companyValue($0, state: e.state, trades: e.data.catalog) } ?? 0
+            let amount = e.suggestedFundingAmount(companyID: id)
+            _ = e.pitchToInvestors(companyID: id, amount: amount)
+            for o in e.fundingOffers(companyID: id) {
+                seen += 1
+                XCTAssertLessThanOrEqual(o.preMoney, max(value, amount) + 1, "an investor pays for what is there, not more")
+            }
+            e.update { s, _, _ in s.rest["fundTried"] = .object([:]); s.rest["fundOffers"] = .object([:]) }
+            e.nextDay()
+        }
+        XCTAssertGreaterThan(seen, 0, "some investor made an offer")
+    }
+
     func testStartupsFundingPrivateEquityAndShares() throws {
         var (e, id) = try engine()
         guard case .ok(let sid) = e.foundStartup(name: "Testly", sector: "saas", product: "crm", model: "sub", who: "c2", seedMultiple: 1) else { return XCTFail("founding") }

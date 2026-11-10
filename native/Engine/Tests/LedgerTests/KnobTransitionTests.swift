@@ -60,11 +60,25 @@ final class KnobTransitionTests: XCTestCase {
         let to = try XCTUnwrap(k.options.indices.first { (e.knobChangeQuote(companyID: id, knob: k.id, option: $0)?.transitionWeeks ?? 0) >= 2 })
         let q = try XCTUnwrap(e.knobChangeQuote(companyID: id, knob: k.id, option: to))
         _ = e.changeKnob(companyID: id, knob: k.id, option: to)
-        var caps: [Double] = []
-        for _ in 0..<(q.transitionWeeks + 2) { nextWeek(&e); caps.append(e.state.company(id)?.value("lastW")["cap"].double ?? 0) }
-        let normal = caps[q.transitionWeeks]
-        for week in 0..<q.transitionWeeks { XCTAssertEqual(caps[week] / normal, KnobChange.capacityDuringChangeover, accuracy: 0.03, "week \(week + 1): \(caps)") }
-        XCTAssertEqual(caps[q.transitionWeeks + 1] / normal, 1, accuracy: 0.03, "\(caps)")
+        func weekCapacity(_ e: GameEngine) -> Double { e.state.company(id)?.value("lastW")["cap"].double ?? 0 }
+        func withoutSlowdown(_ e: GameEngine) -> GameEngine {
+            var twin = e
+            twin.update { s, _, _ in
+                guard let i = s.companyIndex(id) else { return }
+                let kept = s.companies[i].value("mods").array.filter { !($0["k"].string == "cap" && $0["m"].double == KnobChange.capacityDuringChangeover) }
+                s.companies[i].set("mods", .array(kept))
+            }
+            return twin
+        }
+        for week in 0..<(q.transitionWeeks + 2) {
+            var twin = withoutSlowdown(e)
+            nextWeek(&e)
+            nextWeek(&twin)
+            let slowed = weekCapacity(e), normal = weekCapacity(twin)
+            XCTAssertGreaterThan(normal, 0)
+            let expected = week < q.transitionWeeks ? KnobChange.capacityDuringChangeover : 1
+            XCTAssertEqual(slowed / normal, expected, accuracy: 0.001, "week \(week + 1): \(slowed) vs \(normal)")
+        }
     }
 
     func testTheLicenceWeeksShownIncludeTheSlowerPaperworkAbroad() throws {

@@ -152,8 +152,6 @@ public enum Banking {
             let fm = b.value("fm"), equity = b.cash + fm["book"].double + fm["gb"].double - fm["dep"].double
             return fm["gb"].double < max(0, equity) * 0.25
         }) {
-            margin -= 0.006
-            margin += 0.006
             ownBank = bank.id
         }
         margin += context.lending.marginAdjustment(kind, co, s)

@@ -128,6 +128,14 @@ final class JointVentureTests: XCTestCase {
         XCTAssertNil(e.jointVenture(companyID: id), "nothing was made by refused invitations")
     }
 
+    func testASamplePartnerNeverPaysMoreThanTheSharesAreWorth() throws {
+        var (e, id) = try makeCompany(seed: 75)
+        let fair = e.jvFairPrice(companyID: id, pct: 10)
+        guard case .refused = e.jvInvite(companyID: id, playerID: friendA.id, name: friendA.name, linkKey: friendA.key, pct: 10, price: fair * 1.3, myLinkKeys: []) else { return XCTFail("an imaginary partner cannot overpay") }
+        guard case .sent = e.jvInvite(companyID: id, playerID: friendA.id, name: friendA.name, linkKey: friendA.key, pct: 10, price: fair, myLinkKeys: []) else { return XCTFail("a sample partner pays the fair price") }
+        guard case .sent = e.jvInvite(companyID: id, playerID: friendB.id, name: friendB.name, linkKey: friendB.key, mock: false, pct: 10, price: fair * 1.3, myLinkKeys: []) else { return XCTFail("a real partner may pay up to the band") }
+    }
+
     func testAcceptedInviteIssuesSharesWithLockUpAndKeepsBooksBalanced() throws {
         var (e, id) = try makeCompany(seed: 72)
         let before = e.state.company(id)!.cash
@@ -150,13 +158,13 @@ final class JointVentureTests: XCTestCase {
         var (e, id) = try makeCompany(seed: 73)
         let p1 = e.jvFairPrice(companyID: id, pct: 10)
         guard case .sent(let i1) = e.jvInvite(companyID: id, playerID: friendA.id, name: friendA.name, linkKey: friendA.key, pct: 10, price: p1 * 0.9, myLinkKeys: []),
-              case .sent(let i2) = e.jvInvite(companyID: id, playerID: friendB.id, name: friendB.name, linkKey: friendB.key, pct: 10, price: p1 * 1.3, myLinkKeys: []) else { return XCTFail() }
+              case .sent(let i2) = e.jvInvite(companyID: id, playerID: friendB.id, name: friendB.name, linkKey: friendB.key, pct: 10, price: p1, myLinkKeys: []) else { return XCTFail() }
         let inv = try XCTUnwrap(e.jointVenture(companyID: id)?.invites)
         XCTAssertNotEqual(inv.first { $0.id == i1 }?.price, inv.first { $0.id == i2 }?.price, "the owner sets a price for each friend")
         let t = try XCTUnwrap(e.jvTerms(companyID: id, pct: 10, price: p1 * 0.9))
         XCTAssertEqual(t.lines.count, 5, "share, cost, lock-up, voting power, dividend rule")
         XCTAssertTrue(t.lines[1].contains("pay"))
-        XCTAssertFalse(t.lines.joined().contains(String(Int(p1 * 1.3))), "the other friend's price is not in these words")
+        XCTAssertFalse(t.lines.joined().contains(String(Int(p1))), "the other friend's price is not in these words")
     }
 
     func testUrgentMeetingNotifiesAndPassesByShareWithAbstentionAtDeadline() throws {

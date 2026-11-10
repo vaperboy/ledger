@@ -37,6 +37,11 @@ final class UsedCarDealerTests: XCTestCase {
         }
     }
 
+    func testSetUpHiresTheSalesTeamOfADealer() throws {
+        let (e, id) = try game()
+        XCTAssertTrue(e.state.company(id)!.staff.contains { $0.role == "cardealer" }, "the yard has a salesperson")
+    }
+
     func testNothingAppearsByItself() throws {
         var (e, id) = try game()
         XCTAssertEqual(stock(e, id).count, 0)
