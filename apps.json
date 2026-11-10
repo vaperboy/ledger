@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "1.0.115",
+          "buildVersion": "115",
+          "date": "2026-11-10T07:32:43Z",
+          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v115/Ledger-unsigned.ipa",
+          "size": 34995406,
+          "minOSVersion": "17.0",
+          "localizedDescription": "# What's new\n- Goal rewards are claimed on purpose: finished goals wait with a Claim button (ladder, career and daily) and pay a small cash reward; Home shows your level bar, the current mission and the Season Pass claim or a watch-an-ad bonus, and you can put the cards away for a week\n- One global electricity price that follows how much power companies use and how much plants supply, a World prices card in the Market app, and bank, insurance, fund, casino and football club can no longer be started\n- A preview Store with gold (cosmetics, boxes, slots; never in-game money), boxes with published odds and a guarantee, a Cabinet of artifacts, and live auctions paid in gold\n- Joint ventures: co-own a company with friends at a price you set for each, with planned and urgent board meetings, voting by share, and decisions the game applies\n- Startups funded by other players (Ventures, Startup market): browse by trade, stage and viral, open a startup for a high entry cost, invest in three escrow-released stages at a price set by a fixed rule, with caps, a resale lock-up, a price band and taxes; every action first says what will happen; the other players are a local stand-in for now\n- Rivals "
+        },
+        {
           "version": "1.0.114",
           "buildVersion": "114",
           "date": "2026-11-10T05:29:05Z",
@@ -187,22 +196,13 @@
           "size": 30185281,
           "minOSVersion": "17.0",
           "localizedDescription": "# What's new\n- The game runs day by day: no work is saved up for the end of the week, each company and process runs on its own day, and month-end money (tax, VAT, loan instalments) lands on the real last day of the month\n- Things that cannot be measured are described in words instead of numbers (worker performance, name recognition, equipment condition, risk, standing); money, wages, ownership and tax stay as numbers\n- Next day is a floating button above the tab bar, Skip week is free and always there, the daily report popup is back, and Home never scrolls with one company\n- Unlocks belong to the player: once one company earns a feature it is open for every company, new ones start with it, and the unlock popup shows once\n- The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval\n- Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows\n- Taxes are paid as they arise: dividend ta"
-        },
-        {
-          "version": "1.0.95",
-          "buildVersion": "95",
-          "date": "2026-11-08T12:43:57Z",
-          "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v95/Ledger-unsigned.ipa",
-          "size": 30153885,
-          "minOSVersion": "17.0",
-          "localizedDescription": "# What's new\n- The manager screen has five orders (Direction, Budget, Headcount, Pay and bonus, Replace) with a staffing plan, a weekly digest and read-only targets with one yearly budget approval\n- Boards are simpler: one decision list (sell, close, dividend, CEO, capital, open or close a location) with a recommendation per item, one quarterly review with the CEO (Direction and Budget), and chain standards that every location follows\n- Taxes are paid as they arise: dividend tax when a dividend is paid, gains tax at the sale, interest and wealth tax monthly, company tax monthly, and the year end only settles the small difference\n- No banners or toasts at the top: a decision is answered in a popup and a result popup follows with what you chose and what happened; plain information lives in Stats, Inbox and the ledger pages\n- Managers act realistically: they move prices within a band set by your Direction, order stock and run marketing within their budget, and each department head owns one decision; you give five orders (Direction, Budget, Headcount, Pay and bonus, Replace)\n- Hiring starts simple (offer the going rate, below or above) and the perks, promises and expenses unlock with f"
         }
       ],
       "iconURL": "https://raw.githubusercontent.com/vaperboy/ledger/native-swiftui/native/App/Ledger/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
-      "version": "1.0.114",
-      "versionDate": "2026-11-10T05:29:05Z",
-      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v114/Ledger-unsigned.ipa",
-      "size": 34995791
+      "version": "1.0.115",
+      "versionDate": "2026-11-10T07:32:43Z",
+      "downloadURL": "https://github.com/vaperboy/ledger/releases/download/v115/Ledger-unsigned.ipa",
+      "size": 34995406
     }
   ]
 }
