@@ -3,6 +3,7 @@ import GameCore
 import Countries
 import Finance
 import Businesses
+import Events
 
 public extension GameEngine {
     private static let ownerOnlyKinds: Set<String> = ["exit", "rofr", "div", "divq", "growth"]
@@ -33,9 +34,13 @@ public extension GameEngine {
             if rank.rawValue <= Delegation.Rank.manager.rawValue, co.managerID != nil, !Delegation.managerMayTake(m, co, state, data: data) { continue }
             let scale = max(currency(for: co).scaledPrice(1000), co.lastWeekRevenue * 3)
             var best = 0, bestScore = -Double.infinity
-            for (i, o) in m.options.enumerated() where o["fx"]["tier"].isNull {
-                let sc = Self.score(o["fx"], scale: scale)
-                if sc > bestScore { bestScore = sc; best = i }
+            if m.actionID == StrategicDecisions.action {
+                best = StrategicDecisions.defaultOption(of: m)
+            } else {
+                for (i, o) in m.options.enumerated() where o["fx"]["tier"].isNull {
+                    let sc = Self.score(o["fx"], scale: scale)
+                    if sc > bestScore { bestScore = sc; best = i }
+                }
             }
             let who: String = co.managerID.flatMap { state.people[$0]?.name }.map { "\($0), \(rank.title.lowercased())" } ?? rank.title.lowercased()
             if answer(messageID: m.id, option: best) {
