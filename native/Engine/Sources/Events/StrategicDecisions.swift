@@ -43,6 +43,7 @@ public enum StrategicDecisions {
         var body: Txt = { _, _, _ in "" }
         var opts: [Opt] = []
         var auto: Run? = nil
+        var dyn: ((GameState, Int, JSONValue, GameData, FinanceContext) -> [(String, String)])? = nil
     }
 
     static func r1000(_ v: Double) -> Double { (v / 1000).rounded() * 1000 }
@@ -560,6 +561,7 @@ public enum StrategicDecisions {
                           if s.random.chance(0.6) { Payments.companyReceives(&s, companyID: s.companies[x.i].id, amount: jsRound(x.wk(s) * 0.2), category: "rev", label: "Compensation from supplier") } }])
         L += corporateDecisions()
         L += misconductDecisions()
+        L += dataDecisions()
         return L
     }
 
@@ -595,6 +597,7 @@ public enum StrategicDecisions {
             else { s.note("The EU application for \(name) was turned down.", tone: "n", companyID: companyID) }
         case "c_dep_risk":
             if s.random.chance(0.3) { dem(&s, x, 0.7, 26); s.note("The big foreign customer of \(name) moved production elsewhere.", tone: "bad", companyID: companyID) }
+        case "dfx": DataDecisions.finish(&s, x)
         case "rate_back":
             for v in d["ids"].array { if let l = s.loans.firstIndex(where: { $0.id == v.int }) { s.loans[l].margin = max(0.005, s.loans[l].margin - d["add"].double) } }
         default: followUpCorporate(&s, id: id, index: k, d: d, data: data, context: fc)
@@ -659,6 +662,7 @@ public enum StrategicDecisions {
     static func fireOne(_ s: inout GameState, from list: [Def], companyIndex i: Int?, data: GameData, context fc: FinanceContext) -> Bool {
         guard let i = i else { return false }
         let co = s.companies[i]
+        if companyBusy(s, co) { return false }
         let stg = stage(s, co, data, fc)
         let st = s.rest["e27"] ?? .object([:])
         let ok = list.filter { d in
@@ -679,6 +683,7 @@ public enum StrategicDecisions {
         let x = X(i: i, d: d, data: data, fc: fc, cur: cur)
         var st = s.rest["e27"] ?? .object([:])
         var last = st["last"].object; last[def.id] = num(Double(s.week)); st["last"] = .object(last)
+        var lastCo = st["lastCo"].object; lastCo[String(s.companies[i].id)] = num(Double(s.week)); st["lastCo"] = .object(lastCo)
         s.rest["e27"] = st
         def.pre?(&s, x)
         if def.silent { return true }
@@ -692,7 +697,9 @@ public enum StrategicDecisions {
             s.note(title, tone: def.tone, companyID: cid)
             return true
         }
-        let options = def.opts.map { JSONValue.option($0.label, $0.detail) }
+        let options: [JSONValue]
+        if let dyn = def.dyn { options = dyn(s, i, d, data, fc).map { JSONValue.option($0.0, $0.1) } }
+        else { options = def.opts.map { JSONValue.option($0.label, $0.detail) } }
         s.addMessage(kind: "ask", from: from, title: title, body: body, companyID: cid, tone: def.tone, status: "open", options: options,
                      action: action, data: .object(["id": .string(def.id), "co": num(Double(co.id)), "d": d]), expiresWeek: s.week + def.exp)
         return true

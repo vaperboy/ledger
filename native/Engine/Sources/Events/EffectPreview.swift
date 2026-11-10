@@ -18,6 +18,9 @@ public enum EffectPreview {
         if fx["loss"].double != 0 { out.append("Risk of a loss up to \(money(abs(fx["loss"].double)))") }
         if fx["fine"].double != 0 { out.append("Fine of \(money(fx["fine"].double))") }
         func sign(_ v: Double, _ what: String) { if v != 0 { out.append("\(v > 0 ? "+" : "−")\(Int(saturating: abs(v).rounded())) \(what)") } }
+        if !fx["tied"].isNull { out.append("Ties up \(money(fx["tied"]["a"].double)) in stock or credit for \(fx["tied"]["w"].int) weeks") }
+        if fx["raise"].double > 0 { out.append("Pay up \(Int(saturating: (fx["raise"].double * 100).rounded()))% for good") }
+        if fx["close"].double > 0 { out.append("Closed for \(Int(saturating: fx["close"].double.rounded())) week(s)") }
         sign(fx["rep"].double, "reputation")
         sign(fx["aware"].double, "awareness")
         sign(fx["q"].double, "quality")

@@ -1,0 +1,6356 @@
+{
+"events": {
+"w_heat_cold_drinks": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.042,
+"t": "Heat brings the crowds to {n}",
+"b": "A hot week sends people outside and into places where they can sit and cool down.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+2
+]
+},
+"wx": [
+"heat"
+],
+"tr": [
+"foodtruck",
+"cafe",
+"restaurant",
+"kiosk",
+"fun",
+"hotel",
+"pets"
+]
+},
+"w_heat_cooling_bill": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.042,
+"t": "Cooling bills climb at {n}",
+"b": "Fridges and air conditioning run flat out in the heat. The power bill for the week is higher than usual.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+}
+},
+"wx": [
+"heat"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"w_heat_slow_site": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.042,
+"t": "Crews slow down in the heat at {n}",
+"b": "Work on hot days has to stop early to keep people safe. Output dips for a week.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"cap": [
+0.88,
+1
+]
+},
+"wx": [
+"heat"
+],
+"fam": [
+"project",
+"prod",
+"logi"
+],
+"staff": true
+},
+"w_heat_empty_shops": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.035,
+"t": "Hot weather keeps shoppers away from {n}",
+"b": "People stay home or head for the beach. Footfall in the shops drops for a few days.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"dem": [
+0.93,
+1
+]
+},
+"wx": [
+"heat"
+],
+"fam": [
+"retail"
+],
+"notTr": [
+"webshop",
+"cardealer",
+"usedcar"
+]
+},
+"w_cold_heating": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.035,
+"t": "A cold snap raises heating costs at {n}",
+"b": "Temperatures fall well below normal and the heating runs day and night.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.09"
+}
+},
+"wx": [
+"cold"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"w_cold_pipes": {
+"area": "weather",
+"tone": "bad",
+"sev": 2,
+"w": 0.0175,
+"t": "Frozen pipes at {n}",
+"b": "A pipe has frozen and split in the cold. Water is leaking into the back of the premises.",
+"cat": "prop",
+"cool": 26,
+"exp": 1,
+"opts": [
+{
+"l": "Call a plumber now",
+"d": "An emergency callout. It is fixed within hours and the damage stays small.",
+"fx": {
+"loss": {
+"expr": "wk*0.25"
+}
+}
+},
+{
+"l": "Patch it and wait for the thaw",
+"d": "Cheaper today, but the leak may spread.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {
+"cash": {
+"expr": "-wk*0.08"
+}
+},
+"bad": {
+"loss": {
+"expr": "wk*0.6"
+}
+}
+}
+}
+}
+],
+"wx": [
+"cold"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"w_snow_slow": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.042,
+"t": "Snow slows deliveries at {n}",
+"b": "Roads are icy and drivers cannot keep to their schedules.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"cap": [
+0.85,
+1
+],
+"dem": [
+0.95,
+1
+]
+},
+"wx": [
+"snow"
+],
+"fam": [
+"logi",
+"project"
+]
+},
+"w_snow_quiet": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.042,
+"t": "Snow keeps customers away from {n}",
+"b": "Few people go out when the pavements are covered. Takings drop for a few days.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"dem": [
+0.88,
+1
+]
+},
+"wx": [
+"snow"
+],
+"fam": [
+"venue",
+"retail"
+],
+"notTr": [
+"webshop",
+"skires",
+"indoorski",
+"pcbang"
+]
+},
+"w_snow_hardware": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.07,
+"t": "Snow shovels and salt fly off the shelves at {n}",
+"b": "The first proper snow sends everyone looking for shovels, salt and winter tyres.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"dem": [
+1.15,
+2
+]
+},
+"wx": [
+"snow"
+],
+"tr": [
+"hardware",
+"carrepair",
+"grocery",
+"kiosk",
+"handy"
+]
+},
+"w_snow_ski": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.07,
+"t": "Fresh snow fills the slopes",
+"b": "A good fall of snow brings skiers in from the whole region.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"dem": [
+1.18,
+3
+]
+},
+"wx": [
+"snow"
+],
+"tr": [
+"skires",
+"hotel",
+"fun"
+]
+},
+"w_rain_online": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.035,
+"t": "Rainy week lifts online orders at {n}",
+"b": "Nobody wants to go out in this weather, so more people shop from the sofa.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"dem": [
+1.08,
+2
+]
+},
+"wx": [
+"rain"
+],
+"tr": [
+"webshop",
+"boutique",
+"grocery"
+]
+},
+"w_rain_indoor": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.035,
+"t": "Rain pushes people indoors to {n}",
+"b": "Families look for something to do under a roof and walk in out of the wet.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+2
+]
+},
+"wx": [
+"rain"
+],
+"tr": [
+"fun",
+"indoorski",
+"pcbang",
+"gym",
+"cafe",
+"hotel"
+]
+},
+"w_rain_leak": {
+"area": "weather",
+"tone": "bad",
+"sev": 2,
+"w": 0.014,
+"t": "The roof leaks at {n}",
+"b": "After days of rain water is coming through the ceiling. Part of the premises cannot be used.",
+"cat": "prop",
+"cool": 26,
+"exp": 1,
+"opts": [
+{
+"l": "Repair the roof properly",
+"d": "Costs more now, and it is done for good.",
+"fx": {
+"loss": {
+"expr": "wk*0.3"
+}
+}
+},
+{
+"l": "Place buckets and patch it",
+"d": "Cheap, but it may fail in the next storm.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cash": {
+"expr": "-wk*0.05"
+}
+},
+"bad": {
+"loss": {
+"expr": "wk*0.5"
+},
+"cap": [
+0.85,
+2
+]
+}
+}
+}
+}
+],
+"wx": [
+"rain"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"w_rain_site": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.042,
+"t": "Rain halts outdoor work at {n}",
+"b": "Wet ground and standing water stop work on site for several days.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"cap": [
+0.82,
+2
+]
+},
+"wx": [
+"rain"
+],
+"fam": [
+"project"
+],
+"staff": true
+},
+"w_storm_deliveries": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.0525,
+"t": "The storm delays deliveries for {n}",
+"b": "Ferries, roads and flights are disrupted. Goods arrive late and routes have to be changed.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"cap": [
+0.85,
+1
+]
+},
+"wx": [
+"storm"
+],
+"fam": [
+"logi",
+"retail",
+"prod"
+]
+},
+"w_storm_sign": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.035,
+"t": "Storm damage outside {n}",
+"b": "Wind has torn down a sign and broken some outdoor furniture.",
+"cat": "prop",
+"cool": 18,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.12"
+}
+},
+"wx": [
+"storm"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"w_storm_power": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.035,
+"t": "The storm cuts the power to {n}",
+"b": "The grid is down for part of a day. Chilled stock and orders are at risk.",
+"cat": "bi",
+"cool": 18,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.1"
+},
+"dem": [
+0.95,
+1
+]
+},
+"wx": [
+"storm"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"w_sun_terrace": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.042,
+"t": "Sunny weekend fills the tables at {n}",
+"b": "Fine weather brings people out for a long lunch and a drink in the sun.",
+"cat": "none",
+"cool": 8,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+2
+]
+},
+"wx": [
+"sun"
+],
+"tr": [
+"cafe",
+"restaurant",
+"foodtruck",
+"brewery",
+"hotel",
+"fun"
+]
+},
+"w_sun_outdoor_work": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.035,
+"t": "A dry spell speeds up the work at {n}",
+"b": "Weeks of dry weather let the crews work long days without interruption.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"cap": [
+1.08,
+2
+]
+},
+"wx": [
+"sun"
+],
+"fam": [
+"project",
+"prod"
+],
+"staff": true
+},
+"w_sun_gym_quiet": {
+"area": "weather",
+"tone": "n",
+"sev": 1,
+"w": 0.035,
+"t": "Good weather empties the gym at {n}",
+"b": "Members prefer to run and cycle outdoors while the sun is out.",
+"cat": "none",
+"cool": 10,
+"exp": 2,
+"fx": {
+"dem": [
+0.93,
+2
+]
+},
+"wx": [
+"sun"
+],
+"tr": [
+"gym",
+"pcbang",
+"indoorski"
+]
+},
+"w_heat_farm": {
+"area": "weather",
+"tone": "bad",
+"sev": 2,
+"w": 0.021,
+"t": "Heat stresses the crops at {n}",
+"b": "Weeks of high temperatures are drying out the fields.",
+"cat": "prop",
+"cool": 30,
+"exp": 2,
+"opts": [
+{
+"l": "Irrigate more",
+"d": "Extra water and labour keep the yield up.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+}
+}
+},
+{
+"l": "Accept a smaller harvest",
+"d": "No extra spend, but there will be less to sell.",
+"fx": {
+"cogsUp": [
+1.06,
+12
+],
+"loss": {
+"expr": "wk*0.1"
+}
+}
+}
+],
+"wx": [
+"heat"
+],
+"tr": [
+"farm",
+"vineyard"
+]
+},
+"w_frost_farm": {
+"area": "weather",
+"tone": "bad",
+"sev": 2,
+"w": 0.021,
+"t": "A late frost hits {n}",
+"b": "A hard frost after the buds have opened puts this year's harvest at risk.",
+"cat": "prop",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Light fires and run fans overnight",
+"d": "Costs labour and fuel, but saves most of the crop.",
+"fx": {
+"cash": {
+"expr": "-wk*0.35"
+},
+"loss": {
+"expr": "wk*0.1"
+}
+}
+},
+{
+"l": "Take the loss",
+"d": "No effort, but a share of the crop is gone.",
+"fx": {
+"loss": {
+"expr": "wk*0.7"
+},
+"cogsUp": [
+1.08,
+12
+]
+}
+}
+],
+"wx": [
+"cold"
+],
+"tr": [
+"farm",
+"vineyard"
+]
+},
+"w_xmas_rush": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.0875,
+"t": "The Christmas rush reaches {n}",
+"b": "Gifts, parties and family dinners bring a few of the busiest weeks of the year.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+3
+]
+},
+"mo": [
+"11",
+"12"
+],
+"fam": [
+"retail",
+"venue",
+"prod"
+],
+"notTr": [
+"cardealer",
+"usedcar",
+"casino"
+]
+},
+"w_january_slump": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.0875,
+"t": "A quiet January at {n}",
+"b": "After the holidays people save money and stay home. The first weeks of the year are slow.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+0.92,
+3
+]
+},
+"mo": [
+"1"
+],
+"fam": [
+"venue",
+"retail"
+],
+"notTr": [
+"gym",
+"webshop"
+]
+},
+"w_gym_resolutions": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.105,
+"t": "New Year resolutions fill {n}",
+"b": "January brings a wave of people who have promised themselves to get fit.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.18,
+4
+]
+},
+"mo": [
+"1"
+],
+"tr": [
+"gym",
+"physio",
+"pcbang"
+]
+},
+"w_summer_quiet_office": {
+"area": "weather",
+"tone": "n",
+"sev": 1,
+"w": 0.07,
+"t": "Summer holidays slow business clients of {n}",
+"b": "Decision makers are away and projects wait for September.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+0.92,
+3
+]
+},
+"mo": [
+"7",
+"8"
+],
+"fam": [
+"svc"
+],
+"b2b": true
+},
+"w_school_return": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.0875,
+"t": "Back to school brings customers to {n}",
+"b": "Parents are buying and booking before the new term starts.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+3
+]
+},
+"mo": [
+"8",
+"9"
+],
+"tr": [
+"tutor",
+"drivsk",
+"boutique",
+"grocery",
+"hardware",
+"barber",
+"kiosk"
+]
+},
+"w_valentines": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.105,
+"t": "Valentine's week at {n}",
+"b": "Couples are booking tables, rooms and gifts.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.15,
+1
+]
+},
+"mo": [
+"2"
+],
+"tr": [
+"restaurant",
+"hotel",
+"boutique",
+"cafe",
+"webshop",
+"barber"
+]
+},
+"w_wedding_season": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.0525,
+"t": "Wedding season is under way for {n}",
+"b": "Couples are booking venues, photographers and planners for the summer.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+4
+]
+},
+"mo": [
+"5",
+"6",
+"7"
+],
+"tr": [
+"photo",
+"event",
+"hotel",
+"restaurant",
+"boutique",
+"barber"
+]
+},
+"w_tax_deadline": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.0875,
+"t": "The filing deadline brings a rush to {n}",
+"b": "Individuals and companies are looking for help before the tax deadline.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.15,
+3
+],
+"cap": [
+0.95,
+3
+]
+},
+"mo": [
+"3",
+"4"
+],
+"tr": [
+"acctfirm",
+"law",
+"finbroker",
+"insbroker"
+]
+},
+"w_black_friday": {
+"area": "weather",
+"tone": "n",
+"sev": 2,
+"w": 0.14,
+"t": "Black Friday is coming for {n}",
+"b": "Competitors are cutting prices for the weekend. You can join in, or hold your prices.",
+"cat": "none",
+"cool": 40,
+"exp": 1,
+"opts": [
+{
+"l": "Hold your prices",
+"d": "Some bargain hunters go elsewhere, but your margin is safe.",
+"fx": {
+"dem": [
+0.97,
+1
+]
+}
+},
+{
+"l": "Join the promotion",
+"d": "Cost of discounts up front. Busy, but the extra sales may not cover the lost margin.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"dem": [
+1.25,
+1
+]
+},
+"bad": {
+"dem": [
+1.04,
+1
+]
+}
+}
+}
+}
+],
+"mo": [
+"11"
+],
+"fam": [
+"retail"
+],
+"notTr": [
+"cardealer",
+"usedcar"
+]
+},
+"w_easter_travel": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.07,
+"t": "Holiday travel lifts {n}",
+"b": "A long weekend and school holidays send more people on the road.",
+"cat": "none",
+"cool": 20,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+2
+]
+},
+"mo": [
+"4",
+"12"
+],
+"tr": [
+"taxi",
+"carrental",
+"hotel",
+"travel",
+"airline",
+"fun",
+"restaurant"
+]
+},
+"w_festival_season": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.028,
+"t": "A summer festival nearby sends visitors to {n}",
+"b": "Thousands of people are in town for the weekend and every business on the street feels it.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+1.2,
+1
+]
+},
+"mo": [
+"6",
+"7",
+"8"
+],
+"tr": [
+"cafe",
+"restaurant",
+"foodtruck",
+"hotel",
+"nightclub",
+"taxi",
+"kiosk",
+"brewery"
+]
+},
+"s_price_spike": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.00105,
+"t": "Raw material prices jump for {n}",
+"b": "A shortage upstream pushes the price of your main inputs up. Suppliers quote higher prices for the next weeks.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"opts": [
+{
+"l": "Absorb it",
+"d": "Margin gets thinner for a couple of months.",
+"fx": {
+"cogsUp": [
+1.07,
+8
+]
+}
+},
+{
+"l": "Pass part on to customers",
+"d": "Margin is partly protected. Some customers will balk at the higher prices.",
+"fx": {
+"cogsUp": [
+1.07,
+8
+],
+"dem": [
+0.96,
+8
+]
+}
+},
+{
+"l": "Buy ahead from a second source",
+"d": "Costs cash up front and keeps prices down for a while.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"cogsUp": [
+1.03,
+8
+]
+}
+}
+],
+"goods": true
+},
+"s_supplier_strike": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.0007,
+"t": "A strike hits the supplier of {n}",
+"b": "Workers at your main supplier have walked out. Deliveries are delayed until a deal is reached.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Wait it out",
+"d": "Shelves run thin for a while.",
+"fx": {
+"cap": [
+0.85,
+2
+],
+"dem": [
+0.95,
+2
+]
+}
+},
+{
+"l": "Buy from a wholesaler at a premium",
+"d": "More expensive, but you keep trading.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"cap": [
+0.95,
+2
+]
+}
+}
+],
+"goods": true
+},
+"s_port_delay": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Port delays hold up goods for {n}",
+"b": "Containers are stuck at the port and some of your stock is late.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"fx": {
+"cap": [
+0.92,
+2
+],
+"cogsUp": [
+1.03,
+4
+]
+},
+"goods": true,
+"fam": [
+"retail",
+"prod",
+"logi"
+]
+},
+"s_recall": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.00052,
+"t": "A batch bought for {n} is recalled",
+"b": "The maker recalls a product you stock because of a safety issue. You must pull it and refund buyers.",
+"cat": "liab",
+"cool": 60,
+"exp": 1,
+"opts": [
+{
+"l": "Pull it and refund everyone",
+"d": "Costs money, but customers see you acting fast.",
+"fx": {
+"loss": {
+"expr": "wk*0.3"
+},
+"rep": 1
+}
+},
+{
+"l": "Pull it quietly",
+"d": "Cheaper, but if it comes out your reputation suffers.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {
+"loss": {
+"expr": "wk*0.15"
+}
+},
+"bad": {
+"loss": {
+"expr": "wk*0.35"
+},
+"rep": -4
+}
+}
+}
+}
+],
+"goods": true,
+"fam": [
+"retail",
+"venue",
+"prod"
+]
+},
+"s_bankrupt_supplier": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "A small supplier of {n} goes under",
+"b": "A minor supplier has closed overnight. You have to find a new one for a part of your range.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"cap": [
+0.93,
+2
+]
+},
+"goods": true
+},
+"s_energy_spike": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.00105,
+"t": "Energy prices jump for {n}",
+"b": "Gas and electricity prices have risen sharply, and the bill is based on the new rate.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Pay the new rate",
+"d": "Higher bills for a while.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"cogsUp": [
+1.03,
+6
+]
+}
+},
+{
+"l": "Cut hours and switch things off",
+"d": "Saves energy, and some sales.",
+"fx": {
+"cash": {
+"expr": "-wk*0.05"
+},
+"dem": [
+0.96,
+4
+]
+}
+}
+],
+"prem": true,
+"fam": [
+"venue",
+"prod",
+"retail",
+"logi"
+]
+},
+"s_fuel_up": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "Fuel prices rise for {n}",
+"b": "Diesel and petrol cost noticeably more at the pump.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.06,
+6
+]
+},
+"fam": [
+"logi"
+]
+},
+"s_fuel_down": {
+"area": "supply",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Fuel gets cheaper for {n}",
+"b": "Pump prices have eased and the fuel bill falls for a couple of months.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cogsUp": [
+0.95,
+8
+]
+},
+"fam": [
+"logi"
+]
+},
+"s_commodity_fall": {
+"area": "supply",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Input prices ease for {n}",
+"b": "A good harvest and falling freight rates bring your main costs down for a while.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cogsUp": [
+0.95,
+8
+]
+},
+"goods": true
+},
+"s_new_supplier_offer": {
+"area": "supply",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A new supplier offers {n} better terms",
+"b": "A rival of your supplier wants your business and offers a better price for a trial order.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Try the new supplier",
+"d": "Quality is unknown, but prices are better.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {
+"cogsUp": [
+0.95,
+12
+]
+},
+"bad": {
+"cogsUp": [
+1.02,
+4
+],
+"rep": -1
+}
+}
+}
+},
+{
+"l": "Use the offer to haggle with your own supplier",
+"d": "Your supplier may match it.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {
+"cogsUp": [
+0.97,
+12
+]
+},
+"bad": {}
+}
+}
+}
+],
+"goods": true
+},
+"s_bulk_buy": {
+"area": "supply",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Surplus stock is on sale for {n}",
+"b": "A wholesaler is clearing out surplus goods at a discount if you take a larger lot.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Buy a big lot",
+"d": "Ties up cash in stock, but cuts your cost for a few weeks.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"cogsUp": [
+0.92,
+6
+]
+}
+},
+{
+"l": "Pass",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"goods": true
+},
+"s_late_delivery": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.0021,
+"t": "A delivery to {n} arrives late",
+"b": "A supplier misses its slot. Some products are out of stock for a few days.",
+"cat": "none",
+"cool": 12,
+"exp": 2,
+"fx": {
+"dem": [
+0.95,
+1
+]
+},
+"goods": true
+},
+"s_wrong_goods": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "Wrong goods delivered to {n}",
+"b": "A supplier sent the wrong items. It takes days to get them swapped.",
+"cat": "none",
+"cool": 16,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+}
+},
+"goods": true
+},
+"s_damaged_shipment": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "A damaged shipment reaches {n}",
+"b": "A pallet arrived crushed. The carrier disputes who is responsible.",
+"cat": "prop",
+"cool": 20,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.1"
+}
+},
+"goods": true,
+"fam": [
+"retail",
+"prod",
+"venue"
+]
+},
+"s_packaging_cost": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Packaging gets more expensive for {n}",
+"b": "Boxes, bottles and wrapping cost more after a price rise at the maker.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.03,
+10
+]
+},
+"goods": true,
+"fam": [
+"retail",
+"prod",
+"venue"
+]
+},
+"s_machine_part": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.00105,
+"t": "A spare part for {n} is hard to find",
+"b": "A key part is on back order. The machine runs at reduced speed until it arrives.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"opts": [
+{
+"l": "Wait for the proper part",
+"d": "Output stays lower for a few weeks.",
+"fx": {
+"cap": [
+0.82,
+3
+]
+}
+},
+{
+"l": "Pay for an expedited part",
+"d": "Quick and expensive.",
+"fx": {
+"cash": {
+"expr": "-wk*0.15"
+},
+"cap": [
+0.95,
+1
+]
+}
+}
+],
+"fam": [
+"prod",
+"logi",
+"project",
+"venue"
+]
+},
+"s_tariff": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.0007,
+"t": "New import duties hit {n}",
+"b": "A government raises duties on goods you import. Your costs go up until you adjust.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Absorb the cost",
+"d": "Margins are squeezed for a quarter.",
+"fx": {
+"cogsUp": [
+1.06,
+12
+]
+}
+},
+{
+"l": "Raise prices a little",
+"d": "Protects margin; some customers trade down.",
+"fx": {
+"cogsUp": [
+1.06,
+12
+],
+"dem": [
+0.96,
+12
+]
+}
+}
+],
+"goods": true,
+"fam": [
+"retail",
+"prod",
+"venue"
+]
+},
+"s_local_sourcing": {
+"area": "supply",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A local producer offers to supply {n}",
+"b": "A nearby farm or workshop offers fresh goods with shorter delivery times. Customers like the story.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Switch part of the range",
+"d": "A little more expensive, and a stronger local reputation.",
+"fx": {
+"cogsUp": [
+1.02,
+20
+],
+"rep": 2,
+"aware": 4
+}
+},
+{
+"l": "Stay with the current supplier",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"goods": true,
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"s_freight_rates": {
+"area": "supply",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Freight rates go up for {n}",
+"b": "Shipping lines raise their rates after a squeeze on capacity.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.04,
+8
+]
+},
+"goods": true,
+"fam": [
+"retail",
+"prod"
+]
+},
+"s_cold_chain": {
+"area": "supply",
+"tone": "bad",
+"sev": 2,
+"w": 0.0007,
+"t": "A fridge fails at {n}",
+"b": "A cold room breaks down overnight and chilled stock warms up.",
+"cat": "prop",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Bin the affected stock and repair now",
+"d": "A clean loss, and the fridge is back by evening.",
+"fx": {
+"loss": {
+"expr": "wk*0.25"
+}
+}
+},
+{
+"l": "Sell what you can, quickly",
+"d": "Saves some stock, but it risks a complaint.",
+"fx": {
+"gamble": {
+"p": 0.65,
+"ok": {
+"loss": {
+"expr": "wk*0.1"
+}
+},
+"bad": {
+"loss": {
+"expr": "wk*0.3"
+},
+"rep": -3
+}
+}
+}
+}
+],
+"goods": true,
+"tr": [
+"cafe",
+"restaurant",
+"grocery",
+"bakery",
+"foodtruck",
+"hotel",
+"brewery",
+"salmon",
+"kiosk"
+]
+},
+"d_viral_post": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A post about {n} goes viral",
+"b": "A customer's video about {n} is shared by thousands of people. Orders and enquiries come in all week.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"aware": 8,
+"dem": [
+1.15,
+3
+]
+},
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod"
+]
+},
+"d_new_competitor": {
+"area": "demand",
+"tone": "bad",
+"sev": 2,
+"w": 0.00105,
+"t": "A new competitor opens near {n}",
+"b": "A well-funded newcomer opens nearby with an opening offer. Some customers will try it.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Match the offer",
+"d": "Costs margin for a while, and holds more customers.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"dem": [
+0.97,
+6
+]
+}
+},
+{
+"l": "Ignore them and focus on service",
+"d": "Some customers leave, but the loyal ones stay.",
+"fx": {
+"dem": [
+0.92,
+6
+]
+}
+},
+{
+"l": "Run a loyalty promotion",
+"d": "Keeps your best customers close.",
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+},
+"dem": [
+0.95,
+6
+],
+"aware": 3
+}
+}
+]
+},
+"d_competitor_closes": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A competitor near {n} closes",
+"b": "A rival nearby has shut its doors. Some of its customers will look for a new place.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"dem": [
+1.08,
+8
+],
+"aware": 3
+}
+},
+"d_bad_review_wave": {
+"area": "demand",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A wave of bad reviews for {n}",
+"b": "Several unhappy customers post one-star reviews in the same week.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"opts": [
+{
+"l": "Reply politely to each one",
+"d": "Takes time, and shows you care.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {
+"rep": 1
+},
+"bad": {
+"rep": -2,
+"dem": [
+0.96,
+4
+]
+}
+}
+}
+},
+{
+"l": "Ignore it",
+"d": "Most people forget. Some do not.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"rep": -3,
+"dem": [
+0.94,
+6
+]
+}
+}
+}
+}
+]
+},
+"d_five_star": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A glowing review of {n} is widely read",
+"b": "A well-known reviewer or blogger gave {n} five stars. People are mentioning it.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"rep": 2,
+"aware": 5,
+"dem": [
+1.08,
+3
+]
+},
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod"
+]
+},
+"d_local_festival": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.0014,
+"t": "A local festival comes to town near {n}",
+"b": "The town is hosting a three-day festival. Crowds are expected.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Open longer and add staff",
+"d": "A cost now, and a good chance of a strong weekend.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"dem": [
+1.2,
+1
+]
+}
+},
+{
+"l": "Carry on as usual",
+"d": "You get some of the extra trade anyway.",
+"fx": {
+"dem": [
+1.06,
+1
+]
+}
+}
+],
+"mo": [
+"5",
+"6",
+"7",
+"8",
+"9"
+],
+"fam": [
+"venue",
+"retail",
+"svc"
+]
+},
+"d_trade_fair": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A trade fair invites {n}",
+"b": "A regional trade fair has a stand free. Business buyers walk the halls.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Take a stand",
+"d": "Cost of the stand and a few days of work. Good leads usually follow.",
+"fx": {
+"cash": {
+"expr": "-wk*0.15"
+},
+"gamble": {
+"p": 0.65,
+"ok": {
+"dem": [
+1.12,
+8
+]
+},
+"bad": {
+"aware": 2
+}
+}
+}
+},
+{
+"l": "Stay home",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"b2b": true,
+"fam": [
+"prod",
+"svc",
+"project",
+"logi",
+"retail"
+]
+},
+"d_trend_product": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A trend plays to the strengths of {n}",
+"b": "Magazines and social media are talking about what you do. Searches are up in your area.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"aware": 4,
+"dem": [
+1.1,
+4
+]
+},
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"d_price_war": {
+"area": "demand",
+"tone": "bad",
+"sev": 2,
+"w": 0.00105,
+"t": "A price war starts around {n}",
+"b": "Competitors start cutting prices. Customers compare offers.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Hold your prices",
+"d": "You keep the margin and lose some volume.",
+"fx": {
+"dem": [
+0.92,
+6
+]
+}
+},
+{
+"l": "Cut your prices",
+"d": "You keep customers but earn less on each.",
+"fx": {
+"dem": [
+0.98,
+6
+],
+"cogsUp": [
+1.04,
+6
+]
+}
+}
+],
+"fam": [
+"retail",
+"logi",
+"venue"
+]
+},
+"d_sales_slump": {
+"area": "demand",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "A slow stretch for {n}",
+"b": "Nothing special went wrong: there are simply fewer customers than usual for a few weeks.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+0.92,
+3
+]
+}
+},
+"d_busy_spell": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.0014,
+"t": "A busy spell for {n}",
+"b": "Enquiries pick up for no obvious reason. The phone keeps ringing.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+1.08,
+3
+]
+}
+},
+"d_big_order": {
+"area": "demand",
+"tone": "good",
+"sev": 2,
+"w": 0.00105,
+"t": "A business customer places a big order with {n}",
+"b": "A company wants a one-off order well above your usual size, with payment on invoice.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Accept at the normal price",
+"d": "Extra revenue, paid in 45 days.",
+"fx": {
+"cash": {
+"expr": "wk*0.6"
+},
+"cap": [
+0.9,
+2
+]
+}
+},
+{
+"l": "Ask for a deposit first",
+"d": "Safer, and the customer may walk away.",
+"fx": {
+"gamble": {
+"p": 0.65,
+"ok": {
+"cash": {
+"expr": "wk*0.8"
+},
+"cap": [
+0.9,
+2
+]
+},
+"bad": {}
+}
+}
+}
+],
+"b2b": true
+},
+"d_customer_complaint": {
+"area": "demand",
+"tone": "bad",
+"sev": 1,
+"w": 0.00175,
+"t": "A customer complains publicly about {n}",
+"b": "A customer is posting about a poor experience and tagging your business.",
+"cat": "none",
+"cool": 16,
+"exp": 2,
+"opts": [
+{
+"l": "Apologise and refund",
+"d": "A small cost, and it usually calms things down.",
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+},
+"rep": 1
+}
+},
+{
+"l": "Defend your side",
+"d": "May cost you reputation if others pile in.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"rep": -3
+}
+}
+}
+}
+]
+},
+"d_press_feature": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Local media features {n}",
+"b": "A journalist has written a friendly piece about your business.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"aware": 6,
+"dem": [
+1.08,
+3
+]
+}
+},
+"d_influencer_ask": {
+"area": "demand",
+"tone": "n",
+"sev": 1,
+"w": 0.00105,
+"t": "An influencer asks for a free service from {n}",
+"b": "A local influencer will post about you if you offer something free.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Say yes",
+"d": "It costs a little. It may reach thousands of people or nobody.",
+"fx": {
+"cash": {
+"expr": "-wk*0.03"
+},
+"gamble": {
+"p": 0.45,
+"ok": {
+"aware": 7,
+"dem": [
+1.1,
+3
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Politely decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"fam": [
+"venue",
+"retail",
+"svc"
+]
+},
+"d_online_boycott": {
+"area": "demand",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "A false rumour about {n} spreads online",
+"b": "A post claims something untrue about your business. It is being shared fast.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Answer it with facts",
+"d": "Calm and public. Most people are convinced.",
+"fx": {
+"gamble": {
+"p": 0.75,
+"ok": {
+"rep": 0
+},
+"bad": {
+"rep": -3,
+"dem": [
+0.94,
+4
+]
+}
+}
+}
+},
+{
+"l": "Stay silent",
+"d": "It may blow over, or grow.",
+"fx": {
+"gamble": {
+"p": 0.4,
+"ok": {},
+"bad": {
+"rep": -5,
+"dem": [
+0.88,
+6
+]
+}
+}
+}
+}
+],
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"d_tourist_wave": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A tourist wave reaches {n}",
+"b": "A cruise ship and two coach tours arrive in town on the same day.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"fx": {
+"dem": [
+1.15,
+1
+]
+},
+"tr": [
+"cafe",
+"restaurant",
+"kiosk",
+"boutique",
+"hotel",
+"taxi",
+"foodtruck",
+"fun",
+"carrental"
+]
+},
+"d_road_works": {
+"area": "demand",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Roadworks outside {n}",
+"b": "The street in front of your door is dug up for weeks. Fewer people pass by.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Put up signs and a special offer",
+"d": "A small cost to keep people coming.",
+"fx": {
+"cash": {
+"expr": "-wk*0.05"
+},
+"dem": [
+0.94,
+6
+]
+}
+},
+{
+"l": "Wait it out",
+"d": "Takings drop until the road reopens.",
+"fx": {
+"dem": [
+0.86,
+6
+]
+}
+}
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"svc"
+],
+"notTr": [
+"webshop"
+]
+},
+"d_new_road": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "A new bus stop opens outside {n}",
+"b": "A new route brings more people past your door every day.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"dem": [
+1.07,
+20
+]
+},
+"prem": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"d_office_move": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "A large employer moves in nearby",
+"b": "A company with hundreds of staff has opened offices a few streets from {n}.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+26
+]
+},
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"svc"
+]
+},
+"d_factory_closes": {
+"area": "demand",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "A big employer near {n} closes",
+"b": "A local employer has shut down. Spending power falls in the area.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"dem": [
+0.93,
+20
+]
+},
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"svc",
+"logi"
+]
+},
+"d_repeat_customers": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.0014,
+"t": "Regulars keep coming back to {n}",
+"b": "Repeat business has been strong, and a few regulars send their friends.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"rep": 1,
+"dem": [
+1.05,
+4
+]
+}
+},
+"d_seasonal_tail": {
+"area": "demand",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Fewer enquiries at {n}",
+"b": "The usual enquiries are fewer this month. Customers are delaying decisions.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"fx": {
+"dem": [
+0.94,
+4
+]
+},
+"fam": [
+"svc",
+"project"
+],
+"b2b": true
+},
+"d_referral_stream": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Referrals start to arrive at {n}",
+"b": "Satisfied customers have started to recommend you. The work comes in without advertising.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"fx": {
+"aware": 4,
+"dem": [
+1.08,
+6
+]
+},
+"fam": [
+"svc",
+"project"
+]
+},
+"d_gift_voucher_wave": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Gift vouchers sell well at {n}",
+"b": "People buy vouchers as presents. Cash arrives now, and the work comes later.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.2"
+}
+},
+"fam": [
+"venue",
+"svc"
+],
+"notTr": [
+"casino",
+"nightclub"
+]
+},
+"d_cancellations": {
+"area": "demand",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "A run of cancellations at {n}",
+"b": "Several customers cancel at short notice in the same week.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+0.92,
+2
+]
+},
+"fam": [
+"venue",
+"svc",
+"project"
+]
+},
+"d_event_nearby": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A big match is on near {n}",
+"b": "A stadium event this weekend brings tens of thousands of visitors to the area.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+1
+]
+},
+"tr": [
+"cafe",
+"restaurant",
+"foodtruck",
+"hotel",
+"nightclub",
+"taxi",
+"kiosk",
+"brewery"
+]
+},
+"d_negative_news": {
+"area": "demand",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "A news story about your industry hurts trust in {n}",
+"b": "A scandal at another company in your line of business makes customers cautious.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"opts": [
+{
+"l": "Reassure customers openly",
+"d": "A small outlay, and most customers stay.",
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+},
+"dem": [
+0.97,
+6
+]
+}
+},
+{
+"l": "Say nothing",
+"d": "Wait for it to pass.",
+"fx": {
+"dem": [
+0.92,
+8
+]
+}
+}
+]
+},
+"d_member_surge": {
+"area": "demand",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A referral drive pays off at {n}",
+"b": "A friend-brings-a-friend week has brought a surge of new sign-ups.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+6
+]
+},
+"tr": [
+"gym",
+"physio",
+"pets",
+"dental",
+"barber",
+"drivsk",
+"tutor"
+]
+},
+"d_corporate_account": {
+"area": "demand",
+"tone": "good",
+"sev": 2,
+"w": 0.0007,
+"t": "A company wants a standing account with {n}",
+"b": "A local firm wants to use you every month for its staff, at a discount.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Offer 10% off for a yearly deal",
+"d": "Steady volume, lower margin.",
+"fx": {
+"dem": [
+1.1,
+26
+],
+"cogsUp": [
+1.01,
+26
+]
+}
+},
+{
+"l": "Decline",
+"d": "No change.",
+"fx": {}
+}
+],
+"tr": [
+"cafe",
+"restaurant",
+"barber",
+"gym",
+"taxi",
+"cleaning",
+"carclean",
+"physio",
+"dental",
+"hotel",
+"courier"
+]
+},
+"t_flu_wave": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "Flu goes round the team at {n}",
+"b": "Several people are off sick at the same time.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"cap": [
+0.88,
+2
+]
+},
+"staff": true,
+"mo": [
+"1",
+"2",
+"3",
+"10",
+"11",
+"12"
+]
+},
+"t_illness_key": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A key person at {n} is off sick",
+"b": "Your most experienced person is out for a couple of weeks.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"opts": [
+{
+"l": "Hire temp cover",
+"d": "Costs money and keeps things running.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"cap": [
+0.95,
+2
+]
+}
+},
+{
+"l": "Share the work around",
+"d": "No cost, but output dips.",
+"fx": {
+"cap": [
+0.85,
+2
+]
+}
+}
+],
+"staff": true
+},
+"t_burnout": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "The team at {n} is running on empty",
+"b": "After weeks of long days the team is tired and mistakes are creeping in.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Give everyone a long weekend",
+"d": "Costs a day of output and brings the energy back.",
+"fx": {
+"cap": [
+0.9,
+1
+],
+"rep": 1
+}
+},
+{
+"l": "Push on",
+"d": "Output holds for now, but people may leave.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"cap": [
+0.9,
+4
+],
+"quit": true
+}
+}
+}
+}
+],
+"staff": true
+},
+"t_poached": {
+"area": "staff",
+"tone": "bad",
+"sev": 2,
+"w": 0.0007,
+"t": "A rival tries to hire your best person at {n}",
+"b": "A competitor offers your strongest employee a big pay rise.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"opts": [
+{
+"l": "Match the offer",
+"d": "A permanent raise for them, and they will most likely stay.",
+"fx": {
+"raise": 0.1,
+"stay": 0.85
+}
+},
+{
+"l": "Offer a smaller raise and a bonus",
+"d": "Cheaper, and there is a risk they leave anyway.",
+"fx": {
+"raise": 0.05,
+"stay": 0.6,
+"bonus": {
+"expr": "wk*0.1"
+}
+}
+},
+{
+"l": "Let them go",
+"d": "No cost now. A gap in the team and a hiring job.",
+"fx": {
+"quit": true
+}
+}
+],
+"staff": true
+},
+"t_star_employee": {
+"area": "staff",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A star employee shines at {n}",
+"b": "One of your people has quietly become the reason customers come back.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Reward with a bonus",
+"d": "A one-off cost, and a better mood in the team.",
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+},
+"rep": 1,
+"q": 2
+}
+},
+{
+"l": "Promote them",
+"d": "A raise and more responsibility.",
+"fx": {
+"raise": 0.06,
+"q": 3,
+"stay": 1
+}
+}
+],
+"staff": true
+},
+"t_good_hire": {
+"area": "staff",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A new hire settles in quickly at {n}",
+"b": "The latest recruit is up to speed faster than expected.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cap": [
+1.05,
+4
+],
+"q": 1
+},
+"staff": true
+},
+"t_union_ask": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Staff at {n} ask for a raise",
+"b": "Employees say rents and food cost more and ask for a pay increase.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Give a 3% raise",
+"d": "A small permanent increase in payroll.",
+"fx": {
+"raise": 0.03,
+"stay": 1
+}
+},
+{
+"l": "Offer a one-off bonus",
+"d": "Cheaper, and it does not last.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"rep": 0
+}
+},
+{
+"l": "Say no",
+"d": "Some may leave, and the mood suffers.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {},
+"bad": {
+"cap": [
+0.9,
+3
+],
+"quit": true
+}
+}
+}
+}
+],
+"staff": true
+},
+"t_resignation": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "An employee at {n} resigns",
+"b": "An experienced team member hands in notice after finding a job elsewhere.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"quit": true
+},
+"staff": true
+},
+"t_late_arrivals": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Lateness becomes a problem at {n}",
+"b": "Several people have started arriving late and customers wait.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"cap": [
+0.93,
+2
+],
+"rep": -1
+},
+"staff": true
+},
+"t_training_offer": {
+"area": "staff",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A training day is offered to the team at {n}",
+"b": "A local provider offers a subsidised course on skills that matter for your work.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Send the whole team",
+"d": "A cost and a day of lost output. A better team afterwards.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"cap": [
+0.85,
+1
+],
+"q": 3
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"staff": true
+},
+"t_injury": {
+"area": "staff",
+"tone": "bad",
+"sev": 2,
+"w": 0.00052,
+"t": "An employee is hurt at work at {n}",
+"b": "An accident has left one employee off work for several weeks.",
+"cat": "liab",
+"cool": 60,
+"exp": 1,
+"opts": [
+{
+"l": "Cover wages and report it",
+"d": "The right thing to do. Insurance helps if you have it.",
+"fx": {
+"loss": {
+"expr": "wk*0.3"
+},
+"cap": [
+0.92,
+3
+]
+}
+},
+{
+"l": "Argue it was their fault",
+"d": "Cheaper now, but you risk a claim and bad blood.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cap": [
+0.92,
+3
+]
+},
+"bad": {
+"loss": {
+"expr": "wk*0.7"
+},
+"rep": -3
+}
+}
+}
+}
+],
+"staff": true,
+"fam": [
+"prod",
+"project",
+"logi",
+"venue",
+"retail"
+]
+},
+"t_pregnancy_leave": {
+"area": "staff",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "An employee at {n} goes on parental leave",
+"b": "A valued employee is leaving for several months on parental leave.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"fx": {
+"cap": [
+0.93,
+8
+]
+},
+"staff": true
+},
+"t_team_event": {
+"area": "staff",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "The team at {n} suggests a day out",
+"b": "Staff suggest a day out together. It costs a little and lifts the mood.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Do it",
+"d": "A small cost and a better atmosphere.",
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+},
+"cap": [
+1.04,
+4
+],
+"rep": 1
+}
+},
+{
+"l": "Decline politely",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"staff": true
+},
+"t_hiring_wave": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Hiring is hard around {n}",
+"b": "Unemployment is low. Applicants are few, and those who apply want more money.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"raise": 0.02
+},
+"staff": true
+},
+"t_conflict": {
+"area": "staff",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Two people at {n} are not speaking",
+"b": "A dispute between two employees is disturbing the team.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Sit them down and sort it out",
+"d": "Takes a few hours of your time.",
+"fx": {
+"gamble": {
+"p": 0.75,
+"ok": {
+"rep": 0
+},
+"bad": {
+"cap": [
+0.92,
+2
+]
+}
+}
+}
+},
+{
+"l": "Hope it passes",
+"d": "It might.",
+"fx": {
+"gamble": {
+"p": 0.45,
+"ok": {},
+"bad": {
+"cap": [
+0.9,
+3
+],
+"quit": true
+}
+}
+}
+}
+],
+"staff": true
+},
+"t_overtime_peak": {
+"area": "staff",
+"tone": "n",
+"sev": 1,
+"w": 0.00105,
+"t": "A big rush at {n}",
+"b": "Work is piling up, and the team can handle it with overtime.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"opts": [
+{
+"l": "Pay overtime",
+"d": "The work gets done, at a premium.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"dem": [
+1.06,
+2
+]
+}
+},
+{
+"l": "Hold to normal hours",
+"d": "Some work waits.",
+"fx": {
+"dem": [
+0.96,
+2
+]
+}
+}
+],
+"staff": true
+},
+"t_apprentice": {
+"area": "staff",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A school offers an apprentice to {n}",
+"b": "A local college has a motivated apprentice looking for a placement.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Take them on",
+"d": "A little teaching time, and a cheap pair of hands.",
+"fx": {
+"cash": {
+"expr": "-wk*0.03"
+},
+"cap": [
+1.04,
+12
+]
+}
+},
+{
+"l": "Not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"staff": true,
+"fam": [
+"svc",
+"project",
+"prod",
+"venue"
+]
+},
+"t_pay_gap_found": {
+"area": "staff",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "Staff compare pay at {n}",
+"b": "Two employees discovered they are paid differently for the same work. Others want to know too.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"opts": [
+{
+"l": "Adjust pay to be fair",
+"d": "A permanent increase for some people.",
+"fx": {
+"raise": 0.03,
+"stay": 1
+}
+},
+{
+"l": "Explain the differences",
+"d": "Fair if the reasons are good. The mood suffers.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"cap": [
+0.92,
+3
+],
+"quit": true
+}
+}
+}
+}
+],
+"staff": true
+},
+"t_holiday_cover": {
+"area": "staff",
+"tone": "n",
+"sev": 1,
+"w": 0.00105,
+"t": "Holiday cover is short at {n}",
+"b": "Too many people want the same weeks off.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"opts": [
+{
+"l": "Hire temps for the gap",
+"d": "Costs money, and keeps things going.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+}
+}
+},
+{
+"l": "Refuse some requests",
+"d": "Saves money; some resentment.",
+"fx": {
+"rep": -1
+}
+}
+],
+"staff": true,
+"mo": [
+"6",
+"7",
+"8",
+"12"
+]
+},
+"t_stealing_staff": {
+"area": "staff",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "A till is short at {n}",
+"b": "Takings do not match the till. Someone on the team may have been dipping in.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Review cameras and tighten checks",
+"d": "A little cost. Likely to find what happened and stop it.",
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+},
+"gamble": {
+"p": 0.75,
+"ok": {
+"rep": 0
+},
+"bad": {
+"loss": {
+"expr": "wk*0.12"
+}
+}
+}
+}
+},
+{
+"l": "Write it off",
+"d": "No cost to find out, and it may happen again.",
+"fx": {
+"loss": {
+"expr": "wk*0.12"
+}
+}
+}
+],
+"staff": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"t_great_week": {
+"area": "staff",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "The team at {n} has a great week",
+"b": "Everything clicks. Customers are happy and the team is proud.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"cap": [
+1.06,
+2
+],
+"rep": 1
+},
+"staff": true
+},
+"t_remote_request": {
+"area": "staff",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "Staff at {n} ask to work from home two days a week",
+"b": "Several people in office roles would like to work from home part of the week.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Allow it",
+"d": "Happier people, a little less control.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {
+"cap": [
+1.02,
+26
+]
+},
+"bad": {
+"cap": [
+0.96,
+26
+]
+}
+}
+}
+},
+{
+"l": "Say no",
+"d": "Some people grumble.",
+"fx": {
+"rep": 0
+}
+}
+],
+"staff": true,
+"fam": [
+"svc",
+"fin"
+]
+},
+"r_inspection_ok": {
+"area": "regulatory",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "An inspection finds nothing wrong at {n}",
+"b": "An inspector visits and signs off with no remarks. Your records are in order.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"rep": 1
+},
+"fam": [
+"venue",
+"retail",
+"prod",
+"logi"
+]
+},
+"r_inspection_notice": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.0014,
+"t": "An inspector leaves a notice at {n}",
+"b": "Minor issues are found during a routine visit. They must be fixed within weeks.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Fix them straight away",
+"d": "A small outlay and a clean record.",
+"fx": {
+"cash": {
+"expr": "-wk*0.07"
+}
+}
+},
+{
+"l": "Delay the fixes",
+"d": "Cheaper now, with a fine if it is checked again.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.25"
+}
+}
+}
+}
+}
+],
+"fam": [
+"venue",
+"retail",
+"prod",
+"logi",
+"project"
+]
+},
+"r_new_tax_rule": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "A new tax rule affects {n}",
+"b": "The government changes a rule on reporting and accounts. Your accountant needs extra hours to adapt.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+}
+}
+},
+"r_tax_audit_clean": {
+"area": "regulatory",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "The tax office checks the books of {n}",
+"b": "An auditor reviews last year's return. Your accounts are in good order, but it takes time.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.05"
+}
+},
+"fam": [
+"svc",
+"retail",
+"venue",
+"prod",
+"logi",
+"project"
+]
+},
+"r_permit_renewal": {
+"area": "regulatory",
+"tone": "n",
+"sev": 1,
+"w": 0.00105,
+"t": "A permit at {n} is up for renewal",
+"b": "A licence is expiring. The renewal fee is due and the council wants to check some details.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+}
+},
+"fam": [
+"venue",
+"retail",
+"prod",
+"logi"
+]
+},
+"r_minimum_wage": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "The minimum wage rises",
+"b": "A higher minimum wage applies from next month. Low-paid roles at {n} are affected.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"raise": 0.02
+},
+"staff": true,
+"fam": [
+"venue",
+"retail",
+"svc",
+"prod",
+"logi"
+]
+},
+"r_fire_safety": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A fire safety check at {n}",
+"b": "The fire service finds the extinguishers are out of date and an exit sign is missing.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Fix it this week",
+"d": "A small cost.",
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+}
+}
+},
+{
+"l": "Do it next month",
+"d": "Cheaper if they do not come back.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.2"
+}
+}
+}
+}
+}
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"r_food_hygiene": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 2,
+"w": 0.00105,
+"t": "A hygiene inspection at {n}",
+"b": "An inspector checks the kitchen, the fridges and the records.",
+"cat": "liab",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Pass it with a deep clean beforehand",
+"d": "The kitchen is spotless.",
+"fx": {
+"gamble": {
+"p": 0.9,
+"ok": {
+"cash": {
+"expr": "-wk*0.03"
+}
+},
+"bad": {
+"fine": {
+"expr": "wk*0.1"
+}
+}
+}
+}
+},
+{
+"l": "Carry on as usual",
+"d": "Risk of a poor score and a fine.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.3"
+},
+"rep": -3
+}
+}
+}
+}
+],
+"tr": [
+"cafe",
+"restaurant",
+"foodtruck",
+"bakery",
+"brewery",
+"hotel",
+"grocery",
+"kiosk"
+]
+},
+"r_data_rule": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "A privacy rule changes for {n}",
+"b": "New rules on customer data require updates to your forms and systems.",
+"cat": "cyber",
+"cool": 100,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+}
+},
+"fam": [
+"svc",
+"retail",
+"venue",
+"fin"
+]
+},
+"r_noise_complaint": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Neighbours complain about noise at {n}",
+"b": "The council has received complaints and wants you to lower the volume at night.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Soundproof and cut late hours",
+"d": "A cost, and fewer late customers.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"dem": [
+0.97,
+6
+]
+}
+},
+{
+"l": "Carry on",
+"d": "Risk of a fine and a licence review.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.3"
+}
+}
+}
+}
+}
+],
+"tr": [
+"nightclub",
+"restaurant",
+"cafe",
+"brewery",
+"gym",
+"fun",
+"pcbang",
+"hotel"
+]
+},
+"r_licence_review": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 2,
+"w": 0.00035,
+"t": "Your licence at {n} is reviewed",
+"b": "The authority is reviewing your trading licence after complaints.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"opts": [
+{
+"l": "Hire a lawyer and prepare a defence",
+"d": "A cost, and a good chance of a clean outcome.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+},
+"gamble": {
+"p": 0.85,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.3"
+}
+}
+}
+}
+},
+{
+"l": "Respond yourself",
+"d": "Cheaper, and riskier.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.4"
+},
+"dem": [
+0.94,
+4
+]
+}
+}
+}
+}
+],
+"tr": [
+"nightclub",
+"casino",
+"restaurant",
+"hotel",
+"taxi",
+"foodtruck"
+]
+},
+"r_environment_rule": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 2,
+"w": 0.00052,
+"t": "New environmental rules reach {n}",
+"b": "Tighter rules on waste and emissions apply from next quarter.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"opts": [
+{
+"l": "Invest in compliance now",
+"d": "Costs now and avoids trouble.",
+"fx": {
+"cash": {
+"expr": "-wk*0.3"
+},
+"rep": 1
+}
+},
+{
+"l": "Wait until you must",
+"d": "Cheaper for now, with a risk of a fine.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.5"
+}
+}
+}
+}
+}
+],
+"fam": [
+"prod",
+"logi",
+"energy",
+"project"
+]
+},
+"r_consumer_complaint": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "The consumer body asks about a complaint at {n}",
+"b": "A customer complained to the authority. You have to reply with evidence.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Reply in full and offer a refund",
+"d": "A small cost and a closed case.",
+"fx": {
+"cash": {
+"expr": "-wk*0.05"
+}
+}
+},
+{
+"l": "Contest it",
+"d": "May win, may lose.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.2"
+}
+}
+}
+}
+}
+],
+"fam": [
+"retail",
+"venue",
+"svc"
+]
+},
+"r_vat_change": {
+"area": "regulatory",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "A VAT or sales tax change hits {n}",
+"b": "The rate on part of your sales changes next month. Prices and invoices need updating.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+}
+}
+},
+"r_subsidy": {
+"area": "regulatory",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A small business grant fits {n}",
+"b": "The region has opened a grant for small firms investing in equipment or training.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Apply",
+"d": "A day spent on the application. Not every application is successful.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cash": {
+"expr": "wk*0.5"
+}
+},
+"bad": {
+"cash": {
+"expr": "-wk*0.01"
+}
+}
+}
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+]
+},
+"r_tax_refund": {
+"area": "regulatory",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A tax refund arrives at {n}",
+"b": "An overpayment of tax is corrected and the money comes back.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.25"
+}
+}
+},
+"r_planning_issue": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "The council questions a sign at {n}",
+"b": "A sign or an extension was built without full planning consent.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Apply for consent",
+"d": "A fee and a short delay.",
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+}
+}
+},
+{
+"l": "Take the sign down",
+"d": "Free, and you lose the visibility.",
+"fx": {
+"dem": [
+0.97,
+6
+]
+}
+}
+],
+"prem": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"r_wasterules": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "New recycling rules for {n}",
+"b": "Stricter waste sorting means new bins and a higher collection fee.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.01,
+26
+]
+},
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"r_safety_recall_law": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 2,
+"w": 0.00035,
+"t": "A product safety rule changes at {n}",
+"b": "A new standard applies to products like yours. Some stock may not be sold any more.",
+"cat": "liab",
+"cool": 100,
+"exp": 1,
+"opts": [
+{
+"l": "Pull the old stock and replace it",
+"d": "A clean break, and a cost.",
+"fx": {
+"loss": {
+"expr": "wk*0.25"
+}
+}
+},
+{
+"l": "Sell it until it is checked",
+"d": "Risk of a fine if inspected.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.4"
+}
+}
+}
+}
+}
+],
+"goods": true,
+"fam": [
+"retail",
+"prod",
+"venue"
+]
+},
+"r_trading_hours": {
+"area": "regulatory",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "The council changes trading hours around {n}",
+"b": "New rules allow longer opening hours in your street. Competitors may follow.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"dem": [
+1.03,
+12
+]
+},
+"prem": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"r_drivers_hours": {
+"area": "regulatory",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A roadside check stops one of your vehicles",
+"b": "Inspectors check drivers' hours and the vehicle's condition.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Pay the small fine and fix it",
+"d": "Quick and clean.",
+"fx": {
+"fine": {
+"expr": "wk*0.05"
+}
+}
+},
+{
+"l": "Contest the finding",
+"d": "May cancel the fine, or raise it.",
+"fx": {
+"gamble": {
+"p": 0.45,
+"ok": {},
+"bad": {
+"fine": {
+"expr": "wk*0.15"
+}
+}
+}
+}
+}
+],
+"fam": [
+"logi"
+]
+},
+"f_rate_up": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Interest rates go up",
+"b": "The central bank raises rates. Variable-rate loans cost more every month.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"opts": [
+{
+"l": "Pay the higher interest",
+"d": "Costs a little more each month for a while.",
+"fx": {
+"cash": {
+"expr": "-wk*0.05"
+}
+}
+},
+{
+"l": "Pay down some debt early",
+"d": "Costs cash now and cuts the interest bill.",
+"fx": {
+"cash": {
+"expr": "-wk*0.12"
+}
+}
+}
+],
+"loan": true
+},
+"f_rate_down": {
+"area": "finance",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "Interest rates are cut",
+"b": "Lower rates make borrowing cheaper and customers a little more confident.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.04"
+},
+"dem": [
+1.02,
+8
+]
+},
+"loan": true
+},
+"f_late_payer": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.0021,
+"t": "A customer of {n} is paying late",
+"b": "A business customer is a month behind on an invoice and not answering calls.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"opts": [
+{
+"l": "Send a firm reminder",
+"d": "Most customers pay within a couple of weeks.",
+"fx": {
+"collect": 0.9
+}
+},
+{
+"l": "Offer a discount for quick payment",
+"d": "You get the cash, but lose a slice of it.",
+"fx": {
+"collect": 1,
+"loseR": 0.08
+}
+},
+{
+"l": "Wait",
+"d": "Free, but they may never pay.",
+"fx": {
+"collect": 0.65
+}
+}
+],
+"recv": true
+},
+"f_bad_debt": {
+"area": "finance",
+"tone": "bad",
+"sev": 2,
+"w": 0.00052,
+"t": "A customer of {n} goes bankrupt",
+"b": "A customer who owes you money has gone into insolvency. You may get nothing.",
+"cat": "none",
+"cool": 60,
+"exp": 1,
+"opts": [
+{
+"l": "Register your claim",
+"d": "A small fee. You may get a part back.",
+"fx": {
+"gamble": {
+"p": 0.4,
+"ok": {
+"loseR": 0.4
+},
+"bad": {
+"writeoff": true
+}
+}
+}
+},
+{
+"l": "Write it off",
+"d": "No effort, no hope.",
+"fx": {
+"writeoff": true
+}
+}
+],
+"recv": true
+},
+"f_fraud_attempt": {
+"area": "finance",
+"tone": "bad",
+"sev": 2,
+"w": 0.0007,
+"t": "A fraud attempt targets {n}",
+"b": "An email posing as a supplier asks you to change bank details on an invoice.",
+"cat": "cyber",
+"cool": 60,
+"exp": 1,
+"opts": [
+{
+"l": "Verify by phone first",
+"d": "A short delay. You catch the scam.",
+"fx": {}
+},
+{
+"l": "Pay as asked",
+"d": "If it is fraud, the money is gone.",
+"fx": {
+"gamble": {
+"p": 0.35,
+"ok": {},
+"bad": {
+"loss": {
+"expr": "wk*0.4"
+}
+}
+}
+}
+}
+]
+},
+"f_card_fraud": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Chargebacks hit {n}",
+"b": "Several card payments were disputed by customers. The bank takes the money back.",
+"cat": "cyber",
+"cool": 40,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.06"
+}
+},
+"fam": [
+"retail",
+"venue"
+]
+},
+"f_bank_fee_rise": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "The bank raises its fees on {n}",
+"b": "Account and card fees are up from next month.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.03"
+}
+}
+},
+"f_loan_offer": {
+"area": "finance",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "A bank pre-approves a loan for {n}",
+"b": "The bank has offered a small credit line at a fair rate. Debt can help you grow, and it can also hurt.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Ignore it",
+"d": "Nothing changes.",
+"fx": {}
+},
+{
+"l": "Take a small credit line",
+"d": "Cash now, interest later. Be careful.",
+"fx": {
+"cash": {
+"expr": "wk*0.5"
+}
+}
+}
+]
+},
+"f_cash_squeeze": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A tight month for cash at {n}",
+"b": "Invoices are due before your customers pay. Cash is thin for a few weeks.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+}
+},
+"recv": true
+},
+"f_overpaid_supplier": {
+"area": "finance",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A supplier credits {n}",
+"b": "A supplier found it had overcharged you and refunds the difference.",
+"cat": "none",
+"cool": 50,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.08"
+}
+},
+"goods": true
+},
+"f_invoice_error": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "An invoice error costs {n}",
+"b": "A mistake in billing meant a customer was not charged. It is too late to recover.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.05"
+}
+},
+"fam": [
+"svc",
+"project",
+"logi",
+"prod"
+]
+},
+"f_insurance_premium": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Insurance premiums rise for {n}",
+"b": "Your insurer raises premiums after a rough year for its industry.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+}
+}
+},
+"f_early_payment": {
+"area": "finance",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A customer pays {n} early",
+"b": "A large customer settles an invoice weeks ahead of the due date.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.1"
+}
+},
+"recv": true
+},
+"f_currency_swing_up": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A weaker currency raises costs for {n}",
+"b": "Your currency has dropped against the dollar and the euro. Imported goods are more expensive.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.04,
+8
+]
+},
+"goods": true
+},
+"f_currency_swing_down": {
+"area": "finance",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "A stronger currency cuts costs for {n}",
+"b": "Your currency is up against others. Imported goods are cheaper for a while.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"cogsUp": [
+0.96,
+8
+]
+},
+"goods": true
+},
+"f_tax_surprise": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "An extra tax bill arrives at {n}",
+"b": "A corrected assessment adds to the amount due for last year.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+}
+}
+},
+"f_credit_note": {
+"area": "finance",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A pleasant surprise in the bank account of {n}",
+"b": "A forgotten deposit is returned by a supplier.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.06"
+}
+}
+},
+"f_equipment_finance": {
+"area": "finance",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "A leasing company pitches equipment finance to {n}",
+"b": "A leasing firm offers to spread the cost of new equipment over four years.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Take the lease",
+"d": "Better capacity, with a monthly payment you must keep paying.",
+"fx": {
+"cash": {
+"expr": "-wk*0.05"
+},
+"cap": [
+1.05,
+52
+]
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"fam": [
+"prod",
+"logi",
+"project",
+"venue"
+]
+},
+"f_payment_terms": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A big customer asks for longer payment terms",
+"b": "A large buyer wants 60 days instead of 30. They say other suppliers agreed.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Agree",
+"d": "Keeps the work, ties up cash.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"dem": [
+1.04,
+12
+]
+}
+},
+{
+"l": "Refuse",
+"d": "Protects your cash and may lose some work.",
+"fx": {
+"gamble": {
+"p": 0.6,
+"ok": {},
+"bad": {
+"dem": [
+0.93,
+12
+]
+}
+}
+}
+}
+],
+"b2b": true,
+"fam": [
+"svc",
+"prod",
+"logi",
+"project"
+]
+},
+"f_check_account": {
+"area": "finance",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "The accountant finds savings for {n}",
+"b": "A review of your books finds a missed allowance.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.1"
+}
+}
+},
+"f_loan_review": {
+"area": "finance",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "The bank reviews the loan of {n}",
+"b": "A routine review asks for updated accounts and a fee.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "-wk*0.04"
+}
+},
+"loan": true
+},
+"m_recession": {
+"area": "macro",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "A recession weighs on spending",
+"b": "The economy has slowed and households and firms are cutting spending. Customers of {n} are more careful.",
+"cat": "none",
+"cool": 104,
+"exp": 2,
+"opts": [
+{
+"l": "Cut costs and wait",
+"d": "Protects the margin and keeps prices steady.",
+"fx": {
+"dem": [
+0.93,
+10
+]
+}
+},
+{
+"l": "Cut prices to hold on to customers",
+"d": "Keeps volume up, margin down.",
+"fx": {
+"dem": [
+0.97,
+10
+],
+"cogsUp": [
+1.03,
+10
+]
+}
+}
+],
+"macro": true
+},
+"m_boom": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.00042,
+"t": "A strong economy lifts spending",
+"b": "Wages are rising and customers are in a good mood. Business is picking up for {n}.",
+"cat": "none",
+"cool": 104,
+"exp": 2,
+"fx": {
+"dem": [
+1.08,
+10
+]
+},
+"macro": true
+},
+"m_inflation_spike": {
+"area": "macro",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "Prices jump across the economy",
+"b": "Inflation surprises on the upside. Everything {n} buys costs more.",
+"cat": "none",
+"cool": 104,
+"exp": 2,
+"opts": [
+{
+"l": "Raise prices a little",
+"d": "Protects margin, and customers grumble.",
+"fx": {
+"cogsUp": [
+1.04,
+12
+],
+"dem": [
+0.97,
+8
+]
+}
+},
+{
+"l": "Hold prices",
+"d": "Keeps customers, costs margin.",
+"fx": {
+"cogsUp": [
+1.06,
+12
+]
+}
+}
+],
+"macro": true
+},
+"m_consumer_confidence": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "Consumer confidence is up",
+"b": "Surveys show households feel better about their money. Spending on small treats rises.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"dem": [
+1.05,
+8
+]
+},
+"macro": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"m_consumer_gloom": {
+"area": "macro",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Consumers cut back",
+"b": "A gloomy survey and rising bills make households pull back from non-essentials.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"dem": [
+0.94,
+8
+]
+},
+"macro": true,
+"fam": [
+"venue",
+"retail"
+],
+"notTr": [
+"grocery"
+]
+},
+"m_energy_crisis": {
+"area": "macro",
+"tone": "bad",
+"sev": 2,
+"w": 0.00035,
+"t": "An energy crisis hits {n}",
+"b": "Gas and electricity prices have jumped across the region. Every business feels it in its bills.",
+"cat": "none",
+"cool": 130,
+"exp": 2,
+"opts": [
+{
+"l": "Pay up",
+"d": "Higher bills for months.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"cogsUp": [
+1.04,
+12
+]
+}
+},
+{
+"l": "Cut hours and efficiency measures",
+"d": "Saves money and customers.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"dem": [
+0.95,
+8
+]
+}
+}
+],
+"macro": true,
+"prem": true,
+"fam": [
+"venue",
+"prod",
+"retail",
+"logi"
+]
+},
+"m_strong_currency": {
+"area": "macro",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "The currency strengthens",
+"b": "A stronger currency makes imports cheaper and exports harder to sell.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cogsUp": [
+0.97,
+10
+]
+},
+"macro": true,
+"goods": true
+},
+"m_weak_currency": {
+"area": "macro",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "The currency weakens",
+"b": "A weaker currency makes imports dearer and local goods more attractive.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.04,
+10
+]
+},
+"macro": true,
+"goods": true
+},
+"m_tourism_boom": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "A tourism boom",
+"b": "Visitor numbers are up and hotels are full. Businesses in your area feel it.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+8
+]
+},
+"macro": true,
+"tr": [
+"cafe",
+"restaurant",
+"hotel",
+"taxi",
+"kiosk",
+"boutique",
+"carrental",
+"fun",
+"foodtruck",
+"travel"
+]
+},
+"m_housing_slump": {
+"area": "macro",
+"tone": "bad",
+"sev": 2,
+"w": 0.00042,
+"t": "The housing market cools",
+"b": "Fewer homes are sold and built. Related trades feel it.",
+"cat": "none",
+"cool": 104,
+"exp": 2,
+"fx": {
+"dem": [
+0.9,
+12
+]
+},
+"macro": true,
+"tr": [
+"construction",
+"electrician",
+"plumber",
+"realdev",
+"estate",
+"furniture",
+"hardware",
+"finbroker",
+"handy",
+"engcons"
+]
+},
+"m_housing_boom": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.00042,
+"t": "A housing boom",
+"b": "Sales and building activity are rising. Related trades are busy.",
+"cat": "none",
+"cool": 104,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+12
+]
+},
+"macro": true,
+"tr": [
+"construction",
+"electrician",
+"plumber",
+"realdev",
+"estate",
+"furniture",
+"hardware",
+"finbroker",
+"handy",
+"engcons"
+]
+},
+"m_rate_shock": {
+"area": "macro",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Mortgage costs squeeze households",
+"b": "Higher mortgage payments leave less to spend on eating out and gifts.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+0.95,
+10
+]
+},
+"macro": true,
+"fam": [
+"venue",
+"retail"
+],
+"notTr": [
+"grocery"
+]
+},
+"m_wage_growth": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "Wages are growing fast",
+"b": "Households have more money to spend. Retailers and venues benefit.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+1.05,
+10
+]
+},
+"macro": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"m_trade_war": {
+"area": "macro",
+"tone": "bad",
+"sev": 2,
+"w": 0.00028,
+"t": "A trade dispute hits {n}",
+"b": "Duties between big economies disrupt supply chains and exports.",
+"cat": "none",
+"cool": 156,
+"exp": 2,
+"opts": [
+{
+"l": "Absorb the costs",
+"d": "A few months of thinner margin.",
+"fx": {
+"cogsUp": [
+1.05,
+16
+]
+}
+},
+{
+"l": "Look for alternative sources",
+"d": "Costs money and takes time.",
+"fx": {
+"cash": {
+"expr": "-wk*0.2"
+},
+"cogsUp": [
+1.02,
+12
+]
+}
+}
+],
+"macro": true,
+"fam": [
+"prod",
+"logi",
+"retail"
+]
+},
+"m_freight_boom": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "Freight demand is up",
+"b": "Businesses are moving more goods and capacity is tight. Carriers can raise their prices.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+10
+]
+},
+"macro": true,
+"fam": [
+"logi"
+]
+},
+"m_labour_shortage": {
+"area": "macro",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "A labour shortage hits the region",
+"b": "Many employers cannot find people. Wages are going up everywhere.",
+"cat": "none",
+"cool": 104,
+"exp": 2,
+"fx": {
+"raise": 0.025
+},
+"macro": true,
+"staff": true
+},
+"m_cheap_credit": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "Credit is easy to get",
+"b": "Banks are lending freely, and customers finance more purchases.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+1.06,
+10
+]
+},
+"macro": true,
+"tr": [
+"cardealer",
+"usedcar",
+"furniture",
+"construction",
+"boutique",
+"hardware",
+"electrician",
+"plumber"
+]
+},
+"m_energy_cheap": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "Energy prices fall",
+"b": "A mild winter and plentiful supply bring energy bills down.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.05"
+},
+"cogsUp": [
+0.98,
+10
+]
+},
+"macro": true,
+"prem": true,
+"fam": [
+"venue",
+"prod",
+"retail",
+"logi"
+]
+},
+"m_crypto_wave": {
+"area": "macro",
+"tone": "n",
+"sev": 1,
+"w": 0.00052,
+"t": "A market boom lifts luxury spending",
+"b": "People who made money on markets spend it in restaurants and hotels.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+1.06,
+6
+]
+},
+"macro": true,
+"tr": [
+"restaurant",
+"hotel",
+"nightclub",
+"boutique",
+"casino",
+"cardealer"
+]
+},
+"m_stock_crash": {
+"area": "macro",
+"tone": "bad",
+"sev": 2,
+"w": 0.00035,
+"t": "Markets fall sharply",
+"b": "A stock market drop makes wealthy customers cautious about spending.",
+"cat": "none",
+"cool": 130,
+"exp": 2,
+"fx": {
+"dem": [
+0.92,
+8
+]
+},
+"macro": true,
+"tr": [
+"restaurant",
+"hotel",
+"nightclub",
+"boutique",
+"casino",
+"cardealer",
+"realdev",
+"finbroker",
+"fund"
+]
+},
+"p_friend_invites": {
+"area": "world",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "A friend invites you to a weekend away",
+"b": "An old friend has booked a cabin and wants you to come. It would mean a long weekend off.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Go",
+"d": "You come back refreshed, and the business runs itself for a few days.",
+"fx": {
+"cap": [
+0.97,
+1
+],
+"rep": 0
+}
+},
+{
+"l": "Stay and work",
+"d": "The business gets your full attention.",
+"fx": {}
+}
+]
+},
+"p_media_interest": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A podcast wants to interview you about {n}",
+"b": "A local business podcast would like you as a guest.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Accept",
+"d": "A few hours of your time. Most people hear it, a few come in.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {
+"aware": 5,
+"rep": 1
+},
+"bad": {
+"aware": 1
+}
+}
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+]
+},
+"p_charity_ask": {
+"area": "world",
+"tone": "n",
+"sev": 1,
+"w": 0.00105,
+"t": "A local charity asks {n} for a donation",
+"b": "A children's charity is raising money and asks local businesses to help.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Donate a small amount",
+"d": "A little goodwill goes a long way.",
+"fx": {
+"cash": {
+"expr": "-wk*0.03"
+},
+"rep": 1
+}
+},
+{
+"l": "Politely decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+]
+},
+"p_school_visit": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A school asks {n} to host a visit",
+"b": "A class would like to see how your business works.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"aware": 3,
+"rep": 1
+}
+},
+"p_business_breakfast": {
+"area": "world",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "The chamber of commerce invites you to breakfast",
+"b": "Local business owners meet once a month. Good contacts come from these.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Go",
+"d": "A morning out of the business. Good leads come now and then.",
+"fx": {
+"gamble": {
+"p": 0.4,
+"ok": {
+"aware": 2,
+"dem": [
+1.04,
+6
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+]
+},
+"p_neighbour_tip": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A neighbour tips you off about {n}",
+"b": "A neighbour tells you a big employer is looking for suppliers like you.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Follow it up",
+"d": "A few calls. May lead to nothing.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cash": {
+"expr": "wk*0.4"
+},
+"aware": 1
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Leave it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"b2b": true
+},
+"p_award_nomination": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "{n} is nominated for a local award",
+"b": "Customers have nominated your business in the local awards.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"rep": 1,
+"aware": 3
+}
+},
+"p_university": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "A university asks {n} to take on a project",
+"b": "A university group wants a real company to work with. Students bring fresh ideas.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Take part",
+"d": "A little time from you and the team.",
+"fx": {
+"cash": {
+"expr": "-wk*0.03"
+},
+"gamble": {
+"p": 0.6,
+"ok": {
+"q": 2
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"fam": [
+"svc",
+"prod",
+"project"
+]
+},
+"p_relative_wedding": {
+"area": "world",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "A family wedding takes you away from {n}",
+"b": "A close relative's wedding takes several days of your time.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"opts": [
+{
+"l": "Hire someone to cover",
+"d": "Costs money, and keeps things going.",
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+}
+}
+},
+{
+"l": "Close for a day or two",
+"d": "Costs a day or two of sales.",
+"fx": {
+"dem": [
+0.9,
+1
+]
+}
+}
+]
+},
+"p_mentor": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "A retired owner offers to mentor you",
+"b": "A well-known local business owner, now retired, has offered to meet you once a month.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"opts": [
+{
+"l": "Accept the offer",
+"d": "Costs you time, and may improve how you run things.",
+"fx": {
+"gamble": {
+"p": 0.7,
+"ok": {
+"q": 2,
+"rep": 1
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Say thanks, not now",
+"d": "Nothing changes.",
+"fx": {}
+}
+]
+},
+"p_old_friend_customer": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "An old friend sends business to {n}",
+"b": "A friend you worked with years ago now runs a company and wants to use you.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"cash": {
+"expr": "wk*0.15"
+}
+},
+"b2b": true
+},
+"p_team_dinner": {
+"area": "world",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "A supplier invites you to dinner",
+"b": "A key supplier wants to meet you in person and talk about next year.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Go and discuss terms",
+"d": "You may get better prices.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {
+"cogsUp": [
+0.97,
+20
+]
+},
+"bad": {}
+}
+}
+},
+{
+"l": "Decline",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"goods": true
+},
+"p_local_newspaper": {
+"area": "world",
+"tone": "n",
+"sev": 1,
+"w": 0.0007,
+"t": "The local paper offers {n} an advertising deal",
+"b": "A salesperson at the newspaper offers a package of adverts at a discount.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Buy the package",
+"d": "Local reach, but fewer people read papers than before.",
+"fx": {
+"cash": {
+"expr": "-wk*0.06"
+},
+"gamble": {
+"p": 0.5,
+"ok": {
+"dem": [
+1.06,
+4
+]
+},
+"bad": {
+"aware": 2
+}
+}
+}
+},
+{
+"l": "No thanks",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"fam": [
+"venue",
+"retail",
+"svc"
+]
+},
+"p_hometown_pride": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.00052,
+"t": "The mayor praises {n} in a speech",
+"b": "A local politician mentions your business as an example in a speech.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"rep": 1,
+"aware": 3
+}
+},
+"p_scam_call": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A scam call targets {n}",
+"b": "A caller poses as a utility company and demands immediate payment.",
+"cat": "cyber",
+"cool": 40,
+"exp": 2,
+"opts": [
+{
+"l": "Hang up and report it",
+"d": "No cost.",
+"fx": {}
+},
+{
+"l": "Pay to be safe",
+"d": "It was a scam.",
+"fx": {
+"loss": {
+"expr": "wk*0.05"
+}
+}
+}
+]
+},
+"p_burglary_attempt": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "An attempted break-in at {n}",
+"b": "Thieves tried to get in overnight. The door is damaged and nothing was taken.",
+"cat": "prop",
+"cool": 60,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.06"
+}
+},
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"p_theft_stock": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Shoplifters hit {n}",
+"b": "A group of thieves clears part of a shelf while staff are busy.",
+"cat": "prop",
+"cool": 40,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.1"
+}
+},
+"goods": true,
+"fam": [
+"retail",
+"venue"
+]
+},
+"p_vandalism": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "Vandals hit {n}",
+"b": "Graffiti and broken windows greet you in the morning.",
+"cat": "prop",
+"cool": 60,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.08"
+}
+},
+"prem": true,
+"fam": [
+"venue",
+"retail"
+]
+},
+"p_cyber_phishing": {
+"area": "world",
+"tone": "bad",
+"sev": 2,
+"w": 0.0007,
+"t": "A phishing email fools someone at {n}",
+"b": "An employee clicks a bad link and a criminal gets into your mailbox.",
+"cat": "cyber",
+"cool": 60,
+"exp": 1,
+"opts": [
+{
+"l": "Change passwords, call the IT help and tell customers",
+"d": "Some cost and a few awkward calls.",
+"fx": {
+"cash": {
+"expr": "-wk*0.08"
+},
+"rep": 0
+}
+},
+{
+"l": "Hope nothing happened",
+"d": "It may be fine, or it may not.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {},
+"bad": {
+"loss": {
+"expr": "wk*0.35"
+},
+"rep": -3
+}
+}
+}
+}
+]
+},
+"p_ransomware": {
+"area": "world",
+"tone": "bad",
+"sev": 3,
+"w": 0.00021,
+"t": "Ransomware locks the computers at {n}",
+"b": "Criminals demand money to unlock your files. Customers cannot book or pay.",
+"cat": "cyber",
+"cool": 200,
+"exp": 1,
+"opts": [
+{
+"l": "Restore from backups",
+"d": "Slow and costly, and the safest way.",
+"fx": {
+"loss": {
+"expr": "wk*0.5"
+},
+"cap": [
+0.7,
+2
+]
+}
+},
+{
+"l": "Pay the ransom",
+"d": "May get the files back. Or not.",
+"fx": {
+"gamble": {
+"p": 0.55,
+"ok": {
+"loss": {
+"expr": "wk*0.35"
+}
+},
+"bad": {
+"loss": {
+"expr": "wk*0.7"
+},
+"cap": [
+0.7,
+2
+]
+}
+}
+}
+}
+]
+},
+"p_fire_small": {
+"area": "world",
+"tone": "bad",
+"sev": 3,
+"w": 0.00014,
+"t": "A fire at {n}",
+"b": "A small fire in the back rooms causes smoke and water damage. You have to close for a few days.",
+"cat": "prop",
+"cool": 300,
+"exp": 1,
+"opts": [
+{
+"l": "Repair everything properly",
+"d": "Closed for a short time. Costly if uninsured.",
+"fx": {
+"loss": {
+"expr": "wk*0.9"
+},
+"close": 1
+}
+},
+{
+"l": "Do the minimum and reopen quickly",
+"d": "Cheaper, with lingering damage.",
+"fx": {
+"loss": {
+"expr": "wk*0.5"
+},
+"cap": [
+0.85,
+6
+]
+}
+}
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"svc"
+]
+},
+"p_neighbour_dispute": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "A dispute with the neighbour over {n}",
+"b": "A neighbour claims your bins and deliveries block the shared yard.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"opts": [
+{
+"l": "Settle with a small contribution",
+"d": "Quick, and the friendship survives.",
+"fx": {
+"cash": {
+"expr": "-wk*0.03"
+}
+}
+},
+{
+"l": "Stand your ground",
+"d": "May cost lawyers and goodwill.",
+"fx": {
+"gamble": {
+"p": 0.5,
+"ok": {},
+"bad": {
+"loss": {
+"expr": "wk*0.12"
+},
+"rep": -1
+}
+}
+}
+}
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"p_celebrity_visit": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.00028,
+"t": "A celebrity is spotted at {n}",
+"b": "A well-known face has dropped in. Photos are on social media within the hour.",
+"cat": "none",
+"cool": 120,
+"exp": 2,
+"fx": {
+"aware": 8,
+"dem": [
+1.12,
+2
+]
+},
+"fam": [
+"venue",
+"retail"
+]
+},
+"p_sports_win": {
+"area": "world",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "The local team wins the cup",
+"b": "The whole town is celebrating, and the party spills into your area.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+1
+]
+},
+"tr": [
+"cafe",
+"restaurant",
+"nightclub",
+"brewery",
+"foodtruck",
+"kiosk",
+"hotel",
+"taxi"
+]
+},
+"p_power_cut": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "A power cut near {n}",
+"b": "The grid fails in your area for part of a day.",
+"cat": "bi",
+"cool": 30,
+"exp": 2,
+"fx": {
+"loss": {
+"expr": "wk*0.06"
+},
+"dem": [
+0.94,
+1
+]
+},
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"p_water_main": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "A water main bursts near {n}",
+"b": "Water is cut for a day while the main is repaired.",
+"cat": "none",
+"cool": 60,
+"exp": 2,
+"fx": {
+"dem": [
+0.92,
+1
+]
+},
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod"
+]
+},
+"p_internet_down": {
+"area": "world",
+"tone": "bad",
+"sev": 1,
+"w": 0.00105,
+"t": "The internet is down at {n}",
+"b": "Your connection fails for a day. Card payments and bookings are affected.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"fx": {
+"dem": [
+0.94,
+1
+]
+},
+"fam": [
+"venue",
+"retail",
+"svc"
+]
+},
+"p_covid_style": {
+"area": "world",
+"tone": "bad",
+"sev": 3,
+"w": 0.00014,
+"t": "A health scare sends customers home",
+"b": "Reports of an outbreak make people avoid crowded places for a few weeks. Trade at {n} falls sharply.",
+"cat": "none",
+"cool": 300,
+"exp": 2,
+"opts": [
+{
+"l": "Shift to delivery and takeaway where you can",
+"d": "Costs some money. Holds on to part of your income.",
+"fx": {
+"cash": {
+"expr": "-wk*0.1"
+},
+"dem": [
+0.82,
+6
+]
+}
+},
+{
+"l": "Wait for it to pass",
+"d": "No cost, and a bigger hit.",
+"fx": {
+"dem": [
+0.7,
+6
+]
+}
+}
+],
+"fam": [
+"venue",
+"retail"
+],
+"notTr": [
+"webshop",
+"grocery",
+"casino"
+]
+},
+"k_no_oil_down": {
+"area": "macro",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Oil prices fall and the local economy cools",
+"b": "Lower oil prices slow investment in the north sea and the services around it.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+0.95,
+10
+]
+},
+"cc": [
+"NO"
+],
+"macro": true,
+"fam": [
+"venue",
+"retail",
+"svc",
+"logi",
+"prod"
+]
+},
+"k_no_midnight_sun": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.07,
+"t": "Midnight sun fills the streets",
+"b": "Long bright evenings keep people out and spending.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+3
+]
+},
+"cc": [
+"NO",
+"SE",
+"FI"
+],
+"mo": [
+"6",
+"7"
+],
+"tr": [
+"cafe",
+"restaurant",
+"foodtruck",
+"brewery",
+"hotel",
+"kiosk",
+"fun"
+]
+},
+"k_uk_bank_holiday": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.0525,
+"t": "A bank holiday weekend",
+"b": "A long weekend brings day trippers and families.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+1
+]
+},
+"cc": [
+"UK",
+"IE"
+],
+"mo": [
+"5",
+"8"
+],
+"fam": [
+"venue",
+"retail"
+],
+"notTr": [
+"webshop"
+]
+},
+"k_us_thanksgiving": {
+"area": "weather",
+"tone": "good",
+"sev": 1,
+"w": 0.0875,
+"t": "Thanksgiving week",
+"b": "Holiday shoppers and travellers fill the streets.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.1,
+1
+]
+},
+"cc": [
+"US"
+],
+"mo": [
+"11"
+],
+"fam": [
+"retail",
+"venue",
+"logi"
+],
+"notTr": [
+"cardealer",
+"usedcar"
+]
+},
+"k_de_energy": {
+"area": "macro",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "Industrial energy prices bite",
+"b": "Industrial users face higher power costs than their neighbours.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"cogsUp": [
+1.04,
+12
+]
+},
+"cc": [
+"DE"
+],
+"macro": true,
+"fam": [
+"prod",
+"logi"
+]
+},
+"k_jp_typhoon": {
+"area": "weather",
+"tone": "bad",
+"sev": 2,
+"w": 0.042,
+"t": "A typhoon passes near {n}",
+"b": "Transport stops for a day and shops close early.",
+"cat": "prop",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+0.88,
+1
+],
+"loss": {
+"expr": "wk*0.08"
+}
+},
+"cc": [
+"JP",
+"KR",
+"AU"
+],
+"wx": [
+"storm"
+],
+"prem": true,
+"fam": [
+"venue",
+"retail",
+"prod",
+"logi"
+]
+},
+"k_au_bushfire_smoke": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.035,
+"t": "Bushfire smoke hangs over {n}",
+"b": "Smoke keeps people indoors and outdoor trade down.",
+"cat": "none",
+"cool": 30,
+"exp": 2,
+"fx": {
+"dem": [
+0.9,
+2
+]
+},
+"cc": [
+"AU"
+],
+"mo": [
+"12",
+"1",
+"2"
+],
+"fam": [
+"venue",
+"retail",
+"project"
+]
+},
+"k_es_siesta_summer": {
+"area": "weather",
+"tone": "n",
+"sev": 1,
+"w": 0.07,
+"t": "A long hot summer",
+"b": "Opening hours shift later and tourists fill the evenings.",
+"cat": "none",
+"cool": 40,
+"exp": 2,
+"fx": {
+"dem": [
+1.06,
+3
+]
+},
+"cc": [
+"ES",
+"IT"
+],
+"mo": [
+"7",
+"8"
+],
+"fam": [
+"venue",
+"retail"
+]
+},
+"k_lt_euro_funds": {
+"area": "regulatory",
+"tone": "good",
+"sev": 1,
+"w": 0.00105,
+"t": "EU funds open for {n}",
+"b": "A regional development programme has opened a call for small business investment.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"opts": [
+{
+"l": "Apply",
+"d": "Some effort on the application. The odds are decent.",
+"fx": {
+"gamble": {
+"p": 0.45,
+"ok": {
+"cash": {
+"expr": "wk*0.6"
+}
+},
+"bad": {
+"cash": {
+"expr": "-wk*0.02"
+}
+}
+}
+}
+},
+{
+"l": "Skip it",
+"d": "Nothing changes.",
+"fx": {}
+}
+],
+"cc": [
+"LT",
+"PL"
+]
+},
+"k_ch_franc": {
+"area": "macro",
+"tone": "bad",
+"sev": 1,
+"w": 0.0007,
+"t": "A strong currency makes exports harder to sell",
+"b": "Local goods cost more abroad and visitors find prices high.",
+"cat": "none",
+"cool": 80,
+"exp": 2,
+"fx": {
+"dem": [
+0.95,
+10
+]
+},
+"cc": [
+"CH"
+],
+"macro": true,
+"fam": [
+"prod",
+"venue",
+"retail"
+]
+},
+"k_ae_expo": {
+"area": "macro",
+"tone": "good",
+"sev": 1,
+"w": 0.0007,
+"t": "A large exhibition fills the hotels",
+"b": "Visitors arrive in large numbers and hotels, taxis and restaurants are busy.",
+"cat": "none",
+"cool": 100,
+"exp": 2,
+"fx": {
+"dem": [
+1.12,
+6
+]
+},
+"cc": [
+"AE",
+"SG"
+],
+"macro": true,
+"tr": [
+"hotel",
+"restaurant",
+"taxi",
+"cafe",
+"carrental",
+"event",
+"boutique"
+]
+},
+"k_ca_cold": {
+"area": "weather",
+"tone": "bad",
+"sev": 1,
+"w": 0.028,
+"t": "A deep freeze",
+"b": "A deep freeze slows traffic and keeps people home.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+0.9,
+1
+]
+},
+"cc": [
+"CA",
+"SE",
+"NO",
+"FI"
+],
+"wx": [
+"cold"
+],
+"fam": [
+"retail",
+"venue",
+"logi"
+]
+},
+"k_nl_bike_rain": {
+"area": "weather",
+"tone": "n",
+"sev": 1,
+"w": 0.035,
+"t": "Rain on the cycle paths",
+"b": "People cycle less in the rain and take shelter in cafes.",
+"cat": "none",
+"cool": 26,
+"exp": 2,
+"fx": {
+"dem": [
+1.05,
+1
+]
+},
+"cc": [
+"NL",
+"DK"
+],
+"wx": [
+"rain"
+],
+"tr": [
+"cafe",
+"restaurant",
+"kiosk"
+]
+}
+}
+}
