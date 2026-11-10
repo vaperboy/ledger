@@ -1,22 +1,15 @@
 import Foundation
 import Security
 
-// The real online side: `OnlineService` over the Supabase Auth (GoTrue) and REST (PostgREST) HTTP APIs with URLSession only.
-// Privacy is decided by the server's functions (see supabase/migrations); this file never filters what it receives, so a field the
-// server hides stays nil. Nothing here runs unless `OnlineConfig.useServer` is true.
-
-/// An identity token from Apple or Google and the raw nonce it was requested with, if any.
 struct IdentityToken: Sendable {
     var token: String
     var nonce: String?
 }
 
-/// Obtains the provider's identity token through the system sign-in flow (Sign in with Apple, Google Sign-In).
 protocol IdentityTokenProvider: Sendable {
     func identityToken(for provider: SignInProvider) async throws -> IdentityToken
 }
 
-/// Placeholder until the system sign-in flows are wired: always fails as "not signed in".
 struct UnavailableIdentityTokenProvider: IdentityTokenProvider {
     func identityToken(for provider: SignInProvider) async throws -> IdentityToken { throw OnlineError.notSignedIn }
 }
@@ -27,7 +20,6 @@ protocol SessionStore: Sendable {
     func clear()
 }
 
-/// Keeps the session in the Keychain, readable after the first unlock and never synced or backed up.
 struct KeychainSessionStore: SessionStore {
     var service: String = "ledger.online.session"
     var account: String = "supabase"
@@ -61,7 +53,6 @@ struct KeychainSessionStore: SessionStore {
     func clear() { SecItemDelete(base as CFDictionary) }
 }
 
-/// Network seam so the service can be driven without a network.
 protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, Int)
 }
@@ -87,8 +78,6 @@ actor SupabaseOnlineService: OnlineService {
         self.base = baseURL; self.apiKey = apiKey; self.tokens = tokens; self.store = store; self.transport = transport
     }
 
-    // MARK: Account and session
-
     func currentAccount() async -> OnlineAccount? {
         guard var session = store.load(), !session.isAnonymous else { return nil }
         if session.needsRefresh() {
@@ -108,17 +97,8 @@ actor SupabaseOnlineService: OnlineService {
         return OnlineAccount(playerID: session.userID, provider: session.provider ?? provider, createdAt: session.createdAt)
     }
 
-    /// A guest session with no profile, for server features that need a user id but no account.
-    func signInAnonymously() async throws {
-        let data: Data = try await raw(path: "/auth/v1/signup", method: "POST", body: Data("{}".utf8), authorised: false)
-        store.save(try decoder.decode(SupabaseTokenResponse.self, from: data).session())
-    }
-
-    func linkAccount(with provider: SignInProvider) async throws -> OnlineAccount { try await signIn(with: provider) }
-
     func accountStatus() async throws -> AccountStatus { try decode(AccountStatus.self, try await rpcData("account_status")) }
 
-    /// The server makes the profile only when the confirmation is a yes (anything else is refused there as `adult_required`).
     func createProfile(adultConfirmed: Bool) async throws -> PlayerProfile {
         try await profileRPC("ensure_profile", ["p_adult_confirmed": adultConfirmed])
     }
@@ -137,12 +117,10 @@ actor SupabaseOnlineService: OnlineService {
 
     func exportMyData() async throws -> Data { try await rpcData("export_my_data") }
 
-    // MARK: Profiles
-
     func myProfile() async throws -> PlayerProfile { try await profileRPC("view_profile", [:]) }
 
     func updateMyProfile(_ update: ProfileUpdate) async throws -> PlayerProfile {
-        var fields: [String: Any] = [:]   // update_my_profile reads a missing key as "leave as is"
+        var fields: [String: Any] = [:]
         if let name = update.displayName {
             if let why = ProfileRules.problem(with: name) { throw OnlineError.nameRejected(why) }
             fields["p_display_name"] = ProfileRules.clean(name)
@@ -153,7 +131,7 @@ actor SupabaseOnlineService: OnlineService {
         if let icon = update.avatarIcon { fields["p_avatar_icon"] = icon }
         if !fields.isEmpty { _ = try await rpcData("update_my_profile", fields) }
         if update.level != nil || update.badges != nil || update.gameWeek != nil || update.companies != nil {
-            struct Args: Encodable {   // nil members are omitted, which the function reads as "leave as is"
+            struct Args: Encodable {
                 var p_level: Int?; var p_badges: [String]?; var p_game_week: Int?; var p_companies: [OnlineCompany]?
             }
             let args = Args(p_level: update.level, p_badges: update.badges, p_game_week: update.gameWeek, p_companies: update.companies)
@@ -169,8 +147,6 @@ actor SupabaseOnlineService: OnlineService {
         let data: Data = try await rpcData("search_players", ["p_query": query])
         return try decode([PlayerProfile].self, data)
     }
-
-    // MARK: Friends
 
     func friends() async throws -> FriendsOverview { try decode(FriendsOverview.self, try await rpcData("my_friends")) }
 
@@ -214,7 +190,18 @@ actor SupabaseOnlineService: OnlineService {
         _ = try await raw(path: "/rest/v1/reports", method: "POST", body: try JSONSerialization.data(withJSONObject: body), prefer: "return=minimal")
     }
 
-    // MARK: Plumbing
+    func heartbeat() async throws -> WorldPulse { try decode(WorldPulse.self, try await rpcData("heartbeat")) }
+
+    func registerDevice(_ device: String) async throws { _ = try await rpcData("register_device", ["p_device": device]) }
+
+    func friendActivity() async throws -> FriendActivity { try decode(FriendActivity.self, try await rpcData("friend_activity", ["p_limit": 40])) }
+
+    func pendingSettlements() async throws -> [OnlineSettlementRow] { try decode([OnlineSettlementRow].self, try await rpcData("pending_settlements")) }
+
+    func acknowledgeSettlements(_ ids: [String]) async throws {
+        guard !ids.isEmpty else { return }
+        _ = try await rpcData("ack_settlements", ["p_ids": ids])
+    }
 
     private func deleteFriendship(requester: String, addressee: String, status: String) async throws {
         _ = try await raw(path: "/rest/v1/friendships", method: "DELETE",
@@ -234,13 +221,11 @@ actor SupabaseOnlineService: OnlineService {
         try await raw(path: "/rest/v1/rpc/" + name, method: "POST", body: try JSONSerialization.data(withJSONObject: params))
     }
 
-    /// The stored session, refreshed when it is about to expire. Throws `.notSignedIn` without one or for a guest.
     private func liveSession() async throws -> SupabaseSession {
         guard let session = store.load(), !session.isAnonymous else { throw OnlineError.notSignedIn }
         return session.needsRefresh() ? try await refreshed(session) : session
     }
 
-    /// One refresh at a time: refresh tokens rotate, so a second concurrent refresh would fail.
     private func refreshed(_ old: SupabaseSession) async throws -> SupabaseSession {
         if let task = refreshTask { return try await task.value }
         let task = Task { () throws -> SupabaseSession in
@@ -257,7 +242,6 @@ actor SupabaseOnlineService: OnlineService {
         return try await task.value
     }
 
-    /// A request with the user's token (refreshed first), retried once after a 401 with a fresh token.
     private func raw(path: String, method: String, query: [URLQueryItem] = [], body: Data? = nil, prefer: String? = nil,
                      authorised: Bool = true) async throws -> Data {
         guard authorised else { return try await send(path: path, method: method, query: query, body: body, token: nil, prefer: prefer) }

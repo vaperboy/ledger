@@ -260,3 +260,33 @@ begin
   perform private.run_supply_week(date_trunc('week', now())::date);
   if (select end_reason from public.supply_contracts where id = cid) <> 'expired' then raise exception 'contract of an absent buyer kept running'; end if;
 end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); c uuid := pg_temp.id('c'); code text; r jsonb;
+begin
+  select p.code into code from public.profiles p where p.id = a;
+  perform pg_temp.as_user(c);
+  r := public.profile_by_code(lower(replace(code, '-', '')));
+  if r ->> 'id' <> a::text then raise exception 'code without dash not found: %', r; end if;
+  if jsonb_array_length(public.search_players(lower(replace(code, '-', '')))) <> 1 then raise exception 'search by loose code'; end if;
+  perform pg_temp.expect_error('select public.profile_by_code(''ZZZ-ZZZZ'')', 'not_found');
+end $$;
+
+do $$
+declare a uuid := pg_temp.id('a'); b uuid := pg_temp.id('b'); c uuid := pg_temp.id('c'); n int;
+begin
+  perform pg_temp.as_user(c);
+  set local role authenticated;
+  delete from public.friendships where status = 'accepted';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'a stranger deleted % friendships', n; end if;
+  perform pg_temp.expect_error('insert into public.reports (reporter_id, target_id, reason) values (''' || a || ''', ''' || b || ''', ''spam'')', 'new row violates row-level security');
+  perform pg_temp.expect_error('insert into public.blocks (blocker_id, blocked_id) values (''' || a || ''', ''' || b || ''')', 'new row violates row-level security');
+  reset role;
+  perform pg_temp.as_user(a);
+  set local role authenticated;
+  delete from public.friendships where status = 'accepted';
+  get diagnostics n = row_count;
+  reset role;
+  if n < 1 then raise exception 'a party could not end their own friendship'; end if;
+end $$;

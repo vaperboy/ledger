@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// Country names for profile codes (the game uses "UK" where the system says "GB").
 enum OnlineCountry {
     static let codes: [String] = ["NO", "UK", "FR", "SE", "DK", "FI", "DE", "NL", "US", "CA", "ES", "IT", "PL", "IE", "JP", "BR", "IN", "AU", "ZA"]
     static func name(_ code: String) -> String { Locale.current.localizedString(forRegionCode: code == "UK" ? "GB" : code) ?? code }
 }
 
-/// A round avatar: the player's initials on one of eight muted colours.
 struct ProfileAvatar: View {
     var initials: String
     var colour: Int
@@ -26,7 +24,6 @@ struct ProfileAvatar: View {
     }
 }
 
-/// How a company is doing, as a coloured word.
 extension OnlineCompanyHealth {
     var tint: Color {
         switch self {
@@ -38,15 +35,22 @@ extension OnlineCompanyHealth {
 }
 
 extension PlayerProfile {
-    /// "Norway · Level 14" with whatever this viewer is allowed to see.
     var subline: String {
         var parts: [String] = [OnlineCountry.name(countryCode)]
         if let l = level { parts.append("Level \(l)") }
+        if let t = lastSeen { parts.append(Self.seenText(t)) }
         return parts.joined(separator: " · ")
+    }
+
+    private static func seenText(_ t: Double) -> String {
+        let s: Double = max(0, Date().timeIntervalSince1970 - t)
+        if s < 300 { return "Online now" }
+        if s < 3_600 { return "Active \(Int(s / 60)) min ago" }
+        if s < 86_400 { return "Active \(Int(s / 3_600)) h ago" }
+        return "Active \(Int(s / 86_400)) d ago"
     }
 }
 
-/// One player in a list: avatar, name, a grey line and an optional trailing view.
 struct PlayerRow<Trailing: View>: View {
     var player: PlayerProfile
     @ViewBuilder var trailing: () -> Trailing
@@ -66,7 +70,6 @@ struct PlayerRow<Trailing: View>: View {
     }
 }
 
-/// A row of a card made of icon, title, grey note and value, used by the account and profile screens.
 struct OnlineLine: View {
     var glyph: String
     var title: String
@@ -92,7 +95,6 @@ struct OnlineLine: View {
     }
 }
 
-/// A titled card: capitals label, rows inside, optional grey footer.
 struct OnlineGroup<Content: View>: View {
     var title: String
     var footer: String = ""
@@ -111,7 +113,6 @@ struct OnlineGroup<Content: View>: View {
     }
 }
 
-/// A list of companies in words: name, trade and city, and how it is doing.
 struct OnlineCompanyList: View {
     var companies: [OnlineCompany]
 
@@ -128,6 +129,66 @@ struct OnlineCompanyList: View {
             }
             .padding(.vertical, Theme.Space.s).frame(minHeight: 52)
             .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+struct InviteAcceptCard: View {
+    @Environment(OnlineSession.self) private var online
+    @State private var found: PlayerProfile?
+    @State private var message = ""
+    @State private var working = false
+
+    var body: some View {
+        if let code = online.pendingInvite {
+            OnlineGroup(title: "Friend invite", footer: message) {
+                if !online.isSignedIn {
+                    OnlineLine(glyph: Glyph.person, title: "Link an account to accept", note: "Invite code " + code)
+                } else if let p = found {
+                    PlayerRow(player: p) { EmptyView() }
+                    Hairline()
+                    Button { Task { await add(p) } } label: {
+                        OnlineLine(glyph: Glyph.people, title: "Add " + p.displayName, note: "Sends a friend request", chevron: true)
+                    }
+                    .buttonStyle(PressableStyle())
+                    .disabled(working)
+                    .accessibilityIdentifier("invite-accept")
+                } else {
+                    OnlineLine(glyph: Glyph.person, title: "Looking up the invite", note: "Code " + code)
+                }
+                Hairline()
+                Button { online.dismissInvite() } label: {
+                    Text("Not now").textStyle(.body, tint: Theme.inkSoft).frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(PressableStyle())
+            }
+            .task(id: code + (online.isSignedIn ? "+" : "-")) { await lookUp(code) }
+        }
+    }
+
+    private func lookUp(_ code: String) async {
+        guard online.isSignedIn else { found = nil; return }
+        message = ""
+        do {
+            found = try await online.service.profile(code: code)
+        } catch {
+            found = nil
+            message = (error as? LocalizedError)?.errorDescription ?? "That invite did not work."
+        }
+    }
+
+    private func add(_ p: PlayerProfile) async {
+        working = true
+        defer { working = false }
+        do {
+            try await online.service.sendFriendRequest(to: p.id)
+            online.dismissInvite()
+        } catch OnlineError.alreadyFriends {
+            online.dismissInvite()
+        } catch OnlineError.requestPending {
+            online.dismissInvite()
+        } catch {
+            message = (error as? LocalizedError)?.errorDescription ?? "Could not send the request. Try again."
         }
     }
 }

@@ -65,5 +65,33 @@ begin
      limit greatest(1, least(coalesce(p_limit, 50), 100))) r), '[]'::jsonb);
 end $$;
 
+create or replace function private.code_key(c text) returns text language sql immutable as $$
+  select upper(regexp_replace(coalesce(c, ''), '[^A-Za-z0-9]', '', 'g'));
+$$;
+
+create or replace function public.profile_by_code(p_code text) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := private.require_user(); target uuid;
+begin
+  select id into target from public.profiles where private.code_key(code) = private.code_key(p_code) and deleted_at is null and not is_bot;
+  if target is null or (target <> uid and private.is_blocked_between(uid, target)) then
+    raise exception 'not_found' using errcode = 'P0001';
+  end if;
+  return private.profile_json(uid, target);
+end $$;
+
+create or replace function public.search_players(p_query text) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare uid uuid := private.require_user(); q text := trim(coalesce(p_query, '')); pat text; res jsonb;
+begin
+  if char_length(q) < 2 then return '[]'::jsonb; end if;
+  pat := '%' || replace(replace(replace(lower(q), '\', '\\'), '%', '\%'), '_', '\_') || '%';
+  select coalesce(jsonb_agg(private.profile_json(uid, x.id) order by x.display_name), '[]'::jsonb) into res from (
+    select p.id, p.display_name from public.profiles p
+     where p.deleted_at is null and not p.is_bot and p.id <> uid and not private.is_blocked_between(uid, p.id)
+       and (lower(p.display_name) like pat or (char_length(private.code_key(q)) = 7 and private.code_key(p.code) = private.code_key(q)))
+     order by p.display_name limit 20) x;
+  return res;
+end $$;
+
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.publish_leaderboard(numeric, numeric, int), public.read_leaderboards(int), public.news_feed(text, int) to authenticated;
+grant execute on function public.profile_by_code(text), public.search_players(text) to authenticated;

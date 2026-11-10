@@ -1,10 +1,6 @@
 import Foundation
 import Businesses
 
-/// The stand-in for the online server: about forty sample players in memory, the signed-in player's own state saved in UserDefaults.
-/// It enforces profile privacy and the friend rules the way the real server will, so the screens never have to.
-/// Other features add their own service protocol and conform this actor to it in an extension, keeping their state through
-/// `extensionData(for:)` / `setExtensionData(_:for:)` (extensions cannot add stored properties).
 actor MockOnlineService: OnlineService {
     private struct Report: Codable { var playerID: String; var reason: ReportReason; var note: String; var at: Date }
 
@@ -17,7 +13,6 @@ actor MockOnlineService: OnlineService {
         var blocked: [String] = []
         var reports: [Report] = []
         var extra: [String: Data] = [:]
-        /// Optional so a save from before these existed still decodes.
         var adultConfirmed: Bool?
         var linkRewardPaid: Bool?
     }
@@ -27,7 +22,6 @@ actor MockOnlineService: OnlineService {
     private let latency: UInt64
     private let roster: [PlayerProfile]
     private var state: State
-    /// The administrator side of the stand-in. Only a debug build started with `-mock-admin` has an administrator: there is no code here.
     private var adminBook = MockAdminBook()
     static let previewAdmin: Bool = {
         #if DEBUG
@@ -46,8 +40,6 @@ actor MockOnlineService: OnlineService {
         if let data = defaults.data(forKey: key), let saved = try? JSONDecoder().decode(State.self, from: data) { state = saved } else { state = State() }
     }
 
-    // MARK: Account
-
     func currentAccount() async -> OnlineAccount? { state.account }
 
     func signIn(with provider: SignInProvider) async throws -> OnlineAccount {
@@ -55,7 +47,7 @@ actor MockOnlineService: OnlineService {
         let existing: String? = state.account?.playerID ?? state.me?.id
         let account = OnlineAccount(playerID: existing ?? "me-" + UUID().uuidString.prefix(8).lowercased(), provider: provider, createdAt: state.account?.createdAt ?? Date())
         state.account = account
-        if state.extra["testFriends.v1"] == nil {   // the test players start as friends once, so their friends-only profiles can be read
+        if state.extra["testFriends.v1"] == nil {
             for id in SampleRoster.testPlayerIDs where !state.friendIDs.contains(id) && !state.blocked.contains(id) { state.friendIDs.append(id) }
             state.extra["testFriends.v1"] = Data([1])
         }
@@ -81,7 +73,6 @@ actor MockOnlineService: OnlineService {
         return try await myProfile()
     }
 
-    /// The server pays once per person; the stand-in pays once per saved state.
     func claimLinkReward() async throws -> LinkRewardResult {
         await pause()
         try requireAccount()
@@ -93,8 +84,6 @@ actor MockOnlineService: OnlineService {
     }
 
     static let linkRewardGold = 100
-
-    // MARK: Administrator (debug preview only)
 
     func redeemAdminCode(_ code: String) async throws -> AdminCodeResult {
         await pause()
@@ -125,8 +114,6 @@ actor MockOnlineService: OnlineService {
         return Array(adminBook.audit.filter { before == nil || $0.id < before! }.prefix(max(1, limit)))
     }
 
-    func linkAccount(with provider: SignInProvider) async throws -> OnlineAccount { try await signIn(with: provider) }
-
     func signOut() async { state.account = nil; save() }
 
     func deleteAccount() async throws {
@@ -151,8 +138,6 @@ actor MockOnlineService: OnlineService {
         return try enc.encode(out)
     }
 
-    // MARK: Profiles
-
     func myProfile() async throws -> PlayerProfile {
         try requireAccount()
         guard var me = state.me else { throw OnlineError.notSignedIn }
@@ -171,10 +156,14 @@ actor MockOnlineService: OnlineService {
         if let c = update.avatarColour { me.avatarColour = ((c % PlayerProfile.avatarColourCount) + PlayerProfile.avatarColourCount) % PlayerProfile.avatarColourCount }
         if let cc = update.countryCode { me.countryCode = cc }
         if let p = update.privacy { me.privacy = p }
-        if let c = update.companies { me.companies = c; me.companyCount = c.count }
-        if let l = update.level { me.level = l }
-        if let b = update.badges { me.badges = b }
-        if let w = update.gameWeek { me.gameWeek = w }
+        let behind: Bool = update.gameWeek.map { (w: Int) -> Bool in w < (me.gameWeek ?? 0) } ?? false
+        if let c = update.companies, !behind { me.companies = c; me.companyCount = c.count }
+        if let l = update.level { me.level = max(me.level ?? 0, l) }
+        if let b = update.badges {
+            let held: [String] = me.badges
+            me.badges = Array((held + b.filter { (x: String) -> Bool in !held.contains(x) }).prefix(64))
+        }
+        if let w = update.gameWeek { me.gameWeek = max(me.gameWeek ?? 0, w) }
         if let icon = update.avatarIcon, AvatarCatalog.def(icon) != nil { me.avatarIcon = icon }
         state.me = me
         save()
@@ -196,7 +185,7 @@ actor MockOnlineService: OnlineService {
         try requireAccount()
         settle()
         let wanted: String = Self.normalise(code)
-        guard wanted.count == 6 else { throw OnlineError.notFound }
+        guard wanted.count == 7 else { throw OnlineError.notFound }
         if let me = state.me, state.account != nil, Self.normalise(me.code) == wanted { throw OnlineError.cannotTargetYourself }
         guard let p = roster.first(where: { Self.normalise($0.code) == wanted }) else { throw OnlineError.notFound }
         return view(p)
@@ -211,12 +200,10 @@ actor MockOnlineService: OnlineService {
         let code: String = Self.normalise(q)
         let hits: [PlayerProfile] = roster.filter { (p: PlayerProfile) -> Bool in
             guard !state.blocked.contains(p.id) else { return false }
-            return p.displayName.range(of: q, options: [.caseInsensitive, .diacriticInsensitive]) != nil || (code.count == 6 && Self.normalise(p.code) == code)
+            return p.displayName.range(of: q, options: [.caseInsensitive, .diacriticInsensitive]) != nil || (code.count == 7 && Self.normalise(p.code) == code)
         }
         return hits.prefix(30).map { view($0) }
     }
-
-    // MARK: Friends
 
     func friends() async throws -> FriendsOverview {
         await pause()
@@ -299,19 +286,13 @@ actor MockOnlineService: OnlineService {
         save()
     }
 
-    // MARK: For features built on top (supplier marketplace and the like)
-
-    /// The signed-in player's id, nil for a guest.
     func signedInPlayerID() -> String? { state.account == nil ? nil : state.me?.id }
 
-    /// All sample players as the signed-in viewer may see them (privacy applied).
     func visibleDirectory() -> [PlayerProfile] { settle(); return roster.map { view($0) } }
 
     func extensionData(for key: String) -> Data? { state.extra[key] }
 
     func setExtensionData(_ data: Data?, for key: String) { state.extra[key] = data; save() }
-
-    // MARK: Internals
 
     private func pause() async { if latency > 0 { try? await Task.sleep(nanoseconds: latency) } }
 
@@ -334,7 +315,6 @@ actor MockOnlineService: OnlineService {
         if let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: key) }
     }
 
-    /// A new player starts at level one with a country from the device and a few people already around them.
     private func createMyProfile(_ account: OnlineAccount) {
         let region: String = Locale.current.region?.identifier ?? "NO"
         let digits: String = String(account.playerID.suffix(4))
@@ -345,7 +325,6 @@ actor MockOnlineService: OnlineService {
         state.incoming = ["p06": Date().addingTimeInterval(-3600 * 5), "p12": Date().addingTimeInterval(-3600 * 30)]
     }
 
-    /// Computer players answer a request the way people do: after minutes or hours, inside their own waking hours (`PlayerRhythm`).
     private func settle(now: Date = Date()) {
         var changed = false
         for (id, at) in state.outgoing where SampleRoster.isComputer(id) {
@@ -366,7 +345,6 @@ actor MockOnlineService: OnlineService {
         return .none
     }
 
-    /// The profile as this viewer is allowed to see it (see `PrivacyLevel`).
     private func view(_ p: PlayerProfile) -> PlayerProfile {
         var v = p
         v.relation = relation(p.id)
@@ -386,4 +364,35 @@ actor MockOnlineService: OnlineService {
             roster.first { $0.id == id }.map { FriendRequest(player: view($0), sentAt: at) }
         }.sorted { $0.sentAt > $1.sentAt }
     }
+}
+
+extension MockOnlineService {
+    func heartbeat() async throws -> WorldPulse {
+        let slot: Int = Int(Date().timeIntervalSince1970 / 600)
+        return WorldPulse(online: 8 + slot % 11, players: SampleRoster.players().count + 1)
+    }
+
+    func registerDevice(_ device: String) async throws {}
+
+    func friendActivity() async throws -> FriendActivity {
+        try requireAccount()
+        let now: Double = Date().timeIntervalSince1970
+        let slot: Int = Int(now / 3600)
+        var presence: [FriendPresence] = []
+        var items: [FriendActivityItem] = []
+        for id in state.friendIDs {
+            guard let p = roster.first(where: { (r: PlayerProfile) -> Bool in r.id == id }), p.privacy != .onlyMe else { continue }
+            var s = SampleRoster.Stream("seen:\(id):\(slot)")
+            let ago: Double = Double(s.next(40 * 3600))
+            presence.append(FriendPresence(playerID: id, lastSeen: now - ago, online: ago < 300))
+            if let level = view(p).level {
+                items.append(FriendActivityItem(id: "mock.\(id).level", playerID: id, playerName: p.displayName, kind: "levelUp", count: level, label: nil, at: now - ago))
+            }
+        }
+        return FriendActivity(activity: items.sorted { $0.at > $1.at }, presence: presence)
+    }
+
+    func pendingSettlements() async throws -> [OnlineSettlementRow] { [] }
+
+    func acknowledgeSettlements(_ ids: [String]) async throws {}
 }

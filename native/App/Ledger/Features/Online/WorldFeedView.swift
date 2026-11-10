@@ -80,6 +80,9 @@ struct WorldFeedView: View {
             guard let text = PlayerNewsRules.sentence(e, namesVisible: feed.service.isFriend(e.playerID)) else { continue }
             out.append(Item(id: e.id, glyph: Glyph.news, title: text, note: Self.ago(day: e.day), sort: Double(e.day)))
         }
+        for a in online.friendActivity.activity {
+            out.append(Item(id: "fa." + a.id, glyph: Glyph.people, title: a.sentence, note: Self.ago(seen: a.at), sort: a.at / 86_400))
+        }
         for (i, n) in session.notes.enumerated() {
             out.append(Item(id: "note.\(i)", glyph: Glyph.market, title: n, note: "Auctions", sort: Double(Self.today) + 0.5))
         }
@@ -94,7 +97,7 @@ struct WorldFeedView: View {
 
     private var worldGroup: some View {
         let list: [Item] = feedItems
-        return OnlineGroup(title: "Around the world", footer: "Only public events, and friends' events as their privacy allows.") {
+        return OnlineGroup(title: "Around the world", footer: worldFooter) {
             if list.isEmpty {
                 Text(loaded ? "Nothing yet. When other players open branches, join clubs or finish seasons, and when your friends play, it shows up here. Nothing on this page is invented." : "Loading")
                     .textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true).padding(.vertical, Theme.Space.m)
@@ -107,14 +110,24 @@ struct WorldFeedView: View {
         }
     }
 
+    private var worldFooter: String {
+        let base: String = "Only public events, and friends' events as their privacy allows."
+        guard let p = online.pulse else { return base }
+        return "\(p.online) of \(p.players) players are online now. " + base
+    }
+
     private func lastSeen(_ p: PlayerProfile) -> String {
+        if let presence = online.friendActivity.presence.first(where: { (x: FriendPresence) -> Bool in x.playerID == p.id }) {
+            if presence.online { return "Online now" }
+            if let t = presence.lastSeen { return "Last active " + Self.ago(seen: t).lowercased() }
+        }
         guard let d = events.filter({ $0.playerID == p.id }).map({ $0.day }).max() else { return "No activity yet" }
         return "Last active " + Self.ago(day: d).lowercased()
     }
 
     private var inviteText: String {
         let code: String = online.profile?.code ?? ""
-        return code.isEmpty ? "Come and play Ledger with me." : "Come and play Ledger with me. Add me in the Friends app with my code \(code)."
+        return code.isEmpty ? "Come and play Ledger with me." : InviteLink.message(code: code)
     }
 
     private var friendsGroup: some View {
@@ -190,7 +203,10 @@ struct WorldFeedView: View {
 
     private func load() async {
         events = await feed.service.events(now: Date())
-        if online.isSignedIn { overview = try? await online.service.friends() } else { overview = nil }
+        if online.isSignedIn {
+            overview = try? await online.service.friends()
+            await online.syncWorld(store: store)
+        } else { overview = nil }
         await session.refreshAuctions()
         loaded = true
     }
@@ -202,6 +218,14 @@ struct WorldFeedView: View {
         if d == 0 { return "Today" }
         if d == 1 { return "Yesterday" }
         return "\(d) days ago"
+    }
+
+    private static func ago(seen: Double) -> String {
+        let s: Double = max(0, Date().timeIntervalSince1970 - seen)
+        if s < 3_600 { return "\(max(1, Int(s / 60))) min ago" }
+        if s < 86_400 { let h: Int = Int(s / 3_600); return h == 1 ? "1 hour ago" : "\(h) hours ago" }
+        let d: Int = Int(s / 86_400)
+        return d == 1 ? "Yesterday" : "\(d) days ago"
     }
 
     private static func left(_ seconds: Double) -> String {

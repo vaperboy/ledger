@@ -22,6 +22,7 @@ struct ProfileView: View {
                 PhonePageScroll(spacing: Theme.Space.xl) {
                     identity(e)
                     codeSection
+                    InviteAcceptCard()
                     tiles(e)
                     trophies(e)
                     collectionRow
@@ -238,7 +239,7 @@ struct ProfileView: View {
             HStack(spacing: Theme.Space.xs) {
                 Text("Friend code").textStyle(.caption)
                 Text(p.code).textStyle(.headline, numeric: true)
-                ShareLink(item: p.code) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
+                ShareLink(item: InviteLink.message(code: p.code)) { LedgerGlyph(glyph: Glyph.share, size: Theme.Icon.small, tint: Theme.accent).frame(minWidth: 44, minHeight: 44) }
                     .accessibilityLabel("Share your friend code")
             }
             .frame(maxWidth: .infinity)

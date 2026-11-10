@@ -3,8 +3,6 @@ import GameCore
 import Events
 import Simulation
 
-/// Carries what the online side says into the game: a friend's answer to an offer becomes `jvRespond`, and partner votes become `jvVote`.
-/// Runs after every day and whenever a joint-venture screen opens. The game decides everything; this only delivers.
 @MainActor
 final class JointVentureCoordinator {
     static let shared = JointVentureCoordinator()
@@ -13,9 +11,8 @@ final class JointVentureCoordinator {
     private var attachedTo: ObjectIdentifier?
     private var running = false
 
-    private init() { service = MockJointVentureService(online: OnlineBackend.make()) }
+    private init() { service = MockJointVentureService(online: OnlineBackend.shared) }
 
-    /// Use the app's online service (the screens call this with the session's service).
     func attach(_ online: any OnlineService) {
         let id = ObjectIdentifier(online as AnyObject)
         guard attachedTo != id else { return }
@@ -23,14 +20,12 @@ final class JointVentureCoordinator {
         service = MockJointVentureService(online: online)
     }
 
-    /// Builds the private offer one friend gets, with the words the game wrote for it.
     func offer(engine e: GameEngine, companyID: Int, inviteID: Int, friendName: String, friendID: String, pct: Double, price: Double) -> JVOffer? {
         guard let t = e.jvTerms(companyID: companyID, pct: pct, price: price) else { return nil }
         return JVOffer(companyID: companyID, inviteID: inviteID, companyName: t.companyName, friendID: friendID, friendName: friendName, pct: pct, price: price,
                        fair: t.fair, lines: t.lines, sentWeek: e.state.week)
     }
 
-    /// One pass over every joint venture.
     func sync(_ store: GameStore) async {
         guard !running, store.engine != nil else { return }
         running = true
@@ -59,7 +54,6 @@ final class JointVentureCoordinator {
         }
     }
 
-    /// A sample partner now and then calls an emergency meeting, so meetings come to the player as well as from them.
     private func calls(_ store: GameStore, companyID: Int) async {
         guard let e = store.engine, let co = e.state.company(companyID), let st = e.jointVenture(companyID: companyID) else { return }
         guard !st.meetings.contains(where: { !$0.closed }) else { return }
