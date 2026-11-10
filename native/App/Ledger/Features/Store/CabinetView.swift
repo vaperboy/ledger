@@ -243,17 +243,68 @@ enum LookKit {
     }
 }
 
+struct BackdropFill: View {
+    var reward: SeasonReward
+    var scrim: Double = 0.4
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(reward), 0x000000, 0.1)), Color(hex: LookKit.deep(reward))], startPoint: .top, endPoint: .bottom)
+            picture
+            LinearGradient(colors: [Color.black.opacity(scrim), Color.black.opacity(scrim * 0.6)], startPoint: .top, endPoint: .bottom)
+        }
+        .clipped()
+    }
+
+    @ViewBuilder private var picture: some View {
+        #if canImport(UIKit)
+        if let ui = ArtLibrary.catalogueImage(.backdrop, reward.id) {
+            Color.clear.overlay { Image(uiImage: ui).resizable().scaledToFill() }.clipped()
+        }
+        #endif
+    }
+}
+
 struct LookBackdrop: View {
     var look: [String: String]
     private let session = StoreSession.shared
 
     var body: some View {
-        if let d = LookKit.card(look, cabinet: session.state.cabinet) {
-            CardFace(def: d)
-        } else if let r = LookKit.reward(look, .backdrop) {
-            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .fill(LinearGradient(colors: [Color(hex: EmblemCatalog.mix(LookKit.tint(r), 0x000000, 0.1)), Color(hex: LookKit.deep(r))], startPoint: .top, endPoint: .bottom))
+        ZStack(alignment: .top) {
+            if let d = LookKit.card(look, cabinet: session.state.cabinet) { CardFace(def: d) }
+            if let r = LookKit.reward(look, .backdrop) {
+                BackdropFill(reward: r)
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.55), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+            }
         }
+    }
+}
+
+struct HeaderBackdropFill: View {
+    var reward: SeasonReward
+    static let height: CGFloat = 240
+
+    var body: some View {
+        GeometryReader { (g: GeometryProxy) in
+            let top: CGFloat = g.frame(in: .global).minY
+            BackdropFill(reward: reward, scrim: 0.55)
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.7), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                .frame(width: g.size.width, height: Self.height)
+                .offset(y: -top)
+        }
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+extension LookKit {
+    static func item(_ id: String) -> SeasonReward? {
+        id.isEmpty ? nil : SeasonRewards.item(id)
+    }
+
+    static func companyBackdrop(_ e: GameEngine, _ companyID: Int) -> SeasonReward? {
+        item(e.companyBackdrop(companyID: companyID))
     }
 }
 
@@ -398,6 +449,7 @@ struct CompanyCardView: View {
     var name: String
     var def: CardDef?
     var logoID: String = ""
+    var backdrop: SeasonReward? = nil
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
@@ -416,7 +468,10 @@ struct CompanyCardView: View {
         .padding(Theme.Space.m)
         .frame(minHeight: 64)
         .background {
-            if let def { CardFace(def: def) } else { shape.fill(Theme.inset) }
+            ZStack {
+                if let def { CardFace(def: def) } else { shape.fill(Theme.inset) }
+                if let backdrop { BackdropFill(reward: backdrop, scrim: 0.45) }
+            }
         }
         .clipShape(shape)
         .accessibilityElement(children: .combine)

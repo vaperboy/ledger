@@ -155,10 +155,6 @@ actor MockOnlineService: OnlineService {
         await pause()
         try requireAccount()
         guard var me = state.me else { throw OnlineError.notSignedIn }
-        if let name = update.displayName {
-            if let why = ProfileRules.problem(with: name) { throw OnlineError.nameRejected(why) }
-            me.displayName = ProfileRules.clean(name)
-        }
         if let c = update.avatarColour { me.avatarColour = ((c % PlayerProfile.avatarColourCount) + PlayerProfile.avatarColourCount) % PlayerProfile.avatarColourCount }
         if let cc = update.countryCode { me.countryCode = cc }
         if let p = update.privacy { me.privacy = p }
@@ -175,6 +171,30 @@ actor MockOnlineService: OnlineService {
         save()
         me.relation = .you
         return me
+    }
+
+    func usernameAvailable(_ name: String) async throws -> UsernameResult {
+        await pause()
+        try requireAccount()
+        return verdict(name)
+    }
+
+    func claimUsername(_ name: String) async throws -> UsernameResult {
+        await pause()
+        try requireAccount()
+        let result: UsernameResult = verdict(name)
+        guard result == .ok, var me = state.me else { return result }
+        me.displayName = ProfileRules.clean(name)
+        state.me = me
+        save()
+        return .ok
+    }
+
+    private func verdict(_ name: String) -> UsernameResult {
+        guard ProfileRules.problem(with: name) == nil else { return .invalid }
+        let key: String = ProfileRules.clean(name).lowercased()
+        if key == state.me?.displayName.lowercased() { return .ok }
+        return roster.contains(where: { (p: PlayerProfile) -> Bool in p.displayName.lowercased() == key }) ? .taken : .ok
     }
 
     func profile(id: String) async throws -> PlayerProfile {

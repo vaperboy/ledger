@@ -295,6 +295,18 @@ final class OnlineSession {
         }
     }
 
+    func usernameAvailable(_ name: String) async -> UsernameResult? {
+        guard isSignedIn else { return nil }
+        return try? await service.usernameAvailable(name)
+    }
+
+    func claimUsername(_ name: String) async -> UsernameResult? {
+        guard isSignedIn else { return nil }
+        let result: UsernameResult? = try? await service.claimUsername(name)
+        if result == .ok { await refreshProfile() }
+        return result
+    }
+
     func shareProgress(from engine: GameEngine?) async {
         guard isSignedIn, status?.adultConfirmed == true, let e = engine else { return }
         if profile == nil { await refreshProfile() }

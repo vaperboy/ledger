@@ -186,7 +186,12 @@ struct CompanySwitcherBar: View {
             .accessibilityLabel("Switch company")
             .accessibilityValue(context)
             .padding(.horizontal, Theme.Space.page)
-            .background(P == .game ? Color.clear : P.ground)
+            .background {
+                ZStack {
+                    if P != .game { P.ground.ignoresSafeArea(edges: .top) }
+                    if let b = LookKit.companyBackdrop(e, id) { HeaderBackdropFill(reward: b).ignoresSafeArea(edges: .top) }
+                }
+            }
         }
     }
 

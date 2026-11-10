@@ -11,8 +11,12 @@ struct ProfileView: View {
     @ObservedObject private var local = ProfileLocal.shared
     @ObservedObject private var season = SeasonModel.shared
     @State private var showLadder = false
-    @State private var editingName = false
+    @State private var renaming = false
     @State private var nameDraft = ""
+    @State private var shortOfGold = false
+    @State private var shortNeed = 0
+    @State private var showPacks = false
+    @StateObject private var checker = UsernameChecker()
     @State private var friends: [PlayerProfile] = []
     @State private var pending: PendingAction?
 
@@ -34,29 +38,25 @@ struct ProfileView: View {
         }
         .appScreen(title: "Profile", subtitle: "")
         .confirmAction($pending)
+        .centerSheet(isPresented: $renaming, title: "Username") { renameCard }
+        .centerSheet(isPresented: $shortOfGold, title: "Not enough gold") { ShortOfGoldCard(needed: shortNeed, onPacks: { shortOfGold = false; showPacks = true }) }
+        .navigationDestination(isPresented: $showPacks) { StoreApp() }
         .task(id: online.isSignedIn) { await syncOnline(); await loadFriends() }
     }
-
-    private func shownName(_ e: GameEngine) -> String { local.name.isEmpty ? e.state.player.name : local.name }
 
     private func identity(_ e: GameEngine) -> some View {
         let info: PlayerLevel.Info = e.playerLevel
         let rank: String = e.careerStatus.rank.title
         let accent: Color = LookKit.accent(season.pass.equipped) ?? Theme.gold
         return VStack(spacing: Theme.Space.s) {
-            ProfileCard()
-            if editingName {
-                nameEditor(e)
-            } else {
-                HStack(spacing: Theme.Space.s) {
-                    NavigationLink { CustomiseView() } label: { Text("Customise").frame(maxWidth: .infinity) }
-                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-                        .accessibilityIdentifier("profile-customise")
-                    Button { Haptics.tap(); nameDraft = shownName(e); editingName = true } label: { Text("Rename").frame(maxWidth: .infinity) }
-                        .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                        .accessibilityIdentifier("profile-name")
-                }
+            ProfileCard(onRename: { startRename(e) })
+            if local.nameTaken {
+                Text("Your username is taken by another player. Tap your name to choose a new one.").textStyle(.caption, tint: Theme.loss)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
+            NavigationLink { CustomiseView() } label: { Text("Customise").frame(maxWidth: .infinity) }
+                .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("profile-customise")
             Button { Haptics.tap(); showLadder = true } label: {
                 VStack(spacing: Theme.Space.xs) {
                     Text("Level \(info.level) \u{00B7} \(rank)").textStyle(.caption, tint: Theme.inkSoft)
@@ -72,31 +72,54 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func nameEditor(_ e: GameEngine) -> some View {
-        let clean: String = ProfileRules.clean(nameDraft)
-        let problem: String? = clean == shownName(e) ? nil : ProfileRules.problem(with: nameDraft)
-        return VStack(spacing: Theme.Space.xs) {
-            HStack(spacing: Theme.Space.s) {
-                TextField("Name", text: $nameDraft)
-                    .textFieldStyle(.plain).textStyle(.headline, weight: .regular)
-                    .textInputAutocapitalization(.words).autocorrectionDisabled()
-                    .submitLabel(.done).onSubmit { saveName(clean, problem) }
-                    .frame(minHeight: 44)
-                Button("Save") { saveName(clean, problem) }
-                    .buttonStyle(SecondaryButtonStyle(size: .compact)).disabled(problem != nil || clean.isEmpty)
-                Button("Cancel") { editingName = false }
-                    .buttonStyle(TertiaryButtonStyle(tint: Theme.inkSoft))
-            }
-            if let problem { Text(problem).textStyle(.caption, tint: Theme.loss) }
-        }
-        .padding(.horizontal, Theme.Space.l)
+    private func hasUsername(_ e: GameEngine) -> Bool { ProfileRules.problem(with: local.name) == nil }
+
+    private func startRename(_ e: GameEngine) {
+        nameDraft = hasUsername(e) ? local.name : ""
+        checker.reset()
+        renaming = true
     }
 
-    private func saveName(_ clean: String, _ problem: String?) {
-        guard problem == nil, !clean.isEmpty else { return }
-        local.setName(clean)
-        editingName = false
-        if online.isSignedIn { Task { _ = await online.update(ProfileUpdate(displayName: clean)) } }
+    private func renameCost(_ e: GameEngine) -> Int { hasUsername(e) ? UsernameCost.change : 0 }
+
+    @ViewBuilder private var renameCard: some View {
+        if let e = store.engine {
+            let cost: Int = renameCost(e)
+            RenameCard(placeholder: "Username", text: $nameDraft,
+                       note: cost > 0 ? "3 to 16 letters, numbers or _. Changing costs \(StoreText.gold(cost)). Your old name is never given to anyone else." : "3 to 16 letters, numbers or _. Your first username is free.",
+                       buttonTitle: cost > 0 ? "Change \u{00B7} \(StoreText.gold(cost))" : "Save", enabled: checker.canUse, identifier: "profile-name",
+                       onSubmit: { submitRename(e, cost: cost) }) { UsernameStatusLine(checker: checker) }
+                .onChange(of: nameDraft) { _, new in checker.check(new, current: local.name, online: online) }
+        }
+    }
+
+    private func submitRename(_ e: GameEngine, cost: Int) {
+        let name: String = ProfileRules.clean(nameDraft)
+        guard checker.canUse else { return }
+        renaming = false
+        if cost == 0 {
+            Task { await applyName(name, cost: 0) }
+        } else {
+            StorePurchase.afterPopup {
+                StorePurchase.ask(offer: StorePurchase.offer(.username(cost)), pending: $pending, onShort: { (price: Int) in shortNeed = price; shortOfGold = true }) {
+                    Task { await applyName(name, cost: cost) }
+                }
+            }
+        }
+    }
+
+    private func applyName(_ name: String, cost: Int) async {
+        if online.isSignedIn {
+            switch await online.claimUsername(name) {
+            case .ok?: break
+            case .taken?: store.show("That username was just taken.", tone: "warn"); return
+            case .invalid?: store.show("That username is not allowed.", tone: "warn"); return
+            case nil: store.show("Could not reach the server. Try again.", tone: "warn"); return
+            }
+        }
+        if cost > 0, !(await StoreSession.shared.buy(.username(cost), paidBoxesAllowed: true)) { return }
+        Haptics.success()
+        local.setName(name)
     }
 
     private func tiles(_ e: GameEngine) -> some View {
@@ -260,7 +283,9 @@ struct ProfileView: View {
         await online.refreshProfile()
         let name: String = local.name
         if name.isEmpty, let shown = online.profile?.displayName { local.setName(shown) }
-        else if !name.isEmpty, online.profile?.displayName != name, ProfileRules.problem(with: name) == nil { _ = await online.update(ProfileUpdate(displayName: name)) }
+        else if !name.isEmpty, online.profile?.displayName != name, ProfileRules.problem(with: name) == nil {
+            if await online.claimUsername(name) == .taken { local.nameTaken = true }
+        }
         await online.shareProgress(from: store.engine)
     }
 
@@ -279,6 +304,7 @@ struct ProfileCard: View {
     @AppStorage(CosmeticKeys.theme) private var themeID: String = Cosmetics.defaultThemeID
     private let session = StoreSession.shared
     var compact = false
+    var onRename: (() -> Void)? = nil
 
     var body: some View {
         if let e = store.engine {
@@ -292,7 +318,11 @@ struct ProfileCard: View {
             VStack(spacing: Theme.Space.s) {
                 ProfilePicture(name: name, size: compact ? 64 : 84).overlay(Circle().strokeBorder(accent, lineWidth: 2))
                 HStack(spacing: Theme.Space.xs) {
-                    LookNamePlate(look: look, name: name)
+                    if let onRename {
+                        NameTapLabel(label: name, action: onRename) { LookNamePlate(look: look, name: name) }
+                    } else {
+                        LookNamePlate(look: look, name: name)
+                    }
                     if e.inHallOfFame { HallOfFameMark() }
                 }
                 LookTradeChip(look: look, company: LookKit.company(store))

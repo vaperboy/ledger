@@ -74,6 +74,8 @@ final class StoreSession {
                 AvatarModel.shared.grant(d.id)
             case .service(_, let price):
                 state = try await store.spendGold(price)
+            case .username(let price):
+                state = try await store.spendGold(price)
             }
             return true
         } catch { problem = message(error); return false }

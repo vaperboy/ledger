@@ -4,7 +4,7 @@ import Simulation
 
 struct CustomiseView: View {
     enum Part: String, CaseIterable, Identifiable {
-        case icon, card, plate, backdrop, flair, badge, showcase
+        case icon, card, plate, backdrop, theme, flair, colour, badge, showcase
 
         var id: String { rawValue }
 
@@ -14,7 +14,9 @@ struct CustomiseView: View {
             case .card: return "Card"
             case .plate: return "Name plate"
             case .backdrop: return "Backdrop"
+            case .theme: return "Theme"
             case .flair: return "Flair"
+            case .colour: return "Colour"
             case .badge: return "Badge"
             case .showcase: return "Showcase"
             }
@@ -25,9 +27,11 @@ struct CustomiseView: View {
             case .icon: return "Shown beside your name everywhere."
             case .card: return "Fills the background of your profile. Rare cards move."
             case .plate: return "Frames your name on your profile."
-            case .backdrop: return "Fills the background of your profile, or tints it."
+            case .backdrop: return "Fills the top of your profile card, behind your icon and name."
+            case .theme: return "Tints the ring around your icon."
             case .flair: return "Sits beside your name on your profile."
-            case .badge: return "Your rank badge and colour on the home screen."
+            case .colour: return "Your accent colour in the app."
+            case .badge: return "Your rank badge on the home screen."
             case .showcase: return "Pick 3 artifacts to show on your profile."
             }
         }
@@ -35,7 +39,8 @@ struct CustomiseView: View {
         var kinds: [SeasonReward.Kind] {
             switch self {
             case .plate: return [.namePlate]
-            case .backdrop: return [.backdrop, .theme]
+            case .backdrop: return [.backdrop]
+            case .theme: return [.theme]
             case .flair: return [.richListFlair]
             default: return []
             }
@@ -59,6 +64,7 @@ struct CustomiseView: View {
     @State private var note = ""
     @State private var flash: String?
 
+    static let barClearance: CGFloat = 130
     private let columns: [GridItem] = [GridItem(.adaptive(minimum: 92), spacing: Theme.Space.s)]
 
     var body: some View {
@@ -68,7 +74,7 @@ struct CustomiseView: View {
             chips
             slotHeader
             ScrollView {
-                content(cabinet).padding(.bottom, Theme.Space.l)
+                content(cabinet).padding(.bottom, Self.barClearance)
             }
             .scrollIndicators(.hidden)
         }
@@ -96,7 +102,8 @@ struct CustomiseView: View {
         switch part {
         case .icon: return AvatarCatalog.def(avatars.equipped ?? "")?.title ?? "Default icon"
         case .card: return season.pass.equipped[SeasonPass.profileCardKey].flatMap { (id: String) -> String? in CardCatalog.def(forItem: id)?.name } ?? "Nothing"
-        case .plate, .backdrop, .flair: return worn(part.kinds)
+        case .plate, .backdrop, .theme, .flair: return worn(part.kinds)
+        case .colour: return Cosmetics.theme(savedTheme).title
         case .badge: return Cosmetics.badge(savedBadge).title
         case .showcase: return "\(local.showcase.count) of \(ProfileLocal.showcaseSlots) artifacts"
         }
@@ -161,8 +168,9 @@ struct CustomiseView: View {
         switch part {
         case .icon: iconGrid(cabinet)
         case .card: cardGrid(cabinet)
-        case .plate, .backdrop, .flair: rewardGrid(part.kinds)
-        case .badge: ColourBadgePicker(earned: store.engine?.careerCosmetics ?? [], theme: $savedTheme, badge: $savedBadge)
+        case .plate, .backdrop, .theme, .flair: rewardGrid(part.kinds)
+        case .colour: ColourBadgePicker(earned: store.engine?.careerCosmetics ?? [], theme: $savedTheme, badge: $savedBadge, show: .colour)
+        case .badge: ColourBadgePicker(earned: store.engine?.careerCosmetics ?? [], theme: $savedTheme, badge: $savedBadge, show: .badge)
         case .showcase: showcaseGrid(cabinet)
         }
     }
@@ -213,7 +221,7 @@ struct CustomiseView: View {
                 let isOpen: Bool = season.pass.owned.contains(r.id)
                 let worn: Bool = season.pass.equipped[r.kind.rawValue] == r.id
                 let how: String = CustomiseView.how(r)
-                tile(title: r.title, note: isOpen ? (kinds.count > 1 ? r.kind.label : "") : how, worn: worn, locked: !isOpen, id: "reward-" + r.id) {
+                tile(title: r.title, note: isOpen ? "" : how, worn: worn, locked: !isOpen, id: "reward-" + r.id) {
                     ItemArt(reward: r, rarity: GoldCosmetics.cosmetic(r.id)?.rarity, size: 48, wide: true)
                 } action: {
                     if !isOpen { Haptics.warning(); note = r.title + ": " + how; return }
@@ -342,10 +350,12 @@ struct LookTile<Art: View>: View {
 }
 
 struct ColourBadgePicker: View {
+    enum Show { case both, colour, badge }
     @Environment(Entitlements.self) private var ent
     var earned: [String]
     @Binding var theme: String
     @Binding var badge: String
+    var show: Show = .both
 
     var body: some View {
         let pro: Bool = ent.isPro
@@ -353,16 +363,20 @@ struct ColourBadgePicker: View {
         let badgeID: String = Cosmetics.resolvedBadge(badge.isEmpty ? nil : badge, earned: earned, pro: pro).id
         let accent: Color = Cosmetics.theme(themeID).accent
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Colour").textStyle(.label, tint: Theme.inkFaint)
-                HStack(spacing: Theme.Space.s) {
-                    ForEach(Cosmetics.themes) { (t: Cosmetics.Palette) in dot(t, on: t.id == themeID, pro: pro) }
+            if show != .badge {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    if show == .both { Text("Colour").textStyle(.label, tint: Theme.inkFaint) }
+                    HStack(spacing: Theme.Space.s) {
+                        ForEach(Cosmetics.themes) { (t: Cosmetics.Palette) in dot(t, on: t.id == themeID, pro: pro) }
+                    }
                 }
             }
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("Logo badge").textStyle(.label, tint: Theme.inkFaint)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
-                    ForEach(Cosmetics.badges) { (b: Cosmetics.Badge) in cell(b, on: b.id == badgeID, accent: accent, pro: pro) }
+            if show != .colour {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    if show == .both { Text("Logo badge").textStyle(.label, tint: Theme.inkFaint) }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: Theme.Space.s)], spacing: Theme.Space.s) {
+                        ForEach(Cosmetics.badges) { (b: Cosmetics.Badge) in cell(b, on: b.id == badgeID, accent: accent, pro: pro) }
+                    }
                 }
             }
         }

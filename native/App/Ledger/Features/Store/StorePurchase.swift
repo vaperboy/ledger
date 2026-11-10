@@ -6,6 +6,7 @@ enum GoldGood {
     case cosmetic(GoldCosmetic)
     case avatar(AvatarDef)
     case service(String, Int)
+    case username(Int)
 
     var price: Int {
         switch self {
@@ -40,6 +41,8 @@ enum StorePurchase {
             return GoldOffer(title: "Buy \(d.title)?", effect: "you get the \(d.title) profile icon. You can wear it straight away.", price: d.price ?? 0, icon: "person.crop.circle")
         case .service(let title, let price):
             return GoldOffer(title: title + "?", effect: "the wait is skipped.", price: price, icon: "forward.end")
+        case .username(let price):
+            return GoldOffer(title: "Change your username?", effect: "your username changes. The old one is never given to anyone else.", price: price, icon: "pencil")
         }
     }
 
