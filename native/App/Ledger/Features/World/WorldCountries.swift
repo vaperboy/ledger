@@ -92,12 +92,10 @@ struct CountryPage: View {
         Group {
             if let e = store.engine, let c = e.data.countries[countryCode] {
                 let here: [Company] = e.state.companies.filter { (co: Company) -> Bool in co.status.isLive && co.countryCode == countryCode }
-                let groups: [RivalGroups.Group] = RivalGroups.groups(e.state, country: countryCode)
                 ScrollScreen(spacing: Theme.Space.m, top: Theme.Space.s) {
                     hero(c, here)
                     figures(c)
                     yours(e, here)
-                    competition(e, groups)
                     cities(e, c, here)
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -140,23 +138,6 @@ struct CountryPage: View {
                     LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: co.type, glyph: Glyph.home)), title: co.name,
                               subtitle: "\(e.tradeName(co)) \u{00B7} \(e.cityName(co))", lineLimit: 1, identifier: "world-country-company-\(co.id)",
                               action: co.status == .open ? { next = .company(co.id) } : nil)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private func competition(_ e: GameEngine, _ groups: [RivalGroups.Group]) -> some View {
-        MarketLabel(title: "Rival groups here", note: groups.isEmpty ? "" : "\(groups.count)")
-        if groups.isEmpty {
-            Text("None").textStyle(.caption)
-        } else {
-            VStack(spacing: 0) {
-                ForEach(Array(groups.prefix(6).enumerated()), id: \.element.id) { (pair: (offset: Int, element: RivalGroups.Group)) in
-                    if pair.offset > 0 { Hairline() }
-                    let g: RivalGroups.Group = pair.element
-                    LedgerRow(leading: .thumb(ThumbSpec(kind: .logo, key: "group|\(g.id)", glyph: Glyph.group, initials: g.name, shape: .square)),
-                              title: g.name, subtitle: "\(g.branches) sites \u{00B7} \(g.strategyName)", value: e.homeCurrency.tidyShort(g.revenue),
-                              valueNote: "sales a year", lineLimit: 1, identifier: "world-country-group-\(g.id)", action: { next = .group(g.id) })
                 }
             }
         }
