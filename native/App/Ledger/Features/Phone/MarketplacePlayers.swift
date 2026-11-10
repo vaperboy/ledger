@@ -41,6 +41,26 @@ enum ListingFormat {
         }
     }
 
+    static func condition(of l: PlayerListing) -> String {
+        condition(l.item["seen"].isNull ? l.item["cond"].double : l.item["seen"].double)
+    }
+
+    static func detail(_ l: PlayerListing) -> String {
+        var parts: [String] = []
+        let age: Int = l.item["age"].int
+        if age > 0 { parts.append(age == 1 ? "1 yr old" : "\(age) yrs old") }
+        let km: Int = l.item["km"].int
+        if km > 0 { parts.append("\(km.formatted()) km") }
+        return parts.isEmpty ? l.kind.capitalized : parts.joined(separator: " \u{00B7} ")
+    }
+
+    static func posted(_ at: Double) -> String {
+        let mins: Int = max(0, Int((Date().timeIntervalSince1970 - at) / 60))
+        if mins < 60 { return "just now" }
+        if mins < 60 * 24 { return "\(mins / 60) h ago" }
+        return "\(mins / (60 * 24)) d ago"
+    }
+
     static func photoKey(_ family: String, _ seed: String) -> String {
         ArtLibrary.itemKey(group: "", familyKey: family, seed: seed) ?? ""
     }
@@ -203,22 +223,14 @@ struct SellerLine: View {
 }
 
 struct PlayerListingTile: View {
-    @Environment(\.outsidePalette) private var P
     var listing: PlayerListing
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            ShopPhoto(name: "", glyph: Glyph.marketplace, height: 150, cornerRadius: Theme.Radius.medium, item: ListingFormat.photoKey(listing.family, listing.itemID))
-                .padding(.bottom, Theme.Space.s)
-            Text(ListingFormat.money(listing.price, listing.currency)).textStyle(.figure, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
-            Text(listing.title.tidyText).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
-            HStack(spacing: Theme.Space.xxs) {
-                Circle().fill(listing.sellerOnline ? Color.green : P.inkFaint).frame(width: 7, height: 7)
-                Text(listing.sellerName).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .contentShape(Rectangle())
+        MarketCard(photoKey: ListingFormat.photoKey(listing.family, listing.itemID), badge: ListingFormat.condition(of: listing), title: listing.title,
+                   detail: ListingFormat.detail(listing), price: ListingFormat.money(listing.price, listing.currency), seller: listing.sellerName,
+                   avatar: PlayerAvatar(initials: ArtLibrary.initials(listing.sellerName), colour: listing.avatarColour ?? AvatarCatalog.colour(for: listing.sellerName),
+                                        icon: listing.avatarIcon, size: 30),
+                   online: listing.sellerOnline, note: listing.mine ? "Your listing" : "")
     }
 }
 
@@ -250,14 +262,45 @@ struct PlayerListingPage: View {
         var facts: [(label: String, value: String)] = [(label: "Condition", value: ListingFormat.condition(cond))]
         if item["age"].int > 0 { facts.append((label: "Age", value: "\(item["age"].int) years")) }
         if item["km"].int > 0 { facts.append((label: "Distance", value: "\(item["km"].int.formatted()) km")) }
-        return ShopPage {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 280, item: ListingFormat.photoKey(l.family, l.itemID)).padding(.bottom, Theme.Space.m)
-                Text(ListingFormat.money(l.price, l.currency)).textStyle(.display)
-                Text(l.title).textStyle(.title).accessibilityAddTraits(.isHeader).fixedSize(horizontal: false, vertical: true)
+        let priceText: String = ListingFormat.money(l.price, l.currency)
+        let country: String = (l.sellerCountry ?? "").isEmpty ? "" : OnlineCountry.name(l.sellerCountry ?? "")
+        return ShopPage(spacing: Theme.Space.m) {
+            ListingHero(height: 260, location: country, counter: "1/1", shareText: "\(l.title), \(priceText)") {
+                ShopPhoto(name: "", glyph: Glyph.marketplace, height: 260, cornerRadius: 0, item: ListingFormat.photoKey(l.family, l.itemID))
+            } badge: {
+                ListingPill(text: ListingFormat.condition(cond))
             }
-            ShopSection(title: "Seller") { SellerLine(name: l.sellerName, online: l.sellerOnline, lastSeen: l.sellerLastSeen, colour: l.avatarColour ?? 0) }
-            ShopSection(title: "Item") { ShopFacts(facts: facts) }
+            HStack(spacing: Theme.Space.s) {
+                Text(l.title).textStyle(.title).accessibilityAddTraits(.isHeader).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                Text(l.kind.capitalized).textStyle(.caption, weight: .semibold)
+                    .padding(.horizontal, Theme.Space.s).padding(.vertical, 4).background(Capsule().fill(P.inset))
+                Spacer(minLength: 0)
+            }
+            ListingStats {
+                Text("Price").textStyle(.caption)
+                Text(priceText).textStyle(.title, numeric: true).lineLimit(1).minimumScaleFactor(0.6)
+            } right: {
+                Text("Posted").textStyle(.caption)
+                Text(ListingFormat.posted(l.postedAt)).textStyle(.headline)
+            }
+            ShopSection(title: "Details") { ShopFacts(facts: facts) }
+            ShopSection(title: "Seller") {
+                ListingPanel {
+                    HStack(spacing: Theme.Space.m) {
+                        PlayerAvatar(initials: ArtLibrary.initials(l.sellerName), colour: l.avatarColour ?? AvatarCatalog.colour(for: l.sellerName), icon: l.avatarIcon, size: 40)
+                            .overlay(alignment: .bottomTrailing) {
+                                Circle().fill(l.sellerOnline ? P.gain : P.inkDim).frame(width: 11, height: 11)
+                                    .overlay(Circle().strokeBorder(P.surface, lineWidth: 2))
+                            }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(l.sellerName).textStyle(.body, weight: .semibold).lineLimit(1)
+                            Text(ListingFormat.lastSeen(l.sellerLastSeen, online: l.sellerOnline)).textStyle(.caption, tint: l.sellerOnline ? P.gain : P.inkFaint)
+                        }
+                        Spacer(minLength: 0)
+                        if let lv = l.sellerLevel { Text("Level \(lv)").textStyle(.caption) }
+                    }
+                }
+            }
             if let d = l.openDeal { dealNote(d) }
             if let problem { Text(problem).textStyle(.caption, tint: P.caution).fixedSize(horizontal: false, vertical: true) }
         }
@@ -290,7 +333,7 @@ struct PlayerListingPage: View {
                 Button("Withdraw request") { run { await model.withdraw(d, store: store, online: online) } }.buttonStyle(MarketEqualButtonStyle())
             }
         } else {
-            Button("Buy for \(ListingFormat.money(l.price, l.currency))") {
+            Button("Buy now") {
                 Haptics.tap()
                 pending = PendingAction(title: "Send buy request", message: "\(l.sellerName) gets your request and answers when they can. \(ListingFormat.money(l.price, l.currency)) is held from your cash until then.",
                                         button: "Send request") { run { await model.buy(l, store: store, online: online) } }
@@ -422,24 +465,17 @@ struct MarketSellView: View {
     @ObservedObject var model: PlayerMarketModel
     var onOpenItem: (String) -> Void
 
-    @State private var picking = false
     @State private var pending: PendingAction? = nil
 
     var body: some View {
         if let e = store.engine {
             ShopPage(spacing: Theme.Space.l) {
-                Button("New listing") { Haptics.tap(); picking = true }
-                    .buttonStyle(ShopFilledButtonStyle())
-                    .accessibilityIdentifier("mk-new-listing")
                 listings(e)
                 inventory(e)
+                Color.clear.frame(height: 56)
             }
             .accessibilityIdentifier("mk-sell")
             .confirmAction($pending)
-            .centerSheet(isPresented: $picking, title: "New listing", category: .medium, tone: .info) {
-                MarketPickItemSheet(model: model, onPick: { (id: String) in picking = false; onOpenItem(id) })
-                    .environmentObject(store)
-            }
         }
     }
 

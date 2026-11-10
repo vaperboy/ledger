@@ -70,6 +70,22 @@ struct AuctionsApp: View {
 
     static func stanceTint(_ s: String) -> Color { s == "You lead" || s == "You won" ? Theme.gain : (s == "Outbid" || s == "Lost" ? Theme.loss : Theme.inkSoft) }
 
+    static func ago(_ seconds: Double) -> String {
+        let s: Int = Int(max(0, seconds))
+        if s < 60 { return "now" }
+        if s < 3_600 { return "\(s / 60)m ago" }
+        if s < 86_400 { return "\(s / 3_600)h ago" }
+        return "\(s / 86_400)d ago"
+    }
+
+    static func raise(_ a: Auction) -> String? {
+        guard let last = a.bids.last else { return nil }
+        let before: Int = a.bids.count > 1 ? a.bids[a.bids.count - 2].amount : a.startPrice
+        let diff: Int = last.amount - before
+        guard diff > 0, before > 0 else { return nil }
+        return "+\(StoreSession.shared.money(diff)) (\(String(format: "%.1f", Double(diff) / Double(before) * 100))%)"
+    }
+
     static func priceLine(_ a: Auction) -> String {
         let money: (Int) -> String = StoreSession.shared.money
         return a.bids.isEmpty ? "Starts at \(money(a.startPrice))" : "\(money(a.currentPrice)), \(a.bids.count) \(a.bids.count == 1 ? "bid" : "bids")"
@@ -141,21 +157,32 @@ struct AuctionTile: View {
         let card: CardDef? = CardCatalog.def(forItem: auction.item.id)
         let left: Double = auction.endsAt - now
         let stance: String? = AuctionLook.stance(auction)
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            ZStack(alignment: .topTrailing) {
-                AuctionHero(item: auction.item, height: 230)
-                Text(StoreText.timeLeft(left)).textStyle(.caption, tint: left < 120 ? Theme.loss : Theme.ink, numeric: true)
-                    .padding(.horizontal, Theme.Space.s).padding(.vertical, 4)
-                    .background(Capsule().fill(Theme.surfaceRaised))
-                    .padding(Theme.Space.s)
+        let money: (Int) -> String = StoreSession.shared.money
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            AuctionHero(item: auction.item, height: 230)
+                .overlay(alignment: .topLeading) {
+                    if left > 0 { ListingPill(text: "LIVE", dot: Theme.loss).padding(Theme.Space.s) }
+                }
+                .overlay(alignment: .topTrailing) {
+                    ListingPill(text: StoreText.timeLeft(left), glyph: Glyph.clock).padding(Theme.Space.s)
+                }
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                HStack(spacing: Theme.Space.s) {
+                    Text(card?.name ?? def?.name ?? "Artifact").textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
+                    if let r = def?.rarity ?? card?.rarity { RarityTag(rarity: r) }
+                    Spacer(minLength: 0)
+                    if let s = stance { Text(s).textStyle(.caption, tint: AuctionLook.stanceTint(s), weight: .semibold) }
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(auction.bids.isEmpty ? "Starting bid" : "Current bid").textStyle(.caption)
+                        Text(money(auction.currentPrice)).textStyle(.title, numeric: true).lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: Theme.Space.s)
+                    Text(auction.bids.count == 1 ? "1 bid" : "\(auction.bids.count) bids").textStyle(.caption)
+                }
             }
-            Text(card?.name ?? def?.name ?? "Artifact").textStyle(.headline).lineLimit(1).minimumScaleFactor(0.8)
-            HStack(spacing: Theme.Space.xs) {
-                if let r = def?.rarity ?? card?.rarity { RarityTag(rarity: r) }
-                Spacer(minLength: 0)
-                if let s = stance { Text(s).textStyle(.caption, tint: AuctionLook.stanceTint(s), weight: .semibold) }
-            }
-            Text(AuctionLook.priceLine(auction)).textStyle(.title, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+            .padding(.horizontal, Theme.Space.xs).padding(.bottom, Theme.Space.xs)
         }
         .padding(Theme.Space.s)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.surfaceRaised))
@@ -182,7 +209,7 @@ struct LiveAuctionsList: View {
             let list: [Auction] = (session.auctions?.auctions ?? []).filter { (a: Auction) -> Bool in shown(a, now: now) }.sorted { $0.endsAt < $1.endsAt }
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 HStack {
-                    Text("Ending soonest first").textStyle(.label, tint: Theme.inkFaint)
+                    Text(list.count == 1 ? "1 live, ending soonest first" : "\(list.count) live, ending soonest first").textStyle(.label, tint: Theme.inkFaint)
                     Spacer()
                     Menu {
                         Button("All") { rarity = nil }
@@ -288,51 +315,76 @@ struct AuctionPopup: View {
         let def: ArtifactDef? = ArtifactCatalog.def(a.item.defID)
         let card: CardDef? = CardCatalog.def(forItem: a.item.id)
         let live: Bool = a.isLive(at: now)
+        let title: String = card?.name ?? def?.name ?? "Artifact"
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            AuctionHero(item: a.item, height: 240)
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text(card?.name ?? def?.name ?? "Artifact").textStyle(.title).lineLimit(2)
-                HStack(spacing: Theme.Space.xs) {
-                    if let r = def?.rarity ?? card?.rarity { RarityTag(rarity: r) }
-                    Text(ArtifactCatalog.label(a.item)).textStyle(.caption)
-                }
-                Text("Seller: " + name(a.seller)).textStyle(.caption)
+            ListingHero(height: 240, location: a.seller == GoldVault.meID ? "Your listing" : name(a.seller), locationGlyph: Glyph.gavel, counter: "1/1",
+                        shareText: "\(title), \(a.bids.isEmpty ? "starts at" : "current bid") \(session.money(a.currentPrice))") {
+                AuctionHero(item: a.item, height: 240)
+            } badge: {
+                if live { ListingPill(text: "LIVE", dot: Theme.loss) } else { ListingPill(text: "ENDED") }
             }
-            if let note = def?.note, !note.isEmpty { Text(note).textStyle(.body, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true) }
-            Hairline()
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(a.bids.isEmpty ? "Start price" : "Current bid").textStyle(.caption)
-                    Text(session.money(a.currentPrice)).textStyle(.display, numeric: true)
+            HStack(spacing: Theme.Space.s) {
+                Text(title).textStyle(.title).lineLimit(2)
+                if let r = def?.rarity ?? card?.rarity {
+                    RarityTag(rarity: r).padding(.horizontal, Theme.Space.s).padding(.vertical, 4).background(Capsule().fill(Theme.inset))
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(live ? "Time left" : "Status").textStyle(.caption)
-                    Text(live ? StoreText.timeLeft(a.endsAt - now) : statusText(a)).textStyle(.headline, tint: live && a.endsAt - now < 120 ? Theme.loss : Theme.ink, numeric: true)
+                Spacer(minLength: 0)
+            }
+            if let note = def?.note, !note.isEmpty { Text(note).textStyle(.body, tint: Theme.inkSoft).lineLimit(2).fixedSize(horizontal: false, vertical: true) }
+            ListingStats {
+                Text(a.bids.isEmpty ? "Start price" : "Current bid").textStyle(.caption)
+                Text(session.money(a.currentPrice)).textStyle(.title, numeric: true).lineLimit(1).minimumScaleFactor(0.6)
+                if let up = AuctionLook.raise(a) { Text(up).textStyle(.caption, tint: Theme.gain, numeric: true) }
+            } right: {
+                Text(live ? "Time left" : "Status").textStyle(.caption)
+                if live { ListingCountdown(seconds: a.endsAt - now) } else { Text(statusText(a)).textStyle(.headline) }
+            }
+            if a.reserve != nil || a.buyNow != nil {
+                HStack(spacing: Theme.Space.m) {
+                    if a.reserve != nil { Text(a.reserveMet ? "Reserve met" : "Reserve not met").textStyle(.caption) }
+                    if let b = a.buyNow { Text("Buy now " + (a.canBuyNow(at: now) ? session.money(b) : "gone")).textStyle(.caption) }
                 }
             }
-            HStack(spacing: Theme.Space.m) {
-                if a.reserve != nil { Text(a.reserveMet ? "Reserve met" : "Reserve not met").textStyle(.caption) }
-                if let b = a.buyNow { Text("Buy now " + (a.canBuyNow(at: now) ? session.money(b) : "gone")).textStyle(.caption) }
+            bids(a, now: now)
+            ListingPanel {
+                HStack(spacing: Theme.Space.s) {
+                    LedgerGlyph(glyph: Glyph.gavel, size: Theme.Icon.medium, tint: Theme.inkSoft)
+                    Text("Starting price").textStyle(.body, tint: Theme.inkSoft)
+                    Spacer(minLength: Theme.Space.s)
+                    Text(session.money(a.startPrice)).textStyle(.headline, numeric: true)
+                }
             }
-            bids(a)
             if live { bidControls(a, now: now) }
         }
     }
 
-    private func bids(_ a: Auction) -> some View {
-        let list: [AuctionBid] = Array(a.bids.suffix(8).reversed())
+    private func bids(_ a: Auction, now: Double) -> some View {
+        let list: [AuctionBid] = Array(a.bids.suffix(5).reversed())
+        let bidders: Int = Set(a.bids.map { (b: AuctionBid) -> String in b.bidder }).count
         return VStack(alignment: .leading, spacing: 0) {
-            Text(list.isEmpty ? "No bids yet" : "Bidding live").textStyle(.label, tint: Theme.inkFaint).padding(.bottom, Theme.Space.xs)
+            HStack {
+                Text(list.isEmpty ? "No bids yet" : "Bidders").textStyle(.headline)
+                Spacer()
+                if !list.isEmpty { Text("\(bidders)").textStyle(.headline, numeric: true) }
+            }
+            .padding(.bottom, Theme.Space.xs)
             ForEach(Array(list.enumerated()), id: \.offset) { (i: Int, b: AuctionBid) in
-                if i > 0 { Hairline() }
-                HStack {
-                    Text(b.bidder == GoldVault.meID ? "You" : name(b.bidder)).textStyle(.body, tint: i == 0 ? Theme.accent : nil, weight: i == 0 ? .semibold : .regular)
-                    if i == 0 { Text("leading").textStyle(.caption, tint: Theme.accent) }
-                    Spacer()
-                    Text(session.money(b.amount)).textStyle(.body, tint: Theme.inkSoft, numeric: true)
+                Hairline()
+                let me: Bool = b.bidder == GoldVault.meID
+                HStack(spacing: Theme.Space.m) {
+                    PlayerAvatar(name: me ? "You" : name(b.bidder), isYou: me, size: 36)
+                    Text(me ? "You" : name(b.bidder)).textStyle(.body, weight: i == 0 ? .semibold : .regular).lineLimit(1)
+                    if i == 0 { LedgerGlyph(glyph: Glyph.crown, size: Theme.Icon.small, tint: Theme.accent) }
+                    Spacer(minLength: Theme.Space.s)
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(session.money(b.amount)).textStyle(.body, numeric: true, weight: .semibold)
+                        HStack(spacing: Theme.Space.xxs) {
+                            Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.gain)
+                            Text(AuctionLook.ago(now - b.at)).textStyle(.caption)
+                        }
+                    }
                 }
-                .frame(minHeight: 36)
+                .frame(minHeight: 52)
             }
         }
         .animation(.default, value: a.bids.count)

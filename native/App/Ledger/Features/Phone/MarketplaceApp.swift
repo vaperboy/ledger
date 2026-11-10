@@ -17,6 +17,14 @@ struct MarketplaceApp: View {
 
     enum Sort: String, CaseIterable, Hashable {
         case newest = "Newest", low = "Price low to high", high = "Price high to low"
+
+        var short: String {
+            switch self {
+            case .newest: return "Newest"
+            case .low: return "Low price"
+            case .high: return "High price"
+            }
+        }
     }
 
     enum Mode: String, CaseIterable, Hashable {
@@ -36,18 +44,35 @@ struct MarketplaceApp: View {
     @State private var sort: Sort = .newest
     @State private var openID: String? = nil
     @State private var refusedIDs: Set<String> = []
+    @State private var query = ""
+    @State private var recentOnly = false
+    @State private var onlineOnly = false
+    @State private var picking = false
+    private let storeSession = StoreSession.shared
 
     var body: some View {
         page
+            .overlay(alignment: .bottom) {
+                if showsNew { MarketNewButton { picking = true }.padding(.bottom, Theme.Space.l) }
+            }
+            .centerSheet(isPresented: $picking, title: "New listing", category: .medium, tone: .info) {
+                MarketPickItemSheet(model: players, onPick: { (id: String) in picking = false; itemID = id })
+                    .environmentObject(store)
+            }
             .outsideScreen(P)
             .swipeBackEnabled(canStep: { openID != nil || playerListingID != nil || itemID != nil }, step: { stepBack() })
             .task(id: mode) { await players.refresh(online) }
+            .task { if !storeSession.loaded { await storeSession.load() } }
             .safeAreaInset(edge: .top, spacing: 0) { VStack(spacing: 0) { band; header } }
     }
 
+    private var showsNew: Bool { openID == nil && playerListingID == nil && itemID == nil && mode != .deals }
+
     private var band: some View {
-        ShopBand(title: "Marketplace", glyph: Glyph.marketplace, color: P.accent, onBack: { back() }, backLabel: (openID == nil && playerListingID == nil && itemID == nil) ? "Back to Phone" : "Back")
-            .environment(\.outsidePalette, P)
+        ShopBand(title: "Marketplace", glyph: Glyph.marketplace, color: P.accent, onBack: { back() }, backLabel: (openID == nil && playerListingID == nil && itemID == nil) ? "Back to Phone" : "Back") {
+            MarketGoldPill(gold: storeSession.gold)
+        }
+        .environment(\.outsidePalette, P)
     }
 
     private func back() {
@@ -112,17 +137,27 @@ struct MarketplaceApp: View {
         }, selected: co.id, identifier: "mk-company", idPrefix: "mk-company") { (id: Int) in companyID = id }
     }
 
-    private var sortMenu: some View {
-        Menu {
-            ForEach(Sort.allCases, id: \.self) { (s: Sort) in
-                Button { Haptics.choose(); sort = s } label: {
-                    if s == sort { Label(s.rawValue, systemImage: "checkmark") } else { Text(s.rawValue) }
-                }
+    private func tools(players isPlayers: Bool) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            Menu {
+                Toggle("Posted in the last 3 days", isOn: $recentOnly)
+                if isPlayers { Toggle("Online sellers only", isOn: $onlineOnly) }
+            } label: {
+                MarketPill(text: "Filter", symbol: "line.3.horizontal.decrease", active: recentOnly || (isPlayers && onlineOnly))
             }
-        } label: {
-            ShopMenuLabel(text: sort.rawValue)
+            .accessibilityIdentifier("mk-filter")
+            Menu {
+                ForEach(Sort.allCases, id: \.self) { (s: Sort) in
+                    Button { Haptics.choose(); sort = s } label: {
+                        if s == sort { Label(s.rawValue, systemImage: "checkmark") } else { Text(s.rawValue) }
+                    }
+                }
+            } label: {
+                MarketPill(text: sort.short, symbol: "arrow.up.arrow.down")
+            }
+            .accessibilityIdentifier("mk-sort")
+            MarketSearchBox(text: $query)
         }
-        .accessibilityIdentifier("mk-sort")
     }
 
     private func shoppers(_ e: GameEngine) -> [Company] {
@@ -144,8 +179,15 @@ struct MarketplaceApp: View {
         return .other
     }
 
-    private func visible(_ all: [MarketListing]) -> [MarketListing] {
-        let kept: [MarketListing] = filter == .all ? all : all.filter { (l: MarketListing) -> Bool in Self.category(l.family) == filter }
+    private func visible(_ all: [MarketListing], today: Int) -> [MarketListing] {
+        var kept: [MarketListing] = filter == .all ? all : all.filter { (l: MarketListing) -> Bool in Self.category(l.family) == filter }
+        if recentOnly { kept = kept.filter { (l: MarketListing) -> Bool in today - l.postedDay <= 3 } }
+        let q: String = query.trimmingCharacters(in: .whitespaces).lowercased()
+        if !q.isEmpty {
+            kept = kept.filter { (l: MarketListing) -> Bool in
+                l.title.lowercased().contains(q) || l.city.lowercased().contains(q) || l.sellerName.lowercased().contains(q)
+            }
+        }
         return kept.sorted { (a: MarketListing, b: MarketListing) -> Bool in
             switch sort {
             case .newest: return a.postedDay != b.postedDay ? a.postedDay > b.postedDay : a.title < b.title
@@ -172,20 +214,41 @@ struct MarketplaceApp: View {
 
     private var playersPage: some View {
         let kind: String? = ListingFormat.kindFilter(playerKind)
-        let list: [PlayerListing] = players.listings.filter { (l: PlayerListing) -> Bool in kind == nil || l.kind == kind }
+        let q: String = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let now: Double = Date().timeIntervalSince1970
+        var list: [PlayerListing] = players.listings.filter { (l: PlayerListing) -> Bool in kind == nil || l.kind == kind }
+        if recentOnly { list = list.filter { (l: PlayerListing) -> Bool in now - l.postedAt <= 3 * 86_400 } }
+        if onlineOnly { list = list.filter { (l: PlayerListing) -> Bool in l.sellerOnline } }
+        if !q.isEmpty {
+            list = list.filter { (l: PlayerListing) -> Bool in l.title.lowercased().contains(q) || l.sellerName.lowercased().contains(q) }
+        }
+        list.sort { (a: PlayerListing, b: PlayerListing) -> Bool in
+            switch sort {
+            case .newest: return a.postedAt != b.postedAt ? a.postedAt > b.postedAt : a.title < b.title
+            case .low: return a.price != b.price ? a.price < b.price : a.title < b.title
+            case .high: return a.price != b.price ? a.price > b.price : a.title < b.title
+            }
+        }
+        let shown: [PlayerListing] = list
         return ShopPage(spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(shown.count == 1 ? "1 listing" : "\(shown.count) listings").textStyle(.title)
+                Text("Buy from players, grow your business").textStyle(.caption)
+            }
+            tools(players: true)
             if !online.isSignedIn {
                 ShopEmptyNote(text: "Sign in to see what other players are selling.", glyph: Glyph.marketplace)
-            } else if list.isEmpty {
+            } else if shown.isEmpty {
                 ShopEmptyNote(text: players.loaded ? "Nothing here yet. Be the first to list something." : "Loading.", glyph: Glyph.marketplace)
             }
             ShopGrid {
-                ForEach(list) { (l: PlayerListing) in
+                ForEach(shown) { (l: PlayerListing) in
                     Button { Haptics.tap(); playerListingID = l.id } label: { PlayerListingTile(listing: l) }
                         .buttonStyle(PressableStyle())
                         .accessibilityIdentifier("mk-player-\(l.id)")
                 }
             }
+            Color.clear.frame(height: 56)
         }
         .accessibilityIdentifier("mk-players")
     }
@@ -199,7 +262,7 @@ struct MarketplaceApp: View {
                                        onRefused: { (rid: String) in _ = refusedIDs.insert(rid) }, onBought: { openID = nil })
                     .id(l.id + String(co.id))
             } else {
-                gridPage(e, visible(all), cur, co)
+                gridPage(e, visible(all, today: e.state.day), cur, co)
             }
         } else {
             ShopEmptyNote(text: "Nothing to buy for. Start a company first.", glyph: Glyph.marketplace)
@@ -216,8 +279,8 @@ struct MarketplaceApp: View {
                     Text(filter == .all ? "Near you, from private sellers" : filter.rawValue).textStyle(.caption)
                 }
                 Spacer(minLength: Theme.Space.s)
-                sortMenu
             }
+            tools(players: false)
             if list.isEmpty {
                 ShopEmptyNote(text: "Nothing matches. New listings appear as the days go by.", glyph: Glyph.marketplace,
                               buttonTitle: filter == .all ? nil : "Show all listings") { filter = .all }
@@ -228,35 +291,31 @@ struct MarketplaceApp: View {
                         Haptics.tap()
                         openID = l.id
                     } label: {
-                        MarketplaceTile(listing: l, price: cur.tidyShort(l.askingPrice), refused: refusedIDs.contains(l.id))
-                            .newMarker(.marketplace, "l" + l.id, style: .capsule, alignment: .topLeading)
+                        MarketplaceTile(listing: l, price: cur.tidyShort(l.askingPrice), refused: refusedIDs.contains(l.id), today: e.state.day)
+                            .newMarker(.marketplace, "l" + l.id, style: .capsule, alignment: .topTrailing)
                     }
                     .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("mk-listing-\(l.id)")
                 }
             }
+            Color.clear.frame(height: 56)
         }
         .accessibilityIdentifier("mk-grid")
     }
 }
 
 struct MarketplaceTile: View {
-    @Environment(\.outsidePalette) private var P
     var listing: MarketListing
     var price: String
     var refused: Bool
+    var today: Int
 
     var body: some View {
         let key: String = ArtLibrary.itemKey(group: "", familyKey: listing.family, seed: listing.id) ?? ""
-        return VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            ShopPhoto(name: "", glyph: Glyph.marketplace, height: 150, cornerRadius: Theme.Radius.medium, item: key)
-                .padding(.bottom, Theme.Space.s)
-            Text(price.tidyText).textStyle(.figure, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
-            Text(listing.title.tidyText).textStyle(.body).lineLimit(2).multilineTextAlignment(.leading)
-            Text(listing.city.tidyText).textStyle(.caption, tint: P.inkFaint).lineLimit(1)
-            if refused { Text("Not selling to you").textStyle(.caption, tint: P.caution, weight: .medium) }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .contentShape(Rectangle())
+        let ago: Int = max(0, today - listing.postedDay)
+        let agoText: String = ago == 0 ? "today" : (ago == 1 ? "yesterday" : "\(ago) days ago")
+        return MarketCard(photoKey: key, badge: "Used", title: listing.title, detail: "\(listing.city) \u{00B7} \(agoText)", price: price,
+                          seller: listing.sellerName, avatar: PlayerAvatar(name: listing.sellerName, isYou: false, size: 30),
+                          note: refused ? "Not selling to you" : "")
     }
 }
