@@ -53,12 +53,14 @@ struct CompanySales: View {
     @ViewBuilder private func productsArea(_ items: [SalesItem], _ service: Bool) -> some View {
         if company.type == UsedCarDealer.tradeID {
             UsedCarYardSection(engine: engine, company: company)
+            CompanyInventorySection(companyID: company.id, tradeID: company.type)
         } else if company.type == CarDealer.tradeID {
             CarDealerSection(engine: engine, company: company)
         } else {
             ItemsList(engine: engine, company: company, items: items, service: service,
                       onOpen: { (id: String) in showPrice(id) }, onAdd: { addingService = service },
                       onChosen: { (id: String) in itemChosen(id) })
+            if company.type == "carrepair" { CompanyInventorySection(companyID: company.id, tradeID: company.type) }
         }
     }
 

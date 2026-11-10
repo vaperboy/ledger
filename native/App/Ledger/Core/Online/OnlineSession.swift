@@ -376,8 +376,8 @@ final class OnlineSession {
     private func bookSettlements(store: GameStore) async {
         guard !store.isAdvancing, store.engine != nil, let rows = try? await service.pendingSettlements(), !rows.isEmpty else { return }
         let items: [OnlineSettlement] = rows.map { (r: OnlineSettlementRow) -> OnlineSettlement in
-            OnlineSettlement(id: r.id, amount: r.amount, currency: r.currency, kind: r.kind, label: r.label, companyKey: r.meta?.companyKey,
-                             units: r.meta?.units, unitPrice: r.meta?.unitPrice)
+            OnlineSettlement(id: r.id, amount: r.amount, currency: r.currency, kind: r.kind, label: r.label, companyKey: r.companyKey,
+                             units: r.units, unitPrice: r.unitPrice, meta: r.meta)
         }
         guard let done = store.act({ (e: inout GameEngine) -> [String] in e.bookOnlineSettlements(items) }) else { return }
         try? await service.acknowledgeSettlements(done)

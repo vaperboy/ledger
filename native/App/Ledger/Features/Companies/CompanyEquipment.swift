@@ -9,6 +9,7 @@ struct CompanyEquipmentScreen: View {
     @Environment(\.outsidePalette) private var P
     var companyID: Int
     @State private var asking: PendingAction? = nil
+    @State private var detail: EquipmentTarget? = nil
 
     private enum Pending: Identifiable {
         case unit(equipmentID: String, unitID: Int, name: String)
@@ -34,7 +35,12 @@ struct CompanyEquipmentScreen: View {
             let owned: [EquipmentMarket.Owned] = e.ownedEquipment(companyID: companyID)
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                    if !(rel.machines || rel.vehicles || rel.software) {
+                    if let d = detail {
+                        EquipmentDetailScreen(companyID: companyID, target: d, usedFor: enables(e, d.equipmentID), garageID: e.carRepairGarages(for: companyID).first,
+                                              onClose: { detail = nil }, onService: { (eq: String) in service(eq) },
+                                              onRepair: { (gid: Int, k: RepairKind, name: String) in askGarage(e, gid, k, name, e.currency(for: co)) },
+                                              onSell: { (t: EquipmentTarget, name: String) in sell(t, name) })
+                    } else if !(rel.machines || rel.vehicles || rel.software) {
                         EmptyState(glyph: Glyph.settings, title: "No equipment in this business").frame(maxWidth: .infinity).padding(.top, Theme.Space.xxl)
                     } else {
                         header(rel, needs, owned)
@@ -84,13 +90,17 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, equipmentID: String = "", @ViewBuilder trailing: () -> T) -> some View {
+    private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, equipmentID: String = "", opens: EquipmentTarget? = nil, @ViewBuilder trailing: () -> T) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
-            SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, size: 56)
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
-                if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading) }
+            HStack(alignment: .center, spacing: Theme.Space.m) {
+                SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, size: 56)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text(title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
+                    if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading) }
+                }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if let opens { Haptics.tap(); detail = opens } }
             Spacer(minLength: Theme.Space.s)
             VStack(alignment: .trailing, spacing: Theme.Space.xs) {
                 AcctPill(text: pill, tone: tone)
@@ -149,7 +159,8 @@ struct CompanyEquipmentScreen: View {
         if let s = o.subscription { sub.append(s + ", " + cur.tidyShort(o.subscriptionMonthly) + "/mo") }
         else if let l = o.licence { sub.append(l) }
         return VStack(alignment: .leading, spacing: 0) {
-            itemRow(o.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: o.equipmentID) {
+            itemRow(o.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: o.equipmentID,
+                    opens: o.units.count == 1 ? o.units.first.map { (u: EquipmentMarket.UnitRow) -> EquipmentTarget in .machine(equipmentID: o.equipmentID, unitID: u.id) } : nil) {
                 HStack(spacing: Theme.Space.xs) {
                     if o.subscription == nil && o.licence == nil && o.count > 0 {
                         Button("Service \(cur.tidyShort(o.serviceCost))") { service(o.equipmentID) }
@@ -168,6 +179,8 @@ struct CompanyEquipmentScreen: View {
                 ForEach(o.units) { u in
                     HStack(spacing: Theme.Space.s) {
                         Text(u.name + (u.year > 0 ? " \u{00B7} \(u.year)" : "")).textStyle(.caption).lineLimit(1)
+                            .contentShape(Rectangle())
+                            .onTapGesture { Haptics.tap(); detail = .machine(equipmentID: o.equipmentID, unitID: u.id) }
                         Spacer(minLength: Theme.Space.s)
                         Text(u.daysInRepair > 0 ? "In repair \(u.daysInRepair) days" : u.wear).textStyle(.caption, tint: u.daysInRepair > 0 ? P.loss : wearTint(u.seenCondition))
                         Button("Sell") { ask(.unit(equipmentID: o.equipmentID, unitID: u.id, name: o.name.lowercased())) }
@@ -185,6 +198,14 @@ struct CompanyEquipmentScreen: View {
                 .padding(.leading, Theme.Space.m).padding(.bottom, Theme.Space.xs)
             }
         }
+    }
+
+    private func sell(_ t: EquipmentTarget, _ name: String) {
+        switch t {
+        case .machine(let eq, let uid): ask(.unit(equipmentID: eq, unitID: uid, name: name.lowercased()))
+        case .vehicle(_, let vid): ask(.vehicle(id: vid, name: name))
+        }
+        detail = nil
     }
 
     private func service(_ equipmentID: String) {
@@ -255,7 +276,7 @@ struct CompanyEquipmentScreen: View {
         let pill: String = broken ? "In repair \(v.daysInRepair) days" : v.wear
         let tone: AcctPill.Tone = broken ? .bad : v.seenCondition >= 0.8 ? .good : v.seenCondition >= 0.48 ? .neutral : .warn
         let sell: Pending = .vehicle(id: v.id, name: v.name)
-        return itemRow(v.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: equipmentID) {
+        return itemRow(v.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: equipmentID, opens: .vehicle(equipmentID: equipmentID, vehicleID: v.id)) {
             HStack(spacing: Theme.Space.xs) {
                 if let gid = garage, worn {
                     Menu {
