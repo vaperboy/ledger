@@ -1,4 +1,20 @@
 import Foundation
+import GameCore
+
+public enum ContentFile {
+    public static func load(_ kind: String, _ name: String) -> JSONValue {
+        guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Resources/Content/" + kind),
+              let raw = try? Data(contentsOf: url),
+              let json = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return .null }
+        return json
+    }
+
+    public static func color(_ v: JSONValue) -> UInt32 { UInt32(v.string, radix: 16) ?? 0 }
+
+    public static func colors(_ v: JSONValue) -> [UInt32] { v.array.map { (c: JSONValue) -> UInt32 in color(c) } }
+
+    public static func rarity(_ s: String) -> BoxRarity { BoxRarity(rawValue: s) ?? .common }
+}
 
 public struct ArtifactDef: Equatable, Sendable, Identifiable {
     public var id: String
@@ -6,7 +22,15 @@ public struct ArtifactDef: Equatable, Sendable, Identifiable {
     public var collection: String
     public var rarity: BoxRarity
     public var note: String
+    public var symbol: String = ""
     public var edition: Int { ArtifactCatalog.edition(rarity) }
+}
+
+public struct CollectionLook: Equatable, Sendable {
+    public var top: UInt32
+    public var bottom: UInt32
+    public var ink: UInt32
+    public var motif: String
 }
 
 public struct ArtifactCollection: Equatable, Sendable, Identifiable {
@@ -15,6 +39,7 @@ public struct ArtifactCollection: Equatable, Sendable, Identifiable {
     public var blurb: String
     public var rewardID: String
     public var members: [String]
+    public var look: CollectionLook = CollectionLook(top: 0x9C957F, bottom: 0x45423A, ink: 0xF1ECDD, motif: "grid")
 }
 
 public struct ArtifactItem: Codable, Equatable, Hashable, Identifiable, Sendable {
@@ -34,35 +59,18 @@ public enum ArtifactCatalog {
         }
     }
 
-    private static func d(_ id: String, _ name: String, _ col: String, _ r: BoxRarity, _ note: String) -> ArtifactDef {
-        ArtifactDef(id: id, name: name, collection: col, rarity: r, note: note)
+    public static let defs: [ArtifactDef] = ContentFile.load("artifacts", "artifacts")["artifacts"].array.map { (e: JSONValue) -> ArtifactDef in
+        ArtifactDef(id: e["id"].string, name: e["name"].string, collection: e["collection"].string, rarity: ContentFile.rarity(e["rarity"].string),
+                    note: e["note"].string, symbol: e["symbol"].string)
     }
 
-    public static let defs: [ArtifactDef] = [
-        d("abacus", "Boxwood abacus", "counting", .common, "Worn smooth by a hundred years of sums."),
-        d("scales", "Brass scales", "counting", .rare, "Weights stamped by an honest guild."),
-        d("strongbox", "Iron strongbox", "counting", .epic, "The key was lost in the first year."),
-        d("seal", "Gilt counting seal", "counting", .legendary, "Pressed on every ledger of a famous house."),
-        d("rope", "Tarred rope coil", "harbour", .common, "Smells faintly of the sea."),
-        d("lantern", "Ship's lantern", "harbour", .rare, "Lit the last berth of the evening."),
-        d("chart", "Sea chart", "harbour", .epic, "Hand drawn, with a few secret shoals."),
-        d("compass", "Silver compass", "harbour", .legendary, "Always points to a good deal."),
-        d("token", "Clay market token", "market", .common, "Good for one measure of grain."),
-        d("banner", "Silk stall banner", "market", .rare, "Faded by a thousand market days."),
-        d("bell", "Merchant's bell", "market", .epic, "Rung to open and close the square."),
-        d("weights", "Golden weights", "market", .legendary, "A matched set, never used."),
-        d("stamp", "Ink stamp", "archive", .common, "Marks a page as seen."),
-        d("map", "Old town map", "archive", .rare, "Shows streets that no longer exist."),
-        d("scroll", "Charter scroll", "archive", .epic, "Grants the right to hold a fair."),
-        d("charter", "Royal charter", "archive", .legendary, "The founding paper of the town.")
-    ]
-
-    public static let collections: [ArtifactCollection] = [
-        ArtifactCollection(id: "counting", name: "Counting House", blurb: "Tools of the old bookkeepers.", rewardID: "gold.coll.counting", members: ["abacus", "scales", "strongbox", "seal"]),
-        ArtifactCollection(id: "harbour", name: "Harbour Trade", blurb: "What came in on the tide.", rewardID: "gold.coll.harbour", members: ["rope", "lantern", "chart", "compass"]),
-        ArtifactCollection(id: "market", name: "Market Square", blurb: "Stall, bell and scales of the square.", rewardID: "gold.coll.market", members: ["token", "banner", "bell", "weights"]),
-        ArtifactCollection(id: "archive", name: "Town Archive", blurb: "Papers that made the town.", rewardID: "gold.coll.archive", members: ["stamp", "map", "scroll", "charter"])
-    ]
+    public static let collections: [ArtifactCollection] = ContentFile.load("artifacts", "artifacts")["collections"].array.map { (c: JSONValue) -> ArtifactCollection in
+        let id: String = c["id"].string
+        let l: JSONValue = c["look"]
+        return ArtifactCollection(id: id, name: c["name"].string, blurb: c["blurb"].string, rewardID: c["reward"].string,
+                                  members: ArtifactCatalog.defs.filter { (d: ArtifactDef) -> Bool in d.collection == id }.map { (d: ArtifactDef) -> String in d.id },
+                                  look: CollectionLook(top: ContentFile.color(l["top"]), bottom: ContentFile.color(l["bottom"]), ink: ContentFile.color(l["ink"]), motif: l["motif"].string))
+    }
 
     public static func def(_ id: String) -> ArtifactDef? { defs.first { $0.id == id } ?? CardCatalog.artifactDef(id) }
     public static func collection(_ id: String) -> ArtifactCollection? { collections.first { $0.id == id } }

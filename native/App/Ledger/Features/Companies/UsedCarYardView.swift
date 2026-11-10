@@ -30,7 +30,7 @@ struct UsedCarPhoto: View {
 
     @ViewBuilder private func slot(_ name: String) -> some View {
         #if canImport(UIKit)
-        if let ui = UIImage(named: name) {
+        if let ui = ArtAsset.uiImage(name) {
             if square {
                 let box = RoundedRectangle(cornerRadius: max(6, size * 0.22), style: .continuous)
                 Image(uiImage: ui).resizable().scaledToFill().frame(width: size, height: size).clipped().clipShape(box).overlay(box.strokeBorder(Theme.borderStrong, lineWidth: 1))

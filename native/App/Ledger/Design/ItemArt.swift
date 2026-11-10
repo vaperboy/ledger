@@ -10,7 +10,17 @@ extension ArtLibrary {
 
     #if canImport(UIKit)
     static func catalogueImage(_ category: ArtCategory, _ id: String) -> UIImage? {
-        UIImage(named: catalogueName(category, id))
+        UIImage(named: catalogueName(category, id)) ?? droppedImage(category.rawValue + "." + id)
+    }
+
+    private static let dropped = NSCache<NSString, UIImage>()
+
+    static func droppedImage(_ name: String) -> UIImage? {
+        let key: NSString = name as NSString
+        if let hit = dropped.object(forKey: key) { return hit }
+        guard !name.isEmpty, let root = Bundle.main.resourcePath, let img = UIImage(contentsOfFile: root + "/Content/art/" + name + ".png") else { return nil }
+        dropped.setObject(img, forKey: key)
+        return img
     }
     #endif
 }
@@ -70,10 +80,10 @@ struct ItemArt: View {
         }
     }
 
-    var hasArt: Bool { EmblemCatalog.spec(category: category, id: id, colors: colors) != nil }
+    var hasArt: Bool { EmblemCatalog.spec(category: category, id: id, colors: colors) != nil || supplied != nil }
 
     private var resolved: EmblemSpec? {
-        guard var spec = EmblemCatalog.spec(category: category, id: id, colors: colors) else { return nil }
+        guard var spec = EmblemCatalog.spec(category: category, id: id, colors: colors) ?? (supplied != nil ? EmblemCatalog.neutral : nil) else { return nil }
         if let s = shape { spec.shape = s }
         return spec
     }
@@ -93,9 +103,16 @@ struct ItemArt: View {
 }
 
 enum ArtAsset {
+    #if canImport(UIKit)
+    static func uiImage(_ name: String) -> UIImage? {
+        guard !name.isEmpty else { return nil }
+        return UIImage(named: name) ?? ArtLibrary.droppedImage(name)
+    }
+    #endif
+
     static func exists(_ name: String) -> Bool {
         #if canImport(UIKit)
-        return !name.isEmpty && UIImage(named: name) != nil
+        return uiImage(name) != nil
         #else
         return false
         #endif
@@ -109,11 +126,18 @@ struct SlotImage: View {
     var glyph: String
     var size: CGFloat = 36
 
+    private var slotPicture: Image? {
+        #if canImport(UIKit)
+        if let ui = ArtAsset.uiImage(asset) { return Image(uiImage: ui) }
+        #endif
+        return nil
+    }
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
         ZStack {
-            if ArtAsset.exists(asset) {
-                Image(asset).resizable().scaledToFill().frame(width: size, height: size).clipShape(shape)
+            if let picture = slotPicture {
+                picture.resizable().scaledToFill().frame(width: size, height: size).clipShape(shape)
             } else {
                 shape.fill(Theme.inkFaint.opacity(0.14))
                 LedgerGlyph(glyph: glyph, size: size * 0.5, tint: Theme.inkFaint)

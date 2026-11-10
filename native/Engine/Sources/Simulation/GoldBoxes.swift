@@ -16,26 +16,8 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
     case cardPremium
     case cardElite
     public var id: String { rawValue }
-    public var title: String {
-        switch self {
-        case .free: return "Season box"
-        case .cabinet: return "Cabinet box"
-        case .grand: return "Grand box"
-        case .cardBasic: return "Card pack"
-        case .cardPremium: return "Premium card pack"
-        case .cardElite: return "Elite card pack"
-        }
-    }
-    public var price: Int {
-        switch self {
-        case .free: return 0
-        case .cabinet: return 120
-        case .grand: return 400
-        case .cardBasic: return 80
-        case .cardPremium: return 240
-        case .cardElite: return 700
-        }
-    }
+    public var title: String { BoxCatalog.entries[rawValue]?.title ?? rawValue }
+    public var price: Int { BoxCatalog.entries[rawValue]?.price ?? 0 }
     public var isPaid: Bool { price > 0 }
     public var isCardPack: Bool { self == .cardBasic || self == .cardPremium || self == .cardElite }
     public static var standard: [BoxKind] { allCases.filter { !$0.isCardPack } }
@@ -103,44 +85,41 @@ public struct BoxPity: Codable, Equatable, Sendable {
     }
 }
 
+enum BoxCatalog {
+    struct Entry {
+        var title: String
+        var price: Int
+        var rows: [BoxRow]
+    }
+
+    static let entries: [String: Entry] = {
+        var out: [String: Entry] = [:]
+        for e in ContentFile.load("boxes", "boxes")["boxes"].array {
+            out[e["id"].string] = Entry(title: e["title"].string, price: e["price"].int, rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
+        }
+        return out
+    }()
+
+    static func row(_ r: JSONValue) -> BoxRow {
+        let amount: Int = r["amount"].int
+        let prize: BoxPrizeClass
+        switch r["prize"].string {
+        case "cosmetic": prize = .cosmetic
+        case "artifact": prize = .artifact
+        case "gold": prize = .gold(amount)
+        case "money": prize = .money(amount)
+        case "profileCard": prize = .profileCard
+        default: prize = .companyCard
+        }
+        return BoxRow(rarity: ContentFile.rarity(r["rarity"].string), prize: prize, weight: r["weight"].int)
+    }
+}
+
 public enum BoxOdds {
     public static let totalWeight = 10_000
     public static let doubleGoldChance = 100
 
-    private static func r(_ rarity: BoxRarity, _ prize: BoxPrizeClass, _ w: Int) -> BoxRow { BoxRow(rarity: rarity, prize: prize, weight: w) }
-
-    public static func rows(_ kind: BoxKind) -> [BoxRow] {
-        switch kind {
-        case .free:
-            return [r(.common, .cosmetic, 1500), r(.common, .artifact, 3450), r(.common, .gold(5), 3000), r(.common, .money(1_000), 50),
-                    r(.rare, .cosmetic, 370), r(.rare, .artifact, 800), r(.rare, .gold(10), 500), r(.rare, .money(5_000), 30),
-                    r(.epic, .cosmetic, 100), r(.epic, .artifact, 150),
-                    r(.legendary, .artifact, 50)]
-        case .cabinet:
-            return [r(.common, .cosmetic, 2800), r(.common, .artifact, 2800), r(.common, .gold(20), 1400),
-                    r(.rare, .cosmetic, 800), r(.rare, .artifact, 900), r(.rare, .gold(40), 400), r(.rare, .money(1_000), 200),
-                    r(.epic, .cosmetic, 250), r(.epic, .artifact, 200), r(.epic, .gold(60), 50), r(.epic, .money(2_000), 100),
-                    r(.legendary, .cosmetic, 40), r(.legendary, .artifact, 40), r(.legendary, .money(5_000), 20)]
-        case .grand:
-            return [r(.common, .cosmetic, 1500), r(.common, .artifact, 2500), r(.common, .gold(40), 500),
-                    r(.rare, .cosmetic, 1300), r(.rare, .artifact, 1900), r(.rare, .gold(80), 400), r(.rare, .money(2_000), 200),
-                    r(.epic, .cosmetic, 450), r(.epic, .artifact, 700), r(.epic, .gold(150), 100), r(.epic, .money(5_000), 150),
-                    r(.legendary, .cosmetic, 100), r(.legendary, .artifact, 150), r(.legendary, .money(5_000), 50)]
-        case .cardBasic:
-            return cards(common: 3650, rare: 1100, epic: 200, legendary: 50)
-        case .cardPremium:
-            return cards(common: 1800, rare: 1800, epic: 1000, legendary: 400)
-        case .cardElite:
-            return cards(common: 500, rare: 1700, epic: 1600, legendary: 1200)
-        }
-    }
-
-    private static func cards(common: Int, rare: Int, epic: Int, legendary: Int) -> [BoxRow] {
-        [r(.common, .profileCard, common), r(.common, .companyCard, common),
-         r(.rare, .profileCard, rare), r(.rare, .companyCard, rare),
-         r(.epic, .profileCard, epic), r(.epic, .companyCard, epic),
-         r(.legendary, .profileCard, legendary), r(.legendary, .companyCard, legendary)]
-    }
+    public static func rows(_ kind: BoxKind) -> [BoxRow] { BoxCatalog.entries[kind.rawValue]?.rows ?? [] }
 
     public static func animatedPercent(_ kind: BoxKind) -> Double {
         var total = 0.0

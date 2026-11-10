@@ -20,7 +20,11 @@ targets:
       - path: Ledger
         excludes:
           - "Resources/art/cells/**"
+          - "Resources/Content/**"
       - path: Ledger/Resources/art/cells
+        type: folder
+        buildPhase: resources
+      - path: Ledger/Resources/Content
         type: folder
         buildPhase: resources
     dependencies:

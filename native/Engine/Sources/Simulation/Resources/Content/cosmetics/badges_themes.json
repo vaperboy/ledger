@@ -1,0 +1,31 @@
+{
+ "about": "Company badges and app colour themes. The first badge and first theme are the defaults and must stay free. premium: true means Ledger Pro only. Badges that are not premium are earned in Goals. symbol: an SF Symbol name. Theme colour: red, green, blue between 0 and 1.",
+ "badges": [
+  {"id": "logo.default", "title": "Briefcase", "symbol": "briefcase.fill", "premium": false},
+  {"id": "logo.star", "title": "Star", "symbol": "star.fill", "premium": false},
+  {"id": "logo.bell", "title": "Bell", "symbol": "bell.fill", "premium": false},
+  {"id": "logo.coin", "title": "Gold coin", "symbol": "dollarsign.circle.fill", "premium": false},
+  {"id": "logo.laurel", "title": "Laurel", "symbol": "rosette", "premium": false},
+  {"id": "logo.seal", "title": "Seal", "symbol": "checkmark.seal.fill", "premium": false},
+  {"id": "logo.cup", "title": "Cup", "symbol": "trophy.fill", "premium": false},
+  {"id": "logo.banner", "title": "Banner", "symbol": "flag.fill", "premium": false},
+  {"id": "logo.diamond", "title": "Diamond", "symbol": "diamond.fill", "premium": false},
+  {"id": "logo.crown", "title": "Crown", "symbol": "sparkles", "premium": false},
+  {"id": "logo.skyline", "title": "Skyline", "symbol": "building.2.fill", "premium": false},
+  {"id": "logo.crest", "title": "Gold crest", "symbol": "shield.fill", "premium": false},
+  {"id": "pro.bolt", "title": "Bolt", "symbol": "bolt.fill", "premium": true},
+  {"id": "pro.moon", "title": "Moon", "symbol": "moon.stars.fill", "premium": true},
+  {"id": "pro.leaf", "title": "Leaf", "symbol": "leaf.fill", "premium": true},
+  {"id": "pro.plane", "title": "Jet", "symbol": "paperplane.fill", "premium": true},
+  {"id": "pro.heart", "title": "Heart", "symbol": "heart.fill", "premium": true},
+  {"id": "pro.hare", "title": "Hare", "symbol": "hare.fill", "premium": true}
+ ],
+ "themes": [
+  {"id": "gold", "title": "Champagne", "red": 0.839, "green": 0.722, "blue": 0.537, "premium": false},
+  {"id": "emerald", "title": "Emerald", "red": 0.31, "green": 0.78, "blue": 0.56, "premium": true},
+  {"id": "sapphire", "title": "Sapphire", "red": 0.35, "green": 0.62, "blue": 0.95, "premium": true},
+  {"id": "rose", "title": "Rose", "red": 0.94, "green": 0.48, "blue": 0.62, "premium": true},
+  {"id": "violet", "title": "Violet", "red": 0.67, "green": 0.52, "blue": 0.95, "premium": true},
+  {"id": "ember", "title": "Ember", "red": 0.96, "green": 0.52, "blue": 0.27, "premium": true}
+ ]
+}

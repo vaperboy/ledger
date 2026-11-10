@@ -1,8 +1,35 @@
 import SwiftUI
+import GameCore
 import Simulation
 
 enum ArtCategory: String, CaseIterable {
     case trade, artifact, theme, backdrop, namePlate, tradePlate, flair, box, badge, advisor, saveSlot, gold, avatar
+}
+
+enum AppContent {
+    static func load(_ kind: String, _ name: String) -> JSONValue {
+        guard let root = Bundle.main.resourcePath,
+              let raw = FileManager.default.contents(atPath: root + "/Content/" + kind + "/" + name + ".json"),
+              let json = try? JSONDecoder().decode(JSONValue.self, from: raw) else { return .null }
+        return json
+    }
+}
+
+extension EmblemMotif {
+    init(named s: String) {
+        switch s {
+        case "rays": self = .rays
+        case "rings": self = .rings
+        case "dots": self = .dots
+        case "stripes": self = .stripes
+        case "waves": self = .waves
+        case "grid": self = .grid
+        case "hills": self = .hills
+        case "stars": self = .stars
+        case "plateLines": self = .plateLines
+        default: self = .none
+        }
+    }
 }
 
 enum EmblemCatalog {
@@ -41,48 +68,25 @@ enum EmblemCatalog {
         var motif: EmblemMotif
     }
 
-    private static let families: [String: Family] = [
-        "svc": Family(top: 0x3E6A7A, bottom: 0x1E3A45, ink: 0xBFE3EC, motif: .dots),
-        "venue": Family(top: 0xB5793E, bottom: 0x5E3A1A, ink: 0xFFE2B8, motif: .rays),
-        "retail": Family(top: 0xA85A6E, bottom: 0x55283A, ink: 0xF7CDD8, motif: .stripes),
-        "project": Family(top: 0xC2693A, bottom: 0x612E14, ink: 0xFFD6BC, motif: .grid),
-        "prod": Family(top: 0x5E8A4E, bottom: 0x2B4423, ink: 0xD2EBC6, motif: .hills),
-        "logi": Family(top: 0x4C6EA8, bottom: 0x1F3157, ink: 0xCADBF8, motif: .waves),
-        "rent": Family(top: 0x7D62A8, bottom: 0x372850, ink: 0xDDD0F5, motif: .rings),
-        "fin": Family(top: 0xC2A24A, bottom: 0x5A4612, ink: 0xFFF0BF, motif: .stars),
-        "energy": Family(top: 0x9AAE3C, bottom: 0x4A5518, ink: 0xF1F7C0, motif: .rays),
-        "club": Family(top: 0xB04646, bottom: 0x551C1C, ink: 0xFFD0D0, motif: .stripes),
-    ]
+    private static let tradeFile: JSONValue = AppContent.load("trade_icons", "trade_icons")
 
-    private static let trades: [String: (String, String?, String)] = [
-        "startup": ("lightbulb.fill", "arrow.up", "svc"), "cons": ("briefcase.fill", nil, "svc"), "tutor": ("graduationcap.fill", nil, "svc"),
-        "carclean": ("car.fill", "drop.fill", "svc"), "photo": ("camera.fill", nil, "svc"), "handy": ("hammer.fill", nil, "svc"),
-        "cleaning": ("bubbles.and.sparkles.fill", nil, "svc"), "webdev": ("chevron.left.forwardslash.chevron.right", nil, "svc"),
-        "mktg": ("megaphone.fill", nil, "svc"), "law": ("scalemass.fill", nil, "svc"), "acctfirm": ("percent", nil, "svc"),
-        "staffing": ("person.2.fill", nil, "svc"), "barber": ("scissors", nil, "svc"), "drivsk": ("steeringwheel", nil, "svc"),
-        "physio": ("figure.walk", "cross.fill", "svc"), "estate": ("house.fill", "key.fill", "svc"), "travel": ("suitcase.fill", nil, "svc"),
-        "insbroker": ("umbrella.fill", nil, "svc"), "finbroker": ("banknote.fill", nil, "svc"), "pets": ("pawprint.fill", nil, "svc"),
-        "carrepair": ("wrench.and.screwdriver.fill", nil, "svc"), "dental": ("mouth.fill", nil, "svc"), "gamestudio": ("gamecontroller.fill", nil, "svc"),
-        "security": ("lock.shield.fill", nil, "svc"),
-        "foodtruck": ("box.truck.fill", "fork.knife", "venue"), "cafe": ("cup.and.saucer.fill", nil, "venue"), "restaurant": ("fork.knife", nil, "venue"),
-        "nightclub": ("music.quarternote.3", "wineglass.fill", "venue"), "gym": ("dumbbell.fill", nil, "venue"), "hotel": ("bed.double.fill", nil, "venue"),
-        "casino": ("suit.spade.fill", nil, "venue"), "fun": ("ticket.fill", nil, "venue"), "skires": ("snowflake", "mountain.2.fill", "venue"),
-        "indoorski": ("figure.skiing.downhill", "building.fill", "venue"), "pcbang": ("display", "gamecontroller.fill", "venue"),
-        "kiosk": ("storefront.fill", nil, "retail"), "boutique": ("tshirt.fill", nil, "retail"), "webshop": ("desktopcomputer", "cart.fill", "retail"),
-        "grocery": ("cart.fill", nil, "retail"), "hardware": ("screwdriver.fill", nil, "retail"), "cardealer": ("car.side.fill", "tag.fill", "retail"),
-        "usedcar": ("car.2.fill", "tag.fill", "retail"),
-        "construction": ("building.2.fill", "hammer.fill", "project"), "electrician": ("bolt.fill", nil, "project"), "plumber": ("drop.fill", "wrench.fill", "project"),
-        "realdev": ("house.and.flag.fill", nil, "project"), "event": ("party.popper.fill", nil, "project"), "engcons": ("ruler.fill", nil, "project"),
-        "bakery": ("birthday.cake.fill", nil, "prod"), "brewery": ("mug.fill", nil, "prod"), "furniture": ("chair.lounge.fill", nil, "prod"),
-        "salmon": ("fish.fill", nil, "prod"), "factory": ("gearshape.2.fill", nil, "prod"), "farm": ("leaf.fill", nil, "prod"), "vineyard": ("wineglass.fill", "leaf.fill", "prod"),
-        "taxi": ("car.fill", "mappin", "logi"), "courier": ("bicycle", "shippingbox.fill", "logi"), "trucking": ("box.truck.fill", nil, "logi"),
-        "shipping": ("ferry.fill", nil, "logi"), "airline": ("airplane", nil, "logi"), "wh3pl": ("shippingbox.fill", "arrow.left.arrow.right", "logi"),
-        "carrental": ("key.fill", "car.fill", "logi"),
-        "resrent": ("house.fill", "arrow.2.squarepath", "rent"), "comrent": ("building.fill", "arrow.2.squarepath", "rent"), "parking": ("parkingsign.circle.fill", nil, "rent"),
-        "insco": ("checkmark.shield.fill", nil, "fin"), "bank": ("building.columns.fill", nil, "fin"), "fund": ("chart.line.uptrend.xyaxis", nil, "fin"),
-        "power": ("sun.max.fill", "bolt.fill", "energy"), "oilgas": ("flame.fill", nil, "energy"),
-        "club": ("soccerball", nil, "club"),
-    ]
+    private static let families: [String: Family] = {
+        var out: [String: Family] = [:]
+        for (k, v) in tradeFile["families"].object {
+            out[k] = Family(top: ContentFile.color(v["top"]), bottom: ContentFile.color(v["bottom"]), ink: ContentFile.color(v["ink"]), motif: EmblemMotif(named: v["motif"].string))
+        }
+        return out
+    }()
+
+    private static let trades: [String: (String, String?, String)] = {
+        var out: [String: (String, String?, String)] = [:]
+        for e in tradeFile["trades"].array {
+            out[e["id"].string] = (e["symbol"].string, e["badge"].isNull ? nil : e["badge"].string, e["family"].string)
+        }
+        return out
+    }()
+
+    static let neutral: EmblemSpec = EmblemSpec(symbol: "photo", top: 0x55606B, bottom: 0x262C33, ink: 0xDCE4EC, motif: .none, shape: .tile)
 
     static func hasTrade(_ id: String) -> Bool { trades[id] != nil }
 
@@ -91,18 +95,6 @@ enum EmblemCatalog {
         return EmblemSpec(symbol: t.0, badge: t.1, top: f.top, bottom: f.bottom, ink: f.ink, motif: f.motif, shape: .tile)
     }
 
-    private static let collectionLook: [String: (top: UInt32, bottom: UInt32, ink: UInt32, motif: EmblemMotif)] = [
-        "counting": (0xA8803A, 0x4A3512, 0xFFE9B0, .rings), "harbour": (0x2F7080, 0x143642, 0xBDEBF2, .waves),
-        "market": (0xB2677A, 0x57293A, 0xFAD2DC, .stripes), "archive": (0x9C957F, 0x45423A, 0xF1ECDD, .grid),
-    ]
-
-    private static let artifactSymbols: [String: String] = [
-        "abacus": "circle.grid.3x3.fill", "scales": "scalemass.fill", "strongbox": "archivebox.fill", "seal": "seal.fill",
-        "rope": "lasso", "lantern": "flame.fill", "chart": "map.fill", "compass": "location.north.line.fill",
-        "token": "centsign.circle.fill", "banner": "flag.2.crossed.fill", "bell": "bell.fill", "weights": "square.stack.3d.up.fill",
-        "stamp": "checkmark.rectangle.fill", "map": "globe.europe.africa.fill", "scroll": "scroll.fill", "charter": "doc.richtext.fill",
-    ]
-
     static func card(_ d: CardDef) -> EmblemSpec {
         EmblemSpec(symbol: d.logo.isEmpty ? "rectangle.on.rectangle.fill" : d.logo, badge: d.isAnimated ? "sparkles" : nil, top: d.colors[0], bottom: d.colors[d.colors.count - 1],
                    ink: mix(d.colors[0], 0xFFFFFF, 0.65), motif: d.isAnimated ? .stars : (d.kind == .company ? .rings : .dots), shape: .tile)
@@ -110,8 +102,9 @@ enum EmblemCatalog {
 
     static func artifact(_ id: String) -> EmblemSpec? {
         if let c = CardCatalog.def(id) { return card(c) }
-        guard let def = ArtifactCatalog.def(id), let look = collectionLook[def.collection] else { return nil }
-        return EmblemSpec(symbol: artifactSymbols[id] ?? "seal.fill", top: look.top, bottom: look.bottom, ink: look.ink, motif: look.motif, shape: .medal)
+        guard let def = ArtifactCatalog.def(id), let col = ArtifactCatalog.collection(def.collection) else { return nil }
+        return EmblemSpec(symbol: def.symbol.isEmpty ? "seal.fill" : def.symbol, top: col.look.top, bottom: col.look.bottom, ink: col.look.ink,
+                          motif: EmblemMotif(named: col.look.motif), shape: .medal)
     }
 
     private static func pair(_ colors: [UInt32]) -> (tint: UInt32, deep: UInt32) {

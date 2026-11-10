@@ -1,0 +1,27 @@
+{
+ "about": "Cosmetics sold for gold, dropped by boxes or earned from collections. kind: theme, namePlate, backdrop, tradePlate, richListFlair or saveSlot. rarity: common, rare, epic, legendary. source: store (bought with gold), box (only from boxes) or collection (reward for finishing a collection). price: optional gold price; if left out a store item costs 60, 150 or 400 by rarity. colors: hex, tint first. Image: <kind>.<id>.png in App/Ledger/Resources/Content/art, with kind written theme, namePlate, backdrop, tradePlate or flair.",
+ "cosmetics": [
+  {"id": "gold.plate.pewter", "kind": "namePlate", "title": "Pewter plate", "detail": "A quiet grey name plate.", "colors": ["A9ADB5", "2C2E33"], "rarity": "common", "source": "store"},
+  {"id": "gold.backdrop.fog", "kind": "backdrop", "title": "Fog backdrop", "detail": "A soft grey backdrop.", "colors": ["39414A", "262B31"], "rarity": "common", "source": "store"},
+  {"id": "gold.trade.pewter", "kind": "tradePlate", "title": "Pewter trade plate", "detail": "A grey plate for your trade names.", "colors": ["A9ADB5", "2C2E33"], "rarity": "common", "source": "store"},
+  {"id": "gold.theme.sage", "kind": "theme", "title": "Sage theme", "detail": "A sage tint on the usual palette.", "colors": ["9DB59A", "232B22"], "rarity": "common", "source": "store"},
+  {"id": "gold.theme.amber", "kind": "theme", "title": "Amber theme", "detail": "A warm amber tint.", "colors": ["E0A458", "33261A"], "rarity": "rare", "source": "store"},
+  {"id": "gold.plate.copper", "kind": "namePlate", "title": "Copper plate", "detail": "A name plate in worn copper.", "colors": ["C27C5A", "33241C"], "rarity": "rare", "source": "store"},
+  {"id": "gold.backdrop.plum", "kind": "backdrop", "title": "Plum backdrop", "detail": "A deep plum backdrop.", "colors": ["4A2F44", "2C1C29"], "rarity": "rare", "source": "store"},
+  {"id": "gold.flair.laurel", "kind": "richListFlair", "title": "Rich-list laurel", "detail": "A laurel beside your name on the rich list.", "colors": ["A8B88A"], "rarity": "rare", "source": "store"},
+  {"id": "gold.theme.indigo", "kind": "theme", "title": "Indigo theme", "detail": "A deep indigo tint.", "colors": ["8C94E0", "1E2140"], "rarity": "epic", "source": "store"},
+  {"id": "gold.plate.onyx", "kind": "namePlate", "title": "Onyx plate", "detail": "A polished black name plate.", "colors": ["D6D6D8", "111113"], "rarity": "epic", "source": "store"},
+  {"id": "gold.backdrop.aurora", "kind": "backdrop", "title": "Aurora backdrop", "detail": "Green into violet, very quiet.", "colors": ["2E5A52", "3A2E5A"], "rarity": "epic", "source": "store"},
+  {"id": "gold.trade.rose", "kind": "tradePlate", "title": "Rose trade plate", "detail": "A rose gold plate for trade names.", "colors": ["E3B7A8", "4A3028"], "rarity": "epic", "source": "store"},
+  {"id": "gold.plate.leaf", "kind": "namePlate", "title": "Gold leaf plate", "detail": "A name plate in hammered gold leaf.", "colors": ["F0CF73", "6B4E12"], "rarity": "legendary", "source": "box"},
+  {"id": "gold.theme.crimson", "kind": "theme", "title": "Crimson theme", "detail": "A deep crimson tint.", "colors": ["E0707A", "3A1519"], "rarity": "legendary", "source": "box"},
+  {"id": "gold.flair.sun", "kind": "richListFlair", "title": "Rich-list sun", "detail": "A gold sun beside your name on the rich list.", "colors": ["F5D56B", "8A5A10"], "rarity": "legendary", "source": "box"},
+  {"id": "gold.coll.counting", "kind": "namePlate", "title": "Counting House plate", "detail": "Reward for completing the Counting House collection.", "colors": ["E0BC5E", "3A3022"], "rarity": "epic", "source": "collection"},
+  {"id": "gold.coll.harbour", "kind": "backdrop", "title": "Harbour Lights backdrop", "detail": "Reward for completing the Harbour Trade collection.", "colors": ["2C5A66", "1A3238"], "rarity": "epic", "source": "collection"},
+  {"id": "gold.coll.market", "kind": "tradePlate", "title": "Market Square trade plate", "detail": "Reward for completing the Market Square collection.", "colors": ["D99AA6", "3A2227"], "rarity": "epic", "source": "collection"},
+  {"id": "gold.coll.archive", "kind": "richListFlair", "title": "Archive seal", "detail": "Reward for completing the Town Archive collection.", "colors": ["E4DFD3", "4A4842"], "rarity": "epic", "source": "collection"},
+  {"id": "gold.slot.1", "kind": "saveSlot", "title": "Extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store", "price": 400},
+  {"id": "gold.slot.2", "kind": "saveSlot", "title": "Second extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store", "price": 600},
+  {"id": "gold.slot.3", "kind": "saveSlot", "title": "Third extra save slot", "detail": "Room for one more saved game.", "colors": [], "rarity": "common", "source": "store", "price": 900}
+ ]
+}
