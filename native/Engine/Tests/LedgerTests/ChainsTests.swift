@@ -12,9 +12,9 @@ extension GameEngine {
 }
 
 final class ChainsTests: XCTestCase {
-    static func engine(_ country: String = "NO", seed: Int = 11) throws -> GameEngine {
+    static func engine(_ country: String = "NO", seed: Int = 11, ladder: Bool = false) throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: country, playerName: "T", seed: seed)
-        e.update { s, _, _ in Ledger.move(&s, .me, 20_000_000_000, why: "Test funds"); s.rest["ldr"] = nil }
+        e.update { s, _, _ in Ledger.move(&s, .me, 20_000_000_000, why: "Test funds"); if !ladder { s.rest["ldr"] = nil } }
         return e
     }
     static func start(_ e: inout GameEngine, _ trade: String, name: String? = nil) -> Int {

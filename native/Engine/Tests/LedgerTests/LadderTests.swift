@@ -20,7 +20,7 @@ final class LadderTests: XCTestCase {
     }
 
     func testOnlyTheOpenGoalCanFinishAndTheStoryNamesIt() throws {
-        var e = try ChainsTests.engine()
+        var e = try ChainsTests.engine(ladder: true)
         let id = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
         e.update { s, _, _ in
@@ -38,7 +38,7 @@ final class LadderTests: XCTestCase {
     }
 
     func playCafe(country: String, seed: Int = 7, price: Double = 0) throws -> (reachedM7Week: Int?, done: Int) {
-        var e = try ChainsTests.engine(country, seed: seed)
+        var e = try ChainsTests.engine(country, seed: seed, ladder: true)
         let id = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
         let channels = ["google", "meta", "seo"].filter { e.marketing.channels[$0] != nil }
@@ -91,7 +91,7 @@ final class LadderTests: XCTestCase {
     }
 
     func testRewardsAreRealConsequencesNeverCash() throws {
-        var e = try ChainsTests.engine()
+        var e = try ChainsTests.engine(ladder: true)
         let id = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
         for g in PlayerGoals.ladder(e.state) ?? [] { XCTAssertFalse(g.reward.lowercased().contains("grant") || g.reward.lowercased().contains("refund") || g.reward.lowercased().contains("free"), g.id) }
@@ -114,7 +114,7 @@ final class LadderTests: XCTestCase {
     }
 
     func testBadWeekGoalFinishesOnItsOwnAfterQuietWeeksAndNeverShowsACard() throws {
-        var e = try ChainsTests.engine()
+        var e = try ChainsTests.engine(ladder: true)
         _ = ChainsTests.start(&e, "cafe")
         let cur = e.homeCurrency
         e.update { s, _, _ in
