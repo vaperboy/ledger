@@ -1,3 +1,3 @@
 insert into public.admin_codes (code_hash, expires_at)
-values ('ef37103772372c4a4b7dabb9ece49b8cab9daa76c830983d5ac0abce1471786c', now() + interval '30 days')
+values ('5efbd6b23499c8d5070dd2228036a7fc5ac4bc22f2b030c599157974715ef045', now() + interval '30 days')
 on conflict (code_hash) do nothing;
