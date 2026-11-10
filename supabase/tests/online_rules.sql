@@ -309,3 +309,59 @@ begin
   if r ->> 'reason' <> 'granted' then raise exception 'anonymous admin code: %', r; end if;
   if not (public.account_status() ->> 'isAdmin')::boolean then raise exception 'anonymous admin not recognised'; end if;
 end $$;
+
+do $$
+declare x uuid := pg_temp.mk_player('Xena Fox'); y uuid := pg_temp.mk_player('Yan Yu'); z uuid := pg_temp.mk_player('Zed Zim');
+        wk int := private.friend_week(); r jsonb; gid uuid; ok boolean;
+begin
+  insert into public.friendships (requester_id, addressee_id, status) values (x, y, 'accepted');
+
+  perform pg_temp.as_user(x);
+  gid := public.send_friend_gift(y, 'artifact.test', 7);
+  perform pg_temp.expect_error('select public.send_friend_gift(''' || y || ''', ''artifact.test'', 8)', 'gift_limit');
+  perform pg_temp.expect_error('select public.send_friend_gift(''' || z || ''', ''artifact.test'', 9)', 'not_found');
+  if (select count(*) from public.friend_gifts where sender_id = x) <> 1 then raise exception 'daily gift limit not enforced'; end if;
+
+  perform pg_temp.as_user(z);
+  if jsonb_array_length(public.received_friend_gifts()) <> 0 then raise exception 'stranger sees a gift'; end if;
+  perform public.accept_friend_gifts(array[gid]);
+  if exists (select 1 from public.friend_gifts where id = gid and accepted_at is not null) then raise exception 'stranger accepted a gift'; end if;
+
+  perform pg_temp.as_user(y);
+  r := public.received_friend_gifts();
+  if jsonb_array_length(r) <> 1 or r -> 0 ->> 'fromName' <> 'Xena Fox' or r -> 0 ->> 'defID' <> 'artifact.test' then raise exception 'gift inbox shows %', r; end if;
+  perform public.accept_friend_gifts(array[gid]);
+  if jsonb_array_length(public.received_friend_gifts()) <> 0 then raise exception 'accepted gift still in the inbox'; end if;
+
+  perform pg_temp.as_user(x);
+  perform public.submit_race_score(wk, 0.25);
+  perform pg_temp.as_user(z);
+  perform public.submit_race_score(wk, 0.5);
+  perform pg_temp.as_user(y);
+  r := public.read_race(wk);
+  if jsonb_array_length(r) <> 1 or r -> 0 ->> 'id' <> x::text then raise exception 'friend race shows %', r; end if;
+  perform pg_temp.as_user(z);
+  if jsonb_array_length(public.read_race(wk)) <> 0 then raise exception 'stranger reads a friend race'; end if;
+  perform pg_temp.expect_error('select public.submit_race_score(1, 0.1)', 'invalid_value');
+
+  insert into public.blocks (blocker_id, blocked_id) values (y, x);
+  perform pg_temp.as_user(y);
+  if jsonb_array_length(public.read_race(wk)) <> 0 then raise exception 'blocked player in the race'; end if;
+  delete from public.blocks where blocker_id = y;
+  insert into public.friendships (requester_id, addressee_id, status) values (x, y, 'accepted') on conflict do nothing;
+
+  perform pg_temp.as_user(x);
+  perform public.submit_goal_units(wk, 400);
+  perform pg_temp.as_user(y);
+  perform public.submit_goal_units(wk, 100);
+  perform pg_temp.as_user(x);
+  if public.claim_friend_goal(wk) then raise exception 'goal claimed below target'; end if;
+  perform pg_temp.as_user(y);
+  perform public.submit_goal_units(wk, 300);
+  perform pg_temp.as_user(x);
+  ok := public.claim_friend_goal(wk);
+  if not ok then raise exception 'goal not claimable at target'; end if;
+  if public.claim_friend_goal(wk) then raise exception 'goal reward claimed twice'; end if;
+  perform pg_temp.as_user(z);
+  if public.claim_friend_goal(wk) then raise exception 'stranger claimed a goal'; end if;
+end $$;

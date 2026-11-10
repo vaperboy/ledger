@@ -16,6 +16,9 @@ protocol FriendPlayService: Sendable {
     func acknowledgeGifts(_ ids: [String]) async throws
     func sendPassNotice(to playerIDs: [String], text: String) async throws
     func passNotices() async throws -> [String]
+    func submitRaceScore(week: Int, growth: Double) async throws
+    func submitGoalUnits(week: Int, units: Double) async throws
+    func claimGoalReward(week: Int) async throws -> Bool
 }
 
 extension FriendPlayService {
@@ -26,6 +29,9 @@ extension FriendPlayService {
     func acknowledgeGifts(_ ids: [String]) async throws {}
     func sendPassNotice(to playerIDs: [String], text: String) async throws {}
     func passNotices() async throws -> [String] { [] }
+    func submitRaceScore(week: Int, growth: Double) async throws {}
+    func submitGoalUnits(week: Int, units: Double) async throws {}
+    func claimGoalReward(week: Int) async throws -> Bool { true }
 }
 
 extension MockOnlineService {
