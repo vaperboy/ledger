@@ -42,6 +42,9 @@ struct HomeSummary<Companies: View>: View {
                 HomeProgressStrip(engine: e)
                 HomeLevelBar(engine: e)
                 HomeMissionStrip(engine: e)
+            }
+            HomeSeasonPromo(compact: trim >= 2)
+            if trim < 2 {
                 HomeWorldStrip()
                 if fills { Self.gap }
             }

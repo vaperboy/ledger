@@ -1,51 +1,63 @@
 import SwiftUI
 import Simulation
 
+enum GoldGood {
+    case boxBundle(BoxBundle)
+    case cosmetic(GoldCosmetic)
+    case avatar(AvatarDef)
+
+    var price: Int {
+        switch self {
+        case .boxBundle(let b): return b.price
+        case .cosmetic(let c): return c.price ?? 0
+        case .avatar(let d): return d.price ?? 0
+        }
+    }
+}
+
+struct GoldOffer {
+    var title: String
+    var effect: String
+    var price: Int
+    var icon: String
+}
+
 @MainActor
 enum StorePurchase {
     private static var session: StoreSession { StoreSession.shared }
 
-    static func pack(_ pack: GoldPack) -> PendingAction {
-        let first: Bool = !session.state.firstPurchaseDone
-        let gold: Int = GoldStore.totalGold(pack, firstPurchase: first)
-        let price: String = GoldStore.priceText(cents: pack.priceCents)
-        var get: String = "If you buy this, you get \(StoreText.gold(gold))"
-        if first { get += ", which includes \(GoldStore.firstPurchaseBonus(pack).formatted()) one-time bonus gold" }
-        let note: String = session.isVisualOnly ? " Preview build: nothing is charged." : ""
-        return PendingAction(title: "Get the \(pack.name)?", message: "\(get). You pay \(price).\(note)", button: "Get gold for \(price)",
-                             alwaysAsk: true, tone: .investment, icon: "plus.circle") {
-            Task { if await StoreSession.shared.buyPack(pack) { Haptics.success() } }
+    static func offer(_ good: GoldGood) -> GoldOffer {
+        switch good {
+        case .boxBundle(let b):
+            return GoldOffer(title: "Buy \(b.count) \(b.kind.title)es?",
+                             effect: "you get \(b.count) \(b.kind.title)es in your stock, nothing opened yet. That is \(b.savingPercent)% less than \(StoreText.gold(b.singlesPrice)) for single boxes.",
+                             price: b.price, icon: "shippingbox")
+        case .cosmetic(let c):
+            return GoldOffer(title: "Buy \(c.item.title)?", effect: "you get \(c.item.title) (\(c.rarity.title)). \(c.item.detail)", price: c.price ?? 0, icon: "paintpalette")
+        case .avatar(let d):
+            return GoldOffer(title: "Buy \(d.title)?", effect: "you get the \(d.title) profile icon. You can wear it straight away.", price: d.price ?? 0, icon: "person.crop.circle")
         }
     }
 
-    static func seasonBundle() -> PendingAction {
-        let b: SeasonBundle = GoldStore.seasonBundle
-        let price: String = GoldStore.priceText(cents: b.priceCents)
-        let boxes: String = boxText(b)
-        let note: String = session.isVisualOnly ? " Preview build: nothing is charged and Ledger Plus is not added." : ""
-        return PendingAction(title: "Get the season bundle?", message: "If you buy this, you get \(StoreText.gold(b.gold)), \(boxes) and Ledger Plus for this season. You pay \(price).\(note)",
-                             button: "Get bundle for \(price)", alwaysAsk: true, tone: .investment, icon: "gift") {
-            Task { if await StoreSession.shared.buySeasonBundle() { Haptics.success() } }
+    static func ask(offer: GoldOffer, pending: Binding<PendingAction?>, onShort: @escaping (Int) -> Void, run: @escaping () -> Void) {
+        guard offer.price > 0 else { return }
+        if session.available < offer.price { onShort(offer.price); return }
+        pending.wrappedValue = PendingAction(title: offer.title, message: "If you buy this, \(offer.effect) You pay \(StoreText.gold(offer.price)).", button: "Buy",
+                                             alwaysAsk: true, tone: .investment, icon: offer.icon, run: run)
+    }
+
+    static func ask(_ good: GoldGood, pending: Binding<PendingAction?>, onShort: @escaping (Int) -> Void, then: @escaping (Bool) -> Void = { _ in }) {
+        ask(offer: offer(good), pending: pending, onShort: onShort) {
+            Task {
+                let done: Bool = await session.buy(good, paidBoxesAllowed: true)
+                if done { Haptics.success() }
+                then(done)
+            }
         }
     }
 
     static func boxText(_ b: SeasonBundle) -> String {
         b.boxes.map { "\($0.count) \($0.kind.title)\($0.count == 1 ? "" : "es")" }.joined(separator: " and ")
-    }
-
-    static func boxBundle(_ b: BoxBundle) -> PendingAction {
-        PendingAction(title: "Buy \(b.count) \(b.kind.title)es?",
-                      message: "If you buy this, you get \(b.count) \(b.kind.title)es in your stock, nothing opened yet. You pay \(StoreText.gold(b.price)), \(b.savingPercent)% less than \(StoreText.gold(b.singlesPrice)) for single boxes.",
-                      button: "Buy for \(StoreText.gold(b.price))", alwaysAsk: true, tone: .investment, icon: "shippingbox") {
-            Task { if await StoreSession.shared.buyBoxBundle(b, paidBoxesAllowed: true) { Haptics.success() } }
-        }
-    }
-
-    static func cosmetic(_ c: GoldCosmetic, price: Int) -> PendingAction {
-        PendingAction(title: "Buy \(c.item.title)?", message: "If you buy this, you get \(c.item.title) (\(c.rarity.title)). \(c.item.detail) You pay \(StoreText.gold(price)).",
-                      button: "Buy for \(StoreText.gold(price))", alwaysAsk: true, tone: .investment, icon: "paintpalette") {
-            Task { if await StoreSession.shared.buyCosmetic(c) { Haptics.success() } }
-        }
     }
 
     static func afterPopup(_ work: @escaping @MainActor () -> Void) {
