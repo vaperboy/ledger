@@ -77,6 +77,7 @@ enum ArtLibrary {
 
     #if canImport(UIKit)
     static func luxuryImage(itemID: String) -> UIImage? {
+        if let own = droppedImage("luxury." + itemID) { return own }
         guard let m = luxuryCells[itemID] else { return nil }
         return image(m.sheet, m.cell)
     }
