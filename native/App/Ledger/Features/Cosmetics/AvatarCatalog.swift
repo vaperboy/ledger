@@ -1,4 +1,5 @@
 import SwiftUI
+import GameCore
 import Simulation
 
 struct AvatarDef: Identifiable, Equatable {
@@ -36,60 +37,24 @@ struct AvatarDef: Identifiable, Equatable {
 }
 
 enum AvatarCatalog {
-    private static func a(_ id: String, _ title: String, _ tier: BoxRarity, _ unlock: AvatarDef.Unlock, _ symbol: String, _ top: UInt32, _ bottom: UInt32,
-                          _ ink: UInt32, _ motif: EmblemMotif, badge: String? = nil) -> AvatarDef {
-        AvatarDef(id: id, title: title, tier: tier, unlock: unlock,
-                  spec: EmblemSpec(symbol: symbol, badge: badge, top: top, bottom: bottom, ink: ink, motif: motif, shape: .round))
+    static let all: [AvatarDef] = AppContent.load("avatars", "avatars")["avatars"].array.map { (e: JSONValue) -> AvatarDef in
+        AvatarDef(id: e["id"].string, title: e["title"].string, tier: ContentFile.rarity(e["tier"].string), unlock: unlock(e["unlock"].string, e["value"]),
+                  spec: EmblemSpec(symbol: e["symbol"].string, badge: e["badge"].isNull ? nil : e["badge"].string, top: ContentFile.color(e["top"]),
+                                   bottom: ContentFile.color(e["bottom"]), ink: ContentFile.color(e["ink"]), motif: EmblemMotif(named: e["motif"].string), shape: .round))
     }
 
-    static let all: [AvatarDef] = [
-        a("av.briefcase", "Briefcase", .common, .free, "briefcase.fill", 0xC9A86A, 0x4D3C1C, 0xFFF1D0, .rings),
-        a("av.coffee", "Coffee break", .common, .free, "cup.and.saucer.fill", 0xA87850, 0x45301E, 0xFFE6CC, .dots),
-        a("av.leaf", "Leaf", .common, .free, "leaf.fill", 0x6FA064, 0x2A4524, 0xDDF2D4, .hills),
-        a("av.bolt", "Spark", .common, .free, "bolt.fill", 0xD6B440, 0x5A4610, 0xFFF3BE, .rays),
-        a("av.star", "Evening star", .common, .free, "star.fill", 0x5C6AA8, 0x242B55, 0xE2E7FF, .stars),
-        a("av.sun", "Morning sun", .common, .free, "sun.max.fill", 0xD98A4A, 0x69320F, 0xFFE8C4, .rays),
-        a("av.moon", "Night shift", .common, .free, "moon.stars.fill", 0x4B4F8F, 0x1C1D3F, 0xDADCFF, .stars),
-        a("av.drop", "Clear drop", .common, .free, "drop.fill", 0x4F94BD, 0x1B3E57, 0xD3EEFB, .waves),
-        a("av.hare", "Quick hare", .common, .free, "hare.fill", 0x9A8D78, 0x403A2E, 0xF3EBDD, .stripes),
-        a("av.bird", "Early bird", .common, .free, "bird.fill", 0x4E9A92, 0x1B4440, 0xD2F3EE, .dots),
-        a("av.key", "Brass key", .common, .gold, "key.fill", 0xB78F4A, 0x4A3412, 0xFFE8B4, .grid),
-        a("av.paw", "Paw print", .common, .gold, "pawprint.fill", 0x9A6E5A, 0x40271E, 0xF6DDD0, .dots),
-        a("av.tortoise", "Patient tortoise", .common, .gold, "tortoise.fill", 0x6E9A6A, 0x25402A, 0xDCF2D8, .hills),
-        a("av.summit", "Summit", .common, .gold, "mountain.2.fill", 0x7E8FA8, 0x2E3849, 0xE4EBF7, .hills),
-        a("av.sailboat", "Sailboat", .rare, .gold, "sailboat.fill", 0x3E7FA8, 0x143650, 0xCFEAFB, .waves),
-        a("av.workshop", "Workshop", .rare, .gold, "gearshape.2.fill", 0x8C8A93, 0x35343B, 0xECEBF2, .grid),
-        a("av.jet", "Jet set", .rare, .gold, "airplane", 0x5C86C4, 0x1F3866, 0xD7E5FB, .rays),
-        a("av.toast", "Toast", .rare, .gold, "wineglass.fill", 0xA8485E, 0x4A1727, 0xFBD3DC, .stars),
-        a("av.diamond", "Cut diamond", .epic, .gold, "diamond.fill", 0x6AA8C8, 0x1B3F58, 0xE1F6FF, .rays),
-        a("av.goldstar", "Gold star", .epic, .gold, "star.circle.fill", 0xDDB84C, 0x6B4A0E, 0xFFF3C8, .rings),
-        a("av.sleight", "Sleight of hand", .epic, .gold, "wand.and.stars", 0x8A64B8, 0x321F55, 0xEBDDFA, .stars),
-        a("av.rank1", "Shopkeeper", .common, .rank(1), "storefront.fill", 0xB58A5A, 0x49331C, 0xFFE9CE, .stripes),
-        a("av.rank2", "Trader", .common, .rank(2), "cart.fill", 0x7C9A66, 0x2C4025, 0xE3F3D8, .grid),
-        a("av.rank3", "Merchant", .rare, .rank(3), "shippingbox.fill", 0x5F83B0, 0x213A5C, 0xD6E5F8, .grid),
-        a("av.rank4", "Entrepreneur", .rare, .rank(4), "lightbulb.fill", 0xD0A640, 0x5A400E, 0xFFEFB8, .rays),
-        a("av.rank5", "Executive", .rare, .rank(5), "chart.line.uptrend.xyaxis", 0x4E8C7C, 0x1A4038, 0xD0F2E8, .grid),
-        a("av.rank6", "Magnate", .epic, .rank(6), "building.columns.fill", 0x9A78C0, 0x372458, 0xEEDFFC, .rings),
-        a("av.rank7", "Mogul", .epic, .rank(7), "banknote.fill", 0x6FA28A, 0x1F4536, 0xD8F5E6, .stars),
-        a("av.rank8", "Tycoon", .legendary, .rank(8), "trophy.fill", 0xE2BE55, 0x6B4A0A, 0xFFF4CC, .rays, badge: "star.fill"),
-        a("av.coin", "Coin collector", .common, .badge("logo.coin"), "dollarsign.circle.fill", 0xC9A24A, 0x58420F, 0xFFF0C2, .rings),
-        a("av.seal", "Sealed deal", .rare, .badge("logo.seal"), "checkmark.seal.fill", 0x5A8FB8, 0x1E3F5E, 0xD9ECFB, .rings),
-        a("av.laurel", "Laurel", .rare, .badge("logo.laurel"), "rosette", 0x7FA06A, 0x2D4A25, 0xE0F3D5, .stars),
-        a("av.crest", "Gold crest", .epic, .badge("logo.crest"), "shield.fill", 0xC8A04A, 0x4F3A0E, 0xFFEFC0, .grid, badge: "star.fill"),
-        a("av.counting", "Counting House", .epic, .collection("counting"), "circle.grid.3x3.fill", 0xA8803A, 0x4A3512, 0xFFE9B0, .rings),
-        a("av.harbour", "Harbour light", .epic, .collection("harbour"), "water.waves", 0x2F7080, 0x143642, 0xBDEBF2, .waves),
-        a("av.market", "Market bell", .epic, .collection("market"), "bell.fill", 0xB2677A, 0x57293A, 0xFAD2DC, .stripes),
-        a("av.archive", "Town archive", .epic, .collection("archive"), "scroll.fill", 0x9C957F, 0x45423A, 0xF1ECDD, .grid),
-        a("av.lvl3", "Chain builder", .rare, .level(3), "link", 0x5F9A8C, 0x1C443C, 0xD2F4EA, .grid),
-        a("av.lvl5", "Franchisor", .rare, .level(5), "building.2.fill", 0xB08A58, 0x4A3416, 0xFFE9C6, .stripes),
-        a("av.lvl7", "Going abroad", .epic, .level(7), "globe.europe.africa.fill", 0x4E86B8, 0x16345A, 0xD4E8FB, .waves),
-        a("av.s1.first", "First steps", .common, .season("badge.s1.first"), "flag.fill", 0xB8985A, 0x4A3A18, 0xFFEFC8, .dots),
-        a("av.s1.finish", "Season 1 finisher", .rare, .season("badge.s1.complete"), "medal.fill", 0xC4A24E, 0x5A410E, 0xFFF0BE, .rings),
-        a("av.s1.crown", "Season 1 crown", .epic, .season("badge.s1.crown"), "seal.fill", 0xE0BC5E, 0x6B4A0A, 0xFFF4CC, .rays, badge: "star.fill"),
-        a("av.flame", "Ember", .rare, .pro, "flame.fill", 0xD4743C, 0x5E230B, 0xFFE0C8, .rays),
-        a("av.sparkle", "Sparkle", .rare, .pro, "sparkles", 0x8F7AD0, 0x2F2560, 0xE8E0FF, .stars),
-        a("av.infinity", "Long game", .epic, .pro, "infinity", 0x4FA09C, 0x14433F, 0xCFF5F0, .rings),
-    ]
+    private static func unlock(_ kind: String, _ value: JSONValue) -> AvatarDef.Unlock {
+        switch kind {
+        case "gold": return .gold
+        case "rank": return .rank(value.int)
+        case "pro": return .pro
+        case "badge": return .badge(value.string)
+        case "collection": return .collection(value.string)
+        case "level": return .level(value.int)
+        case "season": return .season(value.string)
+        default: return .free
+        }
+    }
 
     static func def(_ id: String) -> AvatarDef? { all.first { $0.id == id } }
 

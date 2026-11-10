@@ -16,7 +16,7 @@ let package = Package(
         .target(name: "Investments", dependencies: ["GameCore", "Countries", "Finance"]),
         .target(name: "Events", dependencies: ["GameCore", "Countries", "Finance", "Businesses"], resources: [.copy("Resources")]),
         .target(name: "SaveSystem", dependencies: ["GameCore", "Countries", "Finance", "Businesses"]),
-        .target(name: "Simulation", dependencies: ["GameCore", "Countries", "Employees", "Finance", "Businesses", "Investments", "Events", "SaveSystem"]),
+        .target(name: "Simulation", dependencies: ["GameCore", "Countries", "Employees", "Finance", "Businesses", "Investments", "Events", "SaveSystem"], resources: [.copy("Resources")]),
         .testTarget(
             name: "LedgerTests",
             dependencies: ["GameCore", "Countries", "Employees", "Finance", "Businesses", "Investments", "Events", "SaveSystem", "Simulation"],

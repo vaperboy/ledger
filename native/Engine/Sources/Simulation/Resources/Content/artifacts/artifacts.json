@@ -1,0 +1,51 @@
+{
+ "about": "Collectible artifacts. To add one: add an entry to artifacts and give it a collection id from collections. rarity: common, rare, epic or legendary (it drops from boxes of that rarity). symbol: an SF Symbol name shown until you drop an image named artifact.<id>.png into App/Ledger/Resources/Content/art. A collection is complete when the player owns every artifact that names it; reward is the id of a cosmetic in Content/cosmetics/gold_cosmetics.json with source collection.",
+ "collections": [
+  {
+   "id": "counting",
+   "name": "Counting House",
+   "blurb": "Tools of the old bookkeepers.",
+   "reward": "gold.coll.counting",
+   "look": {"top": "A8803A", "bottom": "4A3512", "ink": "FFE9B0", "motif": "rings"}
+  },
+  {
+   "id": "harbour",
+   "name": "Harbour Trade",
+   "blurb": "What came in on the tide.",
+   "reward": "gold.coll.harbour",
+   "look": {"top": "2F7080", "bottom": "143642", "ink": "BDEBF2", "motif": "waves"}
+  },
+  {
+   "id": "market",
+   "name": "Market Square",
+   "blurb": "Stall, bell and scales of the square.",
+   "reward": "gold.coll.market",
+   "look": {"top": "B2677A", "bottom": "57293A", "ink": "FAD2DC", "motif": "stripes"}
+  },
+  {
+   "id": "archive",
+   "name": "Town Archive",
+   "blurb": "Papers that made the town.",
+   "reward": "gold.coll.archive",
+   "look": {"top": "9C957F", "bottom": "45423A", "ink": "F1ECDD", "motif": "grid"}
+  }
+ ],
+ "artifacts": [
+  {"id": "abacus", "name": "Boxwood abacus", "collection": "counting", "rarity": "common", "note": "Worn smooth by a hundred years of sums.", "symbol": "circle.grid.3x3.fill"},
+  {"id": "scales", "name": "Brass scales", "collection": "counting", "rarity": "rare", "note": "Weights stamped by an honest guild.", "symbol": "scalemass.fill"},
+  {"id": "strongbox", "name": "Iron strongbox", "collection": "counting", "rarity": "epic", "note": "The key was lost in the first year.", "symbol": "archivebox.fill"},
+  {"id": "seal", "name": "Gilt counting seal", "collection": "counting", "rarity": "legendary", "note": "Pressed on every ledger of a famous house.", "symbol": "seal.fill"},
+  {"id": "rope", "name": "Tarred rope coil", "collection": "harbour", "rarity": "common", "note": "Smells faintly of the sea.", "symbol": "lasso"},
+  {"id": "lantern", "name": "Ship's lantern", "collection": "harbour", "rarity": "rare", "note": "Lit the last berth of the evening.", "symbol": "flame.fill"},
+  {"id": "chart", "name": "Sea chart", "collection": "harbour", "rarity": "epic", "note": "Hand drawn, with a few secret shoals.", "symbol": "map.fill"},
+  {"id": "compass", "name": "Silver compass", "collection": "harbour", "rarity": "legendary", "note": "Always points to a good deal.", "symbol": "location.north.line.fill"},
+  {"id": "token", "name": "Clay market token", "collection": "market", "rarity": "common", "note": "Good for one measure of grain.", "symbol": "centsign.circle.fill"},
+  {"id": "banner", "name": "Silk stall banner", "collection": "market", "rarity": "rare", "note": "Faded by a thousand market days.", "symbol": "flag.2.crossed.fill"},
+  {"id": "bell", "name": "Merchant's bell", "collection": "market", "rarity": "epic", "note": "Rung to open and close the square.", "symbol": "bell.fill"},
+  {"id": "weights", "name": "Golden weights", "collection": "market", "rarity": "legendary", "note": "A matched set, never used.", "symbol": "square.stack.3d.up.fill"},
+  {"id": "stamp", "name": "Ink stamp", "collection": "archive", "rarity": "common", "note": "Marks a page as seen.", "symbol": "checkmark.rectangle.fill"},
+  {"id": "map", "name": "Old town map", "collection": "archive", "rarity": "rare", "note": "Shows streets that no longer exist.", "symbol": "globe.europe.africa.fill"},
+  {"id": "scroll", "name": "Charter scroll", "collection": "archive", "rarity": "epic", "note": "Grants the right to hold a fair.", "symbol": "scroll.fill"},
+  {"id": "charter", "name": "Royal charter", "collection": "archive", "rarity": "legendary", "note": "The founding paper of the town.", "symbol": "doc.richtext.fill"}
+ ]
+}

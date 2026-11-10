@@ -260,8 +260,8 @@ struct ShopPhoto: View {
         #if canImport(UIKit)
         if let cell = ArtLibrary.image(.items, item) {
             Color.clear.overlay { Image(uiImage: cell).resizable().scaledToFill() }
-        } else if !name.isEmpty, UIImage(named: name) != nil {
-            Color.clear.overlay { Image(name).resizable().scaledToFill() }
+        } else if let ui = ArtAsset.uiImage(name) {
+            Color.clear.overlay { Image(uiImage: ui).resizable().scaledToFill() }
         } else {
             placeholder
         }

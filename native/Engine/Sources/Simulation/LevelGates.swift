@@ -14,16 +14,10 @@ public enum LevelGates {
         var gives: String
     }
 
-    static let table: [Row] = [
-        Row(feature: .auctions, level: 2, title: "Auctions", gives: "sell your artifacts or bid on other players' pieces"),
-        Row(feature: .exchange, level: 3, title: "Stock exchange", gives: "list a company and sell shares in it"),
-        Row(feature: .chain, level: 3, title: "Start a chain", gives: "turn a company into a chain of stores under one name"),
-        Row(feature: .jointVentures, level: 4, title: "Joint ventures", gives: "start a company together with a friend"),
-        Row(feature: .government, level: 4, title: "Government", gives: "the treasury, tax rates and the president"),
-        Row(feature: .franchise, level: 5, title: "Franchise this company", gives: "let other owners open units under your name"),
-        Row(feature: .politics, level: 6, title: "Politics", gives: "donate, stand in elections and shape the law"),
-        Row(feature: .abroad, level: 7, title: "Expand abroad", gives: "open a subsidiary of a company in another country"),
-    ]
+    static let table: [Row] = ContentFile.load("progression", "level_gates")["gates"].array.compactMap { (e: JSONValue) -> Row? in
+        guard let f = LevelFeature(rawValue: e["feature"].string) else { return nil }
+        return Row(feature: f, level: e["level"].int, title: e["title"].string, gives: e["gives"].string)
+    }
 
     static func row(_ f: LevelFeature) -> Row { table.first { (r: Row) -> Bool in r.feature == f } ?? table[0] }
 
