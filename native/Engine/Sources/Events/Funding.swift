@@ -130,7 +130,7 @@ public enum Funding {
         for n in 0..<k {
             let kd = kinds[n]
             let asked = ((kd == "ff" ? amt * 0.5 : amt * s.random.range(0.8, 1.15)) / 1000).rounded() * 1000
-            let pre = pre0 * s.random.range(0.7, 1.25) * (0.7 + it * 0.6) * (kd == "ff" ? 1.1 : 1)
+            let pre = min(pre0, pre0 * s.random.range(0.7, 1.25) * (0.7 + it * 0.6) * (kd == "ff" ? 1.1 : 1))
             // No single round hands over control: an investor takes at most 30% (a fund 40%) of the company after the round, whatever was asked for.
             let share = kd == "fund" ? 0.4 : 0.3
             let a = min(asked, (pre * share / (1 - share) / 1000).rounded(.down) * 1000)
@@ -139,7 +139,7 @@ public enum Funding {
             let says = kd == "fund" ? "Contacts, advice, strict targets and a board seat" : kd == "ff" ? "Friendly, but it can get awkward if things go badly"
                 : s.random.pick(["Will stay quiet", "Interferes with managers", "Wants monthly numbers"])
             let pct = a / (pre + a) * 100
-            out.append((pct, .object(["k": .string(kd), "name": .string(name), "amt": .number(a), "pre": .number(pre), "pct": .number(pct), "says": .string(says)])))
+            out.append((pct, .object(["k": .string(kd), "name": .string(name), "amt": .number(a), "pre": .number(pre), "cap": .number(pre0), "pct": .number(pct), "says": .string(says)])))
         }
         return out.sorted { $0.pct < $1.pct }.map { $0.o }
     }
@@ -187,7 +187,7 @@ public enum Funding {
         list[index]["ctr"] = .number(1)
         let it = interest(s, capitalNeed: capitalNeed(co, data: data), traction: CompanySale.traction(co, s))
         if s.random.chance(0.25 + it * 0.5) {
-            let pre = list[index]["pre"].double * 1.2
+            let pre = list[index]["cap"].isNull ? list[index]["pre"].double * 1.2 : min(list[index]["pre"].double * 1.2, list[index]["cap"].double)
             list[index]["pre"] = .number(pre)
             list[index]["pct"] = .number(list[index]["amt"].double / (pre + list[index]["amt"].double) * 100)
         } else {

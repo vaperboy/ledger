@@ -75,7 +75,8 @@ public enum Brokerage {
     }
 
     /// A fixed deposit pays more the longer it is locked. Original: `openDeposit`.
-    public static func openDeposit(_ s: inout GameState, amount: Double, weeks: Int) -> Bool {
+    public static func openDeposit(_ s: inout GameState, amount: Double, weeks requested: Int) -> Bool {
+        let weeks = min(max(1, requested), 52)
         if s.cash < amount { return false }
         let rate = max(0.01, s.economy.policyRate - 0.002 + Double(weeks) / 52 * 0.004)
         Ledger.move(&s, .me, -amount, why: "Fixed deposit opened")
