@@ -352,7 +352,6 @@ extension FeatureToursTests {
         }
         roundTrip("luxury: item sheet closes and keeps the showroom", prepare: { openPhoneApp("Luxury") }) { tapPrefix("luxury-inspect-", wait: 4) || tapID("luxury-hero", wait: 2) }
         roundTrip("market: open a listing -> deal popup closes and keeps the listing", prepare: { openPhoneApp("Marketplace") && tapPrefix("mk-listing-", wait: 5) }) { tapID("mk-discuss", wait: 3) }
-        roundTrip("settings: Your look page closes and keeps Settings", prepare: { openPhoneApp("Settings") }) { tapID("settings-look", wait: 4) }
         step("settings: the custom tab can be chosen from Settings") {
             guard openPhoneApp("Settings"), tapID("settings-custom-tab", wait: 4) else { return .skip("no settings-custom-tab row") }
             if popupUp(2) { let raw = rawProblems("custom tab picker"); closePopup(); return waitPopupGone(3) ? (raw.isEmpty ? .pass("popup") : .fail(raw.joined(separator: "; "))) : .fail("the picker did not close") }

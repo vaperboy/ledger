@@ -301,8 +301,9 @@ struct CompanyRow: View {
 
     var body: some View {
         let co = company, h = health
-        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(badgeID, earned: engine.careerCosmetics, pro: ent.isPro)
-        let accent: Color = Cosmetics.resolvedTheme(themeID, pro: ent.isPro).accent
+        let style: (theme: String, badge: String) = engine.companyStyle(companyID: co.id)
+        let badge: Cosmetics.Badge = Cosmetics.resolvedBadge(style.badge.isEmpty ? badgeID : style.badge, earned: engine.careerCosmetics, pro: ent.isPro)
+        let accent: Color = Cosmetics.resolvedTheme(style.theme.isEmpty ? themeID : style.theme, pro: ent.isPro).accent
         let urgent = CompaniesView.urgency(co, h) == 0
         let month: Double = h.profitTTM / 12
         let profitTint: Color = month < -0.5 ? Theme.loss : month > 0.5 ? Theme.gain : Theme.inkSoft

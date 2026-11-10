@@ -5,10 +5,20 @@ final class ProfileLocal: ObservableObject {
     static let shared = ProfileLocal()
     private static let nameKey = "ledger.profile.name"
 
+    private static let showcaseKey = "ledger.profile.showcase"
+    static let showcaseSlots = 3
+
     @Published private(set) var name: String
+    @Published private(set) var showcase: [String]
 
     private init() {
         name = UserDefaults.standard.string(forKey: Self.nameKey) ?? ""
+        showcase = UserDefaults.standard.stringArray(forKey: Self.showcaseKey) ?? []
+    }
+
+    func setShowcase(_ ids: [String]) {
+        showcase = Array(ids.prefix(Self.showcaseSlots))
+        UserDefaults.standard.set(showcase, forKey: Self.showcaseKey)
     }
 
     func setName(_ value: String) {

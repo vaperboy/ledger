@@ -117,7 +117,7 @@ struct StoreApp: View {
 
     private var collectionGroup: some View {
         OnlineGroup(title: "Collection", footer: "") {
-            NavigationLink { CollectionView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Collection", note: "Artifacts, cards and trophies", chevron: true) }
+            NavigationLink { CabinetView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Artifacts and cards", note: "Your pieces, collections and sales", chevron: true) }
                 .buttonStyle(PressableStyle())
             Hairline()
             NavigationLink { StoreShelfView() } label: { OnlineLine(glyph: Glyph.luxury, title: "Cosmetics and bundles", note: "Bought with gold", chevron: true) }

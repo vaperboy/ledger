@@ -42,17 +42,12 @@ struct SettingsView: View {
     }
 
     private var lookGroup: some View {
-        group("Profile and look") {
+        group("Profile") {
             if store.engine != nil {
-                Button { store.openProfile() } label: { plainRow(Glyph.person, "Profile", detail: "Your name, photo, friend code and who can see you", chevron: true) }
+                Button { store.openProfile() } label: { plainRow(Glyph.person, "Profile", detail: "Your name, look, friend code and who can see you", chevron: true) }
                     .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("settings-profile")
-                rule
             }
-            NavigationLink { LookView() } label: {
-                plainRow(Glyph.luxury, "Your look", detail: "Equip the avatars, themes and plates you own", chevron: true)
-            }.buttonStyle(PressableStyle())
-            .accessibilityIdentifier("settings-look")
         }
     }
 

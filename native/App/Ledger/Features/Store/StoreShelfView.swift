@@ -13,7 +13,7 @@ struct StoreShelfView: View {
             cosmeticsGroup.storeAppear(0)
             bundlesGroup.storeAppear(1)
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                NavigationLink { LookView() } label: { Text("Equip what you own in Your look").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44) }
+                NavigationLink { CustomiseView() } label: { Text("Wear what you own in Customise").textStyle(.body, tint: Theme.accent, weight: .semibold).frame(minHeight: 44) }
                     .buttonStyle(PressableStyle())
                     .accessibilityIdentifier("shelf-look")
                 Text("These change how things look and how many saves you can keep, never how the game plays.")
