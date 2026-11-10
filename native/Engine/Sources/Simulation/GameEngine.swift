@@ -128,6 +128,7 @@ public struct GameEngine {
     @discardableResult
     public mutating func answer(messageID: Int, option: Int) -> Bool {
         let d = data, c = context, mk = marketing
+        let isDecision: Bool = (state.inbox.first(where: { (m: Message) -> Bool in m.id == messageID })?.actionID ?? "") == StrategicDecisions.action
         let ok = EventEngine.answer(&state, messageID: messageID, option: option, data: d, context: c) { s, m, idx in
             if m.actionID == StrategicDecisions.action { StrategicDecisions.answer(&s, message: m, option: idx, data: d, context: c); return true }
             if ManagerModel.handlesAnswer(m.actionID) { ManagerModel.answerGroup(&s, message: m, option: idx, data: d, context: c, marketing: mk); return true }
@@ -163,7 +164,10 @@ public struct GameEngine {
             s.note("Unknown inbox action \"\(m.actionID)\": the answer was not applied.", tone: "bad")
             return false
         }
-        if ok { ReportCounters.add(&state, ReportCounters.Key.answered, 1) }
+        if ok {
+            ReportCounters.add(&state, ReportCounters.Key.answered, 1)
+            PassMissions.noteAnswer(&state, decision: isDecision)
+        }
         return ok
     }
 
@@ -185,6 +189,7 @@ public struct GameEngine {
     public mutating func nextDay() -> DayOutcome {
         let before = Set(state.inbox.map { $0.id })
         state.dayMode = true
+        PassMissions.note(&state, "advance")
         var completed = false
         if state.isGameOver { return DayOutcome(newMessages: [], completedWeek: false, gameOver: true) }
         if state.day < 6 {

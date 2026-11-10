@@ -149,7 +149,7 @@ final class GoldBoxesTests: XCTestCase {
         XCTAssertTrue(gold.allSatisfy { $0.amount > 0 && $0.amount <= 50 }, "a little gold")
         XCTAssertTrue((boxes + gold).allSatisfy { !$0.kind.isEquippable })
         var p = SeasonPass(today: 20_000)
-        p.xp = 4_500
+        p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         let got = p.claimAll(isPlus: true)
         XCTAssertEqual(got.filter { $0.kind == .box }.reduce(0) { $0 + $1.amount }, boxes.reduce(0) { $0 + $1.amount })
     }

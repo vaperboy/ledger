@@ -13,7 +13,8 @@ struct HomeLevelBar: View {
                 HStack(spacing: Theme.Space.s) {
                     Text("Level \(info.level)").textStyle(.caption, tint: Theme.ink, numeric: true, weight: .semibold)
                     ProgressLine(fraction: info.progress, tint: Theme.gold, height: 3)
-                    Text("\(info.xpIntoLevel) / \(info.xpForNext) XP").textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(info.xpForNext == 0 ? "Max level" : "\(info.xpIntoLevel) / \(info.xpForNext) XP").textStyle(.caption, numeric: true).lineLimit(1).minimumScaleFactor(0.8)
+                    Text("Level map").textStyle(.caption, tint: Theme.gold, weight: .semibold).lineLimit(1)
                     LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: Theme.inkFaint)
                 }
                 .frame(minHeight: 24)
@@ -132,6 +133,8 @@ struct HomeSeasonPromo: View {
                 if !pass.isComplete { Text("\(pass.xpIntoTier) / \(SeasonPass.xpPerTier) XP").textStyle(.caption, numeric: true) }
             }
             ProgressLine(fraction: pass.tierProgress, tint: Theme.gold, height: 5)
+            let today: [SeasonPass.MissionRow] = pass.missionRows(.day, today: season.today)
+            Text("Pass missions today: \(today.filter { (r: SeasonPass.MissionRow) -> Bool in r.done }.count) of \(today.count)").textStyle(.caption, numeric: true)
             if !compact {
                 preview(pass, premium: premium)
                 if ads.canOfferSeasonBonus && open == 0 { adAction }

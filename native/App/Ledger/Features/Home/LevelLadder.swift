@@ -8,17 +8,25 @@ struct LevelLadderView: View {
 
     var body: some View {
         let info: PlayerLevel.Info = engine.playerLevel
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                header(info)
-                next(info)
-                ForEach(LevelGates.ladder()) { (rung: LevelGates.Rung) in row(rung, info) }
-                Text("Levels keep counting after the last unlock. XP comes from \(PlayerLevel.ladderXP) for each step of the ladder, \(PlayerLevel.dailyXP) for the daily goal and \(PlayerLevel.weekXP) for every week you play.")
-                    .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    header(info)
+                    next(info)
+                    nextIcon(info)
+                    LazyVStack(spacing: Theme.Space.s) {
+                        ForEach(1...PlayerLevel.maxLevel, id: \.self) { (level: Int) in row(level, info).id(level) }
+                    }
+                    Text("The highest level is \(PlayerLevel.maxLevel). XP comes from \(PlayerLevel.ladderXP) for each step of the ladder, \(PlayerLevel.dailyXP) for the daily goal and \(PlayerLevel.weekXP) for every week you play. Level icons belong to your account and cannot be traded.")
+                        .textStyle(.caption).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, Theme.Space.l)
             }
-            .padding(.bottom, Theme.Space.l)
+            .scrollIndicators(.hidden)
+            .onAppear {
+                DispatchQueue.main.async { proxy.scrollTo(max(1, info.level - 1), anchor: .top) }
+            }
         }
-        .scrollIndicators(.hidden)
         .accessibilityIdentifier("level-ladder")
     }
 
@@ -30,7 +38,11 @@ struct LevelLadderView: View {
                 Text("\(info.xp.formatted()) XP").textStyle(.body, tint: Theme.inkSoft, numeric: true)
             }
             ProgressLine(fraction: info.progress, tint: Theme.gold, height: 4)
-            Text("\(info.xpIntoLevel.formatted()) of \(info.xpForNext.formatted()) XP to level \(info.level + 1)").textStyle(.caption, numeric: true)
+            if info.level >= PlayerLevel.maxLevel {
+                Text("You reached the highest level.").textStyle(.caption)
+            } else {
+                Text("\(info.xpIntoLevel.formatted()) of \(info.xpForNext.formatted()) XP to level \(info.level + 1)").textStyle(.caption, numeric: true)
+            }
         }
         .padding(.horizontal, Theme.Space.xs)
     }
@@ -57,6 +69,23 @@ struct LevelLadderView: View {
         }
     }
 
+    @ViewBuilder private func nextIcon(_ info: PlayerLevel.Info) -> some View {
+        if let r = LevelRewards.all.first(where: { (x: LevelRewards.Reward) -> Bool in x.level > info.level && x.icon != nil }), let id = r.icon {
+            HStack(spacing: Theme.Space.m) {
+                ItemArt(avatar: id, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Next icon").textStyle(.label, tint: Theme.gold)
+                    Text("Level \(r.level): " + (AvatarCatalog.def(id)?.title ?? "Icon")).textStyle(.body, weight: .medium)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassSurface()
+            .accessibilityElement(children: .combine)
+        }
+    }
+
     private func note(_ text: String) -> some View {
         Text(text).textStyle(.body, tint: Theme.inkSoft)
             .padding(Theme.Space.m)
@@ -64,20 +93,18 @@ struct LevelLadderView: View {
             .glassSurface()
     }
 
-    private func row(_ rung: LevelGates.Rung, _ info: PlayerLevel.Info) -> some View {
-        let reached: Bool = info.level >= rung.level
-        let current: Bool = info.level == rung.level
-        return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                Text("Level \(rung.level)").textStyle(.headline, tint: reached ? Theme.ink : Theme.inkSoft, numeric: true)
-                if current { StoreTag(text: "You are here") }
-                Spacer(minLength: Theme.Space.s)
-                Text(rung.level == 1 ? "Start" : "\(rung.xpRequired.formatted()) XP").textStyle(.caption, tint: Theme.inkSoft, numeric: true)
-            }
-            if rung.unlocks.isEmpty {
-                Text(rung.level == 1 ? "Where every game starts." : "No new unlock at this level.").textStyle(.caption)
-            } else {
-                ForEach(rung.unlocks) { (u: LevelGates.Entry) in
+    private func row(_ level: Int, _ info: PlayerLevel.Info) -> some View {
+        let reached: Bool = info.level >= level
+        let current: Bool = info.level == level
+        let unlocks: [LevelGates.Entry] = LevelGates.unlocks(atLevel: level)
+        let reward: LevelRewards.Reward? = LevelRewards.reward(at: level)
+        let icon: String? = reward?.icon
+        let notable: Bool = !unlocks.isEmpty || icon != nil
+        return HStack(alignment: .top, spacing: Theme.Space.m) {
+            Text("\(level)").textStyle(.headline, tint: reached ? Theme.ink : Theme.inkSoft, numeric: true)
+                .frame(width: 34, alignment: .leading)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                ForEach(unlocks) { (u: LevelGates.Entry) in
                     HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
                         LedgerGlyph(glyph: reached ? Glyph.check : Glyph.lock, size: 12, tint: reached ? Theme.gain : Theme.inkFaint)
                         VStack(alignment: .leading, spacing: 1) {
@@ -86,23 +113,33 @@ struct LevelLadderView: View {
                         }
                     }
                 }
+                if let icon {
+                    HStack(spacing: Theme.Space.s) {
+                        ItemArt(avatar: icon, size: 28)
+                        Text((AvatarCatalog.def(icon)?.title ?? "Icon") + " icon").textStyle(.caption, tint: reached ? Theme.ink : Theme.inkSoft)
+                    }
+                }
+                if let reward {
+                    Text("+\(reward.gold) gold").textStyle(.caption, tint: reached ? Theme.gain : Theme.inkFaint, numeric: true)
+                } else if level == 1 {
+                    Text("Where every game starts.").textStyle(.caption)
+                }
             }
-            if rung.level > 1 && !reached {
-                Text("\(rung.xpFromPrevious.formatted()) XP more than level \(rung.level - 1)").textStyle(.caption, tint: Theme.inkFaint, numeric: true)
-            }
+            Spacer(minLength: 0)
+            if current { StoreTag(text: "You are here") }
         }
-        .padding(Theme.Space.m)
+        .padding(notable || current ? Theme.Space.m : Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassSurface(raised: current)
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.medium, style: .continuous).strokeBorder(current ? Theme.gold : Color.clear, lineWidth: 1.5))
-        .opacity(reached && !current ? 0.8 : 1)
+        .opacity(reached && !current ? 0.75 : 1)
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("level-rung-\(rung.level)")
+        .accessibilityIdentifier("level-rung-\(level)")
     }
 }
 
 extension View {
     func levelLadderPopup(isPresented: Binding<Bool>, engine: GameEngine) -> some View {
-        centerSheet(isPresented: isPresented, title: "Levels", size: .tall, category: .detail, tone: .info) { LevelLadderView(engine: engine) }
+        centerSheet(isPresented: isPresented, title: "Level map", size: .tall, category: .detail, tone: .info) { LevelLadderView(engine: engine) }
     }
 }

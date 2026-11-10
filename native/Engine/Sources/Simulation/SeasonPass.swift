@@ -5,20 +5,22 @@ public struct SeasonPass: Codable, Equatable, Sendable {
 
     public static let seasonDays = SeasonCatalog.days(months: SeasonCatalog.monthsPerSeason)
     public static let tierCount = 30
-    public static let xpPerTier = 150
-    public static let dailyXPCap = 100
+    public static let xpPerTier = 300
+    public static let dailyXPCap = 60
     public static let cashStreakWeeks = 4
 
     public enum Source: String, Codable, Sendable, CaseIterable {
-        case weekReport, dailyGoal, cashStreak, loanRepaid, profitMonth, milestone
+        case weekReport, dailyGoal, cashStreak, loanRepaid, profitMonth, milestone, decision, event
         public var xp: Int {
             switch self {
-            case .weekReport: return 20
-            case .dailyGoal: return 30
+            case .weekReport: return 15
+            case .dailyGoal: return 10
             case .cashStreak: return 25
             case .loanRepaid: return 40
             case .profitMonth: return 30
             case .milestone: return 50
+            case .decision: return 2
+            case .event: return 2
             }
         }
         public var title: String {
@@ -29,6 +31,8 @@ public struct SeasonPass: Codable, Equatable, Sendable {
             case .loanRepaid: return "Repay a loan"
             case .profitMonth: return "Close a month in profit"
             case .milestone: return "Reach a career or country milestone"
+            case .decision: return "Answer a decision"
+            case .event: return "Answer an event"
             }
         }
     }
@@ -37,11 +41,12 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         public static let unknownMonths = -1
         public var seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int
         public var dailyDone: String
-        public init(seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int, dailyDone: String) {
-            self.seed = seed; self.week = week; self.cash = cash; self.profitMonths = profitMonths; self.loans = loans; self.goals = goals; self.dailyDone = dailyDone
+        public var counters: [String: Int]
+        public init(seed: Int, week: Int, cash: Double, profitMonths: Int, loans: Int, goals: Int, dailyDone: String, counters: [String: Int] = [:]) {
+            self.seed = seed; self.week = week; self.cash = cash; self.profitMonths = profitMonths; self.loans = loans; self.goals = goals; self.dailyDone = dailyDone; self.counters = counters
         }
 
-        enum CodingKeys: String, CodingKey { case seed, week, cash, profitMonths, loans, goals, dailyDone }
+        enum CodingKeys: String, CodingKey { case seed, week, cash, profitMonths, loans, goals, dailyDone, counters }
 
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -52,6 +57,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
             loans = try c.decode(Int.self, forKey: .loans)
             goals = try c.decode(Int.self, forKey: .goals)
             dailyDone = try c.decode(String.self, forKey: .dailyDone)
+            counters = try c.decodeIfPresent([String: Int].self, forKey: .counters) ?? [:]
         }
     }
 
@@ -65,7 +71,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
 
     public static func snapshot(_ s: GameState) -> Snapshot {
         let daily: String = (s.rest["dy59"]?["got"].int ?? 0) != 0 ? (s.rest["dy59"]?["d"].string ?? "") : ""
-        return Snapshot(seed: s.seed, week: s.week, cash: s.cash, profitMonths: profitMonths(s), loans: s.loans.count, goals: Career.goalsDone(s), dailyDone: daily)
+        return Snapshot(seed: s.seed, week: s.week, cash: s.cash, profitMonths: profitMonths(s), loans: s.loans.count, goals: Career.goalsDone(s), dailyDone: daily, counters: PassMissions.counters(s))
     }
 
     public var firstDay: Int
@@ -81,6 +87,9 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public var missedFree: Int?
     public var activeSave: String?
     public var otherLooks: [String: [String: String]]?
+    public var loginDay: Int?
+    public var missionProgress: [String: Int]?
+    public var missionDone: Set<String>?
 
     public init(today: Int) {
         firstDay = today; season = 0; xp = 0; claimed = []; owned = []; equipped = [:]
@@ -162,8 +171,9 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public mutating func observe(_ now: Snapshot, today: Int) -> Int {
         rollover(today: today)
         defer { baseline = now }
-        guard let b = baseline, b.seed == now.seed, now.week >= b.week else { cashStreak = 0; return 0 }
-        var total = 0
+        var total = payLogin(today: today)
+        pruneMissions(today: today)
+        guard let b = baseline, b.seed == now.seed, now.week >= b.week else { cashStreak = 0; return total }
         if now.week > b.week {
             total += award(.weekReport, today: today)
             if now.cash > 0 {
@@ -177,7 +187,73 @@ public struct SeasonPass: Codable, Equatable, Sendable {
         if now.loans < b.loans { total += award(.loanRepaid, today: today, count: b.loans - now.loans) }
         if now.goals > b.goals { total += award(.milestone, today: today, count: now.goals - b.goals) }
         if !now.dailyDone.isEmpty && now.dailyDone != b.dailyDone { total += award(.dailyGoal, today: today) }
+        let decisions: Int = max(0, (now.counters["decision"] ?? 0) - (b.counters["decision"] ?? 0))
+        let events: Int = max(0, (now.counters["event"] ?? 0) - (b.counters["event"] ?? 0))
+        if decisions > 0 { total += award(.decision, today: today, count: decisions) }
+        if events > 0 { total += award(.event, today: today, count: events) }
+        for metric in ["advance", "decision", "event", "answered"] {
+            total += noteMission(metric, max(0, (now.counters[metric] ?? 0) - (b.counters[metric] ?? 0)), today: today)
+        }
+        total += noteMission("weekReport", now.week - b.week, today: today)
+        if !now.dailyDone.isEmpty && now.dailyDone != b.dailyDone { total += noteMission("dailyGoal", 1, today: today) }
         return total
+    }
+
+    @discardableResult
+    mutating func addPassXP(_ amount: Int) -> Int {
+        let top: Int = max(0, Self.tierCount * Self.xpPerTier - xp)
+        let granted: Int = min(max(0, amount), top)
+        xp += granted
+        return granted
+    }
+
+    mutating func payLogin(today: Int) -> Int {
+        guard loginDay != today else { return 0 }
+        loginDay = today
+        return addPassXP(PassMissions.loginXP)
+    }
+
+    @discardableResult
+    mutating func noteMission(_ metric: String, _ amount: Int, today: Int) -> Int {
+        guard amount > 0 else { return 0 }
+        var prog: [String: Int] = missionProgress ?? [:]
+        var done: Set<String> = missionDone ?? []
+        var paid = 0
+        for m in PassMissions.missions(metric: metric) {
+            let k: String = m.key(today: today)
+            if done.contains(k) { continue }
+            let n: Int = (prog[k] ?? 0) + amount
+            prog[k] = min(n, m.target)
+            if n >= m.target { done.insert(k); paid += addPassXP(m.xp) }
+        }
+        missionProgress = prog
+        missionDone = done
+        return paid
+    }
+
+    mutating func pruneMissions(today: Int) {
+        func live(_ k: String) -> Bool {
+            guard let p = PassMissions.Period.allCases.first(where: { (x: PassMissions.Period) -> Bool in k.hasPrefix(x.prefix) }),
+                  let digits = k.dropFirst().split(separator: ".").first, let n = Int(digits) else { return false }
+            return n == today / p.days
+        }
+        if let prog = missionProgress { missionProgress = prog.filter { (e: (key: String, value: Int)) -> Bool in live(e.key) } }
+        if let done = missionDone { missionDone = done.filter { (k: String) -> Bool in live(k) } }
+    }
+
+    public struct MissionRow: Equatable, Sendable, Identifiable {
+        public var mission: PassMissions.Mission
+        public var progress: Int
+        public var done: Bool
+        public var id: String { mission.id }
+    }
+
+    public func missionRows(_ period: PassMissions.Period, today: Int) -> [MissionRow] {
+        PassMissions.missions(period).map { (m: PassMissions.Mission) -> MissionRow in
+            let k: String = m.key(today: today)
+            let isDone: Bool = missionDone?.contains(k) == true
+            return MissionRow(mission: m, progress: isDone ? m.target : min(m.target, missionProgress?[k] ?? 0), done: isDone)
+        }
     }
 
     public enum Track: String, Codable, Sendable { case free = "f", premium = "p" }

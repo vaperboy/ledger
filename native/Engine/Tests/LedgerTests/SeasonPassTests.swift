@@ -5,23 +5,23 @@ import GameCore
 final class SeasonPassTests: XCTestCase {
     private let day0 = 20_000
 
-    private func snap(seed: Int = 1, week: Int = 1, cash: Double = 100, months: Int = 0, loans: Int = 0, goals: Int = 0, daily: String = "") -> SeasonPass.Snapshot {
-        SeasonPass.Snapshot(seed: seed, week: week, cash: cash, profitMonths: months, loans: loans, goals: goals, dailyDone: daily)
+    private func snap(seed: Int = 1, week: Int = 1, cash: Double = 100, months: Int = 0, loans: Int = 0, goals: Int = 0, daily: String = "", counters: [String: Int] = [:]) -> SeasonPass.Snapshot {
+        SeasonPass.Snapshot(seed: seed, week: week, cash: cash, profitMonths: months, loans: loans, goals: goals, dailyDone: daily, counters: counters)
     }
 
     func testTierMath() {
         XCTAssertEqual(SeasonPass.tier(forXP: 0), 0)
-        XCTAssertEqual(SeasonPass.tier(forXP: 149), 0)
-        XCTAssertEqual(SeasonPass.tier(forXP: 150), 1)
-        XCTAssertEqual(SeasonPass.tier(forXP: 4_499), 29)
-        XCTAssertEqual(SeasonPass.tier(forXP: 4_500), 30)
+        XCTAssertEqual(SeasonPass.tier(forXP: 299), 0)
+        XCTAssertEqual(SeasonPass.tier(forXP: 300), 1)
+        XCTAssertEqual(SeasonPass.tier(forXP: 8_999), 29)
+        XCTAssertEqual(SeasonPass.tier(forXP: 9_000), 30)
         XCTAssertEqual(SeasonPass.tier(forXP: 99_999), 30)
         var p = SeasonPass(today: day0)
-        p.xp = 200
+        p.xp = 350
         XCTAssertEqual(p.tier, 1)
         XCTAssertEqual(p.xpIntoTier, 50)
-        XCTAssertEqual(p.progressText, "Tier 1 of 30. 50 of 150 XP to tier 2")
-        p.xp = 4_500
+        XCTAssertEqual(p.progressText, "Tier 1 of 30. 50 of 300 XP to tier 2")
+        p.xp = 9_000
         XCTAssertTrue(p.isComplete)
         XCTAssertEqual(p.tierProgress, 1)
     }
@@ -29,12 +29,12 @@ final class SeasonPassTests: XCTestCase {
     func testDailyCapAndNewDay() {
         var p = SeasonPass(today: day0)
         XCTAssertEqual(p.award(.milestone, today: day0), 50)
-        XCTAssertEqual(p.award(.milestone, today: day0), 50)
+        XCTAssertEqual(p.award(.milestone, today: day0), 10, "the second one is trimmed to what is left")
         XCTAssertEqual(p.award(.milestone, today: day0), 0, "cap of \(SeasonPass.dailyXPCap) reached")
-        XCTAssertEqual(p.xp, 100)
+        XCTAssertEqual(p.xp, SeasonPass.dailyXPCap)
         XCTAssertEqual(p.xpLeftToday(today: day0), 0)
-        XCTAssertEqual(p.award(.dailyGoal, today: day0 + 1), 30, "a new real day has a fresh cap")
-        XCTAssertEqual(p.award(.milestone, today: day0 + 1, count: 5), 70, "a batch is trimmed to what is left")
+        XCTAssertEqual(p.award(.dailyGoal, today: day0 + 1), 10, "a new real day has a fresh cap")
+        XCTAssertEqual(p.award(.milestone, today: day0 + 1, count: 5), 50, "a batch is trimmed to what is left")
     }
 
     func testPassCannotBeOutrunInASeason() {
@@ -44,22 +44,28 @@ final class SeasonPassTests: XCTestCase {
             p.award(.milestone, today: day0 + d, count: 99)
             if firstFull == nil && p.isComplete { firstFull = d + 1 }
         }
-        XCTAssertEqual(firstFull, 45)
+        XCTAssertEqual(firstFull, SeasonPass.tierCount * SeasonPass.xpPerTier / SeasonPass.dailyXPCap)
+        XCTAssertLessThan(firstFull ?? 999, SeasonPass.seasonDays)
         p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier - 10
         XCTAssertEqual(p.award(.milestone, today: day0 + 100), 10, "xp stops at the top tier")
     }
 
     func testObserveAwardsFromPlay() {
         var p = SeasonPass(today: day0)
-        XCTAssertEqual(p.observe(snap(), today: day0), 0, "first look only sets the baseline")
-        XCTAssertEqual(p.observe(snap(week: 2), today: day0), 20, "a finished week")
-        XCTAssertEqual(p.observe(snap(week: 2, months: 1), today: day0 + 1), 30, "a month closed in profit")
-        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1), today: day0 + 2), 50, "a milestone")
-        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), 30, "daily goal")
+        let login: Int = PassMissions.loginXP
+        XCTAssertEqual(p.observe(snap(), today: day0), login, "first look only sets the baseline and pays the day's login")
+        XCTAssertEqual(p.observe(snap(week: 2), today: day0), 15, "a finished week")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1), today: day0 + 1), login + 30, "a month closed in profit")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1), today: day0 + 2), login + 50, "a milestone")
+        XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), login + 10, "daily goal")
         XCTAssertEqual(p.observe(snap(week: 2, months: 1, goals: 1, daily: "2026-1-1"), today: day0 + 3), 0, "same facts pay nothing twice")
         var l = SeasonPass(today: day0)
         l.observe(snap(loans: 1), today: day0)
         XCTAssertEqual(l.observe(snap(loans: 0), today: day0), 40, "a loan repaid")
+        var q = SeasonPass(today: day0)
+        q.observe(snap(), today: day0)
+        XCTAssertEqual(q.observe(snap(counters: ["decision": 2]), today: day0), 4 + 10, "two decisions pay a little and finish the daily decision mission")
+        XCTAssertEqual(q.observe(snap(counters: ["decision": 3]), today: day0), 2, "a finished mission pays once")
     }
 
     func testCashStreakPaysEveryFourPositiveWeeks() {
@@ -67,8 +73,8 @@ final class SeasonPassTests: XCTestCase {
         p.observe(snap(week: 1), today: day0)
         var paid = 0
         for w in 2...5 { paid += p.observe(snap(week: w), today: day0 + w) }
-        XCTAssertEqual(paid, 4 * 20 + 25)
-        XCTAssertEqual(p.observe(snap(week: 6, cash: -5), today: day0 + 9), 20, "negative cash pays no streak and resets it")
+        XCTAssertEqual(paid, 4 * (15 + PassMissions.loginXP) + 25)
+        XCTAssertEqual(p.observe(snap(week: 6, cash: -5), today: day0 + 9), 15 + PassMissions.loginXP, "negative cash pays no streak and resets it")
         XCTAssertEqual(p.cashStreak, 0)
     }
 
@@ -77,13 +83,13 @@ final class SeasonPassTests: XCTestCase {
         p.observe(snap(seed: 1, week: 10), today: day0)
         XCTAssertEqual(p.observe(snap(seed: 2, week: 50, months: 9), today: day0), 0)
         XCTAssertEqual(p.observe(snap(seed: 2, week: 3, months: 9), today: day0), 0, "an older save")
-        XCTAssertEqual(p.xp, 0)
+        XCTAssertEqual(p.xp, PassMissions.loginXP, "only the day's login was paid")
     }
 
     func testClaimingRules() {
         var p = SeasonPass(today: day0)
         XCTAssertEqual(p.claim(.free, tier: 1, isPlus: false), .tierNotReached)
-        p.xp = 150 * 3
+        p.xp = SeasonPass.xpPerTier * 3
         guard case .claimed(let r) = p.claim(.free, tier: 1, isPlus: false) else { return XCTFail("free tier 1 should claim") }
         XCTAssertEqual(r.id, "badge.s1.first")
         XCTAssertEqual(p.claim(.free, tier: 1, isPlus: false), .alreadyClaimed)
@@ -112,7 +118,7 @@ final class SeasonPassTests: XCTestCase {
 
     func testEquipAndBonusSlot() {
         var p = SeasonPass(today: day0)
-        p.xp = 4_500
+        p.xp = SeasonPass.tierCount * SeasonPass.xpPerTier
         _ = p.claimAll(isPlus: true)
         XCTAssertEqual(p.bonusSaveSlots, 1)
         p.equip("theme.ocean")
@@ -143,7 +149,7 @@ final class SeasonPassTests: XCTestCase {
         q.xp = 900
         q.observe(snap(), today: day0 + SeasonPass.seasonDays + 4)
         XCTAssertEqual(q.seasonNumber, 2)
-        XCTAssertEqual(q.xp, 0)
+        XCTAssertEqual(q.xp, PassMissions.loginXP, "the new season starts fresh with the day's login")
     }
 
     func testTheLastDaysWarnAboutRewardsThatWouldBeLost() {
@@ -165,11 +171,11 @@ final class SeasonPassTests: XCTestCase {
     func testRolloverRemembersWhatWasLeftUnclaimed() {
         var p = SeasonPass(today: day0)
         p.xp = 5 * SeasonPass.xpPerTier
-        XCTAssertEqual(p.unclaimedFree, 4, "tiers 1, 3, 4 and 5 hold free rewards")
+        XCTAssertEqual(p.unclaimedFree, 2, "tiers 1 and 3 hold free rewards")
         XCTAssertNil(p.missedNote)
         XCTAssertTrue(p.rollover(today: day0 + SeasonPass.seasonDays))
-        XCTAssertEqual(p.missedFree, 4)
-        XCTAssertTrue(p.missedNote?.contains("4 free rewards") == true)
+        XCTAssertEqual(p.missedFree, 2)
+        XCTAssertTrue(p.missedNote?.contains("2 free rewards") == true)
         XCTAssertEqual(p.unclaimedFree, 0)
     }
 
@@ -186,7 +192,7 @@ final class SeasonPassTests: XCTestCase {
         p.observe(SeasonPass.snapshot(e.state), today: day0)
         for t in ["cafe", "barber", "gym"] { _ = ChainsTests.start(&e, t) }
         XCTAssertEqual(p.observe(SeasonPass.snapshot(e.state), today: day0), 0)
-        XCTAssertEqual(p.xp, 0)
+        XCTAssertEqual(p.xp, PassMissions.loginXP)
     }
 
     func testOldSavedBaselineStillDecodesAndPaysNothingForExistingMonths() throws {

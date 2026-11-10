@@ -9,6 +9,7 @@ struct PurchaseNotice: Identifiable, Equatable {
     var kind: Kind
     var title: String
     var lines: [String]
+    var retry: PurchaseItem? = nil
 }
 
 @MainActor @Observable
@@ -119,11 +120,11 @@ final class PurchaseManager {
             case .userCancelled:
                 break
             @unknown default:
-                notice = Self.failure("The purchase did not go through. Try again.")
+                notice = Self.failure("The purchase did not go through. Try again.", retry: item)
             }
         } catch StoreKitError.userCancelled {
         } catch {
-            notice = Self.failure(Self.describe(error))
+            notice = Self.failure(Self.describe(error), retry: item)
         }
     }
 
@@ -229,8 +230,8 @@ final class PurchaseManager {
         return PurchaseNotice(kind: .success, title: "Purchase complete", lines: lines)
     }
 
-    private static func failure(_ line: String) -> PurchaseNotice {
-        PurchaseNotice(kind: .failure, title: "Purchase did not go through", lines: [line])
+    private static func failure(_ line: String, retry: PurchaseItem? = nil) -> PurchaseNotice {
+        PurchaseNotice(kind: .failure, title: "Payment did not go through", lines: [line], retry: retry)
     }
 
     private static func describe(_ error: Error) -> String {

@@ -79,7 +79,7 @@ struct SettingsView: View {
 
     private func askReplay() {
         pending = PendingAction(title: "Replay the tutorial?", message: "The \(Tutorial.stepCount) steps start again from the first one. Nothing in your game changes.",
-                                button: "Replay", alwaysAsk: true) {
+                                button: "Replay") {
             store.tutorialReplay()
             store.show("The tutorial starts again.", tone: "good")
         }

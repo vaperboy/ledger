@@ -20,6 +20,7 @@ public enum PlayerLevel {
     public static let ladderXP = 60
     public static let dailyXP = 25
     public static let weekXP = 15
+    public static let maxLevel = 100
 
     public struct Info: Equatable, Sendable {
         public var level: Int
@@ -33,7 +34,7 @@ public enum PlayerLevel {
 
     public static func level(forXP xp: Int) -> Int {
         var l = 1
-        while threshold(l + 1) <= xp { l += 1 }
+        while l < maxLevel && threshold(l + 1) <= xp { l += 1 }
         return l
     }
 
@@ -41,6 +42,7 @@ public enum PlayerLevel {
         let xp: Int = max(0, s.rest["lvl"]?["xp"].int ?? 0)
         let l: Int = level(forXP: xp)
         let into: Int = xp - threshold(l)
+        if l >= maxLevel { return Info(level: l, xp: xp, xpIntoLevel: 0, xpForNext: 0, progress: 1) }
         let need: Int = threshold(l + 1) - threshold(l)
         return Info(level: l, xp: xp, xpIntoLevel: into, xpForNext: need, progress: need > 0 ? min(1, Double(into) / Double(need)) : 0)
     }
