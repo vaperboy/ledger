@@ -14,7 +14,7 @@ struct ActivityView: View {
     }
 
     private enum Kind: String, CaseIterable, Hashable, Identifiable {
-        case income, wages, tax, loans, ownerPay, investments, other
+        case income, wages, tax, loans, investments, other
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -22,7 +22,6 @@ struct ActivityView: View {
             case .wages: return "Wages"
             case .tax: return "Tax"
             case .loans: return "Loans"
-            case .ownerPay: return "Owner pay"
             case .investments: return "Investments"
             case .other: return "Bills and costs"
             }
@@ -33,7 +32,6 @@ struct ActivityView: View {
             case .wages: return "Paid to the people who work for you"
             case .tax: return "Paid to or refunded by the tax office"
             case .loans: return "A loan instalment, interest or overdraft cost"
-            case .ownerPay: return "Money between you and your company"
             case .investments: return "Shares, funds and savings"
             case .other: return "A running cost of the business"
             }
@@ -59,7 +57,6 @@ struct ActivityView: View {
         if has(["tax", "vat"]) { return .tax }
         if has(["payroll", "back pay", "wage"]) { return .wages }
         if has(["loan", "overdraft", "interest", "mortgage", "instalment"]) { return .loans }
-        if has(["owner investment", "owner drawing", "share capital", "invested in", "salary"]) || l == "dividend" { return .ownerPay }
         if has(["bought", "sold ", "dividend", "fund manager", "savings", "deposit", "showcase funds"]) { return .investments }
         return amount > 0 ? .income : .other
     }
@@ -98,7 +95,7 @@ struct ActivityView: View {
             let list: [Row] = visible(all)
             PhonePageScroll(spacing: 14) {
                 if all.isEmpty {
-                    EmptyState(glyph: Glyph.list, title: "Nothing has moved yet", message: "Salary, sales, tax, wages, loans and purchases from every account are listed here as they happen.")
+                    EmptyState(glyph: Glyph.list, title: "Nothing has moved yet", message: "Sales, tax, wages, loans and purchases from you and every company are listed here as they happen.")
                 } else {
                     filters(e)
                     summary(list)

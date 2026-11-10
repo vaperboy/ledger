@@ -6,16 +6,18 @@ import Finance
 @testable import Simulation
 
 final class SaleRoutesTests: XCTestCase {
-    private func shop(seed: Int = 21) throws -> (GameEngine, Int) {
+    private func shop(seed: Int = 21, revenue: Double = 60_000, profit: Double = 9_000) throws -> (GameEngine, Int) {
         var e = try ChainsTests.engine("UK", seed: seed)
         let id = ChainsTests.start(&e, "cafe")
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].status = .open
-            s.companies[i].monthlyHistory = (0..<12).map { MonthRecord(monthIndex: $0, revenue: 60_000, profit: 9_000, cash: 20_000) }
+            s.companies[i].foundedWeek = s.week - 200
+            s.companies[i].monthlyHistory = (0..<12).map { MonthRecord(monthIndex: $0, revenue: revenue, profit: profit, cash: 20_000) }
         }
         return (e, id)
     }
+
     private func tick(_ e: inout GameEngine, weeks: Int = 1) {
         for _ in 0..<weeks { e.update { s, d, c in s.week += 1; CompanySale.weekly(&s, data: d, context: c) } }
     }
@@ -23,7 +25,7 @@ final class SaleRoutesTests: XCTestCase {
     func testAuctionRunsThreeRoundsThenHammerSellsAndBooksBalance() throws {
         var (e, id) = try shop()
         let value = CompanySale.estimatedValue(e.state, companyID: id, data: e.data)
-        XCTAssertTrue(e.startAuction(companyID: id, reserve: value * 0.3))
+        XCTAssertEqual(e.startSale(companyID: id, percent: 100, method: .auction, reserve: value * 0.3), .started)
         var l = try XCTUnwrap(e.saleListing(companyID: id))
         XCTAssertEqual(l.route, "auction")
         XCTAssertEqual(l.round, 1)
@@ -45,78 +47,51 @@ final class SaleRoutesTests: XCTestCase {
     func testAuctionIsDeterministicAndAReserveNobodyMeetsEndsUnsold() throws {
         var (a, ida) = try shop(seed: 22), (b, idb) = try shop(seed: 22)
         let v = CompanySale.estimatedValue(a.state, companyID: ida, data: a.data)
-        XCTAssertTrue(a.startAuction(companyID: ida, reserve: v * 0.3)); XCTAssertTrue(b.startAuction(companyID: idb, reserve: v * 0.3))
+        XCTAssertEqual(a.startSale(companyID: ida, percent: 100, method: .auction, reserve: v * 0.3), .started)
+        XCTAssertEqual(b.startSale(companyID: idb, percent: 100, method: .auction, reserve: v * 0.3), .started)
         tick(&a, weeks: 2); tick(&b, weeks: 2)
         XCTAssertEqual(a.saleListing(companyID: ida)?.offers.map { $0.price }, b.saleListing(companyID: idb)?.offers.map { $0.price })
         XCTAssertEqual(a.saleListing(companyID: ida)?.offers.map { $0.buyer }, b.saleListing(companyID: idb)?.offers.map { $0.buyer })
 
         var (c, idc) = try shop(seed: 23)
-        XCTAssertTrue(c.startAuction(companyID: idc, reserve: v * 20))
+        XCTAssertEqual(c.startSale(companyID: idc, percent: 100, method: .auction, reserve: v * 20), .started)
         XCTAssertEqual(c.saleListing(companyID: idc)?.offers.count, 0)
         tick(&c, weeks: 8)
         XCTAssertNil(c.saleListing(companyID: idc), "the auction ended with no sale")
         XCTAssertEqual(c.state.company(idc)?.status, .open)
     }
 
-    func testBuyoutNeedsAManagerAndOnlyTheManagerBids() throws {
-        var (e, id) = try shop(seed: 24)
-        XCTAssertFalse(e.startSale(companyID: id, route: "mbo"))
-        XCTAssertFalse(try XCTUnwrap(e.saleRoutes(companyID: id).first { $0.id == "mbo" }).available)
-        let cands = try XCTUnwrap(e.searchManagers(companyID: id))
-        XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.3), .ok)
-        XCTAssertTrue(e.startSale(companyID: id, route: "mbo"))
-        var l = try XCTUnwrap(e.saleListing(companyID: id))
-        for _ in 0..<40 where l.offers.isEmpty { tick(&e); l = e.saleListing(companyID: id) ?? l }
-        let o = try XCTUnwrap(l.offers.first)
-        XCTAssertEqual(o.kind, "mbo")
-        XCTAssertNotNil(e.acceptBuyerOffer(companyID: id, offerID: o.id))
-        XCTAssertEqual((e.state.rest["deferred"]?.array ?? []).count, 1, "a third is paid later")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    func testMergerSwapsTheCompanyForAShareAndTakesTheRival() throws {
-        var (e, id) = try shop(seed: 25)
-        e.update { s, _, _ in
-            guard let co = s.company(id) else { return }
-            let key = co.type + "|" + co.cityID
-            s.rest["mk"] = .object([key: .object(["n": 2, "riv": .array([.object(["id": 7, "name": "Rae's Cafe", "owner": "Rae Rival", "size": 1])])])])
+    func testOneQuoteShowsValueFeeTaxAndWhatYouKeepForEveryMethod() throws {
+        let (e, id) = try shop(seed: 24)
+        for method in CompanySale.Method.allCases {
+            let q = try XCTUnwrap(e.saleQuote(companyID: id, percent: 30, method: method))
+            XCTAssertEqual(q.pct, 30)
+            XCTAssertEqual(q.stakeValue, q.companyValue * 0.3, accuracy: 1)
+            XCTAssertLessThanOrEqual(q.youGet, q.expected + 0.5)
+            XCTAssertGreaterThanOrEqual(q.tax, 0)
+            if method != .ipo { XCTAssertEqual(q.ownershipAfter, 70, accuracy: 0.5) }
         }
-        XCTAssertEqual(e.mergeCandidates(companyID: id).map { $0.name }, ["Rae's Cafe"])
-        XCTAssertTrue(try XCTUnwrap(e.saleRoutes(companyID: id).first { $0.id == "merger" }).available)
-        XCTAssertEqual(e.mergeWithRival(companyID: id, rivalID: 7, percent: 30), .merged)
-        XCTAssertEqual(e.state.company(id)?.ownership ?? 100, 70, accuracy: 0.5)
-        XCTAssertTrue(e.mergeCandidates(companyID: id).isEmpty)
-        XCTAssertEqual(e.mergeWithRival(companyID: id, rivalID: 7, percent: 30), .refused("That rival is no longer there."))
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
+        XCTAssertEqual(try XCTUnwrap(e.saleQuote(companyID: id, percent: 100, method: .offers)).ownershipAfter, 0, accuracy: 0.5)
+        XCTAssertEqual(try XCTUnwrap(e.saleQuote(companyID: id, percent: 3, method: .offers)).pct, 10, "the smallest part is ten percent")
     }
 
-    func testStakeTiersShowWhatEachUnlocksAndIpoGivesItsReason() throws {
-        let (e, id) = try shop(seed: 26)
-        let tiers = e.stakeTiers(companyID: id)
-        XCTAssertEqual(tiers.map { $0.pct }, [10, 25, 34, 49])
-        XCTAssertFalse(tiers[0].unlocks.contains { $0.contains("board seat") })
-        XCTAssertTrue(tiers[1].unlocks.contains { $0.contains("board seat") })
-        XCTAssertTrue(tiers[3].unlocks.contains { $0.contains("block") })
-        XCTAssertEqual(tiers[3].youKeep, 51, accuracy: 0.5)
-        let ipo = try XCTUnwrap(e.saleRoutes(companyID: id).first { $0.id == "ipo" })
-        XCTAssertFalse(ipo.available)
-        XCTAssertTrue(ipo.why.contains("holding"))
-        XCTAssertEqual(e.saleRoutes(companyID: id).map { $0.id }, ["private", "broker", "auction", "mbo", "merger", "group", "stake", "ipo", "franchise"])
+    func testSellingAPartListsThatPartAndOnlyOneSaleRunsAtATime() throws {
+        var (e, id) = try shop(seed: 25)
+        XCTAssertEqual(e.startSale(companyID: id, percent: 40, method: .offers), .started)
+        let l = try XCTUnwrap(e.saleListing(companyID: id))
+        XCTAssertEqual(l.pct, 40)
+        XCTAssertEqual(l.route, "private")
+        guard case .refused = e.startSale(companyID: id, percent: 40, method: .auction) else { return XCTFail("one sale at a time") }
+        guard case .refused = e.startSale(companyID: id, percent: 40, method: .ipo) else { return XCTFail("a listed company cannot also go public") }
     }
 
-    func testAListedCompanyShowsTheGroupRouteAsShut() throws {
-        var (e, id) = try shop(seed: 27)
-        XCTAssertTrue(e.startSale(companyID: id, route: "private"))
-        let r = try XCTUnwrap(e.saleRoutes(companyID: id).first { $0.id == "group" })
-        XCTAssertFalse(r.available)
-        XCTAssertTrue(r.why.contains("listed"))
-        XCTAssertNil(e.sellToGroup(companyID: id, groupID: "any"))
-    }
-
-    func testTheBoardsSellPointUsesTheSameListing() throws {
-        var (e, id) = try shop(seed: 27)
-        let d0 = e.data; e.update { s, _, _ in _ = ManagerModel.doEmergency(&s, companyID: id, code: "sell", data: d0) }
-        XCTAssertEqual(e.saleListing(companyID: id)?.route, "broker")
-        XCTAssertFalse(e.startSale(companyID: id, route: "private"), "one listing per company")
+    func testASmallYoungCompanyCannotGoPublicAndSaysWhy() throws {
+        var (e, id) = try shop(seed: 26)
+        e.update { s, _, _ in s.companies[s.companyIndex(id)!].foundedWeek = s.week - 2 }
+        let q = try XCTUnwrap(e.saleQuote(companyID: id, percent: 30, method: .ipo))
+        XCTAssertNotNil(q.problem)
+        guard case .refused(let why) = e.startSale(companyID: id, percent: 30, method: .ipo) else { return XCTFail() }
+        XCTAssertFalse(why.isEmpty)
+        XCTAssertFalse(e.isListed(companyID: id))
     }
 }

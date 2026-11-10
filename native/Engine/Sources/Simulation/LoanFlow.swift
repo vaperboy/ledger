@@ -152,8 +152,7 @@ public extension GameEngine {
             if settled { w += 5 }
             let next = Self.monthEndDate(fromWeek: w)
             let app = l.value("app")
-            let lender = l.bankCompanyID != 0 ? (state.company(l.bankCompanyID)?.name ?? "Bank") : "Bank"
-            return LoanRecord(id: l.id, number: "LN-\(String(format: "%05d", l.id))", name: l.name, kind: l.kind, lender: lender,
+            return LoanRecord(id: l.id, number: "LN-\(String(format: "%05d", l.id))", name: l.name, kind: l.kind, lender: "Bank",
                               borrowerName: l.companyID == 0 ? state.player.name : (state.company(l.companyID)?.name ?? "Company"), companyID: l.companyID,
                               principal: l.originalAmount, balance: l.balance, yearlyRate: inst.yearlyRate, termMonths: l.termMonths, monthsLeft: inst.monthsLeft,
                               startWeek: l.startWeek, startDateText: GameCalendar.dateString(week: l.startWeek), instalment: inst.total,

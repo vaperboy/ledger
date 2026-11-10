@@ -186,15 +186,13 @@ extension EnvironmentValues {
 }
 
 extension PhoneApp {
-    var outsidePalette: OutsidePalette? { outsidePalette(ownBankIsMain: false) }
-
-    func outsidePalette(ownBankIsMain: Bool) -> OutsidePalette? {
+    var outsidePalette: OutsidePalette? {
         switch self {
         case .weather: return .weather(kind: "sun")
         case .news: return .news
         case .luxury: return .luxury
         case .ventures: return .ventures
-        case .bank: return ownBankIsMain ? nil : .forest
+        case .bank: return .forest
         case .inbox: return .inbox
         case .activity, .reports, .market, .reviews, .settings, .season, .friends, .desk, .rivals, .store, .profile: return nil
         case .airStay: return .airStay
@@ -205,13 +203,13 @@ extension PhoneApp {
         }
     }
 
-    func splashPalette(ownBankIsMain: Bool) -> OutsidePalette? {
+    var splashPalette: OutsidePalette? {
         switch self {
         case .airStay: return .airStaySplash
         case .techPro: return .techProSplash
         case .atlas: return .atlasSplash
         case .marketplace: return .marketplaceSplash
-        default: return outsidePalette(ownBankIsMain: ownBankIsMain)
+        default: return outsidePalette
         }
     }
 }

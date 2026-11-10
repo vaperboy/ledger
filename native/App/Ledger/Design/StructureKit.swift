@@ -7,12 +7,7 @@ enum StructureWords {
     static func percent(_ p: Double) -> String { "\(Int(saturating: p.rounded()))%" }
 
     static func ownership(_ n: StructureNode) -> String {
-        if let hp = n.holdingPercent {
-            let base: String = "Holding " + percent(hp)
-            if let t = n.tierTitle { return base + " \u{00B7} " + t }
-            return base
-        }
-        return "You " + percent(n.ownerYouPercent)
+        "You " + percent(n.ownerYouPercent)
     }
 
     static func actionTitle(_ a: StructureNode.Action) -> String {
@@ -36,9 +31,8 @@ enum StructureWords {
     static func glyph(_ k: StructureNode.Kind) -> String {
         switch k {
         case .you: return Glyph.person
-        case .holding, .stake: return Glyph.bank
         case .chain, .headOffice, .branch: return Glyph.group
-        case .company, .division: return Glyph.home
+        case .company: return Glyph.home
         }
     }
 
@@ -182,7 +176,7 @@ struct StructureCard: View {
                 Spacer(minLength: Theme.Space.s)
                 if let a = node.authority { AcctPill(text: a, tone: .neutral) }
             }
-        } else if node.kind != .stake {
+        } else {
             HStack(spacing: Theme.Space.s) {
                 LedgerGlyph(glyph: Glyph.person, size: Theme.Icon.small, tint: P.inkFaint)
                 Text("You run it").textStyle(.caption)

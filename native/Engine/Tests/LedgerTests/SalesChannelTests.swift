@@ -45,8 +45,7 @@ final class SalesChannelTests: XCTestCase {
 
     func testTheChoiceIsMadeAtStartAndNeverChangedAfterwards() throws {
         var e = try ChainsTests.engine()
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000,
-                                                                      choices: SetupChoices(channel: .business)) else { return XCTFail("start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, choices: SetupChoices(channel: .business)) else { return XCTFail("start") }
         XCTAssertEqual(e.state.company(out.companyID)?.chosenChannel, .business)
         guard case .refused = e.chooseSalesChannel(companyID: out.companyID, channel: .consumers) else { return XCTFail("a chosen channel cannot change") }
         guard case .refused = e.chooseSalesChannel(companyID: out.companyID, channel: .business) else { return XCTFail("a chosen channel cannot be chosen again") }
@@ -55,7 +54,7 @@ final class SalesChannelTests: XCTestCase {
 
     func testAStartWithoutAChoiceStaysUnchosenAndCannotChooseLater() throws {
         var e = try ChainsTests.engine()
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { return XCTFail("start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil) else { return XCTFail("start") }
         XCTAssertNil(e.state.company(out.companyID)?.chosenChannel)
         e.update { s, _, _ in if let i = s.companyIndex(out.companyID) { s.companies[i].status = .open } }
         guard case .refused = e.chooseSalesChannel(companyID: out.companyID, channel: .business) else { return XCTFail("it is chosen once, at the start") }
@@ -64,11 +63,9 @@ final class SalesChannelTests: XCTestCase {
     func testABusinessChoiceIsRefusedForATradeWithNothingToSupply() throws {
         var e = try ChainsTests.engine()
         let before = e.state.companies.count
-        guard case .failure = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000,
-                                                             choices: SetupChoices(channel: .business)) else { return XCTFail("a cafe cannot sell to business customers") }
+        guard case .failure = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, choices: SetupChoices(channel: .business)) else { return XCTFail("a cafe cannot sell to business customers") }
         XCTAssertEqual(e.state.companies.count, before)
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000,
-                                                                      choices: SetupChoices(channel: .consumers)) else { return XCTFail("start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, choices: SetupChoices(channel: .consumers)) else { return XCTFail("start") }
         XCTAssertEqual(e.state.company(out.companyID)?.chosenChannel, .consumers)
     }
 

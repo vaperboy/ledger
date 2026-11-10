@@ -22,7 +22,7 @@ struct CompanyManagement: View {
         var id: String { switch self { case .manager: return "m"; case .assistant: return "a"; case .slot(let s): return "s:" + s } }
     }
 
-    static func showsRoster(_ co: Company) -> Bool { co.type != "hold" && co.type != "club" }
+    static func showsRoster(_ co: Company) -> Bool { co.type != "club" }
 
     static func scoreWord(_ s: Int) -> String { s >= 80 ? "excellent" : s >= 65 ? "good" : s >= 50 ? "acceptable" : s >= 35 ? "weak" : "poor" }
 
@@ -116,7 +116,7 @@ struct CompanyManagement: View {
     }
 
     private var chainAbove: [ManagerModel.Boss] {
-        engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" || ($0.kind == "mdir" && company.holdingID != 0) }
+        engine.decisionChain(companyID: company.id).filter { $0.kind != "mgr" && $0.kind != "mdir" }
     }
 
     private static func scope(_ kind: String) -> String {
@@ -130,7 +130,7 @@ struct CompanyManagement: View {
     private func orgNodes(_ cur: Currency) -> [OrgNode] {
         var out: [OrgNode] = []
         let youLine: String = OwnerHours.works(company) ? "Runs it day to day." : "Final say on anything above the budget you set."
-        let canWork: Bool = company.managerID == nil && company.type != "hold"
+        let canWork: Bool = company.managerID == nil
         let working: Bool = OwnerHours.works(company)
         let cid: Int = company.id
         let toggle: () -> Void = {

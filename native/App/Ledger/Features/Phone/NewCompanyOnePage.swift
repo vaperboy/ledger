@@ -9,7 +9,7 @@ import Simulation
     let size: Double? = d.size(e)
     let fund: Double = plan.intoCompany
     let nm: String? = d.name.isEmpty ? nil : d.name
-    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, size: size, name: nm, pick: d.pick, fundWith: fund, choices: d.choices, accountantID: d.accountantID) }
+    let r = store.act { $0.startCompanyChoosingPremises(tradeID: d.tradeID, cityID: d.cityID, size: size, name: nm, pick: d.pick, choices: d.choices, accountantID: d.accountantID) }
     switch r {
     case .success(let out)?:
         Haptics.success()

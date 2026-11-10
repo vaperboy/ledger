@@ -7,7 +7,7 @@ import Finance
 public enum CompanyWeek {
     public static func isSupported(_ bd: Trade) -> Bool {
         if RentalFinance.handles(bd) { return true }
-        return ["svc", "venue", "retail", "prod", "logi", "project", "energy", "hold", "club"].contains(bd.family)
+        return ["svc", "venue", "retail", "prod", "logi", "project", "energy", "club"].contains(bd.family)
     }
 
     public static func run(_ s: inout GameState, companyIndex i: Int, data: GameData, marketing: MarketingTables) {
@@ -492,14 +492,7 @@ public enum CompanyWeek {
         StaffRoutine.weekly(&s, companyIndex: i, bd, data: data, utilisation: ctx.util)
         ManagerModel.weekly(&s, companyIndex: i, bd, data: data, revenue: ctx.rev, utilisation: ctx.util, demand: ctx.D, capacity: ctx.cap)
         co = s.companies[i]
-        if co.cash < 0 {
-            co.weeksNegative += 1
-            let interest = -co.cash * Banking.overdraftRate(state: s, country: w3.country(co), home: w3.countries.resolve(s.homeCountryCode, orHome: s.homeCountryCode)) / 52
-            s.companies[i] = co
-            Ledger.moveRaw(&s, .company(id), -interest)
-            var b = s.companies[i].books; b.add("int", interest); s.companies[i].books = b
-            co = s.companies[i]
-        } else { co.weeksNegative = 0 }
+        co.weeksNegative = s.cash < 0 ? co.weeksNegative + 1 : 0
         co.set("unitsW", ctx.units)
         s.companies[i] = co
     }

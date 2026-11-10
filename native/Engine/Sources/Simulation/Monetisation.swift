@@ -228,8 +228,7 @@ public enum AdRewards {
     }
 
     public static func doubleExtra(_ s: GameState, currency: Currency, doubledThrough: Int?) -> Double {
-        let live: Double = s.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.cash }
-        return jsRound(AdPolicy.rewardedDoubleAmount(grantCash: grantCash(s, doubledThrough: doubledThrough), companyCash: live, currency: currency))
+        return jsRound(AdPolicy.rewardedDoubleAmount(grantCash: grantCash(s, doubledThrough: doubledThrough), companyCash: s.cash, currency: currency))
     }
 
     @discardableResult

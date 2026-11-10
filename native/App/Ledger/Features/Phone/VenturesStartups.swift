@@ -86,10 +86,9 @@ private struct StartupPanel: View {
         let cur: Currency = engine.homeCurrency
         let monthlyBurn: Double = f.burn * 52 / 12
         let interest = engine.startupInterest(startupID: f.id)
-        let topUp: Double = cur.scaledPrice(100000)
         let short: Bool = f.runwayWeeks < 8
         let ready: Bool = f.product?.phase == "ready"
-        let primary: String = ready ? "launch" : short ? "topup" : "raise"
+        let primary: String = ready ? "launch" : "raise"
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
             FigureCard(items: [
                 .init(label: "You own", value: "\(Int(saturating: f.ownership.rounded()))%", sub: "worth \(cur.tidyShort(f.valuation * f.ownership / 100))"),
@@ -98,12 +97,11 @@ private struct StartupPanel: View {
             ])
             if let p = f.product { Text(productLine(p, cur)).textStyle(.caption, tint: Theme.inkFaint) }
             Text("Investors: \(interest.word)").textStyle(.caption, tint: Theme.inkFaint)
-            if short { Text("Runway is short: raise a round or put money in, or it closes when the cash runs out.").textStyle(.caption, tint: Theme.warn) }
+            if short { Text("Runway is short: raise a round before the money runs thin.").textStyle(.caption, tint: Theme.warn) }
             ForEach(f.offers) { (o: Funding.FundOffer) in offerView(o, cur) }
             WrapRow {
                 Group {
                     if ready { action("launch", "Launch it", primary) { sheet = .launch(f.id) } }
-                    action("topup", "Put in \(cur.tidyShort(topUp))", primary) { askTopUp(topUp, cur) }
                     action("raise", "Raise a round", primary) { raise() }
                     if let p = f.product, p.phase == "live" { action("price", "Change the price", primary) { sheet = .launch(f.id) } }
                 }
@@ -153,21 +151,12 @@ private struct StartupPanel: View {
         }
     }
 
-    private func askTopUp(_ topUp: Double, _ cur: Currency) {
-        pending = PendingAction(title: "Put \(cur.tidyShort(topUp)) into \(f.name)?",
-                                message: "From your own cash. It buys about \(Int(saturating: (topUp / max(1, f.burn)).rounded())) more weeks of runway; your share does not change.",
-                                button: "Put it in", amount: topUp, currency: cur, tone: .investment, icon: "plus.circle") {
-            let ok = store.act { $0.putMoneyIntoStartup(startupID: f.id, amount: topUp) } ?? false
-            store.show(ok ? "\(cur.tidyShort(topUp)) put in." : "Not enough cash.", tone: ok ? "good" : "warn")
-        }
-    }
-
     private func askShutDown(_ cur: Currency) {
         pending = PendingAction(title: "Shut down \(f.name)?",
-                                message: "The team goes and the product stops. What cash is left comes back after costs; your stake is lost and it counts as a failure.",
+                                message: "The team goes and the product stops. Your stake is lost and it counts as a failure.",
                                 button: "Shut down", destructive: true, tone: .danger, icon: "power") {
-            let back = store.act { $0.shutDownStartup(startupID: f.id) } ?? nil
-            store.show(back.map { "Shut down. \(cur.tidyShort($0)) comes back to you." } ?? "It was already closed.", tone: "n")
+            let done = store.act { $0.shutDownStartup(startupID: f.id) } ?? false
+            store.show(done ? "Shut down." : "It was already closed.", tone: "n")
         }
     }
 
@@ -379,7 +368,7 @@ struct StartupLaunchSheet: View {
                             .init(label: "New customers", value: String(Int(saturating: funnel.newCustomersWeekly.rounded())), sub: "a week, without luck"),
                             .init(label: "Can look after", value: String(Int(funnel.capacity)), sub: "customers with today's team"),
                             .init(label: "Revenue", value: cur.tidyShort(funnel.weeklyRevenueAt), sub: "a week once they join"),
-                            .init(label: "Company cash", value: cur.tidyShort(f.cash), sub: "\(f.runwayWeeks) weeks of runway"),
+                            .init(label: "Your cash", value: cur.tidyShort(f.cash), sub: "\(f.runwayWeeks) weeks of runway"),
                         ])
                     }
                     Text("Customers beyond what the team can look after leave faster. A support person serves far more customers than a builder; hire one in the company's Team screen.").popupText(.caption)

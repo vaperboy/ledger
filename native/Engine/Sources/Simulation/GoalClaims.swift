@@ -21,7 +21,7 @@ public enum GoalClaims {
         case notReady
     }
 
-    static let ladderCash: [String: Double] = ["M1": 500, "M2": 250, "M3": 500, "M4": 250, "M5": 250, "M6": 250, "M7": 1_000, "M8": 1_000, "M9": 1_000, "M10": 500]
+    static let ladderCash: [String: Double] = ["M1": 500, "M2": 250, "M3": 500, "M4": 250, "M5": 250, "M7": 1_000, "M8": 1_000, "M9": 1_000, "M10": 500]
     static let dailyCash: Double = 250
     static let structuralCareerIDs: Set<String> = ["k6", "k8", "k11", "k12", "k13", "k15", "k17"]
     static let structuralCareerCash: Double = 500

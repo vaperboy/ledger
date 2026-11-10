@@ -209,8 +209,10 @@ struct ReportsPage: View {
         rows.append(OverviewRowData(id: "worth", glyph: Glyph.richList, title: companyID == nil ? "Net worth" : "Value of your share",
                                     subtitle: "Start, end and what moved it", value: f.short(abs(r.netWorthChange)),
                                     valueTint: Theme.change(r.netWorthChange), live: r.netWorthChange, liveText: f.short, arrow: true, action: { opened = .worth }))
-        rows.append(OverviewRowData(id: "cash", glyph: Glyph.bank, title: "Cash", subtitle: "Where the money went",
-                                    value: f.short(r.group.companyCashEnd), live: r.group.companyCashEnd, liveText: f.short, action: { opened = .cash }))
+        if companyID == nil {
+            rows.append(OverviewRowData(id: "cash", glyph: Glyph.bank, title: "Your account", subtitle: "Where the money went",
+                                        value: f.short(r.group.accountEnd), live: r.group.accountEnd, liveText: f.short, action: { opened = .cash }))
+        }
         rows.append(OverviewRowData(id: "people", glyph: Glyph.team, title: "Customers and people",
                                     value: f.count(r.group.customers), live: r.group.customers, liveText: f.count, action: { opened = .people }))
         if companyID == nil && !r.companies.isEmpty {
@@ -302,28 +304,15 @@ struct ReportsPage: View {
         func line(_ label: String, _ v: Double) -> some View {
             ReportLine(label: label, value: f.short(abs(v)), tint: abs(v) < 0.5 ? Theme.ivoryMuted : Theme.change(v), live: v, liveText: f.short, arrow: true)
         }
-        let other = g.companyCashEnd - g.companyCashStart - g.ownerIn + g.ownerOut - g.loansTaken + g.loansRepaid
-        return CardSection("Cash") {
+        return CardSection("Your account") {
             VStack(spacing: 0) {
-                if companyID == nil {
-                    ReportLine(label: "Your account at start", value: f.short(g.accountStart), live: g.accountStart, liveText: f.short)
-                    ForEach(g.accountFlows.filter { abs($0.amount) >= 0.5 }) { fl in
-                        CardLine()
-                        line(fl.label, fl.amount)
-                    }
+                ReportLine(label: "At start", value: f.short(g.accountStart), live: g.accountStart, liveText: f.short)
+                ForEach(g.accountFlows.filter { abs($0.amount) >= 0.5 }) { fl in
                     CardLine()
-                    ReportLine(label: "Your account at end", value: f.short(g.accountEnd), strong: true, live: g.accountEnd, liveText: f.short)
-                    CardLine().padding(.vertical, 6)
+                    line(fl.label, fl.amount)
                 }
-                ReportLine(label: companyID == nil ? "Company cash at start" : "Cash at start", value: f.short(g.companyCashStart), live: g.companyCashStart, liveText: f.short)
-                if g.ownerIn != 0 { CardLine(); line("Put in by you", g.ownerIn) }
-                if g.ownerOut != 0 { CardLine(); line("Paid out to you (dividends)", -g.ownerOut) }
-                if g.loansTaken != 0 { CardLine(); line("Loans taken", g.loansTaken) }
-                if g.loansRepaid != 0 { CardLine(); line("Loan principal repaid", -g.loansRepaid) }
                 CardLine()
-                line("Trading, tax, equipment and other", other)
-                CardLine()
-                ReportLine(label: companyID == nil ? "Company cash at end" : "Cash at end", value: f.short(g.companyCashEnd), strong: true, live: g.companyCashEnd, liveText: f.short)
+                ReportLine(label: "At end", value: f.short(g.accountEnd), strong: true, live: g.accountEnd, liveText: f.short)
             }
         }
     }
@@ -370,17 +359,6 @@ struct ReportsPage: View {
         }
     }
 
-    @ViewBuilder private func groupTaxRows(_ f: ReportFormat) -> some View {
-        if let id = companyID, let gt = engine.groupTaxContribution(companyID: id) {
-            VStack(spacing: 0) {
-                CardLine()
-                ReportLine(label: "Group tax this year: out / in", value: f.short(gt.thisYear.out) + " / " + f.short(gt.thisYear.in))
-                CardLine()
-                ReportLine(label: "Group tax last year: out / in", value: f.short(gt.lastYear.out) + " / " + f.short(gt.lastYear.in))
-            }
-        }
-    }
-
     private func yearly(_ r: PeriodReport) -> some View {
         let f = format
         let g = r.group
@@ -389,14 +367,11 @@ struct ReportsPage: View {
                 ReportLine(label: "Tax paid in cash", value: f.short(g.taxPaid))
                 CardLine()
                 ReportLine(label: "Corporate tax charged", value: f.short(g.pnl.tax))
-                groupTaxRows(f)
                 if companyID == nil {
                     CardLine()
                     ReportLine(label: "Dividends received", value: f.short(g.dividendsReceived))
                     CardLine()
                     ReportLine(label: "Personal income tax settled", value: f.short(g.personalTax))
-                    CardLine()
-                    ReportLine(label: "Salary", value: f.short(g.ownerPay))
                     CardLine()
                     VStack(spacing: 0) {
                         ReportLine(label: "Income tax estimate, \(engine.yearInProgress.year) so far", value: f.short(engine.yearInProgress.personalTaxEstimate))

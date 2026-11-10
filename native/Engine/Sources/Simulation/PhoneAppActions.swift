@@ -69,8 +69,7 @@ public extension GameEngine {
         var r = HashedRandom("\(state.seed):account:\(co.id)")
         let a: String = (0..<4).map { _ in String(Int(saturating: (r.next() * 10).rounded(.down))) }.joined()
         let b: String = (0..<4).map { _ in String(Int(saturating: (r.next() * 10).rounded(.down))) }.joined()
-        let bank = RivalAbsorb.ownBank(state)?.name ?? "Ledger Business Bank"
-        return BankPaymentDetails(holder: co.name, accountName: "Company account \u{00B7} " + co.name, accountNumber: a + " " + b, bankName: bank)
+        return BankPaymentDetails(holder: co.name, accountName: "Your account \u{00B7} " + co.name, accountNumber: a + " " + b, bankName: "Ledger Business Bank")
     }
 
     @discardableResult
@@ -86,7 +85,7 @@ public extension GameEngine {
             out.number = Advisers.policyRecord(co, product: product)?.number ?? ""
             out.startText = GameCalendar.dateString(week: s.week, dayOffset: s.day)
             Receipts.add(&s, receiptCompanyID: receiptCompanyID, number: out.number, kind: "policy", title: row.name + " policy",
-                         detail: co.name + " \u{00B7} paid weekly from the company account", amount: yearly, payer: co.name)
+                         detail: co.name + " \u{00B7} paid weekly from your account", amount: yearly, payer: co.name)
         }
         return out
     }

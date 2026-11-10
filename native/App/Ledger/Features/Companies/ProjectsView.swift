@@ -46,7 +46,7 @@ struct ProjectsView: View {
         switch part {
         case .projects:
             hero(e, active, prompt: prompt(e, active, options, rows))
-            VenturesActiveSection(active: active, hasCompanies: e.state.companies.contains { (c: Company) -> Bool in c.status.isLive && c.type != "hold" },
+            VenturesActiveSection(active: active, hasCompanies: e.state.companies.contains { (c: Company) -> Bool in c.status.isLive },
                                   openDevelopment: { (id: Int) in developFor = DevelopRef(id: id) })
             VenturesStartSection(options: options, open: open, newCompany: { store.push(.newCompany) })
         case .portfolio: VenturesHome()

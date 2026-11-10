@@ -67,7 +67,6 @@ enum LifeStories {
 
     private static func build(_ s: inout GameState, data: GameData, context: FinanceContext, tradeID: String, cityID: String, size: Double, name: String) -> Int? {
         guard case .success(let id) = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, size: size, name: name.isEmpty ? nil : name, data: data, context: context) else { return nil }
-        _ = Payments.injectCash(&s, companyID: id, amount: s.cash)
         let options = CompanySetup.SetupOptions(team: .minimum, optionalEquipment: false, payrollMonthsReserve: 2)
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: options)
         guard let i = s.companyIndex(id), let bd = data.catalog[s.companies[i].type] else { return nil }
@@ -96,8 +95,7 @@ enum LifeStories {
         let put = currency.tidy(est.total * 1.3)
         Ledger.move(&s, .me, put + savings + est.personalOutlay, why: "Inheritance: the family café and cash")
         let last = country.lastNames.isEmpty ? "Family" : s.random.pick(country.lastNames)
-        guard case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city.id, size: size, name: "\(last) Café", data: data, context: context),
-              Payments.injectCash(&s, companyID: id, amount: put) else { return false }
+        guard case .success(let id) = CompanySetup.create(&s, tradeID: "cafe", cityID: city.id, size: size, name: "\(last) Café", data: data, context: context) else { return false }
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(optionalEquipment: true))
         guard let i = s.companyIndex(id) else { return false }
         let w = World(state: s, data: data)

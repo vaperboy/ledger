@@ -24,7 +24,7 @@ final class ReportsTests: XCTestCase {
 
     struct Frozen {
         var booksTotal: [Int: [String: Double]] = [:]
-        var cash = 0.0, companyCash = 0.0, netWorth = 0.0
+        var cash = 0.0, netWorth = 0.0
         var week = 0
     }
 
@@ -34,7 +34,7 @@ final class ReportsTests: XCTestCase {
         for _ in 0..<weeks {
             while e.state.day != 6 && !e.state.isGameOver { e.nextDay(); answerPayroll(&e) }
             f = Frozen(booksTotal: Dictionary(e.state.companies.map { ($0.id, $0.books.total) }, uniquingKeysWith: { a, _ in a }),
-                       cash: e.state.cash, companyCash: e.state.companies.reduce(0) { $0 + $1.cash }, netWorth: e.netWorth.total, week: e.state.week)
+                       cash: e.state.cash, netWorth: e.netWorth.total, week: e.state.week)
             e.nextDay()
             answerPayroll(&e)
             if e.state.isGameOver { break }
@@ -92,13 +92,11 @@ final class ReportsTests: XCTestCase {
         let weeks = e.reports(.week)
         for (a, b) in zip(weeks, weeks.dropFirst()) {
             XCTAssertEqual(a.group.accountEnd, b.group.accountStart, accuracy: 0.001)
-            XCTAssertEqual(a.group.companyCashEnd, b.group.companyCashStart, accuracy: 0.001)
             XCTAssertEqual(a.netWorthEnd.total, b.netWorthStart.total, accuracy: 0.001)
             XCTAssertEqual(b.previous?.id, a.id)
         }
         let last = try XCTUnwrap(weeks.last)
         XCTAssertEqual(last.group.accountEnd, f.cash, accuracy: 0.01)
-        XCTAssertEqual(last.group.companyCashEnd, f.companyCash, accuracy: 0.01)
         XCTAssertEqual(last.netWorthEnd.total, f.netWorth, accuracy: 0.5)
         XCTAssertEqual(last.id, f.week)
         for w in weeks {
@@ -146,20 +144,10 @@ final class ReportsTests: XCTestCase {
     }
 
     func testPlayerMoneyIsClassified() throws {
-        var e = try newEngine()
-        let id = try startCompany(&e, trade: "cafe")
-        let before = ReportCounters.totals(e.state)[ReportCounters.Key.invested] ?? 0
-        XCTAssertTrue(e.putMoneyInto(companyID: id, amount: 1_000_000))
-        let after = ReportCounters.totals(e.state)[ReportCounters.Key.invested] ?? 0
-        XCTAssertEqual(after - before, -1_000_000, accuracy: 0.5)
         XCTAssertEqual(ReportCounters.key(forLabel: "Dividend from Café"), ReportCounters.Key.dividends)
         XCTAssertEqual(ReportCounters.key(forLabel: "Bought ACME"), ReportCounters.Key.markets)
         XCTAssertEqual(ReportCounters.key(forLabel: "Annual tax assessment (income, gains, wealth)"), ReportCounters.Key.tax)
         XCTAssertEqual(ReportCounters.key(forLabel: "something new"), ReportCounters.Key.other)
-        play(&e, weeks: 1)
-        let w = try XCTUnwrap(e.reports(.week).last)
-        XCTAssertLessThan(w.group.accountFlows.first { $0.id == ReportCounters.Key.invested }?.amount ?? 0, -999_000)
-        XCTAssertGreaterThan(w.group.ownerIn, 1_000_000)
     }
 
     func testPrintSample() throws {
@@ -168,7 +156,7 @@ final class ReportsTests: XCTestCase {
         play(&e, weeks: 26)
         let y = e.reports(.year)[0]
         print("YEAR", y.title, y.range, y.summary)
-        for c in y.companies { print("CO", c.name, c.pnl.revenue, c.pnl.costs, c.pnl.tax, c.customers, c.capacityUse as Any, c.hired, c.left, c.reputationStart, c.reputationEnd, c.ownerIn, c.ownerOut, c.loansTaken, c.valueStart, c.valueEnd, c.operatingAndOther) }
+        for c in y.companies { print("CO", c.name, c.pnl.revenue, c.pnl.costs, c.pnl.tax, c.customers, c.capacityUse as Any, c.hired, c.left, c.reputationStart, c.reputationEnd, c.loansTaken, c.valueStart, c.valueEnd) }
         print("G", y.group.taxPaid, y.group.dividendsReceived, y.group.personalTax, y.group.events.map { $0.text }, y.group.breakdowns, y.group.complaints, y.group.decisionsAnswered, y.group.accountFlows.map { "\($0.label)=\($0.amount)" })
         let m = e.reports(.month)[2]
         print("MONTH", m.title, m.range, m.summary, m.previous?.title as Any)

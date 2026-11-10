@@ -9,7 +9,7 @@ struct CompanyOwnershipSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    enum Mode { case owners, raise, shares }
+    enum Mode { case owners, raise }
     var mode: Mode = .owners
     @State private var pending: PendingAction?
     @State private var policyOpen = false
@@ -22,9 +22,6 @@ struct CompanyOwnershipSection: View {
 
     private var palette: [Color] { [Theme.slateBlue, Theme.gain, Theme.roseGold, Theme.goldLight, Theme.loss, Theme.ivoryMuted] }
 
-    private var isOrdinary: Bool { company.type != "hold" }
-    private var isHolding: Bool { company.type == "hold" }
-
     var body: some View {
         let cur = engine.currency(for: company)
         VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -33,9 +30,7 @@ struct CompanyOwnershipSection: View {
                 control
                 owners(cur)
             case .raise:
-                raise(cur)
-            case .shares:
-                if isOrdinary { sell(cur) } else { Text("A holding has no shares to issue or sell.").textStyle(.caption, tint: Theme.inkSoft) }
+                investors(cur)
             }
         }
         .confirmAction($pending)
@@ -110,7 +105,7 @@ struct CompanyOwnershipSection: View {
                 holderCard(h, tint: all[n + 1].tint, cur: cur)
             }
         }
-        if isOrdinary { dividendPolicy }
+        dividendPolicy
     }
 
     private func holderCard(_ h: Shareholders.Holder, tint: Color, cur: Currency) -> some View {
@@ -150,10 +145,6 @@ struct CompanyOwnershipSection: View {
         return SharpTable {
             SettingsTableRow(title: "Dividend policy", value: Shareholders.policyNames[chosen] ?? chosen, opens: .sheet) { policyOpen = true }
         }
-    }
-
-    @ViewBuilder private func raise(_ cur: Currency) -> some View {
-        if isHolding { holdingRaise(cur) } else { investors(cur) }
     }
 
     private func investors(_ cur: Currency) -> some View {
@@ -213,7 +204,7 @@ struct CompanyOwnershipSection: View {
                         pending = PendingAction(title: "Take \(cur.tidyShort(o.amount)) for \(Int(saturating: o.pct.rounded()))%?", message: DealText.describe(engine.fundingOfferTerms(companyID: id, offerIndex: o.id), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Accept", destructive: true) {
                             let ok = store.act { $0.acceptFundingOffer(companyID: id, index: o.id) } ?? false
                             if !ok { Haptics.warning() } else { Haptics.success() }
-                            store.show(ok ? "\(cur.tidyShort(o.amount)) is in the company; \(o.name) now owns \(Int(saturating: o.pct.rounded()))%." : "The offer has gone.", tone: ok ? "good" : "warn")
+                            store.show(ok ? "\(cur.tidyShort(o.amount)) is in your account; \(o.name) now owns \(Int(saturating: o.pct.rounded()))%." : "The offer has gone.", tone: ok ? "good" : "warn")
                         }
                     }
                     if !o.countered {
@@ -222,116 +213,6 @@ struct CompanyOwnershipSection: View {
                     QuietButton(title: "Decline", tint: Theme.loss) { store.settle(store.act { $0.declineFundingOffer(companyID: id, index: o.id) }, "Declined.", same: "That offer had already gone.") }
                 }
             }
-        }
-    }
-
-    private func holdingRaise(_ cur: Currency) -> some View {
-        let id = company.id
-        let listed: Bool = engine.isListed(companyID: id)
-        let goal: Double = engine.holdingValue(companyID: id) * 0.1
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    HStack(spacing: Theme.Space.m) {
-                        IconCircle(glyph: listed ? Glyph.check : Glyph.market, size: 38, tint: listed ? Theme.gain : Theme.gold)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Stock exchange").textStyle(.caption, tint: Theme.inkFaint, weight: .medium)
-                            Text(listed ? "Listed on the exchange" : "Not listed").textStyle(.body, tint: listed ? Theme.gain : Theme.ink, weight: .medium)
-                        }
-                    }
-                    if !listed {
-                        QuietButton(title: "Go public · fee " + cur.tidyShort(engine.listingFee) + "…", fullWidth: true) { confirmListing(cur) }
-                    }
-                }
-            }
-            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text("Issue new shares").capsLabel()
-                    WrapRow {
-                        QuietButton(title: "Raise " + cur.tidyShort(goal) + " privately") { confirmRaise(goal, publicOffering: false, cur: cur) }
-                        if listed { QuietButton(title: "Raise on the exchange") { confirmRaise(goal, publicOffering: true, cur: cur) } }
-                    }
-                    Text("New shares are issued for money, so your share shrinks and a fee is taken.").textStyle(.caption, tint: Theme.inkFaint)
-                }
-            }
-        }
-    }
-
-    private func confirmListing(_ cur: Currency) {
-        let id = company.id
-        pending = PendingAction(title: "List \(company.name) on the exchange?", message: "A bank takes the holding public for a fee of \(cur.tidyDisplay(engine.listingFee)). The shares can then be traded and raised on.", button: "Go public", destructive: true) {
-            switch store.act({ $0.listHoldingOnExchange(companyID: id) }) {
-            case .ok?: Haptics.success(); store.show("\(company.name) is listed on the exchange.", tone: "good")
-            case .alreadyListed?: store.show("It is already listed.", tone: "n")
-            case .tooSmall(let n)?: Haptics.warning(); store.show("Needs a value of at least " + cur.tidyShort(n) + ".", tone: "warn")
-            case .notEnoughMoney(let n)?: Haptics.warning(); store.show("The fee needs " + cur.tidyShort(n) + ".", tone: "warn")
-            case .notAHolding?: store.show("Only a holding company can go public.", tone: "warn")
-            case nil: break
-            }
-        }
-    }
-
-    private func sell(_ cur: Currency) -> some View {
-        let id = company.id
-        let offers = engine.shareOffers(companyID: id).prefix(3)
-        let columns: [TableColumn] = [TableColumn(title: "Share"), TableColumn(title: "You receive", width: 100)]
-        return VStack(alignment: .leading, spacing: Theme.Space.m) {
-            if !offers.isEmpty {
-                Text("Offers from buyers now").capsLabel().padding(.horizontal, Theme.Space.xxs)
-                SharpTable {
-                    TableHeader(columns: columns)
-                    ForEach(Array(offers), id: \.pct) { o in
-                        TableRow(columns: columns, title: "\(o.pct)% of the company", note: "Gains are taxed", values: [cur.tidyShort(o.secondary)]) { confirmSale(o.pct, o.secondary, cur: cur) }
-                    }
-                }
-            }
-            Card(padding: Theme.Space.l, radius: Theme.Radius.row) {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    Text("New shares for a private investor").capsLabel()
-                    HStack(spacing: Theme.Space.s) {
-                        ForEach([5, 10, 20], id: \.self) { p in
-                            QuietButton(title: "\(p)%", fullWidth: true) { confirmNewShares(p, cur: cur) }
-                        }
-                    }
-                    Text("The company issues new shares and receives the money; every owner, you included, is diluted. Different from selling some of your own shares above.").textStyle(.caption, tint: Theme.inkFaint)
-                }
-            }
-        }
-    }
-
-    private func confirmSale(_ pct: Int, _ secondary: Double, cur: Currency) {
-        let id = company.id
-        pending = PendingAction(title: "Sell \(pct)% of your shares?", message: DealText.describe(engine.shareSaleTerms(companyID: id, percent: Double(pct), mode: "secondary"), cur, companyName: company.name) + "\nThe buyer gets votes and a share of every dividend. This cannot be undone.", button: "Sell", destructive: true) {
-            switch store.act({ $0.sellPrivateShares(companyID: id, percent: Double(pct), mode: "secondary") }) {
-            case .ok(let v)?: Haptics.success(); store.show("Sold for \(cur.tidyShort(v)).", tone: "good")
-            case .notLimited?: Haptics.warning(); store.show("This company cannot sell shares.", tone: "warn")
-            case .tooMuch?: Haptics.warning(); store.show("That would cost you control.", tone: "warn")
-            case nil: break
-            default: Haptics.warning(); store.show("The owners blocked the sale.", tone: "warn")
-            }
-        }
-    }
-
-    private func confirmNewShares(_ pct: Int, cur: Currency) {
-        let id = company.id
-        pending = PendingAction(title: "Issue new shares for \(pct)% of the company?", message: DealText.describe(engine.shareSaleTerms(companyID: id, percent: Double(pct), mode: "primary"), cur, companyName: company.name) + "\nThis cannot be undone.", button: "Issue the shares", destructive: true) {
-            switch store.act({ $0.sellPrivateShares(companyID: id, percent: Double(pct), mode: "primary") }) {
-            case .ok(let v)?: Haptics.success(); store.show(cur.tidyShort(v) + " went into the company.", tone: "good")
-            case .tooMuch?: Haptics.warning(); store.show("That would cost you control.", tone: "warn")
-            case .blocked?: Haptics.warning(); store.show("The other owners block new shares for now.", tone: "warn")
-            default: Haptics.warning(); store.show("Not possible now.", tone: "warn")
-            }
-        }
-    }
-
-    private func confirmRaise(_ goal: Double, publicOffering: Bool, cur: Currency) {
-        let id = company.id
-        pending = PendingAction(title: "Raise about \(cur.tidyShort(goal))?",
-                                message: "Benefit: the money goes into the holding. Cost: new shares are issued, so your share of it shrinks, and a fee is taken. Risk: it cannot be undone; the engine decides how much it raises and at what price.",
-                                button: "Raise", destructive: true) {
-            if let raised = store.act({ $0.raiseMoneyForHolding(holdingID: id, goal: goal, publicOffering: publicOffering) }) ?? nil {
-                Haptics.success(); store.show("Raised " + cur.tidyShort(raised) + ", before the fee.", tone: "good")
-            } else { Haptics.warning(); store.show("Nothing was raised.", tone: "warn") }
         }
     }
 }

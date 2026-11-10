@@ -29,7 +29,6 @@ public enum Payday {
     public struct PayrollConfig: Equatable, Sendable {
         public var paidMonth = -1
         public var billsMonth = -1
-        public var ownerPaidMonth = -1
         public var lateSince: Int?
         public var lateWhy = ""
         public var lateMonth = -1
@@ -43,13 +42,11 @@ public enum Payday {
                 if let mi = monthIndex {
                     paidMonth = paidThisMonth ? mi : mi - 1
                     billsMonth = mi - 1
-                    ownerPaidMonth = paidMonth
                 }
                 return
             }
             paidMonth = j["pm"].isNull ? -1 : j["pm"].int
             billsMonth = j["bm"].isNull ? -1 : j["bm"].int
-            ownerPaidMonth = j["om"].isNull ? -1 : j["om"].int
             billShortMonths = j["bs"].int
             for (k, v) in j["arr"].object { arrears[k] = v.double }
             let late = j["late"]
@@ -62,7 +59,7 @@ public enum Payday {
             }
         }
         public var json: JSONValue {
-            var o: [String: JSONValue] = ["pm": .number(Double(paidMonth)), "bm": .number(Double(billsMonth)), "om": .number(Double(ownerPaidMonth)),
+            var o: [String: JSONValue] = ["pm": .number(Double(paidMonth)), "bm": .number(Double(billsMonth)),
                                           "bs": .number(Double(billShortMonths))]
             if !arrears.isEmpty { o["arr"] = .object(arrears.mapValues { .number($0) }) }
             if let d0 = lateSince {
@@ -80,8 +77,7 @@ public enum Payday {
         return PayrollConfig(json: .null, defaultsFor: monthNumber(today), paidThisMonth: today >= pd)
     }
 
-    static func ownerOnPayroll(_ co: Company) -> Bool { co.ownerMonthlySalary > 0 && co.status == .open }
-    static func peopleOnPayroll(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) + (ownerOnPayroll(co) ? 1 : 0) }
+    static func peopleOnPayroll(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) }
     static func hasPayroll(_ co: Company) -> Bool { peopleOnPayroll(co) > 0 || (co.payables["wages"] ?? 0) > 1 }
 
     public struct PayrollResult { public var paid: Double; public var short: Double }
@@ -90,19 +86,8 @@ public enum Payday {
     static func runPayroll(_ s: inout GameState, _ i: Int, today t: Int, data: GameData, context: FinanceContext) -> PayrollResult {
         var co = s.companies[i]
         var cfg = config(co, today: t)
-        let country = context.country(of: co, s)
         let mi = monthNumber(t)
         let payMonth = cfg.lateSince != nil ? cfg.lateMonth : mi
-        if cfg.ownerPaidMonth != payMonth && ownerOnPayroll(co) {
-            cfg.ownerPaidMonth = payMonth
-            let cost = co.ownerMonthlySalary * country.payrollFactor(monthlyWage: co.ownerMonthlySalary)
-            s.companies[i].addPayable("wages", cost)
-            Payments.book(&s, companyID: co.id, category: "wages", amount: cost)
-            co = s.companies[i]
-            let tax = Taxes.personalIncomeTax(co.ownerMonthlySalary * 12, kind: .wage, in: country) / 12
-            co.set("ownPend", .object(["sal": .number(co.ownerMonthlySalary), "tax": .number(tax)]))
-            s.companies[i] = co
-        }
         co = s.companies[i]
         let due = co.payables["wages"] ?? 0
         let room = context.overdraftRoom(co, s)
@@ -128,12 +113,6 @@ public enum Payday {
             reportShort(&s, co, due: due, short: short, serious: repeated || p < due * 0.25, data: data, context: context)
         } else {
             cfg.lateSince = nil; cfg.lateWhy = ""
-            if let pend = co.value("ownPend") as JSONValue?, !pend.isNull {
-                s.companies[i] = co
-                payOwner(&s, companyIndex: i, salary: pend["sal"].double, tax: pend["tax"].double)
-                co = s.companies[i]
-                co.raw["ownPend"] = .null
-            }
         }
         co.set("pr29", cfg.json)
         s.companies[i] = co
@@ -165,12 +144,6 @@ public enum Payday {
                      sev: toOwner ? 3 : 2, aud: toOwner ? "owner" : "finance", handledBy: who)
     }
 
-    static func payOwner(_ s: inout GameState, companyIndex i: Int, salary: Double, tax: Double) {
-        s.tax.salary += salary
-        s.tax.withheld += tax
-        Payments.playerReceives(&s, salary - tax, label: "Salary from \(s.companies[i].name)", companyID: s.companies[i].id)
-    }
-
     static func backPay(_ s: inout GameState, _ i: Int, today t: Int) {
         var co = s.companies[i]
         var cfg = config(co, today: t)
@@ -191,10 +164,6 @@ public enum Payday {
             cfg.lateSince = nil; cfg.lateWhy = ""; cfg.lateOwed = 0; co.wageShortfall = 0
             co.set("pr29", cfg.json)
             s.companies[i] = co
-            if let pend = co.value("ownPend") as JSONValue?, !pend.isNull {
-                payOwner(&s, companyIndex: i, salary: pend["sal"].double, tax: pend["tax"].double)
-                s.companies[i].raw["ownPend"] = .null
-            }
             s.note("Back pay sent at \(co.name). Everyone is paid in full.", tone: "good", companyID: co.id)
             co = s.companies[i]
         }
@@ -340,15 +309,7 @@ public enum Payday {
         return true
     }
 
-    static func payrollDue(_ s: GameState, _ i: Int, month mi: Int, context: FinanceContext) -> Double {
-        let co = s.companies[i]
-        let cfg = config(co, today: dayNumber(week: s.week, day: s.day))
-        var due = co.payables["wages"] ?? 0
-        if cfg.ownerPaidMonth != mi && ownerOnPayroll(co) {
-            due += co.ownerMonthlySalary * context.country(of: co, s).payrollFactor(monthlyWage: co.ownerMonthlySalary)
-        }
-        return due
-    }
+    static func payrollDue(_ s: GameState, _ i: Int) -> Double { s.companies[i].payables["wages"] ?? 0 }
 
     public static func onDay(_ s: inout GameState, data: GameData, context: FinanceContext) {
         if !s.dayMode || s.isGameOver { return }
@@ -362,7 +323,7 @@ public enum Payday {
             var cfg = config(s.companies[i], today: t)
             let pd = payDate(year: c.year, month: c.month - 1)
             if cfg.paidMonth < mi && t >= pd && cfg.lateSince == nil,
-               !waitsForCash(&s, i, due: payrollDue(s, i, month: mi, context: context), today: t, data: data) {
+               !waitsForCash(&s, i, due: payrollDue(s, i), today: t, data: data) {
                 if !hasPayroll(s.companies[i]) {
                     cfg.paidMonth = mi
                     s.companies[i].set("pr29", cfg.json)

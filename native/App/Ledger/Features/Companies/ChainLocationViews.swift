@@ -8,9 +8,6 @@ import Simulation
 enum ChainWords {
     static func ownerText(_ e: GameEngine, companyID: Int, showFull: Bool = false) -> String {
         let o: OwnerLine = e.ownerLine(companyID: companyID)
-        if let hid = o.holdingID, let hp = o.holdingPercent {
-            return "Held by " + (e.state.company(hid)?.name ?? "a holding") + " " + StructureWords.percent(hp)
-        }
         if o.youPercent >= 99.5 && !showFull { return "Owned by you" }
         return "Owned by you " + StructureWords.percent(o.youPercent)
     }

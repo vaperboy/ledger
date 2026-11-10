@@ -50,7 +50,7 @@ final class SetupAffordabilityTests: XCTestCase {
             let choices = e.suggestedChoices(tradeID: row.tradeID, cityID: city, size: row.size)
             let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: row.tradeID, cityID: city, size: row.size, choices: choices))
             XCTAssertTrue(plan.isFunded, row.tradeID)
-            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: row.tradeID, cityID: city, size: row.size, name: nil, pick: nil, fundWith: plan.intoCompany, choices: choices) else {
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: row.tradeID, cityID: city, size: row.size, name: nil, pick: nil, choices: choices) else {
                 XCTFail("start \(row.tradeID)"); continue
             }
             let f = try XCTUnwrap(e.setupFunding(companyID: out.companyID))
@@ -63,7 +63,7 @@ final class SetupAffordabilityTests: XCTestCase {
 
     func testChecklistItemsStateTheirCost() throws {
         var e = try game(seed: 8)
-        guard case .success(let id) = e.startCompany(tradeID: "cleaning", cityID: e.state.player.cityID, fundWith: 0, quickSetup: false) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cleaning", cityID: e.state.player.cityID, quickSetup: false) else { throw XCTSkip("start") }
         let items = e.openingChecklist(companyID: id)
         let eq = items.filter { $0.id.hasPrefix("eq:") && !$0.isDone }
         XCTAssertFalse(eq.isEmpty)

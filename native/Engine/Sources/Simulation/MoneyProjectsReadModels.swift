@@ -14,7 +14,6 @@ public struct LoanQuote: Equatable, Sendable {
     public var totalInterest: Double
     public var totalRepaid: Double
     public var creditBand: String
-    public var fromOwnBank: Bool
     public var tooSmall: Bool
     public var withinLimit: Bool { amount <= maximum }
 }
@@ -32,7 +31,7 @@ public struct LoanPayoff: Equatable, Sendable {
 }
 
 public struct AcquisitionPlan: Equatable, Sendable {
-    public enum Kind: String, Equatable, Sendable { case own, branch, merge, shut, franchiseOldOwner, franchiseNewOwner, ownBank }
+    public enum Kind: String, Equatable, Sendable { case own, branch, merge, shut, franchiseOldOwner, franchiseNewOwner }
     public struct Choice: Identifiable, Equatable, Sendable {
         public var id: String { kind.rawValue }
         public var kind: Kind
@@ -65,7 +64,7 @@ public extension GameEngine {
         let total = monthly * Double(months)
         let cur = context.currency(co?.countryCode ?? state.homeCountryCode, state)
         return LoanQuote(amount: amount, termMonths: months, maximum: off.maximum, yearlyRate: rate, monthlyPayment: monthly,
-                         totalInterest: max(0, total - amount), totalRepaid: total, creditBand: off.creditBand, fromOwnBank: off.ownBankID != 0,
+                         totalInterest: max(0, total - amount), totalRepaid: total, creditBand: off.creditBand,
                          tooSmall: amount < cur.scaledPrice(5000))
     }
 
@@ -112,15 +111,6 @@ public extension GameEngine {
         if co.value("fr")["on"].bool {
             add(.franchiseOldOwner, need: price, extra: 0, have: cash)
             add(.franchiseNewOwner, need: (price * 0.55 / 1000).rounded() * 1000, extra: 0, have: cash)
-        }
-        if ownBank != nil {
-            let room = ownBankRoom()
-            let loan = min((price * 0.7 / 1000).rounded() * 1000, (room / 1000).rounded(.down) * 1000)
-            if loan > 0, room >= price * 0.2 {
-                let rate = state.economy.policyRate + Banking.creditMargin(state.credit) + 0.01
-                add(.ownBank, need: max(0, ownNeed - loan), extra: startup, have: liquid, loan: loan,
-                    monthly: Loans.annuity(principal: loan, yearlyRate: rate, months: 96), rate: rate)
-            }
         }
         return AcquisitionPlan(price: price, startupMoney: startup, reserve: reserve, liquid: liquid, cash: cash, hiddenBillRisk: troubled, choices: choices)
     }

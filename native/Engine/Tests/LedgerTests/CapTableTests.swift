@@ -82,10 +82,10 @@ final class CapTableTests: XCTestCase {
 
     func testFundingOperationsUseCountsAndSurviveASaveRoundTrip() throws {
         var (e, id) = try company()
-        let fc = FinanceContext(countries: e.data.countries, trades: e.data.catalog)
-        e.update { s, d, _ in
-            for _ in 0..<2 { _ = Funding.sellShares(&s, companyID: id, pct: 20, mode: "primary", data: d, context: fc) }
-            for _ in 0..<2 { _ = Funding.sellShares(&s, companyID: id, pct: 10, mode: "secondary", data: d, context: fc) }
+        e.update { s, _, _ in
+            let i = s.companyIndex(id)!
+            for k in 1...2 { _ = CapTable.issue(&s, i, newShares: CapTable.sharesForPercent(20, total: CapTable.table(s.companies[i]).total), to: "Investor \(k)", paid: 1000) }
+            for k in 3...4 { _ = CapTable.sellFromYou(&s, i, shares: CapTable.sharesForPercent(10, total: CapTable.table(s.companies[i]).total), to: "Investor \(k)", paid: 1000) }
         }
         let co = e.state.company(id)!
         XCTAssertEqual(total(co), 100, accuracy: 1e-6)

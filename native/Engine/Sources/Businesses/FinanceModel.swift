@@ -248,7 +248,7 @@ public enum FinanceModel {
                 l.id = s.makeID(); l.kind = "biz"; l.name = "Central bank liquidity facility"
                 l.balance = amt; l.originalAmount = amt; l.margin = 0.01
                 l.termMonths = 12; l.companyID = co.id; l.startWeek = s.week + 26; l.graceUntilWeek = s.week + 26
-                l.isGuaranteed = false; l.bankCompanyID = 0
+                l.isGuaranteed = false
                 l.set("cb", 1)
                 l.monthlyPayment = Loans.annuity(principal: amt, yearlyRate: s.economy.policyRate + 0.01, months: 12)
                 s.loans.append(l)

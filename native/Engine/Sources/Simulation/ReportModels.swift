@@ -98,10 +98,6 @@ public struct ReportCompany: Codable, Equatable, Sendable, Identifiable {
     public var tradeID: String
     public var status: String
     public var pnl = ReportPnL()
-    public var cashStart = 0.0
-    public var cashEnd = 0.0
-    public var ownerIn = 0.0
-    public var ownerOut = 0.0
     public var loansTaken = 0.0
     public var loansRepaid = 0.0
     public var customers = 0.0
@@ -118,8 +114,6 @@ public struct ReportCompany: Codable, Equatable, Sendable, Identifiable {
     public var valueEnd = 0.0
     public var events: [ReportEvent] = []
 
-    public var cashChange: Double { cashEnd - cashStart }
-    public var operatingAndOther: Double { cashChange - ownerIn + ownerOut - loansTaken + loansRepaid }
     public var reputationChange: Double { reputationEnd - reputationStart }
     public var valueChange: Double { valueEnd - valueStart }
     public var margin: Double? { pnl.revenue > 0 ? pnl.netProfit / pnl.revenue : nil }
@@ -135,17 +129,12 @@ public struct ReportGroup: Codable, Equatable, Sendable {
     public var pnl = ReportPnL()
     public var accountStart = 0.0
     public var accountEnd = 0.0
-    public var companyCashStart = 0.0
-    public var companyCashEnd = 0.0
     public var accountFlows: [ReportFlow] = []
-    public var ownerIn = 0.0
-    public var ownerOut = 0.0
     public var loansTaken = 0.0
     public var loansRepaid = 0.0
     public var taxPaid = 0.0
     public var dividendsReceived = 0.0
     public var personalTax = 0.0
-    public var ownerPay = 0.0
     public var interestPaid = 0.0
     public var wagesPaid = 0.0
     public var customers = 0.0
@@ -160,8 +149,8 @@ public struct ReportGroup: Codable, Equatable, Sendable {
     public var complaints = 0
     public var events: [ReportEvent] = []
 
-    public var cashStart: Double { accountStart + companyCashStart }
-    public var cashEnd: Double { accountEnd + companyCashEnd }
+    public var cashStart: Double { accountStart }
+    public var cashEnd: Double { accountEnd }
 }
 
 public struct ReportPrevious: Codable, Equatable, Sendable {
@@ -215,8 +204,7 @@ public struct PeriodReport: Codable, Equatable, Sendable, Identifiable {
         r.companies = [c]
         var g = ReportGroup()
         g.pnl = c.pnl
-        g.companyCashStart = c.cashStart; g.companyCashEnd = c.cashEnd
-        g.ownerIn = c.ownerIn; g.ownerOut = c.ownerOut; g.loansTaken = c.loansTaken; g.loansRepaid = c.loansRepaid
+        g.loansTaken = c.loansTaken; g.loansRepaid = c.loansRepaid
         g.customers = c.customers; g.capacityUse = c.capacityUse
         g.reputationStart = c.reputationStart; g.reputationEnd = c.reputationEnd
         g.hired = c.hired; g.left = c.left

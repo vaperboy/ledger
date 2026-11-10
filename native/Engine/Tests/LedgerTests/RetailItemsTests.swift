@@ -19,7 +19,7 @@ final class RetailItemsTests: XCTestCase {
     func engine(_ trade: String, weeks: Int = 4, fund: Double = 20_000_000) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: fund) else { throw XCTSkip("could not start \(trade)") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("could not start \(trade)") }
         var waited = 0
         while e.state.company(id)?.status != .open && waited < 40 { e.retailWeek(id); waited += 1 }
         guard e.state.company(id)?.status == .open else { throw XCTSkip("\(trade) did not open: \(String(describing: e.state.company(id)?.status))") }
@@ -142,7 +142,7 @@ final class RetailItemsTests: XCTestCase {
 
     func testCarRepairJobOrderBooksBothCompaniesAndTakesCapacity() throws {
         var (e, garage) = try engine("carrepair", weeks: 4)
-        guard case .success(let dealer) = e.startCompany(tradeID: "usedcar", cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("no dealer") }
+        guard case .success(let dealer) = e.startCompany(tradeID: "usedcar", cityID: e.state.player.cityID) else { throw XCTSkip("no dealer") }
         var waited = 0
         while e.state.company(dealer)?.status != .open && waited < 40 { e.retailWeek(garage); waited += 1 }
         guard e.state.company(dealer)?.status == .open else { throw XCTSkip("dealer did not open") }
@@ -186,7 +186,7 @@ final class RetailItemsTests: XCTestCase {
     func testOldCompaniesAndOtherTradesGetNoRecords() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "estate", cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("no") }
+        guard case .success(let id) = e.startCompany(tradeID: "estate", cityID: e.state.player.cityID) else { throw XCTSkip("no") }
         for _ in 0..<3 { e.retailWeek(id) }
         XCTAssertTrue(e.state.company(id)!.value("itemsv2").isNull)
         XCTAssertTrue(e.state.company(id)!.value("w2").isNull)

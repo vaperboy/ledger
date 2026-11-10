@@ -128,7 +128,7 @@ extension GameStore {
             let old: Int? = m.ints[k]
             if old == nil || old! > e.state.week { m.ints[k] = e.state.week }
         }
-        for co in e.state.companies where co.status == .open && co.type != "hold" {
+        for co in e.state.companies where co.status == .open {
             let k: String = "rv.\(co.id)"
             if m.texts[k] == nil { m.texts[k] = rivalIDList(e, co) }
         }
@@ -148,7 +148,7 @@ extension GameStore {
         switch app {
         case .market:
             s.ints["market"] = UpdateFeed.maxMarketID(e)
-            for co in e.state.companies where co.status == .open && co.type != "hold" { s.texts["rv.\(co.id)"] = rivalIDList(e, co) }
+            for co in e.state.companies where co.status == .open { s.texts["rv.\(co.id)"] = rivalIDList(e, co) }
         case .reviews: s.ints["reviews"] = e.state.week
         case .news: s.texts["news"] = UpdateFeed.newsSignature(e)
         case .weather: s.texts["weather"] = UpdateFeed.weatherSignature(e)

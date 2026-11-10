@@ -110,8 +110,8 @@ struct AtlasApp: View {
         let off: Int = o.policies.count - o.activeCount
         let next: InsurancePolicyRow? = o.policies.first { (p: InsurancePolicyRow) -> Bool in !p.isOn }
         let state: String = o.policies.isEmpty ? "No cover on offer" : (off == 0 ? "Fully covered" : "\(o.activeCount) of \(o.policies.count) covered")
-        let note: String = off == 0 ? "\(money(yearly, co)) a year, paid weekly from company cash"
-            : (o.activeCount == 0 ? "Nothing is insured: every loss comes out of company cash" : "\(money(yearly, co)) a year \u{00B7} uninsured losses come out of company cash")
+        let note: String = off == 0 ? "\(money(yearly, co)) a year, paid weekly from your account"
+            : (o.activeCount == 0 ? "Nothing is insured: every loss comes out of your account" : "\(money(yearly, co)) a year \u{00B7} uninsured losses come out of your account")
         return VStack(alignment: .leading, spacing: Theme.Space.m) {
             ShopHero(label: "Your cover", value: state, note: note, noteTint: off > 0 ? P.caution : nil, valueTint: off == 0 && !o.policies.isEmpty ? P.gain : nil)
             if !o.policies.isEmpty {
@@ -138,7 +138,7 @@ struct AtlasApp: View {
 
     private func advisersView(_ co: Company) -> some View {
         ShopPage {
-            ShopPageTitle(title: "Your accountant", subtitle: "Keeps the books for \(co.name). The fee is paid monthly from company cash.")
+            ShopPageTitle(title: "Your accountant", subtitle: "Keeps the books for \(co.name). The fee is paid monthly from your account.")
             AtlasAccountantSection(companyID: co.id)
         }
     }
@@ -227,7 +227,7 @@ struct AtlasApp: View {
         let id: Int = co.id
         let name: String = p.name
         let saving: String = store.short(p.weeklyPremium * 52 / 12, in: co)
-        pending = PendingAction(title: "Cancel \(name)?", message: "You save about \(saving) a month, but losses of this kind are no longer covered and come out of company cash.",
+        pending = PendingAction(title: "Cancel \(name)?", message: "You save about \(saving) a month, but losses of this kind are no longer covered and come out of your account.",
                                 button: "Cancel policy", destructive: false, tone: .warning, icon: "shield.slash") {
             switch store.act({ $0.toggleInsurancePolicy(companyID: id, product: p.id) }) {
             case .done?: Haptics.success(); store.show("\(name) cancelled.", tone: "n")

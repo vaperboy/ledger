@@ -69,7 +69,7 @@ extension ManagerModel {
         guard !cos.isEmpty else { return [] }
         let memo = board(s, key: key)["memo"]
         var out: [BoardDecision] = []
-        for c in cos where c.status == .open && c.type != "hold" {
+        for c in cos where c.status == .open {
             let cur = World(state: s, data: data).currency(c)
             let h3 = Array(c.monthlyHistory.suffix(3)), h6 = Array(c.monthlyHistory.suffix(6))
             let p3 = h3.reduce(0.0) { $0 + $1.profit }, r3 = h3.reduce(0.0) { $0 + $1.revenue }
@@ -98,15 +98,6 @@ extension ManagerModel {
                     risk: "Cash leaves the company every quarter. You receive your share.", recommends: c.cash > p3,
                     reason: "It made \(cur.short(p3)) over three months and pays its owners nothing." + (c.cash > p3 ? "" : " Cash is thin, so I would wait."))
             }
-            let wk = c.num("wkD")
-            if c.cash < 0 || (wk < 0 && c.cash / -wk < 8) {
-                let x = cur.roundedStep(max(cur.scaledPrice(20000), abs(wk) * 8), about: 1000)
-                if Payments.liquid(s) >= x {
-                    let mild = p3 > -r3 * 0.1
-                    add("inject", "Put \(cur.short(x)) into \(c.name)", effect: "You move \(cur.short(x)) from your own cash into the company.", cost: x,
-                        risk: "It is your money; it only helps if the trouble is temporary.", recommends: mild,
-                        reason: mild ? "Cash would run out within weeks, but the business itself holds up." : "Cash is going and so is the business. The money would only cover losses.")
-                }
             }
             if let mid = c.managerID, let n = s.people[mid], loss3, s.week - c.int("mgrW0") >= 13, c.int("ceoBlk") <= s.week {
                 let director = seats(s, key: key).first { $0.role == "director" }.flatMap { s.people[$0.id] }
@@ -181,9 +172,6 @@ extension ManagerModel {
             if co.str("dp27", "none") != "none" { return .refused("\(co.name) already pays a dividend.") }
             s.companies[ci].set("dp27", "low")
             return .done("\(co.name) will pay 25% of profit each quarter.")
-        case "inject":
-            guard Payments.liquid(s) >= d.cost, Payments.injectCash(&s, companyID: co.id, amount: d.cost) else { return .refused("You do not have the money for that now.") }
-            return .done("You put \(World(state: s, data: data).currency(co).short(d.cost)) into \(co.name).")
         case "ceo":
             guard co.managerID != nil else { return .refused("\(co.name) has no manager to dismiss.") }
             switch proposeCEOChange(&s, companyID: co.id, data: data) {

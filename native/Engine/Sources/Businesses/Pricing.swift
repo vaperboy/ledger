@@ -3,7 +3,7 @@ import GameCore
 import Countries
 
 public enum Pricing {
-    static let noWorkFamilies: Set<String> = ["rent", "fin", "energy", "club", "hold"]
+    static let noWorkFamilies: Set<String> = ["rent", "fin", "energy", "club"]
 
     public static func priceIndex(_ co: Company, _ w: World) -> Double {
         w.balance.priceMultiplier(level: co.priceLevel) * (1 - discount(co, w.week))

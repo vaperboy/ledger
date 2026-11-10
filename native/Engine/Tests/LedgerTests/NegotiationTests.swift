@@ -109,7 +109,7 @@ final class NegotiationTests: XCTestCase {
     private func game(_ seed: Int = 31) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("start") }
         return (e, id)
     }
     private func worker(_ e: inout GameEngine, _ id: Int, ask: Double? = nil, pers: String = "steady") -> Int {

@@ -56,7 +56,7 @@ final class TaxRulesAuditTests: XCTestCase {
         for code in ["UK", "US", "JP"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 3)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { XCTFail(code); continue }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail(code); continue }
             e.update { s, data, ctx in
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open
@@ -86,7 +86,7 @@ final class TaxRulesAuditTests: XCTestCase {
 
         var e = try GameEngine.newGame(countryCode: "US", playerName: "T", seed: 4)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("cafe") }
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open
@@ -143,7 +143,7 @@ final class TaxRulesAuditTests: XCTestCase {
         for code in ["UK", "DE", "FR", "US", "JP", "SE"] {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 6)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { XCTFail(code); continue }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail(code); continue }
             e.update { s, data, _ in
                 let i = s.companyIndex(id)!
                 s.companies[i].status = .open

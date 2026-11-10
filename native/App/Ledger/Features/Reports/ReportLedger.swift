@@ -51,7 +51,7 @@ struct ReportMovements: View {
             }
             CardSection(title: "Bank movements", trailing: { Text(report.range).textStyle(.caption, tint: Theme.inkFaint) }) {
                 if list.isEmpty {
-                    Text(all.isEmpty ? "No company money moved in this period, or it is older than what the companies keep." : "Nothing of this kind in this period.")
+                    Text(all.isEmpty ? "Nothing moved in this period, or it is older than what the companies keep." : "Nothing of this kind in this period.")
                         .textStyle(.caption, tint: Theme.inkFaint)
                 } else {
                     VStack(spacing: 0) {
@@ -111,7 +111,7 @@ struct ReportBills: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             FigureCard(items: [
                 .init(label: "Due in 30 days", value: fmt.short(o.dueWithin30Days, company: companyID ?? 0)),
-                .init(label: CashWording.available(companyID: companyID), value: fmt.short(o.cashAvailable, company: companyID ?? 0)),
+                .init(label: "Your cash", value: fmt.short(o.cashAvailable, company: companyID ?? 0)),
                 .init(label: "Short by", value: o.shortfall > 0 ? fmt.short(o.shortfall, company: companyID ?? 0) : "–", tint: o.shortfall > 0 ? Theme.loss : Theme.ivory),
             ], columns: 3)
             CardSection(title: "Coming due", trailing: { Text("\(o.upcoming.count)").textStyle(.caption, tint: Theme.inkFaint) }) {

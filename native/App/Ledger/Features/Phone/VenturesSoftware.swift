@@ -39,7 +39,7 @@ struct VenturesSoftwareSection: View {
                     .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                 Button("Start building") {
                     let name = SoftwareProducts.types.first { $0.id == type }?.name ?? type
-                    pending = PendingAction(title: "Build \(name) software in \(co.name)?", message: "It starts with one coder at about \(cur.tidyShort(coder)) a month from the company's cash, until you change the team. Nothing sells until it is published.", button: "Start", amount: coder, currency: cur, tone: .investment, icon: "chevron.left.forwardslash.chevron.right") {
+                    pending = PendingAction(title: "Build \(name) software in \(co.name)?", message: "It starts with one coder at about \(cur.tidyShort(coder)) a month from your account, until you change the team. Nothing sells until it is published.", button: "Start", amount: coder, currency: cur, tone: .investment, icon: "chevron.left.forwardslash.chevron.right") {
                         let ok = store.act { $0.startSoftware(companyID: co.id, type: type, model: model) } ?? false
                         store.show(ok ? "\(co.name) has started building it." : "\(co.name) cannot start a product now (it must be open).", tone: ok ? "good" : "warn")
                     }

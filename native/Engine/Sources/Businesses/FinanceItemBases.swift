@@ -206,20 +206,4 @@ extension FinanceItems {
         }
         return out
     }
-
-    static func holdBases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double, overhead: Double) -> [Base] {
-        let sp = spec["hold"]
-        let n = HoldingModel.subsidiaries(of: co.id, in: s).count
-        let vol = Double(max(1, n))
-        return sp["services"].array.map { x in
-            var b = Base(id: x["id"].string, name: x["n"].string, kind: "Group service", unitWord: "subsidiary", priceUnit: "a week")
-            let share = overhead * x["w"].double / vol
-            b.units = Double(n); b.volume = vol
-            b.price = share * (1 + sp["margin"].double)
-            b.weight = x["w"].double
-            b.size = Double(n); b.sizeLabel = "Subsidiaries served"
-            b.note = "A transfer price: the fee that covers this service plus \(Int(sp["margin"].double * 100))%. It is shown against the holding's own costs and moves no cash between the companies."
-            return b
-        }
-    }
 }

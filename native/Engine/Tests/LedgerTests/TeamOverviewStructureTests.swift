@@ -55,17 +55,12 @@ final class TeamOverviewStructureTests: XCTestCase {
         XCTAssertNil(o.vacancies.first { $0.id == "md" })
     }
 
-    func testGroupOfficeIsCarriedByAHoldingWithSpareCashElseByTheOwner() throws {
+    func testGroupOfficeIsCarriedByTheOwner() throws {
         var e = try ChainsTests.engine("UK")
         let a = ChainsTests.start(&e, "cafe"), b = ChainsTests.start(&e, "cafe")
         open(&e, a); open(&e, b)
         XCTAssertEqual(e.rentOffice(tier: "cow"), .ok)
-        guard case .success(let hid) = e.createHolding(name: "Alpha Holding", companies: [a, b]) else { throw XCTSkip("holding could not be created") }
-        e.update { s, _, _ in if let i = s.companyIndex(hid) { s.companies[i].cash = 0 } }
-        XCTAssertEqual(e.teamOverview().groupOffice.employer, "Your group office", "a holding without spare cash does not carry the office")
-        e.update { s, _, _ in if let i = s.companyIndex(hid) { s.companies[i].cash = 1_000_000_000_000 } }
-        XCTAssertEqual(e.teamOverview().groupOffice.employer, "Alpha Holding")
-        XCTAssertTrue(e.teamOverview().vacancies.filter { $0.id.hasPrefix("hq-") }.allSatisfy { $0.employer == "Alpha Holding" })
+        XCTAssertEqual(e.teamOverview().groupOffice.employer, "Your group office")
     }
 
     func testStandAloneCompanyGetsDepartmentHeadsByHeadcountEmployedByItself() throws {
@@ -107,23 +102,6 @@ final class TeamOverviewStructureTests: XCTestCase {
         let m = try XCTUnwrap(o.members.first { $0.role == "Chain manager" })
         XCTAssertEqual(m.employer, "Test Cafe"); XCTAssertEqual(m.scope, "chain"); XCTAssertEqual(m.chainID, chain)
         XCTAssertTrue(groupScoped(o).members.isEmpty)
-    }
-
-    func testHoldingLeadershipBelongsToTheHolding() throws {
-        var e = try ChainsTests.engine("UK")
-        let a = ChainsTests.start(&e, "cafe"), b = ChainsTests.start(&e, "cafe")
-        open(&e, a); open(&e, b)
-        guard case .success(let hid) = e.createHolding(name: "Alpha Holding", companies: [a, b]) else { throw XCTSkip("holding could not be created") }
-        var o = e.teamOverview()
-        let v = try XCTUnwrap(o.vacancies.first { $0.companyID == hid && $0.id.hasSuffix("ceo") })
-        XCTAssertEqual(v.scope, "group"); XCTAssertEqual(v.employer, "Alpha Holding")
-        XCTAssertNil(o.vacancies.first { $0.id == "md" }, "the holding's own leadership is not a group office post")
-        let cand = try XCTUnwrap(e.searchTeam(companyID: hid, key: "ceo")?.first)
-        XCTAssertEqual(e.hireTeam(companyID: hid, key: "ceo", personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .ok)
-        o = e.teamOverview()
-        let m = try XCTUnwrap(o.members.first { $0.companyID == hid })
-        XCTAssertEqual(m.employer, "Alpha Holding"); XCTAssertEqual(m.scope, "group")
-        XCTAssertFalse(o.groupOffice.established, "a holding is not a group office")
     }
 
     func testGroupOfficeAndItsPeopleSurviveASaveRoundTrip() throws {

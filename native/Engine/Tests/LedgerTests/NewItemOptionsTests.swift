@@ -13,7 +13,7 @@ final class NewItemOptionsTests: XCTestCase {
     func engine(_ trade: String = "bakery", weeks: Int = 3) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 100_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
         var extra = 0
         while e.state.company(id)?.status != .open, extra < 40 { e.week(); extra += 1 }

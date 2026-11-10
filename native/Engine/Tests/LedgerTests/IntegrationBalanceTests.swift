@@ -14,7 +14,7 @@ final class IntegrationBalanceTests: XCTestCase {
     func engine(_ trade: String = "bakery", weeks: Int = 3, seed: Int = 7) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 100_000_000, quickSetup: false) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, quickSetup: false) else { throw XCTSkip("could not start") }
         e.update { s, d, _ in _ = CompanySetup.quickSetupReport(&s, companyID: id, data: d, options: CompanySetup.SetupOptions(optionalEquipment: true)) }
         for _ in 0..<weeks { e.week() }
         var extra = 0
@@ -332,7 +332,7 @@ final class IntegrationBalanceTests: XCTestCase {
         var (e, id) = try engine(weeks: 6)
         e.update { s, _, _ in
             s.companies[s.companyIndex(id)!].foundedWeek = s.week - 60
-            Ledger.set(&s, .company(id), to: 0)
+            Ledger.set(&s, to: 0)
             _ = CompanySale.startListing(&s, companyID: id, broker: true)
         }
         var plain = e
@@ -357,7 +357,7 @@ final class IntegrationBalanceTests: XCTestCase {
                 s.rest["aw56"] = .object(["won": .array((0..<awards).map { _ in .object(["k": "boty"]) })])
                 let i = s.companyIndex(id)!
                 s.companies[i].set("fr", .object(["on": 1, "fee": .number(1_000_000), "roy": 0.06, "supp": 1, "brand": 15, "units": .array([]), "app": .array([]), "masters": .array([])]))
-                s.companies[i].cash = 900_000_000
+                Ledger.set(&s, to: 900_000_000)
             }
             var gained = 0.0
             g.update { s, d, _ in
@@ -430,8 +430,8 @@ final class IntegrationBalanceTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
         let city = e.state.player.cityID
-        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city, fundWith: 20_000_000),
-              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city),
+              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city) else { throw XCTSkip("could not start") }
         for _ in 0..<14 { _ = e.nextDay() }
         let item = e.salesItems(companyID: seller)[0]
         XCTAssertEqual(e.setItemListedForGroup(companyID: seller, itemID: item.id, listed: true), .applied)

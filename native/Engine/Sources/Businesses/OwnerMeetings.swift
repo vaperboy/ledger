@@ -44,7 +44,7 @@ public enum OwnerMeetings {
     }
 
     public static func counterparts(_ s: GameState, companyID: Int) -> [Counterpart] {
-        guard let co = s.company(companyID), co.status.isLive, co.type != "hold" else { return [] }
+        guard let co = s.company(companyID), co.status.isLive else { return [] }
         var out: [Counterpart] = []
         var seen = Set<Int>()
         let t = ManagerModel.team(co)

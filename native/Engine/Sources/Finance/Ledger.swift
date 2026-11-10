@@ -24,7 +24,7 @@ public enum Ledger {
         switch holder {
         case .me: s.cash += amount; AccountingLedger.pending = nil
         case .company(let id):
-            if let i = s.companyIndex(id) { s.companies[i].cash += amount; AccountingLedger.record(&s, companyIndex: i, amount: amount) }
+            if let i = s.companyIndex(id) { AccountingLedger.record(&s, companyIndex: i, amount: amount); s.cash += amount }
         }
         s.cashFlow[holder.flowKey, default: 0] += amount
     }
@@ -46,20 +46,10 @@ public enum Ledger {
         if s.statement.count > statementLimit { s.statement.removeLast(s.statement.count - statementLimit) }
     }
 
-    package static func set(_ s: inout GameState, _ holder: CashHolder, to value: Double) {
-        switch holder {
-        case .me:
-            let d = value - s.cash
-            s.cash = value
-            s.cashFlow["me", default: 0] += d
-        case .company(let id):
-            guard let i = s.companyIndex(id) else { return }
-            let d = value - s.companies[i].cash
-            AccountingLedger.note(category: "adjust", label: "Balance adjustment")
-            s.companies[i].cash = value
-            AccountingLedger.record(&s, companyIndex: i, amount: d)
-            s.cashFlow[holder.flowKey, default: 0] += d
-        }
+    package static func set(_ s: inout GameState, to value: Double) {
+        let d = value - s.cash
+        s.cash = value
+        s.cashFlow["me", default: 0] += d
     }
 
     public static func gaps(_ s: GameState) -> [(holder: String, difference: Double)] {
@@ -69,12 +59,8 @@ public enum Ledger {
             let live = s.company(id)?.status.isLive ?? false
             if !live && abs(left) > 1 { out.append(("held week money of \(s.company(id)?.name ?? "company \(id)")", left)) }
         }
-        let me = s.cash - s.openingCash - (s.cashFlow["me"] ?? 0)
-        if abs(me) > 1 { out.append(("me", me)) }
-        for c in s.companies {
-            let g = c.cash - (s.cashFlow["co\(c.id)"] ?? 0)
-            if abs(g) > 1 { out.append((c.name, g)) }
-        }
+        let gap = s.cash - s.openingCash - s.cashFlow.values.reduce(0, +)
+        if abs(gap) > 1 { out.append(("me", gap)) }
         return out
     }
 }

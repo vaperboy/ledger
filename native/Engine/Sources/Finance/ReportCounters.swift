@@ -7,7 +7,6 @@ public enum ReportCounters {
     public enum Key {
         public static let invested = "p.invested"
         public static let dividends = "p.dividends"
-        public static let salary = "p.salary"
         public static let markets = "p.markets"
         public static let deposits = "p.deposits"
         public static let tax = "p.tax"
@@ -18,13 +17,12 @@ public enum ReportCounters {
         public static let answered = "n.answered"
     }
 
-    public static let personalKeys: [String] = [Key.invested, Key.dividends, Key.salary, Key.markets, Key.deposits, Key.tax, Key.loans, Key.interest, Key.companies, Key.other]
+    public static let personalKeys: [String] = [Key.invested, Key.dividends, Key.markets, Key.deposits, Key.tax, Key.loans, Key.interest, Key.companies, Key.other]
 
     public static func key(forLabel label: String) -> String {
         func has(_ p: String) -> Bool { label.hasPrefix(p) }
         if has("Invested in") { return Key.invested }
         if has("Dividend from") { return Key.dividends }
-        if has("Salary from") { return Key.salary }
         if has("Dividend tax") || has("Tax on ") || has("Wealth tax") { return Key.tax }
         if has("Bought ") || has("Sold ") || has("Dividend ") { return Key.markets }
         if has("Fixed deposit") || has("Deposit matured") { return Key.deposits }

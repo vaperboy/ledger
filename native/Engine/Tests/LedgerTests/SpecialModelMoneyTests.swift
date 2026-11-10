@@ -61,15 +61,4 @@ final class SpecialModelMoneyTests: XCTestCase {
         XCTAssertNotNil(e.state.company(id))
         try check(&e, "club")
     }
-
-    func testHoldingYearBooksNoSalesAndNoVAT() throws {
-        var e = try SpecialTradesTests.engine("UK", seed: 9)
-        let cafe = SpecialTradesTests.start(&e, "cafe")
-        guard case .success(let hid) = e.createHolding(name: "Money Holding", companies: [cafe]) else { return XCTFail("holding") }
-        e.update { s, _, _ in Payments.injectCash(&s, companyID: hid, amount: 50_000_000) }
-        try check(&e, "holding")
-        let h = try XCTUnwrap(e.state.company(hid))
-        XCTAssertEqual(h.vatBalance, 0, accuracy: 0.01, "a holding books no VATable sales")
-        XCTAssertTrue(h.receivables.isEmpty, "a holding invoices nothing")
-    }
 }

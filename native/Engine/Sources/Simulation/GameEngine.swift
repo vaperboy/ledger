@@ -389,7 +389,7 @@ public struct GameEngine {
         case 2:
             Markets.fundsWeekly(&state)
             Brokerage.weekly(&state)
-            FinanceManager.weekly(&state, context: context)
+            FinanceManager.weekly(&state)
             SoftwareProducts.weekly(&state, data: data)
             ProjectTenders.weekly(&state, data: data, context: context)
             MarketResearch.weekly(&state, data: data)
@@ -425,10 +425,7 @@ public struct GameEngine {
         for i in state.companies.indices where bankruptcyOn {
             let c = state.companies[i]
             if state.isBranch(c) { continue }
-            if (c.status == .open || c.status == .closed) && c.weeksNegative > 12 && c.cash < -context.overdraftRoom(c, state) * 2 {
-                Failure.bankrupt(&state, companyIndex: i, reason: "cash", data: data, context: context)
-            }
-            else if (c.status == .open || c.status == .closed) && c.int("loanCall") > 0 && state.week >= c.int("loanCall") {
+            if (c.status == .open || c.status == .closed) && c.int("loanCall") > 0 && state.week >= c.int("loanCall") {
                 Failure.bankrupt(&state, companyIndex: i, reason: "loan", data: data, context: context)
             }
             else if (c.status == .open || c.status == .closed) && c.cash < 0 && Payday.unpaidForMonths(c, today: Payday.dayNumber(week: state.week, day: state.day)) {

@@ -41,7 +41,7 @@ struct GroupHome: View {
 @MainActor
 enum GroupWaiting {
     static func count(_ e: GameEngine, _ g: GroupEntity) -> Int {
-        guard !g.indent, let key = e.boardKey(companyID: g.companyID) else { return 0 }
+        guard let key = e.boardKey(companyID: g.companyID) else { return 0 }
         return e.boardOpenDecisions(key: key)
     }
 }
@@ -140,18 +140,18 @@ struct GroupOverviewTab: View {
     }
 
     private func keyFigures(_ list: [GroupEntity], _ ov: TeamOverview) -> some View {
-        let profit: Double = list.filter { (g: GroupEntity) -> Bool in !g.indent }.reduce(0) { (a: Double, g: GroupEntity) -> Double in a + g.profit }
+        let profit: Double = list.reduce(0) { (a: Double, g: GroupEntity) -> Double in a + g.profit }
         let staff: Int = ov.companies.reduce(0) { (a: Int, l: TeamOverview.CompanyLine) -> Int in a + l.staff }
         let sign: String = profit > 0.5 ? "+" : (profit < -0.5 ? "\u{2212}" : "")
         return KeyFigures(items: [
-            KeyFigures.Item(label: "Cash", value: store.short(engine.groupCash), live: engine.groupCash),
+            KeyFigures.Item(label: "Cash", value: store.short(engine.state.cash), live: engine.state.cash),
             KeyFigures.Item(label: "Profit this month", value: sign + store.short(abs(profit)), tint: Theme.change(profit)),
             KeyFigures.Item(label: "Staff", value: "\(staff)"),
         ])
     }
 
     private func whoRunsWhat(_ ov: TeamOverview) -> some View {
-        let lines: [TeamOverview.CompanyLine] = ov.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
+        let lines: [TeamOverview.CompanyLine] = ov.companies
         let managed: Int = lines.filter { (l: TeamOverview.CompanyLine) -> Bool in l.managerTitle != nil }.count
         let passed: Int = ov.issues.filter { (i: TeamOverview.Issue) -> Bool in i.beyondAuthority }.count
         var parts: [String] = ["\(managed) with a manager", "you run \(lines.count - managed)"]

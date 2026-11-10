@@ -9,7 +9,7 @@ final class ModelRulesTests: XCTestCase {
     private func cafe(seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
         return (e, id)
     }
 

@@ -22,7 +22,7 @@ public final class SaveStore {
 
     public func summary(of state: GameState, trades: any TradeCatalogProviding, now: Date = Date()) -> SaveSummary {
         SaveSummary(playerName: state.player.name, countryCode: state.homeCountryCode, week: state.week,
-                    netWorth: state.netWorthHistory.last ?? 0, companies: state.liveCompanies.filter { $0.type != "hold" }.count, savedAt: now)
+                    netWorth: state.netWorthHistory.last ?? 0, companies: state.liveCompanies.count, savedAt: now)
     }
 
     public func save(_ state: GameState, slot: String = "current", summary: SaveSummary) throws {

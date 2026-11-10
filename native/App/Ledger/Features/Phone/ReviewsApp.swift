@@ -49,7 +49,7 @@ struct ReviewsApp: View {
     static func companies(_ e: GameEngine) -> [Company] {
         e.state.companies.filter { (co: Company) -> Bool in
             guard co.status == .open, let family = e.tradeInfo(companyID: co.id)?.family else { return false }
-            return !["fin", "energy", "hold", "club"].contains(family)
+            return !["fin", "energy", "club"].contains(family)
         }
     }
 

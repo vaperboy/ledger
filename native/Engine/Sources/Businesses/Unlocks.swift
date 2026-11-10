@@ -36,7 +36,6 @@ public enum Unlocks {
         Def(id: "franchise", title: "Franchising", hidden: false, silent: false, target: "expansion"),
         Def(id: "abroad", title: "Expand abroad", hidden: false, silent: false, target: "expansion"),
         Def(id: "research", title: "Market research", hidden: false, silent: false, target: "research"),
-        Def(id: "dividends", title: "Dividends", hidden: false, silent: false, target: "money"),
         Def(id: "marketplace", title: "Marketplace", hidden: false, silent: true, target: "marketplace"),
         Def(id: "desk", title: "Desk", hidden: true, silent: true, target: "desk"),
         Def(id: "focus", title: "Weekly plan", hidden: true, silent: true, target: "focus"),
@@ -146,7 +145,7 @@ public enum Unlocks {
         var out: [UnlockItem] = []
         for d in defs {
             let c = check(d, s, co, context: context)
-            let ok: Bool = c.ok || (co.type == "hold" && d.id != "board") || playerHas(s, d.id)
+            let ok: Bool = c.ok || playerHas(s, d.id)
             out.append(UnlockItem(id: d.id, companyID: companyID, title: d.title, unlocked: ok, reason: ok ? "Open" : c.reason,
                                   since: record(s, d.id)?["w"].int, hiddenUntilUnlocked: d.hidden, silent: d.silent, target: d.target))
         }
@@ -155,7 +154,7 @@ public enum Unlocks {
 
     public static func pending(_ s: GameState, context: FinanceContext) -> [UnlockItem] {
         guard case .some(let g) = s.rest[globalKey] else { return [] }
-        let live: [Company] = s.companies.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
+        let live: [Company] = s.companies.filter { (c: Company) -> Bool in c.status.isLive }
         var out: [UnlockItem] = []
         for d in defs where !d.silent {
             let r: JSONValue = g[d.id]
@@ -180,7 +179,7 @@ public enum Unlocks {
         migrate(&s)
         var first: Bool = true
         if case .some = s.rest[globalKey] { first = false } else { s.rest[globalKey] = .object([:]) }
-        let ids: [Int] = s.companies.filter { (c: Company) -> Bool in (first ? c.status.isLive : (c.status == .open || c.status == .closed)) && c.type != "hold" }.map { (c: Company) -> Int in c.id }
+        let ids: [Int] = s.companies.filter { (c: Company) -> Bool in (first ? c.status.isLive : (c.status == .open || c.status == .closed)) }.map { (c: Company) -> Int in c.id }
         for id in ids {
             for it in state(s, companyID: id, context: context) where it.unlocked && !hasRecord(s, it.id) {
                 put(&s, it.id, week: s.week, shown: first || it.silent, company: id)

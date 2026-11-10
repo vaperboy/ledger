@@ -57,7 +57,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
 
     static func profitMonths(_ s: GameState) -> Int {
         var byMonth: [Int: Double] = [:]
-        for c in s.companies where c.type != "hold" {
+        for c in s.companies {
             for m in c.monthlyHistory { byMonth[m.monthIndex, default: 0] += m.profit }
         }
         return byMonth.values.filter { $0 > 0 }.count

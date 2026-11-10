@@ -63,7 +63,7 @@ public enum HierarchyHiring {
     }
 
     static func needsStoreManager(_ s: GameState, _ co: Company, data: GameData) -> Bool {
-        guard co.managerID == nil, co.status == .open || co.status == .setup, co.type != "hold", co.ownerHours <= 0, let bd = data.catalog[co.type], bd.family != "club" else { return false }
+        guard co.managerID == nil, co.status == .open || co.status == .setup, co.ownerHours <= 0, let bd = data.catalog[co.type], bd.family != "club" else { return false }
         return true
     }
 
@@ -181,8 +181,7 @@ public enum HierarchyHiring {
             return
         }
         if case .storeManager(let id) = post, let co = s.company(id) {
-            let need = wage * 3 - co.cash
-            if need > 0, ManagerModel.sisterCash(&s, to: co, need: need, data: data) == nil {
+            if co.cash < wage * 3 {
                 s.note("\(boss.name) (\(boss.title.lowercased())) put off hiring a \(d.what): \(co.name) cannot yet pay a manager.", tone: "n", companyID: d.companyID)
                 return
             }

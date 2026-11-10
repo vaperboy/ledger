@@ -4,7 +4,7 @@ import Countries
 import Finance
 
 public enum Rivals {
-    static let noPrice: Set<String> = ["rent", "fin", "energy", "club", "hold"]
+    static let noPrice: Set<String> = ["rent", "fin", "energy", "club"]
 
     public struct Rival: Identifiable, Equatable {
         public var id: Int
@@ -253,7 +253,7 @@ public enum Rivals {
 
     public static func weekly(_ s: inout GameState, data: GameData) {
         var byMarket: [String: [Int]] = [:]
-        for (i, c) in s.companies.enumerated() where c.status == .open && c.type != "hold" && c.type != "club" { byMarket[key(c), default: []].append(i) }
+        for (i, c) in s.companies.enumerated() where c.status == .open && c.type != "club" { byMarket[key(c), default: []].append(i) }
         for k in byMarket.keys.sorted() {
             guard let idx = byMarket[k], let first = idx.first, let bd = data.catalog[s.companies[first].type] else { continue }
             let newcomers = ensure(&s, key: k, trade: bd, countryCode: s.companies[first].countryCode, data: data)

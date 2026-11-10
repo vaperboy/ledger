@@ -343,7 +343,6 @@ struct RivalOfferSheet: View {
                 case .shut: absorb(p.price, .shut)
                 case .franchiseOldOwner: absorb(p.price, .franchiseOldOwner)
                 case .franchiseNewOwner: absorb(p.price, .franchiseNewOwner)
-                case .ownBank: buyWithBank(p.price)
                 }
             }
         }
@@ -400,22 +399,6 @@ struct RivalOfferSheet: View {
         case .ok(let message, _, _)?: Haptics.success(); store.show(message, tone: "good"); dismiss()
         case .notEnoughCash?: reply = "Not enough cash for the price and the extra costs."; Haptics.warning()
         case .failed(let why)?: reply = why
-        case nil: break
-        }
-    }
-
-    private func buyWithBank(_ price: Double) {
-        agreed = nil
-        guard let e = store.engine else { return }
-        let cid: Int = companyID
-        let rid: Int = rivalID
-        let amount: Double = min((price * 0.7 / 1000).rounded() * 1000, (e.ownBankRoom() / 1000).rounded(.down) * 1000)
-        let r = store.act { $0.buyRivalWithOwnBank(companyID: cid, rivalID: rid, price: price, amount: amount) }
-        switch r {
-        case .ok(.ok)?: Haptics.success(); store.show("You bought the business with a loan from your bank.", tone: "good"); dismiss()
-        case .ok(.notEnoughCash)?: reply = "Not enough cash for the rest of the price and the set-up."; Haptics.warning()
-        case .ok(.failed(let why))?: reply = why
-        case .bankCannotLend?: reply = "Your bank cannot lend that much."; Haptics.warning()
         case nil: break
         }
     }

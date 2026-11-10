@@ -16,7 +16,7 @@ public enum MarketPrices {
     public static let playersDemandCap = 50.0
     public static let alertMove = 0.1
 
-    static let skipFamilies: Set<String> = ["rent", "fin", "energy", "club", "hold"]
+    static let skipFamilies: Set<String> = ["rent", "fin", "energy", "club"]
 
     public struct Totals: Equatable, Sendable {
         public var demand: Double
@@ -108,7 +108,7 @@ public enum MarketPrices {
 
     public static func weekly(_ s: inout GameState, data: GameData) {
         var pairs = Set<String>()
-        for co in s.companies where co.status == .open && co.type != "hold" { pairs.insert(marketKey(country: co.countryCode, trade: co.type)) }
+        for co in s.companies where co.status == .open { pairs.insert(marketKey(country: co.countryCode, trade: co.type)) }
         var store = s.rest[key] ?? .object([:])
         for k in pairs.sorted() {
             let parts = k.split(separator: "|").map(String.init)

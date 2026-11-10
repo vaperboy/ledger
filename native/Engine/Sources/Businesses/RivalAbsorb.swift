@@ -141,38 +141,6 @@ public enum RivalAbsorb {
         }
     }
 
-    public static func bankRoom(_ s: GameState, bankID: Int, data: GameData) -> Double {
-        guard let b = s.company(bankID), b.status == .open, b.type == "bank" else { return 0 }
-        let fm = b.value("fm")
-        guard !fm.isNull else { return 0 }
-        let eq = max(0, fm["equity"].isNull ? b.cash + fm["book"].double - fm["dep"].double : fm["equity"].double)
-        let used = s.loans.filter { $0.bankCompanyID == b.id }.reduce(0) { $0 + $1.balance }
-        let req = data.catalog[b.type]?.trait("capitalReq") ?? 0.16
-        guard fm["cr"].double >= req else { return 0 }
-        return max(0, min(eq * 0.25 - used, b.cash * 0.8))
-    }
-
-    public static func ownBank(_ s: GameState) -> Company? { s.companies.first { $0.type == "bank" && $0.status == .open } }
-
-    public enum FinanceResult: Equatable { case ok(Rivals.AcquireResult), bankCannotLend }
-
-    public static func buyWithOwnBank(_ s: inout GameState, companyID: Int, rivalID: Int, price: Double, amount: Double, data: GameData, context fc: FinanceContext) -> FinanceResult {
-        guard let bank = ownBank(s), amount <= bankRoom(s, bankID: bank.id, data: data) + 1, amount > 0, let bi = s.companyIndex(bank.id) else { return .bankCannotLend }
-        let backup = s
-        var l = Loan(raw: [:])
-        l.id = s.makeID(); l.kind = "biz"; l.name = "Acquisition loan from \(bank.name)"
-        l.balance = amount; l.originalAmount = amount
-        l.margin = Banking.creditMargin(s.credit) + 0.01
-        l.termMonths = 96; l.companyID = 0; l.startWeek = s.week; l.isGuaranteed = false; l.bankCompanyID = bank.id
-        l.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + l.margin, months: 96)
-        Ledger.moveRaw(&s, .company(bank.id), -amount)
-        var fm = s.companies[bi].value("fm"); fm["gb"] = .number(fm["gb"].double + amount); s.companies[bi].set("fm", fm)
-        s.loans.append(l)
-        Payments.playerReceives(&s, amount, label: "Acquisition loan from \(bank.name)")
-        let r = Rivals.acquire(&s, companyID: companyID, rivalID: rivalID, price: price, data: data, context: fc)
-        if case .ok = r { Ambitions.countEvent(&s, "buy"); Ambitions.countEvent(&s, "bankfin") } else { s = backup }
-        return .ok(r)
-    }
 
     public enum Counter: String, Sendable, CaseIterable { case match, quality, brand }
     public enum CounterResult: Equatable, Sendable { case done(String), alreadyLowest, notEnoughCash, newCompany(Int), failed(String) }

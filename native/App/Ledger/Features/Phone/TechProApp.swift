@@ -659,7 +659,7 @@ struct TechProApp: View {
         let d: BankPaymentDetails? = e.bankPaymentDetails(companyID: co.id)
         let q: StoreOrders.Quote? = e.storeQuote(companyID: co.id, lines: basket, delivery: delivery) ?? e.storeQuote(companyID: co.id, lines: basket, delivery: .standard)
         return ShopPage {
-            ShopHero(label: "Pay", value: money(q?.chargeNow ?? 0), note: "From the company account of \(co.name)")
+            ShopHero(label: "Pay", value: money(q?.chargeNow ?? 0), note: "From your account")
             if let d {
                 ShopSection(title: "Saved account") {
                     savedAccount(d)
@@ -729,7 +729,7 @@ struct TechProApp: View {
         guard let d else { return }
         if normalised(holder) != normalised(d.holder) || normalised(number) != normalised(d.accountNumber) {
             Haptics.warning()
-            payError = "These details do not match the company account. Use Autofill from Bank."
+            payError = "These details do not match your account. Use Autofill from Bank."
             return
         }
         payError = ""
@@ -766,7 +766,7 @@ struct TechProApp: View {
             step = .placed
         case .notEnoughCash(let missing)?:
             Haptics.warning()
-            store.show("The company account is short by \(cur.tidyShort(missing)).", tone: "warn")
+            store.show("Your account is short by \(cur.tidyShort(missing)).", tone: "warn")
             step = .checkout
         default:
             Haptics.warning()

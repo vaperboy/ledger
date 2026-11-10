@@ -79,7 +79,7 @@ struct CompanySettings: View {
                     }.buttonStyle(QuietButtonStyle())
                 }
             }
-        } else if company.status == .open && company.type != "hold" {
+        } else if company.status == .open {
             let notice = engine.closeNoticeTerms(companyID: company.id)
             CardSection("Close for a while") {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {

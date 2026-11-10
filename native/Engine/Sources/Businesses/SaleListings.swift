@@ -4,7 +4,7 @@ import GameCore
 public enum SaleListings {
     public static func canSell(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return false }
-        return (co.status == .open || co.status == .closed) && co.type != "hold" && s.companies.filter { $0.status.isLive }.count > 0
+        return (co.status == .open || co.status == .closed) && s.companies.filter { $0.status.isLive }.count > 0
     }
     public static let branchNote = "A branch has no shares of its own: sell it as a going concern or close it from the chain."
     public static func isListed(_ s: GameState, companyID: Int) -> Bool { (s.rest["sales"]?.array ?? []).contains { $0["co"].int == companyID } }
@@ -27,9 +27,7 @@ public enum SaleListings {
         if isListed(s, companyID: companyID) { return "It is already on the market." }
         if pct < 100 {
             if co.ownership * Double(pct) / 100 > co.ownership - 1 { return "You must keep at least 1%." }
-            if route == "mbo" { return "A management buyout takes the whole company." }
         }
-        if route == "mbo", co.managerID == nil || s.people[co.managerID ?? 0] == nil { return "A buyout needs a manager who wants to buy." }
         return nil
     }
 

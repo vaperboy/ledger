@@ -56,7 +56,7 @@ struct ApplicantsView: View {
 
     private func companies(_ e: GameEngine) -> [Company] {
         var out: [Company] = []
-        for co in e.state.companies where co.status.isLive && co.type != "hold" {
+        for co in e.state.companies where co.status.isLive {
             let n: Int = e.applicants(companyID: co.id).count
             if n > 0 || hasAd(co) || co.id == companySel { out.append(co) }
         }

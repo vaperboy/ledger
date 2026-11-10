@@ -34,7 +34,6 @@ extension GameStore {
         case "franchise": return "\(name) has a proven concept: others can now open units under its name."
         case "abroad": return "A profitable year makes a subsidiary abroad possible for \(name)."
         case "research": return "\(name) is old enough for its market to be researched."
-        case "dividends": return "\(name) has retained profit it can pay out."
         default: return "\(name) can now use this."
         }
     }

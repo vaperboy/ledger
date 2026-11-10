@@ -18,28 +18,6 @@ final class StructureTreeTests: XCTestCase {
         XCTAssertEqual(n.kind, .company)
         XCTAssertEqual(n.parentID, "you")
         XCTAssertEqual(n.ownerYouPercent, 100, accuracy: 0.001)
-        XCTAssertNil(n.holdingPercent)
-        XCTAssertNil(n.tierTitle)
-    }
-
-    func testHoldingWithASubsidiaryAndADivision() throws {
-        var e = try ChainsTests.engine("UK")
-        let a = ChainsTests.start(&e, "cafe"), b = ChainsTests.start(&e, "cafe")
-        open(&e, a); open(&e, b)
-        guard case .success(let hid) = e.createHolding(name: "Alpha Holding", companies: [a, b]) else { throw XCTSkip("holding could not be created") }
-        e.update { s, _, _ in if let i = s.companyIndex(b) { s.companies[i].set("div", .number(Double(hid))) } }
-        let tree = e.structureTree()
-        let h = try XCTUnwrap(tree.first { $0.companyID == hid })
-        XCTAssertEqual(h.kind, .holding)
-        XCTAssertEqual(h.parentID, "you")
-        let sub = try XCTUnwrap(tree.first { $0.companyID == a })
-        XCTAssertEqual(sub.parentID, h.id)
-        XCTAssertEqual(sub.tierTitle, "100% yours")
-        XCTAssertEqual(try XCTUnwrap(sub.holdingPercent), 100, accuracy: 0.001)
-        let div = try XCTUnwrap(tree.first { $0.companyID == b })
-        XCTAssertEqual(div.kind, .division)
-        XCTAssertEqual(div.parentID, h.id)
-        XCTAssertEqual(e.ownerLine(companyID: a).holdingID, hid)
     }
 
     func testChainIsItsOwnNodeAndHeadOfficeIsALocation() throws {
@@ -80,7 +58,6 @@ final class StructureTreeTests: XCTestCase {
         let o = e.ownerLine(companyID: a)
         XCTAssertEqual(o.youPercent, 70, accuracy: 0.001)
         XCTAssertEqual(o.othersPercent, 30, accuracy: 0.001)
-        XCTAssertNil(o.holdingID)
     }
 
     func testHealthRollsUpToTheWorstChild() throws {
@@ -88,7 +65,7 @@ final class StructureTreeTests: XCTestCase {
         let a = ChainsTests.start(&e, "cafe"), b = ChainsTests.start(&e, "cafe")
         open(&e, a); open(&e, b)
         e.update { s, _, _ in
-            if let i = s.companyIndex(b) { s.companies[i].cash = -1_000; s.companies[i].monthlyHistory = (0..<6).map { MonthRecord(monthIndex: $0, revenue: 1_000, profit: -5_000, cash: 0) } }
+            if let i = s.companyIndex(b) { Ledger.set(&s, to: -1_000); s.companies[i].monthlyHistory = (0..<6).map { MonthRecord(monthIndex: $0, revenue: 1_000, profit: -5_000, cash: 0) } }
         }
         let tree = e.structureTree()
         XCTAssertEqual(tree.first { $0.companyID == b }?.health, .struggling)

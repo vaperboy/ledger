@@ -29,7 +29,7 @@ public enum Engagement {
     static let minimumSpend = 200.0
 
     static func mainCompany(_ s: GameState) -> Company? {
-        s.companies.filter { $0.status == .open && $0.type != "hold" && $0.type != "club" }
+        s.companies.filter { $0.status == .open && $0.type != "club" }
             .max { (a: Company, b: Company) -> Bool in
                 let ra = lastWeekRevenue(a), rb = lastWeekRevenue(b)
                 return ra != rb ? ra < rb : a.id > b.id

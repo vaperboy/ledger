@@ -96,7 +96,7 @@ final class PublicExchangeTests: XCTestCase {
         e.update { s, _, ctx in
             s.day = 1
             var b = ExchangeBook(s); b.lastRun = -1; b.write(to: &s)
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in value })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in value })
         }
     }
 
@@ -122,7 +122,7 @@ final class PublicExchangeTests: XCTestCase {
         e.placeExchangeOrder(instrument: PublicExchange.worldIndex, side: .buy, shares: 200, limit: 125)
         e.update { s, _, ctx in
             s.day = 1
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil })
         }
         let pos = ExchangeBook(e.state).positions[PublicExchange.worldIndex]
         XCTAssertEqual(pos?.shares, 200)
@@ -151,13 +151,13 @@ final class PublicExchangeTests: XCTestCase {
         e.placeExchangeOrder(instrument: PublicExchange.worldIndex, side: .buy, shares: 100, limit: 120)
         e.update { s, _, ctx in
             s.day = 6
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil })
         }
         XCTAssertEqual(ExchangeBook(e.state).orders.count, 1)
         e.update { s, _, ctx in
             s.day = 1
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil })
         }
         XCTAssertTrue(ExchangeBook(e.state).orders.isEmpty)
         XCTAssertEqual(ExchangeBook(e.state).positions[PublicExchange.worldIndex]?.shares, 100)
@@ -173,7 +173,7 @@ final class PublicExchangeTests: XCTestCase {
         }
         let cash0 = e.state.cash, gains0 = e.state.tax.gains
         guard case .placed = e.placeExchangeOrder(instrument: PublicExchange.worldIndex, side: .sell, shares: 500, limit: 80) else { return XCTFail() }
-        e.update { s, _, ctx in s.day = 1; PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil }) }
+        e.update { s, _, ctx in s.day = 1; PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil }) }
         XCTAssertNil(ExchangeBook(e.state).positions[PublicExchange.worldIndex])
         XCTAssertGreaterThan(e.state.tax.gains, gains0)
         XCTAssertGreaterThan(e.state.cash, cash0 - 1)
@@ -189,7 +189,7 @@ final class PublicExchangeTests: XCTestCase {
             b.write(to: &s)
             s.week = 13; s.day = 3
             let before = s.stats.dividendsReceived
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil })
             XCTAssertGreaterThan(s.stats.dividendsReceived, before)
         }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
@@ -198,7 +198,7 @@ final class PublicExchangeTests: XCTestCase {
     func listed(_ e: inout GameEngine, listedDay: Int = -1020) throws -> Int {
         let id = e.state.companies[0].id
         e.update { s, _, _ in
-            XCTAssertTrue(PublicExchange.register(&s, holdingID: id, value: 50_000_000))
+            XCTAssertTrue(PublicExchange.register(&s, companyID: id, value: 50_000_000))
             var b = ExchangeBook(s); b.instruments["co:\(id)"]?.listedDay = listedDay; b.write(to: &s)
         }
         return id
@@ -269,11 +269,18 @@ final class PublicExchangeTests: XCTestCase {
     func testDividendRules() throws {
         var e = try game()
         let id = e.state.companies[0].id
-        XCTAssertEqual(e.declareExchangeDividend(holdingID: id, amount: 100), .notListed)
+        var result: ExchangeDividendResult = .notListed
+        e.update { s, _, _ in result = PublicExchange.declareDividend(&s, companyID: id, amount: 100) }
+        XCTAssertEqual(result, .notListed)
         _ = try listed(&e)
-        XCTAssertEqual(e.declareExchangeDividend(holdingID: id, amount: 0), .nothingToPay)
-        e.update { s, _, _ in s.week = 20; var b = ExchangeBook(s); b.instruments["co:\(id)"]?.dividendDay = PublicExchange.today(s) - 10; b.write(to: &s) }
-        XCTAssertEqual(e.declareExchangeDividend(holdingID: id, amount: 100), .tooSoon(daysLeft: 81))
+        e.update { s, _, _ in result = PublicExchange.declareDividend(&s, companyID: id, amount: 0) }
+        XCTAssertEqual(result, .nothingToPay)
+        e.update { s, _, _ in
+            s.week = 20
+            var b = ExchangeBook(s); b.instruments["co:\(id)"]?.dividendDay = PublicExchange.today(s) - 10; b.write(to: &s)
+            result = PublicExchange.declareDividend(&s, companyID: id, amount: 100)
+        }
+        XCTAssertEqual(result, .tooSoon(daysLeft: 81))
     }
 
     func testAGoneCompanyHaltsTrading() throws {
@@ -282,7 +289,7 @@ final class PublicExchangeTests: XCTestCase {
         guard case .placed = e.placeExchangeOrder(instrument: "co:\(id)", side: .sell, shares: 100, limit: 50) else { return XCTFail() }
         e.update { s, _, ctx in
             s.day = 1
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in 0 })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in 0 })
         }
         XCTAssertTrue(ExchangeBook(e.state).instruments["co:\(id)"]?.halted ?? false)
         XCTAssertTrue(ExchangeBook(e.state).orders.isEmpty)

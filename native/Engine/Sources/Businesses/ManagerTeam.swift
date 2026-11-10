@@ -47,9 +47,6 @@ extension ManagerModel {
     }
     public static func regionals(_ s: GameState) -> [JSONValue] { (s.rest["group"]?["regional"].array ?? []).filter { s.people[$0["npc"].int] != nil } }
     static func headCount(_ co: Company) -> Int { co.staff.count + (co.managerID != nil ? 1 : 0) }
-    static func underHolding(_ s: GameState, _ co: Company) -> [Company] {
-        co.type == "hold" ? s.companies.filter { $0.holdingID == co.id && $0.status.isLive } : []
-    }
     static func branchesOf(_ s: GameState, _ co: Company) -> [Company] {
         s.companies.filter { $0.status.isLive && $0.value("branch")["of"].int == co.id && !$0.value("branch").isNull }
     }
@@ -70,10 +67,10 @@ extension ManagerModel {
     }
 
     static func headsOK(_ co: Company, _ r: TeamRole) -> Bool {
-        co.type != "hold" && Double(headCount(co)) >= r.fromPeople * (bigTrades.contains(co.type) ? 0.5 : 1)
+        Double(headCount(co)) >= r.fromPeople * (bigTrades.contains(co.type) ? 0.5 : 1)
     }
     static func mdOK(_ s: GameState, _ co: Company) -> Bool {
-        co.type == "hold" ? underHolding(s, co).count >= 2 : headCount(co) >= 20 || (bigTrades.contains(co.type) && headCount(co) >= 8)
+        headCount(co) >= 20 || (bigTrades.contains(co.type) && headCount(co) >= 8)
     }
     static func headSkill(_ s: GameState, _ co: Company, _ key: String) -> Double {
         guard let r = teamRoles.first(where: { $0.key == key }) else { return 0 }
@@ -82,9 +79,7 @@ extension ManagerModel {
         return skill01(n, r.stat)
     }
     static func companyMD(_ s: GameState, _ co: Company) -> Person? {
-        if let n = person(s, team(co)["ceo"]) { return n }
-        if co.holdingID != 0, let h = s.company(co.holdingID), let n = person(s, team(h)["ceo"]) { return n }
-        return nil
+        person(s, team(co)["ceo"])
     }
 
     static func teamWeek(_ s: inout GameState, _ ci: Int, _ bd: Trade, data: GameData) {
@@ -153,7 +148,6 @@ extension ManagerModel {
         } else {
             let t = team(co)
             if person(s, t["ceo"]) != nil { add("mdir", t["ceo"]) }
-            else if co.holdingID != 0, let h = s.company(co.holdingID), person(s, team(h)["ceo"]) != nil { add("mdir", team(h)["ceo"]) }
             if !co.value("region").isNull, let rg = regs.first(where: { $0["id"].int == co.value("region").int }) { add("region", rg, rg: rg["id"].int) }
         }
         let gm = s.rest["org56"]?["md"] ?? .null
@@ -206,7 +200,7 @@ extension ManagerModel {
     }
     static func slotText(_ s: GameState, _ co: Company, _ key: String) -> String {
         switch key {
-        case "ceo": return (co.type == "hold" ? "Runs the \(underHolding(s, co).count) companies under the holding" : "Runs the company above the manager") + ", with the authority you give, and coaches the manager."
+        case "ceo": return "Runs the company above the manager, with the authority you give, and coaches the manager."
         case "reg": return "Runs \(co.name) and its \(branchesOf(s, co).count) branches in one city or country."
         default: return teamRoles.first { $0.key == key }?.text ?? ""
         }
@@ -430,7 +424,7 @@ extension ManagerModel {
             if w > 0 { for c in L { share.append((c.id, w * 1.14 * rev(c) / max(1, L.reduce(0) { $0 + rev($1) }))) } }
         }
         if person(s, md) != nil {
-            let L = s.companies.filter { $0.status == .open && $0.type != "hold" }
+            let L = s.companies.filter { $0.status == .open }
             let tot = max(1, L.reduce(0) { $0 + rev($1) })
             for c in L { share.append((c.id, md["wage"].double * 1.14 * rev(c) / tot)) }
         }

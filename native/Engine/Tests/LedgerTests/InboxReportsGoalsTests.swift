@@ -131,7 +131,7 @@ final class InboxReportsGoalsTests: XCTestCase {
 
     func testDigestReportsALossAsARisk() throws {
         var (e, id) = try cafeGame(weeks: 6)
-        e.update { s, _, _ in Ledger.set(&s, .company(id), to: -5_000_000) }
+        e.update { s, _, _ in Ledger.set(&s, to: -5_000_000) }
         for _ in 0..<7 { e.nextDay(); answerPayroll(&e) }
         let r = try XCTUnwrap(e.latestReport(.week))
         var loss = r
@@ -306,7 +306,7 @@ final class InboxReportsGoalsTests: XCTestCase {
     func testLostCaseWithEnoughCashIsPaidAtOnce() throws {
         var (e, id) = try cafeGame(weeks: 3)
         e.update { s, d, _ in
-            Ledger.set(&s, .company(id), to: 5_000_000)
+            Ledger.set(&s, to: 5_000_000)
             Lawsuits.lose(&s, id, lawsuit(claim: 100_000, fee: 20_000), extra: 0, data: d)
         }
         let r = payablesAndCash(e, id)
@@ -320,7 +320,7 @@ final class InboxReportsGoalsTests: XCTestCase {
         e.update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].payables["wages"] = 30_000
-            Ledger.set(&s, .company(id), to: 40_000)
+            Ledger.set(&s, to: 40_000)
             Lawsuits.lose(&s, id, lawsuit(claim: 50_000, fee: 10_000), extra: 0, data: d)
         }
         let r = payablesAndCash(e, id)
@@ -337,18 +337,18 @@ final class InboxReportsGoalsTests: XCTestCase {
         e.update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].payables["wages"] = 0
-            Ledger.set(&s, .company(id), to: 10_000)
+            Ledger.set(&s, to: 10_000)
             Lawsuits.lose(&s, id, lawsuit(claim: 60_000, fee: 0), extra: 0, data: d)
         }
         XCTAssertEqual(payablesAndCash(e, id).legal, 50_000)
         e.update { s, _, _ in
-            Ledger.set(&s, .company(id), to: 20_000)
+            Ledger.set(&s, to: 20_000)
             if let i = s.companyIndex(id) { XCTAssertEqual(LegalDebts.settle(&s, companyIndex: i), 20_000) }
         }
         XCTAssertEqual(payablesAndCash(e, id).legal, 30_000)
         XCTAssertEqual(payablesAndCash(e, id).cash, 0)
         e.update { s, _, _ in
-            Ledger.set(&s, .company(id), to: 100_000)
+            Ledger.set(&s, to: 100_000)
             if let i = s.companyIndex(id) { XCTAssertEqual(LegalDebts.settle(&s, companyIndex: i), 30_000) }
         }
         let r = payablesAndCash(e, id)
@@ -363,7 +363,7 @@ final class InboxReportsGoalsTests: XCTestCase {
         e.update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].payables["wages"] = 25_000
-            Ledger.set(&s, .company(id), to: 25_000)
+            Ledger.set(&s, to: 25_000)
             s.companies[i].addPayable("legal", 10_000)
             XCTAssertEqual(LegalDebts.settle(&s, companyIndex: i), 0, "no cash beyond the wages")
             _ = d
@@ -389,7 +389,7 @@ final class InboxReportsGoalsTests: XCTestCase {
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].payables["wages"] = 20_000
-            Ledger.set(&s, .company(id), to: 25_000)
+            Ledger.set(&s, to: 25_000)
             s.rest["court16"] = .array([.object(["id": 902, "co": .number(Double(id)), "w": .number(Double(s.week)), "d": lawsuit(claim: 60_000, fee: 10_000, p: 0.0, big: true)])])
         }
         e.update { s, d, _ in Lawsuits.weekly(&s, data: d) }

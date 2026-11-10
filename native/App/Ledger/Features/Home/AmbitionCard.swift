@@ -11,7 +11,7 @@ struct AmbitionCard: View {
         "dynasty": "Own outright, keep control, never go bust.",
         "dominator": "Be the biggest in your markets; buy rivals.",
         "champion": "Few companies, excellent and very profitable.",
-        "financier": "Make money with money: holdings, banks, stakes.",
+        "financier": "Make money with money: public listings, investments, stakes.",
         "global": "Companies in many countries.",
     ]
 

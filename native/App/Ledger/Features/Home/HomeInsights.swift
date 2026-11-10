@@ -73,7 +73,7 @@ struct InsightsView: View {
     private func moves() -> [CompanyMove] {
         let hist: DayHistory = engine.dayHistory
         var out: [CompanyMove] = []
-        for c in engine.state.companies where c.status.isLive && c.type != "hold" {
+        for c in engine.state.companies where c.status.isLive {
             guard let series = hist.perCompany[c.id], let ch = DayHistory.change(series, days: 30) else { continue }
             out.append(CompanyMove(id: c.id, name: c.name, amount: ch.amount))
         }

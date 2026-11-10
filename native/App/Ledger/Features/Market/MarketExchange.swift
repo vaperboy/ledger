@@ -94,7 +94,7 @@ struct MarketExchangePage: View {
     var open: (MarketRoute) -> Void
     @State private var part: Part = .market
 
-    enum Part: String, CaseIterable, Hashable { case market = "Shares", orders = "Orders", positions = "Positions", listing = "Go public" }
+    enum Part: String, CaseIterable, Hashable { case market = "Shares", orders = "Orders", positions = "Positions" }
 
     var body: some View {
         if let e = store.engine {
@@ -109,7 +109,6 @@ struct MarketExchangePage: View {
                 case .market: shares(e, cur, rows)
                 case .orders: openOrders(e, cur, rows, orders)
                 case .positions: positions(e, cur, rows)
-                case .listing: ExchangeListingList(open: open)
                 }
             }
         }
@@ -207,7 +206,7 @@ struct MarketExchangePage: View {
                                 LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
                             }
                             .contentShape(Rectangle())
-                            .onTapGesture { Haptics.tap(); open(.listing(Int(r.id.dropFirst(3)) ?? 0)) }
+                            .onTapGesture { Haptics.tap(); store.openCompany(Int(r.id.dropFirst(3)) ?? 0, section: .overview) }
                         }
                     }
                 }
@@ -366,65 +365,5 @@ struct ExchangePositionCard: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityIdentifier("exchange-position-\(instrument.id)")
-    }
-}
-
-struct ExchangeListingList: View {
-    @EnvironmentObject var store: GameStore
-    @Environment(\.outsidePalette) private var P
-    var open: (MarketRoute) -> Void
-
-    var body: some View {
-        if let e = store.engine {
-            let cur: Currency = e.homeCurrency
-            let holdings: [Company] = e.state.companies.filter { (c: Company) -> Bool in c.type == "hold" && c.status.isLive }
-            if holdings.isEmpty {
-                EmptyState(glyph: Glyph.group, title: "No holding company", message: "Only a holding company can go public. Open one under Companies, then come back.")
-            } else {
-                MarketLabel(title: "Holding companies")
-                VStack(spacing: Theme.Space.s) {
-                    ForEach(holdings, id: \.id) { (c: Company) in
-                        let listed: Bool = e.isListed(companyID: c.id)
-                        Button {
-                            Haptics.tap()
-                            open(.listing(c.id))
-                        } label: {
-                            ExchangeCard {
-                                HStack(alignment: .firstTextBaseline) {
-                                    Text(c.name.tidyText).textStyle(.headline).lineLimit(1)
-                                    Spacer(minLength: Theme.Space.s)
-                                    Text(listed ? "Listed" : "Private").textStyle(.caption, tint: listed ? P.gain : P.inkFaint, weight: .semibold)
-                                }
-                                Text(detail(e, c, listed, cur)).textStyle(.caption, numeric: true).fixedSize(horizontal: false, vertical: true)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(PressableStyle())
-                        .accessibilityIdentifier("exchange-holding-\(c.id)")
-                    }
-                }
-            }
-        }
-    }
-}
-
-extension ExchangeListingList {
-    fileprivate func detail(_ e: GameEngine, _ c: Company, _ listed: Bool, _ cur: Currency) -> String {
-        let worth: String = "Worth " + cur.tidyShort(e.holdingValue(companyID: c.id))
-        if listed { return worth + " \u{00B7} you hold \(Int(CapTable.table(c).youPct.rounded()))%" }
-        return worth + " \u{00B7} " + ExchangeListingWords.short(e.exchangeListingCheck(holdingID: c.id), cur)
-    }
-}
-
-enum ExchangeListingWords {
-    static func short(_ r: ExchangeListOutcome, _ cur: Currency) -> String {
-        switch r {
-        case .ok: return "ready to list"
-        case .notAHolding: return "not a holding"
-        case .alreadyListed: return "listed"
-        case .tooSmall(let n): return "needs a value of " + cur.tidyShort(n)
-        case .tooYoung(let w): return "\(w.weeksText) too young"
-        case .notEnoughMoney(let fee): return "needs " + cur.tidyShort(fee) + " for the fee"
-        }
     }
 }

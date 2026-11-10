@@ -9,7 +9,7 @@ final class AccountingReadsTests: XCTestCase {
     private func firm(trade: String = "cafe", days: Int = 90, seed: Int = 31) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 200_000_000) else { XCTFail("start"); throw XCTSkip("none") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { XCTFail("start"); throw XCTSkip("none") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
         _ = e.takeLoan(kind: "biz", amount: 3_000_000, termMonths: 36, companyID: id)
@@ -92,14 +92,11 @@ final class AccountingReadsTests: XCTestCase {
         XCTAssertEqual(nw.liquid, e.state.cash, accuracy: 0.5)
         XCTAssertEqual(nw.stakes.filter { $0.companyID == id }.count, 1, "attributable equity once")
         XCTAssertGreaterThan(nw.guaranteedCompanyDebt + 1, 0)
-        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].holdingID = 999 } }
-        XCTAssertEqual(e.netWorthBreakdown().stakes.first { $0.companyID == id }?.attributableEquity, 0)
         let st = try XCTUnwrap(e.companyOverviewStats(companyID: id))
         XCTAssertEqual(st.cash, e.state.company(id)?.cash)
         XCTAssertEqual(st.operatingExpenses, st.expenses.reduce(0) { $0 + $1.amount }, accuracy: 0.5)
         XCTAssertEqual(st.profit, st.revenue - st.operatingExpenses, accuracy: 0.5, "the breakdown and the profit use the same categories")
         XCTAssertEqual(st.legalFormShort, "Ltd")
         XCTAssertEqual(st.ownershipPercent, 100)
-        XCTAssertEqual(st.reserves.free, st.cash - st.reserves.payroll - st.reserves.tax, accuracy: 0.5)
     }
 }

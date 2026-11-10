@@ -89,7 +89,7 @@ final class LifeStoriesTests: XCTestCase {
         XCTAssertEqual(least, est.minimumToOpen, accuracy: 0.01)
         XCTAssertEqual(r.shortfall, max(0, least - Payments.liquid(e.state)), accuracy: 0.01)
         var e2 = e
-        let res = e2.startCompany(tradeID: r.tradeID, cityID: city.id, fundWith: 0)
+        let res = e2.startCompany(tradeID: r.tradeID, cityID: city.id)
         _ = res
     }
 }

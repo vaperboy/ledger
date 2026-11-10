@@ -55,7 +55,7 @@ public enum BrandValues {
     }
 
     public static func group(_ s: GameState) -> BrandValue {
-        let live = s.companies.filter { $0.status.isLive && $0.type != "hold" }
+        let live = s.companies.filter { $0.status.isLive }
         guard !live.isEmpty else { return BrandValue(reputation: 0, yearsTrading: 0, reach: 0, awards: awardsPoints(s)) }
         let weights = live.map { max(0.01, $0.size) }
         let total = weights.reduce(0, +)

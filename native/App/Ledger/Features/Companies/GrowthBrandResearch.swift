@@ -115,7 +115,7 @@ struct WorkerGrowthSection: View {
         let cid: Int = companyID
         let eid: Int = employeeID
         let cost: Double = c.cost
-        pending = PendingAction(title: "Send \(p.name) on \(name)?", message: "Costs \(cur.tidyDisplay(cost)) from company cash. \(c.benefit) It may also change nothing.", button: "Send for \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .info, icon: "airplane") {
+        pending = PendingAction(title: "Send \(p.name) on \(name)?", message: "Costs \(cur.tidyDisplay(cost)) from your account. \(c.benefit) It may also change nothing.", button: "Send for \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .info, icon: "airplane") {
             let r: StaffProfile.CourseResult? = store.act { $0.sendOnCourse(companyID: cid, staffID: eid, courseID: tid) }
             switch r {
             case .done(let msg)?: Haptics.success(); store.show("\(name): \(msg).", tone: "good")
@@ -254,7 +254,7 @@ struct ResearchSheet: View {
         let oid: String = o.id
         let title: String = o.title
         let weeks: Int = o.weeks
-        pending = PendingAction(title: "Order \(title.lowercased())?", message: "Paid now from company cash. The report arrives in \(weeks.weeksText).", button: "Order for \(cur.tidyShort(o.cost))", amount: o.cost, currency: cur, tone: .info, icon: "doc.text.magnifyingglass") {
+        pending = PendingAction(title: "Order \(title.lowercased())?", message: "Paid now from your account. The report arrives in \(weeks.weeksText).", button: "Order for \(cur.tidyShort(o.cost))", amount: o.cost, currency: cur, tone: .info, icon: "doc.text.magnifyingglass") {
             let r = store.act { $0.buyResearch(companyID: cid, optionID: oid) }
             if case .refused(let why)? = r { Haptics.warning(); store.show(why, tone: "warn") }
             else { Haptics.success(); store.show("\(title) ordered.", tone: "good") }

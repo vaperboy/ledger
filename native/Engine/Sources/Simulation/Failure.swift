@@ -11,12 +11,11 @@ public enum Failure {
         HeldMoney.settle(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
         let cur = context.homeCurrency(s)
-        let assets = max(0, CompanyFigures.assets(co) - co.cash) * 0.45
+        let assets = max(0, CompanyFigures.assets(co)) * 0.45
         let p = co.payables
         let ownLoans = s.loans.filter { $0.companyID == co.id }
         let loanBalance = ownLoans.reduce(0) { $0 + $1.balance }
-        var debts: Double = loanBalance + CompanyFigures.billsOwed(co)
-        debts -= min(0, co.cash)
+        let debts: Double = loanBalance + CompanyFigures.billsOwed(co)
         var personalHit = 0.0
         var pool = assets
         var unpaid: [Int: Double] = [:]
@@ -25,9 +24,8 @@ public enum Failure {
             pool -= cut
             unpaid[l.id] = l.balance - cut
         }
-        let cashPart = max(0, co.cash)
         let billsDue = max(0, debts - loanBalance)
-        var spare = max(0, pool + cashPart - billsDue)
+        var spare = max(0, pool - billsDue)
         var repaidToLoans = 0.0
         for l in ownLoans {
             guard let li = s.loans.firstIndex(where: { $0.id == l.id }) else { continue }
@@ -45,7 +43,7 @@ public enum Failure {
                 Banking.close(loanID: l.id, repaid: l.balance - left, state: &s)
             }
         }
-        let rest = assets + cashPart - billsDue - repaidToLoans
+        let rest = assets - billsDue - repaidToLoans
         if rest > 0 && co.ownership > 0 { Payments.playerReceives(&s, rest * co.ownership / 100 * 0.2, label: "Remaining value from \(co.name)") }
         for m in s.companies[i].staff { if var person = s.people[m.id] { person.employerID = 0; s.people[m.id] = person } }
         if let mid = s.companies[i].managerID, var mgr = s.people[mid] { mgr.employerID = 0; s.people[mid] = mgr }
@@ -53,8 +51,6 @@ public enum Failure {
         s.companies[i].managerID = nil
         EquipmentMarket.endAllLeases(&s, companyIndex: i)
         s.companies[i].status = .bust
-        Ledger.set(&s, .company(co.id), to: 0)
-        HoldingModel.holdingFailed(&s, holdingID: co.id)
         guard announce else { return personalHit }
         s.stats.bankruptcies += 1
         s.credit = clamp(s.credit - 14, 0, 100)
@@ -76,14 +72,12 @@ public enum Failure {
         for ch in Chains.all(s) {
             let L = Chains.stores(s, ch)
             guard L.count >= 2 else { continue }
-            let cash = L.reduce(0) { $0 + $1.cash }, room = L.reduce(0) { $0 + context.overdraftRoom($1, s) }
             let today = Payday.dayNumber(week: s.week, day: s.day)
             let running = L.filter { $0.status == .open || $0.status == .closed }
             if running.isEmpty { continue }
             var reason: String?
-            if ch["neg"].int > 12 && cash < -room * 2 { reason = "cash" }
-            else if running.contains(where: { $0.int("loanCall") > 0 && s.week >= $0.int("loanCall") }) { reason = "loan" }
-            else if cash < 0 && running.contains(where: { Payday.unpaidForMonths($0, today: today) }) { reason = "unpaid" }
+            if running.contains(where: { $0.int("loanCall") > 0 && s.week >= $0.int("loanCall") }) { reason = "loan" }
+            else if s.cash < 0 && running.contains(where: { Payday.unpaidForMonths($0, today: today) }) { reason = "unpaid" }
             else if L.contains(where: { insolvent.contains($0.id) }) { reason = "insolvent" }
             if let r = reason { chainBankrupt(&s, chainID: ch["id"].int, reason: r, data: data, context: context) }
         }
@@ -158,7 +152,7 @@ public enum Failure {
             if od >= 8 {
                 liquidate(&s, -s.overdraftLimit * 0.5)
                 if s.cash < -s.overdraftLimit {
-                    let list = s.companies.indices.filter { s.companies[$0].status.isLive && s.companies[$0].holdingID == 0 }
+                    let list = s.companies.indices.filter { s.companies[$0].status.isLive}
                         .sorted { Valuation.companyValue(s.companies[$0], state: s, trades: data.catalog) > Valuation.companyValue(s.companies[$1], state: s, trades: data.catalog) }
                     for i in list {
                         if s.cash >= -s.overdraftLimit * 0.5 { break }

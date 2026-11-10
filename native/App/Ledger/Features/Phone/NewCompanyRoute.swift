@@ -10,7 +10,7 @@ enum PlayerHistory {
     static func noteStarted() { UserDefaults.standard.set(companiesStarted + 1, forKey: companiesKey) }
 
     static func isFirstCompany(_ e: GameEngine) -> Bool {
-        let held: Int = e.state.companies.filter { (c: Company) -> Bool in c.type != "hold" }.count
+        let held: Int = e.state.companies.count
         if held > companiesStarted { UserDefaults.standard.set(held, forKey: companiesKey) }
         return companiesStarted == 0
     }

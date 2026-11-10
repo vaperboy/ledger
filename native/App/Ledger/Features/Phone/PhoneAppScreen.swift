@@ -50,7 +50,7 @@ struct PhoneAppScreen: View {
             PhoneAppContent(app: app)
         } else {
             AppLaunchSplash(glyph: app.glyph, title: app.title, tint: app.tint,
-                            palette: app.splashPalette(ownBankIsMain: store.engine?.playerMainBankIsOwn ?? false)) { PhoneAppContent(app: app) }
+                            palette: app.splashPalette) { PhoneAppContent(app: app) }
                 .markerBudget()
                 .appFirstOpenHelp(app)
                 .overlay(alignment: .top) {

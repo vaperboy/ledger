@@ -118,7 +118,7 @@ public enum JVRules {
     }
 
     public enum Kind: String, Codable, CaseIterable, Sendable {
-        case dividend, price, hire, sell, partner, capital, dissolve
+        case dividend, price, hire, sell, partner, dissolve
         public var title: String {
             switch self {
             case .dividend: return "Pay a dividend"
@@ -126,7 +126,6 @@ public enum JVRules {
             case .hire: return "Hire a manager"
             case .sell: return "Sell the company"
             case .partner: return "Bring in a new partner"
-            case .capital: return "Call for capital"
             case .dissolve: return "Dissolve the joint venture"
             }
         }
@@ -140,7 +139,6 @@ public enum JVRules {
         case .hire: return "A manager is hired at the going rate and runs the company day to day. Their pay comes out of the company."
         case .sell: return "The company is listed with a broker (4% fee). Offers come in over the next weeks; you answer them for all owners, and none below \(Int(lowestSaleShare * 100))% of its value is accepted. When it sells, every owner is paid by their shares."
         case .partner: return "\(name) is invited to join for \(Int(pct.rounded()))% of the company, paying \(money(price)). New shares are made, so every owner's share becomes a little smaller."
-        case .capital: return "You put in your share of \(money(amount)). Sample partners cannot be asked for cash, so the company gets only what you put in. Nobody's share changes."
         case .dissolve: return "The company is closed. Its real value is paid out to the owners by their shares. Nobody gets a premium."
         }
     }
@@ -154,7 +152,6 @@ public enum JVRules {
         case .hire: yes = profitable
         case .sell: yes = !profitable
         case .partner: yes = profitable
-        case .capital: yes = cashTight
         case .dissolve: yes = !profitable && cashTight
         }
         if roll < 0.12 { return .abstain }

@@ -170,7 +170,6 @@ public enum SalesItems {
         "fin": [("basic plan", 1.0, 4), ("plus plan", 1.6, 2)],
         "energy": [("standard supply", 1.0, 4), ("green supply", 1.3, 2)],
         "club": [("entry", 1.0, 4), ("night out", 1.5, 2), ("table", 3.5, 0.5)],
-        "hold": [("management fee", 1.0, 1)],
     ]
     static let goodsVenues: Set<String> = ["cafe", "restaurant", "foodtruck"]
     static let productFamilies: Set<String> = ["prod", "retail"]

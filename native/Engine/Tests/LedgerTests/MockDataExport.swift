@@ -12,7 +12,7 @@ final class MockDataExport: XCTestCase {
         guard let path = ProcessInfo.processInfo.environment["LEDGER_MOCKDATA"] else { return }
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Alex Carter", seed: 2027)
         e.update { s, _, _ in Ledger.move(&s, .me, 45_000_000, why: "Demo funds") }
-        func start(_ t: String, _ city: String, _ fund: Double) { _ = e.startCompany(tradeID: t, cityID: city, fundWith: fund) }
+        func start(_ t: String, _ city: String, _ fund: Double) { _ = e.startCompany(tradeID: t, cityID: city) }
         func play(_ days: Int) { for _ in 0..<days { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }; if e.state.isGameOver { break } } }
         start("acctfirm", "lon", 2_500_000); start("cafe", "lon", 4_000_000); start("gym", "man", 14_000_000)
         for (k, n) in [("google", 1), ("seo", 1)] { if let ch = e.marketing.channels[k], let id = e.state.liveCompanies.first?.id { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[n]) } }
@@ -28,7 +28,7 @@ final class MockDataExport: XCTestCase {
         func p(_ v: Double) -> Double { (v / r).rounded() }
         let nw = e.netWorth, h = e.dayHistory
         var cos: [[String: Any]] = []
-        for co in e.state.companies where co.type != "hold" {
+        for co in e.state.companies {
             let hh = e.companyHealth(co)
             let cr = e.currency(for: co).rate
             func c(_ v: Double) -> Double { (v / cr).rounded() }

@@ -129,7 +129,6 @@ final class SupplyMarketTests: XCTestCase {
 
     func testCatalogueOnlyAndTradeRules() {
         XCTAssertFalse(SupplyMarketCatalogue.supplyableLines(tradeID: "bakery").isEmpty)
-        XCTAssertTrue(SupplyMarketCatalogue.supplyableLines(tradeID: "hold").isEmpty)
         for (trade, lines) in SupplyMarketCatalogue.supplies {
             for l in lines { XCTAssertNotNil(SupplyMarketCatalogue.line(l), "\(trade) supplies \(l), which is not in the catalogue") }
         }

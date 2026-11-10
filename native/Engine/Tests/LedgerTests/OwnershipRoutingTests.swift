@@ -7,14 +7,6 @@ import Finance
 import Simulation
 
 final class OwnershipRoutingTests: XCTestCase {
-    private func setup() throws -> (GameEngine, cafe: Int, hold: Int) {
-        var e = try ChainsTests.engine("UK")
-        let cafe = ChainsTests.start(&e, "cafe")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { throw XCTSkip("holding") }
-        XCTAssertTrue(e.moveToHolding(companyID: cafe, holdingID: hid))
-        return (e, cafe, hid)
-    }
-
     func testBuyBackTakesOneBoardSeatAway() throws {
         var e = try ChainsTests.engine("UK")
         let id = ChainsTests.start(&e, "cafe")
@@ -37,39 +29,6 @@ final class OwnershipRoutingTests: XCTestCase {
         e.update { s, _, _ in s.rest["stakes"] = .array([.object(["id": 1, "name": "X Group", "pct": 25, "val": 1000, "yld": 0.08])]) }
         XCTAssertEqual(e.bigMeetingStakes.count, 1)
         XCTAssertEqual(e.bigMeetingStakes.first?.name, "X Group")
-    }
-
-    func testSecondarySaleInsideAHoldingPaysTheHolding() throws {
-        var (e, cafe, hold) = try setup()
-        let me0 = e.state.cash, h0 = try XCTUnwrap(e.state.company(hold)).cash, gains0 = e.state.tax.gains
-        guard case .ok(let amt) = e.sellPrivateShares(companyID: cafe, percent: 20, mode: "secondary") else { return XCTFail("sale") }
-        XCTAssertEqual(e.state.cash, me0, accuracy: 1)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hold)).cash, h0 + amt, accuracy: 1)
-        XCTAssertEqual(e.state.tax.gains, gains0, accuracy: 0.001)
-        XCTAssertGreaterThan(try XCTUnwrap(e.state.company(hold)).books.total["gain"] ?? 0, 0)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    func testSecondarySaleOutsideAHoldingStillPaysYou() throws {
-        var e = try ChainsTests.engine("UK")
-        let cafe = ChainsTests.start(&e, "cafe")
-        let me0 = e.state.cash, gains0 = e.state.tax.gains
-        guard case .ok(let amt) = e.sellPrivateShares(companyID: cafe, percent: 20, mode: "secondary") else { return XCTFail("sale") }
-        XCTAssertEqual(e.state.cash, me0 + amt, accuracy: 1)
-        XCTAssertGreaterThan(e.state.tax.gains, gains0)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
-    func testSellingAHeldCompanyPaysTheHolding() throws {
-        var (e, cafe, hold) = try setup()
-        let me0 = e.state.cash, h0 = try XCTUnwrap(e.state.company(hold)).cash, gains0 = e.state.tax.gains
-        var got: Double?
-        e.update { s, d, c in got = CompanySale.complete(&s, companyIndex: s.companyIndex(cafe)!, buyer: "Buyer", price: 5_000_000, data: d, context: c) }
-        let paid = try XCTUnwrap(got)
-        XCTAssertEqual(e.state.cash, me0, accuracy: 1)
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hold)).cash, h0 + paid, accuracy: 1)
-        XCTAssertEqual(e.state.tax.gains, gains0, accuracy: 0.001)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
     func testDealerPlantDiscountStaysInOneCountryAndMatches() throws {

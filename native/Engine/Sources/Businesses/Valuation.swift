@@ -25,7 +25,7 @@ public enum Valuation {
         let fm = co.value("fm")
         if bd.family == "club", !fm.isNull, !fm["val"].isNull, fm["val"].double != 0 {
             let owed = s.loans.filter { $0.companyID == co.id }.reduce(0) { $0 + $1.balance }
-            return jsRound(jsRound(fm["val"].double + co.cash) - owed + fm["book"].double * 0.8)
+            return jsRound(jsRound(fm["val"].double) - owed + fm["book"].double * 0.8)
         }
         let net = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: s.loans)
         if bd.id == StartupModel.tradeID { return jsRound(max(0, StartupModel.value(co, state: s, net: net))) }
@@ -59,10 +59,10 @@ public enum Valuation {
         funds += (s.rest["pe56"]?["mine"].array ?? []).filter { $0["st"].string == "live" }.reduce(0) { $0 + $1["nav"].double }
 
         var companies = 0.0
-        for st in s.rest["startups"]?.array ?? [] where st["st"].string == "live" && st["hid"].int == 0 { companies += st["val"].double * st["pct"].double / 100 }
+        for st in s.rest["startups"]?.array ?? [] where st["st"].string == "live" { companies += st["val"].double * st["pct"].double / 100 }
         companies += (s.rest["stakes"]?.array ?? []).reduce(0) { $0 + $1["val"].double }
         companies += GroupStakes.stakesValue(s)
-        for co in s.companies where co.status.isLive && co.holdingID == 0 {
+        for co in s.companies where co.status.isLive {
             var v = companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)
             if forGoals, s.week - co.foundedWeek < youngCompanyWeeks, co.ownerNetFlow > 0 { v = min(v, co.ownerNetFlow) }
             companies += v * co.ownership / 100

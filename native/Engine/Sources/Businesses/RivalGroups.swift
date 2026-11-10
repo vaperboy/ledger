@@ -407,7 +407,7 @@ public enum RivalGroups {
             let types = g["types"].array.map { $0.string }
             let T = s.companies.indices.filter { i in
                 let c = s.companies[i]
-                return c.status == .open && c.type != "hold" && g["cs"].array.contains(where: { $0.string == c.countryCode }) && (types.contains(c.type) || acq)
+                return c.status == .open && g["cs"].array.contains(where: { $0.string == c.countryCode }) && (types.contains(c.type) || acq)
                     && Valuation.companyValue(c, state: s, trades: data.catalog) > 0 && CompanyFigures.yearlyProfitEstimate(c, currentWeek: week) > 0
                     && week - (c.openedWeek ?? c.foundedWeek) > 78 && !(c.num("bid27") > Double(week))
                     && SaleListings.boardBlock(s, companyID: c.id) == nil

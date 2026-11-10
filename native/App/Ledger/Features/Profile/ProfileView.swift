@@ -115,7 +115,7 @@ struct ProfileView: View {
     }
 
     private func tiles(_ e: GameEngine) -> some View {
-        let companies: Int = e.state.companies.filter { (c: Company) -> Bool in c.type != "hold" && c.status.isLive }.count
+        let companies: Int = e.state.companies.filter { (c: Company) -> Bool in c.status.isLive }.count
         return HStack(spacing: Theme.Space.s) {
             tile("Net worth", store.short(e.netWorth.total))
             tile("Companies", "\(companies)")

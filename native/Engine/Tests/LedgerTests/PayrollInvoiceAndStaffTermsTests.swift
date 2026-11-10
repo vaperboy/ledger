@@ -10,7 +10,7 @@ final class PayrollInvoiceAndStaffTermsTests: XCTestCase {
     private func start(trade: String = "cafe", seed: Int = 17) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 150_000_000) else { XCTFail("start"); throw XCTSkip("none") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { XCTFail("start"); throw XCTSkip("none") }
         return (e, id)
     }
 
@@ -39,7 +39,7 @@ final class PayrollInvoiceAndStaffTermsTests: XCTestCase {
     func testFinancingFeeIsItsOwnCategoryAndDraftInvoicesBecomeSent() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 8)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 150_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("start") }
         _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
         for _ in 0..<100 { _ = e.nextDay() }
         let a = e.loanAssessment(kind: "biz", companyID: id)
@@ -57,7 +57,7 @@ final class PayrollInvoiceAndStaffTermsTests: XCTestCase {
         defer { XCTAssertTrue(checkedDraft, "some trade with business customers raised invoices") }
         for trade in ["cons", "print", "logistics", "construction", "carclean", "handy", "photo"] {
             guard let bd = e.data.catalog[trade], bd.businessShare > 0,
-                  case .success(let tid) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 100_000_000) else { continue }
+                  case .success(let tid) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { continue }
             _ = e.quickSetup(companyID: tid); _ = e.openCompany(companyID: tid)
             var sawDraft = false
             for _ in 0..<90 {

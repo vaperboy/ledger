@@ -13,7 +13,7 @@ extension GameStore {
         switch app {
         case .market:
             for ev in UpdateFeed.freshMarket(e, marks: base) { out.insert("e\(ev.id)") }
-            for co in e.state.companies where co.status == .open && co.type != "hold" {
+            for co in e.state.companies where co.status == .open {
                 guard let known = base.texts["rv.\(co.id)"] else { continue }
                 let have: Set<String> = Set(known.split(separator: ",").map { (s: Substring) -> String in String(s) })
                 for r in e.rivalRows(co) where !have.contains(String(r.id)) { out.insert("r\(co.id).\(r.id)") }
@@ -78,9 +78,9 @@ extension GameStore {
         e.rivalRows(co).map { (r: RivalRow) -> String in String(r.id) }.sorted().joined(separator: ",")
     }
 
-    func loanMessageIDs(companyID: Int) -> [String] {
+    func loanMessageIDs() -> [String] {
         guard let e = engine else { return [] }
-        let ids: [String] = messageItemIDs(.bank, companyID: companyID)
+        let ids: [String] = messageItemIDs(.bank, companyID: nil)
         let hits: [Message] = e.state.inbox.filter { (m: Message) -> Bool in
             ids.contains("m\(m.id)") && (m.title + " " + m.body).lowercased().contains("loan")
         }

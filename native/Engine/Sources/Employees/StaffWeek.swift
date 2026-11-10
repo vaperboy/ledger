@@ -14,7 +14,7 @@ public enum StaffEvent: Equatable, Sendable {
 
 public enum StaffWeek {
     static let tenureYears: [String: Double] = ["venue": 2.1, "retail": 3.1, "svc": 3.5, "logi": 3.7, "project": 4.2, "fin": 4.7,
-                                                "prod": 4.9, "energy": 5.7, "rent": 4.2, "club": 3, "hold": 4.7]
+                                                "prod": 4.9, "energy": 5.7, "rent": 4.2, "club": 3]
     static let personalityFactor: [String: Double] = ["loyal": 0.5, "steady": 0.75, "driven": 1.1, "restless": 1.8, "arrogant": 1.2, "lazy": 1]
 
     public static func fit(staff s: StaffMember, tradeID: String) -> Double {

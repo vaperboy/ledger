@@ -10,7 +10,7 @@ final class ReconciliationTests: XCTestCase {
     private func firm(_ code: String = "UK", trade: String = "cafe", seed: Int = 31, days: Int = 14) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 400_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 120_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         _ = e.quickSetup(companyID: id)
         _ = e.openCompany(companyID: id)
         for _ in 0..<days { _ = e.nextDay() }
@@ -44,13 +44,12 @@ final class ReconciliationTests: XCTestCase {
         balanced(e, "loan repaid")
     }
 
-    func testPayrollInvoicesTaxAndDividendKeepTheBooksBalanced() throws {
+    func testPayrollInvoicesAndTaxKeepTheBooksBalanced() throws {
         var (e, id) = try firm(days: 10)
         for _ in 0..<(6 * 7) { _ = e.nextDay() }
         balanced(e, "six weeks of trading")
         e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: 30_000_000) }
-        if e.maximumDividend(companyID: id) > 0 { XCTAssertGreaterThan(e.payDividendShare(companyID: id, share: 0.5), 0) }
-        balanced(e, "dividend paid")
+        balanced(e, "money added")
     }
 
     func testEquipmentBoughtSoldAndInsuranceBoughtKeepTheBooksBalanced() throws {
@@ -119,7 +118,7 @@ final class ReconciliationTests: XCTestCase {
         e.update { s, _, _ in Ledger.move(&s, .me, 800_000_000, why: "Test funds") }
         let city = e.state.player.cityID
         let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "grocery", cityID: city, size: 1))
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, size: 1, name: nil, pick: nil, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
         let id = out.companyID
         let c = try XCTUnwrap(e.state.company(id))
         XCTAssertTrue(c.staff.isEmpty, "no staff are hired for you at the start")

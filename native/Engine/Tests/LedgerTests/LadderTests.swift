@@ -40,13 +40,11 @@ final class LadderTests: XCTestCase {
     func playCafe(country: String, seed: Int = 7, price: Double = 0) throws -> (reachedM7Week: Int?, done: Int) {
         var e = try ChainsTests.engine(country, seed: seed, ladder: true)
         let id = ChainsTests.start(&e, "cafe")
-        let cur = e.homeCurrency
         let channels = ["google", "meta", "seo"].filter { e.marketing.channels[$0] != nil }
         _ = e.setPriceLevel(companyID: id, level: price)
         for k in channels { if let ch = e.marketing.channels[k], ch.budgetOptions.count > 1 { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[1]) } }
-        e.payYourself(companyID: id, monthly: cur.scaledPrice(2000))
         var answered = false
-        var stoppedAds = false, stoppedPay = false, alone = false
+        var stoppedAds = false, alone = false
         for day in 0..<(20 * 7) {
             if !answered && day == 8 {
                 e.update { s, _, _ in
@@ -57,7 +55,6 @@ final class LadderTests: XCTestCase {
             }
             ChainsTests.play(&e, days: 1)
             if !stoppedAds, Gates.goalDone(e.state, 5) { stoppedAds = true; for k in channels { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: 0) } }
-            if !stoppedPay, Gates.goalDone(e.state, 6) { stoppedPay = true; _ = e.setOwnerSalary(companyID: id, monthly: 0) }
             if !alone, Gates.goalDone(e.state, 3), let st = e.state.company(id)?.staff.first { alone = true; e.dismissStaff(companyID: id, staffID: st.id) }
             if Gates.goalDone(e.state, 7) { return (e.state.week, Gates.goalsDone(e.state)) }
         }
@@ -99,7 +96,7 @@ final class LadderTests: XCTestCase {
         let repBefore = e.state.company(id)?.reputation ?? 0
         let credit = e.state.credit
         e.update { s, _, _ in
-            for k in ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10"] { _ = PlayerGoals.ladderReward(&s, k, cur) }
+            for k in ["M1", "M2", "M3", "M4", "M5", "M7", "M8", "M9", "M10"] { _ = PlayerGoals.ladderReward(&s, k, cur) }
         }
         XCTAssertEqual(e.state.cash, cash, accuracy: 0.001, "no ladder reward pays money")
         XCTAssertGreaterThan(e.state.credit, credit)
@@ -109,7 +106,6 @@ final class LadderTests: XCTestCase {
         XCTAssertTrue(PlayerGoals.ladderFlag(e.state, "amb"))
         e.update { s, _, _ in
             XCTAssertEqual(PlayerGoals.ladderReward(&s, "M5", cur), "", "a campaign is its own reward")
-            XCTAssertEqual(PlayerGoals.ladderReward(&s, "M6", cur), "")
         }
     }
 

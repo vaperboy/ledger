@@ -69,7 +69,7 @@ public enum WeeklyFocus {
     static func recordWeek(_ s: inout GameState) {
         var f = s.rest["wfoc"] ?? .object([:])
         var revs = f["revs"]
-        for co in s.companies where co.status == .open && co.type != "hold" {
+        for co in s.companies where co.status == .open {
             var l = revs["\(co.id)"].array
             let rev = Engagement.lastWeekRevenue(co)
             l.append(.object(["r": .number(rev), "g": .number(rev - max(0, co.value("lastW")["cogs"].double))]))

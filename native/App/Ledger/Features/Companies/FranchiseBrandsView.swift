@@ -411,7 +411,7 @@ struct StartFranchisedView: View {
             VStack(alignment: .leading, spacing: 0) {
                 FlatRow(label: "Start-up estimate", value: cur.tidyShort(fp.plan.total), sub: "Documents, equipment, the place you picked, stock, first payroll.", rule: false)
                 FlatRow(label: "Franchise entry fee", value: cur.tidyShort(fp.fee))
-                if t.cover > 0 || t.rent > 0 || t.vehicles != 0 { FlatRow(label: "The brand covers", value: "part of the set-up", sub: "It arrives in the company's account when you start.", tint: Theme.gain) }
+                if t.cover > 0 || t.rent > 0 || t.vehicles != 0 { FlatRow(label: "The brand covers", value: "part of the set-up", sub: "It arrives in your account when you start.", tint: Theme.gain) }
                 CardLine().padding(.vertical, Theme.Space.s)
                 FigureStrip(items: items, columns: 2)
             }
@@ -435,7 +435,7 @@ struct StartFranchisedView: View {
         pending = PendingAction(title: "Start under \(b.name)?",
                                 message: "\(cur.tidyShort(f.total)) to start, including the \(cur.tidyShort(fp.fee)) entry fee. \(cur.tidyShort(f.fund)) goes into the company from your cash now. You keep about \(cur.tidyShort(f.left)). Royalty \(Currency.percent(t.royalty, decimals: 1)) of sales for \(b.termYears) years.",
                                 button: "Start it", amount: f.total, currency: cur) {
-            let r = store.act { $0.startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: city, name: name, pick: pick, fundWith: f.fund) }
+            let r = store.act { $0.startFranchisedCompanyChoosingPremises(brandID: brandID, cityID: city, name: name, pick: pick) }
             switch r {
             case .success(let out)?:
                 let late = out.premises == .notEnoughCash

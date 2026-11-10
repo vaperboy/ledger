@@ -9,7 +9,7 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
     private func start(seed: Int = 17) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 150_000_000) else { XCTFail("start"); throw XCTSkip("none") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail("start"); throw XCTSkip("none") }
         _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
         return (e, id)
     }
@@ -45,67 +45,24 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         }
     }
 
-    func testSalariesGoOutOnPayDayWithNobodyApprovingThem() throws {
-        var (e, id) = try start()
-        let salary = e.homeCurrency.scaledPrice(2_000)
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            s.companies[i].ownerMonthlySalary = salary
-        }
-        let country = try XCTUnwrap(e.data.countries["UK"])
-        var payDays: [Int] = []
-        for _ in 0..<(70) {
-            let outcome = e.nextDay()
-            XCTAssertFalse(e.openDecisions.contains { $0.actionID == "pay29" || $0.actionID == "pay29all" }, "payroll never asks anyone")
-            if outcome.newMessages.contains(where: { $0.title.hasPrefix("Payday:") }) { payDays.append(Payday.dayNumber(week: e.state.week, day: e.state.day)) }
-            if !payDays.isEmpty { break }
-        }
-        let t = try XCTUnwrap(payDays.first, "payroll ran by itself")
-        XCTAssertEqual(t, Payday.payDate(year: Payday.civil(t).year, month: Payday.civil(t).month - 1), "on the pay day")
-        XCTAssertEqual(e.state.tax.salary, salary, accuracy: 0.01)
-        XCTAssertEqual(e.state.tax.withheld, Taxes.personalIncomeTax(salary * 12, kind: .wage, in: country) / 12, accuracy: 0.01)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
     func testAShortPayrollIsPaidBackWhenMoneyArrives() throws {
         var (e, id) = try start()
         e.update { s, data, ctx in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].addPayable("wages", 50_000_000_000)
-            Ledger.set(&s, .company(id), to: 10_000)
+            Ledger.set(&s, to: 10_000)
             let t = Payday.dayNumber(week: s.week, day: s.day)
             Payday.runPayroll(&s, i, today: t, data: data, context: ctx)
             XCTAssertGreaterThan(s.companies[i].payables["wages"] ?? 0, 1, "not paid in full")
             XCTAssertNotNil(Payday.config(s.companies[i], today: t).lateSince)
-            Ledger.set(&s, .company(id), to: 60_000_000_000)
+            Ledger.set(&s, to: 60_000_000_000)
             Payday.backPay(&s, i, today: t)
             XCTAssertLessThan(s.companies[i].payables["wages"] ?? 0, 1, "paid back")
             XCTAssertNil(Payday.config(s.companies[i], today: t).lateSince)
         }
     }
 
-    func testOwnerPayAboveWhatTheCompanyCanCarryIsRefused() throws {
-        var (e, id) = try start()
-        let room = e.ownerSalaryRoom(companyID: id)
-        XCTAssertGreaterThan(room, 0)
-        XCTAssertTrue(e.setOwnerSalary(companyID: id, monthly: room * 10 + 1_000_000_000).isRefused)
-        XCTAssertEqual(e.state.company(id)?.ownerMonthlySalary, 0)
-        XCTAssertFalse(e.setOwnerSalary(companyID: id, monthly: room / 2).isRefused)
-        XCTAssertGreaterThan(e.state.company(id)?.ownerMonthlySalary ?? 0, 0)
-    }
-
-    func testBorrowedCashDoesNotRaiseWhatCanBePaidAsSalary() throws {
-        var (e, id) = try start()
-        let before = e.ownerSalaryRoom(companyID: id)
-        e.update { s, _, _ in
-            _ = addLoan(&s, company: id, balance: 500_000_000)
-            Ledger.set(&s, .company(id), to: (s.company(id)?.cash ?? 0) + 500_000_000)
-        }
-        XCTAssertEqual(e.ownerSalaryRoom(companyID: id), before, accuracy: 1, "the loan adds cash and the same debt")
-        XCTAssertTrue(e.setOwnerSalary(companyID: id, monthly: before * 10 + 1_000_000_000).isRefused)
-    }
-
-    func testOwnerPayIsTaxedAsWageAndTheYearEndNeverRefundsMoreThanWasWithheld() throws {
+    func testWageIsTaxedAndTheYearEndNeverRefundsMoreThanWasWithheld() throws {
         var (e, _) = try start()
         e.update { s, _, ctx in
             s.tax = PersonalTaxYear(raw: ["wage": 0, "ytdDiv": 0, "withheld": 5_000, "gain": 0, "int": 0, "shield": 0])
@@ -120,7 +77,7 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
     func testEveryCompanyPaysCorporateTaxOnItsProfit() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 11)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("start") }
         let profit = 12_000_000.0
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
@@ -162,8 +119,7 @@ final class OneAccountLimitedCompanyTests: XCTestCase {
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].payables = [:]
-            Ledger.set(&s, .company(id), to: 100_000_000)
-            _ = addLoan(&s, company: id, balance: 1_000_000)
+            _ = addLoan(&s, company: id, balance: 100)
             cashBefore = s.cash
             Failure.bankrupt(&s, companyIndex: i, reason: "cash", data: data, context: ctx)
         }

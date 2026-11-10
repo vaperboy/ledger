@@ -172,11 +172,11 @@ public enum CapTable {
         normalise(&s, i)
         let t = read(s.companies[i])
         var list = s.companies[i].value("holders").array
-        let outside = list.filter { $0["hid"].int == 0 }.reduce(0) { $0 + $1["sh"].int }
+        let outside = list.reduce(0) { $0 + $1["sh"].int }
         let want = min(outside, Int(saturating: (Double(t.total) * percent / 100).rounded()))
         guard want > 0, outside > 0 else { return 0 }
         var moved = 0
-        for k in list.indices where list[k]["hid"].int == 0 {
+        for k in list.indices {
             let take = min(list[k]["sh"].int, Int(saturating: (Double(list[k]["sh"].int) * Double(want) / Double(outside)).rounded()))
             list[k]["sh"] = .number(Double(list[k]["sh"].int - take)); moved += take
         }
@@ -235,19 +235,6 @@ public enum CapTable {
                          sharesInIssueBefore: t.total, sharesInIssueAfter: after, sharesIssued: n, sharesSold: 0,
                          yourSharesBefore: t.you, yourSharesAfter: t.you, yourPctBefore: t.youPct, yourPctAfter: Double(t.you) / Double(max(1, after)) * 100,
                          buyerPctAfter: buyerPct, dilutionPercent: buyerPct, amount: amount, companyProceeds: amount, personalProceeds: 0, conditions: conditions, holdersAfter: hs)
-    }
-
-    public static func founderSaleTerms(_ co: Company, shares: Int, pricePerShare price: Double, buyer: String, conditions: [String] = []) -> DealTerms {
-        let t = table(co)
-        let n = min(max(0, shares), max(0, t.you - 1))
-        let amount = Double(n) * price
-        let buyerPct = Double(n) / Double(t.total) * 100
-        var hs = t.holders
-        hs.append(Line(name: buyer, shares: n, pct: buyerPct, paid: amount))
-        return DealTerms(kind: .founderSale, buyer: buyer, valuationBefore: price * Double(t.total), valuationAfter: price * Double(t.total), pricePerShare: price,
-                         sharesInIssueBefore: t.total, sharesInIssueAfter: t.total, sharesIssued: 0, sharesSold: n,
-                         yourSharesBefore: t.you, yourSharesAfter: t.you - n, yourPctBefore: t.youPct, yourPctAfter: Double(t.you - n) / Double(t.total) * 100,
-                         buyerPctAfter: buyerPct, dilutionPercent: 0, amount: amount, companyProceeds: 0, personalProceeds: amount, conditions: conditions, holdersAfter: hs)
     }
 
     public static func holderSaleTerms(_ co: Company, holder: String, shares: Int, pricePerShare price: Double, buyer: String) -> DealTerms {

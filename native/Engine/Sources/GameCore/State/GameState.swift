@@ -11,7 +11,7 @@ public struct GameState: Codable, Equatable, Sendable {
     public var day: Int
     public var homeCountryCode: String
     public var player: Player
-    public package(set) var cash: Double
+    public package(set) var cash: Double { didSet { if cash != oldValue { mirrorCash() } } }
     public var openingCash: Double
     public var cashFlow: [String: Double]
     public var loans: [Loan]
@@ -51,6 +51,7 @@ public struct GameState: Codable, Equatable, Sendable {
         week = take("week").int
         day = take("day").int
         homeCountryCode = take("country").string
+        let pooled = take("pool") != .null
         var playerRaw: [String: JSONValue] = take("player").object
         playerRaw.removeValue(forKey: "age")
         player = Player(raw: playerRaw)
@@ -75,6 +76,10 @@ public struct GameState: Codable, Equatable, Sendable {
         gameOver = take("over")
         rest = o
         if !histRest.isEmpty { rest["hist"] = .object(histRest) }
+        if !pooled { cash += companies.reduce(0) { $0 + $1.cash } }
+        dissolveHoldings()
+        dropFinanceManagers()
+        mirrorCash()
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -92,6 +97,7 @@ public struct GameState: Codable, Equatable, Sendable {
         o["country"] = .string(homeCountryCode)
         o["player"] = .object(player.raw)
         o["cash"] = .number(cash)
+        o["pool"] = .bool(true)
         o["cash0"] = .number(openingCash)
         o["flow"] = .object(cashFlow.mapValues { .number($0) })
         o["loans"] = .array(loans.map { .object($0.raw) })
@@ -110,6 +116,10 @@ public struct GameState: Codable, Equatable, Sendable {
         o["over"] = gameOver
         var c = encoder.singleValueContainer()
         try c.encode(o)
+    }
+
+    package mutating func mirrorCash() {
+        for i in companies.indices { companies[i].cash = cash }
     }
 
     public func company(_ id: Int) -> Company? { companies.first { $0.id == id } }

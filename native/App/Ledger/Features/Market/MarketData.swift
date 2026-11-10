@@ -103,7 +103,6 @@ enum MarketUI {
         var history: [Double]
         var risk: String
         var note: String
-        var holdingsMayBuy: Bool
     }
 
     struct Portfolio {
@@ -249,7 +248,6 @@ enum MarketData {
     static func ownerName(_ e: GameEngine, _ o: MarketUI.Owner) -> String {
         switch o {
         case .player: return "You"
-        case .holding(let id): return e.state.company(id)?.name ?? "Holding"
         }
     }
 
@@ -279,17 +277,12 @@ enum MarketData {
     static func assets(_ e: GameEngine) -> [MarketUI.Asset] {
         e.marketAssets.filter { (a: MarketAsset) -> Bool in !a.closed }.map { (a: MarketAsset) -> MarketUI.Asset in
             MarketUI.Asset(id: a.id, kind: a.kind, symbol: a.symbol, name: a.name.tidyText, price: a.price, weekChange: a.weekChange,
-                           history: Array(a.history.suffix(26)), risk: a.risk.rawValue + " risk", note: a.costNote.tidyText, holdingsMayBuy: a.holdingsMayBuy)
+                           history: Array(a.history.suffix(26)), risk: a.risk.rawValue + " risk", note: a.costNote.tidyText)
         }
     }
 
     static func asset(_ e: GameEngine, id: String) -> MarketUI.Asset? {
         assets(e).first { (a: MarketUI.Asset) -> Bool in a.id == id }
-    }
-
-    static func refusal(_ asset: MarketUI.Asset, for owner: MarketUI.Owner) -> String? {
-        if case .holding = owner, !asset.holdingsMayBuy { return "A holding's treasury holds funds only" }
-        return nil
     }
 
     static func preview(_ q: MarketQuote) -> MarketUI.TradePreview {
@@ -330,7 +323,7 @@ enum MarketData {
     }
 
     static func companies(_ e: GameEngine) -> [Company] {
-        e.state.companies.filter { (c: Company) -> Bool in c.status == .open && c.type != "hold" }
+        e.state.companies.filter { (c: Company) -> Bool in c.status == .open }
     }
 
     private static func line(_ m: CompanyMarketPosition) -> MarketUI.CompanyLine {
@@ -479,7 +472,7 @@ enum MarketData {
 
     static func expanders(_ e: GameEngine, country: String) -> [Company] {
         e.state.companies.filter { (co: Company) -> Bool in
-            co.status == .open && co.type != "hold" && e.abroadOptions(companyID: co.id).contains { (o: Abroad.Option) -> Bool in o.countryCode == country }
+            co.status == .open && e.abroadOptions(companyID: co.id).contains { (o: Abroad.Option) -> Bool in o.countryCode == country }
         }
     }
 }

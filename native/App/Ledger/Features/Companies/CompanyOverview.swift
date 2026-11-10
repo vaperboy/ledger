@@ -177,7 +177,7 @@ enum CompanyRunner {
             let role: String = GameEngine.bossTitle(boss.kind, trade: e.tradeInfo(companyID: co.id)).lowercased()
             return Reading(short: "Run by \(boss.name), \(role)", line: "Run by \(boss.name)", nobody: false, title: "", why: "")
         }
-        if co.type == "hold" || co.status != .open { return Reading(short: "", line: "", nobody: false, title: "", why: "") }
+        if co.status != .open { return Reading(short: "", line: "", nobody: false, title: "", why: "") }
         if co.managerID != nil { return Reading(short: "Has a manager", line: "Has a manager", nobody: false, title: "", why: "") }
         if OwnerHours.works(co) && co.ownerHours > 0 {
             return Reading(short: "Run by you", line: "You work here, \(Int(saturating: co.ownerHours.rounded())) h a week", nobody: false, title: "", why: "")
@@ -228,7 +228,7 @@ struct CompanyOverview: View {
         guard CompanyDetailView.availableSections(company, engine).contains(target) else { return }
         Haptics.choose()
         switch target {
-        case .staff, .holding: openTab(.team)
+        case .staff: openTab(.team)
         case .operations: openPage(.run)
         case .finances: openPage(.stats)
         case .salesMarket: openPage(.sales)
@@ -282,12 +282,6 @@ struct CompanyOverview: View {
         var parts: [String] = []
         if let pos = engine.branchParent(companyID: co.id), let chain = engine.chainSummary(id: pos.chainID) {
             parts.append("Part of " + chain.name)
-        } else if co.type != "hold" {
-            if let hid = engine.ownerLine(companyID: co.id).holdingID, let holding = engine.state.company(hid) {
-                parts.append("Part of " + holding.name)
-            } else if let host = HoldingStakes.divisionHostID(co).flatMap({ (id: Int) -> Company? in engine.state.company(id) }) {
-                parts.append("Division of " + host.name)
-            }
         }
         if co.status != .setup {
             let gm: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
@@ -327,7 +321,7 @@ struct CompanyOverview: View {
     private func issues(_ co: Company, _ h: CompanyHealth, _ ops: OperationsFigures?) -> [CompanyIssue] {
         var out: [CompanyIssue] = []
         let lastWeek: OperationsFigures.Week? = ops?.weeks.last
-        if co.status == .open, co.type != "hold", let w = lastWeek, w.capacity <= 0, w.demand > 0 {
+        if co.status == .open, let w = lastWeek, w.capacity <= 0, w.demand > 0 {
             let label: String = h.bottleneck ?? ""
             let machine: Bool = label.localizedCaseInsensitiveContains("repair") || label.localizedCaseInsensitiveContains("broken")
             let limit: String = label.isEmpty ? "Staff or equipment is missing: nothing comes in"

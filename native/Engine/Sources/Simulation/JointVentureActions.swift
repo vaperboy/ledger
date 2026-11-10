@@ -16,7 +16,7 @@ public extension GameEngine {
     var jvMeetingsWaiting: Int { JointVenture.waitingForYou(state) }
     func jvCanStart(companyID: Int) -> Bool {
         guard let co = state.company(companyID) else { return false }
-        return co.status == .open && co.type != "hold" && !state.isBranch(co)
+        return co.status == .open && !state.isBranch(co)
     }
 
     @discardableResult

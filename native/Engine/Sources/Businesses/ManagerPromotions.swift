@@ -69,9 +69,9 @@ extension ManagerModel {
                 out.append(PromotionPost(id: "role:\(r)", title: role.name, place: co.name, kind: "role", companyID: co.id, base: base, ask: ask(base)))
             }
         }
-        let candidates = s.companies.filter { ($0.status == .open || $0.status == .setup) && $0.managerID == nil && $0.type != "hold" && data.catalog[$0.type]?.family != "club" }
+        let candidates = s.companies.filter { ($0.status == .open || $0.status == .setup) && $0.managerID == nil && data.catalog[$0.type]?.family != "club" }
         for x in ([co] + candidates.filter { $0.id != co.id }.prefix(4)) where x.managerID == nil && !(x.id == co.id && c.isManager) {
-            guard let t = data.catalog[x.type], x.type != "hold" else { continue }
+            guard let t = data.catalog[x.type] else { continue }
             let base = managerBase(s, x, data: data)
             out.append(PromotionPost(id: "mgr@\(x.id)", title: title(t), place: x.name, kind: "mgr", companyID: x.id, base: base, ask: ask(base)))
         }

@@ -8,7 +8,7 @@ final class TaxSettlementTests: XCTestCase {
     private func game() throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in
-            Ledger.set(&s, .me, to: 0)
+            Ledger.set(&s, to: 0)
             s.loans.removeAll()
             s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
         }

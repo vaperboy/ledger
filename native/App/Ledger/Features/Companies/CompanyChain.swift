@@ -41,7 +41,7 @@ struct CompanyChain: View {
     }
 
     static func isRelevant(_ co: Company, _ e: GameEngine) -> Bool {
-        co.type != "hold" && co.type != "club" && (co.status == .open || co.status == .closed)
+        co.type != "club" && (co.status == .open || co.status == .closed)
     }
 }
 
@@ -103,7 +103,7 @@ struct GrowIntoChain: View {
                     switch store.act({ $0.applyForChainDocument(companyID: company.id, document: "chain") }) {
                     case .ok?: Haptics.success(); store.show("Application sent.", tone: "good")
                     case .notYet(let why)?: Haptics.warning(); store.show(why, tone: "warn")
-                    case .notEnoughCash?: Haptics.warning(); store.show("Not enough cash in the company for the lawyer.", tone: "warn")
+                    case .notEnoughCash?: Haptics.warning(); store.show("You do not have enough cash for the lawyer.", tone: "warn")
                     default: Haptics.warning(); store.show("The application could not be sent.", tone: "warn")
                     }
                 }, onClose: { signing = false })
@@ -123,7 +123,6 @@ struct StoreInChainCard: View {
         let cur = engine.currency(for: company)
         let ranked = summary.stores.sorted { $0.profit > $1.profit }
         let rank = (ranked.firstIndex { $0.id == company.id } ?? 0) + 1
-        let owed = engine.groupLoanBalance(companyID: company.id)
         let mine: Double = summary.stores.first { $0.id == company.id }?.profit ?? 0
         MoreBlock(title: "Store of \(summary.name)", card: false, trailing: { Text("\(summary.stores.count) \(summary.stores.count == 1 ? "store" : "stores")").textStyle(.caption, tint: Theme.inkFaint) }) {
             placeLine
@@ -131,8 +130,8 @@ struct StoreInChainCard: View {
                 CardRow(glyph: Glyph.group, title: "Open the chain", subtitle: "All stores compared, chain rules, chain and regional managers, board, new stores · \(summary.reach.label)",
                         value: cur.tidyShort(summary.profit) + " / mo", valueTint: summary.profit < 0 ? Theme.loss : Theme.ivory)
             }.buttonStyle(PressableStyle())
-            if summary.stores.count > 1 || owed > 0 {
-                standing(rank: rank, mine: mine, owed: owed, cur: cur)
+            if summary.stores.count > 1 {
+                standing(rank: rank, mine: mine, cur: cur)
             }
             EntityCard { StoreRules(engine: engine, storeID: company.id) }
         }
@@ -152,18 +151,16 @@ struct StoreInChainCard: View {
         }
     }
 
-    private func standing(rank: Int, mine: Double, owed: Double, cur: Currency) -> some View {
+    private func standing(rank: Int, mine: Double, cur: Currency) -> some View {
         var items: [KeyFigures.Item] = []
         if summary.stores.count > 1 {
             items.append(.init(label: "Rank by profit", value: "No. \(rank) of \(summary.stores.count)"))
             items.append(.init(label: "Profit last month", value: cur.tidyShort(mine), tint: mine < 0 ? Theme.loss : Theme.ivory))
         }
-        if owed > 0 { items.append(.init(label: "Owes sister stores", value: cur.tidyShort(owed), tint: Theme.caution, sub: "group loan")) }
         let columns: Int = max(1, min(3, items.count))
         return Card(padding: Theme.Space.l, radius: Theme.Radius.hero) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 FigureStrip(items: items, columns: columns)
-                if owed > 0 { Text("A group loan, paid back by itself once the store has a cushion.").textStyle(.caption, tint: Theme.inkFaint) }
             }
         }
     }

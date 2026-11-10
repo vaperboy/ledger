@@ -30,14 +30,6 @@ public extension GameEngine {
     @discardableResult
     mutating func dismissFundManager() -> Bool { var ok = false; update { s, _, _ in ok = FinanceManager.fire(&s) }; return ok }
 
-    var holdingsRunByFinanceManager: [Int] { FinanceManager.managedHoldings(state) }
-
-    @discardableResult mutating func toggleHoldingFinanceManager(holdingID: Int) -> Bool? {
-        var r: Bool?
-        update { s, _, _ in r = FinanceManager.toggleHolding(&s, holdingID: holdingID) }
-        return r
-    }
-
     func layoffCount(companyID: Int, preset: String) -> Int {
         let n = state.company(companyID)?.staff.count ?? 0
         return preset == "10" ? max(1, Int(saturating: (Double(n) * 0.1).rounded())) : min(n, Int(preset) ?? 1)

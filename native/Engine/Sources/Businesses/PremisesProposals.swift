@@ -160,9 +160,9 @@ public enum PremisesProposals {
         let cur = w.currency(co)
         let moving = cur.scaledPrice(1500) + cur.scaledPrice(12) * co.value("prem")["m2"].double
         let refund = co.value("prem")["dep"].double > 0 && !co.value("prem")["owned"].bool ? co.value("prem")["dep"].double : 0
-        let need = max(0, t.deposit + t.fitOut + moving - refund - max(0, co.cash))
-        if need > 0 && !Payments.injectCash(&s, companyID: companyID, amount: need) {
-            s.note("\(co.name) could not move: \(cur.display(need)) is missing and could not be put in.", tone: "bad", companyID: companyID)
+        let need = max(0, t.deposit + t.fitOut + moving - refund)
+        if Payments.liquid(s) < need {
+            s.note("\(co.name) could not move: \(cur.display(need)) is needed and you do not have it.", tone: "bad", companyID: companyID)
             return false
         }
         let fromM2 = co.value("prem")["m2"].double

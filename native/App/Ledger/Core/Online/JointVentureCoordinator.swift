@@ -64,7 +64,6 @@ final class JointVentureCoordinator {
         let made = store.act { (g: inout GameEngine) -> (item: JointVenture.Item?, problem: String?) in
             switch call.kind {
             case .dividend: return g.jvMakeItem(companyID: companyID, kind: .dividend, by: partner.name, amount: (g.maximumDividend(companyID: companyID) * 0.5).rounded(.down))
-            case .capital: return g.jvMakeItem(companyID: companyID, kind: .capital, by: partner.name, amount: max(1, -co.cash).rounded())
             default: return g.jvMakeItem(companyID: companyID, kind: call.kind, by: partner.name, steps: -1)
             }
         }

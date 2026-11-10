@@ -41,7 +41,6 @@ final class MockJointVentureService: JointVentureService, @unchecked Sendable {
     func emergency(companyID: Int, week: Int, profitable: Bool, cashTight: Bool, partners: [JVVoteQuery.Partner]) async -> JVEmergency? {
         guard !partners.isEmpty, HashedRandom.first("jvcall:\(companyID):\(week)") < 0.06 else { return nil }
         let who: JVVoteQuery.Partner = partners[Int(HashedRandom.first("jvwho:\(companyID):\(week)") * Double(partners.count)) % partners.count]
-        if cashTight { return JVEmergency(memberID: who.memberID, kind: .capital, reason: "Cash is running short") }
         if !profitable { return JVEmergency(memberID: who.memberID, kind: .price, reason: "Sales are falling, prices should come down") }
         return JVEmergency(memberID: who.memberID, kind: .dividend, reason: "The company is making money, time to share some")
     }

@@ -204,7 +204,7 @@ struct TeamSlotSheet: View {
     @State private var pending: PendingAction?
 
     static func scope(_ slot: ManagerModel.TeamSlot, company: Company) -> String {
-        switch slot.key { case "ceo": return company.type == "hold" ? "group" : "company"; case "reg": return "region"; default: return "company" }
+        switch slot.key { case "reg": return "region"; default: return "company" }
     }
 
     static func budget(of slot: ManagerModel.TeamSlot) -> Budget { Budget(rawValue: min(2, max(0, slot.level))) ?? .tight }

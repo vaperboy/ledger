@@ -60,7 +60,7 @@ final class WealthStatementTests: XCTestCase {
         var e = try game()
         let id = e.state.companies[0].id
         e.update { s, _, _ in
-            PublicExchange.register(&s, holdingID: id, value: 50_000_000)
+            _ = PublicExchange.register(&s, companyID: id, value: 50_000_000)
             var b = ExchangeBook(s); b.instruments["co:\(id)"]?.close = 60; b.write(to: &s)
         }
         let w = e.wealth

@@ -145,7 +145,7 @@ public extension GameEngine {
         var out: [ReviewGroup] = []
         var seen = Set<String>()
         for co in state.companies where co.status == .open {
-            guard let bd = data.catalog[co.type], !["fin", "energy", "hold", "club"].contains(bd.family) else { continue }
+            guard let bd = data.catalog[co.type], !["fin", "energy", "club"].contains(bd.family) else { continue }
             let k = Rivals.key(co)
             guard !seen.contains(k) else { continue }
             seen.insert(k)

@@ -8,7 +8,7 @@ import Employees
 
 final class BoardStructureTests: XCTestCase {
     private func startCafe(_ e: inout GameEngine) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 6_000_000) else { throw XCTSkip("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("start") }
         e.update { s, d, _ in
             _ = CompanySetup.quickSetup(&s, companyID: id, data: d)
             if let i = s.companyIndex(id) { s.companies[i].status = .open }
@@ -33,14 +33,6 @@ final class BoardStructureTests: XCTestCase {
         XCTAssertEqual(e.boardKey(companyID: b), key)
         XCTAssertFalse(e.boardKeys.contains("co:\(b)"), "the branch has no board of its own")
         XCTAssertEqual(Set(ManagerModel.boardCompanies(e.state, key: key).map { $0.id }), [a, b])
-    }
-
-    func testBranchUnderAnotherHoldingKeepsItsOwnBoard() throws {
-        var (e, a, b) = try twoCafes(seed: 62)
-        makeBranch(&e, branch: b, of: a)
-        e.update { s, _, _ in if let i = s.companyIndex(b) { s.companies[i].holdingID = 99 } }
-        XCTAssertEqual(e.boardKey(companyID: b), "co:\(b)", "a different legal owner is a separate board")
-        XCTAssertTrue(e.boardKeys.contains("co:\(b)"))
     }
 
     func testManagerIsNotADirector() throws {

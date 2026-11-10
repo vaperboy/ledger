@@ -39,7 +39,7 @@ struct AtlasAccountantSection: View {
         if a.isCurrent { return }
         let id: Int = companyID
         let leaves: String = now.map { (n: AdviserOption) -> String in " " + n.name + " leaves." } ?? ""
-        let message: String = cur.tidyShort(a.monthlyFee) + " a month from company cash." + leaves
+        let message: String = cur.tidyShort(a.monthlyFee) + " a month from your account." + leaves
         pending = PendingAction(title: "Appoint " + a.name + "?", message: message, button: "Appoint", amount: a.monthlyFee, currency: cur, tone: .info, icon: "person.text.rectangle") {
             apply(a, companyID: id)
         }

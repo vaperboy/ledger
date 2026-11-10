@@ -25,7 +25,7 @@ struct FranchiseeCard: View {
                 FlatRow(label: "Quality", value: Words.level(company.quality, scale: .quality) + " (brand asks for " + Words.level(minQ, scale: .quality).lowercased() + ")", sub: company.quality < minQ ? "Below the standard: the franchisor warns, then ends the contract." : "",
                         tint: company.quality < minQ ? Theme.loss : Theme.ivory)
                 if !f["end"].isNull { FlatRow(label: "Contract ends", value: GameCalendar.dateString(week: f["end"].int, dayOffset: 0)) }
-                if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.tidyShort(f["owed"].double), sub: "Paid first from the company's cash; unpaid parts pile up.", tint: Theme.loss) }
+                if f["owed"].double > 0.5 { FlatRow(label: "Royalties owed", value: cur.tidyShort(f["owed"].double), sub: "Paid first from your account; unpaid parts pile up.", tint: Theme.loss) }
                 CardLine()
                 HStack {
                     Button("Leave the franchise · buyout \(cur.tidyShort(buyout))") { askToLeave(buyout, cur) }.buttonStyle(TinyButtonStyle(tint: Theme.loss))

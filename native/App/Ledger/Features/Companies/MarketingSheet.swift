@@ -119,7 +119,7 @@ struct MarketingSheet: View {
         let big: Bool = new > old && ((total > 0 && newTotal > total * 2) || (weekRevenue > 0 && newTotal > weekRevenue * 0.25))
         if big {
             pending = PendingAction(title: "Spend \(cur.tidyDisplay(newTotal)) a week on marketing?",
-                                    message: "\(ch.name) at \(cur.tidyDisplay(new)) a week: \(cur.tidyDisplay(newTotal - total)) a week more than now, from company cash.",
+                                    message: "\(ch.name) at \(cur.tidyDisplay(new)) a week: \(cur.tidyDisplay(newTotal - total)) a week more than now, from your account.",
                                     button: "Spend it", alwaysAsk: true, tone: .warning, icon: "megaphone") { commit(ch, new, cur: cur) }
         } else {
             commit(ch, new, cur: cur)

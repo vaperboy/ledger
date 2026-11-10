@@ -25,7 +25,7 @@ private struct CoachTourLayer: View {
 
     private var firstCompanyID: Int? {
         guard let e = store.engine else { return nil }
-        return e.state.companies.first { (c: Company) -> Bool in c.type != "hold" && c.status.isLive }?.id
+        return e.state.companies.first { (c: Company) -> Bool in c.status.isLive }?.id
     }
 
     private var blocked: Bool {

@@ -463,7 +463,7 @@ public enum StrategicDecisions {
     }
 
     static func losers(_ s: GameState) -> [Int] {
-        s.companies.filter { $0.status == .open && $0.type != "hold" && $0.monthlyHistory.suffix(6).count >= 6 && $0.monthlyHistory.suffix(6).reduce(0, { $0 + $1.profit }) < 0 }.map { $0.id }
+        s.companies.filter { $0.status == .open && $0.monthlyHistory.suffix(6).count >= 6 && $0.monthlyHistory.suffix(6).reduce(0, { $0 + $1.profit }) < 0 }.map { $0.id }
     }
 
     static func countryEvents() -> [Def] {
@@ -602,7 +602,7 @@ public enum StrategicDecisions {
     }
 
     static func liveCompanies(_ s: GameState, _ data: GameData) -> [Int] {
-        s.companies.indices.filter { s.companies[$0].status == .open && s.companies[$0].type != "hold" && data.catalog[s.companies[$0].type] != nil }
+        s.companies.indices.filter { s.companies[$0].status == .open && data.catalog[s.companies[$0].type] != nil }
     }
 
     static func lastFired(_ st: JSONValue, _ id: String) -> Int { st["last"][id].isNull ? -999 : st["last"][id].int }
@@ -626,7 +626,7 @@ public enum StrategicDecisions {
         func set(_ k: String, _ v: Int) { var o = st(); o[k] = num(Double(v)); s.rest["e27"] = o }
         let nw = max(1, Valuation.netWorth(s, trades: data.catalog).total)
         let lev = Banking.totalDebt(s) / nw
-        let tycoon = s.companies.contains { $0.type == "hold" && $0.status.isLive } || cos.count >= 5
+        let tycoon = cos.count >= 5
         func attempt(_ cls: String, _ co: Int?) -> Bool {
             let list = definitions.filter { $0.cls == cls }
             return fireOne(&s, from: list, companyIndex: co, data: data, context: fc)

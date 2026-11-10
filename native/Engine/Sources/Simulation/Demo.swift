@@ -20,7 +20,7 @@ public extension GameEngine {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Alex", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Showcase funds") }
         for trade in ["cafe", "gym"] + extraTrades {
-            _ = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: trade == "cafe" ? 4_000_000 : 9_000_000)
+            _ = e.startCompany(tradeID: trade, cityID: e.state.player.cityID)
         }
         if wealthy { let extra = e.luxuryGateThreshold * 1.5; e.update { s, _, _ in Ledger.move(&s, .me, extra, why: "Showcase funds") } }
         e.resetHistory()

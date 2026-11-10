@@ -132,7 +132,10 @@ public extension GameEngine {
     @discardableResult
     mutating func sellProperty(companyID: Int, propertyID: Int) -> Double {
         var net = 0.0
-        update { s, _, _ in net = RentalModel.sell(&s, companyID: companyID, propertyID: propertyID) }
+        update { s, _, _ in
+            if let why = PublicRules.restriction(s, companyID: companyID, change: .sellAssets) { s.note(why, tone: "n", companyID: companyID); return }
+            net = RentalModel.sell(&s, companyID: companyID, propertyID: propertyID)
+        }
         return net
     }
 

@@ -47,7 +47,7 @@ public extension GameEngine {
                                    why: "Managers who take routine decisions leave you the few that only you can make."))
         }
 
-        let mgr = s.companies.filter { $0.status == .open && $0.managerID != nil && $0.type != "hold" }
+        let mgr = s.companies.filter { $0.status == .open && $0.managerID != nil }
         let qs: [Double] = mgr.compactMap { co in data.catalog[co.type].map { ManagerModel.quality(co, $0, people: s.people) } }
         if qs.isEmpty {
             rows.append(PlayingRow(id: "managers", title: "Manager quality", value: "No managers yet", tone: "weak", why: "A good manager decides as you would, so delegating costs little."))
@@ -66,7 +66,7 @@ public extension GameEngine {
         rows.append(PlayingRow(id: "credit", title: "Credit band", value: bandWord[band] ?? band, tone: band <= "B" ? "good" : band == "C" ? "ok" : "weak",
                                why: "Pay on time and borrowing gets cheaper; a late payment is remembered."))
 
-        let open = s.companies.filter { $0.status == .open && $0.type != "hold" }.flatMap { Satisfaction.openComplaints($0) }
+        let open = s.companies.filter { $0.status == .open }.flatMap { Satisfaction.openComplaints($0) }
         if open.isEmpty {
             rows.append(PlayingRow(id: "complaints", title: "Complaint answers", value: "Nothing waiting", tone: "good", why: "A complaint answered fast usually turns into a customer who stays."))
         } else {
@@ -99,7 +99,7 @@ public extension GameEngine {
     internal static func rivalCount(_ s: GameState) -> Int {
         var keys = Set<String>()
         var n = 0
-        for co in s.companies where co.status == .open && co.type != "hold" && keys.insert(Rivals.key(co)).inserted { n += Rivals.rivals(s, for: co).count }
+        for co in s.companies where co.status == .open && keys.insert(Rivals.key(co)).inserted { n += Rivals.rivals(s, for: co).count }
         return n
     }
 

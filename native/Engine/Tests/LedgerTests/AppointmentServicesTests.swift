@@ -15,7 +15,7 @@ final class AppointmentServicesTests: XCTestCase {
     func start(_ trade: String, weeks: Int = 2, seed: Int = 7, setup: Bool = false) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("could not start \(trade)") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("could not start \(trade)") }
         if setup { e.update { s, d, _ in _ = CompanySetup.quickSetup(&s, companyID: id, data: d) } }
         for _ in 0..<weeks { e.w6week() }
         return (e, id)

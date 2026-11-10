@@ -8,7 +8,7 @@ import Simulation
 final class MarketTests: XCTestCase {
     private func cafe(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        let res = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000)
+        let res = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID)
         guard case .success(let id) = res else { throw XCTSkip("could not start: \(res)") }
         return id
     }
@@ -62,7 +62,7 @@ final class MarketTests: XCTestCase {
     func testSubscriptionLeaseAndVehicleOfferWork() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "taxi", cityID: e.state.player.cityID, fundWith: 40_000_000) else { throw XCTSkip("no taxi") }
+        guard case .success(let id) = e.startCompany(tradeID: "taxi", cityID: e.state.player.cityID) else { throw XCTSkip("no taxi") }
         let needs = e.equipmentNeeds(companyID: id)
         let car = try XCTUnwrap(needs.first { $0.isVehicle })
         let makes = e.vehicleOffers(companyID: id, equipmentID: car.equipmentID)

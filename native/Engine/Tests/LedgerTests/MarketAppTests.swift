@@ -106,72 +106,17 @@ final class MarketAppTests: XCTestCase {
         XCTAssertNotNil(e.marketQuote(asset: "fund:idx", owner: .player, amount: 1e15).refusal, "more than the accounts hold")
         XCTAssertFalse(e.marketBuy(asset: "stock:TECH", owner: .player, amount: 10_000).done)
         XCTAssertNotNil(e.marketSellQuote(position: "me:fund:idx", units: 1).refusal, "nothing held")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { return XCTFail("holding") }
-        XCTAssertNotNil(e.marketQuote(asset: "crypto:BTC", owner: .holding(hid), amount: 10_000).refusal, "a treasury holds funds only")
-        XCTAssertNotNil(e.marketQuote(asset: "fund:idx", owner: .holding(hid), amount: 1e15).refusal, "more than the holding has")
-        XCTAssertEqual(e.marketOwners.map { $0.owner }, [.player, .holding(hid)])
-    }
-
-    func testHoldingTreasuryBuyPriceMoveSell() throws {
-        var e = try ChainsTests.engine("UK")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { return XCTFail("holding") }
-        e.update { s, _, _ in _ = Payments.injectCash(&s, companyID: hid, amount: 1_000_000) }
-        let cash0 = try XCTUnwrap(e.state.company(hid)).cash
-        let nw0 = e.netWorth.total
-        let r = e.marketBuy(asset: "fund:bond", owner: .holding(hid), amount: 400_000)
-        XCTAssertTrue(r.done, r.refusal ?? "")
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hid)).cash, cash0 - 400_000, accuracy: 1e-6)
-        XCTAssertEqual(e.netWorth.total, nw0, accuracy: 1, "cash became fund units at once, so the holding is worth the same")
-        var p = try position(e, "h\(hid):fund:bond")
-        XCTAssertEqual(p.owner, .holding(hid))
-        XCTAssertEqual(p.costBasis, 400_000, accuracy: 1e-6)
-        XCTAssertEqual(p.pnl, 0, accuracy: 1e-6)
-        XCTAssertEqual(e.portfolio.totals(of: .holding(hid)).value, 400_000, accuracy: 1e-6)
-
-        e.update { s, _, _ in let px = Brokerage.price(s, .fund, "bond"); s.rest["fundPx"]?["bond"] = .number(px * 1.05) }
-        p = try position(e, "h\(hid):fund:bond")
-        XCTAssertEqual(p.pnl, 20_000, accuracy: 1e-6)
-        let sq = e.marketSellQuote(position: p.id, units: p.units)
-        XCTAssertEqual(sq.cashChange, 420_000 * (1 - HoldingModel.divestCost), accuracy: 1e-6)
-        XCTAssertEqual(sq.realizedGain, 420_000 * (1 - HoldingModel.divestCost) - 400_000, accuracy: 1e-6)
-        let s = e.marketSell(position: p.id, units: p.units)
-        XCTAssertTrue(s.done, s.refusal ?? "")
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hid)).cash, cash0 - 400_000 + sq.cashChange, accuracy: 1e-6)
-        XCTAssertNil(e.portfolio.positions.first { $0.id == p.id })
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-
-        XCTAssertTrue(e.marketBuy(asset: "fund:idx", owner: .holding(hid), amount: 100_000).done)
-        let fm = try XCTUnwrap(e.state.company(hid)).value("fm")
-        XCTAssertEqual(fm["idxCost"].double, 100_000, accuracy: 1e-6)
-        XCTAssertEqual(try XCTUnwrap(e.holdingOverview(companyID: hid)).indexCost, 100_000, accuracy: 1e-6)
-        ChainsTests.play(&e, days: 14)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
+        XCTAssertEqual(e.marketOwners.map { $0.owner }, [.player])
     }
 
     func testOldSavesGetTheirCurrentValueAsCostBasis() throws {
         var e = try ChainsTests.engine("UK")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { return XCTFail("holding") }
         XCTAssertTrue(e.marketBuy(asset: "fund:mm", owner: .player, amount: 30_000).done)
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(hid) else { return }
-            var fm = s.companies[i].value("fm")
-            fm["idxU"] = 250
-            fm["idxCost"] = .null
-            s.companies[i].set("fm", fm)
-            s.rest["inv"]?["funds"]["mm"]["cost"] = .null
-            s.rest["fundPx"]?["idx"] = 120
-        }
+        e.update { s, _, _ in s.rest["inv"]?["funds"]["mm"]["cost"] = .null }
         let saved = try JSONDecoder().decode(GameState.self, from: JSONEncoder().encode(e.state))
         let loaded = GameEngine(state: saved, data: e.data, events: e.events, marketing: e.marketing)
-        let fm = try XCTUnwrap(loaded.state.company(hid)).value("fm")
-        XCTAssertEqual(fm["idxCost"].double, 250 * 120, accuracy: 1e-6)
-        let h = try position(loaded, "h\(hid):fund:idx")
-        XCTAssertEqual(h.costBasis, h.value, accuracy: 0.01)
-        XCTAssertEqual(h.pnl, 0, accuracy: 0.01)
         let me = try position(loaded, "me:fund:mm")
         XCTAssertEqual(me.pnl, 0, accuracy: 0.01)
-        let again = GameEngine(state: loaded.state, data: e.data, events: e.events, marketing: e.marketing)
-        XCTAssertEqual(again.state.company(hid)?.value("fm")["idxCost"].double, fm["idxCost"].double)
     }
 
     func testCompanyAgainstItsMarket() throws {

@@ -16,7 +16,6 @@ public struct MarketAsset: Identifiable, Equatable, Sendable {
     public var monthChange: Double?
     public var history: [Double]
     public var risk: MarketRisk
-    public var holdingsMayBuy: Bool
     public var closed: Bool
     public var costNote: String
 }
@@ -62,13 +61,13 @@ public extension GameEngine {
             let m = n >= 5 && h[n - 5] > 0 ? h[n - 1] / h[n - 5] - 1 : nil
             return (w, m)
         }
-        let fundNote = "Broker fee 0.1%, at least \(cur.display(Brokerage.brokerFee(0, currency: cur))). A holding pays no fee to buy and 0.66% to sell."
+        let fundNote = "Broker fee 0.1%, at least \(cur.display(Brokerage.brokerFee(0, currency: cur)))."
         for sym in Markets.fundSymbols {
             let h = Markets.fundHistory(state, sym)
             let c = changes(h)
             out.append(MarketAsset(id: "fund:\(sym)", kind: MarketBook.fundKind(sym), symbol: sym, name: MarketBook.fundNames[sym] ?? sym,
                                    price: Brokerage.price(state, .fund, sym), weekChange: c.0, monthChange: c.1, history: h, risk: MarketBook.fundRisk(sym),
-                                   holdingsMayBuy: true, closed: false, costNote: fundNote))
+                                   closed: false, costNote: fundNote))
         }
         let book = state.rest["crypto"]?.object ?? [:]
         for sym in Markets.cryptoSymbols {
@@ -76,12 +75,12 @@ public extension GameEngine {
             let h = q["h"].array.map { $0.double }
             let c = changes(h)
             out.append(MarketAsset(id: "crypto:\(sym)", kind: .crypto, symbol: sym, name: q["n"].string, price: q["p"].double, weekChange: c.0, monthChange: c.1,
-                                   history: h, risk: MarketBook.cryptoRisk(q), holdingsMayBuy: false, closed: q["dead"].bool,
+                                   history: h, risk: MarketBook.cryptoRisk(q), closed: q["dead"].bool,
                                    costNote: "Fee 0.4% and a 0.8% spread each way."))
         }
         if let a = FinanceManager.account(state) {
             out.append(MarketAsset(id: "managed:fm", kind: .managedFund, symbol: a.mandate.title, name: "Managed by \(a.name)", price: 1, weekChange: nil, monthChange: nil,
-                                   history: [], risk: a.mandate == .cautious ? .low : a.mandate == .balanced ? .medium : .high, holdingsMayBuy: false, closed: false,
+                                   history: [], risk: a.mandate == .cautious ? .low : a.mandate == .balanced ? .medium : .high, closed: false,
                                    costNote: "A yearly fee of \(Currency.percent(a.fee, decimals: 1)) of the money managed."))
         }
         return out
@@ -120,25 +119,6 @@ public extension GameEngine {
                 q.refusal = "That is not something you can buy."
             }
             q.cashAfter = q.available + q.cashChange
-        case .holding(let hid):
-            guard let h = state.company(hid), h.type == "hold" else {
-                q.refusal = "That holding no longer exists."
-                return q
-            }
-            let cur = currency(for: h)
-            q.available = h.cash
-            q.minimum = Brokerage.minimumPurchase(cur)
-            q.feeLabel = "No fee"
-            if kindKey == "fund", HoldingModel.treasuryFunds.contains(sym) {
-                q.price = HoldingModel.fundPrice(state, sym); q.tradePrice = q.price
-                q.units = q.price > 0 ? amt / q.price : 0
-                if h.status != .open { q.refusal = "\(h.name) is not open." }
-                else if amt < q.minimum { q.refusal = "The smallest order is \(cur.display(q.minimum))." }
-                else if h.cash < amt { q.refusal = "\(h.name) has \(cur.display(max(0, h.cash))) in cash." }
-            } else {
-                q.refusal = "A holding's treasury holds funds only: the index, bond and money-market funds."
-            }
-            q.cashAfter = h.cash + q.cashChange
         }
         return q
     }
@@ -196,12 +176,6 @@ public extension GameEngine {
             default:
                 q.refusal = p.sellNote ?? "This cannot be sold."
             }
-        case .holding(let hid):
-            q.available = state.company(hid)?.cash ?? 0
-            q.feeLabel = "Sale cost"
-            q.fee = q.amount * HoldingModel.divestCost
-            q.cashChange = q.amount - q.fee
-            if state.company(hid)?.status != .open { q.refusal = "The holding is not open." }
         }
         if !p.canSell, q.refusal == nil { q.refusal = p.sellNote ?? "This cannot be sold." }
         if q.units <= 1e-12, q.refusal == nil { q.refusal = "Choose how much to sell." }
@@ -226,11 +200,6 @@ public extension GameEngine {
                 let kind: Brokerage.Kind = key == "fund" ? .fund : .crypto
                 update { s, _, ctx in ok = Brokerage.buy(&s, kind, sym, amount: q.amount, currency: ctx.homeCurrency(s)) == .ok }
             }
-        case .holding(let hid):
-            update { s, d, _ in
-                ok = HoldingModel.invest(&s, holdingID: hid, amount: q.amount, fund: sym)
-                if ok { HoldingModel.refreshAssets(&s, holdingID: hid, data: d) }
-            }
         }
         if !ok { return MarketTradeResult(done: false, refusal: "The purchase did not go through.", units: 0, cashChange: 0, fee: 0, realizedGain: 0) }
         return MarketTradeResult(done: true, refusal: nil, units: q.units, cashChange: ownerCash(owner) - before, fee: q.fee, realizedGain: 0)
@@ -253,7 +222,6 @@ public extension GameEngine {
     private func ownerCash(_ o: PortfolioOwner) -> Double {
         switch o {
         case .player: return state.cash
-        case .holding(let h): return state.company(h)?.cash ?? 0
         }
     }
 
@@ -275,12 +243,6 @@ public extension GameEngine {
             case "startup": update { s, _, _ in Startups.sellStake(&s, stakeID: Int(sym) ?? 0, fraction: whole ? 1 : f) }
             case "pe": update { s, _, _ in _ = PrivateEquity.sellStake(&s, fundID: Int(sym) ?? 0) }
             default: return Self.refused(p.sellNote ?? "This cannot be sold.")
-            }
-        case .holding(let hid):
-            update { s, d, _ in
-                let pos = s.company(hid).map { HoldingModel.fundPosition($0, sym) } ?? (units: 0, cost: 0)
-                HoldingModel.divestAmount(&s, holdingID: hid, amount: whole ? pos.units * HoldingModel.fundPrice(s, sym) : q.amount, fund: sym)
-                HoldingModel.refreshAssets(&s, holdingID: hid, data: d)
             }
         }
         let change = ownerCash(p.owner) - before

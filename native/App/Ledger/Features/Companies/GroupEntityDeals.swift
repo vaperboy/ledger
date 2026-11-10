@@ -55,8 +55,7 @@ struct GroupEntityOwnership: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             ForEach(sellable) { (c: Company) in
                 if sellable.count > 1 { Text(c.name.uppercased()).capsLabel() }
-                CompanySaleSection(engine: engine, company: c, onGoRaise: { part = .raise })
-                if c.type != "hold" { CompanyOwnershipSection(engine: engine, company: c, mode: .shares) }
+                CompanySaleSection(engine: engine, company: c)
             }
             branchNote(cos)
         }
@@ -89,7 +88,7 @@ struct GroupEntityOwnership: View {
     }
 
     static let ownerActions: Set<String> = ["g27bid", "own27"]
-    static let ownerDecisions: Set<String> = ["s_acqoffer", "e_merger", "t_pe", "t_hostile", "t_ipo", "t_auction", "t_activist"]
+    static let ownerDecisions: Set<String> = ["s_acqoffer", "e_merger", "t_pe", "t_auction", "t_activist"]
     static func isOwnerOffer(_ m: Message) -> Bool {
         ownerActions.contains(m.actionID) || (m.actionID == StrategicDecisions.action && ownerDecisions.contains(m.value("data")["id"].string))
     }

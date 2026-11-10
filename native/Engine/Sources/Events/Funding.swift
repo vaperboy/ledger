@@ -40,8 +40,6 @@ public enum Funding {
         f["boardSeat"] = .number(f["boardSeat"].double + Double(n))
         s.companies[i].set("flags", f)
     }
-    public static func outsidePercent(_ co: Company) -> Double { 100 - co.ownership - HoldingStakes.heldByHoldings(co) }
-
     public static func capitalNeed(_ co: Company, data: GameData) -> Int {
         ["energy": 5, "fin": 4, "club": 4, "rent": 3, "prod": 3, "logi": 3, "project": 2, "venue": 2, "retail": 2, "svc": 1][data.catalog[co.type]?.family ?? ""] ?? 2
     }
@@ -82,7 +80,7 @@ public enum Funding {
     }
     public static func canRaise(_ s: GameState, companyID: Int) -> Bool {
         guard let co = s.company(companyID) else { return false }
-        return co.status.isLive && co.type != "hold" && !s.isBranch(co)
+        return co.status.isLive && co.type == StartupModel.tradeID
     }
     public static func suggestedAmount(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> Double {
         guard let co = s.company(companyID) else { return 0 }
@@ -173,104 +171,5 @@ public enum Funding {
         guard list.indices.contains(index) else { return }
         list.remove(at: index)
         writeOffers(&s, companyID, list)
-    }
-
-    public struct ShareOffer: Equatable { public var pct: Int; public var primary: Double; public var secondary: Double }
-    public static let sharePercents = [5, 10, 20, 30, 49]
-    public static func shareOffers(_ s: GameState, companyID: Int, data: GameData) -> [ShareOffer] {
-        let v = max(0, CompanySale.estimatedValue(s, companyID: companyID, data: data))
-        let own = s.company(companyID)?.ownership ?? 100
-        return sharePercents.map { p in ShareOffer(pct: p, primary: jsRound(v * Double(p) / Double(100 - p) * 0.9), secondary: jsRound(v * Double(p) / 100 * 0.85 * own / 100)) }
-    }
-    public enum ShareResult: Equatable { case ok(Double), notLimited, tooMuch, blocked }
-
-    @discardableResult
-    public static func sellShares(_ s: inout GameState, companyID: Int, pct: Double, mode: String, data: GameData, context fc: FinanceContext) -> ShareResult {
-        guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return .notLimited }
-        let co = s.companies[i]
-        if s.isBranch(co) { return .blocked }
-        let t = CapTable.table(co)
-        let newPct = mode == "primary" ? t.youPct * (100 - pct) / 100 : t.youPct * (1 - pct / 100)
-        if newPct < 1 { return .tooMuch }
-        if mode == "primary" && Shareholders.isBlocked(s, companyID: companyID) { return .blocked }
-        let v = max(1, Valuation.companyValue(co, state: s, trades: data.catalog))
-        let inv = personName(&s, countryCode: co.countryCode, data: data)
-        let cur = fc.currency(co.countryCode, s)
-        if mode == "primary" {
-            let amt = jsRound(v * pct / (100 - pct) * 0.9)
-            let shares = CapTable.sharesForPercent(pct, total: t.total)
-            Payments.companyReceives(&s, companyID: companyID, amount: amt, category: nil, label: "New shares sold to \(inv)")
-            CapTable.issue(&s, i, newShares: shares, to: inv, paid: amt)
-            s.note("Sold \(Int(pct))% of \(co.name) to \(inv) for \(cur.display(amt)) (\(shares) new shares).", tone: "good", companyID: companyID)
-            return .ok(amt)
-        }
-        let shares = Int(saturating: (Double(t.you) * pct / 100).rounded())
-        let amt = jsRound(v * Double(shares) / Double(t.total) * 0.85)
-        let moved = CapTable.sellFromYou(&s, i, shares: shares, to: inv, paid: amt)
-        Payments.ownerReceivesSale(&s, from: co, amount: amt, gain: amt * 0.7, label: "Sold \(Int(pct))% of your stake in \(co.name)")
-        if Double(moved) / Double(t.total) * 100 >= 20 { addBoardSeats(&s, i, 1) }
-        s.note("Sold \(moved) shares of \(co.name) to \(inv) for \(cur.display(amt)).", tone: "good", companyID: companyID)
-        return .ok(amt)
-    }
-
-    public static let listingMinimumValue = 30_000_000.0
-    public static let listingFee = 1_500_000.0
-    public static func holdingValue(_ s: GameState, holdingID: Int, data: GameData) -> Double {
-        guard let h = s.company(holdingID) else { return 0 }
-        let kids = HoldingStakes.stakeCompanies(of: holdingID, in: s).reduce(0) { $0 + max(0, Valuation.companyValue($1, state: s, trades: data.catalog)) * HoldingStakes.sharePercent(of: $1, holdingID: holdingID) / 100 }
-        return kids + HoldingStakes.rivalStakesValue(h) + HoldingStartups.value(s, holdingID: holdingID) + h.cash + HoldingModel.treasuryValue(h, s)
-    }
-    public static func isListed(_ co: Company) -> Bool { co.type == "hold" && co.flag("listed") }
-    public static func listingMinimum(_ s: GameState, _ fc: FinanceContext) -> Double { fc.homeCurrency(s).scaledPrice(listingMinimumValue) }
-
-    public enum ListResult: Equatable { case ok, alreadyListed, tooSmall(needed: Double), notEnoughMoney(Double), notAHolding }
-
-    @discardableResult
-    public static func listHolding(_ s: inout GameState, holdingID: Int, data: GameData, context fc: FinanceContext) -> ListResult {
-        guard let i = s.companyIndex(holdingID), s.companies[i].type == "hold", s.companies[i].status.isLive else { return .notAHolding }
-        if s.companies[i].flag("listed") { return .alreadyListed }
-        let need = listingMinimum(s, fc), fee = fc.homeCurrency(s).scaledPrice(listingFee)
-        if holdingValue(s, holdingID: holdingID, data: data) < need { return .tooSmall(needed: need) }
-        if Payments.liquid(s) < fee { return .notEnoughMoney(fee) }
-        Payments.playerPays(&s, fee, label: "Stock exchange listing")
-        s.companies[i].set("listed", 1)
-        s.note("\(s.companies[i].name) is listed on the stock exchange.", tone: "good", companyID: holdingID)
-        return .ok
-    }
-
-    public struct RaisePlan: Equatable {
-        public var value: Double
-        public var needed: Double, given: Double, amount: Double, fee: Double
-        public var manager: String? = nil, managerSkill: Double? = nil
-    }
-    public static func raisePlan(_ s: GameState, holdingID: Int, goal: Double, mode: String, data: GameData, context fc: FinanceContext) -> RaisePlan {
-        let v0 = max(fc.homeCurrency(s).scaledPrice(100000), holdingValue(s, holdingID: holdingID, data: data))
-        let mg = FinanceManager.negotiator(s, holdingID: holdingID)
-        let f = mode == "public" ? 0.97 : mg.map { 0.78 + 0.3 * $0.skill } ?? 0.9
-        let over = mode == "public" ? 0 : mg.map { (1 - $0.skill) * 0.7 } ?? 0.1
-        let q = 100 * goal / (v0 * f + goal)
-        let qa = min(49, q * (1 + over))
-        let amt = jsRound(qa * v0 * f / (100 - qa))
-        return RaisePlan(value: v0, needed: q, given: qa, amount: amt, fee: mode == "public" ? jsRound(amt * 0.03) : 0,
-                         manager: mg?.name, managerSkill: mg?.skill)
-    }
-
-    @discardableResult
-    public static func raiseForHolding(_ s: inout GameState, holdingID: Int, goal: Double, mode: String, data: GameData, context fc: FinanceContext) -> Double? {
-        guard goal > 0, let i = s.companyIndex(holdingID), s.companies[i].type == "hold", s.companies[i].status.isLive else { return nil }
-        let m = (mode == "public" && s.companies[i].flag("listed")) ? "public" : "private"
-        let r = raisePlan(s, holdingID: holdingID, goal: goal, mode: m, data: data, context: fc)
-        let buyer = m == "public" ? "Shareholders on the exchange" : fundName(&s, countryCode: s.companies[i].countryCode, data: data)
-        Payments.companyReceives(&s, companyID: holdingID, amount: r.amount - r.fee, category: nil, label: "New shares sold to \(buyer)")
-        let issued = CapTable.sharesForPercent(r.given, total: CapTable.table(s.companies[i]).total)
-        CapTable.issue(&s, i, newShares: issued, to: buyer, paid: r.amount)
-        bump(&s, "raised", r.amount)
-        s.note("\(s.companies[i].name) raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer).", tone: "good", companyID: holdingID)
-        if let who = r.manager, m == "private" {
-            s.addMessage(kind: "info", from: who, title: "Money raised for \(s.companies[i].name)",
-                         body: "I raised \(fc.currency(s.companies[i].countryCode, s).display(r.amount)) from \(buyer) for \(String(format: "%g", (r.given * 10).rounded() / 10))% of the holding." + (r.given > r.needed * 1.15 ? " I had to give a bit more than I hoped." : ""),
-                         companyID: holdingID, tone: "good")
-        }
-        return r.amount
     }
 }

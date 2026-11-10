@@ -55,7 +55,7 @@ final class NewPlayerStartTests: XCTestCase {
         let id = try XCTUnwrap(e.state.companies.first?.id)
         e.update { s, data, ctx in
             guard let i = s.companyIndex(id) else { return }
-            s.companies[i].cash = 10
+            Ledger.set(&s, to: 10)
             s.companies[i].payables["other"] = 5000
             s.companies[i].payables["rent"] = 0
             var cfg = Payday.config(s.companies[i], today: Payday.dayNumber(week: s.week, day: s.day))
@@ -65,7 +65,7 @@ final class NewPlayerStartTests: XCTestCase {
             XCTAssertEqual(s.companies[i].payables["other"] ?? 0, 5000, accuracy: 0.5, "nothing paid, nothing lost")
             XCTAssertEqual(s.companies[i].cash, 10, accuracy: 0.5, "no overdraft")
             XCTAssertNotNil(s.rest["tight"])
-            s.companies[i].cash = 9000
+            Ledger.set(&s, to: 9000)
             Payday.onDay(&s, data: data, context: ctx)
             XCTAssertNil(s.rest["tight"], "paid the next day, banner gone")
             XCTAssertEqual(s.companies[i].payables["other"] ?? 0, 0, accuracy: 1)

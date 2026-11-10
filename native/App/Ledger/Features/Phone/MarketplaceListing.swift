@@ -252,7 +252,7 @@ struct MarketplaceDealView: View {
 
     private func askToBuy(_ priceText: String) {
         let at: Double = price
-        pending = PendingAction(title: "Buy " + listing.title + "?", message: "If you do this, " + priceText + " leaves the company account and goes to " + listing.sellerName + ". The item is yours.", button: "Buy", amount: at, currency: cur, tone: .info, icon: "tag") {
+        pending = PendingAction(title: "Buy " + listing.title + "?", message: "If you do this, " + priceText + " leaves your account and goes to " + listing.sellerName + ". The item is yours.", button: "Buy", amount: at, currency: cur, tone: .info, icon: "tag") {
             buy(at, priceText)
         }
     }

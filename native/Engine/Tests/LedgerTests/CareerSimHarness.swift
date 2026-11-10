@@ -13,12 +13,11 @@ final class CareerSimHarness: XCTestCase {
         var career = "", country = "", seed = 0
         var samples: [(day: Int, nwUnits: Double)] = []
         var idx = 1.0, rate = 1.0
-        var cashY1 = 0.0, coCashY1 = 0.0, personalY1 = 0.0
+        var cashY1 = 0.0
         var bankrupt = false, bustCount = 0, gameOver = false
         var firstProfitMonth: Int? = nil, firstYearProfitable: Bool = false
         var steppingStone = false, openedTargetDay: Int? = nil
         var companies: [(trade: String, invested: Double, months: [MonthRecord], status: String)] = []
-        var distressDays = 0
         var finalNW = 0.0
         var note = ""
     }
@@ -69,11 +68,7 @@ final class CareerSimHarness: XCTestCase {
                     return 0
                 }
             }
-            let put = min(need, liquid() - reserve * 0.5)
-            e.update { s, data, _ in
-                Payments.injectCash(&s, companyID: id, amount: max(0, put))
-                _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
-            }
+            e.update { s, data, _ in _ = CompanySetup.quickSetup(&s, companyID: id, data: data) }
             invested[id, default: 0] += need
             let lvl = Int(ProcessInfo.processInfo.environment["LEDGER_MKTLEVEL"] ?? "1") ?? 1
             if lvl >= 0 {
@@ -130,34 +125,18 @@ final class CareerSimHarness: XCTestCase {
                 if ProcessInfo.processInfo.environment["LEDGER_DEBUG"] != nil {
                     let nw = e.netWorth
                     var line = "DBG \(career) d\(day) cash=\(Dk(e.state.cash))k idx=\(Dk(idxValue))k funds=\(Dk(nw.funds))k stocks=\(Dk(nw.stocks))k debt=\(Dk(nw.debt))k tax=\(Dk(nw.pendingTax))k nw=\(Dk(nw.total))k |"
-                    for c in e.state.companies where c.type != "hold" { line += " \(c.type):\(c.status.rawValue) cash=\(Dk(c.cash))k mo=\(c.monthlyHistory.last.map { "\(Dk($0.revenue))/\(Dk($0.profit))" } ?? "-") props=\(c.properties.count)" }
+                    for c in e.state.companies { line += " \(c.type):\(c.status.rawValue) cash=\(Dk(c.cash))k mo=\(c.monthlyHistory.last.map { "\(Dk($0.revenue))/\(Dk($0.profit))" } ?? "-") props=\(c.properties.count)" }
                     print(line)
                 }
             }
             if day == 363 {
                 r.cashY1 = liquid()
-                r.personalY1 = e.state.cash
-                r.coCashY1 = e.state.companies.filter { $0.status.isLive }.reduce(0) { $0 + $1.cash }
             }
             guard day % 7 == 6 else { continue }
             cover()
-            for co in e.state.companies where co.status.isLive && co.holdingID == 0 {
-                if co.cash < -cur.scaledPrice(10_000) {
-                    r.distressDays += 7
-                    let top = -co.cash + cur.scaledPrice(20_000)
-                    raise(top + reserve)
-                    if liquid() - reserve > top { _ = e.putMoneyInto(companyID: co.id, amount: top); invested[co.id, default: 0] += top }
-                }
-            }
             guard day - lastMonthlyAction >= 28 else { continue }
             lastMonthlyAction = day
             let businessCareer = !["investor", "trader"].contains(career)
-            for co in e.state.companies where co.status == .open && co.type != "hold" && (career != "landlord" || co.type == "tutor") {
-                let md = e.maximumDividend(companyID: co.id)
-                let buffer = co.type == "tutor" ? cur.scaledPrice(30_000) : (invested[co.id] ?? 0) * 0.5
-                let free = co.cash - buffer
-                if md > 0 && free > 0 { _ = e.payDividend(companyID: co.id, amount: min(md, free)) }
-            }
             if businessCareer && !target.isEmpty && career != "landlord" {
                 let live = e.state.companies.filter { $0.status == .open && $0.type == target }.count
                 let need = est(target) * 1.25
@@ -180,9 +159,8 @@ final class CareerSimHarness: XCTestCase {
                     let ls = e.propertyListings(companyID: id).sorted { $0.grossYield > $1.grossYield }
                     for l in ls.prefix(3) {
                         let down = l.price * 0.4 * 1.03 + reserve * 3
-                        let c0 = e.state.company(id)!.cash
-                        if c0 < down { raise(down - c0 + reserve) ; let put = min(down - c0, liquid() - reserve); if put > 0 { _ = e.putMoneyInto(companyID: id, amount: put); invested[id, default: 0] += put } }
-                        if e.state.company(id)!.cash >= down { _ = e.buyProperty(companyID: id, listingIndex: l.index, loanToValue: 0.6); break }
+                        raise(down + reserve)
+                        if liquid() >= down { _ = e.buyProperty(companyID: id, listingIndex: l.index, loanToValue: 0.6); break }
                     }
                 }
             }
@@ -200,12 +178,12 @@ final class CareerSimHarness: XCTestCase {
             }
         }
         r.finalNW = e.netWorth.total
-        for co in e.state.companies where co.type != "hold" {
+        for co in e.state.companies {
             r.companies.append((co.type, invested[co.id] ?? 0, co.monthlyHistory, co.status.rawValue))
             if co.status == .bust { r.bustCount += 1 }
         }
         if r.bustCount > 0 { r.bankrupt = true }
-        if let first = e.state.companies.first(where: { $0.type != "hold" }) {
+        if let first = e.state.companies.first {
             let h = first.monthlyHistory
             r.firstProfitMonth = h.firstIndex { $0.profit > 0 }.map { $0 + 1 }
             r.firstYearProfitable = h.prefix(12).reduce(0) { $0 + $1.profit } > 0
@@ -222,7 +200,6 @@ final class CareerSimHarness: XCTestCase {
             id = i
             let est = CompanySetup.estimate(tradeID: trade, cityID: s.player.cityID, size: 1, state: s, data: data)
             invested = (est?.total ?? 1_000_000) * 1.3
-            Payments.injectCash(&s, companyID: id, amount: invested)
             _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         }
         guard id != 0 else { return nil }
@@ -233,11 +210,6 @@ final class CareerSimHarness: XCTestCase {
         for _ in 0..<(years * 364) {
             e.nextDay()
             for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) }
-            if let co = e.state.company(id), co.status.isLive, co.cash < -50_000 {
-                let top = -co.cash + 100_000
-                e.update { s, _, _ in Payments.injectCash(&s, companyID: id, amount: top) }
-                invested += top
-            }
             if e.state.isGameOver { break }
         }
         guard let co = e.state.company(id) else { return nil }
@@ -357,9 +329,9 @@ final class CareerSimHarness: XCTestCase {
             for t in [1e6, 1e7, 1e8] { f.append(ttm(r, t, ref: false)) }
             for t in [1e6, 1e7, 1e8] { f.append(ttm(r, t, ref: true)) }
             for y in [1, 3, 5, 10] { f.append(String(format: "%.0f", nwAt(y) / r.rate)) }
-            f.append(String(format: "%.0f", r.cashY1 / r.rate)); f.append(String(format: "%.0f", r.coCashY1 / r.rate))
+            f.append(String(format: "%.0f", r.cashY1 / r.rate))
             f.append(r.firstProfitMonth.map { String($0) } ?? "-"); f.append(r.firstYearProfitable ? "1" : "0")
-            f.append(String(r.distressDays)); f.append(String(r.bustCount)); f.append(r.note)
+            f.append(String(r.bustCount)); f.append(r.note)
             print(f.joined(separator: "\t"))
             for c in r.companies {
                 var g = ["COMP", r.career, r.country, "\(r.seed)", c.trade, c.status, String(format: "%.0f", c.invested / r.rate), "\(c.months.count)"]

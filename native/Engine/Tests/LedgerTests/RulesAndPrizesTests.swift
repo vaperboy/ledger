@@ -101,8 +101,6 @@ final class RulesAndPrizesTests: XCTestCase {
         encoder.outputFormatting = .sortedKeys
         let saved = try? encoder.encode(e.state)
         _ = e.previewOrder(instrument: "none", side: .buy, shares: 1, limit: 1)
-        _ = e.previewListing(holdingID: 999)
-        _ = e.previewDividend(holdingID: 999, amount: 10)
         XCTAssertEqual(saved, try? encoder.encode(e.state))
     }
 

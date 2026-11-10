@@ -12,7 +12,6 @@ public struct LoanOffer: Equatable, Sendable {
     public var maximum: Double
     public var margin: Double
     public var creditBand: String
-    public var ownBankID: Int
 }
 
 public enum LoanResult: Equatable, Sendable {
@@ -85,11 +84,10 @@ public enum Banking {
         let payP = personal.reduce(0) { $0 + $1.monthlyPayment } * 12
         let payC = co.map { c in s.loans.filter { $0.companyID == c.id }.reduce(0) { $0 + $1.monthlyPayment } * 12 } ?? 0
         let openLimited = s.companies.filter { $0.status == .open }
-        let ownerSalaries = openLimited.reduce(0) { $0 + $1.ownerMonthlySalary * 12 }
         let profitShare = 0.4 * s.companies.filter { $0.status == .open }.reduce(0) {
             $0 + max(0, CompanyFigures.yearlyProfitEstimate($1, currentWeek: s.week)) * $1.ownership / 100
         }
-        let income = max(ownerSalaries + profitShare, assumedIncomeMonths * context.homeCountry(s).medianMonthlyWage)
+        let income = max(profitShare, assumedIncomeMonths * context.homeCountry(s).medianMonthlyWage)
         let rate = s.economy.policyRate + countryRateShift(companyID: co?.id ?? 0, state: s, context: context) + margin
         func room(_ inc: Double, _ pay: Double) -> Double {
             let free = max(0, inc * 0.4 - pay)
@@ -111,16 +109,8 @@ public enum Banking {
         }
         if kind == "biz", let c = co, c.flag("loanFrozen") { maxLoan = 0 }
         if (owedP + owedC) > max(1, netWorth) * 0.6 { margin += 0.012 }
-        var ownBank = 0
-        if let bank = s.companies.first(where: { b in
-            guard b.type == "bank" && b.status == .open else { return false }
-            let fm = b.value("fm"), equity = b.cash + fm["book"].double + fm["gb"].double - fm["dep"].double
-            return fm["gb"].double < max(0, equity) * 0.25
-        }) {
-            ownBank = bank.id
-        }
         margin += context.lending.marginAdjustment(kind, co, s)
-        return LoanOffer(maximum: (maxLoan / 1000).rounded(.down) * 1000, margin: margin, creditBand: band, ownBankID: ownBank)
+        return LoanOffer(maximum: (maxLoan / 1000).rounded(.down) * 1000, margin: margin, creditBand: band)
     }
 
     public static func take(kind: String, amount: Double, termMonths: Int, company co: Company?, guaranteed: Bool = false,
@@ -140,17 +130,6 @@ public enum Banking {
         loan.companyID = co?.id ?? 0
         loan.startWeek = s.week
         loan.isGuaranteed = guaranteed
-        loan.bankCompanyID = off.ownBankID
-        if loan.bankCompanyID != 0 {
-            if let bi = s.companyIndex(loan.bankCompanyID), s.companies[bi].status == .open, s.companies[bi].cash > amount * 1.2 {
-                Ledger.moveRaw(&s, .company(loan.bankCompanyID), -amount)
-                var fm = s.companies[bi].value("fm")
-                fm["gb"] = .number(fm["gb"].double + amount)
-                s.companies[bi].set("fm", fm)
-            } else {
-                loan.bankCompanyID = 0
-            }
-        }
         loan.monthlyPayment = Loans.annuity(principal: amount, yearlyRate: s.economy.policyRate + countryRateShift(companyID: loan.companyID, state: s, context: context) + off.margin, months: Double(termMonths))
         s.loans.append(loan)
         if let c = co {
@@ -218,9 +197,7 @@ public enum Banking {
         if instalmentSettled(l, state: s) { return .alreadySettled }
         let inst = instalment(of: l, state: s, context: context)
         let amount = jsRound(inst.total)
-        if l.companyID != 0, let ci = s.companyIndex(l.companyID) {
-            if s.companies[ci].cash < amount { return .notEnoughMoney }
-        } else if Payments.liquid(s) < amount { return .notEnoughMoney }
+        if Payments.liquid(s) < amount { return .notEnoughMoney }
         settle(&s, loan: l, inst: inst, context: context)
         guard let lj = s.loans.firstIndex(where: { $0.id == loanID }) else { return .paid(amount) }
         s.loans[lj].set("ptm", .number(Double(GameCalendar.monthIndex(week: s.week))))
@@ -237,13 +214,6 @@ public enum Banking {
         s.loans[lj].balance -= inst.principal
         s.loans[lj].monthlyPayment = inst.payment
         if s.loans[lj].int("miss") > 0 { cureInstalment(&s, loanID: l.id) }
-        if l.bankCompanyID != 0, let bi = s.companyIndex(l.bankCompanyID), s.companies[bi].status == .open {
-            Payments.companyReceives(&s, companyID: l.bankCompanyID, amount: inst.interest, category: "rev", label: "Interest from group")
-            Ledger.moveRaw(&s, .company(l.bankCompanyID), inst.principal)
-            var fm = s.companies[bi].value("fm")
-            fm["gb"] = .number(max(0, fm["gb"].double - inst.principal))
-            s.companies[bi].set("fm", fm)
-        }
         if let lk = s.loans.firstIndex(where: { $0.id == l.id }), s.loans[lk].balance < 1 { s.loans.remove(at: lk) }
     }
 
@@ -254,20 +224,13 @@ public enum Banking {
         let closing = amt >= loan.balance - 0.5
         let accrued = (closing && context != nil) ? accruedInterest(of: loan, state: s, context: context!) : 0
         if loan.companyID != 0, let ci = s.companyIndex(loan.companyID) {
-            if s.companies[ci].cash < amt + accrued { return false }
+            if s.cash < amt + accrued { return false }
             Payments.companyPays(&s, companyID: loan.companyID, amount: amt, category: nil, label: "Loan repaid")
             if accrued > 0 { Payments.companyPays(&s, companyID: loan.companyID, amount: accrued, category: "int", label: "Loan interest to payoff date") }
         } else {
             if s.cash < amt + accrued { return false }
             Payments.playerPays(&s, amt, label: "Loan repaid")
             if accrued > 0 { Payments.playerPays(&s, accrued, label: "Loan interest to payoff date"); s.stats.interestPaid += accrued }
-        }
-        if loan.bankCompanyID != 0, let bi = s.companyIndex(loan.bankCompanyID), s.companies[bi].status == .open {
-            Ledger.moveRaw(&s, .company(loan.bankCompanyID), amt)
-            if accrued > 0 { Payments.companyReceives(&s, companyID: loan.bankCompanyID, amount: accrued, category: "rev", label: "Interest from group") }
-            var fm = s.companies[bi].value("fm")
-            fm["gb"] = .number(max(0, fm["gb"].double - amt))
-            s.companies[bi].set("fm", fm)
         }
         s.loans[li].balance -= amt
         if s.loans[li].balance < 1 {
@@ -283,19 +246,6 @@ public enum Banking {
         guard let li = s.loans.firstIndex(where: { $0.id == loanID }) else { return }
         let loan = s.loans[li]
         let repaidAmt = max(0, min(loan.balance, repaid))
-        if loan.bankCompanyID != 0, let bi = s.companyIndex(loan.bankCompanyID), s.companies[bi].status == .open {
-            Ledger.moveRaw(&s, .company(loan.bankCompanyID), repaidAmt)
-            var fm = s.companies[bi].value("fm")
-            fm["gb"] = .number(max(0, fm["gb"].double - loan.balance))
-            s.companies[bi].set("fm", fm)
-            let loss = loan.balance - repaidAmt
-            if loss > 1 && !keep {
-                var b = s.companies[bi].books
-                b.add("loss", loss)
-                s.companies[bi].books = b
-            }
-            s.loans[li].bankCompanyID = 0
-        }
         if keep {
             s.loans[li].balance -= repaidAmt
             s.loans[li].companyID = 0

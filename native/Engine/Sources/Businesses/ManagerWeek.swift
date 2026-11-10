@@ -132,7 +132,6 @@ extension ManagerModel {
         if util < 0.5 && co.staff.count > 2 && co.cash > 0 && D < cap * 0.62 { return Proposal(kind: "cut") }
         let wk = weekCost(s, co, data: data)
         if co.awareness < 26 && co.cash > wk * 6 { return Proposal(kind: "ad", cost: cur.scaledPrice(2500)) }
-        if co.cash < wk * 2 && co.cash < cur.scaledPrice(50000) { return Proposal(kind: "cash") }
         return nil
     }
 
@@ -177,10 +176,7 @@ extension ManagerModel {
         case "ad":
             title = "Start advertising at \(co.name)"; body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .ad, vars: ["cost": cur.display(dp.cost)])
             opts = [.option("Approve", "About \(cur.display(dp.cost))"), .option("Decline")]
-        default:
-            title = "Cash is running low at \(co.name)"
-            body = ManagerVoice.say(&s, companyIndex: ci, manager: n, bd: bd, situation: .cash, vars: ["cash": "\(Int(max(0, jsRound(co.cash / max(1, weekCost(s, co, data: data))))))"])
-            opts = [.option("Inject \(cur.display(cur.scaledPrice(100000)))", "From your personal account."), .option("Inject \(cur.display(cur.scaledPrice(30000)))"), .option("Not now", "Cash may run out.")]
+        default: return
         }
         s.addMessage(kind: "ask", from: n.name, title: title, body: body, companyID: co.id, tone: "n", status: "open", options: opts, action: "prop",
                      data: .object(["t": .string(dp.kind), "role": .string(dp.role), "cost": .number(dp.cost), "id": .string(dp.id)]), expiresWeek: s.week + 3)
@@ -231,11 +227,6 @@ extension ManagerModel {
         default:
             let kind = d["t"].string
             if legacyProposalKinds.contains(kind) { return }
-            if kind == "cash" {
-                if idx == 0 { Payments.injectCash(&s, companyID: co.id, amount: cur.scaledPrice(100000)) }
-                else if idx == 1 { Payments.injectCash(&s, companyID: co.id, amount: cur.scaledPrice(30000)) }
-                return
-            }
             if kind == PremisesProposals.kind { PremisesProposals.answer(&s, message: m, option: idx, data: data); return }
             guard idx == 0, let mid = co.managerID, let n = s.people[mid], let bd = data.catalog[co.type] else { return }
             let dp = Proposal(kind: kind, role: d["role"].string, cost: d["cost"].double, id: d["id"].string)

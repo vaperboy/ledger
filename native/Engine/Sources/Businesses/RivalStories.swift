@@ -65,7 +65,7 @@ public enum RivalStories {
     public static func weekly(_ s: inout GameState, data: GameData) {
         guard Unlocks.isOpen(s, "rivals") else { return }
         var done = Set<String>()
-        for co in s.companies where co.status == .open && co.type != "hold" && co.type != "club" {
+        for co in s.companies where co.status == .open && co.type != "club" {
             let k = Rivals.key(co)
             guard done.insert(k).inserted else { continue }
             for r in Rivals.rivals(s, key: k) { move(&s, co: co, rival: r, key: k, data: data) }
@@ -171,7 +171,7 @@ public enum RivalStories {
 
     static func offerSale(_ s: inout GameState, data: GameData) {
         guard decisionReady(s) else { return }
-        for co in s.companies where co.status == .open && co.type != "hold" && co.type != "club" {
+        for co in s.companies where co.status == .open && co.type != "club" {
             guard let bd = data.catalog[co.type] else { continue }
             let w = World(state: s, data: data)
             for r in Rivals.rivals(s, for: co) where r.fortune < troubleFortune || r.forSale {

@@ -74,7 +74,6 @@ enum MarketRoute: Hashable, Identifiable {
     case fundManager
     case dataAnalyst
     case stock(String)
-    case listing(Int)
 
     var id: String {
         switch self {
@@ -91,7 +90,6 @@ enum MarketRoute: Hashable, Identifiable {
         case .fundManager: return "fundManager"
         case .dataAnalyst: return "dataAnalyst"
         case .stock(let id): return "stock.\(id)"
-        case .listing(let id): return "listing.\(id)"
         }
     }
 }
@@ -116,7 +114,6 @@ struct MarketDestination: View {
                 ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.s) { FundManagerPage() }
                     .appScreen(title: "Fund manager", subtitle: "Market \u{00B7} Invest")
             case .stock(let id): MarketStockPage(instrumentID: id)
-            case .listing(let id): MarketListingPage(holdingID: id)
             case .dataAnalyst:
                 ScrollScreen(spacing: Theme.Space.l, top: Theme.Space.s) { DataAnalystCard() }
                     .appScreen(title: "Data analyst", subtitle: "Market \u{00B7} Companies")

@@ -18,7 +18,7 @@ struct CompaniesView: View {
             Group {
                 if let e = store.engine {
                     let healths: [(co: Company, h: CompanyHealth)] = store.memo("homeRows") { (g: GameEngine) -> [(co: Company, h: CompanyHealth)] in
-                        g.state.companies.filter { $0.type != "hold" && $0.status.isLive }.map { (co: $0, h: g.companyHealth($0)) }
+                        g.state.companies.filter { $$0.status.isLive }.map { (co: $0, h: g.companyHealth($0)) }
                     } ?? []
                     let rows = healths.sorted(by: order)
                     homeScreen(e, rows: rows)
@@ -344,7 +344,7 @@ struct CompanyRow: View {
 
 enum RunBy {
     static func name(_ e: GameEngine, _ co: Company) -> String {
-        guard co.status.isLive, co.type != "hold" else { return "–" }
+        guard co.status.isLive else { return "–" }
         if let b = e.decisionChain(companyID: co.id).first { return b.name }
         return OwnerHours.works(co) ? "You" : (co.status == .open ? "No one" : "–")
     }

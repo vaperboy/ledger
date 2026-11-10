@@ -108,13 +108,12 @@ final class RentalFinanceProbeTests: XCTestCase {
         for seed in [11, 12, 13] {
             let ins = try Self.mature("insco", seed: seed) { co in
                 co.awareness = 80; co.reputation = 70
-                var fm = co.value("fm"); fm["pol"] = 22000; co.set("fm", fm); co.cash += 150_000_000
+                var fm = co.value("fm"); fm["pol"] = 22000; co.set("fm", fm)
             }
             print("RF mature insco seed \(seed): revenue \(Int(ins.revenue / 1e6))M expenses \(Int(ins.expenses / 1e6))M combined \(String(format: "%.0f", ins.expenses / ins.revenue * 100))% profit \(Int(ins.profit / 1e6))M policies \(Int(ins.company.value("fm")["pol"].double)) sol \(String(format: "%.2f", ins.company.value("fm")["sol"].double))")
             let bank = try Self.mature("bank", seed: seed) { co in
                 co.awareness = 80; co.reputation = 70
                 var fm = co.value("fm"); fm["dep"] = 1_450_000_000; fm["depPrev"] = 1_450_000_000; fm["book"] = 1_500_000_000; co.set("fm", fm)
-                co.cash += 0
             }
             print("RF mature bank seed \(seed): revenue \(Int(bank.revenue / 1e6))M profit \(Int(bank.profit / 1e6))M equity \(Int(bank.equity0 / 1e6))M -> \(Int(bank.equity1 / 1e6))M ROE \(String(format: "%.1f", bank.profit / max(1, bank.equity0) * 100))% cr \(String(format: "%.2f", bank.company.value("fm")["cr"].double)) book \(Int(bank.company.value("fm")["book"].double / 1e6))M")
             let fund = try Self.mature("fund", seed: seed) { co in

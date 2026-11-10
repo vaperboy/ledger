@@ -118,7 +118,7 @@ public enum Marketing {
     }
 
     public static func organicAwareness(_ co: Company, _ bd: Trade, _ w: World) -> Double {
-        if bd.normalDemand == 0 || ["fin", "energy", "hold", "club", "rent"].contains(bd.family) { return 0 }
+        if bd.normalDemand == 0 || ["fin", "energy", "club", "rent"].contains(bd.family) { return 0 }
         let prem = co.value("prem")
         let kind = prem["kind"].string
         let foot = !prem.isNull && Competition.isFootTraffic(kind)

@@ -14,7 +14,7 @@ final class ItemModelsTests: XCTestCase {
     func engine(_ trade: String = ItemModelsTests.trade, weeks: Int = 8) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
         XCTAssertEqual(e.state.company(id)?.status, .open, "the throwaway trade must be open for these tests")
         return (e, id)

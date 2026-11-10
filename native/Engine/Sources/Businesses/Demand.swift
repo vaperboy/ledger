@@ -90,11 +90,11 @@ public enum DemandModel {
             r.customers *= scale * conceptFit(co, w) * pe * inflationHold * projectScale
             if let i = r.parts.firstIndex(where: { $0.name == "price" }) { r.parts[i].value *= pe * inflationHold }
         }
-        if bd.normalDemand != 0 && !["fin", "energy", "hold", "club"].contains(bd.family) {
+        if bd.normalDemand != 0 && !["fin", "energy", "club"].contains(bd.family) {
             let a = affordability(co, bd, w)
             if a != 1 { r.customers *= a; r.parts.append(("affordability", a)) }
         }
-        if bd.normalDemand != 0 && !["fin", "energy", "hold", "club"].contains(bd.family) {
+        if bd.normalDemand != 0 && !["fin", "energy", "club"].contains(bd.family) {
             let c = CityMarket.demandFactor(co, bd, w)
             if c != 1 { r.customers *= c; r.parts.append(("market class", c)) }
         }
@@ -131,7 +131,7 @@ public enum DemandModel {
     }
 
     static func managerDrift(_ co: Company, _ bd: Trade, _ w: World) -> Double {
-        guard co.managerID != nil, w.state.people[co.managerID!] != nil, co.status == .open, bd.family != "club", co.type != "hold" else { return 0 }
+        guard co.managerID != nil, w.state.people[co.managerID!] != nil, co.status == .open, bd.family != "club" else { return 0 }
         let lastMeeting = co.value("meetW").isNull ? -1e9 : co.num("meetW")
         let started = co.value("mgrW0").isNull ? Double(co.openedWeek ?? 0) : co.num("mgrW0")
         let since = Double(w.week) - max(lastMeeting, started)

@@ -21,7 +21,7 @@ final class CareerProbe: XCTestCase {
             for m in e.openDecisions where !m.options.isEmpty { _ = e.answer(messageID: m.id, option: 0) }
             if expand, d % 28 == 0, Gates.companiesOwned(e.state) < 3, e.state.companies.filter({ $0.status.isLive }).allSatisfy({ $0.cash > cur.scaledPrice(400_000) }) {
                 e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(150_000), why: "Test funds") }
-                _ = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, name: "T\(d)", fundWith: cur.scaledPrice(150_000))
+                _ = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, name: "T\(d)")
             }
             if e.state.isGameOver { broke = true; break }
             if d % 364 == 0 { out.append(cur.short(Valuation.netWorth(e.state, trades: e.data.catalog).total - nw0)) }

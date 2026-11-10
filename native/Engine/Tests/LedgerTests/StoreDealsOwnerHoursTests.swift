@@ -13,7 +13,7 @@ final class StoreDealsOwnerHoursTests: XCTestCase {
     }
 
     private func cafe(_ e: inout GameEngine) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 60_000_000) else { throw XCTSkip("no cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("no cafe") }
         return id
     }
 

@@ -97,7 +97,7 @@ public extension GameEngine {
         if label.hasPrefix("Payroll") || label.hasPrefix("Back pay") { return .payroll }
         if label == "Rent" || label.hasPrefix("Monthly bills") || label.hasPrefix("Suppliers and costs") { return .bills }
         if label.hasPrefix("Corporate tax") || label.hasPrefix("VAT settlement") || label.hasPrefix("Tax office") { return .tax }
-        if label == "Owner investment" || label == "Owner drawing" || label == "Dividend" || label == "Share capital paid in" { return .owner }
+        if label == "Dividend" || label == "Share capital paid in" { return .owner }
         return .other
     }
 

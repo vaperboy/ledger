@@ -7,12 +7,6 @@ import Events
 
 public extension GameEngine {
 
-    @discardableResult
-    mutating func listSharesForSale(companyID: Int, percent: Int, broker: Bool) -> Bool {
-        var ok = false
-        update { s, _, _ in ok = CompanySale.startListing(&s, companyID: companyID, broker: broker, pct: percent) }
-        return ok
-    }
     mutating func askBuyer(companyID: Int, offerID: Int, question: String) { update { s, _, _ in CompanySale.talkAsk(&s, companyID: companyID, offerID: offerID, question: question) } }
     @discardableResult
     mutating func counterBuyer(companyID: Int, offerID: Int, price: Double) -> CompanySale.TalkResult {
@@ -47,33 +41,7 @@ public extension GameEngine {
     mutating func declineSaleOffer(companyID: Int, offerID: Int) -> SettingResult {
         applySetting(probe: { s in .object(["offers": .number(Double(CompanySale.listing(s, companyID: companyID)?.offers.count ?? -1))]) }) { s, _, _ in CompanySale.decline(&s, companyID: companyID, offerID: offerID) }
     }
-    func shareOffers(companyID: Int) -> [Funding.ShareOffer] { Funding.shareOffers(state, companyID: companyID, data: data) }
-    @discardableResult
-    mutating func sellPrivateShares(companyID: Int, percent: Double, mode: String) -> Funding.ShareResult {
-        var r = Funding.ShareResult.notLimited
-        update { s, d, c in r = Funding.sellShares(&s, companyID: companyID, pct: percent, mode: mode, data: d, context: c) }
-        return r
-    }
-
-    func holdingValue(companyID: Int) -> Double { Funding.holdingValue(state, holdingID: companyID, data: data) }
-    var listingMinimumValue: Double { Funding.listingMinimum(state, context) }
-    var listingFee: Double { homeCurrency.scaledPrice(Funding.listingFee) }
-    func isListed(companyID: Int) -> Bool { state.company(companyID).map { Funding.isListed($0) } ?? false }
-    @discardableResult
-    mutating func listHoldingOnExchange(companyID: Int) -> Funding.ListResult {
-        var r = Funding.ListResult.notAHolding
-        update { s, d, c in r = Funding.listHolding(&s, holdingID: companyID, data: d, context: c) }
-        return r
-    }
-    func raisePlan(holdingID: Int, goal: Double, publicOffering: Bool) -> Funding.RaisePlan {
-        Funding.raisePlan(state, holdingID: holdingID, goal: goal, mode: publicOffering ? "public" : "private", data: data, context: context)
-    }
-    @discardableResult
-    mutating func raiseMoneyForHolding(holdingID: Int, goal: Double, publicOffering: Bool) -> Double? {
-        var r: Double?
-        update { s, d, c in r = Funding.raiseForHolding(&s, holdingID: holdingID, goal: goal, mode: publicOffering ? "public" : "private", data: d, context: c) }
-        return r
-    }
+    func isListed(companyID: Int) -> Bool { PublicRules.isListed(state, companyID: companyID) }
 
     func owners(companyID: Int) -> [Shareholders.Holder] { Shareholders.holders(state, companyID: companyID) }
     func ownersPower(companyID: Int) -> (kind: Shareholders.Power, text: String)? { state.company(companyID).map { Shareholders.power($0) } }
@@ -116,9 +84,8 @@ public extension GameEngine {
         applySetting(probe: { .object($0.rest) }) { s, _, _ in Startups.declineRound(&s, startupID: startupID, index: index) }
     }
     @discardableResult
-    mutating func putMoneyIntoStartup(startupID: Int, amount: Double) -> Bool { var ok = false; update { s, _, _ in ok = Startups.topUp(&s, startupID: startupID, amount: amount) }; return ok }
     @discardableResult
-    mutating func shutDownStartup(startupID: Int) -> Double? { var r: Double?; update { s, _, _ in r = Startups.shutDown(&s, startupID: startupID) }; return r }
+    mutating func shutDownStartup(startupID: Int) -> Bool { var r = false; update { s, _, _ in r = Startups.shutDown(&s, startupID: startupID) }; return r }
     @discardableResult
     mutating func changeBuilders(startupID: Int, by delta: Int) -> SettingResult {
         applySetting(refuse: { s in
@@ -130,12 +97,6 @@ public extension GameEngine {
         }, probe: { .object(["n": .number(Double($0.company(startupID)?.staff.count ?? 0))]) }) { s, d, _ in Startups.setBuilders(&s, startupID: startupID, delta: delta, data: d) }
     }
 
-    @discardableResult
-    mutating func listCompanyForSale(companyID: Int, broker: Bool, percent: Int = 100) -> Bool {
-        var ok = false
-        update { s, _, _ in ok = CompanySale.startListing(&s, companyID: companyID, broker: broker, pct: percent) }
-        return ok
-    }
     @discardableResult
     mutating func acceptBuyerOffer(companyID: Int, offerID: Int) -> Double? {
         var r: Double?
@@ -163,20 +124,6 @@ public extension GameEngine {
         if o.kind == "fund" { conditions.append("A seat on the board for the fund.") }
         conditions.append("Another round cannot be pitched for four weeks.")
         return CapTable.issueTerms(co, preMoney: o.preMoney, amount: o.amount, buyer: o.name, conditions: conditions)
-    }
-    func shareSaleTerms(companyID: Int, percent: Double, mode: String) -> CapTable.DealTerms? {
-        guard let co = state.company(companyID) else { return nil }
-        let v = max(1, Valuation.companyValue(co, state: state, trades: data.catalog))
-        let t = CapTable.table(co)
-        if mode == "primary" {
-            let amt = jsRound(v * percent / (100 - percent) * 0.9)
-            let n = CapTable.sharesForPercent(percent, total: t.total)
-            return CapTable.issueTerms(co, preMoney: amt > 0 ? amt * Double(t.total) / max(1, Double(n)) : v, amount: amt, buyer: "A private investor",
-                                       conditions: ["The buyer pays 10% under the estimated value.", "The money goes into the company."])
-        }
-        let n = Int(saturating: (Double(t.you) * percent / 100).rounded())
-        let price = v / Double(t.total) * 0.85
-        return CapTable.founderSaleTerms(co, shares: n, pricePerShare: price, buyer: "A private buyer", conditions: ["The buyer pays 15% under the estimated value.", "The money is yours, not the company's."])
     }
     @discardableResult
     mutating func toggleOwnerHoursOnProduct(startupID: Int) -> Bool { var ok = false; update { s, _, _ in ok = Startups.toggleOwnerHours(&s, startupID: startupID) }; return ok }

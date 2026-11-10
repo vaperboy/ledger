@@ -51,7 +51,7 @@ public enum BigMeeting {
             var l = Loan(raw: [:])
             l.id = s.makeID(); l.kind = "mort"; l.name = "Acquisition loan: \(o.target)"
             l.balance = f.borrow; l.originalAmount = f.borrow; l.margin = 0.02; l.monthlyPayment = Loans.annuity(principal: f.borrow, yearlyRate: rate, months: 120)
-            l.termMonths = 120; l.companyID = 0; l.startWeek = s.week; l.isGuaranteed = false; l.bankCompanyID = 0
+            l.termMonths = 120; l.companyID = 0; l.startWeek = s.week; l.isGuaranteed = false
             s.loans.append(l)
             Payments.playerReceives(&s, f.borrow, label: "Acquisition loan")
         }

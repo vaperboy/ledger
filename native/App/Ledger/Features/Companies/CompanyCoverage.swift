@@ -63,7 +63,7 @@ struct CompanyCoverageScreen: View {
                         }.padding(.vertical, 9).contentShape(Rectangle())
                     }.buttonStyle(PressableStyle())
                 }
-                Text("Deductible about \(cur.tidyShort(cur.scaledPrice(10000))) a claim; uninsured losses come out of company cash.")
+                Text("Deductible about \(cur.tidyShort(cur.scaledPrice(10000))) a claim; uninsured losses come out of your account.")
                     .font(.caption2).foregroundStyle(Theme.ivoryFaint).padding(.top, 6)
             }
         }
@@ -80,11 +80,11 @@ struct CompanyCoverageScreen: View {
             }
         }
         if p.isOn {
-            pending = PendingAction(title: "Switch off \(name)?", message: "You save about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month, but losses of this kind are no longer covered and come out of company cash.", button: "Switch off", tone: .warning, icon: "shield.slash", run: run)
+            pending = PendingAction(title: "Switch off \(name)?", message: "You save about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month, but losses of this kind are no longer covered and come out of your account.", button: "Switch off", tone: .warning, icon: "shield.slash", run: run)
         } else if !hasInsurer {
             Haptics.warning(); store.show("Choose an insurer first.", tone: "warn")
         } else {
-            pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from company cash, starting this week, until you switch it off.", button: "Switch on", amount: p.weeklyPremium * 52 / 12, currency: cur, tone: .info, icon: "shield", run: run)
+            pending = PendingAction(title: "Switch on \(name)?", message: "\(p.blurb) Costs about \(cur.tidyShort(p.weeklyPremium * 52 / 12)) a month from your account, starting this week, until you switch it off.", button: "Switch on", amount: p.weeklyPremium * 52 / 12, currency: cur, tone: .info, icon: "shield", run: run)
         }
     }
 
@@ -145,7 +145,7 @@ struct CompanyCoverageScreen: View {
 
     private func hire(_ a: AdviserOption, _ current: AdviserOption?, _ cur: Currency) {
         let id = companyID
-        let cost = a.kind == .insurer ? "Premiums change with the insurer's price factor." : "\(cur.tidyShort(a.monthlyFee)) a month from company cash."
+        let cost = a.kind == .insurer ? "Premiums change with the insurer's price factor." : "\(cur.tidyShort(a.monthlyFee)) a month from your account."
         let verb = current == nil ? "Hire" : "Switch to"
         pending = PendingAction(title: "\(verb) \(a.name)?", message: cost + (current != nil ? " \(current!.name) is dropped." : "") + (a.ownFirmID != nil ? " Your fees go to your own firm." : ""), button: current == nil ? "Hire" : "Switch", amount: a.kind == .insurer ? 0 : a.monthlyFee, currency: cur, tone: .info, icon: "person.badge.plus") {
             let r = store.act { (e: inout GameEngine) -> Advisers.Result in

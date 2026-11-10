@@ -9,7 +9,7 @@ struct GroupBoardroom: View {
     var entity: GroupEntity
 
     private var companies: [Company] {
-        entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
+        entity.members.compactMap { (id: Int) -> Company? in engine.state.company(id) }.filter { (c: Company) -> Bool in c.status.isLive }
     }
 
     private var keys: [String] {

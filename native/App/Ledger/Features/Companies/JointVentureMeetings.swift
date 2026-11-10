@@ -230,7 +230,7 @@ struct JVCallSheet: View {
     @State private var reason = ""
     @State private var nextPlanned = false
 
-    private static let kinds: [JVRules.Kind] = [.price, .dividend, .capital, .hire, .sell, .dissolve]
+    private static let kinds: [JVRules.Kind] = [.price, .dividend, .hire, .sell, .dissolve]
 
     var body: some View {
         if let e = store.engine, let co = e.state.company(companyID) {
@@ -241,11 +241,11 @@ struct JVCallSheet: View {
                     ChoiceCard(title: k.title, subtitle: JVRules.effect(k, amount: amount, steps: down ? -1 : 1, money: { cur.tidyDisplay($0) }), selected: kind == k) { kind = k; amount = min(max(amount, 0), top) }
                 }
                 if kind == .price { SegmentedPill(items: ["Down", "Up"], title: { $0 }, selection: Binding(get: { down ? "Down" : "Up" }, set: { down = $0 == "Down" })) }
-                if kind == .dividend || kind == .capital {
+                if kind == .dividend {
                     if top > 0 {
                         LedgerSlider(value: $amount, in: 0...top, step: max(1, cur.scaledPrice(1_000)), valueText: cur.tidyDisplay(amount))
                     } else {
-                        Text("There is no retained profit to pay out.").popupText(.risk)
+                        Text("There is no profit to pay out.").popupText(.risk)
                     }
                 }
                 Text("Why").capsLabel()

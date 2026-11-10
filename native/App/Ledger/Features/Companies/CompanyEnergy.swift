@@ -75,7 +75,7 @@ struct CompanyEnergy: View {
                         .textStyle(.caption, tint: Theme.inkFaint).fixedSize(horizontal: false, vertical: true)
                     Button("Order \(Int(megawatts)) MW…") {
                         let mw = megawatts
-                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from company cash (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order", amount: perMW * mw, currency: cur, tone: .investment, icon: "bolt") {
+                        pending = PendingAction(title: "Order \(Int(mw)) MW?", message: "About \(cur.tidyDisplay(perMW * mw)) is paid from your account (it has \(cur.tidyShort(company.cash))). Nothing is produced for \(buildWeeks) weeks, and output then follows the weather and the power price.", button: "Order", amount: perMW * mw, currency: cur, tone: .investment, icon: "bolt") {
                             if store.act({ $0.orderTurbines(companyID: company.id, megawatts: mw) }) == true { Haptics.success(); store.show("Ordered \(Int(mw)) MW. Construction has started.", tone: "good") }
                             else { Haptics.warning(); store.show("The company does not have \(cur.tidyShort(perMW * mw)) in cash. Put money in under Finances.", tone: "warn") }
                         }
@@ -118,7 +118,7 @@ struct CompanyEnergy: View {
                 }
                 Spacer()
                 Button("Buy…") {
-                    let message: String = "\(cur.tidyDisplay(cost)) from company cash (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time."
+                    let message: String = "\(cur.tidyDisplay(cost)) from your account (it has \(cur.tidyShort(company.cash))). The field produces right away, and the barrels run out over time."
                     pending = PendingAction(title: "Buy a stake with \(Int(k / 1000)) M barrels left?", message: message, button: "Buy stake", amount: cost, currency: cur, tone: .investment, icon: "drop") {
                         switch store.act({ $0.buyOilStake(companyID: company.id, thousandBarrels: k) }) {
                         case .ok?: Haptics.success(); store.show("Stake acquired.", tone: "good")
@@ -180,7 +180,7 @@ struct CompanyEnergy: View {
     }
 
     private func askToDrill(_ drill: Double, _ cur: Currency) {
-        let message: String = "The well costs \(cur.tidyShort(drill)) from company cash. A discovery takes about three years to produce."
+        let message: String = "The well costs \(cur.tidyShort(drill)) from your account. A discovery takes about three years to produce."
         pending = PendingAction(title: "Drill an exploration well?", message: message, button: "Drill for \(cur.tidyShort(drill))",
                                 amount: drill, currency: cur, risk: "Most wells find nothing.", tone: .investment, icon: "drop") {
             switch store.act({ $0.exploreForOil(companyID: company.id) }) {

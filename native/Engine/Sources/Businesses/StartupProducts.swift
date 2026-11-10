@@ -66,7 +66,7 @@ public enum StartupProducts {
         func has(_ list: String) -> Bool { list.split(separator: " ").contains { String($0) == bd.id } }
         let fam = bd.family
         func F(d: Double = 0, k: Double = 0, aw: Double = 0, c: Double = 0, _ t: String) -> Effect { Effect(d: d, k: k, aw: aw, c: c, text: t) }
-        let consumer = bd.audience < 0.6 && !["fin", "energy", "hold", "club", "rent"].contains(fam)
+        let consumer = bd.audience < 0.6 && !["fin", "energy", "club", "rent"].contains(fam)
         switch cat {
         case "fintech":
             if fam == "fin" { return F(d: 0.12, "Own app: easier to use, more customers") }

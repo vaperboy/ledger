@@ -47,7 +47,7 @@ final class CreationBudgetTests: XCTestCase {
         var e = try game(extra: 800_000_000)
         let city = e.state.player.cityID
         let plan = try XCTUnwrap(e.newCompanyPlan(tradeID: "cons", cityID: city, size: 1))
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cons", cityID: city, size: 1, name: nil, pick: nil, fundWith: plan.intoCompany, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cons", cityID: city, size: 1, name: nil, pick: nil, choices: SetupChoices(stock: .none)) else { return XCTFail("start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let bd = try XCTUnwrap(e.data.catalog["cons"])
         XCTAssertTrue(co.staff.isEmpty, "nothing is hired for the player (owner decision, 2 Nov)")
@@ -61,7 +61,7 @@ final class CreationBudgetTests: XCTestCase {
         let city = e.state.player.cityID
         var paid: [SetupChoices.Stock: Double] = [:]
         for choice in SetupChoices.Stock.allCases {
-            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, size: 1, name: nil, pick: nil, fundWith: 300_000_000, choices: SetupChoices(stock: choice)) else { return XCTFail("start") }
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "grocery", cityID: city, size: 1, name: nil, pick: nil, choices: SetupChoices(stock: choice)) else { return XCTFail("start") }
             let id = out.companyID
             e.update { s, d, _ in
                 guard let i = s.companyIndex(id) else { return }
@@ -79,13 +79,13 @@ final class CreationBudgetTests: XCTestCase {
     func testBudgetedHiringNeverBuysWagesTheCashCannotCarry() throws {
         var e = try game(extra: 200_000_000)
         let city = e.state.player.cityID
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "restaurant", cityID: city, size: 1, name: nil, pick: nil, fundWith: 2_500_000, choices: SetupChoices(team: .standard)) else { return XCTFail("start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "restaurant", cityID: city, size: 1, name: nil, pick: nil, choices: SetupChoices(team: .standard)) else { return XCTFail("start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let payroll = co.staff.reduce(0.0) { $0 + $1.monthlyWage }
         XCTAssertLessThanOrEqual(payroll * 2, max(co.cash + payroll * 2, 1) * 1.0 + 1)
         XCTAssertTrue(co.staff.isEmpty, "nobody is hired for the player")
         var legacy = try game(extra: 200_000_000)
-        guard case .success(let lid) = legacy.startCompany(tradeID: "restaurant", cityID: city, size: 1, fundWith: 2_500_000) else { return XCTFail("start legacy") }
+        guard case .success(let lid) = legacy.startCompany(tradeID: "restaurant", cityID: city, size: 1) else { return XCTFail("start legacy") }
         let legacyPayroll = legacy.state.company(lid)!.staff.reduce(0.0) { $0 + $1.monthlyWage }
         XCTAssertGreaterThanOrEqual(legacyPayroll, payroll)
     }
@@ -104,11 +104,11 @@ final class CreationBudgetTests: XCTestCase {
         var cell = Cell()
         var id = 0
         if budgeted {
-            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: city, size: size, name: nil, pick: nil, fundWith: plan.intoCompany) else { return Cell() }
+            guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: city, size: size, name: nil, pick: nil) else { return Cell() }
             id = out.companyID
         } else {
             let into = max(0, min(plan.total * 1.15, plan.available - plan.registrationAndCapital))
-            guard case .success(let i) = e.startCompany(tradeID: trade, cityID: city, size: size, fundWith: into) else { return Cell() }
+            guard case .success(let i) = e.startCompany(tradeID: trade, cityID: city, size: size) else { return Cell() }
             id = i
         }
         cell.started = true

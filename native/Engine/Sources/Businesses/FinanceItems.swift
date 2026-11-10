@@ -5,7 +5,7 @@ import Finance
 
 public enum FinanceItems {
     public static var trades: Set<String> { ItemTradeGroups.finance }
-    static let allTrades: Set<String> = ["insco", "bank", "fund", "power", "oilgas", "hold"]
+    static let allTrades: Set<String> = ["insco", "bank", "fund", "power", "oilgas"]
     static let key = "w11"
     static let prefix = "w11:"
 
@@ -86,14 +86,13 @@ public enum FinanceItems {
         return max(0, r["exp"].double - r["dir"].double)
     }
 
-    static func bases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double, overhead: Double) -> [Base] {
+    static func bases(_ s: GameState, _ co: Company, _ bd: Trade, _ w: World, mt: Double) -> [Base] {
         switch bd.id {
         case "insco": return insuranceBases(s, co, bd, w, mt: mt)
         case "bank": return bankBases(s, co, bd, w, mt: mt)
         case "fund": return fundBases(s, co, bd, w, mt: mt)
         case "power": return powerBases(s, co, bd, w, mt: mt)
         case "oilgas": return oilBases(s, co, bd, w, mt: mt)
-        case "hold": return holdBases(s, co, bd, w, mt: mt, overhead: overhead)
         default: return []
         }
     }
@@ -103,7 +102,7 @@ public enum FinanceItems {
         let w = World(state: s, data: data)
         let mt = SalesItems.marketTicket(co, bd, w)
         let oh = overheadTotal(co)
-        let list = bases(s, co, bd, w, mt: mt, overhead: oh)
+        let list = bases(s, co, bd, w, mt: mt)
         let items = SalesItems.items(co, bd)
         let wt = list.reduce(0.0) { $0 + $1.weight }
         return list.compactMap { b in
@@ -138,7 +137,7 @@ public enum FinanceItems {
         let w = World(state: s, data: data)
         let mt = SalesItems.marketTicket(co0, bd, w)
         guard mt > 0 else { return }
-        let list = bases(s, co0, bd, w, mt: mt, overhead: max(0, exp - dir))
+        let list = bases(s, co0, bd, w, mt: mt)
         guard !list.isEmpty else { return }
         s.companies[i].set(key, .object(["w": .number(Double(s.week)), "exp": .number(exp), "dir": .number(dir)]))
         let co = s.companies[i]
@@ -152,7 +151,7 @@ public enum FinanceItems {
             it.name = b.name
             it.isService = true
             it.unitShare = totalUnits > 0 ? max(0, b.units) / totalUnits : 1 / Double(list.count)
-            it.ratio = bd.id == "hold" ? b.price / mt : (sumPrice > 0 ? b.price / sumPrice : 1)
+            it.ratio = sumPrice > 0 ? b.price / sumPrice : 1
             return it
         }
         let keptShare = kept.reduce(0.0) { $0 + $1.unitShare }
@@ -161,11 +160,9 @@ public enum FinanceItems {
             let f = max(0, 1 - keptShare) / managedShare
             for k in managed.indices { managed[k].unitShare *= f }
         }
-        if bd.id != "hold" {
-            let keptWeight = kept.reduce(0.0) { $0 + $1.unitShare * $1.ratio }
-            let mw = managed.reduce(0.0) { $0 + $1.unitShare * $1.ratio }
-            if mw > 0 { let f = max(0.05, 1 - keptWeight) / mw; for k in managed.indices { managed[k].ratio *= f } }
-        }
+        let keptWeight = kept.reduce(0.0) { $0 + $1.unitShare * $1.ratio }
+        let mw = managed.reduce(0.0) { $0 + $1.unitShare * $1.ratio }
+        if mw > 0 { let f = max(0.05, 1 - keptWeight) / mw; for k in managed.indices { managed[k].ratio *= f } }
         kept.append(contentsOf: managed)
         SalesItems.store(&s, i, kept)
         var rec = s.companies[i].value("itemsv2").isNull ? [:] : s.companies[i].value("itemsv2").object

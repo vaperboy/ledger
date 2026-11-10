@@ -33,7 +33,7 @@ public enum Trophies {
         var nw: Double { netWorth.total }
         var jobs: Int { live.reduce(0) { $0 + $1.staff.count + ($1.managerID != nil ? 1 : 0) } }
         var managers: Int { live.filter { $0.managerID != nil }.count }
-        var open: Int { live.filter { $0.type != "hold" }.count }
+        var open: Int { live.count }
         var types: Int { Set(ever.map { $0.type }).count }
         var families: Int { Set(ever.compactMap { data.catalog[$0.type]?.family }).count }
         var countries: Int { Set(live.map { $0.countryCode }).count }
@@ -59,7 +59,7 @@ public enum Trophies {
         one("year", "One year in business", "first") { f in f.years >= 1 && f.live.contains { $0.status == .open && f.profitable($0) } ? "A year in business, and still making money." : nil }
         one("mgr", "A manager who delivers", "first") { f in f.live.first { $0.managerID != nil && f.s.people[$0.managerID!] != nil && f.quarterProfit($0) }.map { "\(f.s.people[$0.managerID!]!.name) runs \($0.name) and it made money three months running." } }
         one("branch", "An expansion that pays", "first") { f in
-            for c in f.live where c.status == .open && c.type != "hold" && f.profitable(c) {
+            for c in f.live where c.status == .open && f.profitable(c) {
                 if f.live.contains(where: { $0.id != c.id && $0.status == .open && $0.type == c.type && f.profitable($0) }) { return "Your second \(f.data.catalog[c.type]?.name.lowercased() ?? "company") makes money too." }
             }
             return nil }
@@ -95,7 +95,6 @@ public enum Trophies {
         L += ladder("ty", "trades", [("5", "Five trades", 5), ("10", "Ten trades", 10), ("20", "Twenty trades", 20), ("35", "Thirty-five trades", 35)],
                     test: { f, v in Double(f.types) >= v }, text: { _, v in "You have run \(Int(v)) different kinds of business." })
         one("fam", "A bit of everything", "trades") { f in f.families >= 9 ? "You have owned a business in nine different kinds of trade." : nil }
-        one("hold", "A holding company", "trades") { f in f.live.contains { $0.type == "hold" } ? "Your companies now sit under a holding." : nil }
         one("oil", "Black gold", "trades") { f in f.live.contains { $0.type == "oilgas" && $0.status == .open } ? "You produce oil and gas." : nil }
         one("club", "A football club", "trades") { f in f.live.contains { f.data.catalog[$0.type]?.family == "club" } ? "You own a football club." : nil }
         L += ladder("cc", "world", [("3", "Three countries", 3), ("5", "Five countries", 5), ("10", "Ten countries", 10), ("23", "Every country", 23)],
@@ -104,7 +103,7 @@ public enum Trophies {
                     test: { f, v in f.years >= v }, text: { _, v in "\(Int(v)) years since you started your first company." })
         L += ladder("aw", "legacy", [("1", "An award", 1), ("5", "Five awards", 5), ("20", "Twenty awards", 20)],
                     test: { f, v in Double(Awards.wonCount(f.s)) >= v }, text: { _, v in "You have won \(Int(v)) business \(v == 1 ? "award" : "awards")." })
-        one("listed", "Listed on the stock exchange", "trades") { f in f.live.contains { Funding.isListed($0) } ? "Anyone can now buy shares in your group." : nil }
+        one("listed", "Listed on the stock exchange", "trades") { f in f.live.contains { PublicExchange.isListed(f.s, companyID: $0.id) } ? "Anyone can now buy shares in your company." : nil }
         one("su1", "Founder", "legacy") { f in (f.s.rest["founded"]?.array.count ?? 0) >= 1 ? "You founded a startup." : nil }
         one("sux", "An exit", "legacy") { f in Funding.record(f.s).exits >= 1 ? "You sold a startup you founded." : nil }
         one("pe1", "Private equity", "legacy") { f in (f.s.rest["pe56"]?["mine"].array.count ?? 0) >= 1 ? "You committed money to a private equity fund." : nil }
@@ -133,7 +132,7 @@ public enum Trophies {
         if s.rest["ach28i"] == nil { s.rest["ach28i"] = .number(1) }
         if !s.loans.isEmpty && s.rest["ach28d"] == nil { s.rest["ach28d"] = .number(1) }
         let f = Facts(s: s, data: data, cur: fc.homeCurrency(s), netWorth: Valuation.netWorth(s, trades: data.catalog, forGoals: true),
-                      live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies.filter { $0.type != "hold" })
+                      live: s.companies.filter { $0.status == .open || $0.status == .closed }, ever: s.companies)
         var got: [String] = []
         for t in all where rec[t.id].isNull {
             guard let text = t.test(f) else { continue }

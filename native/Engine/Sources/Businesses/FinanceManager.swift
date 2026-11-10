@@ -158,53 +158,7 @@ public enum FinanceManager {
         }
     }
 
-    static func officeFinanceIndex(_ s: GameState) -> Int? {
-        (s.rest["office"]?["staff"].array ?? []).firstIndex { $0["role"].string == "fin" }
-    }
-
-    public static func managedHoldings(_ s: GameState) -> [Int] {
-        guard let k = officeFinanceIndex(s) else { return [] }
-        return (s.rest["office"]?["staff"].array[k]["holds"].array ?? []).map { $0.int }
-    }
-    public static func manages(_ s: GameState, holdingID: Int) -> Bool { managedHoldings(s).contains(holdingID) }
-
-    public static func negotiator(_ s: GameState, holdingID: Int) -> (name: String, skill: Double)? {
-        guard manages(s, holdingID: holdingID), let k = officeFinanceIndex(s), let p = s.people[(s.rest["office"]?["staff"].array[k]["id"].int) ?? 0] else { return nil }
-        return (p.name, clamp((p.value("skill").isNull ? 55 : p.value("skill").double) / 100 + p.value("exp").double * 0.01, 0.2, 0.98))
-    }
-
-    @discardableResult
-    public static func toggleHolding(_ s: inout GameState, holdingID: Int) -> Bool? {
-        guard let k = officeFinanceIndex(s), var o = s.rest["office"], let h = s.company(holdingID), h.type == "hold" else { return nil }
-        var staff = o["staff"].array
-        var holds = staff[k]["holds"].array
-        let now: Bool
-        if let i = holds.firstIndex(where: { $0.int == holdingID }) { holds.remove(at: i); now = false } else { holds.append(.number(Double(holdingID))); now = true }
-        staff[k]["holds"] = .array(holds)
-        o["staff"] = .array(staff)
-        s.rest["office"] = o
-        let who = staff[k]["name"].string
-        s.note(now ? "\(who) now runs \(h.name)." : "You run \(h.name) yourself again.", tone: "n", companyID: holdingID)
-        return now
-    }
-
-    static func weeklyHoldings(_ s: inout GameState, context fc: FinanceContext) {
-        for id in managedHoldings(s) {
-            guard let h = s.company(id), h.status == .open else { continue }
-            let cur = fc.currency(h.countryCode, s)
-            let buf = cur.scaledPrice(200000)
-            if h.cash > buf * 3 {
-                let amt = jsRound(h.cash - buf * 2)
-                if HoldingModel.invest(&s, holdingID: id, amount: amt) { s.note("\(h.name) put \(cur.short(amt)) of spare cash in the index fund.", tone: "n", companyID: id) }
-            } else if h.cash < 0 {
-                let amt = -h.cash + buf
-                if HoldingModel.divest(&s, holdingID: id, amount: amt) { s.note("\(h.name) sold index fund units to cover its account.", tone: "n", companyID: id) }
-            }
-        }
-    }
-
-    public static func weekly(_ s: inout GameState, context fc: FinanceContext) {
+    public static func weekly(_ s: inout GameState) {
         weeklyManaged(&s)
-        weeklyHoldings(&s, context: fc)
     }
 }

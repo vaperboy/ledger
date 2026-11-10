@@ -9,7 +9,7 @@ final class EarlyPaymentTests: XCTestCase {
     private func game() throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 500_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         return (e, id)
     }
 
@@ -97,7 +97,7 @@ final class EarlyPaymentTests: XCTestCase {
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             s.companies[i].vatBalance = 90_000
-            s.companies[i].cash = -1e12
+            Ledger.set(&s, to: -1e12)
         }
         let broke = e.state.company(id)!.cash
         if case .refused = e.payObligationNow(Obligation(id: "vat\(id)", title: "", detail: "", amount: 90_000, dayNumber: 0, dateText: "", daysAway: 0, essential: true, companyID: id, kind: .tax)) {} else { XCTFail("should refuse") }

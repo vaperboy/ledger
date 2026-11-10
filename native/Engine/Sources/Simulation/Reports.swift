@@ -9,9 +9,6 @@ public enum Reports {
     struct CompanyMark: Codable, Equatable {
         var id: Int
         var books: [String: Double]
-        var cash: Double
-        var ownerNet: Double
-        var distributed: Double
         var reputation: Double
         var quality: Double
         var value: Double
@@ -54,8 +51,7 @@ public enum Reports {
         snap.nw = r
         snap.loans = s.loans.map { LoanMark(id: $0.id, companyID: $0.companyID, balance: $0.balance) }
         snap.companies = s.companies.map { co in
-            CompanyMark(id: co.id, books: co.books.total, cash: co.cash, ownerNet: co.ownerNetFlow, distributed: co.distributed,
-                        reputation: co.reputation, quality: co.quality,
+            CompanyMark(id: co.id, books: co.books.total,                         reputation: co.reputation, quality: co.quality,
                         value: co.status.isLive ? Valuation.companyValue(co, state: s, trades: data.catalog) * co.ownership / 100 : 0,
                         staff: co.staff.map { $0.id })
         }
@@ -177,13 +173,9 @@ public enum Reports {
             for (k, v) in co.books.total { delta[k] = v - (old?.books[k] ?? 0) }
             let pnl = ReportPnL(booksDelta: delta)
             groupPnL = groupPnL + pnl
-            let ownerOut = co.distributed - (old?.distributed ?? 0)
-            let ownerIn = (co.ownerNetFlow - (old?.ownerNet ?? 0)) + ownerOut
             let lf = loanFlows(for: co.id)
             var row = ReportCompany(id: co.id, name: co.name, tradeID: co.type, status: co.status.rawValue)
             row.pnl = pnl
-            row.cashStart = old?.cash ?? 0; row.cashEnd = co.cash
-            row.ownerIn = ownerIn.finiteOrZero; row.ownerOut = ownerOut.finiteOrZero
             row.loansTaken = lf.taken; row.loansRepaid = lf.repaid
             loansTaken += lf.taken; loansRepaid += lf.repaid
             row.reputationStart = old?.reputation ?? co.reputation; row.reputationEnd = co.reputation
@@ -207,28 +199,22 @@ public enum Reports {
         }
         let shown = rows.filter { row in
             let alive = !(row.status == "sold" || row.status == "bust")
-            let active = !row.pnl.isEmpty || row.cashChange != 0 || row.ownerIn != 0 || row.ownerOut != 0 || row.loansTaken != 0 || row.loansRepaid != 0
-            return (alive && (row.tradeID != "hold" || active)) || active
+            let active = !row.pnl.isEmpty || row.loansTaken != 0 || row.loansRepaid != 0
+            return alive || active
         }
         r.companies = shown
 
         var g = ReportGroup()
         g.pnl = groupPnL
         g.accountStart = b.cash; g.accountEnd = now.cash
-        g.companyCashStart = b.companies.reduce(0) { $0 + $1.cash }
-        g.companyCashEnd = now.companies.reduce(0) { $0 + $1.cash }
-        g.ownerIn = rows.reduce(0) { $0 + $1.ownerIn }
-        g.ownerOut = rows.reduce(0) { $0 + $1.ownerOut }
         g.loansTaken = loansTaken; g.loansRepaid = loansRepaid
         func cum(_ k: String) -> Double { (now.cum[k] ?? 0) - (b.cum[k] ?? 0) }
         func stat(_ k: String) -> Double { (now.stats[k] ?? 0) - (b.stats[k] ?? 0) }
         g.taxPaid = stat("taxPaid"); g.dividendsReceived = stat("dividends"); g.wagesPaid = stat("wagesPaid"); g.interestPaid = stat("interest")
         g.personalTax = -cum(ReportCounters.Key.tax)
-        g.ownerPay = cum(ReportCounters.Key.salary)
         g.decisionsAnswered = Int(saturating: cum(ReportCounters.Key.answered).rounded())
         let labels: [(String, String)] = [
             (ReportCounters.Key.invested, "Put into your companies"), (ReportCounters.Key.dividends, "Dividends received"),
-            (ReportCounters.Key.salary, "Salary from your companies"),
             (ReportCounters.Key.markets, "Shares, crypto and funds"), (ReportCounters.Key.deposits, "Fixed deposits"),
             (ReportCounters.Key.tax, "Personal tax"), (ReportCounters.Key.loans, "Loans drawn and instalments paid"),
             (ReportCounters.Key.interest, "Overdraft interest"), (ReportCounters.Key.companies, "Founding and selling companies"),

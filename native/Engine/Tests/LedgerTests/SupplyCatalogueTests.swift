@@ -38,8 +38,7 @@ final class SupplyCatalogueTests: XCTestCase {
             XCTAssertTrue(cogs == 0 || abs(cogs - 1) < 0.001 || lines.contains { $0.id == "goods" }, "\(bd.id) cost-of-sales shares add to \(cogs)")
             XCTAssertLessThan(lines.filter { !$0.isCogs }.reduce(0) { $0 + $1.share }, 0.95, "\(bd.id) overhead shares")
         }
-        XCTAssertTrue(none.allSatisfy { $0 == "hold" }, "only a holding company buys nothing: \(none)")
-        XCTAssertNotNil(e.data.catalog["hold"])
+        XCTAssertTrue(none.isEmpty, "every trade buys something: \(none)")
     }
 
     func testGymBuysCleaningLaundryPartsAndShopStock() throws {

@@ -98,19 +98,25 @@ public extension GameEngine {
     @discardableResult
     mutating func sellEquipmentUnit(companyID: Int, equipmentID: String, unitID: Int) -> Double {
         var v = 0.0
-        update { s, _, _ in v = EquipmentMarket.sellUnit(&s, companyID: companyID, equipmentID: equipmentID, unitID: unitID) }
+        update { s, _, _ in
+            if let why = PublicRules.restriction(s, companyID: companyID, change: .sellAssets) { s.note(why, tone: "n", companyID: companyID); return }
+            v = EquipmentMarket.sellUnit(&s, companyID: companyID, equipmentID: equipmentID, unitID: unitID) }
         return v
     }
     @discardableResult
     mutating func sellAllEquipment(companyID: Int, equipmentID: String) -> Double {
         var v = 0.0
-        update { s, _, _ in v = EquipmentMarket.sellAll(&s, companyID: companyID, equipmentID: equipmentID) }
+        update { s, _, _ in
+            if let why = PublicRules.restriction(s, companyID: companyID, change: .sellAssets) { s.note(why, tone: "n", companyID: companyID); return }
+            v = EquipmentMarket.sellAll(&s, companyID: companyID, equipmentID: equipmentID) }
         return v
     }
     @discardableResult
     mutating func sellVehicle(companyID: Int, vehicleID: Int) -> Double {
         var v = 0.0
-        update { s, _, _ in v = EquipmentMarket.sellVehicle(&s, companyID: companyID, vehicleID: vehicleID) }
+        update { s, _, _ in
+            if let why = PublicRules.restriction(s, companyID: companyID, change: .sellAssets) { s.note(why, tone: "n", companyID: companyID); return }
+            v = EquipmentMarket.sellVehicle(&s, companyID: companyID, vehicleID: vehicleID) }
         return v
     }
     @discardableResult

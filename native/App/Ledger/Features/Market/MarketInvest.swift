@@ -142,9 +142,7 @@ struct PositionPage: View {
         case .crypto: Text("Very volatile").textStyle(.caption, tint: P.warn)
         case .startup: Text("Sells at 72% of value").textStyle(.caption)
         case .privateEquity: Text("Sells whole, at a discount").textStyle(.caption)
-        case .fund:
-            if case .holding = p.owner { Text("Selling costs 0.66%").textStyle(.caption) }
-        case .shares, .deposit, .groupStake, .partnership, .managed:
+        case .fund, .shares, .deposit, .groupStake, .partnership, .managed:
             if let n = p.sellNote { Text(n.tidyText).textStyle(.caption).lineLimit(1) }
         }
     }

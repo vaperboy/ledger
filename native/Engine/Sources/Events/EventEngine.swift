@@ -79,7 +79,7 @@ public enum EventEngine {
     }
 
     static func goodEventMinimumWeeks(_ s: GameState, companyIndex i: Int) -> Int {
-        s.companies.prefix(i).contains { $0.type != "hold" } ? 6 : 12
+        s.companies.prefix(i).isEmpty ? 12 : 6
     }
 
     static func cooldownWeeks(_ s: GameState, companyID: Int, event e: GameEvent) -> Double {
@@ -213,7 +213,7 @@ public enum EventEngine {
 
     static func decisionRoom(_ s: GameState) -> Bool {
         let waiting: Int = s.inbox.filter { (m: Message) -> Bool in m.status == "open" && m.kind == "decision" }.count
-        let companies: Int = s.companies.filter { (c: Company) -> Bool in c.status == .open && c.type != "hold" }.count
+        let companies: Int = s.companies.filter { (c: Company) -> Bool in c.status == .open }.count
         return waiting < min(decisionCap, 4 + companies)
     }
 
@@ -242,7 +242,7 @@ public enum EventEngine {
         if co.value("ins")[e.category].bool {
             return "Your \(name) insurance covers most of a loss, after an excess of \(currency.display(currency.scaledPrice(10000)))."
         }
-        return "You have no \(name) insurance, so a loss comes out of the company's cash. Cover is switched on in Atlas Insurance."
+        return "You have no \(name) insurance, so a loss comes out of your account. Cover is switched on in Atlas Insurance."
     }
 
     static func decisionBody(_ co: Company, _ e: GameEvent, currency: Currency) -> String {

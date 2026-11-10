@@ -78,24 +78,8 @@ struct BankWealthCard: View {
     @ViewBuilder private func stakes(_ b: NetWorthBreakdown) -> some View {
         ForEach(b.stakes) { (st: CompanyStake) in
             let share: String = Currency.percent(st.ownershipPercent / 100, decimals: 0)
-            let sub: String = st.heldThrough.map { "held through " + $0 } ?? ("you own " + share)
+            let sub: String = "you own " + share
             FlatRow(label: st.name, value: store.short(st.attributableEquity), sub: sub)
-        }
-    }
-}
-
-struct BankReservesCard: View {
-    @Environment(\.outsidePalette) private var P
-    var reserves: CompanyReserves
-    var fmt: BankFmt
-
-    var body: some View {
-        BankCard(title: "Reserves", trailing: "display only") {
-            VStack(alignment: .leading, spacing: 0) {
-                FlatRow(label: "Payroll", value: fmt.short(reserves.payroll), sub: "wages owed and building up", rule: false)
-                FlatRow(label: "Tax", value: fmt.short(reserves.tax), sub: "tax and VAT owed")
-                FlatRow(label: "Free to use", value: fmt.short(reserves.free), sub: "cash after the two reserves", tint: reserves.free < 0 ? P.loss : nil)
-            }
         }
     }
 }

@@ -113,7 +113,7 @@ struct GroupEntityOverview: View {
         var label: String
         var value: String
         var tint: Color = Theme.ivory
-        static let moneyLabels: Set<String> = ["Profit", "Revenue", "Cash"]
+        static let moneyLabels: Set<String> = ["Profit", "Revenue"]
     }
 
     var body: some View {
@@ -122,7 +122,7 @@ struct GroupEntityOverview: View {
         let money: [Stat] = list.filter { (s: Stat) -> Bool in Stat.moneyLabels.contains(s.label) }
         let facts: [Stat] = list.filter { (s: Stat) -> Bool in !Stat.moneyLabels.contains(s.label) }
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
-            FigureRow(items: money.map { (s: Stat) -> KeyFigures.Item in KeyFigures.Item(label: s.label, value: s.value, tint: s.tint, sub: s.label == "Cash" ? "today" : "this month") }, columns: 3, size: .figure, combineCells: true)
+            FigureRow(items: money.map { (s: Stat) -> KeyFigures.Item in KeyFigures.Item(label: s.label, value: s.value, tint: s.tint, sub: "this month") }, columns: 3, size: .figure, combineCells: true)
             VStack(spacing: Theme.Space.s) {
                 ForEach(Array(facts.enumerated()), id: \.element.id) { (n: Int, s: Stat) in
                     if n > 0 { Hairline() }
@@ -130,12 +130,10 @@ struct GroupEntityOverview: View {
                         .accessibilityElement(children: .combine)
                 }
             }
-            if entity.isHolding { subsidiaries }
         }
     }
 
     private func stats(_ cos: [Company]) -> [Stat] {
-        var cash: Double = 0
         var staff: Int = 0
         var open: Int = 0
         var franchised: Int = 0
@@ -143,7 +141,6 @@ struct GroupEntityOverview: View {
         var profit: Double = 0
         var franchisors: Int = 0
         for c in cos {
-            cash += c.cash
             staff += c.staff.count + (c.managerID != nil ? 1 : 0)
             if c.status == .open { open += 1 }
             if engine.isFranchisor(companyID: c.id) {
@@ -155,16 +152,11 @@ struct GroupEntityOverview: View {
             profit += f.monthProfit
         }
         var out: [Stat] = []
-        if entity.isHolding {
-            out.append(Stat(label: "Companies under it", value: "\(max(0, cos.count - 1))"))
-        } else {
-            out.append(Stat(label: entity.isChain ? "Stores open" : "Open", value: entity.isChain ? "\(open) of \(cos.count)" : (open > 0 ? "Yes" : "Closed")))
-            out.append(Stat(label: "Franchised out", value: franchised == 0 ? "None" : "\(franchised) \(franchised == 1 ? "franchisee" : "franchisees")"))
-        }
+        out.append(Stat(label: entity.isChain ? "Stores open" : "Open", value: entity.isChain ? "\(open) of \(cos.count)" : (open > 0 ? "Yes" : "Closed")))
+        out.append(Stat(label: "Franchised out", value: franchised == 0 ? "None" : "\(franchised) \(franchised == 1 ? "franchisee" : "franchisees")"))
         out.append(Stat(label: "Employees", value: "\(staff)"))
         out.append(Stat(label: "Profit", value: store.short(profit), tint: Theme.change(profit)))
         out.append(Stat(label: "Revenue", value: store.short(revenue)))
-        out.append(Stat(label: "Cash", value: store.short(cash), tint: cash < 0 ? Theme.loss : Theme.ivory))
         let brand: Double = engine.brandValue(companyID: entity.companyID)
         out.append(Stat(label: "Brand", value: BrandWords.label(score: brand)))
         if entity.isChain {
@@ -179,20 +171,5 @@ struct GroupEntityOverview: View {
         guard let key = engine.boardKey(companyID: entity.companyID) else { return "None" }
         let v = engine.boardVoters(key: key).first(where: { (x: ManagerModel.Voter) -> Bool in x.type == "ceo" })
         return v?.name ?? "None"
-    }
-
-    @ViewBuilder private var subsidiaries: some View {
-        let subs: [Company] = entity.members.dropFirst().compactMap { (id: Int) -> Company? in engine.state.company(id) }
-        if !subs.isEmpty {
-            LedgerSection("Under this holding") {
-                VStack(spacing: 0) {
-                    ForEach(Array(subs.enumerated()), id: \.element.id) { (n: Int, c: Company) in
-                        if n > 0 { Hairline() }
-                        LedgerRow(leading: .glyph(Glyph.home), title: c.name, subtitle: "\(engine.tradeName(c)) \u{00B7} \(engine.cityName(c))",
-                                  value: store.short(Valuation.companyValue(c, state: engine.state, trades: engine.data.catalog), in: c))
-                    }
-                }
-            }
-        }
     }
 }

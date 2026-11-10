@@ -87,7 +87,7 @@ final class StartupLifecycleTests: XCTestCase {
         days(&e, 7 * 14)
         XCTAssertTrue(CompanySale.canSell(e.state, companyID: sid))
         let net0 = e.state.cash
-        XCTAssertTrue(e.listCompanyForSale(companyID: sid, broker: false, percent: 100))
+        XCTAssertEqual(e.startSale(companyID: sid, percent: 100, method: .offers), .started)
         var accepted = false
         for _ in 0..<20 where !accepted {
             days(&e, 7)

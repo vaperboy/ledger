@@ -29,7 +29,7 @@ final class PlaytestReworkTours: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: seed)
         cur = e.homeCurrency
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(60_000_000), why: "Test capital") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cur.scaledPrice(12_000_000), quickSetup: true) else {
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, quickSetup: true) else {
             throw XCTSkip("cannot start \(trade)")
         }
         for _ in 0..<(40 * 7) {
@@ -114,7 +114,7 @@ final class PlaytestReworkTours: XCTestCase {
         let g = Ledger.gaps(s)
         if !g.isEmpty { find(1, "ledger gap: \(g.map { "\($0.holder)=\(Int($0.difference))" }.joined(separator: ",").prefix(80))", "week \(s.week)") }
         if s.cash < -s.overdraftLimit - 1 { find(2, "personal cash below the personal overdraft limit (\(Int(s.cash)))", "week \(s.week)") }
-        for co in s.companies where co.status.isLive && co.type != "hold" && co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 && !stress { find(2, "company cash below its overdraft room (\(co.type))", "week \(s.week) \(Int(co.cash))") }
+        for co in s.companies where co.status.isLive && co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 && !stress { find(2, "company cash below its overdraft room (\(co.type))", "week \(s.week) \(Int(co.cash))") }
         var seen = Set<String>()
         for m in out.newMessages {
             let key = "\(m.companyID)|\(m.title)|\(m.body)"
@@ -301,32 +301,33 @@ final class PlaytestReworkTours: XCTestCase {
         ex(Ledger.gaps(e.state).isEmpty, "\(what): ledger consistent after the sale", sev: 1)
     }
 
-    func testSaleRoutesList() throws {
-        tour = "SaleRoutesList"
+    func startOffers(_ e: inout GameEngine, _ id: Int, percent: Int = 100) -> Bool {
+        e.startSale(companyID: id, percent: percent, method: .offers) == .started
+    }
+
+    func testSaleQuotes() throws {
+        tour = "SaleQuotes"
         let (e, id) = try fixture(manager: true, accountant: true, weeks: 14)
-        let routes = e.saleRoutes(companyID: id)
-        let ids = Set(routes.map { $0.id })
-        for want in ["private", "broker", "auction", "mbo", "merger", "group", "stake", "ipo", "franchise"] { ex(ids.contains(want), "route \(want) is listed") }
-        for r in routes { ex(r.available || !r.why.isEmpty, "shut route \(r.id) always says why") ; ex(!r.available || r.why.isEmpty, "open route \(r.id) has no refusal text") }
-        let ipo = routes.first { $0.id == "ipo" }
-        ex(ipo?.available == false && (ipo?.why.lowercased().contains("holding") ?? false), "IPO refusal for a plain company names the holding rule (\(ipo?.why ?? "-"))")
-        let tiers = e.stakeTiers(companyID: id)
-        ex(tiers.map { $0.pct } == [10, 25, 34, 49], "stake tiers are 10/25/34/49")
-        for t in tiers { ex(abs(t.buyerPoints + t.youKeep - (e.state.company(id)?.ownership ?? 100)) < 0.01, "tier \(t.pct): buyer points + what you keep = your ownership") }
-        for t in tiers {
+        for m in CompanySale.Method.allCases {
+            guard let q = e.saleQuote(companyID: id, percent: 40, method: m) else { find(2, "no quote for \(m)"); continue }
+            ex(q.pct == 40, "\(m): quote keeps the chosen stake")
+            ex(q.youGet <= q.expected + 0.5 && q.tax >= 0 && q.fee >= 0, "\(m): you get no more than the expected price")
+            ex(q.problem != nil || m != .ipo || q.ownershipAfter > 50, "\(m): a public offering keeps you above half")
+        }
+        ex(e.saleQuote(companyID: id, percent: 3, method: .offers)?.pct == 10, "the smallest part to sell is ten percent")
+        for pct in [10, 25, 50, 100] {
             var f = e
-            let started = f.startSale(companyID: id, route: "private", percent: t.pct)
-            ex(started == t.allowed, "tier \(t.pct): allowed flag (\(t.allowed)) agrees with startSale (\(started))")
+            ex(f.startSale(companyID: id, percent: pct, method: .offers) == .started, "\(pct)% on offer starts for an open trading company")
         }
     }
 
     func testSaleHandshakeAndBroker() throws {
         tour = "SaleHandshakeBroker"
-        for route in ["private", "broker"] {
+        for route in ["private"] {
             var (e, id) = try fixture(manager: true, accountant: true, weeks: 16, seed: seedOffset(route))
-            guard e.startSale(companyID: id, route: route) else { find(2, "\(route): startSale refused for an open trading company"); continue }
+            guard startOffers(&e, id) else { find(2, "\(route): startSale refused for an open trading company"); continue }
             ex(e.saleListing(companyID: id)?.route == route, "\(route): listing carries its route")
-            ex(!e.startSale(companyID: id, route: route), "\(route): a second listing of the same company is refused")
+            ex(!startOffers(&e, id), "\(route): a second listing of the same company is refused")
             guard let off = waitForOffer(&e, id) else { find(2, "\(route): no offer in 40 weeks"); continue }
             ex(off.price > 0 && off.expiresWeek > e.state.week - 1, "\(route): offer has a price and a future expiry")
             var f = e
@@ -345,7 +346,7 @@ final class PlaytestReworkTours: XCTestCase {
             saves(e, "after \(route) sale")
         }
         var (e, id) = try fixture(manager: true, accountant: true, weeks: 16)
-        _ = e.startSale(companyID: id, route: "private")
+        _ = startOffers(&e, id)
         if let off = waitForOffer(&e, id) {
             e.declineSaleOffer(companyID: id, offerID: off.id)
             ex(!(e.saleListing(companyID: id)?.offers.contains { $0.id == off.id } ?? false), "declined offer is removed")
@@ -356,14 +357,13 @@ final class PlaytestReworkTours: XCTestCase {
         if let l = e.saleListing(companyID: id) { ex(l.offers.count <= 4, "at most four offers at once (\(l.offers.count))") }
     }
 
-    func seedOffset(_ s: String) -> Int { s == "broker" ? 9 : 5 }
+    func seedOffset(_ s: String) -> Int { 5 }
 
     func testSaleAuction() throws {
         tour = "SaleAuction"
         var (e, id) = try fixture(manager: true, accountant: true, weeks: 16)
         let v = CompanySale.estimatedValue(e.state, companyID: id, data: e.data)
-        ex(!e.startAuction(companyID: id, reserve: 0), "reserve 0 is refused")
-        guard e.startAuction(companyID: id, reserve: v * 0.3) else { return find(2, "startAuction refused for an open company") }
+        guard e.startSale(companyID: id, percent: 100, method: .auction, reserve: v * 0.3) == .started else { return find(2, "startAuction refused for an open company") }
         var l = e.saleListing(companyID: id)!
         ex(l.round == 1 && l.offers.count >= 3, "round 1 brings at least three named bids (\(l.offers.count))")
         ex(Set(l.offers.map { $0.buyer }).count == l.offers.count, "bidders have distinct names")
@@ -389,169 +389,21 @@ final class PlaytestReworkTours: XCTestCase {
         saves(e, "after auction")
         var (g, gid) = try fixture(manager: true, accountant: true, weeks: 16, seed: 8)
         let gv = CompanySale.estimatedValue(g.state, companyID: gid, data: g.data)
-        _ = g.startAuction(companyID: gid, reserve: gv * 0.3)
+        _ = g.startSale(companyID: gid, percent: 100, method: .auction, reserve: gv * 0.3)
         run(&g, weeks: 12)
         ex(g.saleListing(companyID: gid) == nil, "an unattended auction does not stay listed after 12 weeks")
         var (h, hid) = try fixture(manager: true, accountant: true, weeks: 16, seed: 9)
-        _ = h.startAuction(companyID: hid, reserve: gv * 50)
+        _ = h.startSale(companyID: hid, percent: 100, method: .auction, reserve: gv * 50)
         let hh = h.playtestHash
         ex(h.hammerSale(companyID: hid) == nil && h.playtestHash == hh, "hammer with no bids over the reserve does nothing")
         var (k, kid) = try fixture(manager: true, accountant: true, weeks: 16, seed: 10)
         let own0 = k.state.company(kid)?.ownership ?? 100
-        if k.startAuction(companyID: kid, reserve: gv * 0.05, percent: 25) {
+        if k.startSale(companyID: kid, percent: 25, method: .auction, reserve: gv * 0.05) == .started {
             let got = k.hammerSale(companyID: kid)
             ex(got != nil, "a 25% stake auction can be hammered")
             ex((k.state.company(kid)?.ownership ?? own0) < own0 && k.state.company(kid)?.status == .open, "a stake auction lowers ownership and keeps the company")
             ex(Ledger.gaps(k.state).isEmpty, "ledger after a stake auction", sev: 1)
         } else { find(3, "startAuction for a 25% stake refused") }
-    }
-
-    func testSaleBuyout() throws {
-        tour = "SaleBuyout"
-        var (e0, id0) = try fixture(manager: false, accountant: true, weeks: 14)
-        ex(!e0.startSale(companyID: id0, route: "mbo"), "a management buyout without a manager is refused")
-        ex(e0.saleRoutes(companyID: id0).first { $0.id == "mbo" }?.why.isEmpty == false, "the buyout route says why it is shut without a manager")
-        var (e, id) = try fixture(manager: true, accountant: true, weeks: 14)
-        guard e.startSale(companyID: id, route: "mbo") else { return find(2, "mbo startSale refused with a manager") }
-        guard let off = waitForOffer(&e, id, weeks: 60) else { return find(2, "no buyout offer from the manager in 60 weeks") }
-        ex(off.kind == "mbo" && off.buyer.contains("manager"), "the only bidder is the manager (\(off.buyer))")
-        let nw0 = netBook(e, id)
-        let got = e.acceptBuyerOffer(companyID: id, offerID: off.id)
-        ex(got != nil, "buyout accepted")
-        soldClean(e, id, "mbo")
-        let paidNow = netBook(e, id) - nw0
-        let owed = (e.state.rest["deferred"]?.array ?? []).reduce(0.0) { $0 + $1["amt"].double }
-        ex(owed > 0, "a third is deferred over two years (owed \(Int(owed)))")
-        ex(paidNow > 0, "some of the price arrives at once")
-        let nw1 = netBook(e, id)
-        run(&e, weeks: 110)
-        ex(netBook(e, id) > nw1, "the deferred money is paid in the following two years")
-        ex((e.state.rest["deferred"]?.array ?? []).isEmpty, "no deferred payment is left after two years")
-        saves(e, "after buyout")
-    }
-
-    func testSaleMerger() throws {
-        tour = "SaleMerger"
-        var (e, id) = try fixture(manager: true, accountant: true, weeks: 20)
-        let cands = e.mergeCandidates(companyID: id)
-        guard let c = cands.first else { return find(3, "no merge candidate after 30 weeks in a city market") }
-        let own0 = e.state.company(id)?.ownership ?? 100
-        let res = e.mergeWithRival(companyID: id, rivalID: c.id, percent: 30)
-        ex(res == .merged, "a 30% merge is certain (\(res))")
-        ex((e.state.company(id)?.ownership ?? 100) < own0, "the merge dilutes the owner")
-        ex(!e.mergeCandidates(companyID: id).contains { $0.id == c.id }, "a merged rival is no longer a candidate")
-        ex(e.mergeWithRival(companyID: id, rivalID: c.id, percent: 30) != .merged, "the same rival cannot merge twice")
-        run(&e, weeks: 10)
-        saves(e, "after merger")
-        var (f, fid) = try fixture(manager: true, accountant: true, weeks: 20, seed: 11)
-        if let c2 = f.mergeCandidates(companyID: fid).first {
-            var tries = 0
-            while tries < 10, f.mergeWithRival(companyID: fid, rivalID: c2.id, percent: 15) == .declined { tries += 1; run(&f, weeks: 1) }
-            ex(tries < 10, "a 15% merge offer is accepted within ten weekly tries (\(tries))", sev: 3)
-        }
-    }
-
-    func testSaleStakes() throws {
-        tour = "SaleStakes"
-        for pct in [10, 25, 34, 49] {
-            var (e, id) = try fixture(manager: true, accountant: true, weeks: 16, seed: 20 + pct)
-            let tier = e.stakeTiers(companyID: id).first { $0.pct == pct }!
-            guard e.startSale(companyID: id, route: "private", percent: pct) else { find(2, "stake \(pct)% startSale refused although tier allowed=\(tier.allowed)"); continue }
-            ex(e.saleListing(companyID: id)?.pct == pct, "stake \(pct)%: listing carries the percent")
-            guard let off = waitForOffer(&e, id, weeks: 60) else { find(3, "stake \(pct)%: no offer in 60 weeks"); continue }
-            let own0 = e.state.company(id)?.ownership ?? 100
-            let nw0 = netBook(e, id)
-            let got = e.acceptBuyerOffer(companyID: id, offerID: off.id)
-            ex(got != nil, "stake \(pct)%: accepted")
-            let own1 = e.state.company(id)?.ownership ?? 100
-            let drop: Double = own0 - own1
-            ex(abs(drop - tier.buyerPoints) < 0.6, "stake \(pct)%: ownership falls by the tier's buyer points (\(own0)->\(own1), expected -\(tier.buyerPoints))")
-            ex(e.state.company(id)?.status == .open, "stake \(pct)%: the company stays open and yours")
-            ex(netBook(e, id) > nw0, "stake \(pct)%: cash comes to the owner")
-            ex(Ledger.gaps(e.state).isEmpty, "stake \(pct)%: ledger after sale", sev: 1)
-            ex(e.saleListing(companyID: id) == nil, "stake \(pct)%: listing is closed")
-            run(&e, weeks: 6)
-            ex(!e.boardIsAdvisory(companyID: id), "stake \(pct)%: with a co-owner the board is no longer advisory")
-            let t2 = e.stakeTiers(companyID: id)
-            ex(t2.allSatisfy { $0.youKeep >= 0 }, "stake \(pct)%: nothing negative is kept after a second look")
-            saves(e, "after \(pct)% stake")
-        }
-    }
-
-    func testSaleGroupAndMaster() throws {
-        tour = "SaleGroupMaster"
-        var (e, id) = try fixture(manager: true, accountant: true, weeks: 40)
-        let buyers = e.groupBuyers(companyID: id)
-        if let b = buyers.first {
-            ex(b.price > 0, "group quote positive")
-            var f = e
-            let n0 = netBook(f, id)
-            let got = f.sellToGroup(companyID: id, groupID: b.id)
-            ex(got != nil && netBook(f, id) > n0, "selling to a group pays the owner (\(String(describing: got)))")
-            soldClean(f, id, "group")
-            ex(f.sellToGroup(companyID: id, groupID: b.id) == nil, "a sold company cannot be sold again")
-            run(&f, weeks: 8)
-            saves(f, "after group sale")
-        } else { find(3, "no rival group is active in the UK after 50 weeks (route shut: \(e.saleRoutes(companyID: id).first { $0.id == "group" }?.why ?? ""))") }
-        do {
-            var l = e
-            if l.startSale(companyID: id, route: "private"), let b = buyers.first {
-                let open = l.saleRoutes(companyID: id).first { $0.id == "group" }?.available ?? false
-                let r = l.sellToGroup(companyID: id, groupID: b.id)
-                if open && r == nil { find(3, "group route shows as available while the company is listed, then sellToGroup silently returns nil") }
-            }
-        }
-        let reqs = e.franchiseRequirements(companyID: id)
-        ex(!reqs.isEmpty, "franchise requirements are listed", sev: 3)
-        ex(e.sellMasterFranchise(companyID: id, country: "DE") == .noFranchise, "master franchise refused before the franchise exists")
-        ex(e.saleRoutes(companyID: id).first { $0.id == "franchise" }?.available == false, "franchise route is shut before the franchise exists")
-        for r in reqs where !r.ok { _ = e.applyForChainDocument(companyID: id, document: r.id) }
-        run(&e, weeks: 16)
-        let lr = e.launchFranchise(companyID: id, entryFee: cur.scaledPrice(20_000), royalty: 0.06, support: 1)
-        if !e.isFranchisor(companyID: id) {
-            _ = lr
-            e.update { s, _, _ in
-                guard let i = s.companyIndex(id) else { return }
-                s.companies[i].set("fr", .object(["on": 1, "fee": .number(cur.scaledPrice(20_000)), "roy": 0.06, "supp": 1, "brand": 15, "units": .array([]), "app": .array([]), "masters": .array([])]))
-            }
-        }
-        ex(e.saleRoutes(companyID: id).first { $0.id == "franchise" }?.available == true, "franchise route opens once the franchise runs")
-        let countries = e.masterFranchiseCountries(companyID: id)
-        ex(!countries.isEmpty, "there are countries to sell a master franchise in")
-        if let c = countries.first {
-            let cash0 = e.state.company(id)?.cash ?? 0
-            e.update { s, _, _ in if let i = s.companyIndex(id) { Ledger.moveRaw(&s, .company(id), cur.scaledPrice(5_000_000)); _ = i } }
-            let cash1 = e.state.company(id)?.cash ?? 0
-            let r = e.sellMasterFranchise(companyID: id, country: c.code)
-            ex(r == .ok, "master franchise for \(c.code) sells (\(r))")
-            if r == .ok {
-                ex((e.state.company(id)?.cash ?? 0) > cash1 - cur.scaledPrice(2_000_000), "the master fee arrives in the company")
-                ex(e.sellMasterFranchise(companyID: id, country: c.code) == .already, "the same country cannot be sold twice")
-            }
-            _ = cash0
-            run(&e, weeks: 30)
-        }
-        saves(e, "after master franchise")
-    }
-
-    func testSaleIpoRefusal() throws {
-        tour = "SaleIpo"
-        var (e, id) = try fixture(manager: true, accountant: true, weeks: 14)
-        var other = 0
-        if let b = try? fixture("tutor", weeks: 2, seed: 6) { other = b.1; _ = other }
-        e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(5_000_000), why: "Test capital") }
-        let b = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(2_000_000), quickSetup: true)
-        guard case .success(let bid) = b else { return find(3, "second company for a holding did not start") }
-        run(&e, weeks: 2)
-        switch e.createHolding(name: nil, companies: [id, bid]) {
-        case .success(let hid):
-            let r = e.saleRoutes(companyID: hid).first { $0.id == "ipo" }
-            ex(r != nil, "a holding lists the ipo route")
-            if let r, !r.available { ex(r.why.lowercased().contains("worth too little") || r.why.lowercased().contains("listed"), "holding IPO refusal names the value or listing (\(r.why))") }
-            ex(e.saleRoutes(companyID: hid).first { $0.id == "private" }?.available == false, "a holding itself cannot be sold on the handshake route")
-        case .failure(let f): find(3, "createHolding failed: \(f)")
-        }
-        run(&e, weeks: 6)
     }
 
     func payrollShort(_ e: inout GameEngine, _ id: Int, fraction: Double) -> [Message] {
@@ -599,7 +451,7 @@ final class PlaytestReworkTours: XCTestCase {
         else { ex(msgs.contains { $0.isOwnerAddressed && $0.severity >= 3 }, "a serious shortfall (3% of wages) reaches the owner although an accountant exists") }
         var (m, a) = try fixture(manager: false, accountant: true, weeks: 12, seed: 15)
         m.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
-        guard case .success(let b) = m.startCompany(tradeID: "cafe", cityID: m.state.player.cityID, fundWith: cur.scaledPrice(6_000_000), quickSetup: true) else { return }
+        guard case .success(let b) = m.startCompany(tradeID: "cafe", cityID: m.state.player.cityID, quickSetup: true) else { return }
         run(&m, weeks: 8)
         m.update { s, d, _ in
             for id in [a, b] { CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: d) }
@@ -622,7 +474,7 @@ final class PlaytestReworkTours: XCTestCase {
         let earnedChain = later.first { $0.id == "chain" }?.unlocked ?? false
         if !earnedChain { find(3, "chain unlock not earned after 72 weeks of trading (reason: \(later.first { $0.id == "chain" }?.reason ?? ""))") }
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(20_000_000), why: "Test capital") }
-        guard case .success(let b) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(3_000_000), quickSetup: true) else { return find(3, "second company did not start") }
+        guard case .success(let b) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, quickSetup: true) else { return find(3, "second company did not start") }
         let sb = e.unlockState(companyID: b)
         for id in ["chain", "franchise", "abroad", "research"] {
             let mine = later.first { $0.id == id }?.unlocked ?? false
@@ -637,7 +489,7 @@ final class PlaytestReworkTours: XCTestCase {
         for p in pend where ["chain", "franchise", "abroad", "research"].contains(p.id) { find(2, "player-level unlock \(p.id) is announced again for the second company") }
         for p in e.pendingUnlocks() { e.markUnlockShown(id: p.id, companyID: p.companyID) }
         ex(e.pendingUnlocks().isEmpty, "marking every unlock shown clears the list")
-        if e.startSale(companyID: a, route: "private"), let off = waitForOffer(&e, a, weeks: 40) {
+        if startOffers(&e, a), let off = waitForOffer(&e, a, weeks: 40) {
             _ = e.acceptBuyerOffer(companyID: a, offerID: off.id)
             for id in ["chain", "franchise", "abroad", "research"] {
                 let mine = later.first { $0.id == id }?.unlocked ?? false

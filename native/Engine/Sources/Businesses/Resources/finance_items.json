@@ -1,5 +1,5 @@
 {
- "about": "Item data (financial, energy and group trades). Game design values: relative margins, loss weights, average balances (base currency, scaled by the country price level), fee class factors, tariff mix, group service weights. The money itself stays in FinanceModel, EnergyModel and HoldingModel; these only split it.",
+ "about": "Item data (financial, energy and group trades). Game design values: relative margins, loss weights, average balances (base currency, scaled by the country price level), fee class factors, tariff mix, group service weights. The money itself stays in FinanceModel and EnergyModel; these only split it.",
  "insco": {
   "names": {"life": "Life cover", "property": "Property cover", "motor": "Motor cover", "home": "Home cover", "travel": "Travel cover", "business": "Business cover"},
   "reserveShare": 0.4
@@ -38,16 +38,5 @@
   ],
   "move": 0.1
  },
- "oilgas": {"move": 0.1, "termShare": 0.6},
- "hold": {
-  "margin": 0.1,
-  "services": [
-   {"id": "mgmt", "n": "Management services", "w": 0.35},
-   {"id": "back", "n": "Shared back office", "w": 0.25},
-   {"id": "treas", "n": "Treasury service", "w": 0.15},
-   {"id": "buy", "n": "Group purchasing", "w": 0.10},
-   {"id": "brand", "n": "Brand licensing", "w": 0.10},
-   {"id": "train", "n": "Training academy", "w": 0.05}
-  ]
- }
+ "oilgas": {"move": 0.1, "termShare": 0.6}
 }

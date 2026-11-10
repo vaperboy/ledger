@@ -20,37 +20,28 @@ struct BankFmt {
     func short(_ v: Double) -> String { company.map { store.short(v, in: $0) } ?? store.short(v) }
     func full(_ v: Double) -> String { company.map { store.money(v, in: $0) } ?? store.money(v) }
     func currency(_ e: GameEngine) -> Currency { company.map { e.currency(for: $0) } ?? e.homeCurrency }
-    static func make(_ store: GameStore, _ id: BankAccountID) -> BankFmt {
-        BankFmt(store: store, company: id.companyID.flatMap { store.engine?.state.company($0) })
-    }
 }
 
 enum BankGlyph {
     static let transfer = "M4 8 H19 M15 4 L19 8 L15 12 M20 16 H5 M9 12 L5 16 L9 20"
-    static let deposit = "M12 4 V16 M7 11 L12 16 L17 11 M5 20 H19"
-    static let withdraw = "M12 16 V4 M7 9 L12 4 L17 9 M5 20 H19"
     static let bill = "M6 3 H18 V21 L15 19 L12 21 L9 19 L6 21 Z M9 8 H15 M9 12 H15"
-    static let company = "M4 20 V8 L12 4 L20 8 V20 M9 20 V13 H15 V20"
 }
 
 struct BankApp: View {
-    private var P: OutsidePalette { store.engine?.playerMainBankIsOwn == true ? .game : .bank }
+    private var P: OutsidePalette { .bank }
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    @State private var session: BankAccountID?
     @State private var account: BankAccountID?
     @State private var tab: BankTab = .account
 
     var body: some View {
         Group {
-            if session == nil {
-                BankPickerScreen { id in tab = .account; account = id; session = id }
-            } else if let account {
+            if let account {
                 BankAccountScreen(id: account, tab: $tab)
             } else {
-                BankAccountsScreen { id in tab = .account; account = id }
+                BankAccountsScreen { id, to in tab = to; account = id }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -79,8 +70,7 @@ struct BankApp: View {
 
     private var titles: (String, String) {
         guard let e = store.engine else { return ("Bank", "") }
-        guard session != nil else { return ("Bank", "Choose an account") }
-        guard let account else { return ("Bank", "Choose an account") }
+        guard let account else { return ("Bank", "Your money in one place") }
         let d = e.bankAccount(account)
         return (d?.name ?? "Account", d?.detail ?? "")
     }
@@ -94,7 +84,6 @@ struct BankApp: View {
         if let amount = r.applyLoan { store.pendingLoanApply = amount }
         tab = r.tab
         account = r.account
-        session = r.account
     }
 }
 

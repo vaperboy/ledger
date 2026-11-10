@@ -6,7 +6,7 @@ import Businesses
 
 public extension GameEngine {
     enum RenameResult: Equatable, Sendable { case ok, tooShort, nameTaken, notEnoughCash, partOfChain, unknown }
-    enum CloseResult: Equatable, Sendable { case ok, unknown, notOpen }
+    enum CloseResult: Equatable, Sendable { case ok, unknown, notOpen, restricted(String) }
 
     func renameCost(companyID: Int) -> Double {
         guard let co = state.company(companyID) else { return 0 }
@@ -78,6 +78,7 @@ public extension GameEngine {
         update { s, _, _ in
             guard let i = s.companyIndex(companyID) else { return }
             guard s.companies[i].status == .open else { r = .notOpen; return }
+            if let why = PublicRules.restriction(s, companyID: companyID, change: .close) { r = .restricted(why); return }
             let prem = s.companies[i].value("prem")
             if giveUpRent, prem["m2"].double > 0, !prem["owned"].bool {
                 _ = Payments.companyPays(&s, companyID: companyID, amount: prem["rent"].double * prem["m2"].double / 12 * 3, category: "rent", label: "Notice period")
@@ -117,7 +118,7 @@ public extension GameEngine {
     }
 
     private static func windUpFigures(_ co: Company, _ s: GameState) -> (rest: Double, debts: Double) {
-        let cash: Double = max(0, co.cash) + max(0, CompanyFigures.assets(co) - co.cash) * 0.55
+        let cash: Double = max(0, CompanyFigures.assets(co)) * 0.55
         let loans: Double = s.loans.filter { $0.companyID == co.id }.reduce(0.0) { $0 + $1.balance }
         let bills = billsOf(co)
         return (cash - loans - bills, loans + bills)
@@ -130,7 +131,7 @@ public extension GameEngine {
             guard let i = s.companyIndex(companyID), s.companies[i].status.isLive else { return }
             HeldMoney.settle(&s, companyID: companyID)
             let co = s.companies[i]
-            let cash: Double = max(0, co.cash) + max(0, CompanyFigures.assets(co) - co.cash) * 0.55
+            let cash: Double = max(0, CompanyFigures.assets(co)) * 0.55
             let ownLoans = s.loans.filter { $0.companyID == co.id }
             let loanSum: Double = ownLoans.reduce(0.0) { $0 + $1.balance }
             let bills = Self.billsOf(co)
@@ -157,11 +158,8 @@ public extension GameEngine {
             s.companies[i].managerID = nil
             EquipmentMarket.endAllLeases(&s, companyIndex: i)
             s.companies[i].status = .sold
-            Ledger.set(&s, .company(co.id), to: 0)
             s.stats.companiesSold += 1
             for k in s.inbox.indices where s.inbox[k].companyID == co.id && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
-            for k in s.companies.indices where s.companies[k].holdingID == co.id { s.companies[k].holdingID = 0 }
-            HoldingStakes.releaseLines(&s, holdingID: co.id)
             s.note("\(co.name) is closed down and its things sold.", companyID: co.id)
             done = true
         }

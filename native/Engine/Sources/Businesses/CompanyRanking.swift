@@ -55,9 +55,8 @@ public enum CompanyRanking {
         var types: [String] = []
         for c in cos where !types.contains(c.type) { types.append(c.type) }
         let (prev, hist) = figures(s, "me")
-        let hold = cos.first { $0.type == "hold" }
         let gr = hist.count >= 13 && hist[hist.count - 13] > 0 ? rev / hist[hist.count - 13] - 1 : 0
-        return Entry(id: "me", name: hold?.name ?? s.player.name, countryCode: s.homeCountryCode, countries: cs, trades: types, revenue: rev, profit: profit, value: val, growth: gr,
+        return Entry(id: "me", name: s.player.name, countryCode: s.homeCountryCode, countries: cs, trades: types, revenue: rev, profit: profit, value: val, growth: gr,
                      previousRevenue: prev?.0 ?? rev, previousProfit: prev?.1 ?? profit, previousValue: prev?.2 ?? val, isYou: true, companyCount: cos.count)
     }
 
@@ -80,7 +79,7 @@ public enum CompanyRanking {
     static func rivalEntries(_ s: GameState, data: GameData) -> [Entry] {
         let w = World(state: s, data: data)
         var out: [Entry] = [], seen = Set<Int>()
-        for co in s.companies where co.status == .open && co.type != "hold" {
+        for co in s.companies where co.status == .open {
             guard let bd = data.catalog[co.type], RivalGroups.localFamilies.contains(bd.family) else { continue }
             for r in Rivals.rivals(s, for: co) where (r.groupID ?? "").isEmpty || r.groupID == "0" {
                 if seen.contains(r.id) { continue }

@@ -72,7 +72,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
             play(&e, days: 4 * 7)
             if let n = e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()), let terms = n.terms {
                 e.signFranchiseTerms(brand.id, terms: terms)
-                _ = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit", fundWith: e.homeCurrency.scaledPrice(30_000_000))
+                _ = e.startFranchisedCompany(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit")
             }
         }
         for item in Luxury.categories.prefix(4).compactMap({ $0.items.first }) { _ = e.buyLuxury(itemID: item.id) }
@@ -432,7 +432,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
     func testTenantLeaseEndsExactlyOnTheDateItRunsOut() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         Self.fund(&e, 5_000_000_000)
-        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID, fundWith: e.homeCurrency.scaledPrice(300_000_000)) else { return XCTFail("rental company") }
+        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID) else { return XCTFail("rental company") }
         let pid = try XCTUnwrap(e.propertyPortfolio(companyID: id)?.rows.first?.id)
         XCTAssertFalse(e.tenantOffers(companyID: id, propertyID: pid).isEmpty)
         XCTAssertTrue(e.leaseSpace(companyID: id, propertyID: pid, offerIndex: 0))
@@ -467,7 +467,7 @@ final class DeterminismSavesDatesTests: XCTestCase {
         Self.play(&e, days: 4 * 7)
         let n = try XCTUnwrap(e.negotiateFranchise(brand.id, ask: FranchiseBrands.Ask()))
         e.signFranchiseTerms(brand.id, terms: try XCTUnwrap(n.terms))
-        let started = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit", pick: nil, fundWith: e.homeCurrency.scaledPrice(30_000_000))
+        let started = e.startFranchisedCompanyChoosingPremises(brandID: brand.id, cityID: e.state.player.cityID, name: "Unit", pick: nil)
         guard case .success(let out) = started else { return XCTFail("unit: \(started)") }
         let id = out.companyID
         Self.play(&e, days: 8 * 7)

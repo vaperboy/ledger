@@ -21,32 +21,19 @@ extension StrategicDecisions {
         guard var mk = s.rest["mk"], var arr = Optional(mk[key]["riv"].array), let k = arr.firstIndex(where: { $0["id"].int == id }) else { return }
         body(&arr[k]); mk[key]["riv"] = .array(arr); s.rest["mk"] = mk
     }
-    static func holdingsOpen(_ s: GameState) -> [Company] { s.companies.filter { $0.type == "hold" && $0.status == .open } }
     static func isTycoon(_ s: GameState, _ data: GameData) -> Bool {
-        s.companies.contains { $0.type == "hold" && $0.status.isLive } || liveCompanies(s, data).count >= 5
+        liveCompanies(s, data).count >= 5
     }
 
     static func marketShares(_ s: GameState, data: GameData) -> [(key: String, companyID: Int, name: String, share: Double)] {
         var by: [String: [Company]] = [:]
-        for c in s.companies where c.status == .open && c.type != "club" && c.type != "hold" && isLocalTrade(c, data) { by[marketKey(c), default: []].append(c) }
+        for c in s.companies where c.status == .open && c.type != "club" && isLocalTrade(c, data) { by[marketKey(c), default: []].append(c) }
         return by.keys.sorted().compactMap { key in
             guard let cs = by[key], let first = cs.first, let bd = data.catalog[first.type], let m = Optional(s.rest["mk"]?[key] ?? .null), !m.isNull else { return nil }
             let city = data.countries.city(first.cityID, preferring: first.countryCode)?.city
             let marketRev = max(1, (bd.normalDemand == 0 ? 1 : bd.normalDemand) * bd.ticket * (city?.demand ?? 1) * (m["n"].double + 1))
             return (key, first.id, first.name, cs.reduce(0) { $0 + $1.lastWeekRevenue } / marketRev)
         }
-    }
-
-    static func hostile(_ s: inout GameState, h: Company, d: JSONValue, p: Double, x: X) {
-        if s.random.chance(p) {
-            if let i = s.companyIndex(h.id), let g = GroupStakes.group(s, id: d["g"].string) {
-                let price = jsRound(value(s.companies[i], s, x.data) * 1.2)
-                if GroupDeals.sellToGroup(&s, companyIndex: i, groupID: d["g"].string, price: price, data: x.data, context: x.fc) {
-                    s.addMessage(from: "Shareholders of \(h.name)", title: "\(d["gn"].string) took control of \(h.name)", body: "Enough shareholders sold to \(d["gn"].string). Your stake was bought at the offer price.", tone: "bad")
-                }
-                _ = g
-            }
-        } else { s.note("The takeover attempt on \(h.name) failed.", tone: "good") }
     }
 
     static func mergeRival(_ s: inout GameState, companyIndex i: Int, rivalID: Int, rivalName: String, owner: String, pct: Double, data: GameData, context fc: FinanceContext, currency cur: Currency) {
@@ -153,32 +140,6 @@ extension StrategicDecisions {
                          let key = marketKey(s.companies[x.i]), wk = Double(s.week)
                          editRival(&s, key, x.d["r"].int) { $0["listed"] = true; $0["dist27"] = .number(wk) } }))
 
-        L.append(Def(id: "t_ipo", cls: "corp", w: 2, def: 1, global: true,
-                     cond: { s, co, data in holdingsOpen(s).contains { !$0.flag("listed") && value($0, s, data) > scaledHome(s, data, 30e6) } },
-                     make: { s, _, data, _ in
-                         guard let h = holdingsOpen(s).first(where: { !$0.flag("listed") && value($0, s, data) > scaledHome(s, data, 30e6) }) else { return nil }
-                         return .object(["h": .number(Double(h.id)), "n": .string(h.name)]) },
-                     title: { _, d, _ in "A bank proposes listing \(d["n"].string)" },
-                     body: { _, _, _ in "An investment bank thinks the market would value your group well. A listing raises money and makes shares easy to sell, but you report every quarter and outsiders get a say. Private equity would invest without a listing, for a big stake and a seat at the table." },
-                     opts: [
-                        Opt(label: "Go public", detail: "A bank listing fee of about 1.5 million (in your currency).") { s, x in
-                            guard let hi = s.companyIndex(x.d["h"].int) else { return }
-                            let fee = x.fc.homeCurrency(s).scaledPrice(Funding.listingFee)
-                            Payments.playerPays(&s, fee, label: "Stock exchange listing")
-                            s.companies[hi].set("listed", 1)
-                            s.note("\(s.companies[hi].name) is listed on the stock exchange.", tone: "good", companyID: s.companies[hi].id) },
-                        Opt(label: "Wait for better numbers", detail: "") { _, _ in },
-                        Opt(label: "Take private equity instead", detail: "They buy 25% in new shares.") { s, x in
-                            guard let hi = s.companyIndex(x.d["h"].int) else { return }
-                            if case .ok = Funding.sellShares(&s, companyID: x.d["h"].int, pct: 25, mode: "primary", data: x.data, context: x.fc) {
-                                var list = s.companies[hi].value("holders").array
-                                if !list.isEmpty {
-                                    list[list.count - 1]["name"] = .string(Funding.fundName(&s, countryCode: s.companies[hi].countryCode, data: x.data, suffix: "Partners"))
-                                    list[list.count - 1]["k27"] = "exit"; list[list.count - 1]["sat"] = 60
-                                    s.companies[hi].set("holders", .array(list))
-                                }
-                            } }]))
-
         L.append(Def(id: "t_pe", cls: "corp", w: 2, def: 2, global: true,
                      cond: { s, _, data in peTarget(s, data) != nil },
                      make: { s, _, data, _ in
@@ -204,29 +165,6 @@ extension StrategicDecisions {
                             CapTable.sellFromYou(&s, ci, shares: sold, to: who, paid: amt, extra: ["k27": "growth", "sat": 60])
                             Funding.addBoardSeats(&s, ci, 1) },
                         Opt(label: "Say no", detail: "") { _, _ in }]))
-
-        L.append(Def(id: "t_hostile", cls: "corp", w: 3, tone: "bad", def: 3, global: true,
-                     cond: { s, _, _ in holdingsOpen(s).contains { $0.flag("listed") && $0.ownership < 60 } },
-                     make: { s, _, _, _ in
-                         guard let h = holdingsOpen(s).first(where: { $0.flag("listed") && $0.ownership < 60 }),
-                               let g = GroupStakes.groups(s, country: s.homeCountryCode).filter({ $0["dist"].int == 0 }).max(by: { $0["cash"].double < $1["cash"].double }) else { return nil }
-                         return .object(["h": .number(Double(h.id)), "n": .string(h.name), "g": g["id"], "gn": g["name"]]) },
-                     title: { _, d, _ in "\(d["gn"].string) is buying up shares in \(d["n"].string)" },
-                     body: { _, d, _ in "\(d["gn"].string) has quietly built up a stake in \(d["n"].string) and wants seats on the board. If it gets more than half, it can replace the board, and you." },
-                     opts: [
-                        Opt(label: "Buy shares back", detail: "Costs you cash; lifts your stake.") { s, x in
-                            guard let hi = s.companyIndex(x.d["h"].int) else { return }
-                            let h = s.companies[hi], add = min(100 - h.ownership, 10), c = jsRound(value(h, s, x.data) * add / 100 * 1.15)
-                            if Payments.liquid(s) < c { s.note("Not enough cash to buy back shares.", tone: "bad"); hostile(&s, h: h, d: x.d, p: 0.6, x: x); return }
-                            Payments.playerPays(&s, c, label: "Share buyback in \(h.name)")
-                            CapTable.buyBackPercent(&s, hi, percent: add)
-                            hostile(&s, h: s.companies[hi], d: x.d, p: 0.25, x: x) },
-                        Opt(label: "Find a friendly investor", detail: "A \"white knight\" takes a stake and votes with you.") { s, x in
-                            if let h = s.company(x.d["h"].int) { hostile(&s, h: h, d: x.d, p: 0.3, x: x) } },
-                        Opt(label: "Negotiate a sale", detail: "Sell to them at a good price.") { s, x in
-                            if let hi = s.companyIndex(x.d["h"].int) { _ = GroupDeals.sellToGroup(&s, companyIndex: hi, groupID: x.d["g"].string, price: jsRound(value(s.companies[hi], s, x.data) * 1.3), data: x.data, context: x.fc) } },
-                        Opt(label: "Defend your strategy in public", detail: "Convince the other shareholders.") { s, x in
-                            if let h = s.company(x.d["h"].int) { hostile(&s, h: h, d: x.d, p: 0.5, x: x) } }]))
 
         L.append(Def(id: "t_antitrust", cls: "crisis", w: 2, tone: "bad", from: "Competition authority", def: 1, global: true,
                      cond: { s, _, data in marketShares(s, data: data).contains { $0.share > 0.35 } },
@@ -261,7 +199,7 @@ extension StrategicDecisions {
         L.append(Def(id: "t_activist", cls: "corp", w: 2, def: 1, global: true,
                      cond: { s, _, data in activistTarget(s, data) != nil },
                      make: { s, _, data, _ in
-                         guard let c = activistTarget(s, data), let h = c.value("holders").array.filter({ $0["pct"].double >= 10 && $0["hid"].int == 0 }).max(by: { $0["pct"].double < $1["pct"].double }) else { return nil }
+                         guard let c = activistTarget(s, data), let h = c.value("holders").array.filter({ $0["pct"].double >= 10 }).max(by: { $0["pct"].double < $1["pct"].double }) else { return nil }
                          return .object(["c": .number(Double(c.id)), "n": .string(c.name), "h": h["name"], "p": h["pct"]]) },
                      title: { _, d, _ in "\(d["h"].string) pushes for changes at \(d["n"].string)" },
                      body: { _, d, _ in "\(d["h"].string) (\(String(format: "%.1f", d["p"].double))%) wants higher dividends and lower costs, and says so to the other owners." },
@@ -333,7 +271,7 @@ extension StrategicDecisions {
             .max { value($0, s, data) < value($1, s, data) }
     }
     static func activistTarget(_ s: GameState, _ data: GameData) -> Company? {
-        liveCompanies(s, data).map { s.companies[$0] }.first { $0.value("holders").array.contains { $0["pct"].double >= 10 && $0["hid"].int == 0 } }
+        liveCompanies(s, data).map { s.companies[$0] }.first { $0.value("holders").array.contains { $0["pct"].double >= 10 } }
     }
     static func auctionGroups(_ s: GameState) -> [JSONValue] {
         (s.rest["g27"]?["g"].object ?? [:]).sorted { $0.key < $1.key }.map { $0.value }.filter { !$0["gone"].bool && $0["dist"].int == 0 && $0["cc"].string != s.homeCountryCode }

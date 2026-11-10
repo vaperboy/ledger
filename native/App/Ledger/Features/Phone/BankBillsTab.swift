@@ -35,7 +35,7 @@ struct BankBillsList: View {
                 action(u, e)
             }
             if short && u.daysAway <= 30 && account != .investments {
-                Text("The account does not hold this much yet. Move money in first.").textStyle(.caption, tint: P.caution)
+                Text("The account does not hold this much yet.").textStyle(.caption, tint: P.caution)
             }
         }
         .padding(.bottom, 6)
@@ -64,8 +64,8 @@ struct BankBillsTab: View {
 
     var body: some View {
         if let e = store.engine {
-            let o = e.financeOverview(companyID: account.companyID)
-            let fmt = BankFmt.make(store, account)
+            let o = e.financeOverview()
+            let fmt = BankFmt(store: store, company: nil)
             VStack(alignment: .leading, spacing: 12) {
                 dueCard(detail, fmt)
                 BankCard(title: "Coming up", trailing: "\(detail.upcoming.count) payment\(detail.upcoming.count == 1 ? "" : "s")") {
@@ -87,7 +87,7 @@ struct BankBillsTab: View {
                 AcctPill(text: short > 0 ? "Short by \(fmt.short(short))" : "Covered", tone: short > 0 ? .bad : .good)
             }
             if short > 0 {
-                Text("This account will not cover what is due. Move money in, sell something or borrow before the dates below.")
+                Text("This account will not cover what is due. Sell something or borrow before the dates below.")
                     .textStyle(.caption, tint: P.loss).fixedSize(horizontal: false, vertical: true)
             }
         }

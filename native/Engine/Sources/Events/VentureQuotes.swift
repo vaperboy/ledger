@@ -61,7 +61,7 @@ public extension Startups {
         public var result: InvestResult
     }
 
-    static func investQuote(_ s: GameState, pitchID: Int, amount: Double, holdingID: Int = 0, context fc: FinanceContext) -> InvestQuote {
+    static func investQuote(_ s: GameState, pitchID: Int, amount: Double, context fc: FinanceContext) -> InvestQuote {
         guard let d = (s.rest["deals_su"]?.array ?? []).first(where: { $0["id"].int == pitchID }) else {
             return InvestQuote(pitchID: pitchID, name: "", amount: 0, minimum: 0, postMoney: 0, ownershipPercent: 0, boardSeat: false, available: 0, result: .gone)
         }
@@ -69,7 +69,7 @@ public extension Startups {
         let rounded = (amount / 10000).rounded() * 10000
         let amt = min(rounded, d["raise"].double)
         let pct = amt / max(1, d["post"].double) * 100
-        let available = holdingID == 0 ? Payments.liquid(s) : (s.company(holdingID)?.cash ?? 0)
+        let available = Payments.liquid(s)
         let result: InvestResult = rounded < minimum ? .tooSmall : available < amt ? .notEnoughMoney : .ok
         return InvestQuote(pitchID: pitchID, name: d["name"].string, amount: amt, minimum: minimum, postMoney: d["post"].double, ownershipPercent: pct, boardSeat: pct >= 20, available: available, result: result)
     }
@@ -77,10 +77,6 @@ public extension Startups {
     static let stakeSellFactor = 0.72
 
     static func stakeRecord(_ s: GameState, _ id: Int) -> JSONValue? { (s.rest["startups"]?.array ?? []).first { $0["id"].int == id } }
-
-    static func sellFactor(for f: JSONValue) -> Double {
-        f["hid"].int == 0 ? stakeSellFactor : stakeSellFactor * HoldingStakes.sellFactor(beforePercent: f["pct"].double) / 0.8
-    }
 
     static func buyerReservation(_ s: GameState, _ f: JSONValue) -> Double {
         var r = HashedRandom("\(s.seed):su:\(f["id"].int):\(s.week)")
@@ -92,7 +88,7 @@ public extension Startups {
         guard f["st"].string == "live" else { return .unavailable("That startup is no longer running.") }
         guard fraction > 0 else { return .unavailable("Choose a share to sell.") }
         let frac = min(1, fraction)
-        let pct = f["pct"].double, factor = sellFactor(for: f)
+        let pct = f["pct"].double, factor = stakeSellFactor
         let fair = f["val"].double * pct / 100 * frac
         let v = jsRound(fair * factor)
         let left = pct * (1 - frac)
@@ -103,13 +99,13 @@ public extension Startups {
     }
 
     static func sellQuote(_ s: GameState, stakeID: Int, fraction: Double) -> VentureSale.Quote {
-        guard let f = stakeRecord(s, stakeID), f["hid"].int == 0 else { return .unavailable("You hold no such stake.") }
+        guard let f = stakeRecord(s, stakeID) else { return .unavailable("You hold no such stake.") }
         return saleQuote(s, f, fraction: fraction)
     }
 
     @discardableResult
-    static func sellAsking(_ s: inout GameState, stakeID: Int, fraction: Double, askMultiplier: Double?, holdingID: Int = 0) -> VentureSale.Outcome {
-        guard let f = stakeRecord(s, stakeID), f["hid"].int == holdingID else { return .unavailable("You hold no such stake.") }
+    static func sellAsking(_ s: inout GameState, stakeID: Int, fraction: Double, askMultiplier: Double?) -> VentureSale.Outcome {
+        guard let f = stakeRecord(s, stakeID) else { return .unavailable("You hold no such stake.") }
         let q = saleQuote(s, f, fraction: fraction)
         guard q.ok else { return .unavailable(q.reason) }
         let outcome = VentureSale.resolve(quoted: q.proceeds, askMultiplier: askMultiplier, reservation: buyerReservation(s, f), coolingDown: f["nHi"].int == s.week)
@@ -118,8 +114,8 @@ public extension Startups {
             if case .declined = outcome { editStake(&s, stakeID) { $0["nHi"] = .number(week) } }
             return outcome
         }
-        receive(&s, f, v, label: "Sold shares in \(f["name"].string)")
-        if holdingID == 0 { s.tax.gains += v - q.costBasis }
+        Payments.playerReceives(&s, v, label: "Sold shares in \(f["name"].string)")
+        s.tax.gains += v - q.costBasis
         let frac = q.fraction
         editStake(&s, stakeID) { x in
             x["pct"] = .number(x["pct"].double * (1 - frac)); x["in"] = .number(x["in"].double * (1 - frac))
@@ -129,29 +125,6 @@ public extension Startups {
         return outcome
     }
 
-    static func available(_ s: GameState, _ f: JSONValue) -> Double {
-        f["hid"].int == 0 ? Payments.liquid(s) : (s.company(f["hid"].int)?.cash ?? 0)
-    }
-    static func pay(_ s: inout GameState, _ f: JSONValue, _ amount: Double, label: String) {
-        let hid = f["hid"].int
-        if hid != 0 {
-            guard let hi = s.companyIndex(hid) else { return }
-            Ledger.moveRaw(&s, .company(hid), -amount)
-            s.companies[hi].addTransaction(week: s.week, amount: -amount, label: label)
-        } else {
-            Payments.playerPays(&s, amount, label: label)
-        }
-    }
-    static func receive(_ s: inout GameState, _ f: JSONValue, _ amount: Double, label: String) {
-        let hid = f["hid"].int
-        if hid != 0 {
-            guard let hi = s.companyIndex(hid) else { return }
-            Ledger.moveRaw(&s, .company(hid), amount)
-            s.companies[hi].addTransaction(week: s.week, amount: amount, label: label)
-        } else {
-            Payments.playerReceives(&s, amount, label: label)
-        }
-    }
 }
 
 public extension PrivateEquity {

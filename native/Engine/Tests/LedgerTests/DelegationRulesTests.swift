@@ -8,7 +8,7 @@ import Simulation
 final class DelegationRulesTests: XCTestCase {
     private func company(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, fundWith: 5_000_000, quickSetup: false) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, quickSetup: false) else { throw XCTSkip("no company") }
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return id
     }
@@ -19,7 +19,7 @@ final class DelegationRulesTests: XCTestCase {
         e.update { s, _, ctx in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].weeksNegative = 10
-            s.companies[i].cash = -90_000_000
+            Ledger.set(&s, to: -90_000_000)
             Failure.warn(&s, context: ctx)
             Failure.warn(&s, context: ctx)
         }
@@ -48,7 +48,7 @@ final class DocumentReviewTests: XCTestCase {
     func testASignedApplicationIsReviewedAndARefusalCanBeReappliedAtOnce() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, fundWith: 5_000_000, quickSetup: false) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, quickSetup: false) else { throw XCTSkip("no company") }
         let form = try XCTUnwrap(e.documentForm(companyID: id, documentID: "registration"))
         XCTAssertTrue(["", "ok", "applied"].contains(form.status))
         let ids = e.openingChecklist(companyID: id).map { $0.id }

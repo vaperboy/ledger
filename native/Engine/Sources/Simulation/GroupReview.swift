@@ -124,14 +124,14 @@ public enum GroupReview {
             f.sales += r.group.pnl.revenue
             f.costs += r.group.pnl.costs
             f.profit += r.group.pnl.netProfit
-            for c in r.companies where c.tradeID != "hold" && !c.pnl.isEmpty {
+            for c in r.companies where !c.pnl.isEmpty {
                 var e = byCompany[c.id] ?? (c.name, 0)
                 e.name = c.name; e.profit += c.pnl.netProfit
                 byCompany[c.id] = e
             }
         }
         f.cashEnd = last.group.cashEnd
-        f.staff = last.companies.filter { $0.status != "sold" && $0.status != "bust" && $0.tradeID != "hold" }.reduce(0) { $0 + $1.staffEnd }
+        f.staff = last.companies.filter { $0.status != "sold" && $0.status != "bust" }.reduce(0) { $0 + $1.staffEnd }
         f.reputationStart = first.group.reputationStart
         f.reputationEnd = last.group.reputationEnd
         f.netWorthChange = last.netWorthEnd.total - first.netWorthStart.total

@@ -111,7 +111,6 @@ struct MarketTradeFlow: View {
         return Button {
             Haptics.choose()
             assetID = a.id
-            if let o = owner, MarketData.refusal(a, for: o) != nil { owner = nil }
             step = owner == nil && ownerCount > 1 ? .who : .amount
             if owner == nil { owner = .player }
         } label: {
@@ -148,12 +147,8 @@ struct MarketTradeFlow: View {
             ForEach(Array(MarketData.owners(e).enumerated()), id: \.element.id) { (pair: (offset: Int, element: MarketUI.OwnerInfo)) in
                 if pair.offset > 0 { Hairline().padding(.leading, Theme.Icon.large + Theme.Space.m) }
                 let o: MarketUI.OwnerInfo = pair.element
-                let why: String? = asset.flatMap { (a: MarketUI.Asset) -> String? in MarketData.refusal(a, for: o.owner) }
-                let pick: (() -> Void)? = why == nil ? { () -> Void in owner = o.owner; step = .amount } : nil
-                LedgerRow(leading: .glyph(o.owner == .player ? Glyph.person : Glyph.group), leadingTint: P.inkSoft, title: o.name,
-                          subtitle: why ?? "",
-                          value: cur.tidyShort(o.cash), valueNote: "available", identifier: "trade-owner-\(o.id)", action: pick)
-                    .opacity(why == nil ? 1 : 0.5)
+                LedgerRow(leading: .glyph(Glyph.person), leadingTint: P.inkSoft, title: o.name, subtitle: "",
+                          value: cur.tidyShort(o.cash), valueNote: "available", identifier: "trade-owner-\(o.id)", action: { () -> Void in owner = o.owner; step = .amount })
             }
         }
     }

@@ -209,7 +209,6 @@ public enum PlayerDeals {
             return .notAllowed("The new company could not be set up.")
         }
         Payments.playerPays(&s, price, label: "Purchase of \(l.companyName) from \(l.ownerName)", companyID: id)
-        _ = Payments.injectCash(&s, companyID: id, amount: plan.startupMoney)
         _ = CompanySetup.quickSetup(&s, companyID: id, data: data)
         if plan.integration > 0 { _ = Payments.companyPays(&s, companyID: id, amount: plan.integration, category: "oth", label: "Integration of \(l.companyName): merging systems and suppliers") }
         if let i = s.companyIndex(id) {

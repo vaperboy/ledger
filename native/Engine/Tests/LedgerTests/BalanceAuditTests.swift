@@ -22,7 +22,7 @@ final class BalanceAuditTests: XCTestCase {
         e.update { s, _, ctx in
             s.week += 1
             s.day = 1
-            PublicExchange.runDay(&s, context: ctx, holdingValue: { _ in nil })
+            PublicExchange.runDay(&s, context: ctx, companyValue: { _ in nil })
         }
     }
 

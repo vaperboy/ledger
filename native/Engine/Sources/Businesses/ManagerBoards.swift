@@ -12,7 +12,7 @@ extension ManagerModel {
         func parent(_ c: Company) -> Company? {
             let b = c.value("branch")
             guard c.value("chain").isNull, !b.isNull, !b["of"].isNull, b["of"].int != c.id, let p = s.company(b["of"].int),
-                  p.status.isLive, p.status != .setup, p.type != "hold", p.countryCode == c.countryCode, p.holdingID == c.holdingID else { return nil }
+                  p.status.isLive, p.status != .setup, p.countryCode == c.countryCode else { return nil }
             return p
         }
         var cur = co, hops = 0
@@ -40,7 +40,7 @@ extension ManagerModel {
     }
     public static func boardKeys(_ s: GameState) -> [String] {
         Chains.list(s).filter { !Chains.stores(s, $0).isEmpty }.map { "ch:\($0["id"].int)" }
-            + s.companies.filter { $0.status.isLive && $0.status != .setup && $0.type != "hold" && $0.value("chain").isNull && boardParent(s, $0) == nil }.map { "co:\($0.id)" }
+            + s.companies.filter { $0.status.isLive && $0.status != .setup && $0.value("chain").isNull && boardParent(s, $0) == nil }.map { "co:\($0.id)" }
     }
     public static func boardCompanies(_ s: GameState, key: String) -> [Company] {
         if isChainKey(key) {
@@ -54,7 +54,7 @@ extension ManagerModel {
         isChainKey(key) ? Chains.chain(s, id: keyID(key))?["name"].string ?? "Chain" : s.company(keyID(key))?.name ?? "Company"
     }
     static func holders(_ s: GameState, key: String) -> [(h: JSONValue, co: Company)] {
-        boardCompanies(s, key: key).flatMap { c in c.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }.map { ($0, c) } }
+        boardCompanies(s, key: key).flatMap { c in c.value("holders").array.filter { $0["pct"].double > 0 }.map { ($0, c) } }
     }
     public static func boardActive(_ s: GameState, key: String) -> Bool { isChainKey(key) ? Chains.chain(s, id: keyID(key)) != nil : !holders(s, key: key).isEmpty }
     static func seatRoleID(_ x: JSONValue) -> String? { x["r"].isNull ? nil : x["r"].string }
@@ -158,7 +158,7 @@ extension ManagerModel {
         let none = DirectorsDecision(decide: false, yes: 0, total: 0, lines: [])
         guard let co = s.company(companyID) else { return none }
         let key = boardKey(s, co)
-        guard boardActive(s, key: key), HoldingStakes.votingPercent(co) > HoldingStakes.controlAbove else { return none }
+        guard boardActive(s, key: key), co.ownership > PublicRules.controlAbove else { return none }
         let dirs = seats(s, key: key).filter { $0.role == "director" }
         guard dirs.contains(where: { $0.isOwner }) else { return none }
         let p3 = co.monthlyHistory.suffix(3).reduce(0) { $0 + $1.profit }
@@ -237,9 +237,6 @@ extension ManagerModel {
         let advice = all.filter { l in !active || table.first { $0.id == l.id }?.votes != true }
         let board = all.filter { l in active && table.first { $0.id == l.id }?.votes == true }
         var owners = [VoteLine(id: "you", name: "\(s.player.name) (you)", title: "Owner", yes: true, reason: "", percent: co.ownership, isYou: true)]
-        for l in co.value("holders").array where l["hid"].int != 0 && l["pct"].double > 0 && (l["seat"].bool || l["pct"].double > HoldingStakes.controlAbove) {
-            owners.append(VoteLine(id: l["name"].string, name: l["name"].string, title: "Your holding", yes: true, reason: "", percent: l["pct"].double, isYou: true))
-        }
         for x in holders(s, key: key) where x.co.id == co.id {
             owners.append(VoteLine(id: x.h["name"].string, name: x.h["name"].string, title: "Co-owner", yes: ownerVote(s, kind: kind, co: co, holder: x.h),
                                    reason: kind == "ceo" ? ceoOpinion(co, holder: x.h).why : "", percent: x.h["pct"].double, isYou: false))

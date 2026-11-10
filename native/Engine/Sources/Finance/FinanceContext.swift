@@ -27,6 +27,6 @@ public struct FinanceContext: Sendable {
     }
 
     public func overdraftRoom(_ co: Company, _ s: GameState) -> Double {
-        CompanyFigures.overdraftRoom(weeklyCost: weeklyCost(co, s))
+        max(0, s.overdraftLimit)
     }
 }

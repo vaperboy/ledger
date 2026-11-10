@@ -10,7 +10,7 @@ final class ContractTalkTests: XCTestCase {
     private func shop(_ trade: String = "cafe", country: String = "UK", seed: Int = 5) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
         e.update { s, _, _ in s.rest["ownHrsFixed"] = true }
@@ -330,7 +330,7 @@ final class ContractTalkTests: XCTestCase {
 
     private func moveScenario(seed: Int) throws -> Bool {
         var (e, a) = try shop(seed: seed)
-        guard case .success(let b) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) else { XCTFail("second store"); return false }
+        guard case .success(let b) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail("second store"); return false }
         e.update { s, d, _ in
             for id in [a, b] { var docs = s.company(id)!.value("docs"); docs["chain"] = .object(["st": "ok", "done": 0, "ok": 0]); s.companies[s.companyIndex(id)!].set("docs", docs) }
             let chain = Chains.make(&s, companyID: a, name: "Beans") ?? 0

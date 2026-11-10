@@ -118,7 +118,7 @@ final class FranchiseStandardsTests: XCTestCase {
             func paid(spend: Double) -> Double {
                 var s = e.state
                 let i = s.companyIndex(id)!
-                s.companies[i].cash = 1e12
+                Ledger.set(&s, to: 1e12)
                 var mkt = s.companies[i].value("mkt")
                 if spend > 0 { mkt["flyer"] = .object(["b": .number(spend)]) }
                 s.companies[i].set("mkt", mkt)

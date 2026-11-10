@@ -40,22 +40,22 @@ final class CompanyScreensTests: XCTestCase {
     func testStartingWithAPickedPlaceRentsOrBuysIt() throws {
         var e = try game()
         let city = e.state.player.cityID
-        guard case .success(let rented) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: .init(listingIndex: 4, buy: false), fundWith: 100_000_000) else { return XCTFail("not started") }
+        guard case .success(let rented) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: .init(listingIndex: 4, buy: false)) else { return XCTFail("not started") }
         XCTAssertEqual(rented.premises, .ok)
         let p1 = e.state.company(rented.companyID)!.value("prem")
         XCTAssertFalse(p1["owned"].bool)
         XCTAssertGreaterThan(p1["m2"].double, 0)
-        guard case .success(let bought) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: .init(listingIndex: 1, buy: true), fundWith: 200_000_000) else { return XCTFail("not started") }
+        guard case .success(let bought) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: .init(listingIndex: 1, buy: true)) else { return XCTFail("not started") }
         XCTAssertEqual(bought.premises, .ok)
         XCTAssertTrue(e.state.company(bought.companyID)!.value("prem")["owned"].bool)
-        guard case .success(let std) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: nil, fundWith: 100_000_000) else { return XCTFail("not started") }
+        guard case .success(let std) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: city, size: 1, name: nil, pick: nil) else { return XCTFail("not started") }
         XCTAssertNil(std.premises)
         XCTAssertTrue(e.state.company(std.companyID)!.value("prem").isNull)
     }
 
     func testInsuranceNeedsAnInsurerAndAdvisersCanBeHired() throws {
         var e = try game()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail() }
         e.prepareAdvisers(companyID: id)
         var o = e.coverageOverview(companyID: id)!
         XCTAssertNil(o.insurer)
@@ -79,7 +79,7 @@ final class CompanyScreensTests: XCTestCase {
         var e = try game()
         var ids: [Int] = []
         for _ in 0..<2 {
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 50_000_000) else { throw XCTSkip("no company") }
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
             ids.append(id)
         }
         var days = 0
@@ -91,7 +91,7 @@ final class CompanyScreensTests: XCTestCase {
 
     func testMovingAHomeCompanyIntoAPlaceAndBack() throws {
         var e = try game()
-        guard case .success(let id) = e.startCompany(tradeID: "cons", cityID: e.state.player.cityID, fundWith: 50_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "cons", cityID: e.state.player.cityID) else { return XCTFail() }
         XCTAssertTrue(e.isWorkingFromHome(companyID: id))
         XCTAssertNil(e.moveHomeQuote(companyID: id))
         let l = e.premisesListings(companyID: id)

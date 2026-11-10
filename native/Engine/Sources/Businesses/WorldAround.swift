@@ -387,16 +387,10 @@ public enum WorldAround {
     public static func ownership(_ s: GameState, data: GameData) -> [OwnershipNode] {
         let cos = liveCompanies(s)
         func node(_ c: Company, _ d: Int) -> OwnershipNode {
-            OwnershipNode(id: c.id, name: c.name, trade: c.type == "hold" ? "Holding" : data.catalog[c.type]?.name ?? c.type,
+            OwnershipNode(id: c.id, name: c.name, trade: data.catalog[c.type]?.name ?? c.type,
                           value: Valuation.companyValue(c, state: s, trades: data.catalog), ownership: c.ownership, depth: d)
         }
-        var out: [OwnershipNode] = []
-        for h in cos where h.type == "hold" {
-            out.append(node(h, 1))
-            for c in cos where c.holdingID == h.id { out.append(node(c, 2)) }
-        }
-        for c in cos where c.type != "hold" && !(c.holdingID != 0 && cos.contains { $0.id == c.holdingID }) { out.append(node(c, 1)) }
-        return out
+        return cos.map { node($0, 1) }
     }
 
     public struct CityTile: Identifiable, Equatable {
@@ -422,7 +416,7 @@ public enum WorldAround {
             let cities = C.cities.sorted { $0.population > $1.population }.prefix(12).map { ct -> CityTile in
                 let here = cos.filter { $0.countryCode == cc && $0.cityID == ct.id }
                 var types: [String] = []
-                for c in here { let n = c.type == "hold" ? "Holding" : data.catalog[c.type]?.name ?? c.type; if !types.contains(n) { types.append(n) } }
+                for c in here { let n = data.catalog[c.type]?.name ?? c.type; if !types.contains(n) { types.append(n) } }
                 return CityTile(id: ct.id, name: ct.name, companies: here.count, trades: Array(types.prefix(2)), level: here.count >= 4 ? 3 : here.count >= 2 ? 2 : here.isEmpty ? 0 : 1)
             }
             return CountryPresence(id: cc, name: C.name, flag: C.flag, cities: Array(cities))

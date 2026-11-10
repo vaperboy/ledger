@@ -12,7 +12,7 @@ final class EmploymentTests: XCTestCase {
     private func shop(_ code: String = "UK", trade: String = "cafe", seed: Int = 9) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 200_000_000) else { XCTFail("start \(code)"); throw CocoaError(.fileReadUnknown) }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { XCTFail("start \(code)"); throw CocoaError(.fileReadUnknown) }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { _ = e.nextDay(); days += 1 }
         return (e, id)

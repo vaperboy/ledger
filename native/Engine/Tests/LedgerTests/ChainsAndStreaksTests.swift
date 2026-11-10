@@ -182,7 +182,7 @@ final class ChainsAndStreaksTests: XCTestCase {
     func testGoodEventsNeedFewerWeeksForASecondCompany() throws {
         var (e, _) = try engineWithCompany(trades: ["cafe", "tutor"])
         e.update { s, _, _ in
-            let own = s.companies.indices.filter { s.companies[$0].type != "hold" }
+            let own = Array(s.companies.indices)
             XCTAssertGreaterThanOrEqual(own.count, 2)
             XCTAssertEqual(EventEngine.goodEventMinimumWeeks(s, companyIndex: own[0]), 12)
             XCTAssertEqual(EventEngine.goodEventMinimumWeeks(s, companyIndex: own[1]), 6)

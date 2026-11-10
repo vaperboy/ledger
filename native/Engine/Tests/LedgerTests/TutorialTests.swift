@@ -19,7 +19,7 @@ final class TutorialTests: XCTestCase {
 
     func testOpeningSupplierPricingDayAndGoalWalkTheSteps() throws {
         var e = try fresh()
-        let id = try XCTUnwrap(e.state.companies.first { $0.type != "hold" }?.id)
+        let id = try XCTUnwrap(e.state.companies.first?.id)
         e.tutorialAdvance(from: .setPrice)
         XCTAssertEqual(e.tutorialStep, .openCompany)
         e.tutorialAdvance(from: .openCompany)
@@ -59,7 +59,7 @@ final class TutorialTests: XCTestCase {
 
     func testStandardTeamAndExtraEquipmentAreNeverBoughtForThePlayer() throws {
         var e = try fresh()
-        let id = try XCTUnwrap(e.state.companies.first { $0.type != "hold" }?.id)
+        let id = try XCTUnwrap(e.state.companies.first?.id)
         XCTAssertTrue(e.quickSetup(companyID: id).isEmpty)
         var wide = SetupChoices()
         wide.team = .standard

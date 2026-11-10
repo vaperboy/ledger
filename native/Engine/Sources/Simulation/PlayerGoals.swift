@@ -6,7 +6,7 @@ import Businesses
 
 public enum PlayerGoals {
 
-    static func live(_ s: GameState) -> [Company] { s.companies.filter { $0.status == .open && $0.type != "hold" } }
+    static func live(_ s: GameState) -> [Company] { s.companies.filter { $0.status == .open } }
     static func staffCount(_ s: GameState) -> Int { live(s).reduce(0) { $0 + $1.staff.count + ($1.managerID != nil ? 1 : 0) } }
     static func openComplaints(_ s: GameState) -> Int { live(s).reduce(0) { $0 + Satisfaction.openComplaints($1).count } }
 
@@ -163,7 +163,7 @@ public enum PlayerGoals {
         s.rest["dy59"] = d
     }
 
-    static func stepsLive(_ s: GameState) -> [Company] { s.companies.filter { $0.status.isLive && $0.type != "hold" } }
+    static func stepsLive(_ s: GameState) -> [Company] { s.companies.filter { $0.status.isLive } }
 
     public static func stepDone(_ id: String, _ s: GameState) -> Bool {
         let L = stepsLive(s)
@@ -175,7 +175,6 @@ public enum PlayerGoals {
         case "sell": return L.contains { $0.priceLevel != 0 || $0.value("chose").int != 0 }
         case "ad": return L.contains { $0.value("mkt").object.values.contains { $0["b"].double > 0 } }
         case "inbox": return s.inbox.contains { !$0.options.isEmpty && $0.value("pick").int >= 0 && !$0.value("pick").isNull && !$0.flag("auto") && $0.value("mgrName").isNull }
-        case "pay": return L.contains { $0.ownerMonthlySalary > 0 || $0.distributed > 0 }
         case "profit": return L.contains { $0.monthlyHistory.contains { $0.profit > 0 } }
         case "mgr": return L.contains { $0.managerID != nil || !$0.value("asst").isNull }
         default: return false
@@ -200,7 +199,6 @@ public enum PlayerGoals {
         ("M3", "Hire your first worker", "Check what they claim before you hire.", "Find workers", "hire", "You hired your first worker.", "A better name as an employer"),
         ("M4", "Answer a decision", "Problems and offers wait in the Inbox for your answer.", "Open Inbox", "inbox", "You answered your first decision.", "A little better reputation"),
         ("M5", "Word gets around", "Even a small campaign brings people in.", "Open marketing", "marketing", "Your first campaign ran.", ""),
-        ("M6", "Pay yourself", "Take money out of the business for yourself. Leave enough for the bills.", "Open money", "money", "You paid yourself.", ""),
         ("M7", "Make a profit in a month", "Keep the costs in check and the customers coming.", "Open company", "company", "Your first profitable month.", "Your credit score goes up, and you can choose an ambition"),
         ("M8", "Hire a manager", "They run it day to day while you grow.", "Open management", "management", "You hired a manager.", "A better reputation"),
         ("M9", "Trade for a quarter", "Thirteen weeks of keeping the doors open.", "", "", "You traded for a quarter.", "World ranking unlocks"),
@@ -216,7 +214,6 @@ public enum PlayerGoals {
         case "M3": return stepDone("staff", s)
         case "M4": return stepDone("inbox", s)
         case "M5": return stepDone("ad", s)
-        case "M6": return stepDone("pay", s)
         case "M7": return stepDone("profit", s)
         case "M8": return stepDone("mgr", s)
         case "M9": return s.week >= 13
@@ -263,7 +260,7 @@ public enum PlayerGoals {
         return finished
     }
 
-    static let skippableGoals: Set<String> = ["M3", "M4", "M5", "M6", "M8"]
+    static let skippableGoals: Set<String> = ["M3", "M4", "M5", "M8"]
     public static let staleWeeks = 12
 
     static func goalStale(_ id: String, _ s: GameState) -> Bool {
@@ -281,15 +278,15 @@ public enum PlayerGoals {
     }
 
     public static func ladderReward(_ s: inout GameState, _ id: String, _ cur: Currency) -> String {
-        func each(_ f: (inout Company) -> Void) { for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].type != "hold" { f(&s.companies[i]) } }
+        func each(_ f: (inout Company) -> Void) { for i in s.companies.indices where s.companies[i].status.isLive { f(&s.companies[i]) } }
         switch id {
         case "M1": s.credit = min(100, s.credit + 3); return "The bank likes a good start: your credit score is a little better."
         case "M2":
             var name = "you"
-            if let i = s.companies.firstIndex(where: { $0.status.isLive && $0.type != "hold" }) { s.companies[i].awareness = min(100, s.companies[i].awareness + 8); name = s.companies[i].name }
+            if let i = s.companies.firstIndex(where: { $0.status.isLive }) { s.companies[i].awareness = min(100, s.companies[i].awareness + 8); name = s.companies[i].name }
             return "The local paper writes about \(name): more people know the name."
         case "M3":
-            if let i = s.companies.firstIndex(where: { $0.status.isLive && $0.type != "hold" && !$0.staff.isEmpty }) { s.companies[i].reputation = min(100, s.companies[i].reputation + 2) }
+            if let i = s.companies.firstIndex(where: { $0.status.isLive && !$0.staff.isEmpty }) { s.companies[i].reputation = min(100, s.companies[i].reputation + 2) }
             return "Word gets round that you hire fairly: your reputation as an employer is a little better."
         case "M4": each { $0.reputation = min(100, $0.reputation + 1) }; return "People learn they can count on you: a little better reputation."
         case "M7":

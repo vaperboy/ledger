@@ -141,7 +141,7 @@ struct WorkerActionBar: View {
     }
 
     private func confirmCourse(_ c: StaffProfile.Course, _ s: StaffProfile.Profile, _ cur: Currency) {
-        pending = PendingAction(title: "Send \(s.name) on \(c.name)?", message: "Costs \(cur.tidyDisplay(c.cost)) from company cash. \(c.benefit) It may also change nothing, and a good result may tempt a competitor to poach them.", button: "Send for \(cur.tidyShort(c.cost))", amount: c.cost, currency: cur, tone: .info, icon: "graduationcap") { course(c) }
+        pending = PendingAction(title: "Send \(s.name) on \(c.name)?", message: "Costs \(cur.tidyDisplay(c.cost)) from your account. \(c.benefit) It may also change nothing, and a good result may tempt a competitor to poach them.", button: "Send for \(cur.tidyShort(c.cost))", amount: c.cost, currency: cur, tone: .info, icon: "graduationcap") { course(c) }
     }
 
     private func course(_ c: StaffProfile.Course) {

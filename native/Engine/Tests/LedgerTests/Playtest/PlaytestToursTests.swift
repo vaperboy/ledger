@@ -25,7 +25,7 @@ final class PlaytestToursTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: country, playerName: "Tour", seed: seed)
         cur = e.homeCurrency
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(30_000_000), why: "Test capital") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: cur.scaledPrice(8_000_000), quickSetup: quick) else {
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, quickSetup: quick) else {
             XCTFail("\(tour): cannot start \(trade)"); throw CocoaError(.fileReadUnknown)
         }
         openUp(&e, id)
@@ -55,7 +55,7 @@ final class PlaytestToursTests: XCTestCase {
         tour = "SetupAndOpen"
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tour", seed: 5); cur = e.homeCurrency
         e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(30_000_000), why: "Test capital") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(8_000_000), quickSetup: false) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, quickSetup: false) else { return XCTFail("start") }
         ex(e.state.company(id)?.status == .setup, "a new company starts in setup")
         let list = e.openingChecklist(companyID: id)
         ex(!list.isEmpty && list.contains { !$0.isDone }, "checklist lists open items for a new company")
@@ -356,8 +356,6 @@ final class PlaytestToursTests: XCTestCase {
         ex(e.canRaiseFunding(companyID: id) || true, "canRaiseFunding readable")
         let pr = e.pitchToInvestors(companyID: id, amount: e.suggestedFundingAmount(companyID: id))
         _ = pr
-        let ls = e.listSharesForSale(companyID: id, percent: 10, broker: false)
-        ex(ls || true, "listSharesForSale returns")
         weeks(&e, 10)
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
@@ -423,24 +421,18 @@ final class PlaytestToursTests: XCTestCase {
         ex(Ledger.gaps(e.state).isEmpty, "ledger consistent", sev: 1)
     }
 
-    func testHoldingCloseFootball() throws {
-        tour = "HoldingCloseFootball"
+    func testCloseAndFootball() throws {
+        tour = "CloseFootball"
         var (e, id) = try fixture()
         var (e2, id2) = (e, id)
         _ = (e2, id2)
         let id3 = { () -> Int in
-            guard case .success(let n) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID, fundWith: cur.scaledPrice(500_000)) else { return 0 }
+            guard case .success(let n) = e.startCompany(tradeID: "tutor", cityID: e.state.player.cityID) else { return 0 }
             return n }()
         ex(id3 != 0, "second company starts")
         openUp(&e, id3)
         weeks(&e, 10)
-        let h = e.createHolding(name: "Tour Holding", companies: [id, id3])
-        if case .success(let hid) = h {
-            ex(e.state.company(id)?.holdingID == hid, "company reports its holding")
-            weeks(&e, 8)
-            ex(e.holdingOverview(companyID: hid) != nil, "holding overview exists")
-            ex(e.releaseFromHolding(companyID: id3), "release from holding works")
-        } else { ex(false, "createHolding with two open companies: \(h)", sev: 2) }
+        weeks(&e, 8)
         let rn = e.renameCompany(companyID: id, to: "Renamed Cafe")
         ex("\(rn)".lowercased().contains("renamed") || e.state.company(id)?.name == "Renamed Cafe", "rename applies (\(rn))", sev: 3)
         let cl = e.closeCompany(companyID: id3, weeks: 4)

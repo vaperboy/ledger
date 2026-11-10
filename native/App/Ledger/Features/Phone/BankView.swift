@@ -19,7 +19,7 @@ struct BankLoansTab: View {
                 if account != .investments { applyCard(e) }
                 loansFor(e)
             }
-            .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(account: account, prefill: prefill) }
+            .centerSheet(isPresented: $applying, size: .tall) { BankLoanApplyFlow(prefill: prefill) }
             .onAppear { openWithAmount() }
             .onChange(of: store.pendingLoanApply) { _, _ in openWithAmount() }
         }
@@ -34,12 +34,8 @@ struct BankLoansTab: View {
 
     @ViewBuilder private func loansFor(_ e: GameEngine) -> some View {
         switch account {
-        case .company(let cid):
-            if let co = e.state.company(cid) { CompanyLoans(engine: e, company: co) }
-        case .personal:
-            BankPersonalLoans(engine: e)
-        case .investments:
-            EmptyView()
+        case .personal: BankAccountLoans(engine: e)
+        case .investments: EmptyView()
         }
     }
 
@@ -53,7 +49,7 @@ struct BankLoansTab: View {
     }
 }
 
-struct BankPersonalLoans: View {
+struct BankAccountLoans: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
@@ -61,9 +57,8 @@ struct BankPersonalLoans: View {
 
     var body: some View {
         let e = engine
-        let cur = e.homeCurrency
         let s = e.state
-        let personal = s.loans.filter { $0.companyID == 0 && $0.balance > 0 }
+        let personal = s.loans.filter { $0.balance > 0 }
         let owed = personal.reduce(0) { $0 + $1.balance }
         let monthly = personal.reduce(0) { $0 + $1.monthlyPayment }
         let missed = personal.reduce(0) { $0 + $1.int("miss") }
@@ -80,24 +75,25 @@ struct BankPersonalLoans: View {
                     }
                 }
             }
-            loansCard(e, cur, personal)
+            loansCard(e, personal)
         }
         .centerSheet(item: $repaying, title: "Loan details") { l in LoanDetailSheet(loanID: l.id) }
     }
 
-    private func loansCard(_ e: GameEngine, _ cur: Currency, _ loans: [Loan]) -> some View {
+    private func loansCard(_ e: GameEngine, _ loans: [Loan]) -> some View {
         BankCard(title: "Your loans") {
             VStack(alignment: .leading, spacing: 0) {
-                if loans.isEmpty { EmptyState(glyph: Glyph.check, title: "You owe nothing personally.", centered: false) }
+                if loans.isEmpty { EmptyState(glyph: Glyph.check, title: "You owe nothing.", centered: false) }
                 ForEach(Array(loans.enumerated()), id: \.element.id) { n, l in
                     if n > 0 { Hairline() }
-                    Button { repaying = l } label: { loanRow(e, cur, l) }.buttonStyle(PressableStyle())
+                    Button { repaying = l } label: { loanRow(e, l) }.buttonStyle(PressableStyle())
                 }
             }
         }
     }
 
-    private func loanRow(_ e: GameEngine, _ cur: Currency, _ l: Loan) -> some View {
+    private func loanRow(_ e: GameEngine, _ l: Loan) -> some View {
+        let cur: Currency = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
         let p = e.loanPayoff(loanID: l.id)
         let paid = l.originalAmount > 0 ? max(0, min(1, 1 - l.balance / l.originalAmount)) : 0
         let missed = l.int("miss")
@@ -121,7 +117,7 @@ struct BankPersonalLoans: View {
     }
 }
 
-struct RepayPersonalLoanSheet: View {
+struct RepayLoanSheet: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore
     @Environment(\.dismiss) private var systemDismiss
@@ -137,7 +133,7 @@ struct RepayPersonalLoanSheet: View {
                     let cur = l.companyID == 0 ? e.homeCurrency : (e.state.company(l.companyID).map { e.currency(for: $0) } ?? e.homeCurrency)
                     let p = e.loanPayoff(loanID: l.id)
                     let pay = min(amount, l.balance)
-                    let available = l.companyID == 0 ? e.state.cash : (e.state.company(l.companyID)?.cash ?? 0)
+                    let available = e.state.cash
                     VStack(alignment: .leading, spacing: Theme.Space.l) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(l.name).capsLabel()
@@ -153,7 +149,7 @@ struct RepayPersonalLoanSheet: View {
                         KeyFigures(items: [
                             .init(label: "You pay now", value: pay > 0 ? cur.tidyShort(pay) : "–"),
                             .init(label: "Left after", value: cur.tidyShort(max(0, l.balance - pay))),
-                            .init(label: "Available", value: cur.tidyShort(available), tint: available < pay ? P.loss : P.ink, sub: l.companyID == 0 ? "your account" : "company cash"),
+                            .init(label: "Available", value: cur.tidyShort(available), tint: available < pay ? P.loss : P.ink, sub: "your account"),
                         ])
                         Button(pay > 0 ? "Pay back \(cur.tidyShort(pay))" : "Choose an amount") {
                             if store.act({ $0.repayLoan(id: loanID, amount: pay) }) == true {

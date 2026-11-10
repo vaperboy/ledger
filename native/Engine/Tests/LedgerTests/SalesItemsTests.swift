@@ -13,7 +13,7 @@ final class SalesItemsTests: XCTestCase {
     func engine(_ trade: String = "bakery", weeks: Int = 3, opened: Bool = false) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("could not start") }
         for _ in 0..<weeks { e.week() }
         if opened {
             var extra = 0
@@ -124,8 +124,8 @@ final class SalesItemsTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
         let city = e.state.player.cityID
-        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city, fundWith: 20_000_000),
-              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city),
+              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city) else { throw XCTSkip("could not start") }
         for _ in 0..<2 { e.week() }
         XCTAssertTrue(e.ownCompanyListings(forBuyer: buyer).isEmpty, "nothing is listed yet")
         let item = e.salesItems(companyID: seller)[0]
@@ -150,8 +150,8 @@ final class SalesItemsTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
         let city = e.state.player.cityID
-        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city, fundWith: 20_000_000),
-              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let seller) = e.startCompany(tradeID: "webdev", cityID: city),
+              case .success(let buyer) = e.startCompany(tradeID: "cons", cityID: city) else { throw XCTSkip("could not start") }
         for _ in 0..<2 { e.week() }
         let item = e.salesItems(companyID: seller)[0]
         XCTAssertEqual(e.setItemListedForGroup(companyID: seller, itemID: item.id, listed: true), .applied)
@@ -184,7 +184,7 @@ final class SalesItemsTests: XCTestCase {
     func testPlayerStartedCompanyChoosesFirstItem() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "estate", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "estate", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil) else { throw XCTSkip("could not start") }
         let id = out.companyID
         XCTAssertTrue(e.needsFirstItemChoice(companyID: id))
         XCTAssertTrue(e.salesItems(companyID: id).isEmpty, "nothing is chosen for the player")
@@ -249,7 +249,7 @@ final class SalesItemsTests: XCTestCase {
     func testOnlyTheChosenItemDrivesDemand() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "bakery", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil) else { throw XCTSkip("could not start") }
         let id = out.companyID
         e.update { s, _, _ in let i = s.companyIndex(id)!; s.companies[i].status = .open }
         func customers() -> Double {

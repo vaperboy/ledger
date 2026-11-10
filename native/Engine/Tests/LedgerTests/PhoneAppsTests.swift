@@ -13,7 +13,7 @@ final class PhoneAppsTests: XCTestCase {
     }
 
     private func cafe(_ e: inout GameEngine, funds: Double = 60_000_000) throws -> Int {
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: funds) else { throw XCTSkip("no cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("no cafe") }
         return id
     }
 
@@ -61,7 +61,7 @@ final class PhoneAppsTests: XCTestCase {
         XCTAssertGreaterThan(exp.shipping, std.shipping)
         XCTAssertNil(e.storeQuote(companyID: id, lines: [line], delivery: .own), "no delivery company of your own yet")
         XCTAssertNil(e.storeShipping().ownCompanyID)
-        guard case .success(let carrier) = e.startCompany(tradeID: "courier", cityID: e.state.player.cityID, fundWith: 20_000_000) else { throw XCTSkip("no courier") }
+        guard case .success(let carrier) = e.startCompany(tradeID: "courier", cityID: e.state.player.cityID) else { throw XCTSkip("no courier") }
         e.update { s, _, _ in if let i = s.companyIndex(carrier) { s.companies[i].status = .open } }
         let own = try XCTUnwrap(e.storeQuote(companyID: id, lines: [line], delivery: .own))
         XCTAssertGreaterThan(own.shipping, 0, "your own company charges a delivery fee")
@@ -76,13 +76,13 @@ final class PhoneAppsTests: XCTestCase {
         let books = try cafe(&e)
         var found: (id: Int, equipmentID: String, offer: EquipmentMarket.Offer)?
         for trade in e.data.catalog.all.prefix(40) where found == nil {
-            guard case .success(let tid) = e.startCompany(tradeID: trade.id, cityID: e.state.player.cityID, fundWith: 3_000_000) else { continue }
+            guard case .success(let tid) = e.startCompany(tradeID: trade.id, cityID: e.state.player.cityID) else { continue }
             if let soft = e.equipmentNeeds(companyID: tid).first(where: { $0.isSoftware && !$0.subscription }),
                let offer = e.equipmentOffers(companyID: tid, equipmentID: soft.equipmentID).first { found = (tid, soft.equipmentID, offer) }
         }
         guard let f = found else { throw XCTSkip("no trade sells a one-off licence") }
         let id = f.id
-        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].cash += 50_000_000 } }
+        e.update { s, _, _ in if let i = s.companyIndex(id) { Ledger.set(&s, to: s.cash + (50_000_000)) } }
         let line = StoreOrders.Line(kind: .new, equipmentID: f.equipmentID, quantity: 1, offerIndex: f.offer.index, payment: .cash)
         let soft = (equipmentID: f.equipmentID, x: 0)
         let quote = try XCTUnwrap(e.storeQuote(companyID: id, lines: [line], delivery: .standard))
@@ -103,7 +103,7 @@ final class PhoneAppsTests: XCTestCase {
         var e = try game(seed: 5)
         let id = try cafe(&e, funds: 2_000_000)
         let (line, eq) = try machineLine(e, id, cls: 2)
-        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].cash = 10 } }
+        e.update { s, _, _ in if let i = s.companyIndex(id) { Ledger.set(&s, to: 10) } }
         let n0 = e.state.company(id)?.value("eq")[eq]["n"].double ?? 0
         let r = e.placeStoreOrder(companyID: id, lines: [line], delivery: .standard, receiptCompanyID: id)
         guard case .notEnoughCash(let missing) = r else { return XCTFail("expected a refusal, got \(r)") }

@@ -6,7 +6,7 @@ import Finance
 import Businesses
 
 extension EventEngine {
-    static func openCompanyCount(_ s: GameState) -> Int { s.companies.filter { $0.status == .open && $0.type != "hold" }.count }
+    static func openCompanyCount(_ s: GameState) -> Int { s.companies.filter { $0.status == .open }.count }
 
     public static func isLateGame(_ s: GameState) -> Bool {
         let n = openCompanyCount(s)

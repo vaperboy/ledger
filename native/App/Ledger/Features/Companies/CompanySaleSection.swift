@@ -8,8 +8,8 @@ struct CompanySaleSection: View {
     @EnvironmentObject var store: GameStore
     var engine: GameEngine
     var company: Company
-    var onGoRaise: () -> Void = {}
     @State private var pending: PendingAction?
+    @State private var sellOpen = false
     @State private var talking: Int?
 
     var body: some View {
@@ -26,14 +26,19 @@ struct CompanySaleSection: View {
                 .accessibilityElement(children: .combine)
                 if let l = listing {
                     listed(l, cur)
+                } else if engine.isListed(companyID: company.id) {
+                    PublicCompanyCard(engine: engine, company: company)
                 } else {
-                    SaleRoutePicker(engine: engine, company: company, onGoRaise: onGoRaise)
+                    Button("Sell or go public\u{2026}") { Haptics.tap(); sellOpen = true }
+                        .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                        .accessibilityIdentifier("sell-open")
                 }
                 SaleToPlayersCard(companyID: company.id)
             }
             .centerSheet(item: Binding(get: { talking.map { TalkID(id: $0) } }, set: { talking = $0?.id })) { t in
                 BuyerTalkSheet(companyID: company.id, offerID: t.id) { o in laterAsk(o) }
             }
+            .centerSheet(isPresented: $sellOpen, category: .medium, tone: .investment) { CompanySellSheet(companyID: company.id).environmentObject(store) }
             .confirmAction($pending)
         }
     }
@@ -47,7 +52,7 @@ struct CompanySaleSection: View {
     private func askToSell(_ o: CompanySale.Offer) {
         let cur: Currency = engine.currency(for: company)
         let mine: Double = stake ? o.price : o.price * company.ownership / 100
-        let tail: String = o.kind == "mbo" ? ", a third of it after two years" : ""
+        let tail: String = ""
         let message: String = "\(o.buyer) pays " + cur.tidyDisplay(mine) + tail + ". " + consequences(o, cur)
         pending = PendingAction(title: stake ? "Sell part of \(company.name)?" : "Sell \(company.name)?", message: message, button: "Sell for " + cur.tidyShort(mine), destructive: true) { accept(o) }
     }
@@ -77,10 +82,8 @@ struct CompanySaleSection: View {
     private func header(_ l: CompanySale.Listing, _ cur: Currency) -> String {
         let how: String
         switch l.route {
-        case "broker": how = " through a broker"
         case "auction": how = " at auction"
-        case "mbo": how = " to your manager"
-        default: how = ", a quiet private sale"
+        default: how = " for buyers"
         }
         let part: String = l.pct < 100 ? "\(l.pct)% of your shares" : "The company"
         return part + " is on the market since " + GameCalendar.dateString(week: l.since) + how + " \u{00B7} \(l.offers.count) \(l.offers.count == 1 ? "offer" : "offers")"

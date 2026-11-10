@@ -29,39 +29,21 @@ public extension GameEngine {
 }
 
 public extension GameEngine {
-    func saleRoutes(companyID: Int) -> [CompanySale.Route] { CompanySale.routes(state, companyID: companyID, data: data, context: context) }
-    func stakeTiers(companyID: Int) -> [CompanySale.StakeTier] { CompanySale.stakeTiers(state, companyID: companyID) }
+    func maximumDividend(companyID: Int) -> Double { state.company(companyID).map { JointVenture.payoutRoom(state, $0, context) } ?? 0 }
+    func saleQuote(companyID: Int, percent: Int, method: CompanySale.Method) -> CompanySale.Quote? {
+        CompanySale.quote(state, companyID: companyID, pct: percent, method: method, data: data, context: context)
+    }
     func saleListing(companyID: Int) -> CompanySale.Listing? { CompanySale.listing(state, companyID: companyID) }
     @discardableResult
-    mutating func startSale(companyID: Int, route: String, percent: Int = 100) -> Bool {
-        var ok = false
-        update { s, _, _ in ok = CompanySale.startListing(&s, companyID: companyID, route: route, pct: percent) }
-        return ok
-    }
-    @discardableResult
-    mutating func startAuction(companyID: Int, reserve: Double, percent: Int = 100) -> Bool {
-        var ok = false
-        update { s, d, c in ok = CompanySale.startAuction(&s, companyID: companyID, reserve: reserve, pct: percent, data: d, context: c) }
-        return ok
+    mutating func startSale(companyID: Int, percent: Int, method: CompanySale.Method, reserve: Double = 0) -> CompanySale.StartResult {
+        var r = CompanySale.StartResult.refused("Not possible.")
+        update { s, d, c in r = CompanySale.start(&s, companyID: companyID, pct: percent, method: method, reserve: reserve, data: d, context: c) }
+        return r
     }
     @discardableResult
     mutating func hammerSale(companyID: Int) -> Double? {
         var r: Double?
         update { s, d, c in r = CompanySale.hammer(&s, companyID: companyID, data: d, context: c) }
-        return r
-    }
-    func mergeCandidates(companyID: Int) -> [CompanySale.MergeCandidate] { CompanySale.mergeCandidates(state, companyID: companyID) }
-    @discardableResult
-    mutating func mergeWithRival(companyID: Int, rivalID: Int, percent: Double) -> CompanySale.MergeResult {
-        var r = CompanySale.MergeResult.refused("Not possible.")
-        update { s, d, c in r = CompanySale.mergeWithRival(&s, companyID: companyID, rivalID: rivalID, pct: percent, data: d, context: c) }
-        return r
-    }
-    func groupBuyers(companyID: Int) -> [CompanySale.GroupBuyer] { CompanySale.groupBuyers(state, companyID: companyID, data: data, context: context) }
-    @discardableResult
-    mutating func sellToGroup(companyID: Int, groupID: String) -> Double? {
-        var r: Double?
-        update { s, d, c in r = CompanySale.sellToGroupNow(&s, companyID: companyID, groupID: groupID, data: d, context: c) }
         return r
     }
 }

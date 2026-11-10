@@ -5,7 +5,6 @@ public enum GatePurposes {
         "hiring": "Hire people to serve more customers than you can alone.",
         "marketing": "Spend on advertising to bring in more customers.",
         "reviews": "See what customers say about you and your rivals, and how it moves your sales.",
-        "ownerMoney": "Choose how much of the company's money you pay yourself.",
         "bank": "Keep your money, borrow for growth and save for later.",
         "newCompany": "Start another business so one bad week cannot sink you.",
         "management": "Let a manager run a company day to day while you work on the next one.",
@@ -29,7 +28,6 @@ public enum GatePurposes {
         "franchise": "Let other owners open units under your name and pay you a fee.",
         "abroad": "Open a company in another country to reach customers there.",
         "research": "Study a market to learn what customers want before you spend on it.",
-        "dividends": "Pay profit out of a company to yourself instead of leaving it in the business.",
     ]
 
     public static func purpose(_ id: String) -> String? { table[id] }

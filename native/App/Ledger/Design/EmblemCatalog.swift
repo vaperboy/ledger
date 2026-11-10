@@ -51,7 +51,6 @@ enum EmblemCatalog {
         "rent": Family(top: 0x7D62A8, bottom: 0x372850, ink: 0xDDD0F5, motif: .rings),
         "fin": Family(top: 0xC2A24A, bottom: 0x5A4612, ink: 0xFFF0BF, motif: .stars),
         "energy": Family(top: 0x9AAE3C, bottom: 0x4A5518, ink: 0xF1F7C0, motif: .rays),
-        "hold": Family(top: 0x6E7480, bottom: 0x2D3036, ink: 0xE3E6EC, motif: .grid),
         "club": Family(top: 0xB04646, bottom: 0x551C1C, ink: 0xFFD0D0, motif: .stripes),
     ]
 
@@ -82,7 +81,7 @@ enum EmblemCatalog {
         "resrent": ("house.fill", "arrow.2.squarepath", "rent"), "comrent": ("building.fill", "arrow.2.squarepath", "rent"), "parking": ("parkingsign.circle.fill", nil, "rent"),
         "insco": ("checkmark.shield.fill", nil, "fin"), "bank": ("building.columns.fill", nil, "fin"), "fund": ("chart.line.uptrend.xyaxis", nil, "fin"),
         "power": ("sun.max.fill", "bolt.fill", "energy"), "oilgas": ("flame.fill", nil, "energy"),
-        "hold": ("square.stack.3d.up.fill", nil, "hold"), "club": ("soccerball", nil, "club"),
+        "club": ("soccerball", nil, "club"),
     ]
 
     static func hasTrade(_ id: String) -> Bool { trades[id] != nil }

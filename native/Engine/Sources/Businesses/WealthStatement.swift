@@ -29,8 +29,8 @@ public enum Wealth {
         let book = ExchangeBook(s)
         var listedPaper = 0.0, listedMarket = 0.0
         var listedNames: [String] = []
-        for co in s.companies where co.status.isLive && co.holdingID == 0 {
-            guard let inst = book.instruments["co:\(co.id)"], !inst.halted else { continue }
+        for co in s.companies where co.status.isLive {
+            guard let inst = book.instruments[PublicExchange.id(of: co.id)], !inst.halted else { continue }
             let paper = (Valuation.companyValue(co, state: s, trades: trades) + HeldMoney.remaining(s, companyID: co.id)) * co.ownership / 100
             listedPaper += paper
             listedMarket += Double(CapTable.table(co).you) * inst.close * (1 - blockDiscount)

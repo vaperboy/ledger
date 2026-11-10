@@ -40,7 +40,7 @@ public enum Threat {
         guard s.week >= firstBidWeek else { return }
         let d = Difficulty.of(s)
         let rich = wealth(s)
-        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" && s.companies[i].type != "club" {
+        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "club" {
             let co = s.companies[i]
             guard s.week - co.int("rbid") >= bidCooldownWeeks else { continue }
             let hasAccounts = !co.value("accts").array.isEmpty
@@ -70,7 +70,7 @@ public enum Threat {
 
     static func reputationDebt(_ s: inout GameState) {
         let d = Difficulty.of(s)
-        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
+        for i in s.companies.indices where s.companies[i].status == .open {
             let co = s.companies[i]
             let waiting = co.value("compl").array.filter { $0["st"].string == "open" && s.week - $0["w"].int >= 2 }.count
             let load = Double(waiting) * 0.25 + (co.wageShortfall > 0 ? 1 : 0)

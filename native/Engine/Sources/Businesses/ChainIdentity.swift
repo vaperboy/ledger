@@ -36,7 +36,6 @@ public enum ChainIdentity {
             Service(id: "brand", title: "Brand and trademark", detail: papers ? "One registered name and one operations manual for every location." : "Trademark or operations manual missing.", active: papers),
             Service(id: "standards", title: "Standards", detail: std == 0 ? "Each location decides how it sells." : "\(std) way\(std == 1 ? "" : "s") of selling fixed for every location.", active: std > 0),
             Service(id: "buying", title: "Shared buying", detail: reach.rebate > 0 ? "Suppliers give about \(Int(saturating: (reach.rebate * 100).rounded()))% back on what the chain buys together." : "Buying power grows with the number of locations.", active: reach.rebate > 0),
-            Service(id: "cash", title: "Shared cash", detail: L.count >= 2 ? "A location short of cash is covered by the others." : "From two locations the chain shares its cash.", active: L.count >= 2),
             Service(id: "management", title: "Chain management", detail: ceo != nil || cm != nil ? "Appoints and backs the managers of the locations." : "Hire a chain manager or CEO to run the locations for you.", active: ceo != nil || cm != nil),
         ]
         return HeadOffice(chainID: chainID, brand: ch["name"].string, title: "\(ch["name"].string) head office", tradeID: ch["type"].string, locations: L.count,

@@ -10,7 +10,7 @@ import Events
 import SaveSystem
 
 enum Policy: String, CaseIterable { case competent, reckless, passive }
-enum Scenario: String, CaseIterable { case single, multi, chain, holding, startup, football, rework }
+enum Scenario: String, CaseIterable { case single, multi, chain, startup, football, rework }
 
 struct Job {
     var country: String, trade: String, seed: Int
@@ -87,8 +87,8 @@ final class PlayBot {
         }
         let want = fund ?? max(0, liquid * 0.9)
         func start() -> Result<Int, CompanySetup.StartError> {
-            if job.policy == .passive { return e.startCompany(tradeID: trade, cityID: city, fundWith: want) }
-            switch e.startCompanyChoosingPremises(tradeID: trade, cityID: city, size: nil, name: nil, pick: nil, fundWith: want) {
+            if job.policy == .passive { return e.startCompany(tradeID: trade, cityID: city) }
+            switch e.startCompanyChoosingPremises(tradeID: trade, cityID: city, size: nil, name: nil, pick: nil) {
             case .success(let out): return .success(out.companyID)
             case .failure(let err): return .failure(err)
             }
@@ -179,7 +179,7 @@ final class PlayBot {
     func tend() {
         guard job.policy != .passive else { return }
         let reckless = job.policy == .reckless
-        for co in e.state.companies where co.status.isLive && co.type != "hold" && co.holdingID == 0 {
+        for co in e.state.companies where co.status.isLive {
             let id = co.id
             if co.status == .setup {
                 let since = setupSince[id] ?? e.state.week
@@ -202,9 +202,8 @@ final class PlayBot {
                 let buffer = wages * (reckless ? 0.2 : 2)
                 if co.cash < buffer {
                     let need = buffer * 2 - co.cash
-                    if liquid - cur.scaledPrice(2000) > need { _ = e.putMoneyInto(companyID: id, amount: need) }
-                    else if !reckless, e.loanOffer(kind: "biz", amount: need, companyID: id).maximum >= need { applyLoan(id, need) }
-                    else if !reckless, co.cash < 0 { rescues += 1; structural(); e.update { s, _, _ in Ledger.move(&s, .me, need * 2, why: "Test rescue") }; _ = e.putMoneyInto(companyID: id, amount: need) }
+                    if !reckless, e.loanOffer(kind: "biz", amount: need, companyID: id).maximum >= need { applyLoan(id, need) }
+                    else if !reckless, co.cash < 0 { rescues += 1; structural(); e.update { s, _, _ in Ledger.move(&s, .me, need * 2, why: "Test rescue") } }
                 }
                 if !reckless, e.state.week % 2 == 0 { buyNeededEquipment(id) }
                 if !reckless, e.state.week % 13 == 0, let c = e.state.company(id), c.monthlyHistory.count >= 3, c.monthlyHistory.suffix(3).allSatisfy({ $0.profit > 0 }),
@@ -241,7 +240,6 @@ final class PlayBot {
                 let d = String(it.id.dropFirst(4))
                 if ["rejected", "lapsed", ""].contains(e.documentState(companyID: id, document: d).status) {
                     var r = e.applyForDocument(companyID: id, documentID: d)
-                    if r == .notEnoughCash { _ = e.putMoneyInto(companyID: id, amount: e.documentFee(companyID: id, document: d) * 1.2); r = e.applyForDocument(companyID: id, documentID: d) }
                     if r == .ok { bought() }
                 }
             } else if it.id == "prem" {
@@ -252,7 +250,6 @@ final class PlayBot {
                 let priced = (fits.isEmpty ? all.sorted { $0.1.squareMetres > $1.1.squareMetres } : fits.sorted { $0.1.monthlyRent < $1.1.monthlyRent })
                 if let (l, terms) = priced.first {
                     var r = e.takePremises(companyID: id, listing: l)
-                    if r == .notEnoughCash { _ = e.putMoneyInto(companyID: id, amount: (terms.deposit + terms.fitOut + terms.monthlyRent) * 1.3); r = e.takePremises(companyID: id, listing: l) }
                     if r == .ok { bought() } else { stuck.append("premises:\(r)") }
                 } else { stuck.append("premises: no listings") }
             } else if it.id.hasPrefix("eq:") {
@@ -265,13 +262,11 @@ final class PlayBot {
                     } else if let o = e.equipmentOffers(companyID: id, equipmentID: eid).min(by: { $0.priceFactor < $1.priceFactor }) {
                         done = e.buyEquipmentItem(companyID: id, equipmentID: eid, offer: o, quantity: 1, payment: .cash) == .ok
                     } else { stuck.append("eq \(eid): no offers"); break }
-                    if !done && attempt == 0 { _ = e.putMoneyInto(companyID: id, amount: e.equipmentPrice(companyID: id, equipmentID: eid, factor: 1.3) * 1.2) }
                 }
                 if done { bought() } else if !stuck.contains(where: { $0.hasPrefix("eq \(eid)") }) { stuck.append("eq \(eid): not bought") }
             }
         }
         var r = e.openCompany(companyID: id)
-        if case .needsStockCash(let a) = r { _ = e.putMoneyInto(companyID: id, amount: a * 1.2); r = e.openCompany(companyID: id) }
         if r == .ok { structural(); return }
         let weeksIn = e.state.week - since
         if !stuck.isEmpty { find(2, "setup-item-unfinishable", "Setup item cannot be completed through the normal screens: \(stuck.prefix(2).joined(separator: "; "))", "OpeningChecklist / MarketActions (AirStay/TechPro)", "co=\(id)") }
@@ -290,8 +285,7 @@ final class PlayBot {
             if !n.required, let c0 = e.state.company(id), c0.status == .open, c0.value("lastW")["cap"].double <= 0, c0.value("lastW")["D"].double > 0, c0.openedWeek.map({ e.state.week - $0 >= 2 }) == true { find(1, "optional-equipment-gates-capacity:\(c0.type):\(n.equipmentID)", "\(n.name) is not required to open (checklist done, company opened) but without it capacity is 0: the \(c0.type) sells nothing", "OpeningChecklist.items vs Capacity.swift:core (limitsCapacity equipment)", "co=\(id)") }
             guard let o = e.equipmentOffers(companyID: id, equipmentID: n.equipmentID).min(by: { $0.priceFactor < $1.priceFactor }) else { continue }
             let price = e.equipmentPrice(companyID: id, equipmentID: n.equipmentID, factor: o.priceFactor)
-            guard let co = e.state.company(id) else { return }
-            if co.cash < price * 2 { if liquid > price * 3 { _ = e.putMoneyInto(companyID: id, amount: price * 2) } else { continue } }
+            if liquid < price * 3 { continue }
             if e.buyEquipmentItem(companyID: id, equipmentID: n.equipmentID, offer: o, quantity: 1, payment: .cash) == .ok { bought += 1; self.bought() }
         }
     }
@@ -378,7 +372,7 @@ final class PlayBot {
         let s = e.state
         let w = s.week
         if PT.env["LEDGER_PT_DEBUG"] != nil {
-            for co in s.companies where co.type != "hold" { print("DBG w\(w) \(co.type) \(co.status.rawValue) cash=\(Int(co.cash)) rev=\(Int(co.lastWeekRevenue)) units=\(Int(co.lastWeekUnits)) staff=\(co.staff.count) inv=\(Int(co.inventory)) price=\(co.priceLevel) setup=\(co.status == .setup ? e.openingChecklist(companyID: co.id).filter { !$0.isDone }.map { $0.id }.joined(separator: ",") : "") notes=\(noteLog.suffix(1))") }
+            for co in s.companies { print("DBG w\(w) \(co.type) \(co.status.rawValue) cash=\(Int(co.cash)) rev=\(Int(co.lastWeekRevenue)) units=\(Int(co.lastWeekUnits)) staff=\(co.staff.count) inv=\(Int(co.inventory)) price=\(co.priceLevel) setup=\(co.status == .setup ? e.openingChecklist(companyID: co.id).filter { !$0.isDone }.map { $0.id }.joined(separator: ",") : "") notes=\(noteLog.suffix(1))") }
         }
         if weekMsgs >= 30 { find(2, "spam-total", "\(weekMsgs) new messages in a single week", "Events / Simulation weekly message sources (see titles file)", "") }
         if weekBad >= 8 { find(2, "spam-bad", "\(weekBad) warn/bad-tone messages in a single week (notice/popup load)", "see titles file for the sources", "") }
@@ -389,7 +383,7 @@ final class PlayBot {
         for co in s.companies where co.status.isLive {
             if w % 4 == 0, let p = badNumber(.object(co.raw)) { find(1, "nan-company:\(p.split(separator: ".").first ?? "")", "Non-finite number in company record at \(p)", "Businesses/* writer of that field", "co=\(co.id) \(co.type)") }
             if !co.cash.isFinite { find(1, "nan-cash", "Company cash not finite", "CompanyWeek", "co=\(co.id) \(co.type)") }
-            if co.type != "hold", co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 { find(3, "cash-below-room:\(co.type)", "Company cash \(Int(co.cash)) is below its overdraft room (money spent that the account could not cover)", "Payments.companyPays / payBills", "co=\(co.id)") }
+            if co.cash < -e.context.overdraftRoom(co, s) * 1.2 - 1 { find(3, "cash-below-room:\(co.type)", "Company cash \(Int(co.cash)) is below its overdraft room (money spent that the account could not cover)", "Payments.companyPays / payBills", "co=\(co.id)") }
             if s.cash < -s.overdraftLimit * 1.5 - 1 { find(2, "personal-negative", "Personal cash below the personal overdraft limit (\(Int(s.cash)) vs \(Int(-s.overdraftLimit)))", "Payments / personal spending", "") }
             if co.inventory < -0.01 { find(1, "neg-inventory:\(co.type)", "Negative inventory (\(Int(co.inventory)))", "Businesses/CompanyWeek (stock handling)", "co=\(co.id)") }
             for st in co.staff where st.monthlyWage < 0 { find(1, "neg-wage", "Negative wage on staff \(st.role)", "Employees/Payroll", "co=\(co.id)") }
@@ -459,16 +453,6 @@ final class PlayBot {
         case .chain:
             e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(5_000_000), why: "Test capital") }
             mainID = openCompany(trade: job.trade)
-        case .holding:
-            e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(3_000_000), why: "Test capital") }
-            mainID = openCompany(trade: job.trade)
-            let b = openCompany(trade: job.trade == "tutor" ? "cleaning" : "tutor", topUp: false)
-            if mainID != 0, b != 0 {
-                switch e.createHolding(name: nil, companies: [mainID, b]) {
-                case .success: structural()
-                case .failure(let f): find(2, "holding-create:\(f)", "createHolding failed: \(f)", "HoldingModel / SpecialActions.createHolding", "")
-                }
-            }
         case .startup:
             e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(2_000_000), why: "Test capital") }
             mainID = openCompany(trade: job.trade)
@@ -524,7 +508,7 @@ final class PlayBot {
 
     func reworkWeek(_ w: Int) {
         guard let co = e.state.company(mainID), co.status == .open else { return }
-        let routes = ["private", "broker", "auction", "mbo", "stake"]
+        let routes = ["private", "auction", "stake"]
         if w == 12, co.managerID == nil, let c = e.searchManagers(companyID: mainID), let p = c.first {
             if e.hireManager(personID: p.id, companyID: mainID, monthlyWage: p.askingMonthlyWage * 1.3) == .ok { managerHired[mainID] = w; structural() }
         }
@@ -546,12 +530,11 @@ final class PlayBot {
             let v = CompanySale.estimatedValue(e.state, companyID: mainID, data: e.data)
             let ok: Bool
             switch saleRoute {
-            case "auction": ok = e.startAuction(companyID: mainID, reserve: max(1, v * 0.3))
-            case "stake": ok = e.startSale(companyID: mainID, route: "private", percent: 25)
-            case "mbo": ok = co.managerID == nil ? true : e.startSale(companyID: mainID, route: "mbo")
-            default: ok = e.startSale(companyID: mainID, route: saleRoute)
+            case "auction": ok = e.startSale(companyID: mainID, percent: 100, method: .auction, reserve: max(1, v * 0.3)) == .started
+            case "stake": ok = e.startSale(companyID: mainID, percent: 25, method: .offers) == .started
+            default: ok = e.startSale(companyID: mainID, percent: 100, method: .offers) == .started
             }
-            if !ok { find(2, "sale-start:\(saleRoute)", "Sale route \(saleRoute) refused for an open trading company: \(e.saleRoutes(companyID: mainID).first { $0.id == (saleRoute == "stake" ? "stake" : saleRoute) }?.why ?? "")", "SaleListings.routeProblem", "") }
+            if !ok { find(2, "sale-start:\(saleRoute)", "Sale route \(saleRoute) refused for an open trading company", "SaleListings.routeProblem", "") }
             structural()
         }
     }
@@ -610,7 +593,7 @@ final class PlayBot {
         }
         r.hash = e.playtestHash; r.nw = e.netWorth.total; r.weeks = e.state.week
         if rescues >= 4 { find(3, "needs-rescue:\(job.trade)", "Competent bot had to be rescued with outside cash \(rescues) times: \(job.trade) loses money from the start-up funds (balance)", "Balance of trade \(job.trade)", "rescues=\(rescues)") }
-        let cos = e.state.companies.filter { $0.type != "hold" }
+        let cos = e.state.companies
         F.runLine("\(job.name)\t\(r.gameOver ? "OVER" : "ok")\tnw=\(Int(r.nw / max(1, cur.rate)))\tcos=\(cos.map { "\($0.type):\($0.status.rawValue)" }.joined(separator: ","))\tanswered=\(answered)\t\(r.hash)")
         return r
     }

@@ -90,15 +90,6 @@ final class MasteryProbe: XCTestCase {
                 _ = e.answer(messageID: m.id, option: opt)
             }
             if e.state.isGameOver { broke = true; break }
-            if policy != "idle", d % 3 == 0 {
-                let fc = FinanceContext(countries: e.data.countries, trades: e.data.catalog)
-                for c in ids.compactMap({ e.state.company($0) }) where c.status == .open {
-                    let buffer = max(fc.weeklyCost(c, e.state) * 6, (c.monthlyHistory.last?.revenue ?? 0) * 0.5)
-                    guard c.cash < buffer else { continue }
-                    let top = buffer * 2 - c.cash
-                    let give = min(top, Payments.liquid(e.state) - cur.scaledPrice(2_000)); if give > 0 { _ = e.putMoneyInto(companyID: c.id, amount: give) }
-                }
-            }
             if policy != "idle" {
                 let live = ids.filter { e.state.company($0)?.status == .open }
                 if d % 28 == 0 && d > 60 && !off.contains("price") { for c in live { tendPrice(c, step: policy == "expert" ? 0.25 : 0.5) } }
@@ -110,14 +101,13 @@ final class MasteryProbe: XCTestCase {
                     let ok = !cos.isEmpty && cos.allSatisfy { $0.monthlyHistory.count >= 6 && $0.monthlyHistory.suffix(6).reduce(0) { $0 + $1.profit } > 0 }
                     let yearRev = (cos.first?.monthlyHistory.suffix(12).reduce(0) { $0 + $1.revenue } ?? 0) / idx
                     if ok, yearRev > 2_500_000, let rd = Expansion.readiness(e.state, data: e.data, companyID: id, cityID: cities[min(ids.count - 1, cities.count - 1)]) {
-                        for c in cos { let md = e.maximumDividend(companyID: c.id); if md > 0, c.cash > cur.scaledPrice(30_000) { let amt = min(md, c.cash - cur.scaledPrice(30_000)); _ = e.payDividend(companyID: c.id, amount: amt) } }
                         if env["LEDGER_DEBUG"] != nil { print("EXPAND d\(d) need=\(Int(rd.cashNeeded / idx / 1000))k liquid=\(Int(Payments.liquid(e.state) / idx / 1000))k co=\(cos.map { Int($0.cash / idx / 1000) }) md=\(cos.map { Int(e.maximumDividend(companyID: $0.id) / idx / 1000) })") }
                         if policy == "expert", Payments.liquid(e.state) < rd.cashNeeded {
                             let short = (rd.cashNeeded - Payments.liquid(e.state)) * 1.05
                             if e.loanOffer(kind: "biz", amount: short, companyID: nil).maximum >= short { _ = e.takeLoan(kind: "biz", amount: short, termMonths: 60, companyID: nil) }
                         }
                         if Payments.liquid(e.state) >= rd.cashNeeded {
-                            if case .success(let nid) = e.startCompany(tradeID: trade, cityID: cities[min(ids.count - 1, cities.count - 1)], name: "T\(d)", fundWith: rd.startCost + rd.rampReserve) {
+                            if case .success(let nid) = e.startCompany(tradeID: trade, cityID: cities[min(ids.count - 1, cities.count - 1)], name: "T\(d)") {
                                 ids.append(nid); lastStoreDay = d
                                 setAds(nid)
                                 if let m = e.searchManagers(companyID: nid)?.first { _ = e.hireManager(personID: m.id, companyID: nid, monthlyWage: m.askingMonthlyWage * 1.3) }

@@ -28,9 +28,8 @@ final class FinanceManagerTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    func testOfficeFinanceManagerNeedsAnOfficeHireAndLayoffChip() throws {
+    func testLayoffCountForAnUnknownCompany() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 12)
-        XCTAssertNil(e.toggleHoldingFinanceManager(holdingID: 1), "no finance manager in the office yet")
         XCTAssertEqual(e.layoffCount(companyID: 99, preset: "10"), 1)
         XCTAssertEqual(e.layoffCount(companyID: 99, preset: "3"), 0, "no such company: nobody to lay off")
     }

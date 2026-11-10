@@ -7,7 +7,7 @@ final class MiscActionsTests: XCTestCase {
     func testRenameCloseAndWindUp() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 40_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 12_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("start") }
         XCTAssertEqual(e.renameCompany(companyID: id, to: "x"), .tooShort)
         XCTAssertEqual(e.renameCompany(companyID: id, to: "Blue Door Cafe"), .ok)
         XCTAssertEqual(e.state.company(id)?.name, "Blue Door Cafe")

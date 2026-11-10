@@ -7,7 +7,7 @@ public enum FaceBook {
     public static let leaseWeeks = 8
     static let locksKey = "faceLocks"
 
-    static let suitFamilies: Set<String> = ["fin", "rent", "hold"]
+    static let suitFamilies: Set<String> = ["fin", "rent"]
     static let suitTrades: Set<String> = ["cons", "webdev", "mktg", "law", "acctfirm", "staffing", "estate", "hotel", "realdev", "engcons", "event", "cardealer", "gamestudio"]
     static let handsOnRoles: Set<String> = ["cleaner", "helper", "caretaker", "guard", "driver", "handy", "labour", "housek", "cook", "chef", "chefP", "baker", "butcher",
                                             "whw", "mech", "carwash", "groom", "driverB", "truckd", "courier"]

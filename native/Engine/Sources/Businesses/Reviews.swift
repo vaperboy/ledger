@@ -42,7 +42,7 @@ public enum Reviews {
     }
 
     public static func rate(_ bd: Trade) -> Double {
-        if ["fin", "energy", "hold", "rent"].contains(bd.family) { return 0.0015 }
+        if ["fin", "energy", "rent"].contains(bd.family) { return 0.0015 }
         let b2b: Set<String> = ["factory", "engcons", "construction", "shipping", "trucking", "courier", "salmon", "farm", "mktg", "webdev", "staffing",
                                 "acctfirm", "cons", "oilgas", "power", "fund"]
         return min(0.3, (b2b.contains(bd.id) ? 0.0015 : 0.006) * max(1, (bd.ticket / 40).squareRoot()))

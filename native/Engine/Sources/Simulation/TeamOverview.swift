@@ -16,14 +16,11 @@ public struct TeamOverview: Sendable {
         public var staff: Int
         public var monthlyWages: Double
         public var chainID: Int?
-        public var holdingID: Int?
         public var issues: Int
         public var chainName: String?
-        public var holdingName: String?
         public var score: Int?
         public var managerQuality: Double?
         public var managerLeaving: Bool
-        public var isHolding: Bool
     }
 
     public struct Vacancy: Identifiable, Sendable {
@@ -127,8 +124,8 @@ public extension GameEngine {
             if !co.value("pr29")["late"].isNull { add(.payroll, "Wages are late at \(co.name)", "Staff have not been paid in full. Unpaid wages lead to claims and fines.", 3, by: TeamOverview.you) }
             else if wages > 0 && co.cash < wages && co.status == .open { add(.cash, "\(co.name) has less cash than a month of wages", "Next payday may not be covered. Move money in or cut costs.", 2, by: TeamOverview.you) }
 
-            let ownerWorksThere = co.ownerHours > 0 && co.type != "hold"
-            if co.managerID == nil && !ownerWorksThere && co.status == .open && !co.staff.isEmpty && co.type != "hold" {
+            let ownerWorksThere = co.ownerHours > 0
+            if co.managerID == nil && !ownerWorksThere && co.status == .open && !co.staff.isEmpty {
                 add(.vacancy, "No one runs \(co.name)", bosses.isEmpty ? "You do not work there and it has no manager." : "No store manager; \(runner) oversees it from above.", bosses.isEmpty ? 3 : 2, by: TeamOverview.you)
             }
             if co.managerID != nil {
@@ -167,16 +164,15 @@ public extension GameEngine {
             let chainName: String? = chainID.flatMap { cid in chains.first { $0["id"].int == cid } }.map { $0["name"].string.isEmpty ? "Your chain" : $0["name"].string }
             lines.append(.init(id: co.id, name: co.name, managedBy: runner, managerTitle: first.map { GameEngine.bossTitle($0.kind, trade: trade) },
                                delegated: delegated, authority: co.managerID == nil ? -1 : ManagerModel.budget(of: co).rawValue,
-                               staff: co.staff.count, monthlyWages: wages, chainID: chainID, holdingID: co.holdingID == 0 ? nil : co.holdingID,
+                               staff: co.staff.count, monthlyWages: wages, chainID: chainID,
                                issues: mine.filter { $0.needsOwner }.count,
-                               chainName: chainName, holdingName: co.holdingID == 0 ? nil : s.company(co.holdingID)?.name,
+                               chainName: chainName,
                                score: card?.score,
                                managerQuality: co.managerID == nil ? nil : trade.map { ManagerModel.quality(co, $0, people: s.people) },
-                               managerLeaving: co.managerID != nil && !co.value("mgrNotice").isNull,
-                               isHolding: co.type == "hold"))
+                               managerLeaving: co.managerID != nil && !co.value("mgrNotice").isNull))
             issues += mine
 
-            if co.type != "hold" && co.status == .open && trade?.family != "club" {
+            if co.status == .open && trade?.family != "club" {
                 let title = trade.map { ManagerModel.title($0) } ?? "Manager"
                 if co.managerID == nil && !ownerWorksThere && !co.staff.isEmpty {
                     var v = TeamOverview.Vacancy(id: "mgr-\(co.id)", title: title, scope: "store", place: co.name,
@@ -193,7 +189,7 @@ public extension GameEngine {
                 }
             }
             for slot in ManagerModel.teamSlots(s, companyID: co.id, data: data) {
-                let scope = slot.key == "reg" ? "region" : (slot.key == "ceo" && co.type == "hold") ? "group" : "company"
+                let scope = slot.key == "reg" ? "region" : "company"
                 if let pid = slot.personID, let p = s.people[pid] {
                     members.append(.init(id: "slot-\(co.id)-\(slot.id)", name: p.name, role: slot.title, scope: scope, employer: co.name,
                                          monthlyWage: slot.monthlyWage, companyID: co.id, chainID: chainID, personID: pid))

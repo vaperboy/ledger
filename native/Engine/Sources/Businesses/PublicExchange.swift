@@ -34,7 +34,7 @@ public enum OrderRefusal: Equatable, Sendable {
 public enum OrderResult: Equatable, Sendable { case placed(id: Int), refused(OrderRefusal) }
 
 public enum ExchangeDividendResult: Equatable, Sendable {
-    case ok(perShare: Double), notListed, tooSoon(daysLeft: Int), nothingToPay, tooMuch(maximum: Double), refused(String)
+    case ok(perShare: Double), notListed, tooSoon(daysLeft: Int), nothingToPay, refused(String)
 }
 
 public struct ExchangeRow: Identifiable, Equatable, Sendable {
@@ -81,31 +81,34 @@ public enum PublicExchange {
         for (id, name, kind) in listed where book.instruments[id] == nil {
             guard let f = fair(s, id) else { continue }
             book.instruments[id] = ExchangeInstrument(id: id, name: name, kind: kind, shares: Int(1e9), nav: f, close: f, previousClose: f, closeDay: -1, listedDay: 0,
-                                                      holdingID: 0, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [f])
+                                                      companyID: 0, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [f])
         }
     }
 
+    public static func id(of companyID: Int) -> String { "co:\(companyID)" }
+
     @discardableResult
-    public static func register(_ s: inout GameState, holdingID: Int, value: Double) -> Bool {
-        guard let co = s.company(holdingID), value > 0 else { return false }
+    public static func register(_ s: inout GameState, companyID: Int, value: Double) -> Bool {
+        guard let co = s.company(companyID), value > 0 else { return false }
         var book = ExchangeBook(s)
-        let id = "co:\(holdingID)"
+        let id = Self.id(of: companyID)
         if book.instruments[id] != nil { return false }
         let total = CapTable.table(co).total
         let nav = ExchangeRules.round4(value / Double(total))
         book.instruments[id] = ExchangeInstrument(id: id, name: co.name, kind: "own", shares: total, nav: nav, close: nav, previousClose: nav, closeDay: -1, listedDay: today(s),
-                                                  holdingID: holdingID, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [nav])
+                                                  companyID: companyID, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [nav])
         book.write(to: &s)
         return true
     }
 
-    public static func isRegistered(_ s: GameState, holdingID: Int) -> Bool { ExchangeBook(s).instruments["co:\(holdingID)"] != nil }
+    public static func isRegistered(_ s: GameState, companyID: Int) -> Bool { ExchangeBook(s).instruments[id(of: companyID)] != nil }
+    public static func isListed(_ s: GameState, companyID: Int) -> Bool { ExchangeBook(s).instruments[id(of: companyID)].map { !$0.halted } ?? false }
 
     public static func mirror(_ s: inout GameState, listingID: String, name: String, shares: Int, nav: Double, close: Double, held: Int, cost: Double) {
         var book = ExchangeBook(s)
         let id = "ext:\(listingID)"
         var inst = book.instruments[id] ?? ExchangeInstrument(id: id, name: name, kind: "ext", shares: shares, nav: nav, close: close, previousClose: close, closeDay: -1, listedDay: 0,
-                                                              holdingID: 0, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [])
+                                                              companyID: 0, volume: 0, dividendDay: -1, dividendPerShare: 0, halted: false, history: [])
         inst.previousClose = inst.close; inst.name = name; inst.shares = shares; inst.nav = nav; inst.close = close
         book.instruments[id] = inst
         if held > 0 { book.positions[id] = ExchangePosition(instrument: id, shares: held, cost: cost, since: book.positions[id]?.since ?? today(s)) } else { book.positions[id] = nil }
@@ -126,7 +129,7 @@ public enum PublicExchange {
         switch side {
         case .sell:
             if inst.isOwn {
-                guard let co = s.company(inst.holdingID) else { return .refused(.halted) }
+                guard let co = s.company(inst.companyID) else { return .refused(.halted) }
                 let t = CapTable.table(co)
                 let can = ExchangeRules.ownerSellable(owned: t.you, openSells: book.openSells(id), total: t.total)
                 if shares > can { return .refused(.tooMany(canSell: can)) }
@@ -160,21 +163,13 @@ public enum PublicExchange {
         return true
     }
 
-    public static func declareDividend(_ s: inout GameState, holdingID: Int, amount: Double, context: FinanceContext) -> ExchangeDividendResult {
+    public static func declareDividend(_ s: inout GameState, companyID: Int, amount: Double) -> ExchangeDividendResult {
         var book = ExchangeBook(s)
-        guard var inst = book.instruments["co:\(holdingID)"], !inst.halted, let co = s.company(holdingID) else { return .notListed }
+        guard var inst = book.instruments[id(of: companyID)], !inst.halted else { return .notListed }
         let now = today(s)
         if inst.dividendDay >= 0, now - inst.dividendDay < ExchangeRules.dividendGapDays { return .tooSoon(daysLeft: ExchangeRules.dividendGapDays - (now - inst.dividendDay)) }
         if amount <= 0 { return .nothingToPay }
-        let most = Payments.maximumDividend(co, state: s, context: context)
-        if amount > most { return .tooMuch(maximum: most) }
-        let r = Payments.payDividend(&s, companyID: holdingID, amount: amount, context: context)
-        switch r {
-        case .ok: break
-        case .noRetainedProfit: return .refused("The company has no retained profit to pay out.")
-        case .notEnoughCash: return .refused("The company needs to keep cash for two weeks of costs.")
-        case .needsBoard: return .refused("The board must vote for this dividend first.")
-        }
+        if Payments.payDividend(&s, companyID: companyID, amount: amount) == .notEnoughCash { return .refused("The company needs the cash for its costs first.") }
         let dps = amount / Double(max(1, inst.shares))
         inst.dividendDay = now
         inst.dividendPerShare = dps
@@ -184,7 +179,7 @@ public enum PublicExchange {
         return .ok(perShare: dps)
     }
 
-    public static func runDay(_ s: inout GameState, context: FinanceContext, holdingValue: (Int) -> Double?) {
+    public static func runDay(_ s: inout GameState, context: FinanceContext, companyValue: (Int) -> Double?) {
         let now = today(s)
         var book = ExchangeBook(s)
         if book.lastRun == now { return }
@@ -200,7 +195,7 @@ public enum PublicExchange {
                     guard let f = fair(s, id) else { continue }
                     inst.nav = f
                 } else {
-                    guard let co = s.company(inst.holdingID), co.status.isLive, let v = holdingValue(inst.holdingID), v > 0 else {
+                    guard let co = s.company(inst.companyID), co.status.isLive, let v = companyValue(inst.companyID), v > 0 else {
                         inst.halted = true
                         book.orders.removeAll { $0.instrument == id }
                         book.instruments[id] = inst
@@ -208,7 +203,8 @@ public enum PublicExchange {
                         continue
                     }
                     inst.shares = CapTable.table(co).total
-                    let target = ExchangeRules.round4(v / Double(inst.shares))
+                    inst.sentiment += (1 - inst.sentiment) * 0.02
+                    let target = ExchangeRules.round4(v / Double(inst.shares) * inst.sentiment)
                     inst.nav = ExchangeRules.round4(clamp(target, inst.nav * (1 - ExchangeRules.valueStepShare), inst.nav * (1 + ExchangeRules.valueStepShare)))
                 }
                 for o in book.orders where o.instrument == id && !ExchangeRules.inBand(price: o.limit, nav: inst.nav, rules: s.worldRules) {
@@ -229,7 +225,7 @@ public enum PublicExchange {
                         if settleServer(&s, &book, inst, o, price: fill, today: now, currency: cur) { traded += o.shares; if o.side == .sell { withhold = true } }
                         book.orders.removeAll { $0.id == o.id }
                     }
-                } else if let co = s.company(inst.holdingID) {
+                } else if let co = s.company(inst.companyID) {
                     let table = CapTable.table(co)
                     var room = ExchangeRules.ownerSellable(owned: table.you, openSells: 0, total: table.total)
                     let blocked = ExchangeRules.insiderBlock(listedDay: inst.listedDay, disclosureDay: inst.dividendDay, today: now) != nil
@@ -301,14 +297,15 @@ public enum PublicExchange {
     }
 
     private static func settleOwnSale(_ s: inout GameState, _ inst: ExchangeInstrument, shares: Int, price: Double, currency cur: Currency) -> Int {
-        guard let i = s.companyIndex(inst.holdingID) else { return 0 }
+        guard let i = s.companyIndex(inst.companyID) else { return 0 }
         let gross = jsRound(Double(shares) * price)
         let moved = CapTable.sellFromYou(&s, i, shares: shares, to: "Exchange investors", paid: gross)
         guard moved > 0 else { return 0 }
         let part = jsRound(Double(moved) * price)
         let net = part - min(part, ExchangeRules.fee(part, currency: cur))
-        Payments.ownerReceivesSale(&s, from: s.companies[i], amount: net, gain: net, label: "Sold \(moved) shares of \(inst.name) on the exchange")
-        s.note("Closing auction: sold \(moved) shares of \(inst.name) at \(price).", tone: "good", companyID: inst.holdingID)
+        let basis = s.companies[i].injectedCapital * Double(moved) / Double(max(1, CapTable.table(s.companies[i]).total))
+        Payments.ownerReceivesSale(&s, from: s.companies[i], amount: net, gain: net - basis, label: "Sold \(moved) shares of \(inst.name) on the exchange")
+        s.note("Closing auction: sold \(moved) shares of \(inst.name) at \(price).", tone: "good", companyID: inst.companyID)
         return moved
     }
 
@@ -349,7 +346,7 @@ public enum PublicExchange {
         let now = today(s)
         return book.instruments.values.sorted { $0.kind != $1.kind ? $0.kind > $1.kind : $0.name < $1.name }.map { i in
             let b = ExchangeRules.band(nav: i.nav, rules: s.worldRules), d = ExchangeRules.closeBounds(previous: i.close, nav: i.nav, rules: s.worldRules)
-            let mine = i.isOwn ? (s.company(i.holdingID).map { CapTable.table($0).you } ?? 0) : (book.positions[i.id]?.shares ?? 0)
+            let mine = i.isOwn ? (s.company(i.companyID).map { CapTable.table($0).you } ?? 0) : (book.positions[i.id]?.shares ?? 0)
             let blocked = i.isOwn ? ExchangeRules.insiderBlock(listedDay: i.listedDay, disclosureDay: i.dividendDay, today: now) : nil
             let note: String
             switch i.kind {

@@ -120,7 +120,7 @@ struct WorldRecordsView: View {
     }
 
     @ViewBuilder private func months(_ e: GameEngine) -> some View {
-        let open = e.state.companies.filter { $0.status.isLive && $0.type != "hold" }
+        let open = e.state.companies.filter { $0.status.isLive }
         if open.isEmpty {
             NoteCard(text: "Monthly results appear once you run a company.", glyph: Glyph.calendar)
         } else {

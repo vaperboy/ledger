@@ -95,7 +95,7 @@ struct HomeTopLine: View {
     }
 
     private var secondCompanyOpen: Bool {
-        let none: Bool = !engine.state.companies.contains { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }
+        let none: Bool = !engine.state.companies.contains { (c: Company) -> Bool in c.status.isLive }
         return none || Gates.isOpen(.newCompany, engine.state, data: engine.data)
     }
 }
@@ -281,7 +281,7 @@ extension GameStore {
         let posts = (engine?.teamOverview().vacancies ?? []).filter { $0.companyID != nil && $0.scope != "chain" }
         if let id = (posts.first(where: { $0.needed }) ?? posts.first)?.companyID {
             push(.companyAt(id, .staff))
-        } else if let id = engine?.state.companies.first(where: { $0.status.isLive && $0.type != "hold" })?.id {
+        } else if let id = engine?.state.companies.first(where: { $0.status.isLive })?.id {
             push(.companyAt(id, .staff))
         }
     }

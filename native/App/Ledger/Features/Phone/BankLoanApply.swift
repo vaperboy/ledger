@@ -8,7 +8,6 @@ struct BankLoanApplyFlow: View {
     @Environment(\.dismiss) private var systemDismiss
     @Environment(\.popupClose) private var popupClose
     private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
-    var account: BankAccountID
     var prefill: Double? = nil
     @State private var burst: MoneyBurst?
     @State private var step = 1
@@ -23,14 +22,14 @@ struct BankLoanApplyFlow: View {
     @State private var approved: LoanApplicationOutcome?
     @State private var pending: PendingAction?
 
-    private var kind: String { account.companyID == nil ? "cons" : "biz" }
+    private let kind = "cons"
     private static let stepCount = 3
 
     var body: some View {
         if let e = store.engine {
-            let cur: Currency = account.companyID.flatMap { e.state.company($0) }.map { e.currency(for: $0) } ?? e.homeCurrency
-            let a: LoanAssessment = e.loanAssessment(kind: kind, companyID: account.companyID)
-            let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: account.companyID)
+            let cur: Currency = e.homeCurrency
+            let a: LoanAssessment = e.loanAssessment(kind: kind, companyID: nil)
+            let q: LoanApplicationQuote = e.loanApplicationQuote(kind: kind, amount: amount, termMonths: term, companyID: nil)
             VStack(spacing: 0) {
                 AppHeader(title: titleText, subtitle: subtitleText, onBack: { back() }, backLabel: "Back") {
                     Button("Done") { dismiss() }.buttonStyle(SecondaryButtonStyle(size: .compact))
@@ -87,7 +86,7 @@ struct BankLoanApplyFlow: View {
             LoanStepChoose(a: a, q: q, cur: cur, amount: $amount, term: $term, payInto: $payInto) { step = 3 }
         default:
             LoanStepSummary(q: q, cur: cur, payIntoName: payIntoName(a), personalGuarantee: a.personalGuarantee, refusal: refusal, approved: approved,
-                            clauses: e.loanAgreement(kind: kind, amount: amount, termMonths: term, companyID: account.companyID),
+                            clauses: e.loanAgreement(kind: kind, amount: amount, termMonths: term, companyID: nil),
                             name: $name, proof: $proof, papers: $papers, agreed: $agreed,
                             onApply: { confirmApply(a, q, cur) }, onDone: { dismiss() })
         }
@@ -118,7 +117,7 @@ struct BankLoanApplyFlow: View {
     private func apply(_ cur: Currency) {
         let docs = LoanDocuments(fullName: name, incomeProof: proof, companyPapers: papers)
         let result: LoanApplicationOutcome? = store.act({ (e: inout GameEngine) -> LoanApplicationOutcome in
-            e.applyForLoan(kind: kind, amount: amount, termMonths: term, companyID: account.companyID, documents: docs, agreed: agreed, payInto: payInto)
+            e.applyForLoan(kind: kind, amount: amount, termMonths: term, companyID: nil, documents: docs, agreed: agreed, payInto: payInto)
         })
         switch result {
         case .approved(_, _, let disbursed)?:

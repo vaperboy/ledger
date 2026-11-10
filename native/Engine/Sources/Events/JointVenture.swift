@@ -138,6 +138,10 @@ public enum JointVenture {
             n + (state(co)?.meetings.filter { !$0.closed && $0.opened <= s.week && $0.items.contains { $0.votes[Member.me] == nil } }.count ?? 0)
         }
     }
+    public static func payoutRoom(_ s: GameState, _ co: Company, _ fc: FinanceContext) -> Double {
+        let year = co.monthlyHistory.suffix(12).reduce(0) { $0 + $1.profit }
+        return max(0, min(year, s.cash - fc.weeklyCost(co, s) * 2)).rounded(.down)
+    }
     public static func payoutBlock(_ s: GameState, companyID: Int) -> String? {
         guard let co = s.company(companyID), let st = state(co), !partners(st).isEmpty else { return nil }
         return "\(co.name) has partners. Money goes out to owners only when a board meeting votes for it."
@@ -179,7 +183,7 @@ public enum JointVenture {
 
     static func inviteProblem(_ s: GameState, _ co: Company, _ st: State, linkKey: String, pct: Double, price: Double, mock: Bool, myLinkKeys: Set<String>, data: GameData) -> String? {
         if !co.status.isLive || co.status == .setup { return "\(co.name) is not open yet." }
-        if co.type == "hold" || s.isBranch(co) { return "Only an ordinary limited company can have partners." }
+        if s.isBranch(co) { return "Only an ordinary limited company can have partners." }
         if let why = JVRules.linkProblem(candidate: linkKey, mine: myLinkKeys, partners: Set(st.members.map { $0.linkKey })) { return why }
         if st.invites.contains(where: { $0.linkKey == linkKey && $0.status == "sent" }) { return "That player has been invited already." }
         let t = CapTable.table(co)
@@ -256,9 +260,8 @@ public enum JointVenture {
         it.amount = jsRound(amount); it.steps = steps
         switch kind {
         case .dividend:
-            let top = Payments.maximumDividend(co, state: s, context: fc)
-            if it.amount <= 0 || it.amount > top { return (nil, top <= 0 ? "There is no retained profit to pay out." : "At most \(cur.display(top)) can be paid out now.") }
-        case .capital: if it.amount <= 0 { return (nil, "Name an amount.") }
+            let top = payoutRoom(s, co, fc)
+            if it.amount <= 0 || it.amount > top { return (nil, top <= 0 ? "There is no profit to pay out." : "At most \(cur.display(top)) can be paid out now.") }
         case .price: it.steps = steps < 0 ? -1 : 1
         case .hire: if co.managerID != nil { return (nil, "\(co.name) has a manager already.") }
         case .sell, .dissolve: break
@@ -357,17 +360,10 @@ public enum JointVenture {
         var items = st.queue
         st.queue = []
         let p3 = co.monthlyHistory.suffix(3).reduce(0) { $0 + $1.profit }
-        let top = Payments.maximumDividend(co, state: s, context: fc)
-        let pay = min(top, jsRound(p3 * 0.25))
+        let pay = min(payoutRoom(s, co, fc), jsRound(p3 * 0.25))
         if p3 > 0, pay > 0, !items.contains(where: { $0.kind == .dividend }) {
             var it = newItem(&s, .dividend, by: "The board", cur)
             it.amount = pay; it.effect = JVRules.effect(.dividend, amount: pay, money: { cur.display($0) })
-            items.append(it)
-        }
-        let need = fc.weeklyCost(co, s) * 8
-        if co.cash < need, !items.contains(where: { $0.kind == .capital }) {
-            var it = newItem(&s, .capital, by: "The board", cur)
-            it.amount = jsRound(max(1, need - co.cash)); it.effect = JVRules.effect(.capital, amount: it.amount, money: { cur.display($0) })
             items.append(it)
         }
         return Meeting(id: s.makeID(), planned: true, opened: s.week, week: date, deadline: date, calledBy: "board", calledByTitle: "The board", reason: "Quarterly meeting", items: items)
@@ -489,11 +485,9 @@ public enum JointVenture {
         guard co.status.isLive else { return (false, "The company is no longer there.") }
         switch it.kind {
         case .dividend:
-            switch Payments.payDividend(&s, companyID: co.id, amount: it.amount, context: fc) {
+            switch Payments.payDividend(&s, companyID: co.id, amount: it.amount) {
             case .ok: return (true, "\(cur.display(it.amount)) was paid out by shares.")
-            case .noRetainedProfit: return (false, "There is no retained profit left to pay out.")
-            case .notEnoughCash: return (false, "The company no longer has the cash for it.")
-            default: return (false, "The company cannot pay a dividend.")
+            case .notEnoughCash: return (false, "You no longer have the cash for it.")
             }
         case .price:
             let now = s.companies[i].priceLevel
@@ -509,19 +503,13 @@ public enum JointVenture {
             default: return (false, "The manager found would not take the job at the going rate. Put it again.")
             }
         case .sell:
-            if let why = SaleListings.routeProblem(s, companyID: co.id, route: "broker", pct: 100, board: true) { return (false, why) }
-            let started = SaleListings.start(&s, companyID: co.id, route: "broker", extra: ["jv": .number(1)])
-            return started ? (true, "\(co.name) is listed with a broker. Offers come to its Sell page for you to answer for all owners; none under \(Int(JVRules.lowestSaleShare * 100))% of its value is accepted. When it sells, every owner is paid by their shares.") : (false, "\(co.name) cannot be listed now.")
+            if let why = SaleListings.routeProblem(s, companyID: co.id, route: "private", pct: 100, board: true) { return (false, why) }
+            let started = SaleListings.start(&s, companyID: co.id, route: "private", extra: ["jv": .number(1)])
+            return started ? (true, "\(co.name) is put on the market. Offers come to its Sell page for you to answer for all owners; none under \(Int(JVRules.lowestSaleShare * 100))% of its value is accepted. When it sells, every owner is paid by their shares.") : (false, "\(co.name) cannot be listed now.")
         case .partner:
             if let why = inviteProblem(s, co, st, linkKey: it.linkKey, pct: it.pct, price: it.price, mock: it.mock, myLinkKeys: [], data: data) { return (false, why) }
             makeInvite(&s, i, &st, playerID: it.playerID, name: it.name, linkKey: it.linkKey, role: it.role, mock: it.mock, pct: it.pct, price: it.price)
             return (true, "\(it.name) was invited. They join when they accept.")
-        case .capital:
-            let t = CapTable.table(co)
-            let mine = jsRound(it.amount * t.youPct / 100)
-            guard Payments.liquid(s) >= mine else { return (false, "You do not have your \(cur.display(mine)) for it.") }
-            if mine > 0 { _ = Payments.injectCash(&s, companyID: co.id, amount: mine) }
-            return (true, "You put in \(cur.display(mine)), your share of the call. Partners were not asked for cash.")
         case .dissolve:
             let value = companyValue(s, s.companies[i], data: data)
             let shares = shareMap(s.companies[i], st)

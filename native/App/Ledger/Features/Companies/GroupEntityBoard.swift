@@ -60,7 +60,7 @@ struct BoardTable: View {
     }
 
     private var ownerWorksHere: Bool {
-        ManagerModel.boardCompanies(engine.state, key: key).contains { (c: Company) -> Bool in c.status.isLive && c.type != "hold" && c.managerID == nil && c.ownerHours > 0 }
+        ManagerModel.boardCompanies(engine.state, key: key).contains { (c: Company) -> Bool in c.status.isLive && c.managerID == nil && c.ownerHours > 0 }
     }
 
     private func ownerRow() -> some View {

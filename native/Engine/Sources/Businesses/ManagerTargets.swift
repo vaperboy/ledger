@@ -23,7 +23,7 @@ public enum ManagerTargets {
     }
 
     public static func eligible(_ co: Company, data: GameData) -> Bool {
-        guard co.status == .open, co.type != "hold", let bd = data.catalog[co.type] else { return false }
+        guard co.status == .open, let bd = data.catalog[co.type] else { return false }
         return !noFamily.contains(bd.family)
     }
 

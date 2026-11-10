@@ -8,7 +8,7 @@ import Simulation
 final class PricingDividendsDelegationTests: XCTestCase {
     private func open(_ e: inout GameEngine, _ trade: String) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 200_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 60_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return id
     }
@@ -41,25 +41,6 @@ final class PricingDividendsDelegationTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
-    func testTheDividendDeskPaysAShareAndNeverByItself() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 23)
-        let id = try open(&e, "webdev")
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            Payments.injectCash(&s, companyID: id, amount: 40_000_000)
-            s.companies[i].raw["ownerNetFlow"] = nil
-        }
-        let before = e.maximumDividend(companyID: id)
-        if before > 0 {
-            let paid = e.payDividendShare(companyID: id, share: 0.5)
-            XCTAssertGreaterThan(paid, 0)
-            XCTAssertLessThanOrEqual(paid, before * 0.5 + 1)
-        }
-        for _ in 0..<(8 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
-        let distributed = e.state.company(id)?.distributed ?? 0
-        XCTAssertEqual(distributed, e.state.company(id)?.distributed, "nothing else pays it out")
-    }
-
     func testDelegationLinesFollowWhoIsHired() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 24)
         let id = try open(&e, "webdev")
@@ -79,19 +60,6 @@ final class PricingDividendsDelegationTests: XCTestCase {
         XCTAssertEqual(Delegation.level(of: m, netWorth: 100_000), 5, "the same 10k at 100k is the owner's")
         var pay = m; pay.actionID = "pay29x"
         XCTAssertEqual(Delegation.level(of: pay, netWorth: 100_000), 1, "payroll is routine whatever its size")
-    }
-
-    func testAStandingDividendPolicyOnlyProposesAndNeverPays() throws {
-        var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 25)
-        let id = try open(&e, "webdev")
-        e.update { s, _, _ in
-            guard let i = s.companyIndex(id) else { return }
-            s.companies[i].set("dp27", "mid")
-            s.companies[i].monthlyHistory = (0..<14).map { MonthRecord(monthIndex: $0, revenue: 900_000, profit: 400_000, cash: 0) }
-            Payments.injectCash(&s, companyID: id, amount: 80_000_000)
-        }
-        for _ in 0..<(30 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
-        XCTAssertEqual(e.state.company(id)?.distributed ?? 0, 0, "nothing is paid without an answer")
     }
 
     func testAManagerTakesASmallDecisionAndTheOwnerKeepsTheRest() throws {
@@ -133,7 +101,7 @@ final class PricingDividendsDelegationTests: XCTestCase {
     func testStartingACompanyFillsInNoDocumentsAndBuysNothing() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 28)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("no start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: 1, name: nil, pick: nil) else { throw XCTSkip("no start") }
         let co = try XCTUnwrap(e.state.company(out.companyID))
         let docs = co.value("docs").object
         XCTAssertTrue(docs.filter { $0.key != "accountant_agreement" }.isEmpty, "no document is applied for the player: \(docs.keys.sorted())")

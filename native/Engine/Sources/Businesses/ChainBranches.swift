@@ -10,53 +10,17 @@ public enum ChainBranches {
         guard let ch = Chains.chain(s, id: chainID) else { return [] }
         return Chains.stores(s, ch)
     }
-    public static func combinedCash(_ s: GameState, chainID: Int) -> Double { branches(s, chainID: chainID).reduce(0) { $0 + $1.cash } }
-    public static func weeksOverdrawn(_ s: GameState, chainID: Int) -> Int { Chains.chain(s, id: chainID)?["neg"].int ?? 0 }
 
     public static func weekly(_ s: inout GameState, data: GameData) {
         for ch in Chains.list(s) {
             let id = ch["id"].int
             let L = Chains.stores(s, ch)
             if L.isEmpty { continue }
-            if L.count >= 2 { pool(&s, chainID: id, data: data) }
             mergeStoreBoards(&s, chainID: id)
             ChainLocations.leadProposals(&s, chainID: id, data: data)
-            guard var c = Chains.chain(s, id: id) else { continue }
-            let n = combinedCash(s, chainID: id) < 0 ? c["neg"].int + 1 : 0
-            if c["neg"].int != n { c["neg"] = .number(Double(n)); Chains.save(&s, c) }
         }
     }
 
-    static func pool(_ s: inout GameState, chainID: Int, data: GameData) {
-        for short in branches(s, chainID: chainID) {
-            guard let si = s.companyIndex(short.id), s.companies[si].cash < 0 else { continue }
-            let cost = ManagerModel.weekCost(s, s.companies[si], data: data)
-            for keep in [2.0, 0.0] {
-                let deficit = -s.companies[si].cash
-                if deficit <= 0 { break }
-                let want = keep > 0 ? deficit + cost : deficit
-                var got = 0.0
-                let donors = branches(s, chainID: chainID).filter { $0.id != short.id }.sorted { $0.cash != $1.cash ? $0.cash > $1.cash : $0.id < $1.id }
-                for d in donors where got < want {
-                    let x = jsRound(min(want - got, d.cash - ManagerModel.weekCost(s, d, data: data) * keep))
-                    if x <= 0 { continue }
-                    move(&s, from: d.id, to: short.id, amount: x, label: "Chain cash")
-                    if let k = s.companyIndex(short.id) {
-                        var gl = s.companies[k].value("gl56").array
-                        gl.append(.object(["from": .number(Double(d.id)), "amt": .number(x), "w": .number(Double(s.week)), "pool": 1]))
-                        s.companies[k].set("gl56", .array(gl))
-                    }
-                    got += x
-                }
-            }
-        }
-    }
-
-    static func move(_ s: inout GameState, from a: Int, to b: Int, amount: Double, label: String) {
-        guard amount > 0, let ca = s.company(a), let cb = s.company(b) else { return }
-        Payments.companyPays(&s, companyID: a, amount: amount, category: nil, label: "\(label) to \(cb.name)")
-        Payments.companyReceives(&s, companyID: b, amount: amount, category: nil, label: "\(label) from \(ca.name)")
-    }
 
     static func mergeStoreBoards(_ s: inout GameState, chainID: Int) {
         let key = "ch:\(chainID)"
@@ -275,11 +239,6 @@ public enum ChainBranches {
         s.companies[i].yearProfitSoFar = 0; s.companies[i].taxAccrued = 0
         for k in s.loans.indices where s.loans[k].companyID == storeID { s.loans[k].companyID = r }
         if s.companies[i].int("loanCall") > 0 && s.companies[ri].int("loanCall") == 0 { s.companies[ri].set("loanCall", s.companies[i].int("loanCall")) }
-        s.companies[i].set("gl56", .array([]))
-        let c = jsRound(s.companies[i].cash)
-        if c > 0 { move(&s, from: storeID, to: r, amount: c, label: "Cash of a branch that left") }
-        if c < 0 { move(&s, from: r, to: storeID, amount: -c, label: "Overdraft of a branch that left") }
-        Ledger.set(&s, .company(storeID), to: 0)
         s.companies[i].status = .sold
         s.companies[i].set("open13", .null)
         s.companies[i].set("brEnd", end)

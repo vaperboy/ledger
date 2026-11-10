@@ -368,7 +368,7 @@ public enum FootballModel {
         let debt = clubDebt(club, seed: s.seed)
         Payments.playerPays(&s, price, label: "Purchase of \(club["name"].string)")
         setClub(&s, country.code, id: clubID) { $0["owner"] = "you"; $0["listed"] = false }
-        guard let id = makeClubCompany(&s, club: club, division: 1, cash: jsRound(club["val"].double * 0.03), country: country, data: data) else { return .notAvailable }
+        guard let id = makeClubCompany(&s, club: club, division: 1, country: country, data: data) else { return .notAvailable }
         if debt > 0 {
             var l = Loan(raw: [:])
             l.id = s.makeID(); l.kind = "biz"; l.name = "Club debt taken over"
@@ -401,16 +401,15 @@ public enum FootballModel {
         lg.t.append(Row(id: club["id"].string, s: 34, pts: 0, gp: 0, hg: 0))
         saveLeague(&s, country.code, lg)
         Payments.playerPays(&s, jsRound(val * 0.4), label: "Founding of \(name)")
-        guard let id = makeClubCompany(&s, club: club, division: 2, cash: jsRound(val * 0.4 * 0.5), country: country, data: data) else { return .notAvailable }
+        guard let id = makeClubCompany(&s, club: club, division: 2, country: country, data: data) else { return .notAvailable }
         return .ok(id)
     }
 
-    static func makeClubCompany(_ s: inout GameState, club: JSONValue, division div: Int, cash: Double, country: Country, data: GameData) -> Int? {
+    static func makeClubCompany(_ s: inout GameState, club: JSONValue, division div: Int, country: Country, data: GameData) -> Int? {
         guard let id = SpecialFamilies.blankCompany(&s, tradeID: "club", country: country, cityID: club["city"].string, name: club["name"].string, size: 1, data: data),
               let i = s.companyIndex(id) else { return nil }
         s.companies[i].status = .open
         s.companies[i].openedWeek = s.week
-        Ledger.set(&s, .company(id), to: cash)
         CompanySetup.chooseAccountant(&s, companyID: id, accountantID: nil, data: data)
         var docs = s.companies[i].value("docs")
         for d in ["registration", "accountant_agreement", "vat"] { docs[d] = .object(["st": "ok", "done": .number(Double(s.week)), "ok": .number(Double(s.week))]) }

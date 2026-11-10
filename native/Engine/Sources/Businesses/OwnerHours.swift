@@ -7,7 +7,7 @@ public enum OwnerHours {
     public static let burnoutFrom = 65.0
     public static let floor = 5.0
 
-    public static func works(_ co: Company) -> Bool { co.managerID == nil && co.type != "hold" && !co.flag("ownOut") }
+    public static func works(_ co: Company) -> Bool { co.managerID == nil && !co.flag("ownOut") }
 
     public static func needed(_ co: Company, _ bd: Trade, _ w: World, room: Double = weeklyCap) -> Double {
         var present = co
@@ -30,7 +30,7 @@ public enum OwnerHours {
         used += startups.reduce(0) { $0 + $1["sw"]["selfH"].double + $1["sw16"]["selfH"].double }
         for i in s.companies.indices {
             let co = s.companies[i]
-            guard co.status.isLive, co.type != "hold" else { continue }
+            guard co.status.isLive else { continue }
             if co.managerID != nil || co.flag("ownOut") { continue }
             guard co.status == .open, let bd = data.catalog[co.type] else { used += co.ownerHours; continue }
             let hours = needed(co, bd, World(state: s, data: data), room: max(0, Gates.ownerHoursCap(s) - used))

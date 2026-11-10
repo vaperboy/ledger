@@ -8,19 +8,12 @@ import Events
 
 public enum PortfolioOwner: Hashable, Sendable {
     case player
-    case holding(Int)
 
-    public var id: String {
-        switch self {
-        case .player: return "me"
-        case .holding(let h): return "h\(h)"
-        }
-    }
+    public var id: String { "me" }
 
     public init?(id: String) {
-        if id == "me" { self = .player; return }
-        guard id.hasPrefix("h"), let n = Int(id.dropFirst()) else { return nil }
-        self = .holding(n)
+        guard id == "me" else { return nil }
+        self = .player
     }
 }
 
@@ -201,26 +194,8 @@ enum MarketBook {
         return out
     }
 
-    static func holdingPositions(_ s: GameState) -> [PortfolioPosition] {
-        var out: [PortfolioPosition] = []
-        for h in HoldingModel.holdings(in: s, openOnly: false) {
-            let owner = PortfolioOwner.holding(h.id)
-            for sym in HoldingModel.treasuryFunds {
-                let pos = HoldingModel.fundPosition(h, sym)
-                guard pos.units > 1e-9 else { continue }
-                let px = HoldingModel.fundPrice(s, sym)
-                let hist = Markets.fundHistory(s, sym)
-                out.append(make(s, id: "\(owner.id):fund:\(sym)", owner: owner, ownerName: h.name, kind: fundKind(sym), assetID: "fund:\(sym)", name: fundNames[sym] ?? sym,
-                                symbol: sym, units: pos.units, price: px, cost: pos.cost, value: pos.units * px,
-                                week: weekMove(s, history: hist, units: pos.units, lastBuy: HoldingModel.fundLastBuy(h, sym)), history: hist, risk: fundRisk(sym),
-                                canSell: h.status == .open, note: h.status == .open ? nil : "The holding is not open."))
-            }
-        }
-        return out
-    }
-
     static func portfolio(_ s: GameState, data: GameData) -> Portfolio {
-        var list = personalPositions(s) + holdingPositions(s)
+        var list = personalPositions(s)
         var totals = PortfolioTotals()
         var byOwner: [PortfolioOwner: PortfolioTotals] = [:]
         for p in list { totals.add(p); byOwner[p.owner, default: PortfolioTotals()].add(p) }
@@ -229,10 +204,7 @@ enum MarketBook {
             let ov = byOwner[list[i].owner]?.value ?? 0
             list[i].ownerAllocation = ov > 0 ? max(0, list[i].value) / ov : 0
         }
-        var owners = [PortfolioOwnerSummary(owner: .player, name: "You", cash: Payments.liquid(s), totals: byOwner[.player] ?? PortfolioTotals())]
-        for h in HoldingModel.holdings(in: s, openOnly: false) where h.status == .open || byOwner[.holding(h.id)] != nil {
-            owners.append(PortfolioOwnerSummary(owner: .holding(h.id), name: h.name, cash: h.cash, totals: byOwner[.holding(h.id)] ?? PortfolioTotals()))
-        }
+        let owners = [PortfolioOwnerSummary(owner: .player, name: "You", cash: Payments.liquid(s), totals: byOwner[.player] ?? PortfolioTotals())]
         let order = Dictionary(owners.enumerated().map { ($0.element.owner, $0.offset) }, uniquingKeysWith: { (a, _) in a })
         list.sort { (order[$0.owner] ?? 0, -$0.value) < (order[$1.owner] ?? 0, -$1.value) }
         return Portfolio(positions: list, owners: owners, totals: totals, history: (s.rest["pfH"]?.array ?? []).map { $0["v"].double })
@@ -248,7 +220,6 @@ enum MarketBook {
     }
 
     static func backfillCostBases(_ s: inout GameState) {
-        HoldingModel.backfillCostBasis(&s)
         if var inv = s.rest["inv"], !inv.isNull {
             var changed = false
             for (key, kind) in [("funds", Brokerage.Kind.fund), ("crypto", .crypto), ("stocks", .stock)] {

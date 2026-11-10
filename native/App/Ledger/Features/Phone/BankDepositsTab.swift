@@ -3,22 +3,6 @@ import GameCore
 import Countries
 import Simulation
 
-struct BankDepositsTab: View {
-    @Environment(\.outsidePalette) private var P
-    @EnvironmentObject var store: GameStore
-    var account: BankAccountID
-    var detail: BankAccountDetail
-
-    var body: some View {
-        switch account {
-        case .personal: BankFixedDeposits()
-        case .company, .investments:
-            Text("A company account has no fixed deposits. The company can pay spare cash out as a dividend or your salary.")
-                .textStyle(.body, tint: P.inkSoft).fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
 struct BankFixedDeposits: View {
     @Environment(\.outsidePalette) private var P
     @EnvironmentObject var store: GameStore

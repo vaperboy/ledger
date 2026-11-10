@@ -10,7 +10,7 @@ final class ManagedRequestsTests: XCTestCase {
     private func managedShop(level: Int, pay: Double = 0, seed: Int = 5) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         var days = 0
         while e.state.company(id)?.status != .open, days < 60 * 7 { e.nextDay(); days += 1 }
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))

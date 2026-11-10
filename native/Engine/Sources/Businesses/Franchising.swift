@@ -548,7 +548,7 @@ public enum Franchising {
         case "owed":
             title = "\(bn) demands unpaid royalties"
             body = "\(co.name) owes \(money(s, fc, co, f["owed"].double)) in royalties and marketing fees. Pay now or the franchise contract ends."
-            opts = [.option("Pay \(money(s, fc, co, f["owed"].double))", "From company cash."), .option("Let the contract end", "You lose the brand. The debt stays as a bill to pay.")]
+            opts = [.option("Pay \(money(s, fc, co, f["owed"].double))", "From your account."), .option("Let the contract end", "You lose the brand. The debt stays as a bill to pay.")]
         case "qual":
             title = "\(bn) terminates for poor quality"
             body = "Quality at \(co.name) has been far below the brand standard for months. Invest in a refit and training, or the contract ends."

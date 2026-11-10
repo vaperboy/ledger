@@ -25,7 +25,7 @@ final class AccountantActionsTests: XCTestCase {
 
     func testSetAccountantChangesFee() throws {
         var e = try game(12)
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 100_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("start") }
         let code = try XCTUnwrap(e.state.company(id)?.countryCode)
         let offers = e.accountantOffers(countryCode: code)
         let current = try XCTUnwrap(e.state.company(id)?.value("acc")["id"].int)
@@ -48,7 +48,7 @@ final class AccountantActionsTests: XCTestCase {
         let code = e.state.homeCountryCode
         e.prepareAccountants(countryCode: code)
         let pick = try XCTUnwrap(e.accountantOffers(countryCode: code).first { !$0.isDefault })
-        let r = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: nil, name: nil, pick: nil, fundWith: 100_000_000, accountantID: pick.id)
+        let r = e.startCompanyChoosingPremises(tradeID: "cafe", cityID: e.state.player.cityID, size: nil, name: nil, pick: nil, accountantID: pick.id)
         guard case .success(let out) = r else { return XCTFail("start") }
         XCTAssertEqual(e.state.company(out.companyID)?.value("acc")["id"].int, pick.id)
     }

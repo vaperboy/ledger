@@ -26,7 +26,7 @@ public struct CapacityResult: Equatable {
 public enum CapacityModel {
 
     public static func ownerHoursCommitted(_ s: GameState, except: Int? = nil) -> Double {
-        let companies = s.companies.filter { $0.id != except && $0.status.isLive && $0.managerID == nil && $0.type != "hold" }
+        let companies = s.companies.filter { $0.id != except && $0.status.isLive && $0.managerID == nil }
         let startups = (s.rest["founded"]?.array ?? []).filter { $0["st"].string == "live" }
         let dev = startups.reduce(0) { $0 + $1["sw"]["selfH"].double + $1["sw16"]["selfH"].double }
         return companies.reduce(0) { $0 + $1.ownerHours } + dev

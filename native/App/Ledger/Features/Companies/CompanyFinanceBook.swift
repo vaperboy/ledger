@@ -135,7 +135,7 @@ struct CompanyFinanceBook: View {
         if p.isOffered {
             pending = PendingAction(title: "Stop selling \(p.name)?", message: "Existing policies run on, but no new ones are written. Selling again needs the regulator's approval and its fee again.", button: "Stop selling", destructive: true) { toggle(p) }
         } else {
-            pending = PendingAction(title: "Offer \(p.name)?", message: "Costs the approval fee of \(cur.tidyDisplay(p.approvalFee)) from company cash. Sales start once the regulator approves and your salespeople are verified for it.", button: "Apply for \(cur.tidyShort(p.approvalFee))", amount: p.approvalFee, currency: cur) { toggle(p) }
+            pending = PendingAction(title: "Offer \(p.name)?", message: "Costs the approval fee of \(cur.tidyDisplay(p.approvalFee)) from your account. Sales start once the regulator approves and your salespeople are verified for it.", button: "Apply for \(cur.tidyShort(p.approvalFee))", amount: p.approvalFee, currency: cur) { toggle(p) }
         }
     }
 

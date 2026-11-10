@@ -24,7 +24,7 @@ public extension GameEngine {
             guard cfg.lateSince != nil, owed >= 1 else { return nil }
             return PayrollAlert(companyID: co.id, companyName: co.name, amount: max(owed, co.wageShortfall),
                                 dateText: Payday.dateText(Payday.nextPay(co, config: cfg, today: t)),
-                                reason: "The company's cash did not cover it.", isLate: true)
+                                reason: "Your account did not cover it.", isLate: true)
         }
     }
 

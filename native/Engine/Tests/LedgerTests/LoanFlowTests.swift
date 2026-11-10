@@ -9,7 +9,7 @@ final class LoanFlowTests: XCTestCase {
     private func world(seed: Int = 21, loanAmount: Double = 3_000_000) throws -> (GameEngine, Int, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 400_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 120_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else {
             XCTFail("start"); throw XCTSkip("no company")
         }
         _ = e.quickSetup(companyID: id)

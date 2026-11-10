@@ -7,22 +7,6 @@ import Businesses
 import Simulation
 
 final class OwnershipExpansionTests: XCTestCase {
-    func testMovingIntoAndOutOfAHoldingNeverCountsACompanyTwice() throws {
-        var e = try ChainsTests.engine("UK")
-        let cafe = ChainsTests.start(&e, "cafe")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { return XCTFail("holding") }
-        let own = try XCTUnwrap(e.state.company(cafe)).ownership / 100
-        let value = Valuation.companyValue(try XCTUnwrap(e.state.company(cafe)), state: e.state, trades: e.data.catalog)
-        let before = e.netWorth.total
-        XCTAssertTrue(e.moveToHolding(companyID: cafe, holdingID: hid))
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hid)).value("fm")["assets"].double, value * own, accuracy: 1)
-        XCTAssertEqual(e.netWorth.total, before, accuracy: max(5, abs(before) * 0.001))
-        XCTAssertTrue(e.releaseFromHolding(companyID: cafe))
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hid)).value("fm")["assets"].double, 0, accuracy: 1)
-        XCTAssertEqual(e.netWorth.total, before, accuracy: max(5, abs(before) * 0.001))
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
     func testBuyingARivalMovesMoneyThroughTheLedger() throws {
         var e = try ChainsTests.engine("UK")
         let cafe = ChainsTests.start(&e, "cafe")
@@ -38,18 +22,6 @@ final class OwnershipExpansionTests: XCTestCase {
         XCTAssertGreaterThan(bought.cash, 0, "start-up money was injected through Payments")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
         XCTAssertFalse(Rivals.rivals(e.state, for: try XCTUnwrap(e.state.company(cafe))).contains { $0.id == rival.id })
-    }
-
-    func testSellingACompanyInAHoldingLeavesTheHoldingAssetsAtOnce() throws {
-        var e = try ChainsTests.engine("UK")
-        let cafe = ChainsTests.start(&e, "cafe")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: [cafe]) else { return XCTFail("holding") }
-        e.update { s, d, c in
-            let i = s.companyIndex(cafe)!
-            _ = CompanySale.complete(&s, companyIndex: i, buyer: "Test", price: 1_000_000, data: d, context: c)
-        }
-        XCTAssertEqual(try XCTUnwrap(e.state.company(hid)).value("fm")["assets"].double, 0, accuracy: 1)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
     func testExpandingAbroadCostsMoneyAndLinksTheSubsidiary() throws {

@@ -9,7 +9,7 @@ final class FirstItemGateTests: XCTestCase {
     private func pendingCompany(_ trade: String) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
-        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: e.state.player.cityID, size: 1, name: nil, pick: nil, fundWith: 20_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let out) = e.startCompanyChoosingPremises(tradeID: trade, cityID: e.state.player.cityID, size: 1, name: nil, pick: nil) else { throw XCTSkip("could not start") }
         e.update { s, _, _ in let i = s.companyIndex(out.companyID)!; s.companies[i].status = .open }
         return (e, out.companyID)
     }

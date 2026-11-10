@@ -48,7 +48,7 @@ public struct Company: JSONRecord, Identifiable {
     public var status: CompanyStatus { get { CompanyStatus(rawValue: str("st", "setup")) ?? .setup } set { set("st", newValue.rawValue) } }
     public var foundedWeek: Int { get { int("w0") } set { set("w0", newValue) } }
     public var openedWeek: Int? { get { value("wOpen").isNull ? nil : int("wOpen") } set { raw["wOpen"] = newValue.map { .number(Double($0)) } ?? .null } }
-    public var cash: Double { get { num("cash") } set { set("cash", newValue) } }
+    public package(set) var cash: Double { get { num("cash") } set { set("cash", newValue) } }
     public var ownership: Double { get { num("own", 100) } set { set("own", newValue) } }
     public var priceLevel: Double { get { num("price") } set { set("price", newValue) } }
     public var ownerHours: Double { get { num("ohrs", 40) } set { set("ohrs", newValue) } }
@@ -62,11 +62,9 @@ public struct Company: JSONRecord, Identifiable {
     public var managerID: Int? { get { value("mgr").isNull ? nil : int("mgr") } set { raw["mgr"] = newValue.map { .number(Double($0)) } ?? .null } }
     public var managerMonthlyWage: Double { get { num("mgrWage") } set { set("mgrWage", newValue) } }
     public var managerProfitBonus: Double { get { num("mgrBonus") } set { set("mgrBonus", newValue) } }
-    public var ownerMonthlySalary: Double { get { num("ownerSalary") } set { set("ownerSalary", newValue) } }
     public var shareCapital: Double { get { num("capital") } set { set("capital", newValue) } }
     public var injectedCapital: Double { get { num("inj") } set { set("inj", newValue) } }
     public var ownerNetFlow: Double { get { num("ownNet") } set { set("ownNet", newValue) } }
-    public var distributed: Double { get { num("dist") } set { set("dist", newValue) } }
     public var weeksNegative: Int { get { int("negW") } set { set("negW", newValue) } }
     public var unpaidMonths: Int { get { int("unpaid") } set { set("unpaid", newValue) } }
     public var wageShortfall: Double { get { num("wageShort") } set { set("wageShort", newValue) } }
@@ -77,7 +75,6 @@ public struct Company: JSONRecord, Identifiable {
     public var taxDue: Bool { get { flag("taxDue") } set { set("taxDue", newValue) } }
     public var taxDueWeek: Int { get { int("taxDueW") } set { set("taxDueW", newValue) } }
     public var taxPrevYear: Double { get { num("taxPrev") } set { set("taxPrev", newValue) } }
-    public var holdingID: Int { get { int("hold") } set { set("hold", newValue) } }
     public var lastWeekUnits: Double { get { value("lastW")["units"].double } }
     public var lastWeekRevenue: Double { get { value("lastW")["rev"].double } }
     public var lastWages: Double { get { num("lastWages") } set { set("lastWages", newValue) } }

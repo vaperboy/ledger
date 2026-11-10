@@ -134,7 +134,7 @@ final class IllegalRoutesTests: XCTestCase {
 
     private func openCompany(_ e: inout GameEngine) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 120_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else {
             XCTFail("start"); throw XCTSkip("no company")
         }
         _ = e.quickSetup(companyID: id)

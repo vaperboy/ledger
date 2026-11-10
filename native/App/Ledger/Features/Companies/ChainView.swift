@@ -19,7 +19,7 @@ struct ChainView: View {
         switch p {
         case .stores:
             ChainHeadOffice(engine: e, chainID: sum.id)
-            ChainFigures(summary: sum, currency: cur, cash: e.chainCash(chainID: sum.id))
+            ChainFigures(summary: sum, currency: cur)
             ChainAttention(engine: e, summary: sum, currency: cur, pending: $pending)
             ChainStoreComparison(engine: e, summary: sum, currency: cur)
         case .people:
@@ -112,7 +112,6 @@ struct ChainView: View {
 struct ChainFigures: View {
     var summary: Chains.Summary
     var currency: Currency
-    var cash: (cash: Double, weeksOverdrawn: Int)? = nil
 
     private var items: [KeyFigures.Item] {
         let r = summary.reach
@@ -134,16 +133,6 @@ struct ChainFigures: View {
                 Text(currency.tidyShort(summary.profit)).textStyle(.display, tint: summary.profit < 0 ? Theme.loss : nil)
                     .lineLimit(1).minimumScaleFactor(0.6)
                 Text("on revenue of \(currency.tidyShort(summary.revenue)) a month").textStyle(.caption, tint: Theme.inkSoft).lineLimit(1)
-                if let c = cash {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                        Text("Chain cash").textStyle(.caption, tint: Theme.inkFaint)
-                        Text(currency.tidyShort(c.cash)).textStyle(.caption, tint: c.cash < 0 ? Theme.loss : Theme.ink, numeric: true)
-                        if c.weeksOverdrawn > 0 {
-                            Text("\u{00B7} overdrawn \(c.weeksOverdrawn) \(c.weeksOverdrawn == 1 ? "week" : "weeks")").textStyle(.caption, tint: Theme.warn)
-                        }
-                    }
-                    .padding(.top, Theme.Space.xs)
-                }
             }
             .accessibilityElement(children: .combine)
             FigureRow(items: items, columns: 2, combineCells: true)
@@ -165,13 +154,11 @@ struct ChainAttention: View {
     var body: some View {
         let losing = summary.stores.filter { $0.status == .open && $0.profit < 0 }
         let unmanaged = summary.stores.filter { $0.status == .open && $0.managerName == nil }
-        let broke = summary.stores.compactMap { engine.state.company($0.id) }.filter { $0.status == .open && $0.cash < 0 }
         let boardItems = engine.boardOpenDecisions(key: "ch:\(summary.id)")
         let applicants = summary.franchisingCompanyID.map { engine.franchiseApplicants(companyID: $0).count } ?? 0
-        let total: Int = broke.count + (losing.isEmpty ? 0 : 1) + (unmanaged.isEmpty ? 0 : 1) + (boardItems > 0 ? 1 : 0) + (applicants > 0 ? 1 : 0)
+        let total: Int = (losing.isEmpty ? 0 : 1) + (unmanaged.isEmpty ? 0 : 1) + (boardItems > 0 ? 1 : 0) + (applicants > 0 ? 1 : 0)
         if total > 0 {
             MoreBlock(title: "Needs you", card: false, trailing: { RedBubble(count: total, size: .small) }) {
-                ForEach(broke) { c in lendRow(c) }
                 if !losing.isEmpty {
                     line("\(losing.count) of \(summary.stores.count) stores lost money last month", losing.prefix(4).map { $0.name }.joined(separator: ", ") + (losing.count > 4 ? "…" : "") + ". Compare them below.", glyph: Glyph.warning, tint: Theme.loss)
                 }
@@ -199,38 +186,6 @@ struct ChainAttention: View {
                     Text(sub).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
-            }
-        }
-    }
-
-    private func lendRow(_ c: Company) -> some View {
-        let weekly = engine.companyHealth(c).weeklyCost
-        let need = currency.roundedStep(max(0, -c.cash) + weekly * 4, about: 1000)
-        let owed = engine.groupLoanBalance(companyID: c.id)
-        let sub: String = "Cash \(currency.tidyShort(c.cash))" + (owed > 0 ? " · already owes sister stores \(currency.tidyShort(owed))" : "")
-        return EntityCard {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                NavigationLink(value: CompanyRoute.companyAt(c.id, .finances)) {
-                    HStack(alignment: .top, spacing: Theme.Space.m) {
-                        IconCircle(glyph: Glyph.warning, size: 34, tint: Theme.loss)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("\(c.name) is out of cash").textStyle(.body, tint: Theme.loss, weight: .medium)
-                            Text(sub).textStyle(.caption, tint: Theme.inkSoft)
-                        }
-                        Spacer(minLength: 8)
-                        MoreChevron()
-                    }
-                    .contentShape(Rectangle())
-                }.buttonStyle(PressableStyle())
-                Button("Group loan \(currency.tidyShort(need))") {
-                    pending = PendingAction(title: "Lend \(currency.tidyShort(need)) to \(c.name)?",
-                                            message: "The sister store with the most spare cash pays it, as a group loan. \(c.name) pays it back by itself once it has about ten weeks of costs again. Risk: the lending store has less of a cushion until then.",
-                                            button: "Lend", amount: need, currency: currency) {
-                        let ok = store.act { $0.lendFromSister(companyID: c.id, amount: need) } ?? false
-                        if ok { Haptics.success(); store.show("\(c.name) received a group loan of \(currency.tidyShort(need)).", tone: "good") }
-                        else { Haptics.warning(); store.show("No sister store can spare that much right now.", tone: "warn") }
-                    }
-                }.buttonStyle(TinyButtonStyle(tint: Theme.gold))
             }
         }
     }

@@ -32,10 +32,10 @@ final class LaunchReadsTests: XCTestCase {
         _ = Unlocks.unlockedFeatures(e.state)
         for co in e.state.companies { _ = e.unlockState(companyID: co.id) }
         _ = e.suggestions(limit: 8)
-        _ = e.chainSummaries; _ = e.groupManagement(); _ = e.groupCash; _ = e.boardDecisionsWaiting
+        _ = e.chainSummaries; _ = e.groupManagement(); _ = e.boardDecisionsWaiting
         _ = e.foundedStartups; _ = e.startupStakes; _ = e.startupPitchesOnOffer
         _ = e.privateEquityOffersOnTable; _ = e.privateEquityFunds; _ = e.bigMeetingOffer; _ = e.bigMeetingStakes; _ = e.groupStakes
-        _ = e.rivalGroupsAround(); _ = e.delegationLines(); _ = e.holdingCompanies
+        _ = e.rivalGroupsAround(); _ = e.delegationLines()
         _ = e.financeOverview()
         _ = e.sinceYouLeft(lastSeenDay: e.lastSeenDay ?? 0)
         _ = e.careerStatus; _ = e.careerNextGoals; _ = e.careerCosmetics

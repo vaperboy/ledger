@@ -16,7 +16,7 @@ final class StaffPerkCatalogueTests: XCTestCase {
 
     private func cafe(_ e: inout GameEngine, manager: Bool = true) throws -> Int {
         e.update { s, _, _ in Ledger.move(&s, .me, 800_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("could not start") }
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open

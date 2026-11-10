@@ -17,7 +17,7 @@ public enum Vat {
         return w.country(co).vat.rate(for: bd.vatCategory)
     }
 
-    static let exemptSupplyFamilies: Set<String> = ["fin", "hold"]
+    static let exemptSupplyFamilies: Set<String> = ["fin"]
 
     public static func input(_ s: inout GameState, companyIndex i: Int, net: Double, data: GameData) {
         guard net > 0 else { return }

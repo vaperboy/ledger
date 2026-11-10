@@ -244,7 +244,7 @@ public enum Cyber {
     }
 
     public static func weekly(_ s: inout GameState, data: GameData) {
-        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
+        for i in s.companies.indices where s.companies[i].status == .open {
             guard let bd = data.catalog[s.companies[i].type] else { continue }
             let co = s.companies[i]
             let cur = World(state: s, data: data).currency(co)

@@ -21,7 +21,7 @@ final class OwnCompanyLatenessTests: XCTestCase {
         XCTAssertTrue(e.setSupplyPaymentTerms(companyID: hotel, input: "clean", term: "net14"))
         XCTAssertEqual(SupplyTerms.ownLateWeeks(e.state, buyer: hotel, supplier: cleaning), 0)
         for _ in 0..<(9 * 7) {
-            e.update { s, _, _ in Ledger.set(&s, .company(hotel), to: -1_000_000_000_000) }
+            e.update { s, _, _ in Ledger.set(&s, to: -1_000_000_000_000) }
             e.nextDay()
         }
         let late = SupplyTerms.ownLateWeeks(e.state, buyer: hotel, supplier: cleaning)
@@ -31,7 +31,7 @@ final class OwnCompanyLatenessTests: XCTestCase {
         let option = try XCTUnwrap(e.supplierInputs(companyID: hotel).first { $0.id == "clean" }?.current)
         XCTAssertTrue(option.risks.contains { $0.contains("unpaid") })
         XCTAssertNotNil(IntercompanySupply.link(e.state, buyer: hotel, kind: "clean"))
-        e.update { s, _, _ in Ledger.set(&s, .company(hotel), to: 1_000_000_000_000) }
+        e.update { s, _, _ in Ledger.set(&s, to: 1_000_000_000_000) }
         ChainsTests.play(&e, days: 14)
         XCTAssertEqual(SupplyTerms.ownLateWeeks(e.state, buyer: hotel, supplier: cleaning), 0)
         XCTAssertFalse(SupplyTerms.ownSupplierStrained(e.state, buyer: hotel, supplier: cleaning))

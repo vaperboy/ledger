@@ -82,14 +82,6 @@ public extension GameEngine {
         return p.num("claimExp")
     }
 
-    func groupTaxContribution(companyID: Int) -> (thisYear: (out: Double, in: Double), lastYear: (out: Double, in: Double))? {
-        guard let co = state.company(companyID) else { return nil }
-        func pair(_ v: JSONValue) -> (out: Double, in: Double) { (v["out"].double, v["in"].double) }
-        let now = co.value("gc"), last = co.value("gcLy")
-        if now.isNull && last.isNull { return nil }
-        return (pair(now), pair(last))
-    }
-
     func tradeName(_ co: Company) -> String { data.catalog[co.type]?.name ?? co.type }
     func cityName(_ co: Company) -> String { data.countries.city(co.cityID, preferring: co.countryCode)?.city.name ?? co.cityID }
     func currency(for co: Company) -> Currency { context.currency(co.countryCode, state) }

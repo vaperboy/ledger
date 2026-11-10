@@ -136,7 +136,7 @@ struct CountryPage: View {
                     let co: Company = pair.element
                     LedgerRow(leading: .thumb(ThumbSpec(kind: .trade, key: co.type, glyph: Glyph.home)), title: co.name,
                               subtitle: "\(e.tradeName(co)) \u{00B7} \(e.cityName(co))", lineLimit: 1, identifier: "country-company-\(co.id)",
-                              action: co.status == .open && co.type != "hold" ? { next = .company(co.id) } : nil)
+                              action: co.status == .open ? { next = .company(co.id) } : nil)
                 }
             }
         }
@@ -160,7 +160,7 @@ struct CountryPage: View {
     }
 
     @ViewBuilder private func cities(_ e: GameEngine, _ c: Country, _ here: [Company]) -> some View {
-        let trade: String? = here.first { (co: Company) -> Bool in co.status == .open && co.type != "hold" }?.type
+        let trade: String? = here.first { (co: Company) -> Bool in co.status == .open }?.type
             ?? MarketData.companies(e).first?.type
         let list: [MarketCity] = MarketData.cities(e, country: c.code, tradeID: trade)
         MarketLabel(title: "Cities")

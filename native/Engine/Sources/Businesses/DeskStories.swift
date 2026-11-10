@@ -49,7 +49,7 @@ public enum DeskStories {
     public static func isOpen(_ s: GameState) -> Bool { Unlocks.isOpen(s, "desk") }
 
     static func liveCompanies(_ s: GameState) -> [Company] {
-        s.companies.filter { $0.status == .open && $0.type != "hold" && $0.type != "club" }
+        s.companies.filter { $0.status == .open && $0.type != "club" }
     }
 
     static func fits(_ it: Item, _ co: Company, _ data: GameData) -> Bool {

@@ -7,9 +7,6 @@ public extension GameEngine {
     func isBranch(companyID: Int) -> Bool { state.company(companyID).map { state.isBranch($0) } ?? false }
     func branchClosurePlan(storeID: Int) -> ChainBranches.ClosurePlan? { ChainBranches.closurePlan(state, storeID: storeID, data: data) }
     func branchSaleQuote(storeID: Int) -> ChainBranches.SaleQuote? { ChainBranches.saleQuote(state, storeID: storeID, data: data) }
-    func chainCash(chainID: Int) -> (cash: Double, weeksOverdrawn: Int) {
-        (ChainBranches.combinedCash(state, chainID: chainID), ChainBranches.weeksOverdrawn(state, chainID: chainID))
-    }
 
     @discardableResult
     mutating func closeBranch(storeID: Int) -> Result<ChainBranches.ClosurePlan, ChainBranches.Refusal> {

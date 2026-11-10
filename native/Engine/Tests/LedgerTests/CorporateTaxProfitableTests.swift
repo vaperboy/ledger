@@ -12,7 +12,7 @@ final class CorporateTaxProfitableTests: XCTestCase {
         for code in codes {
             var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 11)
             e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else {
+            guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else {
                 XCTFail("\(code): cafe could not be started"); continue
             }
             let profit = 12_000_000.0, carry = 3_000_000.0
@@ -54,7 +54,7 @@ final class CorporateTaxProfitableTests: XCTestCase {
     func testTaxPaidOnProfitSoFarIsRefundedWhenTheYearTurnsToALoss() throws {
         var e = try GameEngine.newGame(countryCode: "US", playerName: "T", seed: 12)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("cafe") }
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open

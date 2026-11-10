@@ -117,7 +117,7 @@ public enum Awards {
 
     static func yearly(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         guard GameCalendar.isYearEnd(week: s.week) else { return }
-        let live = s.companies.filter { $0.status == .open && $0.type != "hold" }
+        let live = s.companies.filter { $0.status == .open }
         guard live.contains(where: { s.week - $0.foundedWeek >= 26 }) else { return }
         let year = GameCalendar.year(week: s.week)
         var aw = s.rest["aw56"] ?? .object(["won": .array([]), "years": .array([])])

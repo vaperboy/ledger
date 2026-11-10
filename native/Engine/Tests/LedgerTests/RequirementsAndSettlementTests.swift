@@ -49,7 +49,7 @@ final class RequirementsAndSettlementTests: XCTestCase {
         e.update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].payables["wages"] = 20_000
-            Ledger.set(&s, .company(id), to: 30_000)
+            Ledger.set(&s, to: 30_000)
             _ = Lawsuits.resolve(&s, companyIndex: i, d: suit(100_000), choice: 0, data: d)
         }
         let co = try XCTUnwrap(e.state.company(id))
@@ -64,12 +64,12 @@ final class RequirementsAndSettlementTests: XCTestCase {
         e.update { s, d, _ in
             guard let i = s.companyIndex(id) else { return }
             s.companies[i].payables["wages"] = 0
-            Ledger.set(&s, .company(id), to: 0)
+            Ledger.set(&s, to: 0)
             Lawsuits.lose(&s, id, suit(40_000), extra: 0, data: d)
         }
         XCTAssertEqual(e.state.company(id)?.payables["legal"], 40_000)
         e.update { s, _, _ in
-            Ledger.set(&s, .company(id), to: 500_000)
+            Ledger.set(&s, to: 500_000)
             if let i = s.companyIndex(id) { LegalDebts.settle(&s, companyIndex: i) }
         }
         XCTAssertNil(e.state.company(id)?.payables["legal"])

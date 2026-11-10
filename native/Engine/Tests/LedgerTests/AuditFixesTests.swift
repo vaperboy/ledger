@@ -11,7 +11,7 @@ final class AuditFixesTests: XCTestCase {
     private func cafe(seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { XCTFail("start"); throw CocoaError(.fileReadUnknown) }
         return (e, id)
     }
 
@@ -48,8 +48,6 @@ final class AuditFixesTests: XCTestCase {
         XCTAssertFalse(done("inbox"), "an expired decision is not an answered one")
         e.update { s, _, _ in let k = s.inbox.firstIndex { $0.id == mid }!; s.inbox[k].set("pick", 0); s.inbox[k].set("auto", 0) }
         claim("inbox")
-        e.update { s, _, _ in s.companies[s.companyIndex(id)!].ownerMonthlySalary = 100_000 }
-        claim("pay")
         e.update { s, _, _ in var c = s.companies[s.companyIndex(id)!]; c.monthlyHistory = [MonthRecord(monthIndex: 1, revenue: 10, profit: 5, cash: 10)]; s.companies[s.companyIndex(id)!] = c }
         claim("profit")
         e.update { s, _, _ in s.companies[s.companyIndex(id)!].set("asst", .object(["npc": 1])) }
@@ -80,7 +78,7 @@ final class AuditFixesTests: XCTestCase {
         XCTAssertLessThan(mx.payrollFactor(monthlyWage: med * 10), mx.employerCostFactor - 0.05, "capped contributions cost less on a high wage")
         var e = try GameEngine.newGame(countryCode: "MX", playerName: "T", seed: 5)
         e.update { s, _, _ in Ledger.move(&s, .me, 900_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 200_000_000) else { return XCTFail("start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("start") }
         hireOne(&e, id, wage: med * 10)
         let co = e.state.company(id)!
         let est = Payroll.weeklyCost(co, country: mx)
@@ -110,7 +108,7 @@ final class AuditFixesTests: XCTestCase {
             let i = s.companyIndex(id)!
             let freq = max(1, c.country(of: s.companies[i], s).vatFilingMonths == 0 ? 2 : c.country(of: s.companies[i], s).vatFilingMonths)
             while GameCalendar.monthIndex(week: s.week) % freq != freq - 1 { s.week += 1 }
-            Ledger.set(&s, .company(id), to: -1e9)
+            Ledger.set(&s, to: -1e9)
             s.companies[i].vatBalance = 125_000
             s.companies[i].set("vatOver", 105_000)
             MonthEnd.closeMonth(&s, companyIndex: i, data: d, context: c)

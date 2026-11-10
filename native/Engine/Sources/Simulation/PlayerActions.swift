@@ -11,14 +11,13 @@ public extension GameEngine {
     enum ActionResult: Equatable { case done, refused(String) }
 
     mutating func startCompany(tradeID: String, cityID: String, size: Double? = nil, name: String? = nil, countryCode: String? = nil,
-                               accountantID: Int? = nil, fundWith amount: Double, quickSetup: Bool = true, allowRetired: Bool = false) -> Result<Int, CompanySetup.StartError> {
+                               accountantID: Int? = nil, quickSetup: Bool = true, allowRetired: Bool = false) -> Result<Int, CompanySetup.StartError> {
         var result: Result<Int, CompanySetup.StartError> = .failure(.notAllowedHere)
         guard let trade = data.catalog[tradeID],
               SpecialFamilies.isStartable(trade) || (allowRetired && SpecialFamilies.isRetired(trade) && CompanyWeek.isSupported(trade)) else { return .failure(.notYetAvailable) }
         update { s, data, ctx in
             result = CompanySetup.create(&s, tradeID: tradeID, cityID: cityID, size: size, name: name, countryCode: countryCode, accountantID: accountantID, data: data, context: ctx)
             if case .success(let id) = result {
-                if amount > 0 { Payments.injectCash(&s, companyID: id, amount: min(amount, Payments.liquid(s))) }
                 if quickSetup && Tutorial.isComplete(s) { _ = CompanySetup.quickSetup(&s, companyID: id, data: data) }
                 s.note("You started \(s.company(id)?.name ?? "a company").", tone: "good", companyID: id)
             }
@@ -181,6 +180,7 @@ public extension GameEngine {
             let nw = Valuation.netWorth(s, trades: data.catalog).total
             let co = companyID.flatMap { s.company($0) }
             let value = co.map { Valuation.companyValue($0, state: s, trades: data.catalog) }
+            if let co, let v = value, amount > v * PublicRules.largeLoanShare, let why = PublicRules.restriction(s, companyID: co.id, change: .largeLoan) { s.note(why, tone: "n", companyID: co.id); return }
             let collateral = Luxury.collateral(s)
             switch Banking.take(kind: kind, amount: amount, termMonths: termMonths, company: co, guaranteed: false, state: &s, netWorth: nw, collateral: collateral,
                                 companyValue: value, context: ctx) {
@@ -203,48 +203,7 @@ public extension GameEngine {
         return ok
     }
 
-    mutating func putMoneyInto(companyID: Int, amount: Double) -> Bool {
-        var ok = false
-        update { s, _, _ in ok = Payments.injectCash(&s, companyID: companyID, amount: amount) }
-        return ok
-    }
-
-    @discardableResult
-    mutating func payYourself(companyID: Int, monthly: Double) -> Bool {
-        guard state.company(companyID) != nil else { return false }
-        return !setOwnerSalary(companyID: companyID, monthly: monthly).isRefused
-    }
-
     var classicStartUnlocked: Bool { PlayerGoals.ladderFlag(state, "classic") }
-
-    mutating func payDividend(companyID: Int, amount: Double) -> Payments.DividendResult {
-        var r = Payments.DividendResult.notEnoughCash
-        if JointVenture.payoutBlock(state, companyID: companyID) != nil { return .needsBoard }
-        update { s, _, ctx in r = Payments.payDividend(&s, companyID: companyID, amount: amount, context: ctx) }
-        return r
-    }
-
-    func ownerSalaryRoom(companyID: Int) -> Double {
-        guard let co = state.company(companyID) else { return 0 }
-        let equity = CompanyFigures.assets(co) - CompanyFigures.debts(co, loans: state.loans)
-        let recent = co.monthlyHistory.suffix(3)
-        let earned = recent.isEmpty ? 0 : recent.reduce(0) { $0 + $1.profit } / Double(recent.count) + co.ownerMonthlySalary
-        return max(0, equity / 6) + max(0, earned)
-    }
-
-    @discardableResult
-    mutating func setOwnerSalary(companyID: Int, monthly: Double) -> SettingResult {
-        let room = ownerSalaryRoom(companyID: companyID)
-        return applySetting(refuse: { s in
-            guard let co = s.company(companyID) else { return "That company no longer exists." }
-            if let why = JointVenture.payoutBlock(s, companyID: companyID), monthly > co.ownerMonthlySalary { return why }
-            if monthly > room && monthly > co.ownerMonthlySalary { return "That is more than this company can carry as owner pay. Take the rest as a dividend." }
-            return nil
-        }, probe: { $0.companySnapshot(companyID) }) { s, data, ctx in
-            guard let i = s.companyIndex(companyID) else { return }
-            s.companies[i].ownerMonthlySalary = max(0, ctx.currency(s.companies[i].countryCode, s).roundedStep(monthly, about: 100))
-        }
-    }
 
     mutating func buyInvestment(_ kind: Brokerage.Kind, symbol: String, amount: Double) -> Brokerage.BuyResult {
         if kind == .stock { return .delisted }
@@ -295,10 +254,6 @@ public extension GameEngine {
         var r = OpeningChecklist.OpenResult.missing
         update { s, data, _ in if let i = s.companyIndex(companyID) { r = OpeningChecklist.open(&s, companyIndex: i, data: data) } }
         return r
-    }
-
-    func maximumDividend(companyID: Int) -> Double {
-        state.company(companyID).map { Payments.maximumDividend($0, state: state, context: context) } ?? 0
     }
 
     func hireableRoles(companyID: Int) -> [String] {

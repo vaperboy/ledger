@@ -156,7 +156,7 @@ struct StartConfirmView: View {
         choices.channel = channel
         let typed: String = name.trimmingCharacters(in: .whitespaces)
         let pick: NewCompanyPlan.Pick? = currentPick(premisesPlan(e, f))
-        let r = store.act { $0.startCompanyChoosingPremises(tradeID: f.tradeID, cityID: f.cityID, size: f.size, name: typed.isEmpty ? nil : typed, pick: pick, fundWith: f.invest, choices: choices, accountantID: nil) }
+        let r = store.act { $0.startCompanyChoosingPremises(tradeID: f.tradeID, cityID: f.cityID, size: f.size, name: typed.isEmpty ? nil : typed, pick: pick, choices: choices, accountantID: nil) }
         switch r {
         case .success(let out)?:
             Haptics.success()

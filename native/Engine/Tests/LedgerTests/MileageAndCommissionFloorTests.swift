@@ -9,7 +9,7 @@ final class MileageAndCommissionFloorTests: XCTestCase {
     private func estate(_ code: String, seed: Int = 11) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: code, playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 80_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "estate", cityID: e.state.player.cityID, fundWith: 30_000_000) else {
+        guard case .success(let id) = e.startCompany(tradeID: "estate", cityID: e.state.player.cityID) else {
             XCTFail("could not start an estate company in \(code)"); throw CocoaError(.fileReadUnknown)
         }
         var days = 0

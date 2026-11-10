@@ -24,7 +24,7 @@ struct ShadowScreen: View {
     @State private var target = ""
     private let P: OutsidePalette = .shadow
 
-    private var openCompanies: [Company] { e.state.companies.filter { $0.status == .open && $0.type != "hold" } }
+    private var openCompanies: [Company] { e.state.companies.filter { $0.status == .open } }
     private var company: Company? { openCompanies.first { $0.id == companyID } ?? openCompanies.first }
     private var world: GovernmentWorld { GovernmentBridge.world(e.state) }
 

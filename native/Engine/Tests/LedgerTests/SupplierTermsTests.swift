@@ -34,7 +34,7 @@ final class SupplierTermsTests: XCTestCase {
     }
 
     private func setCash(_ e: inout GameEngine, _ id: Int, to v: Double) {
-        e.update { s, _, _ in Ledger.set(&s, .company(id), to: v) }
+        e.update { s, _, _ in Ledger.set(&s, to: v) }
     }
 
     func testChainRuleSwitchesEveryStoreLocksThemAndReleases() throws {

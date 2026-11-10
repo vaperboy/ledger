@@ -62,7 +62,7 @@ public enum LoanApplicationOutcome: Equatable, Sendable {
 }
 
 public extension Banking {
-    static func arrangementFeeRate(credit: Double, ownBank: Bool) -> Double { ownBank ? 0 : creditMargin(credit) * 0.25 }
+    static func arrangementFeeRate(credit: Double) -> Double { creditMargin(credit) * 0.25 }
 }
 
 public extension GameEngine {
@@ -86,7 +86,7 @@ public extension GameEngine {
         let term = min(max(termMonths, range.lowerBound), range.upperBound)
         let q = loanQuote(kind: kind, amount: amount, termMonths: term, companyID: companyID)
         let cur = accountCurrency(companyID)
-        let feeRate = Banking.arrangementFeeRate(credit: state.credit, ownBank: q.fromOwnBank)
+        let feeRate = Banking.arrangementFeeRate(credit: state.credit)
         let fee = (max(0, amount) * feeRate).rounded()
         let minimum = cur.scaledPrice(5000)
         var rows: [LoanScheduleRow] = []

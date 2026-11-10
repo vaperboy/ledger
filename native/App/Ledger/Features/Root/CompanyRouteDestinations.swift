@@ -132,7 +132,7 @@ struct GroupPeers {
 
     static func make(_ store: GameStore, _ e: GameEngine, companyID: Int) -> GroupPeers {
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(e)
-        let family: GroupEntity? = list.first(where: { (g: GroupEntity) -> Bool in (g.isChain || g.isHolding) && g.members.contains(companyID) })
+        let family: GroupEntity? = list.first(where: { (g: GroupEntity) -> Bool in g.isChain && g.members.contains(companyID) })
         let familyIDs: [Int] = (family?.members ?? []).filter { (id: Int) -> Bool in e.state.company(id) != nil }
         var others: [Int] = []
         for g in list {
@@ -193,7 +193,7 @@ struct CompanySwitcherBar: View {
     @ViewBuilder private func choice(_ e: GameEngine, _ other: Int) -> some View {
         if let co = e.state.company(other) {
             Button { store.replaceTop(with: route.with(company: other)) } label: {
-                Text("\(co.name) \u{00B7} \(co.type == "hold" ? "Holding" : e.cityName(co))")
+                Text("\(co.name) \u{00B7} \(e.cityName(co))")
             }
             .accessibilityIdentifier("company-switch-\(other)")
         }

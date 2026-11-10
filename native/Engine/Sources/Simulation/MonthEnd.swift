@@ -17,18 +17,16 @@ public enum MonthEnd {
         let w = World(state: s, data: data)
         let rate = taxRate(co, bd, w.country(co))
         let lc0 = co.lossCarryAtYearStart ?? 0
-        let gc = HoldingModel.groupContribution(co, in: s)
         let ev = co.value("evade")
         let kept = ev["y"].int == GameCalendar.year(week: s.week) ? ev["c"].double + ev["l"].double : 0
         let country = w.country(co)
-        let profitBeforeLosses = co.yearProfitSoFar - gc.out - kept
+        let profitBeforeLosses = co.yearProfitSoFar - kept
         let used = min(lc0, Taxes.lossOffsetLimit(profit: profitBeforeLosses, in: country))
         let target = max(0, profitBeforeLosses - used) * rate
         let delta = target - co.taxAccrued
         co.taxAccrued = target
-        let covered = co.yearProfitSoFar + gc.in
+        let covered = co.yearProfitSoFar
         co.lossCarryForward = max(0, lc0 + max(0, -covered) - min(lc0, Taxes.lossOffsetLimit(profit: covered, in: country)))
-        co.set("gc", gc.out > 0 || gc.in > 0 ? .object(["out": .number(gc.out), "in": .number(gc.in)]) : .null)
         s.companies[i] = co
         if delta > 0 {
             s.companies[i].addPayable("tax", delta)
@@ -50,7 +48,7 @@ public enum MonthEnd {
     static func rollLossLots(_ co: inout Company, country: Country, closingYear: Int) {
         let lc0 = co.lossCarryAtYearStart ?? 0
         let carry = co.lossCarryForward
-        let covered = co.yearProfitSoFar + co.value("gc")["in"].double
+        let covered = co.yearProfitSoFar
         let newLoss = max(0, -covered)
         var remaining = max(0, lc0 + newLoss - carry)
         var lots: [(year: Int, amount: Double)] = co.value("lossLots").array.map { ($0[0].int, $0[1].double) }
@@ -207,13 +205,6 @@ public enum MonthEnd {
 
     public static func closeMonth(_ s: inout GameState, data: GameData, context: FinanceContext) {
         for i in s.companies.indices where s.companies[i].status.isLive { closeMonth(&s, companyIndex: i, data: data, context: context) }
-        for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].status != .setup
-            && s.companies[i].lossCarryAtYearStart != nil && HoldingModel.taxGroup(of: s.companies[i], in: s) != nil {
-            if let bd = data.catalog[s.companies[i].type] {
-                accrueTax(&s, companyIndex: i, bd, data: data)
-                settleTax(&s, companyIndex: i, context: context)
-            }
-        }
         FootballModel.monthly(&s)
         PersonalFinance.monthly(&s, context: context)
         PersonalFinance.withholdNow(&s, context: context)
@@ -240,7 +231,6 @@ public enum MonthEnd {
                 co.taxPrevYear = co.payables["tax"] ?? 0
                 co.taxDue = co.taxPrevYear >= 1
                 co.taxDueWeek = s.week
-                co.set("gcLy", co.value("gc")); co.set("gc", .null)
                 co.lossCarryAtYearStart = co.lossCarryForward
                 co.yearProfitSoFar = 0
                 co.taxAccrued = 0

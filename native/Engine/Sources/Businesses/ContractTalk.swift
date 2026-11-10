@@ -169,7 +169,7 @@ public enum ContractTalk {
     }
 
     static func freeCompanies(_ s: GameState, except id: Int, data: GameData) -> [Company] {
-        s.companies.filter { $0.id != id && $0.managerID == nil && $0.status.isLive && $0.type != "hold" && data.catalog[$0.type]?.family != "club" }
+        s.companies.filter { $0.id != id && $0.managerID == nil && $0.status.isLive && data.catalog[$0.type]?.family != "club" }
     }
 
     public static func choices(_ s: GameState, companyID: Int, personID: Int, topic: Topic, data: GameData) -> [Choice] {

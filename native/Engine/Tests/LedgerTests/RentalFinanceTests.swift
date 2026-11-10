@@ -13,7 +13,7 @@ final class RentalFinanceTests: XCTestCase {
             var e = try GameEngine.newGame(countryCode: "DE", playerName: "T", seed: 91)
             e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
             let est = CompanySetup.estimate(tradeID: t, cityID: e.state.player.cityID, size: 1, state: e.state, data: e.data)
-            let r = e.startCompany(tradeID: t, cityID: e.state.player.cityID, fundWith: (est?.total ?? 1_000_000) * 1.6, allowRetired: true)
+            let r = e.startCompany(tradeID: t, cityID: e.state.player.cityID, allowRetired: true)
             guard case .success(let id) = r else { XCTFail("\(t) could not be started: \(r)"); continue }
             for _ in 0..<(30 * 7) { e.nextDay() }
             XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(t): \(Ledger.gaps(e.state))")
@@ -27,7 +27,7 @@ final class RentalFinanceTests: XCTestCase {
     func testPropertyCompanyBuysFirstPropertyAndEarnsRent() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in Ledger.move(&s, .me, 2_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "resrent", cityID: e.state.player.cityID, fundWith: 20_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "resrent", cityID: e.state.player.cityID) else { return XCTFail() }
         let pf = try XCTUnwrap(e.propertyPortfolio(companyID: id))
         XCTAssertEqual(pf.rows.count, 1, "the standard set-up buys the first property")
         XCTAssertGreaterThan(pf.mortgages, 0)
@@ -43,7 +43,7 @@ final class RentalFinanceTests: XCTestCase {
     func testBuySellRenovateKeepBooksBalancedAndMoveCashRight() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 6)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID, fundWith: 300_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID) else { return XCTFail() }
         let listings = e.propertyListings(companyID: id)
         XCTAssertEqual(listings.count, 4)
         let cash0 = e.state.company(id)!.cash
@@ -67,7 +67,7 @@ final class RentalFinanceTests: XCTestCase {
     func testCommercialTenantsAndSaleToBuyer() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID, fundWith: 300_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "comrent", cityID: e.state.player.cityID) else { return XCTFail() }
         let pid = e.propertyPortfolio(companyID: id)!.rows[0].id
         let offers = e.tenantOffers(companyID: id, propertyID: pid)
         XCTAssertFalse(offers.isEmpty)
@@ -86,7 +86,7 @@ final class RentalFinanceTests: XCTestCase {
     func testInsurerNeedsProductsAndVerifiedSellers() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "insco", cityID: e.state.player.cityID, fundWith: 120_000_000, allowRetired: true) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "insco", cityID: e.state.player.cityID, allowRetired: true) else { return XCTFail() }
         let products = e.insuranceProducts(companyID: id)
         XCTAssertEqual(products.count, 6)
         XCTAssertEqual(Set(products.filter { $0.isOffered }.map { $0.id }), ["motor", "home", "property"], "the standard set-up offers the starter products")
@@ -107,7 +107,7 @@ final class RentalFinanceTests: XCTestCase {
     func testBankRunDrawsOnCentralBankAndRepays() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 10)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, fundWith: 330_000_000, allowRetired: true) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(70 * 7) { e.nextDay() }
         e.update { s, _, _ in
             let i = s.companyIndex(id)!
@@ -127,7 +127,7 @@ final class RentalFinanceTests: XCTestCase {
     func testBankWithNoCapitalLeftIsClosedByTheRegulator() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 12)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, fundWith: 330_000_000, allowRetired: true) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "bank", cityID: e.state.player.cityID, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(60 * 7) { e.nextDay() }
         XCTAssertEqual(e.state.company(id)?.status, .open)
         e.update { s, _, _ in
@@ -145,7 +145,7 @@ final class RentalFinanceTests: XCTestCase {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 13)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
         let before = e.netWorth.companies
-        guard case .success(let id) = e.startCompany(tradeID: "parking", cityID: e.state.player.cityID, fundWith: 50_000_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "parking", cityID: e.state.player.cityID) else { return XCTFail() }
         for _ in 0..<(8 * 7) { e.nextDay() }
         let co = try XCTUnwrap(e.state.company(id))
         XCTAssertGreaterThan(e.netWorth.companies, before)
@@ -156,7 +156,7 @@ final class RentalFinanceTests: XCTestCase {
     func testFundEarnsFeesOnAssetsUnderManagement() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 14)
         e.update { s, _, _ in Ledger.move(&s, .me, 5_000_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "fund", cityID: e.state.player.cityID, fundWith: 10_000_000, allowRetired: true) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "fund", cityID: e.state.player.cityID, allowRetired: true) else { return XCTFail() }
         for _ in 0..<(60 * 7) { e.nextDay() }
         let b = try XCTUnwrap(e.financeBook(companyID: id))
         XCTAssertGreaterThan(b.assetsUnderManagement, 0)

@@ -2046,40 +2046,6 @@
     "svc": true
    }
   ],
-  "hold": [
-   {
-    "n": "Management services",
-    "svc": true
-   },
-   {
-    "n": "Shared back office",
-    "svc": true
-   },
-   {
-    "n": "Treasury service",
-    "svc": true
-   },
-   {
-    "n": "Group purchasing",
-    "svc": true
-   },
-   {
-    "n": "Brand licensing",
-    "svc": true
-   },
-   {
-    "n": "Property portfolio",
-    "svc": true
-   },
-   {
-    "n": "Consulting to units",
-    "svc": true
-   },
-   {
-    "n": "Training academy",
-    "svc": true
-   }
-  ],
   "club": [
    {
     "n": "Youth academy",

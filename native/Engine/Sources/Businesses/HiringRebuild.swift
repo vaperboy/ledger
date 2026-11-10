@@ -264,7 +264,7 @@ public enum RoleEffects {
         default: out = ["acct", "marketer", "recept"]
         }
         if ["startup", "webdev", "mktg", "engcons"].contains(bd.id) { out.insert("dev", at: 0) }
-        if !["hold", "fin", "energy"].contains(bd.family) { out.append("advisor") }
+        if !["fin", "energy"].contains(bd.family) { out.append("advisor") }
         return out
     }
 

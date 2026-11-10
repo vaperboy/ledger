@@ -25,7 +25,7 @@ public enum Headquarters {
         data.catalog.tables.raw["OFFICE_T"].array.map { Tier(id: $0["id"].string, name: $0["n"].string, monthlyRent: $0["rentM"].double, desks: $0["desks"].int, rooms: $0["rooms"].int, note: $0["note"].string) }
     }
     public static func roles(_ data: GameData) -> [Role] {
-        let order = ["pa", "hr", "acc", "law", "ana", "perf", "mkt", "proc", "strat", "fin"]
+        let order = ["pa", "hr", "acc", "law", "ana", "perf", "mkt", "proc", "strat"]
         let r = data.catalog.tables.raw["HQ_ROLES"]
         return order.compactMap { k in r[k].isNull ? nil : Role(id: k, title: k == "pa" ? "Personal assistant" : r[k][0].string, monthlyPay: r[k][1].double, text: r[k][2].string) }
     }
@@ -49,12 +49,8 @@ public enum Headquarters {
         return staff(s).reduce(rent(s, tier: t, cityID: office(s)["city"].string, data: data) * 1.02) { $0 + $1["wage"].double * 1.14 }
     }
 
-    static func officePayer(_ s: GameState, amount: Double) -> Company? {
-        s.companies.first(where: { $0.type == "hold" && $0.status == .open && $0.cash > amount * 3 })
-    }
-
     public static func employerName(_ s: GameState, _ data: GameData) -> String {
-        officePayer(s, amount: max(1, monthlyCost(s, data)))?.name ?? "Your group office"
+        "Your group office"
     }
 
     public static func fame(_ s: GameState, _ data: GameData) -> Double {
@@ -115,13 +111,12 @@ public enum Headquarters {
         case "law", "ana", "mkt": return n >= 3
         case "perf": return mgrs >= 2
         case "strat": return n >= 4 && Valuation.netWorth(s, trades: data.catalog).total >= ManagerModel.playerCurrency(s, data).scaledPrice(2e7)
-        case "fin": return s.companies.contains { $0.type == "hold" && $0.status == .open }
         default: return true
         }
     }
     public static func unlockText(_ role: String) -> String {
         ["hr": "2 companies or 8 staff", "acc": "2 companies", "law": "3 companies", "ana": "3 companies", "proc": "2 companies", "perf": "2 managed companies",
-         "mkt": "3 companies", "strat": "4 companies and a large net worth", "fin": "a holding company"][role] ?? ""
+         "mkt": "3 companies", "strat": "4 companies and a large net worth"][role] ?? ""
     }
 
     public enum RoomResult: String, Equatable, Sendable { case ok, office, bad, locked, have, homeoffice, desks }
@@ -148,7 +143,6 @@ public enum Headquarters {
         case "mkt": return "Campaigns work about 10% better in \(cos.count) companies."
         case "proc": return "Best supplier deals for every manager."
         case "strat": return "A written memo with concrete suggestions for each company every quarter."
-        case "fin": return "Runs your holding companies."
         default: return ""
         }
     }
@@ -220,10 +214,6 @@ public enum Headquarters {
     static func payHeadOffice(_ s: inout GameState, _ amt: Double, label: String) {
         let a = jsRound(amt)
         if a <= 0 { return }
-        if let h = officePayer(s, amount: a) {
-            Payments.companyPays(&s, companyID: h.id, amount: a, category: "wages", label: label)
-            return
-        }
         Payments.playerPays(&s, a, label: label)
     }
 

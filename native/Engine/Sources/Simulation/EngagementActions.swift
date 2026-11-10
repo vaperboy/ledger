@@ -16,7 +16,7 @@ public extension GameEngine {
     func rivalMarkets() -> [RivalMarket] {
         var seen = Set<String>()
         var out: [RivalMarket] = []
-        for co in state.companies where co.status == .open && co.type != "hold" && co.type != "club" {
+        for co in state.companies where co.status == .open && co.type != "club" {
             guard seen.insert(Rivals.key(co)).inserted else { continue }
             let cards = RivalStories.cards(state, companyID: co.id, data: data)
             if !cards.isEmpty { out.append(RivalMarket(companyID: co.id, title: co.name, cards: cards)) }

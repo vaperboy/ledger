@@ -40,13 +40,9 @@ enum ManagerHeads {
         let co = s.companies[ci]
         let cur = World(state: s, data: data).currency(co)
         let week = ManagerModel.weekCost(s, co, data: data)
-        if s.week % 3 == 0, co.cash < week * 4, co.cash < cur.scaledPrice(100000), co.value("flags")["mgrCool"].double <= 0 {
-            ManagerModel.propose(&s, ci, ManagerModel.Proposal(kind: "cash"), h, q, data: data)
-            return
-        }
         guard s.week % 4 == 0, ManagerModel.budget(of: co).actsAlone else { return }
         let spare = co.cash - week * reserveWeeks
-        let loans = s.loans.filter { $0.companyID == co.id && $0.bankCompanyID == 0 && $0.balance > 1 && s.week >= $0.graceUntilWeek }
+        let loans = s.loans.filter { $0.companyID == co.id && $0.balance > 1 && s.week >= $0.graceUntilWeek }
         guard spare > 0, let loan = loans.max(by: { $0.margin < $1.margin }) else { return }
         let limit = ManagerModel.spendLimit(of: co, s, data: data) * ManagerVoice.budgetUse(h)
         let amount = jsRound(min(spare, limit, loan.balance))

@@ -323,17 +323,11 @@ public enum Chains {
         return (est.total * 1.15 / 1000).rounded() * 1000
     }
 
-    public static func openStore(_ s: inout GameState, chainID: Int, cityID: String, size: Double, data: GameData, context fc: FinanceContext, fundedBy parts: [Int: Double]? = nil) -> Result<Int, CompanySetup.StartError> {
+    public static func openStore(_ s: inout GameState, chainID: Int, cityID: String, size: Double, data: GameData, context fc: FinanceContext) -> Result<Int, CompanySetup.StartError> {
         guard let ch = chain(s, id: chainID), let first = stores(s, ch).first, let cost = newStoreCost(s, chainID: chainID, cityID: cityID, size: size, data: data) else { return .failure(.notAllowedHere) }
-        if parts == nil && Payments.liquid(s) < cost { return .failure(.notEnoughCash) }
+        if Payments.liquid(s) < cost { return .failure(.notEnoughCash) }
         let r = CompanySetup.create(&s, tradeID: ch["type"].string, cityID: cityID, size: size, name: "New store \(s.nextID + 1)", countryCode: first.countryCode, data: data, context: fc)
         guard case .success(let id) = r, let i = s.companyIndex(id) else { return r }
-        if let parts = parts {
-            for (sid, x) in parts.sorted(by: { $0.key < $1.key }) {
-                Payments.companyPays(&s, companyID: sid, amount: x, category: nil, label: "Funding a new store")
-                Payments.companyReceives(&s, companyID: id, amount: x, category: nil, label: "Funding from sister stores")
-            }
-        } else { Payments.injectCash(&s, companyID: id, amount: cost) }
         var docs = s.companies[i].value("docs")
         for (k, d) in first.value("docs").object where d["st"].string == "ok" && k != "chain" && k != "accountant_agreement" && docs[k].isNull { docs[k] = d }
         s.companies[i].set("docs", docs)
@@ -366,7 +360,7 @@ public enum Chains {
 
     public static func looseGroups(_ s: GameState, data: GameData) -> [LooseGroup] {
         var by: [String: [Company]] = [:]
-        for c in s.companies where c.status.isLive && c.value("chain").isNull && c.type != "hold" { by["\(c.type)|\(c.countryCode)|\(baseName(c, data: data))", default: []].append(c) }
+        for c in s.companies where c.status.isLive && c.value("chain").isNull { by["\(c.type)|\(c.countryCode)|\(baseName(c, data: data))", default: []].append(c) }
         return by.keys.sorted().compactMap { k in
             guard let L = by[k], L.count >= 2 else { return nil }
             let nm = L.sorted { $0.name.count < $1.name.count }[0].name

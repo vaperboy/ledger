@@ -88,7 +88,7 @@ final class JointVentureTests: XCTestCase {
     private func makeCompany(seed: Int) throws -> (engine: GameEngine, id: Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 300_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 8_000_000) else { throw XCTSkip("could not start a company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("could not start a company") }
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .open } }
         return (e, id)
     }
@@ -239,17 +239,14 @@ final class JointVentureTests: XCTestCase {
         XCTAssertNil(JointVenture.payoutBlock(e.state, companyID: id), "alone, the owner decides")
         try join(&e, id, friendA, pct: 20)
         XCTAssertNotNil(JointVenture.payoutBlock(e.state, companyID: id))
-        XCTAssertEqual(e.payDividend(companyID: id, amount: 1_000), .needsBoard)
         guard case .refused = e.setDividendPolicy(companyID: id, policy: "low") else { return XCTFail("policy changes need a vote too") }
-        let paid = e.state.company(id)!.distributed
-        XCTAssertEqual(e.state.company(id)!.distributed, paid)
     }
 
     func testPassedDividendIsAppliedByTheGameAndBooksStayBalanced() throws {
         var (e, id) = try makeCompany(seed: 79)
         try join(&e, id, friendA, pct: 20)
         e.update { s, _, _ in Ledger.moveRaw(&s, .company(id), 4_000_000); if let i = s.companyIndex(id) { s.companies[i].shareCapital = 0 } }
-        let top = Payments.maximumDividend(e.state.company(id)!, state: e.state, context: e.context)
+        let top = e.maximumDividend(companyID: id)
         XCTAssertGreaterThan(top, 0)
         let made = e.jvMakeItem(companyID: id, kind: .dividend, amount: top)
         let item = try XCTUnwrap(made.item, made.problem ?? "")
@@ -260,23 +257,7 @@ final class JointVentureTests: XCTestCase {
         let m = try XCTUnwrap(e.jointVenture(companyID: id)?.meetings.first { $0.id == mid })
         XCTAssertEqual(m.items[0].outcome, .passed)
         XCTAssertTrue(m.items[0].applied, m.items[0].result)
-        XCTAssertGreaterThan(e.state.cash, cashBefore, "your 80% reached you through the normal dividend path")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-    }
-
-    func testCapitalCallTakesOnlyYourShareBecausePartnerMoneyWouldComeFromNowhere() throws {
-        var (e, id) = try makeCompany(seed: 80)
-        try join(&e, id, friendA, pct: 25)
-        let made = e.jvMakeItem(companyID: id, kind: .capital, amount: 1_000_000)
-        let item = try XCTUnwrap(made.item)
-        guard case .called(let mid) = e.jvCallUrgent(companyID: id, reason: "Cash is short", items: [item]) else { return XCTFail() }
-        let cash = e.state.company(id)!.cash, mine = e.state.cash
-        tick(&e, weeks: 2)
-        let m = try XCTUnwrap(e.jointVenture(companyID: id)?.meetings.first { $0.id == mid })
-        XCTAssertTrue(m.items[0].applied, m.items[0].result)
-        XCTAssertEqual(e.state.company(id)!.cash - cash, 750_000, accuracy: 2, "only what you put in arrives")
-        XCTAssertEqual(mine - e.state.cash, 750_000, accuracy: 2, "you pay your 75 percent")
-        XCTAssertEqual(e.state.company(id)!.ownership, 75, accuracy: 0.01, "nobody's share changed")
+        XCTAssertLessThan(e.state.cash, cashBefore, "the partner's 20% leaves the account")
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
     }
 
@@ -314,16 +295,13 @@ final class JointVentureTests: XCTestCase {
         }
     }
 
-    func testOwnerCannotSellACompanyWithPartnersThroughTheOldFlow() throws {
+    func testOwnerCannotSellACompanyWithPartnersWithoutTheBoard() throws {
         var (e, id) = try makeCompany(seed: 90)
         XCTAssertNil(SaleListings.routeProblem(e.state, companyID: id, route: "broker", pct: 100), "alone, the owner sells as before")
         try join(&e, id, friendA, pct: 20)
         XCTAssertNotNil(SaleListings.routeProblem(e.state, companyID: id, route: "broker", pct: 100))
-        XCTAssertFalse(e.startSale(companyID: id, route: "broker"))
-        XCTAssertFalse(e.startAuction(companyID: id, reserve: 1_000))
-        XCTAssertTrue(e.groupBuyers(companyID: id).isEmpty)
-        XCTAssertNil(e.sellToGroup(companyID: id, groupID: "any"))
-        guard case .refused = e.mergeWithRival(companyID: id, rivalID: 1, percent: 30) else { return XCTFail("a merger is the board's decision too") }
+        guard case .refused = e.startSale(companyID: id, percent: 100, method: .offers) else { return XCTFail("the board decides") }
+        guard case .refused = e.startSale(companyID: id, percent: 100, method: .auction, reserve: 1_000) else { return XCTFail("the board decides") }
         XCTAssertEqual(e.state.company(id)!.status, .open)
     }
 

@@ -57,7 +57,7 @@ public struct FirstYear: Sendable, Equatable {
         let f = effective(s, balance: balance)
         noticeSweep(&s, balance: balance)
         guard !f.bankruptcyActive(week: s.week) else { return }
-        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
+        for i in s.companies.indices where s.companies[i].status == .open {
             let c = s.companies[i]
             if c.cash >= 0 { if c.raw["frz"] != nil { s.companies[i].raw.removeValue(forKey: "frz") }; continue }
             guard c.weeksNegative >= f.frozenAfterWeeks, c.raw["frz"] == nil else { continue }
@@ -95,7 +95,7 @@ public struct FirstYear: Sendable, Equatable {
         }
         s.rest["fyNotes"] = done
         guard let first = f.demandMult.first, first > 1 else { return }
-        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
+        for i in s.companies.indices where s.companies[i].status == .open {
             let age = companyAge(s.companies[i], week: s.week)
             guard age >= 52, age < 54, s.companies[i].raw["fyEnd"] == nil else { continue }
             s.companies[i].set("fyEnd", 1)

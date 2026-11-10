@@ -28,17 +28,6 @@ public extension GameEngine {
         return r
     }
 
-    var ownBank: Company? { RivalAbsorb.ownBank(state) }
-    var playerMainBankIsOwn: Bool { RivalAbsorb.ownBank(state) != nil }
-    func ownBankRoom() -> Double { RivalAbsorb.ownBank(state).map { RivalAbsorb.bankRoom(state, bankID: $0.id, data: data) } ?? 0 }
-
-    @discardableResult
-    mutating func buyRivalWithOwnBank(companyID: Int, rivalID: Int, price: Double, amount: Double) -> RivalAbsorb.FinanceResult {
-        var r = RivalAbsorb.FinanceResult.bankCannotLend
-        update { s, d, c in r = RivalAbsorb.buyWithOwnBank(&s, companyID: companyID, rivalID: rivalID, price: price, amount: amount, data: d, context: c) }
-        return r
-    }
-
     func rivalPriceCut(companyID: Int, rivalID: Int) -> (pct: Int, end: Int, answered: String?)? { RivalAbsorb.priceCut(state, companyID: companyID, rivalID: rivalID) }
 
     @discardableResult

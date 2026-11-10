@@ -119,7 +119,7 @@ public enum Satisfaction {
 
     static func knownByUse(_ s: inout GameState, _ i: Int, _ bd: Trade, data: GameData) {
         var co = s.companies[i]
-        guard co.status == .open, !["fin", "energy", "hold", "club", "rent"].contains(bd.family) else { return }
+        guard co.status == .open, !["fin", "energy", "club", "rent"].contains(bd.family) else { return }
         let x = bd.normalCapacity > 0 ? co.lastWeekUnits / (bd.normalCapacity * 0.6) : 0
         let history = (co.value("cu41").array.map { $0.double } + [min(4, x)]).suffix(26)
         co.set("cu41", .array(history.map { .number($0) }))

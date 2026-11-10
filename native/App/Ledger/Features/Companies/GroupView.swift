@@ -46,7 +46,6 @@ struct GroupView: View {
     @ViewBuilder private func addScreen(_ d: GroupAddDestination) -> some View {
         switch d {
         case .newCompany: NewCompanyRoute()
-        case .holding: NewHoldingView()
         case .franchise: FranchisesView()
         case .club: ClubMarketView()
         }
@@ -101,12 +100,6 @@ struct EntityBreadcrumb: View {
 
     private func crumbs(_ e: GameEngine, _ list: [GroupEntity]) -> [StructureCrumb] {
         var out: [StructureCrumb] = [StructureCrumb(id: "group", title: "Group", action: onGroup)]
-        if entity.indent, let co = e.state.company(entity.companyID), co.holdingID != 0,
-           let parent = list.first(where: { (g: GroupEntity) -> Bool in g.isHolding && g.companyID == co.holdingID }) {
-            let pid: String = parent.id
-            let s: GroupSection = section
-            out.append(StructureCrumb(id: pid, title: parent.name, action: { store.replaceTop(with: .entity(pid, s)) }))
-        }
         out.append(StructureCrumb(id: "here", title: entity.name))
         return out
     }

@@ -81,7 +81,7 @@ struct CompanyProperties: View {
 
     private func askToRenovate(_ p: PropertyRow, _ cur: Currency) {
         let cost: Double = engine.renovationCost(companyID: company.id, propertyID: p.id) ?? 0
-        pending = PendingAction(title: "Renovate this property?", message: "The work is paid from company cash. Better condition raises its value and rent.",
+        pending = PendingAction(title: "Renovate this property?", message: "The work is paid from your account. Better condition raises its value and rent.",
                                 button: "Renovate for \(cur.tidyShort(cost))", amount: cost, currency: cur, tone: .investment, icon: "paintbrush") { detailID = nil; renovate(p) }
     }
 

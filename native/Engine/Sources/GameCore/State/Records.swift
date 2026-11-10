@@ -15,7 +15,6 @@ public struct Loan: JSONRecord, Identifiable {
     public var companyID: Int { get { int("co") } set { set("co", newValue) } }
     public var startWeek: Int { get { int("w0") } set { set("w0", newValue) } }
     public var isGuaranteed: Bool { get { flag("guar") } set { set("guar", newValue) } }
-    public var bankCompanyID: Int { get { int("bank") } set { set("bank", newValue) } }
     public var graceUntilWeek: Int { get { int("graceW") } set { set("graceW", newValue) } }
 }
 

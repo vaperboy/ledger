@@ -16,7 +16,7 @@ struct BankStatementsTab: View {
 
     var body: some View {
         if let e = store.engine {
-            let fmt = BankFmt.make(store, account)
+            let fmt = BankFmt(store: store, company: nil)
             let all: [PeriodReport] = e.reports(kind)
             let index: Int = max(0, all.count - 1 - back)
             let reportID: Int? = all.indices.contains(index) ? all[index].id : nil
@@ -32,7 +32,6 @@ struct BankStatementsTab: View {
                     }
                 }
                 costs(e, fmt)
-                if let cid = account.companyID { BankTransactionsCard(companyID: cid) }
             }
         }
     }
@@ -69,7 +68,7 @@ struct BankStatementsTab: View {
 
     @ViewBuilder private func costs(_ e: GameEngine, _ fmt: BankFmt) -> some View {
         if account != .investments {
-            let o = e.financeOverview(companyID: account.companyID)
+            let o = e.financeOverview()
             let lines: [FinanceLine] = yearlyCosts ? o.costsThisYear : o.costsThisMonth
             let total: Double = yearlyCosts ? o.costTotalThisYear : o.costTotalThisMonth
             BankCard(title: "Where the money goes", trailing: yearlyCosts ? "This year" : "This month") {

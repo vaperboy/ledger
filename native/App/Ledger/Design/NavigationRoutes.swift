@@ -88,7 +88,7 @@ extension GameStore {
 
     func ladderCompany(for link: String) -> Int? {
         guard let e = engine else { return nil }
-        let live: [Company] = e.state.companies.filter { $0.status.isLive && $0.type != "hold" }
+        let live: [Company] = e.state.companies.filter { $0.status.isLive }
         let pick: Company?
         switch link {
         case "hire": pick = live.min { (a: Company, b: Company) -> Bool in a.staff.count < b.staff.count }
@@ -99,14 +99,6 @@ extension GameStore {
         }
         return pick?.id
     }
-}
-
-enum CashWording {
-    static let personal = "Personal cash"
-    static let group = "Cash across group"
-    static let company = "Company cash"
-    static let personalNote = "of which your own cash"
-    static func available(companyID: Int?) -> String { companyID == nil ? group : company }
 }
 
 extension String {

@@ -74,9 +74,9 @@ public enum AnnualReports {
         r.netWorthStart = yr.netWorthStart.total
         r.netWorthEnd = yr.netWorthEnd.total
         r.customers = g.customers
-        let live = yr.companies.filter { $0.status != "sold" && $0.status != "bust" && $0.tradeID != "hold" }
+        let live = yr.companies.filter { $0.status != "sold" && $0.status != "bust" }
         r.staffEnd = live.reduce(0) { $0 + $1.staffEnd }
-        let trading = yr.companies.filter { $0.tradeID != "hold" && !$0.pnl.isEmpty }
+        let trading = yr.companies.filter { !$0.pnl.isEmpty }
         r.companies = trading.sorted { $0.pnl.netProfit > $1.pnl.netProfit }.prefix(8).map { AnnualReport.Row(id: $0.id, name: $0.name, sales: $0.pnl.revenue, profit: $0.pnl.netProfit) }
         if let b = r.companies.first { r.best = AnnualReport.Highlight(name: b.name, profit: b.profit) }
         if let prev = yr.previous {

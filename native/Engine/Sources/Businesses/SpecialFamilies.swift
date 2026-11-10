@@ -5,19 +5,18 @@ import Finance
 
 public enum SpecialFamilies {
     public static func handles(_ bd: Trade) -> Bool {
-        bd.family == "energy" || bd.family == "hold" || bd.family == "club" || bd.id == "salmon" || bd.id == StartupModel.tradeID
+        bd.family == "energy" || bd.family == "club" || bd.id == "salmon" || bd.id == StartupModel.tradeID
     }
 
     public static let retiredTrades: Set<String> = ["bank", "insco", "fund", "casino", "club"]
     public static func isRetired(_ bd: Trade) -> Bool { retiredTrades.contains(bd.id) }
 
     public static func isStartable(_ bd: Trade) -> Bool {
-        CompanyWeek.isSupported(bd) && bd.family != "hold" && bd.family != "club" && bd.id != StartupModel.tradeID && !isRetired(bd)
+        CompanyWeek.isSupported(bd) && bd.family != "club" && bd.id != StartupModel.tradeID && !isRetired(bd)
     }
 
     static func week(_ s: inout GameState, _ i: Int, _ bd: Trade, _ data: GameData) -> CompanyWeek.WeekContext {
         switch bd.family {
-        case "hold": return HoldingModel.context(&s, i, data)
         case "club": return FootballModel.context(&s, i, bd, data)
         case _ where bd.id == StartupModel.tradeID: return StartupModel.context(&s, i, bd, data)
         case "energy": return bd.hasTrait("power") ? EnergyModel.powerContext(&s, i, bd, data) : EnergyModel.oilContext(&s, i, bd, data)
@@ -55,7 +54,6 @@ public enum SpecialFamilies {
 
     public static func weeklyAfter(_ s: inout GameState, data: GameData, context fc: FinanceContext) {
         EnergyModel.weeklyAfter(&s, data: data)
-        HoldingModel.weekly(&s, data: data, context: fc)
     }
 
     public static func blankCompany(_ s: inout GameState, tradeID: String, country: Country, cityID: String, name: String, size: Double, data: GameData) -> Int? {
@@ -65,7 +63,7 @@ public enum SpecialFamilies {
         co.type = tradeID; co.countryCode = country.code
         co.name = name
         co.cityID = cityID; co.size = size; co.status = .setup
-        co.foundedWeek = s.week; co.openedWeek = nil; co.cash = 0; co.ownership = 100
+        co.foundedWeek = s.week; co.openedWeek = nil; co.ownership = 100
         co.set("holders", .array([])); co.set("docs", .object([:])); co.set("eq", .object([:])); co.set("veh", .array([])); co.set("lease", .object([:]))
         co.set("staff", .array([])); co.set("mgrWage", 0); co.set("mgrBonus", 0)
         co.set("auth", Budget.initialAuth)
@@ -76,10 +74,11 @@ public enum SpecialFamilies {
         co.set("pay", .object(["wages": 0, "other": 0, "tax": 0, "rent": 0])); co.vatBalance = 0; co.inventory = 0
         co.books = Books(); co.set("hist", .array([])); co.set("mods", .array([])); co.set("tx", .array([]))
         co.set("ins", .object([:])); co.set("flags", .object([:])); co.set("fm", .object([:]))
-        co.set("lossCarry", 0); co.set("dist", 0); co.set("capital", 0); co.set("inj", 0); co.set("ownerSalary", 0)
+        co.set("lossCarry", 0); co.set("capital", 0); co.set("inj", 0)
         co.set("unitsW", 0); co.set("mgrQ", 0); co.set("eqc", 1); co.set("books", 0.5); co.set("group", 0)
         _ = bd
         s.companies.append(co)
+        s.mirrorCash()
         return co.id
     }
 }

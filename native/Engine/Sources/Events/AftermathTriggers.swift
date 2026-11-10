@@ -6,7 +6,7 @@ extension Aftermath {
     static let lateWindowWeeks = 8
 
     static func scanTriggers(_ s: inout GameState) {
-        for i in s.companies.indices where s.companies[i].status == .open && s.companies[i].type != "hold" {
+        for i in s.companies.indices where s.companies[i].status == .open {
             let co = s.companies[i]
             if co.value("lt").array.contains(where: { s.week >= $0.int && s.week - $0.int < lateWindowWeeks }) {
                 queue(&s, i, "suppnotice", delay: 1, why: "A supplier has noticed the late payments.")

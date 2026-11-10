@@ -68,7 +68,7 @@ public enum WeatherEvents {
     }
 
     static func physical(_ co: Company, _ data: GameData) -> Bool {
-        co.value("prem")["m2"].double > 0 && !["fin", "hold", "club"].contains(data.catalog[co.type]?.family ?? "")
+        co.value("prem")["m2"].double > 0 && !["fin", "club"].contains(data.catalog[co.type]?.family ?? "")
     }
 
     public static func weekly(_ s: inout GameState, data: GameData) {

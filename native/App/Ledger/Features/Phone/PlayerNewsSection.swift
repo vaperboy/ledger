@@ -12,7 +12,7 @@ struct PlayerNewsSection: View {
     @State private var loaded = false
 
     private var viewerTrades: Set<String> {
-        Set(engine.state.companies.filter { $0.status == .open && $0.type != "hold" }.map { engine.tradeName($0) })
+        Set(engine.state.companies.filter { $0.status == .open }.map { engine.tradeName($0) })
     }
 
     private var rows: [(event: PlayerEvent, text: String)] {

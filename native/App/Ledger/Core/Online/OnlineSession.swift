@@ -287,7 +287,7 @@ final class OnlineSession {
 
     private static func companies(_ e: GameEngine) -> [OnlineCompany] {
         let week: Int = e.state.week
-        return e.state.companies.filter { $0.status == .open && $0.type != "hold" }.prefix(12).map { (co: Company) -> OnlineCompany in
+        return e.state.companies.filter { $0.status == .open }.prefix(12).map { (co: Company) -> OnlineCompany in
             let health: OnlineCompanyHealth
             if co.weeksNegative >= 4 { health = .struggling }
             else if let opened = co.openedWeek, week - opened < 8 { health = .new }

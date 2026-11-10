@@ -44,7 +44,6 @@ final class VenturesTests: XCTestCase {
         XCTAssertEqual(e.foundedStartups.count, 1)
         _ = e.pitchStartupRound(startupID: sid)
         e.changeBuilders(startupID: sid, by: 1)
-        _ = e.putMoneyIntoStartup(startupID: sid, amount: 100_000)
         e.update { s, d, _ in _ = Startups.pitches(&s, data: d) }
         let pitches = e.startupPitchesOnOffer
         XCTAssertEqual(pitches.count, 3)
@@ -53,8 +52,7 @@ final class VenturesTests: XCTestCase {
         XCTAssertEqual(offers.count, 4)
         XCTAssertEqual(e.commitToFund(offerID: offers[2].id, amount: offers[2].minimum), .ok)
         if case .offers = e.pitchToInvestors(companyID: id, amount: 500_000) { XCTAssertTrue(e.acceptFundingOffer(companyID: id, index: 0)) }
-        _ = e.sellPrivateShares(companyID: id, percent: 10, mode: "secondary")
-        XCTAssertTrue(e.listSharesForSale(companyID: id, percent: 10, broker: true))
+        _ = e.startSale(companyID: id, percent: 10, method: .offers)
         e.setDividendPolicy(companyID: id, policy: "low")
         for _ in 0..<(60 * 7) { e.nextDay() }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")

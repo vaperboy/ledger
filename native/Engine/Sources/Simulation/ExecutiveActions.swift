@@ -125,13 +125,6 @@ public extension GameEngine {
     mutating func setManagerDuty(companyID: Int, duty: String, manager: Bool) { update { s, _, _ in ManagerModel.setManagerDuty(&s, companyID: companyID, duty: duty, manager: manager) } }
     func personReport(companyID: Int, personID: Int) -> ManagerModel.PersonReport? { ManagerModel.personReport(state, companyID: companyID, personID: personID, data: data) }
 
-    func groupLoanBalance(companyID: Int) -> Double { ManagerModel.groupLoanBalance(state, companyID: companyID) }
-    @discardableResult
-    mutating func lendFromSister(companyID: Int, amount: Double) -> Bool {
-        var ok = false
-        update { s, d, _ in if let co = s.company(companyID) { ok = ManagerModel.sisterCash(&s, to: co, need: amount, data: d) != nil } }
-        return ok
-    }
 
     func courses(companyID: Int) -> [Academy.Course] { state.company(companyID).map { Academy.courses(forTrade: $0.type) } ?? [] }
     func courseCost(_ c: Academy.Course, companyID: Int) -> Double { state.company(companyID).map { Academy.cost(c, company: $0, data: data, state: state) } ?? 0 }

@@ -15,7 +15,7 @@ final class FoodRecipesTests: XCTestCase {
     func engine(_ trade: String, weeks: Int = 6) throws -> (GameEngine, Int) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 600_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID, fundWith: 150_000_000) else { throw XCTSkip("could not start \(trade)") }
+        guard case .success(let id) = e.startCompany(tradeID: trade, cityID: e.state.player.cityID) else { throw XCTSkip("could not start \(trade)") }
         _ = e.quickSetup(companyID: id); _ = e.openCompany(companyID: id)
         var waited = 0
         while e.state.company(id)?.status != .open, waited < 60 { e.week(); waited += 1 }

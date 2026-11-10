@@ -20,28 +20,6 @@ final class CompanyCountryRulesTests: XCTestCase {
         return (e, made, other)
     }
 
-    func testOwnerSalaryWithholdingUsesCompanyCountry() throws {
-        var (e, id, code) = try abroad()
-        var expected = 0.0, home = 0.0
-        e.update { s, data, ctx in
-            let i = s.companyIndex(id)!
-            s.companies[i].ownerMonthlySalary = 4_000_000
-            Ledger.moveRaw(&s, .company(id), 1_000_000_000 - s.companies[i].cash)
-            expected = Taxes.personalIncomeTax(4_000_000 * 12, kind: .wage, in: ctx.country(of: s.companies[i], s)) / 12
-            home = Taxes.personalIncomeTax(4_000_000 * 12, kind: .wage, in: ctx.homeCountry(s)) / 12
-            let t = Payday.dayNumber(week: s.week, day: s.day)
-            s.companies[i].status = .open
-            var cfg = Payday.config(s.companies[i], today: t)
-            cfg.ownerPaidMonth = Payday.monthNumber(t) - 1
-            s.companies[i].set("pr29", cfg.json)
-            _ = Payday.runPayroll(&s, i, today: t, data: data, context: ctx)
-        }
-        XCTAssertEqual(code, "DE")
-        XCTAssertGreaterThan(abs(expected - home), 1, "the two countries tax differently, so the test can tell them apart")
-        XCTAssertEqual(e.state.tax.withheld, expected, accuracy: 1, "withholding follows the country the salary is paid in")
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-    }
-
     func testRulesComeFromCompanyCountryNotHome() throws {
         let (e, id, code) = try abroad()
         let w = World(state: e.state, data: e.data)

@@ -80,7 +80,7 @@ public struct StartSimulationJob: @unchecked Sendable {
                 Ledger.move(&s, .me, 20_000_000_000, why: "Trial run")
                 guard case .success(let i) = CompanySetup.create(&s, tradeID: trade, cityID: city, size: sz, data: d, context: ctx) else { return }
                 id = i
-                _ = Payments.injectCash(&s, companyID: i, amount: cash)
+                s.cash = cash
                 _ = CompanySetup.quickSetup(&s, companyID: i, data: d)
             }
             guard id != 0, let start = e.state.company(id) else { continue }

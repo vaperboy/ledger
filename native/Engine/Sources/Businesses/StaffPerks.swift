@@ -246,7 +246,7 @@ public enum StaffPerks {
             out.append(GuestOption(guest: .franchise, title: "Franchise prospects", detail: "Applicants come sooner, and keener", hostedLately: hosted(s, "fr") > 0))
         }
         var seen = Set<Int>(), rivals: [(Company, Rivals.Rival)] = []
-        for co in s.companies where co.status == .open && co.type != "hold" {
+        for co in s.companies where co.status == .open {
             for r in Rivals.rivals(s, for: co) where !seen.contains(r.id) { seen.insert(r.id); rivals.append((co, r)) }
         }
         rivals.sort { $0.1.size > $1.1.size }

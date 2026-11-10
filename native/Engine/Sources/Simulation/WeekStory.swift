@@ -150,7 +150,7 @@ public extension GameEngine {
         input.profitableRunBefore = run
         input.hadProfitBefore = profits.contains { $0 > 0 }
         input.completedGoalPastTense = PlayerGoals.ladderPastTense(state, firstWeek: r.firstWeek, lastWeek: r.lastWeek)
-        input.cashBelowZeroCompany = r.companies.first { $0.status == "open" && $0.cashEnd < 0 }?.name
+        input.cashBelowZeroCompany = g.accountEnd < 0 ? "Your account" : nil
         if let bad = g.events.first(where: { $0.tone == "bad" }) {
             let hit: Double = g.pnl.fines + g.pnl.losses
             input.badEventHeadline = bad.text

@@ -9,11 +9,7 @@ struct CompanyLiveFigures: View {
 
     var body: some View {
         if company.status == .open {
-            if company.type == "hold" {
-                holdingIncome
-            } else {
-                weekFigures
-            }
+            weekFigures
         }
     }
 
@@ -54,36 +50,4 @@ struct CompanyLiveFigures: View {
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder private var holdingIncome: some View {
-        let id: Int = company.id
-        let week: Int = engine.state.week
-        let income: HoldingIncome? = (store.memo("coHold\(id)") { (e: GameEngine) -> HoldingIncome? in e.holdingIncome(companyID: id, weeks: max(0, week - 51)...week) }).flatMap { $0 }
-        if let income, !income.isEmpty {
-            let money: (Double) -> String = { (v: Double) -> String in store.short(v, in: company) }
-            LedgerSection("Income") {
-                VStack(spacing: 0) {
-                    if abs(income.dividends) >= 0.5 {
-                        incomeRow("Dividends from your companies", sub: "paid in over the last year", income.dividends, money)
-                    }
-                    if abs(income.dividends) >= 0.5 && abs(income.fundGains) >= 0.5 { CardLine() }
-                    if abs(income.fundGains) >= 0.5 {
-                        incomeRow("Gains on investments", sub: "treasury funds against what was paid", income.fundGains, money)
-                    }
-                }
-            }
-        }
-    }
-
-    private func incomeRow(_ label: String, sub: String, _ value: Double, _ money: @escaping (Double) -> String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(label).textStyle(.body)
-                Text(sub).textStyle(.caption, tint: Theme.inkFaint)
-            }
-            Spacer(minLength: Theme.Space.s)
-            ArrowAmount(gain: value, format: money, live: true, roll: true, step: .headline)
-        }
-        .padding(.vertical, Theme.Space.s)
-        .accessibilityElement(children: .combine)
-    }
 }

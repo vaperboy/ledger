@@ -142,7 +142,7 @@ struct VentureOption: Identifiable {
             guard let co = e.state.company(l.companyID) else { continue }
             out.append(fromLine(l, co, now, store))
         }
-        for co in e.state.companies where co.status.isLive && co.type != "hold" {
+        for co in e.state.companies where co.status.isLive {
             if let v = developing(co, e, now, store) { out.append(v) }
         }
         return out.sorted { (a: ActiveVenture, b: ActiveVenture) -> Bool in
@@ -200,7 +200,7 @@ struct VentureOption: Identifiable {
         for r in rows where r.board.isDeveloper && r.co.status == .open {
             if let o = build(e, r.co, store) { out.append(o) }
         }
-        for co in e.state.companies where co.status == .open && co.type != "hold" {
+        for co in e.state.companies where co.status == .open {
             if let o = develop(e, co, store) { out.append(o) }
             if let o = expand(e, co, store) { out.append(o) }
         }
@@ -269,7 +269,7 @@ struct VentureOption: Identifiable {
                                      risk: "Each funding round brings money in and makes your share smaller.",
                                      status: ready ? "Ready" : "Needs cash", tone: ready ? .good : .warn, rank: ready ? 0 : 1, sortCost: low, action: .found))
         }
-        let canOpen: Bool = !e.state.companies.contains { (c: Company) -> Bool in c.status.isLive && c.type != "hold" } || Gates.isOpen(.newCompany, e.state, data: e.data)
+        let canOpen: Bool = !e.state.companies.contains { (c: Company) -> Bool in c.status.isLive } || Gates.isOpen(.newCompany, e.state, data: e.data)
         if canOpen {
             out.append(VentureOption(id: "found-company", group: .found, title: "Open a new company", subtitle: "Pick a trade and a city",
                                      cost: "Shown in a trial run before you commit", time: "30 to 52 weeks to build a name",

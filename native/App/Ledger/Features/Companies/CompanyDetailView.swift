@@ -10,7 +10,7 @@ enum CompanySection: String, CaseIterable, Hashable {
     case salesMarket = "Sales"
     case marketing = "Marketing", customers = "Customers", market = "Market", setup = "Setup"
     case properties = "Properties", book = "Book"
-    case energy = "Plant", salmon = "Fish", holding = "Holding", club = "Club"
+    case energy = "Plant", salmon = "Fish", club = "Club"
     case chain = "Chain"
 }
 
@@ -133,7 +133,7 @@ struct CompanyDetailView: View {
                 if store.levelOpen(.jointVentures) { JointVenturePartnersCard(engine: e, company: co) } else { LevelLockCard(feature: .jointVentures) }
             }
         case .team:
-            if a.contains(.staff) { CompanyTeam(engine: e, company: co) } else { CompanyHolding(engine: e, company: co) }
+            CompanyTeam(engine: e, company: co)
         case .manage:
             if a.contains(.operations) {
                 CompanyOperations(engine: e, company: co, part: $opsPart)
@@ -145,7 +145,7 @@ struct CompanyDetailView: View {
         case .supply:
             CompanySupply(engine: e, company: co)
         case .stats:
-            let parts: [StatsPart] = co.type == "hold" ? [.finances] : StatsPart.allCases
+            let parts: [StatsPart] = StatsPart.allCases
             if parts.count > 1 {
                 SegmentedPill(items: parts, title: { $0.rawValue }, selection: $statsPart, identifier: { "stats-part-\($0.rawValue.lowercased())" })
             }
@@ -201,7 +201,6 @@ struct CompanyDetailView: View {
     private func contextLine(_ co: Company, _ e: GameEngine) -> String? {
         var parts: [String] = []
         if let ch = e.chainOf(companyID: co.id) { parts.append("Store of " + (ch["name"].string.isEmpty ? "your chain" : ch["name"].string)) }
-        if co.holdingID != 0, let h = e.state.company(co.holdingID) { parts.append("Under " + h.name) }
         let runner: String = CompanyRunner.of(co, e).short
         if !runner.isEmpty { parts.append(runner) }
         return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
@@ -210,7 +209,7 @@ struct CompanyDetailView: View {
     static func tabs(_ co: Company, _ e: GameEngine) -> [CompanyTab] {
         let a = availableSections(co, e)
         var out: [CompanyTab] = [.overview]
-        if a.contains(.staff) || a.contains(.holding) { out.append(.team) }
+        if a.contains(.staff) { out.append(.team) }
         if a.contains(.operations) || a.contains(.club) { out.append(.manage) }
         if a.contains(.operations) { out.append(.sales); out.append(.supply) }
         out.append(.stats)
@@ -228,7 +227,7 @@ struct CompanyDetailView: View {
         let a = availableSections(co, e)
         switch section {
         case .overview: return .overview
-        case .staff, .holding: return (a.contains(.staff) || a.contains(.holding)) ? .team : .overview
+        case .staff: return a.contains(.staff) ? .team : .overview
         case .operations, .properties: return (a.contains(.operations) || a.contains(.club)) ? .manage : .overview
         case .club: return a.contains(.operations) ? nil : (a.contains(.club) ? .manage : .overview)
         case .salesMarket, .projects, .marketing: return a.contains(.operations) ? .sales : .overview
@@ -258,13 +257,12 @@ struct CompanyDetailView: View {
         switch co.type {
         case "power", "oilgas": own = [.energy]
         case "salmon": own = [.salmon]
-        case "hold": own = [.holding]
         case "club": own = [.club]
         default: break
         }
         if co.status == .setup { return own + [.setup, .overview, .finances] }
-        if co.type == "hold" || co.type == "club" { return [.overview] + own + [.finances] }
-        let extra: Set<CompanySection> = [.projects, .properties, .book, .energy, .salmon, .holding, .club, .chain, .salesMarket]
+        if co.type == "club" { return [.overview] + own + [.finances] }
+        let extra: Set<CompanySection> = [.projects, .properties, .book, .energy, .salmon, .club, .chain, .salesMarket]
         var list = CompanySection.allCases.filter { $0 != .setup && !extra.contains($0) }
         if !own.isEmpty { list.insert(contentsOf: own, at: 1) }
         return list

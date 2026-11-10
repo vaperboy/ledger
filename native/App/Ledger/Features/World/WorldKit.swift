@@ -84,7 +84,7 @@ extension GameEngine {
     }
 
     func supportTrades() -> [Trade] {
-        data.catalog.order.compactMap { (id: String) -> Trade? in id == "hold" ? nil : data.catalog.trades[id] }
+        data.catalog.order.compactMap { (id: String) -> Trade? in data.catalog.trades[id] }
     }
 }
 

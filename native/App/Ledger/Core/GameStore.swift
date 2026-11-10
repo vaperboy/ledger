@@ -305,13 +305,13 @@ final class GameStore: ObservableObject {
     var canRetrySameSetup: Bool {
         guard let s = engine?.state else { return false }
         let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
-        return story != .fresh || s.companies.contains(where: { (c: Company) -> Bool in c.type != "hold" })
+        return story != .fresh || !s.companies.isEmpty
     }
 
     func retryWithSameSetup() {
         guard let s = engine?.state else { return }
         let story: LifeStory = LifeStory(rawValue: s.rest["start"]?["story"].string ?? "") ?? .loan
-        if story == .fresh, let c = s.companies.first(where: { (c: Company) -> Bool in c.type != "hold" }) {
+        if story == .fresh, let c = s.companies.first {
             newGame(name: s.player.name, countryCode: s.homeCountryCode, story: .fresh, tradeID: c.type, companyName: c.name, channel: c.chosenChannel)
         } else if story != .fresh {
             newGame(name: s.player.name, countryCode: s.homeCountryCode, story: story)

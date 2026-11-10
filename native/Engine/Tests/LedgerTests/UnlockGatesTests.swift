@@ -58,7 +58,7 @@ final class UnlockGatesTests: XCTestCase {
         if e.state.companies.isEmpty { _ = ChainsTests.start(&e, "cafe") }
         e.update { s, _, _ in
             s.week = week
-            guard let i = s.companies.indices.first(where: { s.companies[$0].type != "hold" }) else { return }
+            guard let i = s.companies.indices.first else { return }
             var b = s.companies[i].books
             b.total["rev"] = rev
             b.total["loss"] = 0
@@ -92,7 +92,7 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(vis(e, .insurance), .open, "a month at a loss")
         try trade(&e, months: [], week: 6)
         e.update { s, _, _ in
-            guard let i = s.companies.indices.first(where: { s.companies[$0].type != "hold" }) else { return }
+            guard let i = s.companies.indices.first else { return }
             var b = s.companies[i].books
             b.total["fine"] = 400
             s.companies[i].books = b
@@ -255,7 +255,7 @@ final class UnlockGatesTests: XCTestCase {
         UnlocksTests.opened(&e, id, weeksAgo: 0)
         e.update { s, _, _ in
             guard let i = s.companyIndex(id) else { return }
-            s.companies[i].cash = -1_000; s.companies[i].weeksNegative = 4
+            Ledger.set(&s, to: -1_000); s.companies[i].weeksNegative = 4
         }
         e.update { s, d, _ in FirstYear.freezeSweep(&s, balance: d.balance); FirstYear.freezeSweep(&s, balance: d.balance) }
         let items = e.state.inbox.filter { $0.title.hasPrefix("Account frozen") }
@@ -263,7 +263,7 @@ final class UnlockGatesTests: XCTestCase {
         XCTAssertEqual(items.first?.body, "The bank has frozen the account until the balance is back above zero.")
         XCTAssertEqual(items.first?.options.count, 1)
         XCTAssertTrue(e.answer(messageID: try XCTUnwrap(items.first).id, option: 0))
-        e.update { s, _, _ in s.week = 10; if let i = s.companyIndex(id) { s.companies[i].weeksNegative = 30; s.companies[i].cash = -5_000_000_000 } }
+        e.update { s, _, _ in s.week = 10; if let i = s.companyIndex(id) { s.companies[i].weeksNegative = 30; Ledger.set(&s, to: -5_000_000_000) } }
         for _ in 0..<7 { e.nextDay() }
         XCTAssertNotEqual(e.state.company(id)?.status, .bust)
     }

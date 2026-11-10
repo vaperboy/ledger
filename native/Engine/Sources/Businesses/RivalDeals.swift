@@ -30,7 +30,6 @@ extension Rivals {
             return .failed("The new company could not be set up.")
         }
         Payments.playerPays(&s, price, label: "Acquisition of \(r.name)", companyID: id)
-        _ = Payments.injectCash(&s, companyID: id, amount: startup)
         let movedEquipment = CompanySetup.transferEquipment(&s, companyID: id, data: data)
         let transfer = CompanySetup.transferStaff(&s, companyID: id, data: data)
         _ = CompanySetup.quickSetupReport(&s, companyID: id, data: data, options: CompanySetup.SetupOptions(equipmentInPlace: true, teamInPlace: true))

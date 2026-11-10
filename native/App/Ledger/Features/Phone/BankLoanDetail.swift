@@ -40,11 +40,6 @@ struct LoanDetailSheet: View {
         return e.state.company(rec.companyID).map { e.currency(for: $0) } ?? e.homeCurrency
     }
 
-    private func accountName(_ e: GameEngine, _ rec: LoanRecord) -> String {
-        if rec.companyID == 0 { return "your account" }
-        return (e.state.company(rec.companyID)?.name ?? "the company") + "'s account"
-    }
-
     @ViewBuilder private func content(_ e: GameEngine, _ rec: LoanRecord) -> some View {
         let cur: Currency = currency(e, rec)
         VStack(alignment: .leading, spacing: 14) {
@@ -59,8 +54,7 @@ struct LoanDetailSheet: View {
 
     private func termsCard(_ rec: LoanRecord, _ cur: Currency) -> some View {
         let period: String = "\(rec.termMonths) months (\(rec.monthsLeft) left)"
-        let payout: String = rec.companyID == 0 ? "Your account" : "Company account"
-        return PopupSection(title: rec.number) {
+                return PopupSection(title: rec.number) {
             VStack(spacing: 0) {
                 FlatRow(label: "Interest rate", value: Currency.percent(rec.yearlyRate, decimals: 2) + " a year", rule: false)
                 FlatRow(label: "Repayment period", value: period)
@@ -68,7 +62,7 @@ struct LoanDetailSheet: View {
                 FlatRow(label: "Next payment", value: rec.nextInstalmentText)
                 FlatRow(label: "Lender", value: rec.lender)
                 FlatRow(label: "Borrower", value: rec.borrowerName)
-                FlatRow(label: "Paid out into", value: payout, sub: rec.arrangementFee > 0.5 ? "arrangement fee " + cur.tidyShort(rec.arrangementFee) : "")
+                FlatRow(label: "Paid out into", value: "Your account", sub: rec.arrangementFee > 0.5 ? "arrangement fee " + cur.tidyShort(rec.arrangementFee) : "")
                 if rec.personallyGuaranteed { FlatRow(label: "Guarantee", value: "You are personally liable", tint: P.caution) }
                 if rec.missedInstalments > 0 { FlatRow(label: "Missed instalments", value: "\(rec.missedInstalments)", tint: P.loss) }
             }
@@ -96,7 +90,7 @@ struct LoanDetailSheet: View {
 
     private func confirmInstalment(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) {
         let id: Int = rec.id
-        let from: String = accountName(e, rec)
+        let from: String = "your account"
         let message: String = "\(cur.tidyDisplay(rec.instalment)) is taken from \(from) today. It is not taken again at month end, and the loan keeps its schedule."
         pending = PendingAction(title: "Pay this month's instalment now?", message: message, button: "Pay \(cur.tidyShort(rec.instalment))", amount: rec.instalment, currency: cur) {
             BankPay.instalment(store, loanID: id)
@@ -107,8 +101,8 @@ struct LoanDetailSheet: View {
         guard let q = e.loanPayoffQuote(loanID: rec.id) else { store.show("That loan is already paid off.", tone: "n"); return }
         let id: Int = rec.id
         let name: String = rec.name
-        let funds: Double = rec.companyID == 0 ? e.state.cash : (e.state.company(rec.companyID)?.cash ?? 0)
-        var message: String = "Balance \(cur.tidyDisplay(q.balance)) plus \(cur.tidyDisplay(q.accruedInterest)) interest accrued since the last month end: \(cur.tidyDisplay(q.total)) from \(accountName(e, rec)). "
+        let funds: Double = e.state.cash
+        var message: String = "Balance \(cur.tidyDisplay(q.balance)) plus \(cur.tidyDisplay(q.accruedInterest)) interest accrued since the last month end: \(cur.tidyDisplay(q.total)) from your account. "
         message += "There is no early repayment fee, the interest still to come is saved and the loan ends today. "
         message += funds >= q.total ? "About \(cur.tidyShort(funds - q.total)) is left afterwards." : "It holds \(cur.tidyShort(funds)), which is not enough."
         pending = PendingAction(title: "Pay off \(name) in full?", message: message, button: "Pay off \(cur.tidyShort(q.total))", amount: q.total, currency: cur) {
@@ -125,13 +119,7 @@ struct LoanDetailSheet: View {
     }
 
     @ViewBuilder private var partialSheet: some View {
-        if let e = store.engine, let l = e.state.loans.first(where: { $0.id == loanID }) {
-            if l.companyID == 0 {
-                RepayPersonalLoanSheet(loanID: loanID)
-            } else if let co = e.state.company(l.companyID) {
-                RepayLoanSheet(engine: e, company: co, loan: l).environmentObject(store)
-            }
-        }
+        RepayLoanSheet(loanID: loanID)
     }
 
     private func scheduleCard(_ e: GameEngine, _ rec: LoanRecord, _ cur: Currency) -> some View {

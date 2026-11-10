@@ -59,24 +59,6 @@ final class SpecialTradesTests: XCTestCase {
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
     }
 
-    func testHoldingOwnsCompaniesAndShowsInNetWorth() throws {
-        var e = try Self.engine("UK")
-        let cafe = Self.start(&e, "cafe")
-        let before = e.netWorth.total
-        let r = e.createHolding(name: "Test Holding", companies: [cafe])
-        guard case .success(let hid) = r else { return XCTFail("holding not created: \(r)") }
-        XCTAssertEqual(e.state.company(cafe)?.holdingID, hid)
-        Self.play(&e, days: 7)
-        let after = e.netWorth
-        XCTAssertGreaterThan(after.companies, 0)
-        XCTAssertLessThan(abs(after.total - before), before.magnitude * 0.2 + 3_000_000)
-        Self.play(&e, days: 52 * 7)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        let o = try XCTUnwrap(e.holdingOverview(companyID: hid))
-        XCTAssertEqual(o.subsidiaries.count, 1)
-        XCTAssertTrue(e.holdingInvest(holdingID: hid, amount: 1000) || e.state.company(hid)!.cash < 1000)
-    }
-
     func testFootballClubBuyAndPlayASeason() throws {
         var e = try Self.engine("NO")
         let clubs = e.clubsForSale(countryCode: "NO")

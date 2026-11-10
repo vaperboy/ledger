@@ -101,34 +101,4 @@ final class VentureQuotesTests: XCTestCase {
         XCTAssertEqual(e.buyGroupStake(groupID: "g1", fraction: 0.1, multiplier: 1.1, chance: 0), .failure(.outbid))
         XCTAssertEqual(e.buyGroupStake(groupID: "g1", fraction: 0.95, multiplier: 1.1, chance: 1), .failure(.alreadyHold(0.1)))
     }
-
-    func testHoldingBuysStartupSharesWithTiersAndNetWorthOnce() throws {
-        var e = try ChainsTests.engine("UK")
-        guard case .success(let hid) = e.createHolding(name: "H", companies: []) else { throw XCTSkip("holding was not created") }
-        e.update { s, d, _ in
-            _ = Payments.injectCash(&s, companyID: hid, amount: 3_000_000_000)
-            _ = Startups.pitches(&s, data: d)
-        }
-        let pitch = try XCTUnwrap(e.startupPitchesOnOffer.first)
-        let nw0 = Valuation.netWorth(e.state, trades: e.data.catalog).total
-        guard case .success(let q) = e.holdingStartupInvestQuote(holdingID: hid, pitchID: pitch.id, amount: pitch.raise) else { return XCTFail("quote") }
-        let cash0 = e.state.company(hid)!.cash
-        guard case .success(let deal) = e.holdingInvestInStartup(holdingID: hid, pitchID: pitch.id, amount: pitch.raise) else { return XCTFail("invest") }
-        XCTAssertEqual(deal.percent, q.ownershipPercent, accuracy: 1e-9)
-        XCTAssertEqual(cash0 - e.state.company(hid)!.cash, q.amount, accuracy: 0.01)
-        XCTAssertTrue(e.startupStakes.isEmpty, "a holding's stake is not one of the player's own")
-        let stake = try XCTUnwrap(e.holdingStartupStakes(holdingID: hid).first)
-        XCTAssertEqual(stake.tier, HoldingStakes.tier(forPercent: stake.percent))
-        let nw1 = Valuation.netWorth(e.state, trades: e.data.catalog).total
-        XCTAssertEqual(nw1 - nw0, 0, accuracy: q.amount * 0.01 + 1)
-        if case .success = e.holdingStartupBuyMoreQuote(holdingID: hid, stakeID: stake.id, percent: 60) { XCTFail("no control before a priced round") }
-        guard case .success(let more) = e.holdingStartupBuyMoreQuote(holdingID: hid, stakeID: stake.id, percent: 5) else { return XCTFail("more") }
-        XCTAssertEqual(more.heldAfter, stake.percent + 5, accuracy: 1e-9)
-        guard case .success = e.holdingBuyMoreOfStartup(holdingID: hid, stakeID: stake.id, percent: 5) else { return XCTFail("buy more") }
-        guard case .success(let sale) = e.holdingSellStartupStake(holdingID: hid, stakeID: stake.id, fraction: 0.5) else { return XCTFail("sell") }
-        XCTAssertGreaterThan(sale.proceeds, 0)
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-        for _ in 0..<(80 * 7) { e.nextDay() }
-        XCTAssertTrue(Ledger.gaps(e.state).isEmpty, "\(Ledger.gaps(e.state))")
-    }
 }

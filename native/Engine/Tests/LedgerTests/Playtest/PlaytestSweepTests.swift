@@ -48,7 +48,7 @@ final class PlaytestSweepTests: XCTestCase {
 
     func testSweepScenarios() throws {
         try XCTSkipUnless(PT.enabled, "set LEDGER_PLAYTEST=1")
-        let scenarios = PT.list("LEDGER_PT_SCENARIOS", ["multi", "chain", "holding", "startup", "football"]).compactMap { Scenario(rawValue: $0) }
+        let scenarios = PT.list("LEDGER_PT_SCENARIOS", ["multi", "chain", "startup", "football"]).compactMap { Scenario(rawValue: $0) }
         let trades = PT.list("LEDGER_PT_TRADES", ["cafe", "bakery", "hardware", "cleaning", "tutor", "barber"])
         let countries = PT.list("LEDGER_PT_COUNTRIES", ["UK", "US", "NO", "DE", "JP"])
         let policies = PT.list("LEDGER_PT_POLICIES", ["competent", "reckless"]).compactMap { Policy(rawValue: $0) }

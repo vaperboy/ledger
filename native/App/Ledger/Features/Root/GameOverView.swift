@@ -83,7 +83,7 @@ struct GameOverView: View {
     }
 
     private func companiesGroup(_ s: GameState) -> some View {
-        let businesses = s.companies.filter { $0.type != "hold" }
+        let businesses = s.companies
         let standing = businesses.filter { $0.status.isLive }.count
         let sold = businesses.filter { $0.status == .sold }.count
         let bust = businesses.filter { $0.status == .bust }.count

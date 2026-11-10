@@ -14,39 +14,6 @@ extension ManagerModel {
         max(0, c.cash - weekCost(s, c, data: data) * 8 - World(state: s, data: data).currency(c).scaledPrice(20000))
     }
 
-    public static func sisterCash(_ s: inout GameState, to co: Company, need: Double, data: GameData) -> Company? {
-        let cur = World(state: s, data: data).currency(co)
-        guard let from = sisters(s, co).max(by: { spareCash(s, $0, data: data) < spareCash(s, $1, data: data) }), spareCash(s, from, data: data) >= need else { return nil }
-        let amt = cur.roundedStep(need, about: 1000)
-        Payments.companyPays(&s, companyID: from.id, amount: amt, category: nil, label: "Group loan to \(co.name)")
-        Payments.companyReceives(&s, companyID: co.id, amount: amt, category: nil, label: "Group loan from \(from.name)")
-        if let i = s.companyIndex(co.id) {
-            var gl = s.companies[i].value("gl56").array
-            gl.append(.object(["from": .number(Double(from.id)), "amt": .number(amt), "w": .number(Double(s.week))]))
-            s.companies[i].set("gl56", .array(gl))
-        }
-        return from
-    }
-
-    static func groupLoansRepay(_ s: inout GameState, data: GameData) {
-        for i in s.companies.indices where s.companies[i].status == .open && !s.companies[i].value("gl56").array.isEmpty {
-            var gl = s.companies[i].value("gl56").array
-            var l = gl[0]
-            let co = s.companies[i]
-            guard let from = s.company(l["from"].int), from.status.isLive else { gl.removeFirst(); s.companies[i].set("gl56", .array(gl)); continue }
-            let room = co.cash - weekCost(s, co, data: data) * 10
-            if room <= 0 { continue }
-            let x = min(l["amt"].double, (room * 0.5).rounded(.down))
-            if x < 1000 { continue }
-            Payments.companyPays(&s, companyID: co.id, amount: x, category: nil, label: "Group loan repaid to \(from.name)")
-            Payments.companyReceives(&s, companyID: from.id, amount: x, category: nil, label: "Group loan repaid by \(co.name)")
-            l["amt"] = .number(l["amt"].double - x)
-            if l["amt"].double < 1000 { gl.removeFirst() } else { gl[0] = l }
-            if let k = s.companyIndex(co.id) { s.companies[k].set("gl56", .array(gl)) }
-        }
-    }
-    public static func groupLoanBalance(_ s: GameState, companyID: Int) -> Double { s.company(companyID)?.value("gl56").array.reduce(0) { $0 + $1["amt"].double } ?? 0 }
-
     @discardableResult
     static func fillManager(_ s: inout GameState, companyID: Int, by: String, why: String, boss: Person? = nil, data: GameData) -> Person? {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID == nil, s.companies[ci].status == .open || s.companies[ci].status == .setup, let bd = data.catalog[s.companies[ci].type] else { return nil }
@@ -87,12 +54,6 @@ extension ManagerModel {
         let inBudget = boss.decides(dp.cost)
         let title = dp.kind == "eq" ? "buy equipment for \(co.name)"
             : dp.kind == "veh" ? "add a vehicle at \(co.name)" : dp.kind == "space" ? "expand the premises of \(co.name)" : dp.kind == "cut" ? "reduce staffing at \(co.name)" : dp.kind == "ad" ? "start advertising at \(co.name)" : "cash at \(co.name)"
-        if dp.kind == "cash" {
-            let need = max(cur.scaledPrice(50000), weekCost(s, co, data: data) * 6 - co.cash)
-            guard let from = sisterCash(&s, to: co, need: need, data: data) else { return false }
-            s.note("\(who) moved \(cur.short(need)) from \(from.name) to \(co.name) as a group loan.", tone: "n", companyID: co.id)
-            return true
-        }
         let m = merit(s, co, dp)
         let cap = { (t: String) in t.prefix(1).uppercased() + t.dropFirst() }
         if m < 0 { s.note("\(who) said no to \(n.name): \(title). \(cap(proposalNo[dp.kind] ?? "not now")).", tone: "n", companyID: co.id); return true }
@@ -115,9 +76,8 @@ extension ManagerModel {
         let cur = World(state: s, data: data).currency(co)
         if kind == "mgr" { return fillManager(&s, companyID: companyID, by: who, why: "the last manager left", boss: s.people[boss.personID], data: data) != nil }
         if kind == "cash" {
-            if let from = sisterCash(&s, to: co, need: max(cur.scaledPrice(30000), weekCost(s, co, data: data) * 6), data: data) {
-                s.note("\(who) moved money from \(from.name) to \(co.name): its cash was running out.", tone: "n", companyID: companyID)
-            } else { doEmergency(&s, companyID: companyID, code: "mkt0", data: data); s.note("\(who) stopped marketing at \(co.name) to save cash.", tone: "n", companyID: companyID) }
+            doEmergency(&s, companyID: companyID, code: "mkt0", data: data)
+            s.note("\(who) stopped marketing at \(co.name) to save cash.", tone: "n", companyID: companyID)
             return true
         }
         if kind == "loss" { return false }
@@ -199,14 +159,8 @@ extension ManagerModel {
     @discardableResult
     static func openFundedStore(_ s: inout GameState, chainID: Int, cityID: String, data: GameData, context fc: FinanceContext) -> Int? {
         guard let ch = Chains.chain(s, id: chainID), let cost = Chains.newStoreCost(s, chainID: chainID, cityID: cityID, size: 1, data: data) else { return nil }
-        var need = cost
-        var parts: [Int: Double] = [:]
-        for st in Chains.stores(s, ch).sorted(by: { spareCash(s, $0, data: data) > spareCash(s, $1, data: data) }) where need > 0 {
-            let x = min(spareCash(s, st, data: data), need)
-            if x > 1000 { parts[st.id] = x; need -= x }
-        }
-        if need > 1000 { return nil }
-        if case .success(let id) = ChainLocations.open(&s, chainID: chainID, cityID: cityID, size: 1, data: data, context: fc, fundedBy: parts) {
+        if spareCash(s, Chains.stores(s, ch)[0], data: data) < cost { return nil }
+        if case .success(let id) = ChainLocations.open(&s, chainID: chainID, cityID: cityID, size: 1, data: data, context: fc) {
             s.note("\(s.company(id)?.name ?? "A new store") opens in about three weeks.", tone: "good", companyID: id)
             return id
         }
@@ -235,7 +189,7 @@ extension ManagerModel {
             let full = L.map { ($0, $0.value("lastW")["cap"].double > 0 ? $0.value("lastW")["D"].double / $0.value("lastW")["cap"].double : 0) }.sorted { $0.1 > $1.1 }
             var chm = Chains.chain(s, id: id)!
             var org = chm["org56"]; if org.isNull { org = .object([:]) }
-            let spareTotal = L.reduce(0) { $0 + spareCash(s, $1, data: data) }
+            let spareTotal = spareCash(s, any, data: data)
             if cm != nil, person(s, cm!) != nil, prof, let top = full.first, top.1 >= 1.15, Double(s.week) - (org["st"].isNull ? -99 : org["st"].double) >= 26 {
                 let city = top.0.cityID
                 if let cost = Chains.newStoreCost(s, chainID: id, cityID: city, size: 1, data: data), spareTotal >= cost {
@@ -279,7 +233,6 @@ extension ManagerModel {
             teamWeek(&s, i, bd, data: data)
             managerRentsPlace(&s, companyIndex: i, data: data)
         }
-        groupLoansRepay(&s, data: data)
         priceRequestsWeekly(&s, data: data)
         organisationWeekly(&s, data: data, context: fc)
         HierarchyHiring.weekly(&s, data: data)

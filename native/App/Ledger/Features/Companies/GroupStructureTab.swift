@@ -83,7 +83,7 @@ struct GroupStructureTab: View {
         let rungs: [StructureRung] = chainOfCommand(n, nodes, lines)
         let hasKids: Bool = nodes.contains { (x: StructureNode) -> Bool in x.parentID == n.id }
         let person: Person? = n.runnerPersonID.flatMap { (id: Int) -> Person? in engine.state.people[id] }
-        let own: Bool = n.kind == .holding || n.kind == .chain || n.kind == .company
+        let own: Bool = n.kind == .chain || n.kind == .company
         let target: GroupEntity? = entity(for: n, list)
         let actionID: String = own ? (target.map { (g: GroupEntity) -> String in "group-entity-\(g.id)" } ?? "") : ""
         return StructureCard(node: n, valueText: store.short(n.value), runnerRole: person?.role, runnerFace: person?.faceKey, rungs: rungs,
@@ -166,13 +166,9 @@ struct GroupStructureTab: View {
         var c: Double = 0
         var i: Double = 0
         var p: Double = 0
-        for n in nodes where n.kind != .you && n.kind != .holding && n.kind != .chain {
+        for n in nodes where n.kind != .you && n.kind != .chain {
             let w: Double = max(0, n.value)
-            switch HoldingStakes.tier(forPercent: n.holdingPercent ?? n.ownerYouPercent) {
-            case .control, .squeezeOut, .whole: c += w
-            case .influence: i += w
-            case .passive, .none: p += w
-            }
+            if n.ownerYouPercent > 50 { c += w } else if n.ownerYouPercent >= 20 { i += w } else { p += w }
         }
         let total: Double = c + i + p
         guard total > 0 else { return (0, 0, 0) }

@@ -22,7 +22,7 @@ public struct DelegationLine: Identifiable, Equatable, Sendable {
 
 public extension GameEngine {
     func delegationLines() -> [DelegationLine] {
-        state.companies.filter { $0.status.isLive && $0.type != "hold" }.map { co -> DelegationLine in
+        state.companies.filter { $0.status.isLive }.map { co -> DelegationLine in
             let mgr: Bool = Delegation.hasManager(co)
             let payroll: String = mgr ? "Manager" : Delegation.hasAccountant(co) ? "Accountant" : "You (a reminder)"
             let asst: Bool = ManagerModel.assistantSkill(co, duty: "comp", people: state.people) != nil

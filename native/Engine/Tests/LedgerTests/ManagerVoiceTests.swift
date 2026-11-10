@@ -9,11 +9,11 @@ final class ManagerVoiceTests: XCTestCase {
     private func managedCafe(seed: Int, extraCafe: Bool = false) throws -> (GameEngine, Int, Int?) {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: seed)
         e.update { s, _, _ in Ledger.move(&s, .me, 90_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 30_000_000) else { throw XCTSkip("no company") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { throw XCTSkip("no company") }
         let cands = try XCTUnwrap(e.searchManagers(companyID: id))
         XCTAssertEqual(e.hireManager(personID: cands[0].id, companyID: id, monthlyWage: cands[0].askingMonthlyWage * 1.2), .ok)
         var other: Int?
-        if extraCafe, case .success(let o) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 20_000_000) { other = o }
+        if extraCafe, case .success(let o) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) { other = o }
         return (e, id, other)
     }
 

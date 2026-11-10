@@ -81,8 +81,7 @@ final class PlaytestTests: XCTestCase {
         let channels = ["google", "meta", "seo"].filter { e.marketing.channels[$0] != nil }
         _ = e.setPriceLevel(companyID: id, level: price)
         for k in channels { if let ch = e.marketing.channels[k], ch.budgetOptions.count > 1 { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions[1]) } }
-        _ = e.setOwnerSalary(companyID: id, monthly: cur.scaledPrice(2000))
-        var stoppedAds = false, stoppedPay = false, alone = false, managerTried = false, second = false
+        var stoppedAds = false, alone = false, managerTried = false, second = false
         var bankrupt: Int? = nil, m7: Int? = nil, m10: Int? = nil
         var injected = false
         for day in 0..<364 {
@@ -96,11 +95,7 @@ final class PlaytestTests: XCTestCase {
             e.nextDay()
             answerFirst(&e)
             if bankrupt == nil, isBroke(e) { bankrupt = e.state.week }
-            if !stoppedPay, day % 7 == 6 {
-                e.payYourself(companyID: id, monthly: cur.scaledPrice(2000))
-            }
             if !stoppedAds, Gates.goalDone(e.state, 5) { stoppedAds = true; for k in channels { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: 0) } }
-            if !stoppedPay, Gates.goalDone(e.state, 6) { stoppedPay = true; _ = e.setOwnerSalary(companyID: id, monthly: 0) }
             if !alone, Gates.goalDone(e.state, 3), let st = e.state.company(id)?.staff.first { alone = true; e.dismissStaff(companyID: id, staffID: st.id) }
             if m7 == nil, Gates.goalDone(e.state, 7) { m7 = e.state.week }
             if m7 != nil, !managerTried, !Gates.goalDone(e.state, 8), let c = e.searchManagers(companyID: id)?.first {
@@ -110,7 +105,7 @@ final class PlaytestTests: XCTestCase {
             if Gates.goalDone(e.state, 8), !second, Gates.companiesOwned(e.state) < 2 {
                 second = true
                 e.update { s, _, _ in Ledger.move(&s, .me, cur.scaledPrice(400_000), why: "Test funds") }
-                _ = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, name: "Second Cafe", fundWith: cur.scaledPrice(150_000))
+                _ = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, name: "Second Cafe")
             }
             if m10 == nil, Gates.goalDone(e.state, 10) { m10 = e.state.week; break }
         }

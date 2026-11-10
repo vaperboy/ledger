@@ -179,13 +179,13 @@ public extension GameEngine {
         return (plan, t.fee)
     }
 
-    mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?, fundWith amount: Double) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
+    mutating func startFranchisedCompanyChoosingPremises(brandID: String, cityID: String, name: String?, accountantID: Int? = nil, pick: NewCompanyPlan.Pick?) -> Result<NewCompanyOutcome, CompanySetup.StartError> {
         guard let b = franchiseBrand(brandID), let t = franchiseAgreedTerms(brandID) else { return .failure(.notAllowedHere) }
         let country = franchiseApplication(brandID)["country"].string
         let cc = country.isEmpty ? state.homeCountryCode : country
         let size = data.countries[cc].flatMap { c in c.city(cityID).flatMap { city in data.catalog[b.tradeID].map { CompanySetup.recommendedSize($0, city: city, brandStrength: b.strength / 100) } } }
         let nm = (name?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 }
-        let r = startCompany(tradeID: b.tradeID, cityID: cityID, size: size, name: nm, countryCode: cc, accountantID: accountantID, fundWith: amount, quickSetup: false)
+        let r = startCompany(tradeID: b.tradeID, cityID: cityID, size: size, name: nm, countryCode: cc, accountantID: accountantID, quickSetup: false)
         guard case .success(let id) = r else {
             if case .failure(let e) = r { return .failure(e) }
             return .failure(.notAllowedHere)

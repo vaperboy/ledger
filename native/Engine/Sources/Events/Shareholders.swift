@@ -43,7 +43,7 @@ public enum Shareholders {
     }
     public static func holders(_ s: GameState, companyID: Int) -> [Holder] {
         guard let co = s.company(companyID) else { return [] }
-        return co.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }.map { var h = $0; let p = profile(&h, seed: s.seed, week: s.week); return Holder(name: h["name"].string, pct: h["pct"].double, profile: p, mood: h["sat"].double) }
+        return co.value("holders").array.filter { $0["pct"].double > 0 }.map { var h = $0; let p = profile(&h, seed: s.seed, week: s.week); return Holder(name: h["name"].string, pct: h["pct"].double, profile: p, mood: h["sat"].double) }
     }
     public static func averageMood(_ s: GameState, companyID: Int) -> Double {
         let hs = holders(s, companyID: companyID)
@@ -95,7 +95,7 @@ public enum Shareholders {
 
     static func quarter(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
-        guard co.status == .open, co.type != "hold" else { return }
+        guard co.status == .open, !PublicRules.isListed(s, companyID: co.id) else { return }
         let br = s.chainStores(of: co)
         if br.count >= 2 && br[0].id != co.id { return }
         let pol = policy(co), pr = br.count >= 2 ? br.reduce(0) { $0 + quarterProfit($1) } : quarterProfit(co)
@@ -111,7 +111,7 @@ public enum Shareholders {
         }
         s.companies[i].set("dq27", .object(["w": .number(Double(s.week)), "paid": .number(paid), "pr": .number(pr)]))
         var list = s.companies[i].value("holders").array
-        let idx = list.indices.filter { list[$0]["pct"].double > 0 && list[$0]["hid"].int == 0 }
+        let idx = list.indices.filter { list[$0]["pct"].double > 0 }
         if idx.isEmpty { return }
         let g = yearOnYear(s.companies[i])
         let below = 0
@@ -137,7 +137,7 @@ public enum Shareholders {
     static func maybeDemand(_ s: inout GameState, _ i: Int, data: GameData, context fc: FinanceContext) {
         let co = s.companies[i]
         if s.week < co.int("dm27") { return }
-        var list = co.value("holders").array.filter { $0["pct"].double > 0 && $0["hid"].int == 0 }
+        var list = co.value("holders").array.filter { $0["pct"].double > 0 }
         guard let ix = list.indices.filter({ list[$0]["sat"].double < 38 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }) else { return }
         var unhappy = list[ix]
         s.companies[i].set("dm27", s.week + 26)
@@ -193,18 +193,18 @@ public enum Shareholders {
         case "div":
             if idx == 0 || idx == 1 {
                 let amt = idx == 0 ? d["amt"].double : (d["amt"].double / 2000).rounded() * 1000
-                let r = Payments.payDividend(&s, companyID: id, amount: amt, context: fc)
+                let r = Payments.payDividend(&s, companyID: id, amount: amt)
                 if r == .ok { if idx == 0 { s.companies[i].set("dp27", "mid") }; bump(&s, i, idx == 0 ? 18 : 8) }
-                else { s.note("\(co.name) could not pay: \(r == .notEnoughCash ? "not enough cash." : "not enough equity.")", tone: "bad", companyID: id); bump(&s, i, -4) }
+                else { s.note("\(co.name) could not pay: not enough cash.", tone: "bad", companyID: id); bump(&s, i, -4) }
                 return
             }
             refused(&s, i, d, data: data, context: fc)
         case "divq":
             guard idx == 0 || idx == 1 else { return }
             let amt = idx == 0 ? d["amt"].double : (d["amt"].double / 2000).rounded() * 1000
-            let r = Payments.payDividend(&s, companyID: id, amount: amt, context: fc)
+            let r = Payments.payDividend(&s, companyID: id, amount: amt)
             if r == .ok { s.note("\(co.name) paid a dividend of \(fc.currency(co.countryCode, s).display(amt)).", tone: "good", companyID: id) }
-            else { s.note("\(co.name) could not pay: \(r == .notEnoughCash ? "not enough cash." : "not enough retained profit.")", tone: "bad", companyID: id) }
+            else { s.note("\(co.name) could not pay: not enough cash.", tone: "bad", companyID: id) }
         case "growth":
             if idx == 0 {
                 let a = d["amt"].double
@@ -262,7 +262,7 @@ public enum Shareholders {
         if pw.kind == .control {
             s.note("The other owners of \(co.name) outvoted you.", tone: "bad", companyID: co.id)
             switch d["kind"].string {
-            case "div": _ = Payments.payDividend(&s, companyID: co.id, amount: d["amt"].double, context: fc); s.companies[i].set("dp27", "mid")
+            case "div": _ = Payments.payDividend(&s, companyID: co.id, amount: d["amt"].double); s.companies[i].set("dp27", "mid")
             case "growth":
                 _ = Payments.companyPays(&s, companyID: co.id, amount: d["amt"].double, category: "mkt", label: "Marketing push forced by the owners")
                 s.companies[i].awareness = min(100, s.companies[i].awareness + 8)
@@ -278,7 +278,7 @@ public enum Shareholders {
             return
         }
         let list = s.companies[i].value("holders").array
-        guard let k = list.indices.filter({ list[$0]["sat"].double < 40 && list[$0]["hid"].int == 0 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }), s.random.chance(0.5) else { return }
+        guard let k = list.indices.filter({ list[$0]["sat"].double < 40 }).max(by: { list[$0]["pct"].double < list[$1]["pct"].double }), s.random.chance(0.5) else { return }
         let old = list[k]["name"].string
         var buyer = "", gid = JSONValue.null, gname = ""
         let gs = GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 && (($0["types"].array.contains { $0.string == co.type }) || $0["strat"].string == "acq") }

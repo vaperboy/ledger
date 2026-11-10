@@ -45,7 +45,7 @@ public enum Tutorial {
 
     public static func sync(_ s: inout GameState) {
         guard step(s) != nil else { return }
-        if !s.companies.contains(where: { (c: Company) -> Bool in c.status.isLive && c.type != "hold" }) { finish(&s) }
+        if !s.companies.contains(where: { (c: Company) -> Bool in c.status.isLive }) { finish(&s) }
     }
 
     public static func inboxGuide(_ s: GameState) -> [Int] {

@@ -267,7 +267,7 @@ public enum CompanySetup {
         co.type = tradeID; co.countryCode = code
         co.name = name ?? generateName(country: country, family: bd.family, &s.random)
         co.cityID = city.id; co.size = chosenSize; co.status = .setup
-        co.foundedWeek = s.week; co.openedWeek = nil; co.cash = 0; co.ownership = 100
+        co.foundedWeek = s.week; co.openedWeek = nil; co.ownership = 100
         co.set("holders", .array([])); co.set("docs", .object([:])); co.set("eq", .object([:])); co.set("veh", .array([])); co.set("lease", .object([:]))
         co.set("staff", .array([])); co.set("mgrWage", 0); co.set("mgrBonus", 0)
         co.set("auth", Budget.initialAuth)
@@ -280,21 +280,19 @@ public enum CompanySetup {
         co.set("pay", .object(["wages": 0, "other": 0, "tax": 0, "rent": 0])); co.vatBalance = 0; co.inventory = 0
         co.books = Books(); co.set("hist", .array([])); co.set("mods", .array([])); co.set("tx", .array([]))
         co.set("ins", .object([:])); co.set("flags", .object([:])); co.set("fm", .object([:]))
-        co.set("lossCarry", 0); co.set("dist", 0); co.set("capital", 0); co.set("inj", 0); co.set("ownerSalary", 0)
+        co.set("lossCarry", 0); co.set("capital", 0); co.set("inj", 0)
         co.set("unitsW", 0); co.set("mgrQ", 0); co.set("eqc", 1); co.set("books", 0.5); co.set("group", 0)
         if let role = bd.standardStaff.first?.role, let base = data.catalog.tables.roles[role]?.baseMonthlyWage, bd.ownerFTE > 0 {
             co.set("ownWage", .number(jsRound(Wages.market(baseMonthlyWage: base, country: country, city: city, economy: s.economy, rates: World(state: s, data: data).rates))))
         }
         co.awareness = min(co.awareness, 10)
         s.companies.append(co)
+        s.mirrorCash()
         let i = s.companies.count - 1
         let id = co.id
         Payments.playerPays(&s, country.registrationFee, label: "Registration of \(co.name)", companyID: id)
-        Payments.playerPays(&s, country.shareCapitalMinimum, label: "Share capital", companyID: id)
-        Ledger.moveRaw(&s, .company(id), country.shareCapitalMinimum)
-        s.companies[i].ownerNetFlow += country.shareCapitalMinimum
+        Payments.recordInvestment(&s, companyID: id, amount: country.shareCapitalMinimum)
         s.companies[i].shareCapital = country.shareCapitalMinimum
-        s.companies[i].injectedCapital += country.shareCapitalMinimum
         s.companies[i].addTransaction(week: s.week, amount: country.shareCapitalMinimum, label: "Share capital paid in")
         chooseAccountant(&s, companyID: id, accountantID: accountantID, data: data)
         if abroad { Payments.playerPays(&s, abroadFee, label: "Local representative, travel and legal counsel abroad", companyID: id) }
@@ -541,7 +539,7 @@ public enum CompanySetup {
             while n > 0 && attempts < allowed {
                 if let months = options.payrollMonthsReserve, !carries(s.companies[i], extraMonthly: wage, months: months, loans: s.loans) {
                     rep.skipped.append(SetupSkipped(id: "staff:\(st.role)", kind: .staff, title: roleName, count: n, cost: wage * Double(n),
-                                                    reason: "The company's cash does not yet cover \(Int(months)) months of this wage."))
+                                                    reason: "Your account does not yet cover \(Int(months)) months of this wage."))
                     n = 0
                     break
                 }

@@ -72,7 +72,7 @@ public enum Career {
     static func ratio(_ a: Double, _ b: Double) -> Double { b <= 0 ? 1 : min(1, max(0, a / b)) }
     static func bestMonth(_ f: Facts) -> Double { f.live.compactMap { $0.monthlyHistory.last?.profit }.max() ?? 0 }
     static func bump(_ s: inout GameState, rep: Double = 0, aware: Double = 0, credit: Double = 0) {
-        for i in s.companies.indices where s.companies[i].status.isLive && s.companies[i].type != "hold" {
+        for i in s.companies.indices where s.companies[i].status.isLive {
             s.companies[i].reputation = min(100, s.companies[i].reputation + rep)
             s.companies[i].awareness = min(100, s.companies[i].awareness + aware)
         }
@@ -108,8 +108,8 @@ public enum Career {
             progress: { f in f.trophies.contains("fr1") ? 1 : 0 }),
         Def(id: "k14", title: "Build {amt} of wealth", body: "Grow your net worth by {amt}: your first real fortune.", horizon: .long, reward: "Logo badge: Diamond",
             progress: { f in ratio(f.gain, f.money(1_000_000)) }, grant: { bump(&$0, rep: 3, credit: 3) }, cosmetic: "logo.diamond", amount: 1_000_000),
-        Def(id: "k15", title: "Holding company", body: "Put your companies under a holding.", horizon: .long, reward: "Title: Holding Chief",
-            progress: { f in f.s.companies.contains { $0.type == "hold" && $0.status.isLive } ? 1 : 0 }),
+        Def(id: "k15", title: "Go public", body: "List one of your companies on the stock exchange.", horizon: .long, reward: "Title: Listed Chief",
+            progress: { f in f.s.companies.contains { $0.status.isLive && PublicExchange.isListed(f.s, companyID: $0.id) } ? 1 : 0 }),
         Def(id: "k16", title: "Ten trophies", body: "Half the wall is lit.", horizon: .long, reward: "Logo badge: Crown",
             progress: { f in ratio(Double(f.trophies.count), 10) }, cosmetic: "logo.crown"),
         Def(id: "k17", title: "Listed on the exchange", body: "Anyone can buy shares in your group.", horizon: .long, reward: "Title: Public Figure",
@@ -153,7 +153,7 @@ public enum Career {
     static func facts(_ s: GameState, data: GameData, currency cur: Currency) -> Facts {
         let got = Trophies.entries(s).filter { $0.reachedWeek != nil }.map { $0.id }
         return Facts(s: s, nw: Valuation.netWorth(s, trades: data.catalog).total, cur: cur,
-                     live: s.companies.filter { $0.status.isLive && $0.type != "hold" }, trophies: Set(got))
+                     live: s.companies.filter { $0.status.isLive }, trophies: Set(got))
     }
 
     static func isDone(_ s: GameState, _ id: String) -> Bool { !(s.rest["car"]?["done"][id] ?? .null).isNull }
@@ -179,7 +179,7 @@ public enum Career {
 
     @discardableResult
     public static func sweep(_ s: inout GameState, data: GameData, currency cur: Currency) -> [String] {
-        guard s.companies.contains(where: { $0.type != "hold" }) else { return [] }
+        guard !s.companies.isEmpty else { return [] }
         if s.rest["car"]?["nw0"].isNull ?? true {
             var c = s.rest["car"] ?? .object(["done": .object([:])])
             c["nw0"] = .number(Valuation.netWorth(s, trades: data.catalog).total); s.rest["car"] = c

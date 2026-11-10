@@ -6,7 +6,7 @@ import Businesses
 import Simulation
 
 final class FinanceItemsTests: XCTestCase {
-    static let all = ["insco", "bank", "fund", "power", "oilgas", "hold"]
+    static let all = ["insco", "bank", "fund", "power", "oilgas"]
 
     struct Run { var e: GameEngine; var id: Int; var invested: Double }
 
@@ -71,7 +71,7 @@ final class FinanceItemsTests: XCTestCase {
             let items = SalesItems.items(co, bd)
             XCTAssertFalse(items.contains { $0.id.hasPrefix("d") }, "\(t): the title-only defaults are replaced")
             XCTAssertEqual(items.reduce(0.0) { $0 + $1.unitShare }, 1, accuracy: 1e-9, t)
-            if t != "hold" { XCTAssertEqual(items.reduce(0.0) { $0 + $1.unitShare * $1.ratio }, 1, accuracy: 1e-9, "\(t) revenue weights") }
+            XCTAssertEqual(items.reduce(0.0) { $0 + $1.unitShare * $1.ratio }, 1, accuracy: 1e-9, "\(t) revenue weights")
             XCTAssertEqual(SalesItems.demandFactor(co), 1, accuracy: 1e-12, t)
             XCTAssertEqual(SalesItems.ticketFactor(co), 1, accuracy: 1e-12, t)
             for e in eco {
@@ -152,17 +152,6 @@ final class FinanceItemsTests: XCTestCase {
         let hedged = FinanceItems.allEconomics(r.e.state, companyID: r.id, data: r.e.data)
         XCTAssertEqual(hedged.first { $0.itemID == "w11:green" }!.volume, out * 0.1, accuracy: 1e-6 * max(1, out))
         XCTAssertEqual(hedged.reduce(0.0) { $0 + $1.volume }, out, accuracy: 1e-6 * max(1, out))
-    }
-
-    func testHoldingServicesCostPlusMargin() throws {
-        var r = try Self.start("hold")
-        for _ in 0..<6 { Self.week(&r, withItems: true) }
-        let eco = FinanceItems.allEconomics(r.e.state, companyID: r.id, data: r.e.data)
-        XCTAssertEqual(eco.count, 6)
-        for e in eco where e.costPerUnit > 0 {
-            XCTAssertEqual(e.marketPrice / e.costPerUnit, 1.1, accuracy: 1e-9, "\(e.name) fee is cost plus ten percent")
-        }
-        XCTAssertTrue(Ledger.gaps(r.e.state).isEmpty)
     }
 
     func testFundFeeClassesAddUpToTheManagementFee() throws {

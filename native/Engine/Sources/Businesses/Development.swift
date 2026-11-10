@@ -58,7 +58,7 @@ public enum Development {
         guard let bd = data.catalog[co.type] else { return [] }
         let f = bd.family
         if let t = table[f] { return t }
-        return ["fin", "energy", "rent", "club", "hold"].contains(f) ? [] : table["other"]!
+        return ["fin", "energy", "rent", "club"].contains(f) ? [] : table["other"]!
     }
 
     public static func cost(_ p: Project, for co: Company, currency cur: Currency) -> Double {

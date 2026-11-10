@@ -140,10 +140,10 @@ struct TradeDetailView: View {
             ForEach(shown) { l in TableRow(columns: Self.costColumns, title: l.label, values: [l.amount]) }
             TableRow(columns: Self.costColumns, title: "Total", values: [cur.tidyShort(plan.total)], selected: true)
             if est.shareCapital > 0 {
-                TableRow(columns: Self.costColumns, title: "Share capital", note: "From your account, on top of the cost above; stays in the company.", values: [cur.tidyShort(est.shareCapital)])
+                TableRow(columns: Self.costColumns, title: "Share capital", note: "From your account, on top of the cost above.", values: [cur.tidyShort(est.shareCapital)])
             }
-            TableRow(columns: Self.costColumns, title: "Put into the company", note: "The cost with a 15% margin, as far as your money goes.", values: [cur.tidyShort(plan.intoCompany)])
-            TableRow(columns: Self.costColumns, title: "Left in your accounts", values: [cur.tidyShort(plan.personalLeft)], valueTints: [leftTint])
+            TableRow(columns: Self.costColumns, title: "Set aside for the start", note: "The cost with a 15% margin, as far as your money goes.", values: [cur.tidyShort(plan.intoCompany)])
+            TableRow(columns: Self.costColumns, title: "Left in your account", values: [cur.tidyShort(plan.personalLeft)], valueTints: [leftTint])
         }
     }
 
@@ -202,7 +202,7 @@ struct TradeDetailView: View {
         chosen.channel = channel
         let accountant = accountantID
         return PendingAction(title: "Start \(t.name) in \(cityName)?", message: msg.tidyMoney, button: "Start it", amount: plan.total, currency: cur) {
-            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, fundWith: fund, choices: chosen, accountantID: accountant) }
+            let r = store.act { $0.startCompanyChoosingPremises(tradeID: t.id, cityID: city, size: sz, name: nm.isEmpty ? nil : nm, pick: pick, choices: chosen, accountantID: accountant) }
             switch r {
             case .success(let out)?:
                 Haptics.success()

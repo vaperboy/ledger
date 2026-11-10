@@ -75,8 +75,6 @@ struct GroupEntity: Identifiable, Equatable {
     var chainID: Int?
     var name: String
     var kind: String
-    var isHolding: Bool
-    var indent: Bool
     var value: Double
     var hasChange: Bool
     var changeAmount: Double
@@ -103,13 +101,13 @@ enum GroupEntities {
         return (amount, earlier > 1 ? amount / earlier : nil)
     }
 
-    private static func make(_ e: GameEngine, id: String, companyID: Int, chainID: Int?, name: String, kind: String, isHolding: Bool, indent: Bool, ids: [Int], members: [Int], values: [Int: Double], days: Int, hist: DayHistory) -> GroupEntity {
+    private static func make(_ e: GameEngine, id: String, companyID: Int, chainID: Int?, name: String, kind: String, ids: [Int], members: [Int], values: [Int: Double], days: Int, hist: DayHistory) -> GroupEntity {
         var total: Double = 0
         for i in ids { total += values[i] ?? 0 }
         let ch = change(e, ids: ids, values: values, days: days, hist: hist)
         var profit: Double = 0
         for i in ids { profit += e.financeOverview(companyID: i).monthProfit }
-        return GroupEntity(id: id, companyID: companyID, chainID: chainID, name: name, kind: kind, isHolding: isHolding, indent: indent, value: total,
+        return GroupEntity(id: id, companyID: companyID, chainID: chainID, name: name, kind: kind, value: total,
                            hasChange: ch != nil, changeAmount: ch?.amount ?? 0, changeShare: ch?.share, members: members,
                            profit: profit, trend: series(hist, ids: ids))
     }
@@ -135,52 +133,20 @@ enum GroupEntities {
         let chains: [Chains.Summary] = e.chainSummaries
         var inChain = Set<Int>()
         for ch in chains { for s in ch.stores { inChain.insert(s.id) } }
-        let holdings: [Company] = live.filter { (c: Company) -> Bool in c.type == "hold" }
-        let holdingIDs: Set<Int> = Set(holdings.map { (h: Company) -> Int in h.id })
         var top: [GroupEntity] = []
-        var subsOf: [Int: [GroupEntity]] = [:]
         for ch in chains {
             let ids: [Int] = ch.stores.filter { (s: Chains.StoreLine) -> Bool in s.status.isLive }.map { (s: Chains.StoreLine) -> Int in s.id }
             guard let first = ids.first else { continue }
             let kind: String = "Chain \u{00B7} \(ids.count) \(ids.count == 1 ? "store" : "stores")"
-            top.append(make(e, id: "ch\(ch.id)", companyID: first, chainID: ch.id, name: ch.name, kind: kind, isHolding: false, indent: false, ids: ids, members: ids, values: values, days: days, hist: hist))
+            top.append(make(e, id: "ch\(ch.id)", companyID: first, chainID: ch.id, name: ch.name, kind: kind, ids: ids, members: ids, values: values, days: days, hist: hist))
         }
-        for c in live where c.type != "hold" && !inChain.contains(c.id) {
+        for c in live where !inChain.contains(c.id) {
             let franchisee: Bool = !c.value("franchise").isNull
             let kind: String = (franchisee ? "Franchise \u{00B7} " : "") + "\(e.tradeName(c)) \u{00B7} \(e.cityName(c))"
-            let ent = make(e, id: "co\(c.id)", companyID: c.id, chainID: nil, name: c.name, kind: kind, isHolding: false, indent: false, ids: [c.id], members: [c.id], values: values, days: days, hist: hist)
-            if c.holdingID != 0 && holdingIDs.contains(c.holdingID) {
-                var one = ent
-                one.indent = true
-                subsOf[c.holdingID, default: []].append(one)
-            } else {
-                top.append(ent)
-            }
-        }
-        for h in holdings {
-            let subs: [GroupEntity] = subsOf[h.id] ?? []
-            let kind: String = "Holding company \u{00B7} \(subs.count) \(subs.count == 1 ? "company" : "companies")"
-            var members: [Int] = [h.id]
-            for s in subs { members.append(s.companyID) }
-            var ent = make(e, id: "co\(h.id)", companyID: h.id, chainID: nil, name: h.name, kind: kind, isHolding: true, indent: false, ids: [h.id], members: members, values: values, days: days, hist: hist)
-            var sum: Double = ent.value
-            var profit: Double = ent.profit
-            for s in subs { sum += s.value; profit += s.profit }
-            ent.value = sum
-            ent.profit = profit
-            ent.trend = series(hist, ids: members)
-            top.append(ent)
+            top.append(make(e, id: "co\(c.id)", companyID: c.id, chainID: nil, name: c.name, kind: kind, ids: [c.id], members: [c.id], values: values, days: days, hist: hist))
         }
         top.sort { (a: GroupEntity, b: GroupEntity) -> Bool in a.value > b.value }
-        var out: [GroupEntity] = []
-        for t in top {
-            out.append(t)
-            if t.isHolding {
-                let subs: [GroupEntity] = (subsOf[t.companyID] ?? []).sorted { (a: GroupEntity, b: GroupEntity) -> Bool in a.value > b.value }
-                out.append(contentsOf: subs)
-            }
-        }
-        return out
+        return top
     }
 
     @MainActor static func cached(_ store: GameStore) -> [GroupEntity]? { store.memo("groupEntities") { build($0) } }

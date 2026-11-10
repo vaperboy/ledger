@@ -11,12 +11,13 @@ public struct ExchangeInstrument: Equatable, Identifiable, Sendable {
     public var previousClose: Double
     public var closeDay: Int
     public var listedDay: Int
-    public var holdingID: Int
+    public var companyID: Int
     public var volume: Int
     public var dividendDay: Int
     public var dividendPerShare: Double
     public var halted: Bool
     public var history: [Double]
+    public var sentiment: Double = 1
 
     public var isOwn: Bool { kind == "own" }
     public var isServer: Bool { kind == "srv" || kind == "com" }
@@ -55,9 +56,9 @@ public struct ExchangeBook: Equatable, Sendable {
         let j = s.rest["xch"] ?? .null
         for (k, v) in j["i"].object {
             instruments[k] = ExchangeInstrument(id: k, name: v["n"].string, kind: v["k"].string, shares: v["sh"].int, nav: v["nav"].double, close: v["c"].double,
-                                                previousClose: v["pc"].double, closeDay: v["cd"].isNull ? -1 : v["cd"].int, listedDay: v["ld"].int, holdingID: v["h"].int,
+                                                previousClose: v["pc"].double, closeDay: v["cd"].isNull ? -1 : v["cd"].int, listedDay: v["ld"].int, companyID: v["h"].int,
                                                 volume: v["vol"].int, dividendDay: v["dd"].isNull ? -1 : v["dd"].int, dividendPerShare: v["dps"].double,
-                                                halted: v["off"].bool, history: v["hist"].array.map { $0.double })
+                                                halted: v["off"].bool, history: v["hist"].array.map { $0.double }, sentiment: v["sm"].isNull ? 1 : v["sm"].double)
         }
         for (k, v) in j["p"].object { positions[k] = ExchangePosition(instrument: k, shares: v["q"].int, cost: v["cost"].double, since: v["since"].int) }
         orders = j["o"].array.map { ExchangeOpenOrder(id: $0["id"].int, instrument: $0["i"].string, side: $0["s"].string == "buy" ? .buy : .sell, shares: $0["q"].int,
@@ -71,8 +72,8 @@ public struct ExchangeBook: Equatable, Sendable {
         var i: [String: JSONValue] = [:]
         for (k, v) in instruments {
             i[k] = .object(["n": .string(v.name), "k": .string(v.kind), "sh": .number(Double(v.shares)), "nav": .number(v.nav), "c": .number(v.close), "pc": .number(v.previousClose),
-                            "cd": .number(Double(v.closeDay)), "ld": .number(Double(v.listedDay)), "h": .number(Double(v.holdingID)), "vol": .number(Double(v.volume)),
-                            "dd": .number(Double(v.dividendDay)), "dps": .number(v.dividendPerShare), "off": .bool(v.halted), "hist": .array(v.history.map { .number($0) })])
+                            "cd": .number(Double(v.closeDay)), "ld": .number(Double(v.listedDay)), "h": .number(Double(v.companyID)), "vol": .number(Double(v.volume)),
+                            "dd": .number(Double(v.dividendDay)), "dps": .number(v.dividendPerShare), "off": .bool(v.halted), "hist": .array(v.history.map { .number($0) }), "sm": .number(v.sentiment)])
         }
         var p: [String: JSONValue] = [:]
         for (k, v) in positions { p[k] = .object(["q": .number(Double(v.shares)), "cost": .number(v.cost), "since": .number(Double(v.since))]) }

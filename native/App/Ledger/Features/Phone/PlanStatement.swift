@@ -66,9 +66,9 @@ struct PlanStatement: View {
             TableHeader(columns: Self.columns)
             TableRow(columns: Self.columns, title: "You have", values: [cur.tidyShort(plan.available)])
             TableRow(columns: Self.columns, title: "Registration, fees and share capital", values: [cur.tidyShort(plan.registrationAndCapital)])
-            TableRow(columns: Self.columns, title: "Moved into the company", note: choices.putInto == nil ? "Keeps your reserve of \(cur.tidyShort(plan.personalReserve))." : "Your own figure.", values: [cur.tidyShort(plan.intoCompany)])
-            TableRow(columns: Self.columns, title: "Left in your accounts", note: plan.keepsReserve ? "Above your reserve of \(cur.tidyShort(plan.personalReserve))." : "Below your reserve of \(cur.tidyShort(plan.personalReserve)).", values: [cur.tidyShort(plan.accountsAfter)], valueTints: [tint], selected: true)
-            TableRow(columns: Self.columns, title: "Company cash after set-up", values: [cur.tidyShort(plan.companyCashAfterSetup)])
+            TableRow(columns: Self.columns, title: "Set aside for the start", note: choices.putInto == nil ? "Keeps your reserve of \(cur.tidyShort(plan.personalReserve))." : "Your own figure.", values: [cur.tidyShort(plan.intoCompany)])
+            TableRow(columns: Self.columns, title: "Left in your account", note: plan.keepsReserve ? "Above your reserve of \(cur.tidyShort(plan.personalReserve))." : "Below your reserve of \(cur.tidyShort(plan.personalReserve)).", values: [cur.tidyShort(plan.accountsAfter)], valueTints: [tint], selected: true)
+            TableRow(columns: Self.columns, title: "Set-up budget left", values: [cur.tidyShort(plan.companyCashAfterSetup)])
         }
         if plan.shortfall > 0 {
             NoteCard(text: "The company is \(cur.tidyShort(plan.shortfall)) short of the scope above. Set-up pays the mandatory costs first and skips what the cash cannot carry (it is listed afterwards); the company opens when the money is there.", glyph: Glyph.warning, tint: Theme.caution)

@@ -92,7 +92,7 @@ public enum Luxury {
 
     public static func companiesThatCanBuy(_ s: GameState, itemID: String) -> [Company] {
         guard let it = item(itemID), (book["companyCategories"].array.map { $0.string }).contains(it.category) else { return [] }
-        return s.companies.filter { $0.status == .open && $0.type != "hold" && $0.countryCode == s.homeCountryCode }
+        return s.companies.filter { $0.status == .open && $0.countryCode == s.homeCountryCode }
     }
 
     @discardableResult

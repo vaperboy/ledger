@@ -19,8 +19,7 @@ public enum CompanyFigures {
         let prem = co.value("prem")
         let owned = prem["owned"].bool ? prem["val"].double : 0
         let fm = co.value("fm")
-        return co.cash
-            + co.receivables.reduce(0) { $0 + $1.amount }
+        return co.receivables.reduce(0) { $0 + $1.amount }
             + max(0, -co.vatBalance)
             + co.inventory
             + prem["dep"].double

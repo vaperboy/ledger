@@ -47,7 +47,7 @@ extension ManagerModel {
     public struct EmergencyKind: Sendable { public var title: String; public var options: [(String, String)] }
     public static let emergencyKinds: [String: EmergencyKind] = [
         "drop": EmergencyKind(title: "Revenue fell sharply", options: [("Cut prices one step", "price-"), ("Marketing push, +50%", "mkt+"), ("Wait and watch", "wait")]),
-        "cash": EmergencyKind(title: "Cash is running out", options: [("Move money in from you", "cashin"), ("Stop all marketing", "mkt0"), ("Wait and watch", "wait")]),
+        "cash": EmergencyKind(title: "Cash is running out", options: [("Stop all marketing", "mkt0"), ("Wait and watch", "wait")]),
         "mgr": EmergencyKind(title: "The manager has left", options: [("Find a new manager now", "hire"), ("Run it yourself, 20 h", "self"), ("Wait and watch", "wait")]),
         "loss": EmergencyKind(title: "Three months of losses", options: [("Put it up for sale", "sell"), ("Cut costs: stop marketing", "mkt0"), ("Give it three more months", "wait")]),
         "stock": EmergencyKind(title: "Selling out again and again", options: [("Order plenty from now on", "stock"), ("Give stock to the assistant", "asst"), ("Wait and watch", "wait")]),
@@ -68,9 +68,6 @@ extension ManagerModel {
             for (k, v) in m.object { m[k]["b"] = .number(jsRound(v["b"].double * 1.5)) }
             s.companies[i].set("mkt", m)
         case "mkt0": s.companies[i].set("mkt", .object([:]))
-        case "cashin":
-            let x = cur.roundedStep(max(cur.scaledPrice(20000), abs(co.num("wkD")) * 6), about: 1000)
-            if s.cash >= x { Payments.injectCash(&s, companyID: companyID, amount: x) }
         case "hire": return "hire"
         case "self": s.companies[i].ownerHours = max(co.ownerHours, 20)
         case "sell": listForSale(&s, companyID: companyID)
@@ -96,7 +93,7 @@ extension ManagerModel {
         let hist = co.monthlyHistory
         switch kind {
         case "drop": best = co.awareness < 40 ? 1 : 0
-        case "cash": best = s.cash > abs(co.num("wkD")) * 8 ? 0 : 1
+        case "cash": best = s.cash > abs(co.num("wkD")) * 8 ? 1 : 0
         case "mgr": best = co.staff.count >= 3 ? 0 : 1
         case "loss": best = hist.suffix(6).filter { $0.profit < 0 }.count >= 5 ? 0 : 1
         case "stock": best = co.value("asst")["npc"].int != 0 ? 1 : 0
@@ -132,7 +129,7 @@ extension ManagerModel {
         emg[kind] = .number(Double(s.week)); s.companies[ci].set("emg12", emg)
         var votes: [JSONValue] = []
         for v in voters(s, key: key) {
-            var p = v.type == "lh" ? rightHandPick(s, kind: kind, co: co, lh: lh) : v.type == "cfo" ? (kind == "loss" ? 0 : kind == "cash" ? 1 : 2) : v.type == "mkt" ? (kind == "drop" ? 1 : 2) : 0
+            var p = v.type == "lh" ? rightHandPick(s, kind: kind, co: co, lh: lh) : v.type == "cfo" ? (kind == "loss" ? 0 : kind == "cash" ? 0 : 2) : v.type == "mkt" ? (kind == "drop" ? 1 : 2) : 0
             if HashedRandom.first("mv:\(v.id):\(kind):\(s.week)") < 0.15 { p = Int(HashedRandom.first("mv2:\(v.id):\(s.week)") * Double(E.options.count)) % E.options.count }
             votes.append(.object(["id": v.personID.map { .number(Double($0)) } ?? .null, "name": .string(v.name), "t": .string(v.title), "pick": .number(Double(p)), "lh": .bool(v.type == "lh")]))
         }
@@ -188,7 +185,7 @@ extension ManagerModel {
     static func boardsWeekly(_ s: inout GameState, data: GameData) {
         for i in s.companies.indices {
             let co0 = s.companies[i]
-            guard co0.status == .open, co0.type != "hold", !co0.value("lastW").isNull else { continue }
+            guard co0.status == .open, !co0.value("lastW").isNull else { continue }
             var rw = co0.value("rw12").array.map { $0.double }
             rw.append(jsRound(co0.value("lastW")["rev"].double)); rw = Array(rw.suffix(10))
             s.companies[i].set("rw12", .array(rw.map { .number($0) }))
@@ -322,7 +319,7 @@ extension ManagerModel {
     }
 
     public static func attentionDrift(_ co: Company, week: Int) -> Double {
-        guard co.managerID != nil, co.status == .open, co.type != "hold" else { return 0 }
+        guard co.managerID != nil, co.status == .open else { return 0 }
         let lastMeeting = co.value("meetW").isNull ? -1e9 : co.num("meetW")
         let started = co.value("mgrW0").isNull ? Double(co.openedWeek ?? 0) : co.num("mgrW0")
         let w = Double(week) - max(lastMeeting, started) - 8

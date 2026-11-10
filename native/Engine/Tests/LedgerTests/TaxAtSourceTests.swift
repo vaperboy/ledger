@@ -10,7 +10,7 @@ final class TaxAtSourceTests: XCTestCase {
     private func fresh(_ code: String = "UK") throws -> GameEngine {
         var e = try GameEngine.newGame(countryCode: code, playerName: "T", seed: 7)
         e.update { s, _, _ in
-            Ledger.set(&s, .me, to: 0)
+            Ledger.set(&s, to: 0)
             s.loans.removeAll()
             s.tax = PersonalTaxYear(raw: ["ytd": 0, "paid": 0, "enkIncome": 0, "wage": 0, "div": 0, "ytdDiv": 0, "withheld": 0, "gain": 0, "int": 0, "shield": 0])
             Ledger.move(&s, .me, 500_000_000, why: "Test funds")
@@ -20,7 +20,7 @@ final class TaxAtSourceTests: XCTestCase {
 
     func testADividendPaysDividendTaxAtOnce() throws {
         var e = try fresh()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("cafe") }
         e.update { s, _, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open
@@ -107,7 +107,7 @@ final class TaxAtSourceTests: XCTestCase {
 
     func testCorporateTaxIsPaidInTheMonthItArises() throws {
         var e = try fresh()
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 5_000_000) else { return XCTFail("cafe") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("cafe") }
         e.update { s, data, ctx in
             let i = s.companyIndex(id)!
             s.companies[i].status = .open

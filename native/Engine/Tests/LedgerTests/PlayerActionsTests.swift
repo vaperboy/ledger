@@ -11,7 +11,7 @@ final class PlayerActionsTests: XCTestCase {
     func testSuggestionsOpenTheSectionThatNeedsThePlayer() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 12_000_000) else { return XCTFail("could not start") }
+        guard case .success(let id) = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail("could not start") }
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .setup } }
         XCTAssertTrue(e.suggestions(limit: 20).contains { $0.action == .openCompany(id, section: "setup") })
     }
@@ -19,7 +19,7 @@ final class PlayerActionsTests: XCTestCase {
     func testStartCompanySetPricesCampaignAndHire() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "Tester", seed: 7)
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-        let res = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 12_000_000)
+        let res = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID)
         guard case .success(let id) = res else { return XCTFail("could not start: \(res)") }
 
         e.setPriceLevel(companyID: id, level: 1)
@@ -61,7 +61,7 @@ final class PreviewAndAdvisorTests: XCTestCase {
         XCTAssertFalse(PlayerGoals.stepDone("co", e.state))
         XCTAssertTrue(e.suggestions().contains { $0.action == .newCompany })
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-        guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID, fundWith: 10_000_000) else { return XCTFail() }
+        guard case .success = e.startCompany(tradeID: "cafe", cityID: e.state.player.cityID) else { return XCTFail() }
         XCTAssertTrue(PlayerGoals.stepDone("co", e.state))
         for _ in 0..<10 { e.nextDay() }
         let h = e.dayHistory
@@ -111,7 +111,7 @@ final class StaffTalksTests: XCTestCase {
         for seed in [21, 22, 23, 24, 25] {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: seed)
             e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-            guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, fundWith: 20_000_000) else { return XCTFail() }
+            guard case .success(let id) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID) else { return XCTFail() }
             var asked: Message?
             for _ in 0..<(100 * 7) {
                 e.nextDay()
@@ -158,7 +158,7 @@ final class FinanceOverviewTests: XCTestCase {
     func testMarketingPausesInsteadOfRunningUpDebt() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 5)
         e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, fundWith: 1_500_000) else { return XCTFail() }
+        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID) else { return XCTFail() }
         for (k, ch) in e.marketing.channels.sorted(by: { $0.key < $1.key }) where ch.onlyInCountry == nil { _ = e.setCampaign(companyID: id, channel: k, weeklyBudget: ch.budgetOptions.last ?? 0) }
         for _ in 0..<(40 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
         let co = try XCTUnwrap(e.state.company(id))
@@ -170,7 +170,7 @@ final class FinanceOverviewTests: XCTestCase {
         func run(accountant: Bool) throws -> (asks: Int, paidThisMonth: Bool, late: Bool) {
             var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 8)
             e.update { s, _, _ in Ledger.move(&s, .me, 30_000_000, why: "Test funds") }
-            guard case .success(let cid) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID, fundWith: 8_000_000) else { XCTFail(); return (0, false, true) }
+            guard case .success(let cid) = e.startCompany(tradeID: "restaurant", cityID: e.state.player.cityID) else { XCTFail(); return (0, false, true) }
             e.update { s, d, _ in if accountant { CompanySetup.chooseAccountant(&s, companyID: cid, accountantID: nil, data: d) } }
             for _ in 0..<(16 * 7) { e.nextDay() }
             let t = Payday.dayNumber(week: e.state.week, day: e.state.day)
@@ -192,10 +192,10 @@ final class AutoDividendTests: XCTestCase {
     func testDividendsAreNeverAutomatic() throws {
         var e = try GameEngine.newGame(countryCode: "UK", playerName: "T", seed: 9)
         e.update { s, _, _ in Ledger.move(&s, .me, 60_000_000, why: "Test funds") }
-        guard case .success(let id) = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID, fundWith: 20_000_000) else { XCTFail(); return }
+        guard case .success = e.startCompany(tradeID: "webdev", cityID: e.state.player.cityID) else { XCTFail(); return }
         for _ in 0..<(20 * 7) { e.nextDay(); for m in e.openDecisions where m.actionID.hasPrefix("pay29") { e.answer(messageID: m.id, option: 0) } }
         XCTAssertTrue(Ledger.gaps(e.state).isEmpty)
-        XCTAssertEqual(e.state.company(id)?.distributed ?? 0, 0, "the owner decides on dividends; nothing is paid out by itself")
+        XCTAssertEqual(e.state.stats.dividendsReceived, 0, "nothing is paid out by itself")
     }
 }
 

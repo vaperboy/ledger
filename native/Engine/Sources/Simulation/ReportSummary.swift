@@ -84,7 +84,7 @@ public enum ReportSummary {
             out.append("Over the year you " + joined(parts) + ".")
         } else {
             let dc = g.cashEnd - g.cashStart
-            var s = "Cash \(r.scopeName.map { "at \($0)" } ?? "in your accounts and companies") \(dc >= 0 ? "rose" : "fell") by \(amount(dc)) to \(g.cashEnd < 0 ? "−" : "")\(amount(g.cashEnd))"
+            var s = "Cash \(r.scopeName.map { "at \($0)" } ?? "in your account") \(dc >= 0 ? "rose" : "fell") by \(amount(dc)) to \(g.cashEnd < 0 ? "−" : "")\(amount(g.cashEnd))"
             var bits: [String] = []
             if g.decisionsAnswered > 0 { bits.append("\(g.decisionsAnswered) decision\(g.decisionsAnswered == 1 ? "" : "s") answered") }
             if g.breakdowns > 0 { bits.append("\(g.breakdowns) breakdown\(g.breakdowns == 1 ? "" : "s")") }

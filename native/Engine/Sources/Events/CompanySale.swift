@@ -16,7 +16,6 @@ public enum CompanySale {
         public var maxPrice: Double = 0
         public var patience: Int = 3
         public var talk: [TalkLine] = []
-        public var group: String = ""
     }
     public struct TalkLine: Equatable {
         public var mine: Bool
@@ -25,37 +24,33 @@ public enum CompanySale {
     }
     public struct Listing: Equatable {
         public var companyID: Int
-        public var broker: Bool
         public var since: Int
         public var offers: [Offer]
         public var pct: Int = 100
         public var route: String = "private"
         public var reserve: Double = 0
         public var round: Int = 0
-        public var hasFee: Bool { route == "broker" || route == "auction" }
+        public var hasFee: Bool { route == "auction" }
     }
 
-    public static let brokerFee = 0.04
+    public static let auctionFee = 0.03
     public static let youngWeeks = 52
 
     static func saleWorth(_ s: GameState, _ co: Company, data: GameData, factor: Double) -> Double {
         let value = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
-        let cash = min(value, max(0, co.cash))
-        let goodwillFactor = s.week - co.foundedWeek < youngWeeks ? min(1, factor) : factor
-        return cash * min(1, factor) + (value - cash) * goodwillFactor
+        return value * (s.week - co.foundedWeek < youngWeeks ? min(1, factor) : factor)
     }
 
     public static func listing(_ s: GameState, companyID: Int) -> Listing? {
         guard let raw = (s.rest["sales"]?.array ?? []).first(where: { $0["co"].int == companyID }) else { return nil }
-        return Listing(companyID: companyID, broker: raw["m"].string == "broker", since: raw["w0"].int,
+        return Listing(companyID: companyID, since: raw["w0"].int,
                        offers: raw["offers"].array.map {
                            Offer(id: $0["id"].int, kind: $0["k"].string, buyer: $0["name"].string, price: $0["price"].double, note: $0["note"].string,
                                  expiresWeek: $0["exp"].int, countered: $0["ctr"].bool, maxPrice: $0["max"].double,
                                  patience: $0["pat"].isNull ? 3 : $0["pat"].int,
-                                 talk: $0["talk"].array.map { TalkLine(mine: $0["me"].bool, system: $0["sys"].bool, text: $0["t"].string) },
-                                 group: $0["gid"].string)
+                                 talk: $0["talk"].array.map { TalkLine(mine: $0["me"].bool, system: $0["sys"].bool, text: $0["t"].string) })
                        }, pct: raw["pct"].isNull ? 100 : raw["pct"].int,
-                       route: ["broker", "auction", "mbo"].contains(raw["m"].string) ? raw["m"].string : "private", reserve: raw["res"].double, round: raw["rnd"].int)
+                       route: raw["m"].string == "auction" ? "auction" : "private", reserve: raw["res"].double, round: raw["rnd"].int)
     }
 
     public static func estimatedValue(_ s: GameState, companyID: Int, data: GameData) -> Double {
@@ -68,13 +63,8 @@ public enum CompanySale {
     static func write(_ s: inout GameState, _ list: [JSONValue]) { s.rest["sales"] = .array(list) }
 
     @discardableResult
-    public static func startListing(_ s: inout GameState, companyID: Int, broker: Bool, pct: Int = 100) -> Bool {
-        SaleListings.start(&s, companyID: companyID, route: broker ? "broker" : "private", pct: pct)
-    }
-    @discardableResult
-    public static func startListing(_ s: inout GameState, companyID: Int, route: String, pct: Int = 100) -> Bool {
-        guard ["private", "broker", "mbo"].contains(route) else { return false }
-        return SaleListings.start(&s, companyID: companyID, route: route, pct: pct)
+    public static func startListing(_ s: inout GameState, companyID: Int, pct: Int = 100) -> Bool {
+        SaleListings.start(&s, companyID: companyID, route: "private", pct: pct)
     }
 
     public static func withdraw(_ s: inout GameState, companyID: Int) {
@@ -123,26 +113,17 @@ public enum CompanySale {
             }
         }
         defer { if board { s.rest["jvgo"] = nil } }
+        let fee = l.hasFee ? jsRound(o.price * auctionFee) : 0
         if l.pct < 100 {
-            let fee = l.hasFee ? jsRound(o.price * brokerFee) : 0
             sellPart(&s, companyIndex: i, pct: Double(l.pct), amount: o.price - fee, buyer: o.buyer, data: data, context: fc)
             withdraw(&s, companyID: companyID)
             return o.price - fee
         }
-        let fee = l.hasFee ? jsRound(o.price * brokerFee) : 0
-        var got: Double?
-        if o.group.isEmpty { got = complete(&s, companyIndex: i, buyer: o.buyer, price: o.price, mbo: o.kind == "mbo", data: data, context: fc) }
-        else {
-            let mine = jsRound(o.price * s.companies[i].ownership / 100)
-            got = GroupDeals.sellToGroup(&s, companyIndex: i, groupID: o.group, price: o.price, data: data, context: fc) ? mine : nil
-        }
-        if let got = got {
-            if fee > 0 { Payments.playerPays(&s, fee, label: l.route == "auction" ? "Auction fee" : "Broker fee") }
-            if o.price > s.companies[i].injectedCapital * 1.3 { Funding.bump(&s, "exits") }
-            withdraw(&s, companyID: companyID)
-            return got - fee
-        }
-        return nil
+        guard let got = complete(&s, companyIndex: i, buyer: o.buyer, price: o.price, data: data, context: fc) else { return nil }
+        if fee > 0 { Payments.playerPays(&s, fee, label: "Auction fee") }
+        if o.price > s.companies[i].injectedCapital * 1.3 { Funding.bump(&s, "exits") }
+        withdraw(&s, companyID: companyID)
+        return got - fee
     }
 
     @discardableResult
@@ -152,38 +133,24 @@ public enum CompanySale {
     }
 
     @discardableResult
-    static func complete(_ s: inout GameState, companyIndex i: Int, buyer: String, price: Double, mbo: Bool = false, data: GameData, context fc: FinanceContext) -> Double? {
+    static func complete(_ s: inout GameState, companyIndex i: Int, buyer: String, price: Double, data: GameData, context fc: FinanceContext) -> Double? {
         guard s.companies[i].status.isLive, SaleListings.boardBlock(s, companyID: s.companies[i].id) == nil else { return nil }
         HeldMoney.settle(&s, companyID: s.companies[i].id)
         let co = s.companies[i]
-        defer { if co.holdingID != 0 { HoldingModel.refreshAssets(&s, holdingID: co.holdingID, data: data) } }
         let mine = co.ownership / 100
         let proceeds = jsRound(price * mine)
-        let basis = max(0, co.injectedCapital)
-        let gain = max(0, proceeds - basis * mine)
-        var now = proceeds
-        if mbo {
-            let later = jsRound(proceeds / 3)
-            now -= later
-            var d = s.rest["deferred"]?.array ?? []
-            d.append(.object(["w": .number(Double(s.week + 104)), "amt": .number(later), "name": .string(co.name), "hurdle": .number(0), "to": .number(Double(co.holdingID))]))
-            s.rest["deferred"] = .array(d)
-        }
-        Payments.ownerReceivesSale(&s, from: co, amount: now, gain: gain, label: "Sold \(co.name) (\(buyer))")
-        HoldingStakes.settleSale(&s, company: co, price: price)
+        let gain = max(0, proceeds - max(0, co.injectedCapital) * mine)
+        Payments.ownerReceivesSale(&s, from: co, amount: proceeds, gain: gain, label: "Sold \(co.name) (\(buyer))")
         for l in s.loans.filter({ $0.companyID == co.id }) { Banking.close(loanID: l.id, repaid: l.balance, state: &s) }
         for m in s.companies[i].staff { if var p = s.people[m.id] { p.employerID = 0; s.people[m.id] = p } }
         s.companies[i].staff = []
         if let mid = co.managerID, var p = s.people[mid] { p.employerID = 0; s.people[mid] = p }
         s.companies[i].status = .sold
-        Ledger.set(&s, .company(co.id), to: 0)
         s.stats.companiesSold += 1
         for k in s.inbox.indices where s.inbox[k].companyID == co.id && s.inbox[k].status == "open" { s.inbox[k].set("status", "done") }
-        for k in s.companies.indices where s.companies[k].holdingID == co.id { s.companies[k].holdingID = 0 }
-        HoldingStakes.releaseLines(&s, holdingID: co.id)
         s.note("Sold \(co.name) for \(fc.homeCurrency(s).display(proceeds)) to \(buyer).", tone: "good")
         if buyer != "Dissolution" { JointVenture.announceSale(&s, company: co, price: price, buyer: buyer, context: fc) }
-        return now
+        return proceeds
     }
 
     static func sellPart(_ s: inout GameState, companyIndex i: Int, pct: Double, amount: Double, buyer: String, data: GameData, context fc: FinanceContext) {
@@ -198,9 +165,8 @@ public enum CompanySale {
 
     public static func talkAsk(_ s: inout GameState, companyID: Int, offerID: Int, question: String) {
         guard let o = listing(s, companyID: companyID)?.offers.first(where: { $0.id == offerID }) else { return }
-        let staffAnswer = ["rival": "We would merge it with ours. Some jobs will go.", "fund": "We keep the team and the name. We want it to grow.", "mbo": "I know everyone here. Nobody goes.",
-                           "private": "I want to run it as it is.", "angel": "The team stays, but I want a say."][o.kind] ?? "They stay for now."
-        let payAnswer = o.kind == "mbo" ? "Two thirds now, the rest as a seller loan over two years." : "Cash on closing."
+        let staffAnswer = ["rival": "We would merge it with ours. Some jobs will go.", "fund": "We keep the team and the name. We want it to grow.", "private": "I want to run it as it is.", "angel": "The team stays, but I want a say."][o.kind] ?? "They stay for now."
+        let payAnswer = "Cash on closing."
         updateOffer(&s, companyID: companyID, offerID: offerID) { off in
             var talk = off["talk"].array
             talk.append(.object(["me": 1, "t": .string(question == "staff" ? "What happens to my staff?" : "How would you pay?")]))
@@ -274,7 +240,6 @@ public enum CompanySale {
         "angel": "A private investor who wants a say in big decisions.",
         "rival": "Strategic buyer. Pays well but may close it and keep only the customers.",
         "fund": "Wants to grow it and sell again. Keeps staff and the brand.",
-        "mbo": "Management buyout. A third is paid as a seller loan over two years. Safe, loyal, slower to pay.",
         "private": "A private buyer who wants to run it themselves.",
         "player": "Another player who wants to run it."]
 
@@ -284,7 +249,6 @@ public enum CompanySale {
             guard let i = s.companyIndex(id), s.companies[i].status.isLive else { withdraw(&s, companyID: id); continue }
             let route = raw["m"].string
             if route == "auction" { auctionWeek(&s, companyIndex: i, raw: raw, data: data, context: fc); continue }
-            let broker = route == "broker"
             let pct = raw["pct"].isNull ? 100 : raw["pct"].int
             var offers = raw["offers"].array.filter { s.week < $0["exp"].int }
             if offers.count < 4 {
@@ -293,27 +257,18 @@ public enum CompanySale {
                 let tr = traction(co, s)
                 let profit = CompanyFigures.yearlyProfitEstimate(co, currentWeek: s.week) > 0
                 let hostedInv = StaffPerks.hosted(s, "inv")
-                let mboU = HashedRandom.first("mbo:\(id):\(s.week)")
-                if route == "mbo" ? (offers.isEmpty && mboU < 0.3 && co.managerID != nil && s.people[co.managerID!] != nil) : s.random.chance((broker ? 0.42 : 0.16) * (0.35 + tr) * (profit ? 1 : 0.45) * (1 + 0.35 * hostedInv)) {
-                    var kinds = pct == 100 ? ["private", "fund", "rival"] : ["private", "fund", "angel"]
-                    if pct == 100, co.managerID != nil && s.people[co.managerID!] != nil { kinds.append("mbo") }
-                    let k = route == "mbo" ? "mbo" : s.random.pick(kinds)
+                if s.random.chance(0.16 * (0.35 + tr) * (profit ? 1 : 0.45) * (1 + 0.35 * hostedInv)) {
+                    let kinds = pct == 100 ? ["private", "fund", "rival"] : ["private", "fund", "angel"]
+                    let k = s.random.pick(kinds)
                     let f: Double = { switch k { case "rival": return s.random.range(0.95, 1.18); case "fund": return s.random.range(0.82, 1.02)
-                                                case "mbo": return route == "mbo" ? 0.62 + 0.18 * mboU : s.random.range(0.62, 0.8); case "angel": return s.random.range(0.78, 0.98); default: return s.random.range(0.8, 1) } }() * (broker ? 1.05 : 1) * (0.85 + tr * 0.3)
-                    let name: String = k == "mbo" ? (s.people[co.managerID ?? 0]?.name ?? "Your manager") + ", your manager"
-                        : k == "rival" ? "A rival in your trade" : k == "fund" ? "An investment fund" : k == "angel" ? "A private investor" : "A private buyer"
+                                                case "angel": return s.random.range(0.78, 0.98); default: return s.random.range(0.8, 1) } }() * (0.85 + tr * 0.3)
+                    let name: String = k == "rival" ? "A rival in your trade" : k == "fund" ? "An investment fund" : k == "angel" ? "A private investor" : "A private buyer"
                     let worth = saleWorth(s, co, data: data, factor: f * BrandValues.salePremium(BrandValues.company(s, co).score) * (1 + 0.04 * hostedInv))
                     let price = ((pct == 100 ? worth : worth * Double(pct) / 100 * co.ownership / 100) / 1000).rounded() * 1000
                     if price > 0 {
                         offers.append(.object(["id": .number(Double(s.makeID())), "k": .string(k), "name": .string(name), "price": .number(price), "note": .string(notes[k] ?? ""),
                                                "exp": .number(Double(s.week + 6)), "ctr": .number(0)]))
                         s.addMessage(from: name, title: "Offer for \(pct == 100 ? co.name : "\(pct)% of \(co.name)")", body: "\(name) offers \(currency.display(pct == 100 ? price * co.ownership / 100 : price)) for your stake.", companyID: co.id, tone: "good")
-                        if broker && !raw["heard"].bool {
-                            update(&s, companyID: id) { $0["heard"] = .number(1) }
-                            let m = co.value("mood").isNull ? 60 : co.num("mood")
-                            s.companies[i].set("mood", clamp(m - 8, 0, 100))
-                            s.note("Word is out that \(co.name) is for sale. Staff are uneasy and rivals are watching.", tone: "n", companyID: co.id)
-                        }
                     }
                 }
             }
@@ -322,14 +277,10 @@ public enum CompanySale {
         var keep: [JSONValue] = []
         for d in s.rest["deferred"]?.array ?? [] {
             guard s.week >= d["w"].int else { keep.append(d); continue }
-            let paid = jsRound(d["amt"].double)
-            if d["to"].int != 0, let hi = s.companyIndex(d["to"].int), s.companies[hi].status.isLive {
-                Ledger.moveRaw(&s, .company(d["to"].int), paid)
-                s.companies[hi].addTransaction(week: s.week, amount: paid, label: "Paid back for \(d["name"].string)")
-            } else { Payments.playerReceives(&s, paid, label: "Paid back for \(d["name"].string)") }
+            Payments.playerReceives(&s, jsRound(d["amt"].double), label: "Paid back for \(d["name"].string)")
             s.note("The money still owed for \(d["name"].string) has been paid.", tone: "good")
         }
-        s.rest["deferred"] = .array(keep)
+        s.rest["deferred"] = keep.isEmpty ? nil : .array(keep)
     }
 
     static let fundNames = ["Northgate Capital", "Ashford Partners", "Bluewater Equity", "Kestrel Growth Fund", "Harbour Street Investments"]
@@ -339,7 +290,7 @@ public enum CompanySale {
     static func bidLimit(_ s: GameState, _ co: Company, pct: Int, kind: String, u: Double, data: GameData, context fc: FinanceContext) -> Double {
         let tr = traction(co, s)
         let hostedInv = StaffPerks.hosted(s, "inv")
-        let f: Double = { switch kind { case "rival": return 0.95 + 0.23 * u; case "group": return 0.95 + 0.25 * u; case "fund": return 0.82 + 0.2 * u
+        let f: Double = { switch kind { case "rival": return 0.95 + 0.23 * u; case "fund": return 0.82 + 0.2 * u
                                         case "angel": return 0.78 + 0.2 * u; default: return 0.8 + 0.2 * u } }()
         let worth = saleWorth(s, co, data: data, factor: f * BrandValues.salePremium(BrandValues.company(s, co).score) * (0.85 + tr * 0.3) * (1 + 0.04 * hostedInv))
         return pct == 100 ? worth : worth * Double(pct) / 100 * co.ownership / 100
@@ -350,25 +301,22 @@ public enum CompanySale {
         guard let i = s.companyIndex(companyID), reserve > 0, SaleListings.routeProblem(s, companyID: companyID, route: "auction", pct: pct) == nil else { return false }
         let co = s.companies[i]
         let w0 = s.week
-        var kinds = pct == 100 ? ["rival", "fund", "private"] : ["private", "fund", "angel"]
-        let groups = pct == 100 ? GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 } : []
-        if !groups.isEmpty { kinds.append("group") }
+        let kinds = pct == 100 ? ["rival", "fund", "private"] : ["private", "fund", "angel"]
         let rivals = (s.rest["mk"]?[co.type + "|" + co.cityID]["riv"].array ?? []).filter { !$0["name"].string.isEmpty }
         let n = 3 + (HashedRandom.first("auc:n:\(companyID):\(w0)") < 0.5 ? 1 : 0)
         var bd: [JSONValue] = []
         for k in 0..<n {
             let kind = kinds[k % kinds.count]
             let u = HashedRandom.first("auc:u:\(companyID):\(w0):\(k)"), v = HashedRandom.first("auc:v:\(companyID):\(w0):\(k)")
-            var name = "", gid = ""
+            var name = ""
             switch kind {
             case "rival": name = rivals.isEmpty ? "A rival in your trade" : rivals[Int(v * Double(rivals.count)) % rivals.count]["name"].string
-            case "group": let g = groups[Int(v * Double(groups.count)) % groups.count]; name = g["name"].string; gid = g["id"].string
             case "fund": name = fundNames[Int(v * Double(fundNames.count)) % fundNames.count]
             case "angel": name = angelNames[Int(v * Double(angelNames.count)) % angelNames.count]
             default: name = buyerNames[Int(v * Double(buyerNames.count)) % buyerNames.count]
             }
             if bd.contains(where: { $0["name"].string == name }) { name += " (\(k + 1))" }
-            bd.append(.object(["id": .number(Double(s.makeID())), "k": .string(kind), "name": .string(name), "gid": .string(gid),
+            bd.append(.object(["id": .number(Double(s.makeID())), "k": .string(kind), "name": .string(name),
                                "lim": .number(bidLimit(s, co, pct: pct, kind: kind, u: u, data: data, context: fc))]))
         }
         guard SaleListings.start(&s, companyID: companyID, route: "auction", pct: pct, extra: ["res": .number(reserve), "rnd": 0, "bd": .array(bd)]) else { return false }
@@ -398,7 +346,7 @@ public enum CompanySale {
             let jitter = 0.97 + 0.06 * HashedRandom.first("auc:p:\(id):\(w0):\(r):\(k)")
             let price = (bd[k]["lim"].double * (0.78 + 0.07 * Double(r)) * jitter / 1000).rounded() * 1000
             guard price >= reserve else { continue }
-            var o: JSONValue = old.first(where: { $0["id"].int == bd[k]["id"].int }) ?? .object(["id": bd[k]["id"], "k": bd[k]["k"], "name": bd[k]["name"], "ctr": 0, "gid": bd[k]["gid"]])
+            var o: JSONValue = old.first(where: { $0["id"].int == bd[k]["id"].int }) ?? .object(["id": bd[k]["id"], "k": bd[k]["k"], "name": bd[k]["name"], "ctr": 0])
             o["price"] = .number(max(price, o["ctr"].bool ? o["price"].double : 0))
             o["note"] = .string("Round \(r) of 3. " + (notes[bd[k]["k"].string] ?? ""))
             o["exp"] = .number(Double(s.week + (r < 3 ? 2 : 3)))
@@ -415,100 +363,73 @@ public enum CompanySale {
         }
     }
 
-    public struct Route: Identifiable, Equatable {
-        public var id: String
-        public var title: String
-        public var pitch: String
-        public var available: Bool
-        public var why: String
-    }
-    public static func routes(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> [Route] {
-        guard let co = s.company(companyID) else { return [] }
-        let whole = SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: 100)
-        func r(_ id: String, _ title: String, _ pitch: String, _ problem: String?) -> Route { Route(id: id, title: title, pitch: pitch, available: problem == nil, why: problem ?? "") }
-        let blocked: String? = s.isBranch(co) ? SaleListings.branchNote : Shareholders.isBlocked(s, companyID: companyID) ? "The other owners block big moves for now." : nil
-        let hasGroup = !GroupStakes.groups(s, country: co.countryCode).isEmpty
-        return [
-            r("private", "Handshake", "Slow and quiet. One or two offers, nobody hears.", whole ?? blocked),
-            r("broker", "Broker", "Faster, 4% fee, but staff hear the word and mood drops.", whole ?? blocked),
-            r("auction", "Auction", "Set a reserve. Three weekly rounds of bids, then hammer or wait.", whole ?? blocked),
-            r("mbo", "Management buyout", "Your manager buys: 62-80% of value, a third paid in two years. Staff stay calm.",
-              SaleListings.routeProblem(s, companyID: companyID, route: "mbo", pct: 100) ?? blocked),
-            r("merger", "Merge with a rival", "Swap the company for a stake in the merged business.",
-              co.status == .open ? (blocked ?? (mergeCandidates(s, companyID: companyID).isEmpty ? "No independent rival here is big enough to merge with." : nil)) : "The company must be open."),
-            r("group", "Sell to a rival group", "Approach a group directly for a quick deal.", co.status.isLive && co.type != "hold" ? (blocked ?? (SaleListings.isListed(s, companyID: companyID) ? "It is already listed: withdraw the listing first." : (hasGroup ? nil : "No group is active in this country."))) : "This company cannot be sold."),
-            r("stake", "Sell a stake", "Keep control and sell 10, 25, 34 or 49% of your shares.", SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: 10) ?? blocked),
-            r("ipo", "Go public", "List a holding on the exchange.", blocked ?? ipoProblem(s, companyID: companyID, data: data, context: fc)),
-            r("franchise", "Master franchise", "Sell the franchise rights of a country.", co.value("fr")["on"].bool ? nil : "Set up franchising for this company first."),
-        ]
-    }
-    static func ipoProblem(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> String? {
-        guard let co = s.company(companyID) else { return "No such company." }
-        if co.type != "hold" { return "Only a holding can go public. Put this company under a holding first." }
-        if Funding.isListed(co) { return "Already listed on the exchange." }
-        if Funding.holdingValue(s, holdingID: companyID, data: data) < Funding.listingMinimum(s, fc) { return "The holding is worth too little to list yet." }
-        return nil
-    }
+    public enum Method: String, CaseIterable, Sendable { case offers, auction, ipo }
 
-    public struct StakeTier: Identifiable, Equatable {
-        public var id: Int { pct }
+    public struct Quote: Equatable, Sendable {
+        public var method: Method
         public var pct: Int
-        public var buyerPoints: Double
-        public var youKeep: Double
-        public var unlocks: [String]
-        public var allowed: Bool
-    }
-    public static func stakeTiers(_ s: GameState, companyID: Int) -> [StakeTier] {
-        guard let co = s.company(companyID) else { return [] }
-        return [10, 25, 34, 49].map { p in
-            let pts = co.ownership * Double(p) / 100, keep = co.ownership - pts
-            let outside = (100 - co.ownership) + pts
-            var u = ["Cash for you, no change in who runs it."]
-            if pts >= 20 { u.append("The buyer takes a board seat.") }
-            if outside >= 33.4 { u.append("Outside owners together can block big moves.") }
-            if outside > 50 { u.append("Outside owners could outvote you.") }
-            return StakeTier(pct: p, buyerPoints: pts, youKeep: keep, unlocks: u, allowed: SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: p) == nil)
-        }
+        public var companyValue: Double
+        public var stakeValue: Double
+        public var expected: Double
+        public var fee: Double
+        public var tax: Double
+        public var youGet: Double
+        public var ownershipAfter: Double
+        public var reserve: Double
+        public var problem: String?
+        public var lines: [String]
     }
 
-    public struct MergeCandidate: Identifiable, Equatable { public var id: Int; public var name: String; public var owner: String; public var size: Double }
-    public static func mergeCandidates(_ s: GameState, companyID: Int) -> [MergeCandidate] {
-        guard let co = s.company(companyID) else { return [] }
-        return (s.rest["mk"]?[co.type + "|" + co.cityID]["riv"].array ?? []).filter { r in
-            let g = r["g27"]; return (g.isNull || g.string == "0" || g.string.isEmpty || g.string == "false") && !r["name"].string.isEmpty
-        }.map { MergeCandidate(id: $0["id"].int, name: $0["name"].string, owner: $0["owner"].string, size: $0["size"].double) }
-    }
-    public enum MergeResult: Equatable { case merged, declined, refused(String) }
-    @discardableResult
-    public static func mergeWithRival(_ s: inout GameState, companyID: Int, rivalID: Int, pct: Double, data: GameData, context fc: FinanceContext) -> MergeResult {
-        guard let i = s.companyIndex(companyID), s.companies[i].status == .open else { return .refused("The company must be open.") }
-        if s.isBranch(s.companies[i]) { return .refused(SaleListings.branchNote) }
-        if let why = SaleListings.boardBlock(s, companyID: companyID) { return .refused(why) }
-        if Shareholders.isBlocked(s, companyID: companyID) { return .refused("The other owners block a merger for now.") }
-        guard let r = mergeCandidates(s, companyID: companyID).first(where: { $0.id == rivalID }) else { return .refused("That rival is no longer there.") }
-        let chance = min(1, 0.35 + (pct - 20) * 0.065)
-        if pct < 30 && HashedRandom.first("merge:\(companyID):\(rivalID):\(s.week)") >= chance {
-            s.note("\(r.owner) turned down \(Int(pct))% of \(s.companies[i].name).", tone: "n", companyID: companyID)
-            return .declined
+    public static func quote(_ s: GameState, companyID: Int, pct: Int, method: Method, data: GameData, context fc: FinanceContext) -> Quote? {
+        guard let co = s.company(companyID) else { return nil }
+        let p = min(100, max(10, pct))
+        let value = max(0, Valuation.companyValue(co, state: s, trades: data.catalog))
+        let share = Double(p) / 100
+        let stake = value * co.ownership / 100 * share
+        let basis = max(0, co.injectedCapital) * co.ownership / 100 * share
+        let rate = fc.homeCountry(s).capitalGainsTax
+        var q = Quote(method: method, pct: p, companyValue: value, stakeValue: stake, expected: 0, fee: 0, tax: 0, youGet: 0,
+                      ownershipAfter: co.ownership * (1 - share), reserve: 0, problem: nil, lines: [])
+        switch method {
+        case .offers:
+            q.problem = SaleListings.routeProblem(s, companyID: companyID, route: "private", pct: p) ?? (Shareholders.isBlocked(s, companyID: companyID) ? "The other owners block big moves for now." : nil)
+            q.expected = stake * 0.9
+            q.lines = ["Buyers make offers over the next weeks. You can answer, counter or wait. Nothing is paid before you accept."]
+        case .auction:
+            q.problem = SaleListings.routeProblem(s, companyID: companyID, route: "auction", pct: p) ?? (Shareholders.isBlocked(s, companyID: companyID) ? "The other owners block big moves for now." : nil)
+            q.expected = stake
+            q.fee = q.expected * auctionFee
+            q.reserve = ((p == 100 ? value : stake) * 0.85 / 1000).rounded() * 1000
+            q.lines = ["Bidders compete over three weekly rounds. You set the lowest price you accept, and a fee of \(Int(auctionFee * 100))% is paid when it sells."]
+        case .ipo:
+            q.problem = PublicCompany.problem(s, companyID: companyID, pct: p, data: data, context: fc)
+            if let o = PublicCompany.offering(s, companyID: companyID, pct: p, data: data, context: fc) {
+                q.expected = o.gross; q.fee = o.fee; q.tax = o.tax; q.youGet = o.net; q.ownershipAfter = o.ownershipAfter
+                q.lines = ["New owners buy at \(Int(PublicCompany.discount * 100))% under the fair price. You keep control while you hold more than half.",
+                           "After the listing the company publishes results every quarter and the board pays a dividend by the payout you choose."]
+                return q
+            }
         }
-        let cur = fc.currency(s.companies[i].countryCode, s)
-        StrategicDecisions.mergeRival(&s, companyIndex: i, rivalID: rivalID, rivalName: r.name, owner: r.owner, pct: pct, data: data, context: fc, currency: cur)
-        return .merged
+        let gain = max(0, q.expected - q.fee - basis)
+        q.tax = gain * rate
+        q.youGet = q.expected - q.fee - q.tax
+        return q
     }
 
-    public struct GroupBuyer: Identifiable, Equatable { public var id: String; public var name: String; public var price: Double }
-    public static func groupBuyers(_ s: GameState, companyID: Int, data: GameData, context fc: FinanceContext) -> [GroupBuyer] {
-        guard let co = s.company(companyID), co.status.isLive, co.type != "hold", !s.isBranch(co), !Shareholders.isBlocked(s, companyID: companyID), SaleListings.boardBlock(s, companyID: companyID) == nil else { return [] }
-        let premium = BrandValues.salePremium(BrandValues.company(s, co).score)
-        return GroupStakes.groups(s, country: co.countryCode).filter { $0["dist"].int == 0 }.map { g in
-            let f = (0.9 + 0.15 * HashedRandom.first("grp:\(companyID):\(g["id"].string):\(s.week)")) * premium
-            return GroupBuyer(id: g["id"].string, name: g["name"].string, price: (saleWorth(s, co, data: data, factor: f) / 1000).rounded() * 1000)
-        }
-    }
+    public enum StartResult: Equatable, Sendable { case started, refused(String) }
+
     @discardableResult
-    public static func sellToGroupNow(_ s: inout GameState, companyID: Int, groupID: String, data: GameData, context fc: FinanceContext) -> Double? {
-        guard let i = s.companyIndex(companyID), let q = groupBuyers(s, companyID: companyID, data: data, context: fc).first(where: { $0.id == groupID }), !SaleListings.isListed(s, companyID: companyID) else { return nil }
-        let mine = jsRound(q.price * s.companies[i].ownership / 100)
-        return GroupDeals.sellToGroup(&s, companyIndex: i, groupID: groupID, price: q.price, data: data, context: fc) ? mine : nil
+    public static func start(_ s: inout GameState, companyID: Int, pct: Int, method: Method, reserve: Double, data: GameData, context fc: FinanceContext) -> StartResult {
+        guard let q = quote(s, companyID: companyID, pct: pct, method: method, data: data, context: fc) else { return .refused("No such company.") }
+        if let why = q.problem { return .refused(why) }
+        switch method {
+        case .offers:
+            return startListing(&s, companyID: companyID, pct: q.pct) ? .started : .refused("It cannot be put on the market now.")
+        case .auction:
+            return startAuction(&s, companyID: companyID, reserve: reserve > 0 ? reserve : q.reserve, pct: q.pct, data: data, context: fc) ? .started : .refused("The auction could not start.")
+        case .ipo:
+            if let why = PublicCompany.goPublic(&s, companyID: companyID, pct: q.pct, data: data, context: fc) { return .refused(why) }
+            return .started
+        }
     }
 }

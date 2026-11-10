@@ -48,8 +48,8 @@ public enum ChainLocations {
                      other: max(0, total - fitOut - deposit - licences), total: total, canAfford: Payments.liquid(s) >= total, managerFromChain: chainLead(s, chainID: chainID) != nil)
     }
 
-    public static func open(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, data: GameData, context fc: FinanceContext, fundedBy parts: [Int: Double]? = nil) -> Result<Int, CompanySetup.StartError> {
-        let r = Chains.openStore(&s, chainID: chainID, cityID: cityID, size: size, data: data, context: fc, fundedBy: parts)
+    public static func open(_ s: inout GameState, chainID: Int, cityID: String, size: Double = 1, data: GameData, context fc: FinanceContext) -> Result<Int, CompanySetup.StartError> {
+        let r = Chains.openStore(&s, chainID: chainID, cityID: cityID, size: size, data: data, context: fc)
         if case .success(let id) = r, let lead = chainLead(s, chainID: chainID) { _ = fillManager(&s, storeID: id, lead: lead, data: data) }
         return r
     }

@@ -7,7 +7,7 @@ final class TradeCatalogTests: XCTestCase {
         let cat = try TradeCatalog.bundled()
         XCTAssertGreaterThanOrEqual(cat.trades.count, 72)
         XCTAssertGreaterThanOrEqual(cat.order.count, 69)
-        XCTAssertNotNil(cat["cafe"]); XCTAssertNotNil(cat["hold"]); XCTAssertNotNil(cat["club"])
+        XCTAssertNotNil(cat["cafe"]); XCTAssertNotNil(cat["club"])
         XCTAssertEqual(Set(cat.all.map { $0.family }), ["svc", "venue", "retail", "project", "prod", "logi", "rent", "fin", "energy"])
     }
 

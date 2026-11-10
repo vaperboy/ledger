@@ -96,20 +96,6 @@ final class TeamOverviewTests: XCTestCase {
         XCTAssertEqual(line.managedBy, e.state.people[cand.id]?.name)
     }
 
-    func testHoldingManagingDirectorRunsTheCompaniesUnderIt() throws {
-        var e = try ChainsTests.engine("UK")
-        let id = ChainsTests.start(&e, "cafe"), other = ChainsTests.start(&e, "cafe")
-        open(&e, id); open(&e, other)
-        guard case .success(let hid) = e.createHolding(name: "H", companies: [id, other]) else { throw XCTSkip("holding could not be created") }
-        let slot = try XCTUnwrap(e.teamSlots(companyID: hid).first { $0.key == "ceo" })
-        let cand = try XCTUnwrap(e.searchTeam(companyID: hid, key: slot.key)?.first)
-        XCTAssertEqual(e.hireTeam(companyID: hid, key: slot.key, personID: cand.id, monthlyWage: cand.askingMonthlyWage * 1.3), .ok)
-        let line = try XCTUnwrap(e.teamOverview().companies.first { $0.id == id })
-        XCTAssertEqual(line.holdingID, hid)
-        XCTAssertEqual(line.managerTitle, "Managing director")
-        XCTAssertTrue(line.delegated)
-    }
-
     func testOpenDecisionIsListedOnceForItsCompany() throws {
         var e = try ChainsTests.engine("UK")
         let id = ChainsTests.start(&e, "cafe")
