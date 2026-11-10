@@ -154,6 +154,7 @@ struct AccountStatus: Codable, Equatable, Sendable {
     var isAdmin: Bool
     var linkRewardGold: Int
     var linkRewardClaimed: Bool
+    var fakePlayersRemoved: Bool? = nil
 }
 
 struct LinkRewardResult: Codable, Equatable, Sendable {

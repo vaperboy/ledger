@@ -27,7 +27,7 @@ enum OpsWords {
 }
 
 enum OpsSheet: String, Identifiable {
-    case upkeep
+    case upkeep, logo
     var id: String { rawValue }
 }
 
@@ -52,6 +52,8 @@ struct CompanyOperations: View {
         let licences: [LicenceLine] = engine.licences(companyID: company.id)
         let rental: Bool = engine.tradeInfo(companyID: company.id)?.family == "rent"
         return PageGroup("Run the place") {
+            logoRow
+            RowRule()
             upkeepRow
             RowRule()
             accountantRow
@@ -73,6 +75,26 @@ struct CompanyOperations: View {
             }
             CompanyMorePages(engine: engine, company: company, pages: [.energy, .salmon, .club], ruled: true)
         }
+    }
+
+    private var logoRow: some View {
+        let id: String = engine.companyLogoID(companyID: company.id)
+        let name: String = LogoCatalogue.logo(id)?.name ?? "Not chosen"
+        return Button { Haptics.tap(); sheet = .logo } label: {
+            HStack(spacing: Theme.Space.m) {
+                LogoBadge(logoID: id, size: 36)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text("Company logo").textStyle(.headline)
+                    Text(name).textStyle(.caption)
+                }
+                Spacer(minLength: Theme.Space.s)
+                LedgerGlyph(glyph: Glyph.chevron, size: Theme.Icon.small, tint: P.inkFaint)
+            }
+            .padding(.vertical, Theme.Space.s)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(AcctPressStyle())
+        .accessibilityIdentifier("manage-logo")
     }
 
     private var upkeepRow: some View {

@@ -1,0 +1,29 @@
+{
+ "about": "Company logos (LogoCatalogue.swift). how: free, level:N (the player's level) or box:<rarity> (common, rare, epic, legendary; owned once a box has dropped it). asset: the image the app looks for in the asset catalog; a neutral glyph shows until the image exists.",
+ "logos": [
+  { "id": "mark", "name": "Plain mark", "how": "free", "asset": "logo.mark" },
+  { "id": "ring", "name": "Ring", "how": "free", "asset": "logo.ring" },
+  { "id": "square", "name": "Square", "how": "free", "asset": "logo.square" },
+  { "id": "triangle", "name": "Peak", "how": "free", "asset": "logo.triangle" },
+  { "id": "leaf", "name": "Leaf", "how": "free", "asset": "logo.leaf" },
+  { "id": "wave", "name": "Wave", "how": "free", "asset": "logo.wave" },
+  { "id": "spark", "name": "Spark", "how": "free", "asset": "logo.spark" },
+  { "id": "anchor", "name": "Anchor", "how": "free", "asset": "logo.anchor" },
+  { "id": "bridge", "name": "Bridge", "how": "level:2", "asset": "logo.bridge" },
+  { "id": "gear", "name": "Gear", "how": "level:2", "asset": "logo.gear" },
+  { "id": "arrow", "name": "Arrow", "how": "level:3", "asset": "logo.arrow" },
+  { "id": "key", "name": "Key", "how": "level:3", "asset": "logo.key" },
+  { "id": "shield", "name": "Shield", "how": "level:4", "asset": "logo.shield" },
+  { "id": "tower", "name": "Tower", "how": "level:5", "asset": "logo.tower" },
+  { "id": "compass", "name": "Compass", "how": "level:6", "asset": "logo.compass" },
+  { "id": "crown", "name": "Crown", "how": "level:8", "asset": "logo.crown" },
+  { "id": "fox", "name": "Fox", "how": "box:common", "asset": "logo.fox" },
+  { "id": "owl", "name": "Owl", "how": "box:common", "asset": "logo.owl" },
+  { "id": "bull", "name": "Bull", "how": "box:rare", "asset": "logo.bull" },
+  { "id": "stag", "name": "Stag", "how": "box:rare", "asset": "logo.stag" },
+  { "id": "falcon", "name": "Falcon", "how": "box:rare", "asset": "logo.falcon" },
+  { "id": "lion", "name": "Lion", "how": "box:epic", "asset": "logo.lion" },
+  { "id": "dragon", "name": "Dragon", "how": "box:epic", "asset": "logo.dragon" },
+  { "id": "phoenix", "name": "Phoenix", "how": "box:legendary", "asset": "logo.phoenix" }
+ ]
+}

@@ -139,6 +139,7 @@ public struct SupplyListing: Identifiable, Equatable, Sendable {
     public var expiresDay: Int?
     public var committedUnits: Int
     public var stopsDay: Int?
+    public var logoID: String = ""
 
     public init(id: String, ownerID: String, ownerName: String, profileCode: String, companyName: String, companyID: Int? = nil, tradeID: String, tradeName: String,
                 city: String, region: String, lineID: String, lineName: String, priceTier: Int, qualityTier: Int, capacityPerWeek: Int, leadDays: Int, minOrder: Int,

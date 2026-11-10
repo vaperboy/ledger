@@ -22,6 +22,10 @@ extension SupabaseOnlineService {
         _ = try await rpcData("admin_decide", ["p_id": id, "p_approve": approve, "p_reason": reason])
     }
 
+    func adminRemoveFakePlayers(reason: String) async throws {
+        _ = try await rpcData("admin_remove_fake_players", ["p_reason": reason])
+    }
+
     func adminAudit(before: Int?, limit: Int) async throws -> [AuditEntry] {
         var params: [String: Any] = ["p_limit": limit]
         if let before { params["p_before"] = before }

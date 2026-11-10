@@ -1,4 +1,5 @@
 import SwiftUI
+import Businesses
 import Simulation
 #if canImport(UIKit)
 import UIKit
@@ -87,5 +88,47 @@ struct ItemArt: View {
         if let ui = ArtLibrary.catalogueImage(category, id) { return Image(uiImage: ui) }
         #endif
         return nil
+    }
+}
+
+enum ArtAsset {
+    static func exists(_ name: String) -> Bool {
+        #if canImport(UIKit)
+        return !name.isEmpty && UIImage(named: name) != nil
+        #else
+        return false
+        #endif
+    }
+
+    static func equipment(_ id: String) -> String { "equipment." + id }
+}
+
+struct SlotImage: View {
+    var asset: String
+    var glyph: String
+    var size: CGFloat = 36
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+        ZStack {
+            if ArtAsset.exists(asset) {
+                Image(asset).resizable().scaledToFill().frame(width: size, height: size).clipShape(shape)
+            } else {
+                shape.fill(Theme.inkFaint.opacity(0.14))
+                LedgerGlyph(glyph: glyph, size: size * 0.5, tint: Theme.inkFaint)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+struct LogoBadge: View {
+    var logoID: String
+    var size: CGFloat = 36
+    var glyph: String = Glyph.home
+
+    var body: some View {
+        SlotImage(asset: LogoCatalogue.logo(logoID)?.asset ?? "", glyph: glyph, size: size)
     }
 }

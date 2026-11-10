@@ -60,8 +60,12 @@ public enum OnlineSettlements {
     private static func bookOne(_ s: inout GameState, _ item: OnlineSettlement, data: GameData) {
         let fx: Double = rate(item.currency, s, data)
         let amount: Double = item.amount * fx
-        guard amount.isFinite, amount != 0 else { return }
         let company: Int? = companyID(fromKey: item.companyKey).flatMap { (id: Int) -> Int? in s.company(id)?.status == .open ? id : nil }
+        if item.kind == "supply_notice" {
+            s.addMessage(kind: "info", from: "Supply", title: "A buyer chose you", body: item.label, companyID: company ?? 0, tone: "good")
+            return
+        }
+        guard amount.isFinite, amount != 0 else { return }
         switch item.kind {
         case "supply_purchase":
             return
@@ -69,6 +73,16 @@ public enum OnlineSettlements {
             if let company, let units = item.units, units > 0 {
                 let price: Double = (item.unitPrice ?? item.amount / Double(units)) * fx
                 SupplyMarketBooks.bookSaleToPlayer(&s, supplierCompanyID: company, units: units, unitPrice: price, unitCost: price * SupplyMarketBooks.standInCostShare)
+                return
+            }
+        case "supply_end_fee":
+            if let company {
+                let label: String = item.label.isEmpty ? "Fee for ending a supply deal" : item.label
+                if amount > 0 {
+                    Payments.companyReceives(&s, companyID: company, amount: amount, category: "oth", label: label)
+                } else {
+                    Payments.companyPays(&s, companyID: company, amount: -amount, category: "oth", label: label)
+                }
                 return
             }
         case "accountant_hire_fee":

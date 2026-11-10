@@ -87,7 +87,9 @@ final class MockSupplyMarketService: SupplyMarketService {
                               onTimeTrend: kind == 3 ? nil : (trendOK ? roll("ot\(i)") * 3 - 0.8 : -(1 + roll("ot\(i)") * 6)), lifetimeUnits: Int(Double(promised) * delShare))
     }
 
-    func listings(lineID: String) -> [SupplyListing] { all.filter { $0.lineID == lineID && !$0.stopped } }
+    private func visible(_ l: SupplyListing) -> Bool { !(FakePlayers.removed && FakePlayers.isFake(ownerID: l.ownerID)) }
+
+    func listings(lineID: String) -> [SupplyListing] { all.filter { $0.lineID == lineID && !$0.stopped && visible($0) } }
     func listing(_ id: String) -> SupplyListing? { all.first { $0.id == id } }
 
     func profile(ownerID: String) -> SupplierProfile? {
@@ -167,6 +169,7 @@ final class MockSupplyMarketService: SupplyMarketService {
     func openContractsAsSupplier(ownerID: String) -> Int { contracts.filter { $0.supplierOwnerID == ownerID }.count }
 
     func demandPosts(today: Int) -> [DemandPost] {
+        if FakePlayers.removed { return [] }
         let week: Int = today / 7
         let lines: [String] = Array(Set(SupplyMarketCatalogue.supplies.values.flatMap { $0 })).sorted()
         return (0..<6).map { (n: Int) -> DemandPost in

@@ -88,7 +88,7 @@ struct CompanyDetailView: View {
             .appScreen(title: co.name, subtitle: ([e.tradeName(co), e.cityName(co)] + [contextLine(co, e)].compactMap { $0 }).joined(separator: " \u{00B7} ").tidyText) {
                 HStack(spacing: Theme.Space.s) {
                     if co.status == .open { HealthChip(label: e.companyHealth(co).label) } else { StatusChip(company: co) }
-                    ThumbnailView(kind: .trade, key: co.type, size: 36)
+                    companyMark(co, e, size: 36)
                 }
             }
             .onAppear { applyPart(tabs) }
@@ -99,6 +99,11 @@ struct CompanyDetailView: View {
         } else {
             EmptyState(glyph: Glyph.home, title: "This company no longer exists").frame(maxWidth: .infinity, maxHeight: .infinity).ledgerBackground()
         }
+    }
+
+    @ViewBuilder private func companyMark(_ co: Company, _ e: GameEngine, size: CGFloat) -> some View {
+        let logo: String = e.companyLogoID(companyID: co.id)
+        if logo.isEmpty { ThumbnailView(kind: .trade, key: co.type, size: size) } else { LogoBadge(logoID: logo, size: size) }
     }
 
     private func tabPill(_ tabs: [CompanyTab]) -> some View {

@@ -36,3 +36,40 @@
 - The `invite` edge function needs deploying; `supabase/seed.sql` is dev data only.
 - SQL tests run only from the manual `supabase-migrate` workflow.
 - TestFlight upload needs the App Store Connect secrets (`APPLE_TEAM_ID`, `IOS_BUNDLE_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`).
+
+## Assets to draw
+
+The app shows an image when the asset exists in the asset catalog and a neutral glyph otherwise. Nothing below is drawn yet.
+
+### Company logos (24, square, transparent background)
+
+- `logo.mark`: Plain mark (free)
+- `logo.ring`: Ring (free)
+- `logo.square`: Square (free)
+- `logo.triangle`: Peak (free)
+- `logo.leaf`: Leaf (free)
+- `logo.wave`: Wave (free)
+- `logo.spark`: Spark (free)
+- `logo.anchor`: Anchor (free)
+- `logo.bridge`: Bridge (level:2)
+- `logo.gear`: Gear (level:2)
+- `logo.arrow`: Arrow (level:3)
+- `logo.key`: Key (level:3)
+- `logo.shield`: Shield (level:4)
+- `logo.tower`: Tower (level:5)
+- `logo.compass`: Compass (level:6)
+- `logo.crown`: Crown (level:8)
+- `logo.fox`: Fox (box:common)
+- `logo.owl`: Owl (box:common)
+- `logo.bull`: Bull (box:rare)
+- `logo.stag`: Stag (box:rare)
+- `logo.falcon`: Falcon (box:rare)
+- `logo.lion`: Lion (box:epic)
+- `logo.dragon`: Dragon (box:epic)
+- `logo.phoenix`: Phoenix (box:legendary)
+
+### Equipment (194, square, transparent background)
+
+`equipment.air`, `equipment.alarm`, `equipment.align`, `equipment.ats`, `equipment.bake`, `equipment.bar`, `equipment.barn`, `equipment.bench`, `equipment.bike`, `equipment.boat`, `equipment.book`, `equipment.bot`, `equipment.bottle`, `equipment.brew`, `equipment.bs`, `equipment.cad`, `equipment.cage`, `equipment.cam`, `equipment.car`, `equipment.cardio`, `equipment.cars`, `equipment.case`, `equipment.cctv`, `equipment.cellar`, `equipment.ceram`, `equipment.chair`, `equipment.chem`, `equipment.clean`, `equipment.cloud`, `equipment.cmp`, `equipment.cnc`, `equipment.cof`, `equipment.cold`, `equipment.cool`, `equipment.core`, `equipment.crane`, `equipment.crm`, `equipment.cyber`, `equipment.desk`, `equipment.diag`, `equipment.dish`, `equipment.disp`, `equipment.dock`, `equipment.drone`, `equipment.dry`, `equipment.dtruck`, `equipment.dvan`, `equipment.ed`, `equipment.ehr`, `equipment.erp`, `equipment.esp`, `equipment.ev`, `equipment.ex`, `equipment.exc`, `equipment.feedb`, `equipment.fer`, `equipment.fork`, `equipment.fridge`, `equipment.frz`, `equipment.furn`, `equipment.fveh`, `equipment.gate`, `equipment.gates`, `equipment.gen`, `equipment.glass`, `equipment.grid`, `equipment.grill`, `equipment.grind`, `equipment.groom`, `equipment.hall`, `equipment.hangar`, `equipment.harv`, `equipment.hood`, `equipment.igroom`, `equipment.ikitch`, `equipment.ilift`, `equipment.inspect`, `equipment.irent`, `equipment.it`, `equipment.kennel`, `equipment.kit`, `equipment.kitch`, `equipment.kits`, `equipment.lab`, `equipment.lad`, `equipment.lanes`, `equipment.lap`, `equipment.laun`, `equipment.lens`, `equipment.lib`, `equipment.lic`, `equipment.lice`, `equipment.lift`, `equipment.light`, `equipment.lobby`, `equipment.lock`, `equipment.lounge`, `equipment.lux`, `equipment.mat`, `equipment.mdt`, `equipment.meas`, `equipment.mix`, `equipment.mocap`, `equipment.nav`, `equipment.net`, `equipment.ops`, `equipment.oven`, `equipment.pack`, `equipment.paint`, `equipment.pay`, `equipment.pcs`, `equipment.pens`, `equipment.perkcar`, `equipment.photo`, `equipment.plane`, `equipment.plat`, `equipment.plot`, `equipment.pms`, `equipment.pol`, `equipment.pos`, `equipment.press`, `equipment.prod`, `equipment.proof`, `equipment.rack`, `equipment.radio`, `equipment.range`, `equipment.rcar`, `equipment.ref`, `equipment.rent`, `equipment.rig`, `equipment.risk`, `equipment.road`, `equipment.robot`, `equipment.room`, `equipment.rooms`, `equipment.sauna`, `equipment.saw`, `equipment.scada`, `equipment.scaf`, `equipment.scan`, `equipment.scrub`, `equipment.seat`, `equipment.seats`, `equipment.sec`, `equipment.seis`, `equipment.shelf`, `equipment.ship`, `equipment.shock`, `equipment.shop`, `equipment.show`, `equipment.sign`, `equipment.sim`, `equipment.slots`, `equipment.snack`, `equipment.snowm`, `equipment.sort`, `equipment.sound`, `equipment.src`, `equipment.stage`, `equipment.steam`, `equipment.steril`, `equipment.str`, `equipment.studio`, `equipment.sw`, `equipment.tab`, `equipment.tables`, `equipment.tanks`, `equipment.tap`, `equipment.tbar`, `equipment.term`, `equipment.tills`, `equipment.tms`, `equipment.tools`, `equipment.tract`, `equipment.trail`, `equipment.truck`, `equipment.turb`, `equipment.tyre`, `equipment.uni`, `equipment.unit`, `equipment.vac`, `equipment.van`, `equipment.vans`, `equipment.vault`, `equipment.vcar`, `equipment.vines`, `equipment.vip`, `equipment.wash`, `equipment.web`, `equipment.wine`, `equipment.wms`, `equipment.wrap`, `equipment.ws`, `equipment.xray`
+
+Supplier and company cards reuse the company logos above. Supplier-specific art is not planned.

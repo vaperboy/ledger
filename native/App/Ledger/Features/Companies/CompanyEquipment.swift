@@ -84,8 +84,9 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, @ViewBuilder trailing: () -> T) -> some View {
+    private func itemRow<T: View>(_ title: String, _ subtitle: String, pill: String, tone: AcctPill.Tone, equipmentID: String = "", @ViewBuilder trailing: () -> T) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
+            SlotImage(asset: ArtAsset.equipment(equipmentID), glyph: Glyph.settings, size: 40)
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(title.tidyText).textStyle(.headline).lineLimit(2).multilineTextAlignment(.leading)
                 if !subtitle.isEmpty { Text(subtitle.tidyText).textStyle(.caption).lineLimit(2).multilineTextAlignment(.leading) }
@@ -148,7 +149,7 @@ struct CompanyEquipmentScreen: View {
         if let s = o.subscription { sub.append(s + ", " + cur.tidyShort(o.subscriptionMonthly) + "/mo") }
         else if let l = o.licence { sub.append(l) }
         return VStack(alignment: .leading, spacing: 0) {
-            itemRow(o.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone) {
+            itemRow(o.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: o.equipmentID) {
                 HStack(spacing: Theme.Space.xs) {
                     if o.subscription == nil && o.licence == nil && o.count > 0 {
                         Button("Service \(cur.tidyShort(o.serviceCost))") { service(o.equipmentID) }
@@ -204,7 +205,7 @@ struct CompanyEquipmentScreen: View {
                     let none: Bool = x.have + x.leased < 1
                     let en: String = enables(e, x.equipmentID)
                     itemRow(x.name, en.isEmpty ? EquipmentMarket.kindName(x.kind) : en,
-                            pill: none ? (x.required ? "Blocks trading" : "Missing") : "\(have) of \(Int(x.need))", tone: none && x.required ? .bad : .warn) {
+                            pill: none ? (x.required ? "Blocks trading" : "Missing") : "\(have) of \(Int(x.need))", tone: none && x.required ? .bad : .warn, equipmentID: x.equipmentID) {
                         Text(priceText(x, cur)).textStyle(.caption, numeric: true)
                     }
                 }
@@ -219,15 +220,15 @@ struct CompanyEquipmentScreen: View {
         let garage: Int? = e.carRepairGarages(for: companyID).first
         PageGroup("Vehicles") {
             if own.isEmpty && perk == nil { Text("None owned").textStyle(.caption).padding(.vertical, Theme.Space.s) }
-            ForEach(Array(own.flatMap { $0.vehicles }.enumerated()), id: \.element.id) { n, v in
+            ForEach(Array(vehiclePairs(own).enumerated()), id: \.element.row.id) { n, pair in
                 if n > 0 { RowRule(inset: 0) }
-                vehicleRow(e, v, cur, garage)
+                vehicleRow(e, pair.row, cur, garage, equipmentID: pair.eq)
             }
             if let perk {
                 ForEach(Array(perk.vehicles.enumerated()), id: \.element.id) { n, v in
                     if n > 0 || !own.isEmpty { RowRule(inset: 0) }
                     itemRow(v.driver.isEmpty ? v.name : v.driver, v.name + " \u{00B7} fuel " + cur.tidyShort(v.fuelPerWeek) + "/wk",
-                            pill: v.daysInRepair > 0 ? "In repair" : "Company car", tone: v.daysInRepair > 0 ? .bad : .neutral) {
+                            pill: v.daysInRepair > 0 ? "In repair" : "Company car", tone: v.daysInRepair > 0 ? .bad : .neutral, equipmentID: CompanyCarPerk.equipmentID) {
                         Text(cur.tidyShort(v.monthlyLease) + "/mo").textStyle(.caption, numeric: true)
                     }
                 }
@@ -236,7 +237,13 @@ struct CompanyEquipmentScreen: View {
         }
     }
 
-    private func vehicleRow(_ e: GameEngine, _ v: EquipmentMarket.VehicleRow, _ cur: Currency, _ garage: Int?) -> some View {
+    private func vehiclePairs(_ own: [EquipmentMarket.Owned]) -> [(eq: String, row: EquipmentMarket.VehicleRow)] {
+        own.flatMap { (o: EquipmentMarket.Owned) -> [(eq: String, row: EquipmentMarket.VehicleRow)] in
+            o.vehicles.map { (v: EquipmentMarket.VehicleRow) -> (eq: String, row: EquipmentMarket.VehicleRow) in (eq: o.equipmentID, row: v) }
+        }
+    }
+
+    private func vehicleRow(_ e: GameEngine, _ v: EquipmentMarket.VehicleRow, _ cur: Currency, _ garage: Int?, equipmentID: String = "") -> some View {
         let broken: Bool = v.daysInRepair > 0
         let worn: Bool = v.seenCondition < 0.8 || broken
         var sub: [String] = []
@@ -247,7 +254,7 @@ struct CompanyEquipmentScreen: View {
         let pill: String = broken ? "In repair \(v.daysInRepair) days" : v.wear
         let tone: AcctPill.Tone = broken ? .bad : v.seenCondition >= 0.8 ? .good : v.seenCondition >= 0.48 ? .neutral : .warn
         let sell: Pending = .vehicle(id: v.id, name: v.name)
-        return itemRow(v.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone) {
+        return itemRow(v.name, sub.joined(separator: " \u{00B7} "), pill: pill, tone: tone, equipmentID: equipmentID) {
             HStack(spacing: Theme.Space.xs) {
                 if let gid = garage, worn {
                     Menu {
@@ -309,7 +316,7 @@ struct CompanyEquipmentScreen: View {
         let modeWord: String = mode == .subscription ? "Subscription" : mode == .once ? "One-time licence" : "Licence with yearly updates"
         let pill: String = o?.subscription != nil ? "Active" : o?.licence != nil ? (o?.outdated == true ? "Outdated" : "Current") : "Not owned"
         let tone: AcctPill.Tone = o?.outdated == true ? .warn : o != nil ? .good : .neutral
-        return itemRow(x.name, modeWord, pill: pill, tone: tone) {
+        return itemRow(x.name, modeWord, pill: pill, tone: tone, equipmentID: x.equipmentID) {
             if let o, o.subscription != nil {
                 HStack(spacing: Theme.Space.xs) {
                     Text(cur.tidyShort(o.subscriptionMonthly) + "/mo").textStyle(.caption, numeric: true)

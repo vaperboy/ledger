@@ -138,7 +138,9 @@ final class PlayerSupplyTests: XCTestCase {
 
     func testListingsAndOrdersSurviveTheSave() throws {
         var (e, id) = try engine(trade: "bakery")
+        e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].set("lastW", .object(["units": .number(0)])) } }
         var l = listing("M1", trade: "bakery", companyID: id)
+        l.capacityPerWeek = 1
         l.record.deliveredTrend = 1.5
         l.expiresDay = 99
         l.paused = true
@@ -148,6 +150,39 @@ final class PlayerSupplyTests: XCTestCase {
         XCTAssertEqual(e.playerSupplyOrders["M1"], [order])
         e.update { s, _, _ in if let i = s.companyIndex(id) { s.companies[i].status = .bust } }
         XCTAssertTrue(e.playerSupplyListings.isEmpty, "a listing of a company that is gone is not kept")
+    }
+
+    func testEndingAPlayerSupplyCostsTwoWeeksOfTheOrderForEitherSide() throws {
+        var (e, id) = try engine()
+        XCTAssertTrue(e.signPlayerSupplier(contract: contract("C1", buyer: id, listing: "f", units: 40), listing: listing("f", price: 1), weeklyMarketSpend: 1_000))
+        let fee = e.playerSupplyCancelFee(companyID: id, lineID: "goods")
+        XCTAssertGreaterThan(fee, 0)
+        let signed = try XCTUnwrap(PlayerSupply.contract(e.state, buyer: id, line: "goods"))
+        XCTAssertEqual(fee, signed.orderValue * 2, accuracy: 1e-9)
+        XCTAssertGreaterThan(signed.orderValue, 0)
+        let before = try XCTUnwrap(e.state.company(id)).cash
+        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods"), .applied)
+        XCTAssertEqual(before - (try XCTUnwrap(e.state.company(id)).cash), fee, accuracy: 1)
+        XCTAssertTrue(e.playerSupplyContracts.isEmpty)
+        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods"), .refused("There is no supplier to end."))
+        XCTAssertTrue(e.signPlayerSupplier(contract: contract("C2", buyer: id, listing: "g", units: 40), listing: listing("g", price: 1), weeklyMarketSpend: 1_000))
+        let cash = try XCTUnwrap(e.state.company(id)).cash
+        XCTAssertEqual(e.cancelPlayerSupplier(companyID: id, lineID: "goods", bySupplier: true), .applied)
+        XCTAssertGreaterThan(try XCTUnwrap(e.state.company(id)).cash, cash)
+        XCTAssertTrue(e.state.inbox.contains { $0.companyID == id && $0.title == "Supplier ended the supply" })
+    }
+
+    func testAListingCannotPromiseMoreThanTheCompanyCanSupply() throws {
+        var (e, id) = try engine(trade: "bakery")
+        let room = try XCTUnwrap(e.physicalSupplyCapacity(companyID: id))
+        var big = listing("B1", trade: "bakery", companyID: id)
+        big.capacityPerWeek = room + 500
+        e.savePlayerListings([big], orders: [:])
+        XCTAssertEqual(e.playerSupplyListings.first?.capacityPerWeek, room)
+        var small = big
+        small.capacityPerWeek = 0
+        e.savePlayerListings([small], orders: [:])
+        XCTAssertEqual(e.playerSupplyListings.first?.capacityPerWeek, 0)
     }
 
     func testAnOrderTravelsAndShowsInTransit() throws {

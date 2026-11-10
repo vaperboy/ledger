@@ -16,6 +16,17 @@ enum LeaderboardBackend {
     static func make() -> any LeaderboardService { online() }
 }
 
+enum FakePlayers {
+    private static let key = "fakePlayers.removed"
+
+    static var removed: Bool {
+        get { UserDefaults.standard.bool(forKey: key) }
+        set { UserDefaults.standard.set(newValue, forKey: key) }
+    }
+
+    static func isFake(ownerID: String) -> Bool { ownerID.hasPrefix("owner") || SampleRoster.isComputer(ownerID) }
+}
+
 enum BoardRivals {
     static let target = 60
 
@@ -34,7 +45,7 @@ enum BoardRivals {
     ]
 
     static func fill(template: LeaderboardSubmission, real: [LeaderboardSubmission], scale: Double, week: Int, seed: Int, taken: Set<String>) -> [LeaderboardSubmission] {
-        let need: Int = max(0, target - real.count)
+        let need: Int = FakePlayers.removed ? 0 : max(0, target - real.count)
         if need == 0 { return [] }
         var stream = SampleRoster.Stream("board:\(seed)")
         var used: Set<String> = taken
