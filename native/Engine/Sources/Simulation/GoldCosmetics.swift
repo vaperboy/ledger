@@ -26,7 +26,7 @@ public enum GoldCosmetics {
         let price: Int? = e["price"].isNull ? (source == .store ? GoldCosmetics.storePrice(rarity) : nil) : e["price"].int
         let item: SeasonReward = SeasonReward(id: e["id"].string, tier: 0, premium: false, kind: SeasonReward.Kind(rawValue: e["kind"].string) ?? .badge,
                                               title: e["title"].string, detail: e["detail"].string, colors: ContentFile.colors(e["colors"]),
-                                              season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool)
+                                              season: 0, theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool, accountBound: e["bound"].bool || source == .store)
         return GoldCosmetic(item: item, rarity: rarity, source: source, price: price)
     }
 

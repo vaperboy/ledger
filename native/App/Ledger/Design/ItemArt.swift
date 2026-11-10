@@ -52,7 +52,7 @@ struct ItemArt: View {
     }
 
     init(reward r: SeasonReward, rarity: BoxRarity? = nil, size: CGFloat = 44, wide: Bool = false) {
-        self.init(category: ItemArt.category(of: r), id: r.id, rarity: rarity ?? (r.premium ? .rare : nil), colors: r.colors, size: size, wide: wide)
+        self.init(category: ItemArt.category(of: r), id: r.id, rarity: rarity ?? r.rarity ?? (r.premium ? .rare : nil), colors: r.colors, size: size, wide: wide)
     }
 
     init(cosmetic c: GoldCosmetic, size: CGFloat = 44, wide: Bool = false) {
@@ -75,8 +75,8 @@ struct ItemArt: View {
         case .richListFlair: return .flair
         case .tradePlate: return .tradePlate
         case .box: return .box
-        case .profileCard, .companyCard: return .artifact
-        case .gold: return .gold
+        case .profileCard, .companyCard, .artifact: return .artifact
+        case .gold, .xp: return .gold
         }
     }
 

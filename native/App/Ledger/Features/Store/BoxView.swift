@@ -431,6 +431,8 @@ struct PieceActions: View {
             switch fate {
             case .sold(let price): Text("Sold for \(session.money(price)). The cash is in your account.").textStyle(.caption, tint: Theme.gain).multilineTextAlignment(.center)
             }
+        } else if item.isBound {
+            LockNote(text: "Bound to your account: it cannot be sold or traded.")
         } else if session.canSellForCash && StoreGate.access(countryCode: nil) != .hidden {
             HStack(spacing: Theme.Space.s) {
                 Button { Task { await desk.sell([item]) } } label: { Text("Sell for \(session.money(session.quickPrice(item)))").lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity) }
@@ -451,6 +453,7 @@ struct PieceActions: View {
 struct EquipNowButton: View {
     var id: String
     @ObservedObject private var season = SeasonModel.shared
+    @State private var pending: PendingAction?
 
     var body: some View {
         if let r = SeasonRewards.item(id), r.kind.isEquippable {
@@ -459,9 +462,10 @@ struct EquipNowButton: View {
                     .buttonStyle(SecondaryButtonStyle(size: .compact, fullWidth: true, passive: true))
                     .disabled(true)
             } else {
-                Button { Haptics.success(); season.equip(id) } label: { Text("Equip now").frame(maxWidth: .infinity) }
+                Button { Haptics.success(); season.equipAsking(id, pending: $pending) } label: { Text("Equip now").frame(maxWidth: .infinity) }
                     .buttonStyle(PrimaryButtonStyle(size: .compact, fullWidth: true))
                     .accessibilityIdentifier("equip-now")
+                    .confirmAction($pending)
             }
         }
     }

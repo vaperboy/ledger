@@ -43,10 +43,36 @@ public struct ArtifactCollection: Equatable, Sendable, Identifiable {
 }
 
 public struct ArtifactItem: Codable, Equatable, Hashable, Identifiable, Sendable {
+    public enum Origin: String, Codable, Sendable {
+        case found, acquired, bought
+    }
+
     public var defID: String
     public var serial: Int
+    public var origin: Origin = .found
     public var id: String { "\(defID)#\(serial)" }
-    public init(defID: String, serial: Int) { self.defID = defID; self.serial = serial }
+    public var isFirstOwner: Bool { origin != .acquired }
+    public var isBound: Bool { origin == .bought || TradeRules.isAccountBound(defID) }
+
+    public init(defID: String, serial: Int, origin: Origin = .found) { self.defID = defID; self.serial = serial; self.origin = origin }
+
+    public func with(origin: Origin) -> ArtifactItem { ArtifactItem(defID: defID, serial: serial, origin: origin) }
+
+    enum CodingKeys: String, CodingKey { case defID, serial, origin }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        defID = try c.decode(String.self, forKey: .defID)
+        serial = try c.decode(Int.self, forKey: .serial)
+        origin = try c.decodeIfPresent(Origin.self, forKey: .origin) ?? .found
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(defID, forKey: .defID)
+        try c.encode(serial, forKey: .serial)
+        if origin != .found { try c.encode(origin, forKey: .origin) }
+    }
 }
 
 public enum ArtifactCatalog {
@@ -111,6 +137,14 @@ public struct Cabinet: Codable, Equatable, Sendable {
         }
         return done
     }
+
+    @discardableResult
+    public mutating func addAcquired(_ item: ArtifactItem) -> [ArtifactCollection] {
+        add(item.origin == .found ? item.with(origin: .acquired) : item)
+    }
+
+    @discardableResult
+    public mutating func addBought(_ item: ArtifactItem) -> [ArtifactCollection] { add(item.with(origin: .bought)) }
 
     @discardableResult
     public mutating func remove(_ id: String) -> ArtifactItem? {

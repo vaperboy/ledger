@@ -62,6 +62,7 @@ struct StoreShelfView: View {
                 if owned { Text("Owned").textStyle(.caption, tint: Theme.gain) }
                 else if blocked { Text("Buy the one before").textStyle(.caption) }
                 else if let p = c.price { GoldAmount(amount: p) }
+                if c.item.accountBound { LockNote(text: "Bound to your account") }
             }
             .padding(Theme.Space.m)
             .frame(maxWidth: .infinity, minHeight: 156, alignment: .topLeading)

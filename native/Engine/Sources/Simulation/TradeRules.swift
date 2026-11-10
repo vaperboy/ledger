@@ -6,11 +6,11 @@ public enum TradeRules {
         SeasonRewards.item(defID)?.accountBound == true || GoldCosmetics.cosmetic(defID)?.item.accountBound == true
     }
 
-    public static func isSellable(_ item: ArtifactItem) -> Bool { !isAccountBound(item.defID) }
+    public static func isSellable(_ item: ArtifactItem) -> Bool { item.origin != .bought && !isAccountBound(item.defID) }
 
     public static func isSellable(reward r: SeasonReward) -> Bool {
         if r.accountBound { return false }
-        return r.kind != .box && r.kind != .gold
+        return r.kind != .box && r.kind != .gold && r.kind != .xp
     }
 
     public static func isFounderEdition(_ defID: String) -> Bool {

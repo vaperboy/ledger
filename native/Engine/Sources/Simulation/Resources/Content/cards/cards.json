@@ -24,7 +24,15 @@
   {"id": "card.c.violet", "kind": "company", "name": "Royal violet", "rarity": "epic", "colors": ["8C6FD6", "2A1E4F"], "motion": "drift", "logo": "rosette"},
   {"id": "card.c.standard", "kind": "company", "name": "Gold standard", "rarity": "legendary", "colors": ["F0CF73", "8A5A10", "2A1C06"], "motion": "shimmer", "logo": "seal.fill"},
   {"id": "card.c.skyline", "kind": "company", "name": "Neon skyline", "rarity": "legendary", "colors": ["4CE0D2", "D64BC4", "0E1224"], "motion": "aurora", "logo": "building.2.fill"},
-  {"id": "card.c.diamond", "kind": "company", "name": "Black diamond", "rarity": "legendary", "colors": ["B8C4E8", "1A1D2E"], "motion": "pulse", "logo": "diamond.fill"}
+  {"id": "card.c.diamond", "kind": "company", "name": "Black diamond", "rarity": "legendary", "colors": ["B8C4E8", "1A1D2E"], "motion": "pulse", "logo": "diamond.fill"},
+  {"id": "card.p.meadow", "kind": "profile", "name": "Meadow card", "rarity": "common", "colors": ["8FB98A", "4C7A52"], "motion": "none", "logo": "", "theme": "spring"},
+  {"id": "card.p.blossom", "kind": "profile", "name": "Blossom card", "rarity": "rare", "colors": ["F2B8C6", "B5718A"], "motion": "none", "logo": "", "theme": "spring"},
+  {"id": "card.p.pastel", "kind": "profile", "name": "Pastel glass", "rarity": "epic", "colors": ["BFD8F2", "E8C6F0", "F7E3B5"], "motion": "shimmer", "logo": "", "theme": "spring"},
+  {"id": "card.p.dawn", "kind": "profile", "name": "Spring dawn", "rarity": "legendary", "colors": ["FFD9A0", "F29BB8", "8FD0C4"], "motion": "aurora", "logo": "", "theme": "spring"},
+  {"id": "card.c.hare", "kind": "company", "name": "Hare card", "rarity": "common", "colors": ["B7A88C", "6E634F"], "motion": "none", "logo": "hare.fill", "theme": "spring"},
+  {"id": "card.c.regatta", "kind": "company", "name": "Regatta card", "rarity": "rare", "colors": ["7FB6D9", "2D5F88"], "motion": "none", "logo": "sailboat.fill", "theme": "spring"},
+  {"id": "card.c.roadster", "kind": "company", "name": "Spring roadster", "rarity": "epic", "colors": ["E8A0B4", "8A3B5A"], "motion": "drift", "logo": "car.fill", "theme": "spring"},
+  {"id": "card.c.yacht", "kind": "company", "name": "Blossom yacht", "rarity": "legendary", "colors": ["F4D6B8", "3E7C8C", "12303A"], "motion": "pulse", "logo": "ferry.fill", "theme": "spring"}
  ],
  "levelRewards": [
   {"level": 2, "card": "card.p.slate"},

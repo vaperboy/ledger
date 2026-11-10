@@ -28,6 +28,13 @@
    "blurb": "Papers that made the town.",
    "reward": "gold.coll.archive",
    "look": {"top": "9C957F", "bottom": "45423A", "ink": "F1ECDD", "motif": "grid"}
+  },
+  {
+   "id": "spring",
+   "name": "Spring Market",
+   "blurb": "Eggs, blossom and hares of the spring fair.",
+   "reward": "gold.coll.spring",
+   "look": {"top": "E8A9BC", "bottom": "5E7F52", "ink": "FFF3DC", "motif": "dots"}
   }
  ],
  "artifacts": [
@@ -46,6 +53,10 @@
   {"id": "stamp", "name": "Ink stamp", "collection": "archive", "rarity": "common", "note": "Marks a page as seen.", "symbol": "checkmark.rectangle.fill"},
   {"id": "map", "name": "Old town map", "collection": "archive", "rarity": "rare", "note": "Shows streets that no longer exist.", "symbol": "globe.europe.africa.fill"},
   {"id": "scroll", "name": "Charter scroll", "collection": "archive", "rarity": "epic", "note": "Grants the right to hold a fair.", "symbol": "scroll.fill"},
-  {"id": "charter", "name": "Royal charter", "collection": "archive", "rarity": "legendary", "note": "The founding paper of the town.", "symbol": "doc.richtext.fill"}
+  {"id": "charter", "name": "Royal charter", "collection": "archive", "rarity": "legendary", "note": "The founding paper of the town.", "symbol": "doc.richtext.fill"},
+  {"id": "spring.egg", "name": "Painted egg", "collection": "spring", "rarity": "common", "note": "Pastel stripes, dried on the fair-day windowsill.", "symbol": "oval.fill"},
+  {"id": "spring.blossom", "name": "Blossom scroll", "collection": "spring", "rarity": "rare", "note": "Wishes for a good season, tied with green thread.", "symbol": "camera.macro"},
+  {"id": "spring.hare", "name": "Gilded hare", "collection": "spring", "rarity": "epic", "note": "A running hare cast in thin gold leaf.", "symbol": "hare.fill"},
+  {"id": "spring.jewel", "name": "Jewelled egg", "collection": "spring", "rarity": "legendary", "note": "Enamel, pearl and a hinge no one has opened.", "symbol": "sparkles"}
  ]
 }

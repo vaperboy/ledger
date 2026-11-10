@@ -133,7 +133,7 @@ final class StoreSession {
     }
 
     func receiveSeason(_ r: SeasonReward) {
-        if r.kind == .profileCard || r.kind == .companyCard {
+        if r.kind == .profileCard || r.kind == .companyCard || r.kind == .artifact {
             let roll: Double = CardCatalog.roll("season|\(SeasonModel.shared.pass.season)|" + r.id)
             Task { state = await store.grantCard(defID: r.id, roll: roll) }
             return
