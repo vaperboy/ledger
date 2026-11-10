@@ -109,7 +109,7 @@ struct HomeSeasonPromo: View {
 
     private func next(_ track: SeasonPass.Track, after tier: Int) -> SeasonReward? {
         guard tier < SeasonPass.tierCount else { return nil }
-        return ((tier + 1)...SeasonPass.tierCount).lazy.compactMap { (t: Int) -> SeasonReward? in SeasonRewards.reward(track, tier: t) }.first
+        return ((tier + 1)...SeasonPass.tierCount).lazy.compactMap { (t: Int) -> SeasonReward? in season.pass.reward(track, tier: t) }.first
     }
 
     var body: some View {

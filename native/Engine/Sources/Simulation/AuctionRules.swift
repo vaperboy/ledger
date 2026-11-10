@@ -41,7 +41,7 @@ public struct Auction: Codable, Equatable, Identifiable, Sendable {
 
 public enum AuctionError: Error, Equatable, Sendable {
     case notLive, sellerCannotBid, linkedAccount, alreadyLeading, tooLow(minimum: Int), notEnoughCash(missing: Int)
-    case notYours, hasBids, badPrice(String), noBuyNow
+    case notYours, hasBids, badPrice(String), noBuyNow, accountBound
 }
 
 extension AuctionError: LocalizedError {
@@ -57,6 +57,7 @@ extension AuctionError: LocalizedError {
         case .hasBids: return "It has bids, so it cannot be taken back."
         case .badPrice(let why): return why
         case .noBuyNow: return "This piece cannot be bought outright now."
+        case .accountBound: return "This piece is bound to your account and cannot be sold."
         }
     }
 }
@@ -247,6 +248,8 @@ public struct AuctionBook: Codable, Equatable, Sendable {
     @discardableResult
     public mutating func list(_ itemID: String, startPrice: Int, reserve: Int?, buyNow: Int? = nil, duration: AuctionDuration, now: Double, cabinet: inout Cabinet) throws -> Auction {
         if let problem = AuctionRules.listingProblem(startPrice: startPrice, reserve: reserve, buyNow: buyNow) { throw AuctionError.badPrice(problem) }
+        guard let piece = cabinet.items.first(where: { $0.id == itemID }) else { throw AuctionError.notYours }
+        guard TradeRules.isSellable(piece) else { throw AuctionError.accountBound }
         guard let item = cabinet.remove(itemID) else { throw AuctionError.notYours }
         let a = Auction(id: "A\(nextNumber)", item: item, seller: me, startPrice: startPrice, reserve: reserve, buyNow: buyNow, startsAt: now,
                         endsAt: now + duration.seconds, duration: duration)

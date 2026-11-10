@@ -95,7 +95,7 @@ struct SeasonView: View {
     }
 
     @ViewBuilder private func cell(_ track: SeasonPass.Track, _ t: Int) -> some View {
-        if let r = SeasonRewards.reward(track, tier: t) {
+        if let r = pass.reward(track, tier: t) {
             let claimed: Bool = pass.isClaimed(track, tier: t)
             let ready: Bool = pass.canClaim(track, tier: t, isPlus: premium)
             let locked: Bool = track == .premium && !premium

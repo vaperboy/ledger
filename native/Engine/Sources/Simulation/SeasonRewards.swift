@@ -32,10 +32,28 @@ public struct SeasonReward: Equatable, Sendable, Identifiable {
     public var detail: String
     public var colors: [UInt32] = []
     public var amount: Int = 0
+    public var season: Int = 1
+    public var theme: String = ItemThemes.classicID
+    public var founderEdition: Bool = false
+    public var accountBound: Bool = false
 }
 
 public enum SeasonRewards {
-    public static let all: [SeasonReward] = ContentFile.load("season", "season_1")["rewards"].array.map { (e: JSONValue) -> SeasonReward in SeasonRewards.entry(e) }
+    public static let all: [SeasonReward] = SeasonCatalog.all.flatMap { (s: SeasonDef) -> [SeasonReward] in s.rewards }
+
+    static func parse(_ e: JSONValue, season: Int, theme: String, founder: Bool) -> SeasonReward {
+        var r: SeasonReward = entry(e)
+        r.season = season
+        if r.kind == .profileCard || r.kind == .companyCard, let d = CardCatalog.def(r.id) {
+            r.theme = d.theme
+            r.founderEdition = d.founderEdition
+        } else {
+            r.theme = ItemThemes.id(e, fallback: theme)
+            r.founderEdition = e["founderEdition"].isNull ? founder : e["founderEdition"].bool
+        }
+        r.accountBound = e["bound"].bool
+        return r
+    }
 
     private static func entry(_ e: JSONValue) -> SeasonReward {
         let id: String = e["id"].string
@@ -51,8 +69,8 @@ public enum SeasonRewards {
         }
     }
 
-    public static func reward(_ track: SeasonPass.Track, tier: Int) -> SeasonReward? {
-        all.first { $0.tier == tier && $0.premium == (track == .premium) }
+    public static func reward(_ track: SeasonPass.Track, tier: Int, season: Int = 1) -> SeasonReward? {
+        SeasonCatalog.active(season)?.rewards.first { $0.tier == tier && $0.premium == (track == .premium) }
     }
 
     private static func b(_ id: String, _ tier: Int, _ prem: Bool, _ count: Int) -> SeasonReward {

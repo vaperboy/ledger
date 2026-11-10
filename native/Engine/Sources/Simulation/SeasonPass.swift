@@ -3,7 +3,7 @@ import GameCore
 
 public struct SeasonPass: Codable, Equatable, Sendable {
 
-    public static let seasonDays = 56
+    public static let seasonDays = SeasonCatalog.days(months: SeasonCatalog.monthsPerSeason)
     public static let tierCount = 30
     public static let xpPerTier = 150
     public static let dailyXPCap = 100
@@ -90,6 +90,9 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public var endDay: Int { startDay + Self.seasonDays }
     public func daysLeft(today: Int) -> Int { max(0, endDay - today) }
     public var seasonNumber: Int { season + 1 }
+    public var seasonDef: SeasonDef? { SeasonCatalog.active(seasonNumber) }
+
+    public func reward(_ track: Track, tier t: Int) -> SeasonReward? { SeasonRewards.reward(track, tier: t, season: seasonNumber) }
 
     @discardableResult
     public mutating func rollover(today: Int) -> Bool {
@@ -101,7 +104,7 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     }
 
     public var unclaimedFree: Int {
-        (1...Self.tierCount).filter { SeasonRewards.reward(.free, tier: $0) != nil && $0 <= tier && !isClaimed(.free, tier: $0) }.count
+        (1...Self.tierCount).filter { reward(.free, tier: $0) != nil && $0 <= tier && !isClaimed(.free, tier: $0) }.count
     }
 
     public func endingNote(today: Int, isPlus: Bool) -> String? {
@@ -189,12 +192,12 @@ public struct SeasonPass: Codable, Equatable, Sendable {
     public func isClaimed(_ track: Track, tier t: Int) -> Bool { claimed.contains(Self.key(track, t)) }
 
     public func canClaim(_ track: Track, tier t: Int, isPlus: Bool) -> Bool {
-        guard SeasonRewards.reward(track, tier: t) != nil, t <= tier, !isClaimed(track, tier: t) else { return false }
+        guard reward(track, tier: t) != nil, t <= tier, !isClaimed(track, tier: t) else { return false }
         return track == .free || isPlus
     }
 
     public mutating func claim(_ track: Track, tier t: Int, isPlus: Bool) -> ClaimResult {
-        guard let r = SeasonRewards.reward(track, tier: t) else { return .noReward }
+        guard let r = reward(track, tier: t) else { return .noReward }
         if isClaimed(track, tier: t) { return .alreadyClaimed }
         if t > tier { return .tierNotReached }
         if track == .premium && !isPlus { return .needsPlus }

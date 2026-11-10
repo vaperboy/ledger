@@ -192,12 +192,17 @@ final class ContentValidationTests: XCTestCase {
             p.append("\(file): box drops need at least one \(r) cosmetic")
         }
 
-        let sfile: String = "Engine/Sources/Simulation/Resources/Content/season/season_1.json"
-        let s: JSONValue = load(sfile, &p)
-        let rewards: [JSONValue] = s["rewards"].array
-        let sids: Set<String> = uniqueIDs(rewards, sfile, &p)
+        var sids: Set<String> = []
         let cardIDs: Set<String> = Set(CardCatalog.all.map { $0.id })
         let sKinds: Set<String> = ["badge", "theme", "namePlate", "backdrop", "saveSlot", "advisorLine", "richListFlair", "tradePlate", "card", "box", "gold"]
+        XCTAssertFalse(SeasonCatalog.all.isEmpty)
+        for n in SeasonCatalog.all.map({ (d: SeasonDef) -> Int in d.number }) {
+        let sfile: String = "Engine/Sources/Simulation/Resources/Content/season/season_\(n).json"
+        let s: JSONValue = load(sfile, &p)
+        let rewards: [JSONValue] = s["rewards"].array
+        for id in uniqueIDs(rewards, sfile, &p) {
+            if !sids.insert(id).inserted { p.append("\(sfile): the reward id \"\(id)\" is already used by another season") }
+        }
         var slots: Set<String> = []
         for r in rewards {
             let label: String = "reward \"\(r["id"].string)\""
@@ -211,6 +216,7 @@ final class ContentValidationTests: XCTestCase {
             if (kind == "box" || kind == "gold") && r["amount"].int <= 0 { p.append("\(sfile): \(label) needs an amount above 0") }
             if kind != "card" && kind != "box" && kind != "gold" { need(r, ["title", "detail"], sfile, label, &p) }
             if kind != "card" && kind != "box" && kind != "gold" && !r["colors"].isNull { checkHex(r["colors"].array, sfile, label, &p) }
+        }
         }
         XCTAssertEqual(sids.count, SeasonRewards.all.count)
 
@@ -228,6 +234,66 @@ final class ContentValidationTests: XCTestCase {
         if themes.first?["premium"].bool == true { p.append("\(bfile): the first theme is the default and must not be premium") }
         XCTAssertEqual(badges.count, Cosmetics.badges.count)
         XCTAssertEqual(themes.count, Cosmetics.themes.count)
+        finish(p)
+    }
+
+    private func checkLook(_ list: [JSONValue], _ themeIDs: Set<String>, _ file: String, _ what: String, _ problems: inout [String]) {
+        for e in list {
+            let label: String = "\(what) \"\(e["id"].string)\""
+            if !e["theme"].isNull && !themeIDs.contains(e["theme"].string) { problems.append("\(file): \(label) has theme \"\(e["theme"].string)\", which is not in item_themes.json") }
+            for f in ["founderEdition", "bound"] {
+                if case .bool = e[f] { continue }
+                if !e[f].isNull { problems.append("\(file): \(label) has \"\(f)\" that is not true or false") }
+            }
+        }
+    }
+
+    func testThemesAndSeasonFields() {
+        let root: String = "Engine/Sources/Simulation/Resources/Content/"
+        let tfile: String = root + "themes/item_themes.json"
+        var p: [String] = []
+        let themes: [JSONValue] = load(tfile, &p)["themes"].array
+        let themeIDs: Set<String> = uniqueIDs(themes, tfile, &p)
+        for t in themes { need(t, ["id", "name"], tfile, "theme \"\(t["id"].string)\"", &p) }
+        for required in [ItemThemes.classicID, ItemThemes.founderID] where !themeIDs.contains(required) { p.append("\(tfile): the theme \"\(required)\" is missing") }
+        XCTAssertGreaterThanOrEqual(themes.count, 5)
+        XCTAssertEqual(themeIDs.count, ItemThemes.all.count)
+
+        checkLook(load(root + "cards/cards.json", &p)["cards"].array, themeIDs, "cards.json", "card", &p)
+        checkLook(load(root + "cosmetics/gold_cosmetics.json", &p)["cosmetics"].array, themeIDs, "gold_cosmetics.json", "cosmetic", &p)
+        checkLook(load("Engine/Sources/Businesses/Resources/logo_catalogue.json", &p)["logos"].array, themeIDs, "logo_catalogue.json", "logo", &p)
+        let avatars: [JSONValue] = load("App/Ledger/Resources/Content/avatars/avatars.json", &p)["avatars"].array
+        checkLook(avatars, themeIDs, "avatars.json", "icon", &p)
+        for a in avatars where a["unlock"].string == "season" && SeasonRewards.item(a["value"].string)?.accountBound == true && !a["bound"].bool {
+            p.append("avatars.json: icon \"\(a["id"].string)\" is unlocked by a bound reward, so it must be bound too")
+        }
+
+        let bfile: String = root + "boxes/boxes.json"
+        let boxes: [JSONValue] = load(bfile, &p)["boxes"].array
+        checkLook(boxes, themeIDs, "boxes.json", "box", &p)
+        for b in boxes {
+            let want: String = b["theme"].isNull ? ItemThemes.classicID : b["theme"].string
+            XCTAssertEqual(BoxKind(rawValue: b["id"].string)?.theme, want, "box \(b["id"].string) must carry the theme the file gives it")
+        }
+
+        XCTAssertFalse(SeasonCatalog.all.isEmpty)
+        XCTAssertEqual(SeasonCatalog.all.map { $0.number }, Array(1...SeasonCatalog.all.count), "season files must be numbered season_1, season_2 without gaps")
+        XCTAssertTrue((180...184).contains(SeasonPass.seasonDays), "a season runs half a year")
+        for d in SeasonCatalog.all {
+            let sfile: String = root + "season/season_\(d.number).json"
+            let s: JSONValue = load(sfile, &p)
+            if s["season"].int != d.number { p.append("\(sfile): \"season\" must be \(d.number)") }
+            need(s, ["name", "theme"], sfile, "the season", &p)
+            if !themeIDs.contains(s["theme"].string) { p.append("\(sfile): the season theme \"\(s["theme"].string)\" is not in item_themes.json") }
+            if s["months"].int != SeasonCatalog.monthsPerSeason { p.append("\(sfile): \"months\" must be \(SeasonCatalog.monthsPerSeason), half a year") }
+            checkLook([s], themeIDs, sfile, "season", &p)
+            checkLook(s["rewards"].array, themeIDs, sfile, "reward", &p)
+            XCTAssertEqual(d.days, SeasonPass.seasonDays)
+            XCTAssertTrue(d.rewards.allSatisfy { ItemThemes.isKnown($0.theme) })
+        }
+        let first: SeasonDef? = SeasonCatalog.def(1)
+        XCTAssertEqual(first?.theme, ItemThemes.founderID)
+        XCTAssertEqual(first?.founderEdition, true)
         finish(p)
     }
 

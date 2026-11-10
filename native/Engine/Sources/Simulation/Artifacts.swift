@@ -120,7 +120,7 @@ public struct Cabinet: Codable, Equatable, Sendable {
 
     @discardableResult
     public mutating func quickSell(_ id: String, priceLevel: Double) -> Int? {
-        guard let item = items.first(where: { $0.id == id }), let def = ArtifactCatalog.def(item.defID) else { return nil }
+        guard let item = items.first(where: { $0.id == id }), TradeRules.isSellable(item), let def = ArtifactCatalog.def(item.defID) else { return nil }
         remove(id)
         return AuctionRules.quickSalePrice(def.rarity, priceLevel: priceLevel)
     }

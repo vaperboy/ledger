@@ -76,7 +76,7 @@ struct StoreSeasonCard: View {
     private func nextReward(_ pass: SeasonPass) -> String {
         guard !pass.isComplete else { return "Every reward of this season is within reach." }
         for t in (pass.tier + 1)...SeasonPass.tierCount {
-            if let r = SeasonRewards.reward(.free, tier: t) { return "Next reward: \(r.title), at level \(t)" }
+            if let r = pass.reward(.free, tier: t) { return "Next reward: \(r.title), at level \(t)" }
         }
         return "More rewards arrive as you play."
     }

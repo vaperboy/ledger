@@ -105,7 +105,7 @@ final class SeasonPassTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count)
         XCTAssertTrue(SeasonRewards.all.allSatisfy { (1...SeasonPass.tierCount).contains($0.tier) })
         var seen = Set<String>()
-        for r in SeasonRewards.all { XCTAssertTrue(seen.insert("\(r.premium)\(r.tier)").inserted, "one reward per tier and track") }
+        for r in SeasonRewards.all { XCTAssertTrue(seen.insert("\(r.season)\(r.premium)\(r.tier)").inserted, "one reward per tier and track") }
         XCTAssertNotNil(SeasonRewards.reward(.free, tier: 30))
         XCTAssertNotNil(SeasonRewards.reward(.premium, tier: 30))
     }
@@ -129,19 +129,19 @@ final class SeasonPassTests: XCTestCase {
         p.xp = 300
         _ = p.claimAll(isPlus: true)
         let owned = p.owned
-        XCTAssertFalse(p.rollover(today: day0 + 55))
-        XCTAssertEqual(p.daysLeft(today: day0 + 55), 1)
-        XCTAssertTrue(p.rollover(today: day0 + 56))
+        XCTAssertFalse(p.rollover(today: day0 + SeasonPass.seasonDays - 1))
+        XCTAssertEqual(p.daysLeft(today: day0 + SeasonPass.seasonDays - 1), 1)
+        XCTAssertTrue(p.rollover(today: day0 + SeasonPass.seasonDays))
         XCTAssertEqual(p.seasonNumber, 2)
         XCTAssertEqual(p.xp, 0)
         XCTAssertTrue(p.claimed.isEmpty)
         XCTAssertEqual(p.owned, owned, "owned cosmetics survive the rollover")
-        XCTAssertEqual(p.startDay, day0 + 56)
-        XCTAssertTrue(p.rollover(today: day0 + 56 * 4 + 3))
+        XCTAssertEqual(p.startDay, day0 + SeasonPass.seasonDays)
+        XCTAssertTrue(p.rollover(today: day0 + SeasonPass.seasonDays * 4 + 3))
         XCTAssertEqual(p.seasonNumber, 5)
         var q = SeasonPass(today: day0)
         q.xp = 900
-        q.observe(snap(), today: day0 + 60)
+        q.observe(snap(), today: day0 + SeasonPass.seasonDays + 4)
         XCTAssertEqual(q.seasonNumber, 2)
         XCTAssertEqual(q.xp, 0)
     }

@@ -1,0 +1,10 @@
+{
+ "about": "Look themes. Every customisable item (profile and company cards, name plates, banners, backdrops, flair, avatars, logos, boxes) names one theme in its \"theme\" field; an item without one is \"classic\". A new theme is one entry here (id and name). These are not the app colour themes in badges_themes.json.",
+ "themes": [
+  {"id": "classic", "name": "Classic"},
+  {"id": "harbour", "name": "Harbour"},
+  {"id": "market", "name": "Market"},
+  {"id": "archive", "name": "Archive"},
+  {"id": "founder", "name": "Founder"}
+ ]
+}

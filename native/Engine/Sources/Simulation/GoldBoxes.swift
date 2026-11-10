@@ -18,6 +18,7 @@ public enum BoxKind: String, Codable, CaseIterable, Sendable, Identifiable {
     public var id: String { rawValue }
     public var title: String { BoxCatalog.entries[rawValue]?.title ?? rawValue }
     public var price: Int { BoxCatalog.entries[rawValue]?.price ?? 0 }
+    public var theme: String { BoxCatalog.entries[rawValue]?.theme ?? ItemThemes.classicID }
     public var isPaid: Bool { price > 0 }
     public var isCardPack: Bool { self == .cardBasic || self == .cardPremium || self == .cardElite }
     public static var standard: [BoxKind] { allCases.filter { !$0.isCardPack } }
@@ -89,13 +90,14 @@ enum BoxCatalog {
     struct Entry {
         var title: String
         var price: Int
+        var theme: String
         var rows: [BoxRow]
     }
 
     static let entries: [String: Entry] = {
         var out: [String: Entry] = [:]
         for e in ContentFile.load("boxes", "boxes")["boxes"].array {
-            out[e["id"].string] = Entry(title: e["title"].string, price: e["price"].int, rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
+            out[e["id"].string] = Entry(title: e["title"].string, price: e["price"].int, theme: ItemThemes.id(e), rows: e["rows"].array.map { (r: JSONValue) -> BoxRow in BoxCatalog.row(r) })
         }
         return out
     }()

@@ -19,6 +19,8 @@ public struct CardDef: Equatable, Sendable, Identifiable {
     public var colors: [UInt32]
     public var motion: Motion
     public var logo: String
+    public var theme: String = ItemThemes.classicID
+    public var founderEdition: Bool = false
 
     public var isAnimated: Bool { motion != .none }
 }
@@ -33,7 +35,8 @@ public enum CardCatalog {
 
     public static let all: [CardDef] = CardCatalog.file["cards"].array.map { (e: JSONValue) -> CardDef in
         CardDef(id: e["id"].string, kind: e["kind"].string == "company" ? .company : .profile, name: e["name"].string, rarity: ContentFile.rarity(e["rarity"].string),
-                colors: ContentFile.colors(e["colors"]), motion: CardDef.Motion(rawValue: e["motion"].string) ?? .none, logo: e["logo"].string)
+                colors: ContentFile.colors(e["colors"]), motion: CardDef.Motion(rawValue: e["motion"].string) ?? .none, logo: e["logo"].string,
+                theme: ItemThemes.id(e), founderEdition: e["founderEdition"].bool)
     }
 
     public static let levelRewards: [LevelReward] = CardCatalog.file["levelRewards"].array.map { (e: JSONValue) -> LevelReward in

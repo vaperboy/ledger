@@ -1,5 +1,5 @@
 {
- "about": "Box types and their odds. Each box lists rows; weight is out of 10000 and the weights of a box must add up to exactly 10000. prize: cosmetic, artifact, gold (amount = gold), money (amount = cash in the reference economy), profileCard or companyCard. Paid boxes may not hold more than 5 percent cash and must return less gold than their price (a test checks this). The six box ids are fixed; their odds, prices and titles are free to change.",
+ "about": "Box types and their odds. Each box lists rows; weight is out of 10000 and the weights of a box must add up to exactly 10000. prize: cosmetic, artifact, gold (amount = gold), money (amount = cash in the reference economy), profileCard or companyCard. Paid boxes may not hold more than 5 percent cash and must return less gold than their price (a test checks this). theme: optional look theme id from Content/themes/item_themes.json (default classic); a themed box drops items of its theme. The six box ids are fixed; their odds, prices and titles are free to change.",
  "boxes": [
   {
    "id": "free",

@@ -1,7 +1,12 @@
 {
- "about": "The season pass rewards: one free and one premium reward per tier (tiers 1 to 30). kind: badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate (use colors for the look), card (card is an id from Content/cards/cards.json), box (amount = number of boxes) or gold (amount = gold). Order does not matter. Image: <kind>.<id>.png in App/Ledger/Resources/Content/art.",
+ "season": 1,
+ "name": "Founder Edition",
+ "theme": "founder",
+ "founderEdition": true,
+ "months": 6,
+ "about": "One season pass. A season runs months (6, half a year) and follows one theme (a theme id from Content/themes/item_themes.json); founderEdition: true tags every reward as founder-edition unless a reward says otherwise. A new season is a new file season_<N>.json plus art. theme, founderEdition and bound (true = tied to the account, not sellable) may also be set per reward. The pass rewards: one free and one premium reward per tier (tiers 1 to 30). kind: badge, theme, namePlate, backdrop, saveSlot, advisorLine, richListFlair, tradePlate (use colors for the look), card (card is an id from Content/cards/cards.json), box (amount = number of boxes) or gold (amount = gold). Order does not matter. Image: <kind>.<id>.png in App/Ledger/Resources/Content/art.",
  "rewards": [
-  {"id": "badge.s1.first", "tier": 1, "premium": false, "kind": "badge", "title": "First steps badge", "detail": "A small badge for starting the season."},
+  {"id": "badge.s1.first", "tier": 1, "premium": false, "kind": "badge", "title": "Pennant badge", "detail": "A plain pennant for your profile.", "theme": "classic", "founderEdition": false, "bound": true},
   {"id": "plate.ledger", "tier": 3, "premium": false, "kind": "namePlate", "title": "Ledger plate", "detail": "A plain name plate with a champagne rule.", "colors": ["D6B889", "2A2A2C"]},
   {"id": "box.f4", "tier": 4, "premium": false, "kind": "box", "amount": 1},
   {"id": "advisor.steady", "tier": 5, "premium": false, "kind": "advisorLine", "title": "Advisor: steady hands", "detail": "\"Small sums, kept carefully, add up before you notice.\""},

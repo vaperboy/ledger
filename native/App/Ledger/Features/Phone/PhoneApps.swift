@@ -80,7 +80,7 @@ enum PhoneApp: String, CaseIterable, Hashable, Identifiable, Codable {
         case .news: return "The world, other players, government and weather"
         case .desk: return "One small question a day, and your notebook"
         case .profile: return "You, your trophies and your friends"
-        case .season: return "Eight-week rewards, free and Plus"
+        case .season: return "Half-year rewards, free and Plus"
         case .settings: return "How much you decide, saving, haptics"
         }
     }
