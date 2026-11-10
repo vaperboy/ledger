@@ -21,16 +21,15 @@ struct GroupStructureTab: View {
         let nodes: [StructureNode] = store.memo("structureTree") { (e: GameEngine) -> [StructureNode] in e.structureTree() } ?? []
         let mgmt: GroupManagement? = store.memo("groupMgmt") { (e: GameEngine) -> GroupManagement in e.groupManagement() }
         let list: [GroupEntity] = GroupEntities.cached(store) ?? GroupEntities.build(engine)
-        let lines: [Int: GroupManagement.Line] = Dictionary((mgmt?.lines ?? []).map { (l: GroupManagement.Line) -> (Int, GroupManagement.Line) in (l.id, l) }, uniquingKeysWith: { (a: GroupManagement.Line, _: GroupManagement.Line) -> GroupManagement.Line in a })
         let firstCardID: String? = rows(nodes).first?.id
         VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if nodes.count <= 1 {
                 EmptyState(glyph: Glyph.group, title: "No companies yet", message: "Add one from Overview.")
             } else {
                 hero(nodes, mgmt)
-                VStack(spacing: Theme.Space.s) {
+                VStack(spacing: Theme.Space.xs) {
                     ForEach(rows(nodes)) { (r: Row) in
-                        card(r, nodes, lines, list).coachAnchor(.groupCard, enabled: r.id == firstCardID)
+                        row(r, nodes, list).coachAnchor(.groupCard, enabled: r.id == firstCardID)
                     }
                 }
             }
@@ -78,32 +77,15 @@ struct GroupStructureTab: View {
         }
     }
 
-    private func card(_ r: Row, _ nodes: [StructureNode], _ lines: [Int: GroupManagement.Line], _ list: [GroupEntity]) -> some View {
+    private func row(_ r: Row, _ nodes: [StructureNode], _ list: [GroupEntity]) -> some View {
         let n: StructureNode = r.node
-        let rungs: [StructureRung] = chainOfCommand(n, nodes, lines)
         let hasKids: Bool = nodes.contains { (x: StructureNode) -> Bool in x.parentID == n.id }
-        let person: Person? = n.runnerPersonID.flatMap { (id: Int) -> Person? in engine.state.people[id] }
         let own: Bool = n.kind == .holding || n.kind == .chain || n.kind == .company
         let target: GroupEntity? = entity(for: n, list)
         let actionID: String = own ? (target.map { (g: GroupEntity) -> String in "group-entity-\(g.id)" } ?? "") : ""
-        return StructureCard(node: n, valueText: store.short(n.value), runnerRole: person?.role, runnerFace: person?.faceKey, rungs: rungs,
-                             canExpand: hasKids || !rungs.isEmpty, expanded: expanded.contains(n.id), actionID: actionID,
-                             onToggle: { toggle(n.id) }, onAction: { perform(n, own: own, target: target) })
+        return StructureRow(node: n, valueText: store.short(n.value), hasKids: hasKids, expanded: expanded.contains(n.id), actionID: actionID,
+                            onToggle: { toggle(n.id) }, onOpen: { perform(n, own: own, target: target) })
             .padding(.leading, CGFloat(r.depth) * Theme.Space.l)
-    }
-
-    private func chainOfCommand(_ n: StructureNode, _ nodes: [StructureNode], _ lines: [Int: GroupManagement.Line]) -> [StructureRung] {
-        var cid: Int? = n.companyID
-        if cid == nil, n.kind == .chain {
-            cid = nodes.first(where: { (x: StructureNode) -> Bool in x.parentID == n.id && x.kind == .headOffice })?.companyID
-        }
-        guard let id = cid, let line = lines[id] else { return [] }
-        var all: [GroupManagement.Rung] = Array(line.above.reversed())
-        if let runner = line.runner { all.append(runner) }
-        return all.map { (r: GroupManagement.Rung) -> StructureRung in
-            let p: Person? = engine.state.people[r.personID]
-            return StructureRung(id: r.id, name: r.name, title: r.title, authority: r.authorityText, role: p?.role, face: p?.faceKey)
-        }
     }
 
     private func entity(for n: StructureNode, _ list: [GroupEntity]) -> GroupEntity? {

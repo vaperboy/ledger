@@ -30,7 +30,7 @@ struct GroupHome: View {
 
     @ViewBuilder private func content(_ t: GroupHomeTab) -> some View {
         switch t {
-        case .overview: GroupOverviewTab(engine: engine, onAdd: onAdd, onPick: onPick, onStructure: { tab = .structure })
+        case .overview: GroupOverviewTab(engine: engine, onAdd: onAdd, onPick: onPick)
         case .structure: GroupStructureTab(engine: engine, onPick: onPick)
         case .people: GroupPeopleTab(engine: engine, onPick: onPick)
         case .suppliers: GroupSupplierDirectory(embedded: true)
@@ -51,7 +51,6 @@ struct GroupOverviewTab: View {
     var engine: GameEngine
     var onAdd: () -> Void
     var onPick: (GroupEntity, GroupSection) -> Void
-    var onStructure: () -> Void
     @Environment(\.outsidePalette) private var P
 
     var body: some View {
@@ -65,7 +64,6 @@ struct GroupOverviewTab: View {
             }
             needsYou(list)
             keyFigures(list, ov)
-            whoRunsWhat(ov)
         }
     }
 
@@ -148,16 +146,6 @@ struct GroupOverviewTab: View {
             KeyFigures.Item(label: "Profit this month", value: sign + store.short(abs(profit)), tint: Theme.change(profit)),
             KeyFigures.Item(label: "Staff", value: "\(staff)"),
         ])
-    }
-
-    private func whoRunsWhat(_ ov: TeamOverview) -> some View {
-        let lines: [TeamOverview.CompanyLine] = ov.companies.filter { (l: TeamOverview.CompanyLine) -> Bool in !l.isHolding }
-        let managed: Int = lines.filter { (l: TeamOverview.CompanyLine) -> Bool in l.managerTitle != nil }.count
-        let passed: Int = ov.issues.filter { (i: TeamOverview.Issue) -> Bool in i.beyondAuthority }.count
-        var parts: [String] = ["\(managed) with a manager", "you run \(lines.count - managed)"]
-        if passed > 0 { parts.append("\(passed) passed up to you") }
-        return LedgerRow(leading: .glyph(Glyph.group), title: "Who runs what", subtitle: parts.joined(separator: " \u{00B7} "),
-                         badge: passed, identifier: "group-who-runs-what", action: onStructure)
     }
 }
 

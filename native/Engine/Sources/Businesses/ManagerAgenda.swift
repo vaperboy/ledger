@@ -84,18 +84,21 @@ extension ManagerModel {
                 out.append(BoardDecision(id: id, key: key, kind: kind, companyID: c.id, title: title, effect: effect, cost: cost, risk: risk, advisor: by ?? adviser, recommends: recommends, reason: reason))
             }
             if loss3, SaleListings.routeProblem(s, companyID: c.id, route: "broker", pct: 100) == nil {
-                add("sell", "Put \(c.name) up for sale", effect: "\(c.name) is listed with a broker. Offers reach you; nothing is sold until you accept one.",
-                    risk: "If you later accept an offer you stop owning the business.", recommends: deep3,
+                let t = decisionText("sell", c)
+                add("sell", t.title, effect: t.effect,
+                    risk: t.risk, recommends: deep3,
                     reason: deep3 ? "It lost \(cur.short(-p3)) over three months, more than a tenth of what it took in." : "The loss is small against its sales. A change of course may be enough.")
             }
             if loss6 && !s.isBranch(c) {
-                add("close", "Close \(c.name)", effect: "\(c.name) is wound up: assets sold at a discount, staff let go, loans repaid as far as the money goes. You get what is left.",
-                    risk: "It cannot be undone, and notice and redundancy pay come first.", recommends: deep6,
+                let t = decisionText("close", c)
+                add("close", t.title, effect: t.effect,
+                    risk: t.risk, recommends: deep6,
                     reason: deep6 ? "Six months of losses, \(cur.short(-p6)) in all." : "Six months of small losses. It may still turn.")
             }
             if c.str("dp27", "none") == "none", !c.value("holders").array.isEmpty, h3.count == 3, p3 > 0, c.cash > 0 {
-                add("dividend", "Start a regular dividend at \(c.name)", effect: "\(c.name) pays 25% of profit to its owners each quarter, when there is profit and cash after costs.",
-                    risk: "Cash leaves the company every quarter. You receive your share.", recommends: c.cash > p3,
+                let t = decisionText("dividend", c)
+                add("dividend", t.title, effect: t.effect,
+                    risk: t.risk, recommends: c.cash > p3,
                     reason: "It made \(cur.short(p3)) over three months and pays its owners nothing." + (c.cash > p3 ? "" : " Cash is thin, so I would wait."))
             }
             let wk = c.num("wkD")
@@ -110,8 +113,9 @@ extension ManagerModel {
             }
             if let mid = c.managerID, let n = s.people[mid], loss3, s.week - c.int("mgrW0") >= 13, c.int("ceoBlk") <= s.week {
                 let director = seats(s, key: key).first { $0.role == "director" }.flatMap { s.people[$0.id] }
-                add("ceo", "Replace \(n.name) as manager of \(c.name)", effect: "The manager is dismissed under the notice and severance rules of the country.",
-                    risk: "The company has no manager until you appoint one.", advisor: director.map { "\($0.name), Director" } ?? "Your board", recommends: deep3,
+                let t = decisionText("ceo", c, manager: n.name)
+                add("ceo", t.title, effect: t.effect,
+                    risk: t.risk, advisor: director.map { "\($0.name), Director" } ?? "Your board", recommends: deep3,
                     reason: deep3 ? "Three losing months in a row, \(cur.short(-p3)) in all. A new leader may turn it." : "Three losing months, but small ones. Give them time.")
             }
         }
@@ -147,9 +151,14 @@ extension ManagerModel {
     @discardableResult
     public static func decideBoardItem(_ s: inout GameState, id: String, approve: Bool, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
         guard let d = boardDecisions(s, data: data).first(where: { $0.id == id }) else { return .gone }
+        return decide(&s, d, approve: approve, attended: false, data: data, context: fc)
+    }
+
+    @discardableResult
+    public static func decide(_ s: inout GameState, _ d: BoardDecision, approve: Bool, attended: Bool, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
         if !approve { settleDecision(&s, d, approved: false); return .declined }
-        if let vk = voteKind(d.kind), let pct = boardGate(s, kind: vk, companyID: d.companyID) { settleDecision(&s, d, approved: false); return .voteFailed(pct) }
-        let r = carryOut(&s, d, data: data, context: fc)
+        if !attended, let vk = voteKind(d.kind), let pct = boardGate(s, kind: vk, companyID: d.companyID) { settleDecision(&s, d, approved: false); return .voteFailed(pct) }
+        let r = carryOut(&s, d, data: data, context: fc, attended: attended)
         if case .refused = r { return r }
         if case .voteFailed = r { settleDecision(&s, d, approved: false); return r }
         settleDecision(&s, d, approved: true)
@@ -170,7 +179,7 @@ extension ManagerModel {
         writeBoard(&s, key: d.key, b)
     }
 
-    static func carryOut(_ s: inout GameState, _ d: BoardDecision, data: GameData, context fc: FinanceContext) -> BoardDecisionResult {
+    static func carryOut(_ s: inout GameState, _ d: BoardDecision, data: GameData, context fc: FinanceContext, attended: Bool = false) -> BoardDecisionResult {
         guard let co = s.company(d.companyID), co.status.isLive, let ci = s.companyIndex(d.companyID) else { return .refused("That company is no longer there.") }
         switch d.kind {
         case "sell":
@@ -186,7 +195,7 @@ extension ManagerModel {
             return .done("You put \(World(state: s, data: data).currency(co).short(d.cost)) into \(co.name).")
         case "ceo":
             guard co.managerID != nil else { return .refused("\(co.name) has no manager to dismiss.") }
-            switch proposeCEOChange(&s, companyID: co.id, data: data) {
+            switch proposeCEOChange(&s, companyID: co.id, data: data, shareholdersMet: attended) {
             case .dismissed:
                 addFollowUp(&s, key: d.key, text: "Appoint a new manager for \(co.name) (Team).", companyID: co.id, check: "mgr")
                 return .done("The manager of \(co.name) was dismissed.")

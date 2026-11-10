@@ -17,16 +17,12 @@ struct GroupEntityManagement: View {
         let members: [Company] = liveMembers
         let chosen: Int = picked ?? entity.companyID
         let co: Company? = members.first { (c: Company) -> Bool in c.id == chosen } ?? engine.state.company(entity.companyID)
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
+        VStack(alignment: .leading, spacing: Theme.Space.xl) {
             if members.count > 1 { picker(members, selected: co?.id ?? chosen) }
             if let co {
-                header(co)
                 chainOfCommand(co)
                 people(co)
-                approvalNote(co)
-                hireRow(co)
                 CompanyTargetsCard(engine: engine, company: co)
-                openPosts(co)
             } else {
                 Text("This company no longer exists.").textStyle(.body, tint: Theme.inkFaint)
             }
@@ -53,29 +49,6 @@ struct GroupEntityManagement: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityAddTraits(on ? [.isButton, .isSelected] : [.isButton])
-    }
-
-    private func header(_ co: Company) -> some View {
-        let gm: GroupManagement = engine.groupManagement()
-        let line: DelegationLine? = engine.delegationLines().first { (d: DelegationLine) -> Bool in d.id == co.id }
-        let stakes: Double = GroupStakes.stakesValue(engine.state)
-        let office: String = gm.groupOfficeEstablished ? "Group office set up" : "No group office"
-        let count: String = "\(gm.managerCount) manager\(gm.managerCount == 1 ? "" : "s") \u{00B7} you run \(gm.runByYou.count) yourself \u{00B7} " + office
-        return Card(padding: Theme.Space.m, radius: Theme.Radius.hero) {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                Text(count).textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                if let line {
-                    Text(delegationSentence(line, co))
-                        .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("management-delegation")
-                    Text("Highest rank here: \(line.top)").textStyle(.caption, tint: Theme.inkFaint)
-                }
-                if stakes > 0 {
-                    Text("Stakes in other groups: " + store.short(stakes)).textStyle(.caption, tint: Theme.inkFaint)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
     }
 
     private func delegationSentence(_ line: DelegationLine, _ co: Company) -> String {
@@ -115,8 +88,9 @@ struct GroupEntityManagement: View {
 
     @ViewBuilder private func chainOfCommand(_ co: Company) -> some View {
         let list: [GroupManagement.Rung] = rungs(co)
+        let line: DelegationLine? = engine.delegationLines().first { (d: DelegationLine) -> Bool in d.id == co.id }
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("CHAIN OF COMMAND").capsLabel()
+            Text("WHO RUNS IT").capsLabel()
             Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
                 VStack(spacing: 0) {
                     commandRow(name: engine.state.player.name, title: "Owner", authority: nil, personID: nil)
@@ -132,15 +106,23 @@ struct GroupEntityManagement: View {
                     }
                 }
             }
+            if let line {
+                Text(delegationSentence(line, co))
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("management-delegation")
+            }
+            approvalNote(co)
         }
         .accessibilityIdentifier("management-chain-of-command")
     }
 
     @ViewBuilder private func people(_ co: Company) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("MANAGEMENT").capsLabel()
+            Text("PEOPLE").capsLabel()
             CompanyManagement(engine: engine, company: co, showAll: true)
             CompanyTeamRoster(engine: engine, company: co)
+            hireRow(co)
+            openPosts(co)
         }
     }
 
@@ -165,13 +147,10 @@ struct GroupEntityManagement: View {
             v.companyID == co.id || (entity.chainID != nil && v.chainID == entity.chainID)
         }
         if !mine.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                Text("OPEN POSTS").capsLabel()
-                Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
-                    VStack(spacing: 0) {
-                        ForEach(Array(mine.enumerated()), id: \.element.id) { (n: Int, v: TeamOverview.Vacancy) in
-                            OpenPostRow(engine: engine, vacancy: v, first: n == 0)
-                        }
+            Card(padding: Theme.Space.xs, radius: Theme.Radius.hero) {
+                VStack(spacing: 0) {
+                    ForEach(Array(mine.enumerated()), id: \.element.id) { (n: Int, v: TeamOverview.Vacancy) in
+                        OpenPostRow(engine: engine, vacancy: v, first: n == 0)
                     }
                 }
             }

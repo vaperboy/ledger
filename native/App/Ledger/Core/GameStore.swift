@@ -654,7 +654,7 @@ final class GameStore: ObservableObject {
         guard let e = engine else { return }
         let list: [GroupEntity] = GroupEntities.cached(self) ?? GroupEntities.build(e)
         guard let g = GroupEntities.find(list, companyID: companyID) else { openCompany(companyID); return }
-        let s: GroupSection = GroupSection.allCases.first(where: { (x: GroupSection) -> Bool in x.key == section }) ?? .overview
+        let s: GroupSection = GroupSection.from(key: section)
         Haptics.tap()
         push(.entity(g.id, s))
     }

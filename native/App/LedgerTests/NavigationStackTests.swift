@@ -117,7 +117,7 @@ final class NavigationStackTests: XCTestCase {
         XCTAssertEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .overview).key)
         XCTAssertNotEqual(CompanyRoute.company(1).key, CompanyRoute.companyAt(1, .marketing).key)
         XCTAssertEqual(CompanyRoute.make(1, .properties, nil), .companyPart(1, .operations, "Premises"))
-        XCTAssertEqual(NavRoute.entity("ch1", .overview).key, NavRoute.entity("ch1", .deals).key)
+        XCTAssertEqual(NavRoute.entity("ch1", .overview).key, NavRoute.entity("ch1", .money).key)
         XCTAssertNotEqual(NavRoute.entity("co1", .overview).key, NavRoute.company(1).key)
     }
 }

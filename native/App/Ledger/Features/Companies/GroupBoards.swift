@@ -45,6 +45,7 @@ struct BoardDecisions: View {
     var engine: GameEngine
     var keys: [String]
     @State private var pending: PendingAction?
+    @State private var meeting: BoardMeetingRef?
 
     private struct KeyedJob: Identifiable {
         var key: String
@@ -71,9 +72,45 @@ struct BoardDecisions: View {
             .accessibilityElement(children: .combine)
             ForEach(emergencies) { (m: ManagerModel.BoardMeeting) in emergency(m, key: keyOf(m)) }
             ForEach(sorted) { (d: ManagerModel.BoardDecision) in decisionCard(d) }
+            callMeeting()
             if !jobs.isEmpty { followUps(jobs) }
         }
         .confirmAction($pending)
+        .centerSheet(item: $meeting, category: .medium, tone: .info) { (m: BoardMeetingRef) in
+            BoardMeetingSheet(key: m.key, pointID: m.pointID, title: m.title).environmentObject(store)
+        }
+    }
+
+    @ViewBuilder private func callMeeting() -> some View {
+        let points: [ManagerModel.BoardDecision] = keys.flatMap { (k: String) -> [ManagerModel.BoardDecision] in engine.boardPutForward(key: k) }
+        if !points.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                Text("Call a board meeting").textStyle(.label, tint: Theme.inkFaint)
+                Text("Put a point to the owners. Shareholders join the meeting; a holder who stays away cannot vote, and a large one can hold the point up.")
+                    .textStyle(.caption, tint: Theme.inkSoft).fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 0) {
+                    ForEach(Array(points.enumerated()), id: \.element.id) { (n: Int, d: ManagerModel.BoardDecision) in
+                        if n > 0 { Hairline() }
+                        LedgerRow(leading: .glyph(Glyph.achievements), title: d.title.tidyMoney, lineLimit: 1, identifier: "board-forward-\(d.id)",
+                                  action: { askMeeting(d, engine.state.company(d.companyID)) })
+                    }
+                }
+            }
+        }
+    }
+
+    private func needsMeeting(_ d: ManagerModel.BoardDecision) -> Bool {
+        engine.boardMeetingAttendees(key: d.key, id: d.id).contains { (a: ManagerModel.Attendee) -> Bool in !a.isYou }
+    }
+
+    private func askMeeting(_ d: ManagerModel.BoardDecision, _ co: Company?) {
+        let ref = BoardMeetingRef(key: d.key, pointID: d.id, title: d.title)
+        let open: () -> Void = { DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { meeting = ref } }
+        let irreversible: Bool = ["sell", "close", "shut", "ceo"].contains(d.kind)
+        if !irreversible && d.cost <= 0 { meeting = ref; return }
+        let cur: Currency? = co.map { (c: Company) -> Currency in engine.currency(for: c) }
+        pending = PendingAction(title: "Call a board meeting?", message: d.title.tidyMoney + ". " + d.effect.tidyMoney, button: "Call the meeting", destructive: irreversible,
+                                amount: d.cost > 0 ? d.cost : nil, currency: cur, risk: d.risk, run: open)
     }
 
     private func keyOf(_ m: ManagerModel.BoardMeeting) -> String {
@@ -99,8 +136,13 @@ struct BoardDecisions: View {
                     detailLine("Risk", d.risk)
                 }
                 HStack(spacing: Theme.Space.m) {
-                    Button("Approve") { askApprove(d, co) }.buttonStyle(QuietButtonStyle())
-                        .accessibilityIdentifier("board-approve-\(d.id)")
+                    if needsMeeting(d) {
+                        Button("Call a board meeting") { askMeeting(d, co) }.buttonStyle(QuietButtonStyle())
+                            .accessibilityIdentifier("board-meeting-\(d.id)")
+                    } else {
+                        Button("Approve") { askApprove(d, co) }.buttonStyle(QuietButtonStyle())
+                            .accessibilityIdentifier("board-approve-\(d.id)")
+                    }
                     Button("Decline") { decide(d, approve: false) }.buttonStyle(GreyOutlineButtonStyle())
                         .accessibilityIdentifier("board-decline-\(d.id)")
                 }

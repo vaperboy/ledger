@@ -233,6 +233,125 @@ struct OwnerReviewSheet: View {
     }
 }
 
+struct BoardMeetingRef: Identifiable, Hashable {
+    var key: String
+    var pointID: String
+    var title: String
+    var id: String { key + ":" + pointID }
+}
+
+struct BoardMeetingSheet: View {
+    @EnvironmentObject var store: GameStore
+    @Environment(\.dismiss) private var systemDismiss
+    @Environment(\.popupClose) private var popupClose
+    var key: String
+    var pointID: String
+    var title: String
+    @State private var people: [ManagerModel.Attendee] = []
+    @State private var progress: Double = 0
+    @State private var result: ManagerModel.MeetingResult?
+    @State private var round = 0
+    @State private var loaded = false
+    private static let seconds: Double = 4
+    private static let steps: Int = 20
+
+    private func dismiss() { if let close = popupClose { close() } else { systemDismiss() } }
+
+    private var shown: [ManagerModel.Attendee] { result?.attendees ?? people }
+    private var waiting: Bool { result == nil && loaded && !people.isEmpty }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text(title.tidyMoney).popupText(.subtitle).fixedSize(horizontal: false, vertical: true)
+            if let r = result {
+                outcome(r)
+            } else if waiting {
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    ProgressView(value: progress).tint(Theme.accent)
+                    Text("Waiting for the shareholders to join.").popupText(.caption)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("boardroom-meeting-progress")
+            } else if loaded {
+                Text("You hold every share, so nobody else has to come.").popupText(.body)
+            }
+            if !shown.isEmpty {
+                PopupSection(title: "At the table") {
+                    ForEach(shown) { (a: ManagerModel.Attendee) in
+                        PopupRow(label: a.name, value: "\(Int(saturating: a.percent.rounded()))% \u{00B7} " + status(a))
+                    }
+                }
+            }
+            footer
+        }
+        .centerSheetTitle("Board meeting")
+        .centerSheetLocked(waiting)
+        .task(id: round) { await gather() }
+    }
+
+    private func status(_ a: ManagerModel.Attendee) -> String {
+        if a.isYou { return "Chairs it" }
+        if result != nil { return a.present ? "Joined" : "Did not come" }
+        return a.present && progress >= a.arrives ? "Joined" : "Waiting\u{2026}"
+    }
+
+    @ViewBuilder private func outcome(_ r: ManagerModel.MeetingResult) -> some View {
+        switch r.outcome {
+        case .carriedOut(let what):
+            Text("Carried. " + what.tidyMoney).popupText(.effect)
+        case .votedDown(let pct):
+            Text("Voted down: \(pct)% of the shares at the table were for it. The board will not raise it again for a while.").popupText(.risk)
+        case .blocked(let names):
+            Text("Not decided. " + names.joined(separator: ", ") + " did not come and could block it. Call the meeting again.").popupText(.risk)
+        case .refused(let why):
+            Text(why).popupText(.risk)
+        case .gone:
+            Text("That point is no longer on the table.").popupText(.risk)
+        }
+    }
+
+    @ViewBuilder private var footer: some View {
+        if let r = result {
+            if case .blocked = r.outcome {
+                Button("Call it again") { Haptics.tap(); again() }.buttonStyle(PrimaryButtonStyle(fullWidth: true))
+                    .accessibilityIdentifier("boardroom-meeting-again")
+            }
+            Button("Close") { Haptics.tap(); dismiss() }.buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                .accessibilityIdentifier("boardroom-meeting-close")
+        }
+    }
+
+    private func gather() async {
+        guard result == nil else { return }
+        let list: [ManagerModel.Attendee] = store.engine?.boardMeetingAttendees(key: key, id: pointID) ?? []
+        people = list
+        progress = 0
+        loaded = true
+        guard !list.isEmpty else { hold(); return }
+        let step: UInt64 = UInt64(Self.seconds / Double(Self.steps) * 1_000_000_000)
+        for n in 1...Self.steps {
+            try? await Task.sleep(nanoseconds: step)
+            if Task.isCancelled { return }
+            withAnimation(.linear(duration: 0.2)) { progress = Double(n) / Double(Self.steps) }
+        }
+        hold()
+    }
+
+    private func again() {
+        result = nil
+        round += 1
+    }
+
+    private func hold() {
+        let k: String = key
+        let id: String = pointID
+        let r: ManagerModel.MeetingResult? = store.act { (e: inout GameEngine) -> ManagerModel.MeetingResult? in e.holdBoardMeeting(key: k, id: id) } ?? nil
+        guard let r else { dismiss(); store.show("That point is no longer on the list.", tone: "warn"); return }
+        if case .carriedOut = r.outcome { Haptics.success() } else { Haptics.warning() }
+        result = r
+    }
+}
+
 struct BoardVoteLines: View {
     var vote: ManagerModel.BoardVote
     var kind: String

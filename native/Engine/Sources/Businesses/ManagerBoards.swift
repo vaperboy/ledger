@@ -259,7 +259,7 @@ extension ManagerModel {
         case blocked(weeks: Int)
         case refused(String)
     }
-    public static func proposeCEOChange(_ s: inout GameState, companyID: Int, data: GameData) -> CEOChange {
+    public static func proposeCEOChange(_ s: inout GameState, companyID: Int, data: GameData, shareholdersMet: Bool = false) -> CEOChange {
         guard let ci = s.companyIndex(companyID), s.companies[ci].managerID != nil, s.companies[ci].status.isLive else { return .refused("There is nobody to replace.") }
         let co = s.companies[ci]
         if !co.value("ceoBlk").isNull, co.int("ceoBlk") > s.week { return .blocked(weeks: co.int("ceoBlk") - s.week) }
@@ -270,7 +270,7 @@ extension ManagerModel {
             s.companies[ci].set("holders", .array(list))
         }
         let yes = Set(vote.owners.filter { !$0.isYou && $0.yes }.map { $0.name }), no = Set(vote.owners.filter { !$0.isYou && !$0.yes }.map { $0.name })
-        if vote.active && !vote.passes {
+        if vote.active && !vote.passes && !(shareholdersMet && !vote.directorsDecide) {
             s.companies[ci].set("ceoBlk", s.week + 8)
             s.companies[ci].set("mood", max(0, mood(s.companies[ci]) - 8))
             moveHolders(no, 3)

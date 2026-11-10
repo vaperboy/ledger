@@ -5,15 +5,22 @@ import Businesses
 import Simulation
 
 enum GroupSection: String, CaseIterable, Hashable {
-    case overview = "Overview", management = "Management", board = "Boardroom", money = "Money", expansion = "Grow", deals = "Owners and sales"
+    case overview = "Overview", management = "Management", board = "Boardroom", money = "Money"
     var key: String {
         switch self {
         case .overview: return "overview"
         case .management: return "management"
         case .board: return "boardroom"
         case .money: return "money"
-        case .expansion: return "expansion"
-        case .deals: return "ownership"
+        }
+    }
+
+    static func from(key: String) -> GroupSection {
+        switch key {
+        case "management": return .management
+        case "boardroom", "board": return .board
+        case "money", "ownership": return .money
+        default: return .overview
         }
     }
 }

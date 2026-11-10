@@ -146,20 +146,3 @@ struct GroupEntityOwnership: View {
         }
     }
 }
-
-struct GroupBuyRows: View {
-    var engine: GameEngine
-    var entity: GroupEntity
-
-    var body: some View {
-        let brands = engine.franchiseBrands()
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            Text("FRANCHISE BRANDS").capsLabel()
-            NavigationLink { FranchisesView() } label: {
-                CardRow(glyph: Glyph.group, title: "Brands that take franchisees",
-                        subtitle: brands.isEmpty ? "No brand is looking for franchisees right now." : "\(brands.count) \(brands.count == 1 ? "brand" : "brands") \u{00B7} apply, meet them, agree terms",
-                        value: brands.isEmpty ? "" : "\(brands.count)")
-            }.buttonStyle(PressableStyle())
-        }
-    }
-}

@@ -88,17 +88,25 @@ struct GroupEntityPage: View {
 
     @ViewBuilder private func content(_ e: GameEngine, _ s: GroupSection) -> some View {
         switch s {
-        case .overview: GroupEntityOverview(engine: e, entity: entity)
+        case .overview:
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                GroupEntityOverview(engine: e, entity: entity)
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    Text("Grow").textStyle(.label, tint: Theme.inkFaint)
+                    EntityExpansionView(companyID: entity.companyID)
+                    TradeAssociationRows(engine: e, entity: entity)
+                }
+            }
         case .management: GroupEntityManagement(engine: e, entity: entity)
         case .board: GroupBoardroom(engine: e, entity: entity)
-        case .expansion:
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
-                EntityExpansionView(companyID: entity.companyID)
-                GroupBuyRows(engine: e, entity: entity)
-                TradeAssociationRows(engine: e, entity: entity)
+        case .money:
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                GroupEntityMoney(engine: e, entity: entity)
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    Text("Owners and sales").textStyle(.label, tint: Theme.inkFaint)
+                    GroupEntityOwnership(engine: e, entity: entity)
+                }
             }
-        case .money: GroupEntityMoney(engine: e, entity: entity)
-        case .deals: GroupEntityOwnership(engine: e, entity: entity)
         }
     }
 }
