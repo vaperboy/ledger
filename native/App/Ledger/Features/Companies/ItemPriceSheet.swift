@@ -126,6 +126,7 @@ struct ItemPriceSheet: View {
         let f: ItemForecast = e.itemForecast(companyID: companyID, itemID: itemID, price: price, discountPercent: base.item.discountPercent)
         let setBy: String? = pg.item.priceSetter.isOwner ? nil : pg.item.priceSetter.label
         let move: Double = base.item.price > 0 ? price / base.item.price - 1 : 0
+        let facts: [TradeFact] = TradeItemFactRows.rows(e, companyID: companyID, page: pg, price: price, cur: cur)
         return VStack(alignment: .leading, spacing: PopupSpace.block) {
             header(pg, cur, price)
             VStack(alignment: .leading, spacing: PopupSpace.row) {
@@ -142,6 +143,7 @@ struct ItemPriceSheet: View {
             if let line = hint(e, pg, f, move: move) { Text(line).popupText(.caption) }
             promotion(co, pg.item)
             listToggle(co, pg.item)
+            if !facts.isEmpty { TradeItemFacts(rows: facts, plans: TradeItemFactRows.plans(pg)) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .centerSheetTitle(base.item.name.tidyText)
