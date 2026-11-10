@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The Friends app: your code, search by name or profile code, requests in both directions and the friend list.
-/// A guest sees how to link an account instead.
 struct FriendsApp: View {
     @EnvironmentObject var store: GameStore
     @Environment(OnlineSession.self) private var online
@@ -27,8 +25,6 @@ struct FriendsApp: View {
         .task(id: query) { await search() }
     }
 
-    // MARK: Signed in
-
     @ViewBuilder private var signedIn: some View {
         OnlineGroup(title: "") {
             NavigationLink { WorldFeedView() } label: {
@@ -49,7 +45,7 @@ struct FriendsApp: View {
     }
 
     private var searchGroup: some View {
-        OnlineGroup(title: "Find a player", footer: "Type a name, or paste a profile code like K7M-4PQ.") {
+        OnlineGroup(title: "Find a player", footer: "Type a name, or paste a profile code like K7M-4PQ2.") {
             HStack(spacing: Theme.Space.s) {
                 LedgerGlyph(glyph: Glyph.person, size: Theme.Icon.small, tint: Theme.inkFaint)
                 TextField("Name or profile code", text: $query)
@@ -76,7 +72,7 @@ struct FriendsApp: View {
                     Text("Your code").textStyle(.caption)
                     Text(mine.code).textStyle(.headline, numeric: true)
                     Spacer()
-                    ShareLink(item: mine.code) { Text("Share").textStyle(.body, tint: Theme.accent) }
+                    ShareLink(item: InviteLink.message(code: mine.code)) { Text("Share").textStyle(.body, tint: Theme.accent) }
                 }
                 .frame(minHeight: 48)
             }
@@ -170,14 +166,11 @@ struct FriendsApp: View {
         return n == 1 ? "1 company" : "\(n) companies"
     }
 
-    // MARK: Calls
-
     private func reload() async {
         guard online.isSignedIn else { overview = nil; return }
         do { overview = try await online.service.friends(); failure = nil } catch { failure = (error as? LocalizedError)?.errorDescription ?? "Could not load friends." }
     }
 
-    /// Runs after a short pause so each keystroke does not search; the task is cancelled when the text changes again.
     private func search() async {
         let q: String = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard online.isSignedIn, !q.isEmpty else { results = []; searching = false; return }
