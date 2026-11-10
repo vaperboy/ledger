@@ -156,7 +156,7 @@ enum LookKit {
 
     static func ink(_ r: SeasonReward) -> Color { Color(hex: tint(r)) }
 
-    static func company(_ store: GameStore) -> String {
+    @MainActor static func company(_ store: GameStore) -> String {
         store.engine?.state.companies.first { $0.type != "hold" && $0.status.isLive }?.name ?? ""
     }
 }
