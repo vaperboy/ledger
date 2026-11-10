@@ -105,7 +105,7 @@ public enum UnlockNotices {
     }
 
     static let gateKey = "gateSeen"
-    static let skippedGates: Set<Gate> = [.ownerHours, .venturesFeed]
+    static let skippedGates: Set<Gate> = [.ownerHours]
 
     static func gateID(_ g: Gate) -> String { "gate." + g.rawValue }
 
