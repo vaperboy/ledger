@@ -111,13 +111,6 @@ struct SettingsView: View {
                 rule
                 plainRow(Glyph.info, "Plus renews", value: end.formatted(date: .abbreviated, time: .omitted))
             }
-            if store.engine != nil && !embedded {
-                rule
-                Button { Haptics.tap(); store.openApp(.store) } label: {
-                    plainRow(Glyph.lock, ent.isPlus ? "Open the Store" : (ent.ownsPro ? "Get Ledger Plus in the Store" : "Get Ledger Pro in the Store"), chevron: true)
-                }.buttonStyle(PressableStyle())
-                .accessibilityIdentifier("settings-ledger-pro")
-            }
             if ent.isPlus {
                 rule
                 Button { Task { await ent.manageSubscription() } } label: { plainRow(Glyph.settings, "Manage subscription", chevron: true) }

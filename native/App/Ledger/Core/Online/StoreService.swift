@@ -17,13 +17,11 @@ struct StoreState: Codable, Equatable, Sendable {
     func count(_ kind: BoxKind) -> Int { boxes[kind.rawValue] ?? 0 }
 }
 
-/// A box that was opened: what it held, the state after, and the collections it completed (their cosmetic is owed once).
 struct BoxOpening: Sendable {
-    var result: BoxResult
+    var kind: BoxKind
+    var results: [BoxResult]
     var state: StoreState
     var completed: [ArtifactCollection]
-    /// True when the box came from the stock (a free or bundled box) instead of being paid for in gold.
-    var fromStock: Bool
 }
 
 enum StoreError: Error, Equatable, LocalizedError, Sendable {
@@ -54,8 +52,7 @@ protocol StoreService: Sendable {
     func buyCosmetic(_ id: String, owned: Set<String>) async throws -> StoreState
     /// Spends gold on a profile icon (`AvatarCatalog`). The caller adds it to the owned icons.
     func buyAvatar(_ id: String, owned: Set<String>) async throws -> StoreState
-    /// Opens a box from the stock, or pays for a paid one in gold when the stock has none.
-    func openBox(_ kind: BoxKind, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening
+    func openBoxes(_ kind: BoxKind, count: Int, owned: Set<String>, paidBoxesAllowed: Bool) async throws -> BoxOpening
     /// Boxes and gold from the Season Pass.
     func grantFromSeason(boxes: Int, gold: Int) async -> StoreState
 }
@@ -72,10 +69,10 @@ struct AuctionsSnapshot: Sendable {
 }
 
 protocol AuctionService: Sendable {
-    /// Moves time forward (bids of other players, endings) and returns everything.
-    func refresh() async -> AuctionsSnapshot
-    func placeBid(auctionID: String, amount: Int) async throws -> AuctionsSnapshot
-    func list(itemID: String, startPrice: Int, reserve: Int?, duration: AuctionDuration) async throws -> AuctionsSnapshot
+    func refresh(cash: Int, priceLevel: Double) async -> AuctionsSnapshot
+    func placeBid(auctionID: String, amount: Int, cash: Int) async throws -> AuctionsSnapshot
+    func buyNow(auctionID: String, cash: Int) async throws -> AuctionsSnapshot
+    func list(itemID: String, startPrice: Int, reserve: Int?, buyNow: Int?, duration: AuctionDuration) async throws -> AuctionsSnapshot
     func cancel(auctionID: String) async throws -> AuctionsSnapshot
 }
 

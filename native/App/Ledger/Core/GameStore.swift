@@ -292,6 +292,16 @@ final class GameStore: ObservableObject {
         else if let saves, saves.hasSave() { loadCurrent() }
         ConfirmThreshold.delegated = { [weak self] () -> (limit: Double, rate: Double) in self?.engine?.delegatedSpendLimit() ?? (limit: 0, rate: 0) }
         StoreSession.shared.moneyPrizeHandler = { [weak self] (amount: Int, id: String) -> Void in self?.claimBoxMoney(amount, claimID: id) }
+        StoreSession.shared.purse = { [weak self] () -> AuctionPurse? in
+            guard let e = self?.engine else { return nil }
+            let cur: Currency = e.homeCurrency
+            return AuctionPurse(cash: e.auctionCash, priceLevel: e.auctionPriceLevel, format: { (n: Int) -> String in cur.display(Double(n) * cur.rate).tidyMoney })
+        }
+        StoreSession.shared.cashHandler = { [weak self] (amount: Int, id: String, label: String) -> Void in self?.settleAuctionCash(amount, claimID: id, label: label) }
+    }
+
+    func settleAuctionCash(_ amount: Int, claimID: String, label: String) {
+        act({ $0.settleAuctionCash(amount, claimID: claimID, label: label) })
     }
 
     /// The cash prize of an opened free box lands on the personal account (once per opening).

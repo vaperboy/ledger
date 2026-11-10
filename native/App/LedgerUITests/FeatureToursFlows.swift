@@ -373,10 +373,10 @@ extension FeatureToursTests {
     // MARK: T24 Settings, Luxury, Ventures popups
 
     func testT24_OtherPopups() {
-        step("settings: Ledger Pro opens the paywall and it closes back to Settings") {
-            guard openPhoneApp("Settings") else { return .skip("Settings not opened") }
+        step("store: the plans open from the Store and close back to it") {
+            guard openPhoneApp("Store") else { return .skip("Store not opened") }
             let before: TourSig = signature()
-            guard tapID("settings-ledger-pro", wait: 4) else { return .skip("no Ledger Pro row (already Pro?)") }
+            guard tapID("store-plans", wait: 4) else { return .skip("no plans row in the Store") }
             let raw: [String] = rawProblems("paywall")
             if popupUp(2) {
                 closePopup(prefer: ["paywall-pass", "popup-close"])

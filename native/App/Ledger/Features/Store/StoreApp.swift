@@ -26,8 +26,8 @@ struct StoreApp: View {
         }
         .appScreen(title: "Store", subtitle: "") { StoreGoldChip(amount: session.gold) }
         .confirmAction($pending)
-        .centerSheet(isPresented: $showPlans, title: "Ledger Pro", category: .detail, tone: .prestige) { ProPlansView() }
-        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoContent(kind: .cabinet) }
+        .centerSheet(isPresented: $showPlans, title: "Ledger plans", size: .tall, category: .detail, tone: .prestige) { ProPlansView() }
+        .centerSheet(isPresented: $showInfo, title: "Odds and rules", size: .tall) { LootBoxInfoSheet(kind: .cabinet) }
         .offerCodeRedemption(isPresented: $showRedeem) { _ in Task { await ent.restore() } }
         .task { await session.load(); await ent.loadProducts() }
     }

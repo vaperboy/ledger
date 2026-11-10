@@ -50,7 +50,7 @@ public enum SeasonRewards {
 
     private static func b(_ id: String, _ tier: Int, _ prem: Bool, _ count: Int) -> SeasonReward {
         SeasonReward(id: id, tier: tier, premium: prem, kind: .box, title: count == 1 ? "Season box" : "\(count) Season boxes",
-                     detail: "Free to open in the Store; it holds a cosmetic, an artifact or a little gold. Odds are shown before you open it.", amount: count)
+                     detail: "Free to open in the Store; it holds a cosmetic, an artifact, a little gold or, rarely, cash. Odds are shown before you open it.", amount: count)
     }
 
     private static func g(_ id: String, _ tier: Int, _ prem: Bool, _ gold: Int) -> SeasonReward {
